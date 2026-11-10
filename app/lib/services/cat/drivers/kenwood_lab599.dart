@@ -3,9 +3,9 @@
 //
 // The Lab599 TX-500 line's side of a Kenwood session
 // ([KenwoodModeDialect.lab599]): which of its two CAT protocols the radio is
-// on, the rated output its `PC` level is a share of, the two meters it
-// reads without changing the one on its own panel, and the `PT` that sees it
-// keyed in DIG.
+// on, the rated output its `PC` level and power-out meter are shares of, the
+// supply `VL;` reads, and the `PT` that sees it keyed in DIG. Its `SM0;` is
+// read with every other Kenwood's, in kenwood_meters.dart.
 
 part of 'kenwood_driver.dart';
 
@@ -13,9 +13,9 @@ mixin _Lab599 {
   EquipmentSink get _sink;
   KenwoodModeDialect? get modeDialect;
   VfoReading? get _lastReported;
-  Map<String, dynamic> get _config;
   TelemetryPoller get _telemetry;
   void _send(String command);
+  void _meterTransmitSays({required bool? transmitting});
 
   bool get _lab599 => modeDialect == KenwoodModeDialect.lab599;
 
@@ -31,19 +31,12 @@ mixin _Lab599 {
   /// its power-out meter are shares of.
   num get _lab599RatedWatts => lab599RatedWatts(_lastReported?.freqKHz);
 
-  /// Bar-graph dots held for the `PT` or `IF` asked after them: answered after an
-  /// unkey, they are the S-meter, and reported as power they would stand on
-  /// the strip for [meterLinger].
-  int? _lab599Dots;
-
   void _lab599Identified(String id) {
     _lab599Protocol = lab599ProtocolIds.contains(id);
     _sink.reportDiagnostic('CAT protocol ${_lab599Protocol! ? 'LAB599' : 'TS-2000, no DIG or volts'} (ID$id)');
   }
 
-  /// Ahead of the `PT` and `IF` that confirm them.
-  void _readLab599Meters() {
-    _send(buildLab599ReadMeterCommand());
+  void _readLab599Volts() {
     if (_lab599Protocol == true) _send(buildLab599ReadVoltageCommand());
   }
 
@@ -56,25 +49,12 @@ mixin _Lab599 {
   void _handleLab599Ptt(String params) {
     final transmitting = parseLab599PttParams(params);
     if (transmitting == null) return;
-    _lab599TransmitSays(transmitting: transmitting);
+    _meterTransmitSays(transmitting: transmitting);
     if (_telemetry.noteTransmitting(transmitting)) _sink.reportTransmitting(transmitting);
   }
 
-  void _handleLab599Meter(AsciiCatCommand command) {
-    if (command.command == 'SM') {
-      if (_telemetry.transmitting) _lab599Dots = parseLab599MeterParams(command.params);
-      return;
-    }
-    final volts = parseLab599VoltageParams(command.params);
+  void _handleLab599Volts(String params) {
+    final volts = parseLab599VoltageParams(params);
     if (volts != null) _sink.reportMeter(RadioMeter.supplyVolts, volts);
-  }
-
-  /// A `PT` or `IF` read: the held dots are power out only if it still says
-  /// keyed.
-  void _lab599TransmitSays({required bool? transmitting}) {
-    final dots = _lab599Dots;
-    _lab599Dots = null;
-    final fraction = dots == null || transmitting != true ? null : calibrationForConfig(_config)?.convert(MeterTable.powerFraction, dots);
-    if (fraction != null) _sink.reportMeter(RadioMeter.powerOut, (fraction * _lab599RatedWatts * 10).round() / 10);
   }
 }

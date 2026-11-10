@@ -33,7 +33,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 17 | `bandScope` as the band scope's kind, `spectrum` for its upper section where it took `pan`, and its `gestures`, default axis and `levelScale`, `vfoLabel`, `widthHz`, `stepHz` and `vfoHz`, `layers`, and a click's step that follows the zoom |
 | 19 | `radio.reportedFrequencyHz`, the radio's own report beside the dial |
 | 20 | the band scope's `minWidthHz` and `maxWidthHz`, its `vfoLabel`'s `arrow`, up to 512 of its `layers` and 256 `annotations`, and an annotation's `collapsed` |
-| 22 | the band scope's `window` and `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed one's `width: 'box'`, a zoom's `commit` of its middle as a pan, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click |
+| 22 | the band scope's `window` and `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed one's `width: 'box'`, a zoom's `commit` of its middle as a pan, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click; `radio.compression` |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -690,6 +690,7 @@ reserved: a scene may not declare them, and nothing may set them.
 | `radio.signalDbm` | Receive signal, dBm |
 | `radio.powerOut` | RF out, watts |
 | `radio.swr`, `radio.alc`, `radio.supplyVolts` | The transmit meters |
+| `radio.compression` | The speech processor's compression, dB, while transmitting. API 22 |
 | `radio.transmitting` | 1 or 0, the radio's own report |
 | `radio.swrAverage` | SWR averaged over the transmission under way, else the last one; only readings taken with RF out count |
 | `radio.secondsSinceTransmit` | 0 while transmitting, then counting up; very large when there has been none |

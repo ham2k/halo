@@ -293,6 +293,8 @@ void main() {
       'qcx-serial',
       'ts590sg-serial',
       'ts480-serial',
+      'ts480hx-serial',
+      'ts2000-serial',
       'tx500-serial',
       'tx500mp-serial',
       'tx500mp-bluetooth',
@@ -407,6 +409,8 @@ void main() {
       'elecraft-generic-placeholder',
       'ts590sg-placeholder',
       'ts480-placeholder',
+      'ts480hx-placeholder',
+      'ts2000-placeholder',
       'kenwood-generic-placeholder',
       'tx500-placeholder',
       'tx500mp-placeholder',
@@ -455,6 +459,8 @@ void main() {
       'elecraft-generic-ble',
       'ts590sg-ble',
       'ts480-ble',
+      'ts480hx-ble',
+      'ts2000-ble',
       'kenwood-generic-ble',
       'tx500-ble',
       'tx500mp-ble',
@@ -502,6 +508,8 @@ void main() {
       'elecraft-generic-serial-tcp',
       'ts590sg-serial-tcp',
       'ts480-serial-tcp',
+      'ts480hx-serial-tcp',
+      'ts2000-serial-tcp',
       'kenwood-generic-serial-tcp',
       'tx500-serial-tcp',
       'tx500mp-serial-tcp',
@@ -552,6 +560,8 @@ void main() {
       'ts590sg-serial': ('kenwood', {'baudRate': 115200, 'rtsHigh': true}),
       // The rate the TS-480 was reported working on — also its default.
       'ts480-serial': ('kenwood', {'baudRate': 9600, 'rtsHigh': true}),
+      'ts480hx-serial': ('kenwood', {'baudRate': 9600, 'rtsHigh': true}),
+      'ts2000-serial': ('kenwood', {'baudRate': 9600, 'rtsHigh': true}),
       // 38400, not the Kenwood family's 9600: the whole Elecraft line ships
       // on it, and a speed mismatch is answered with silence, not an error.
       'kx2-serial': ('kenwood', {'baudRate': 38400}),
@@ -649,7 +659,7 @@ void main() {
   // TS-480 would key nothing — or, pinned to the Elecraft shape, send a `KY`
   // the radio ignores while the app shows the message going out.
   test('the named Kenwoods key through the Kenwood `KY` and offer no voice memories', () {
-    for (final key in ['ts590sg-serial', 'ts480-serial']) {
+    for (final key in ['ts590sg-serial', 'ts480-serial', 'ts480hx-serial']) {
       final type = registry.typeFor(key)!;
       final config = type.driverConfig(const {});
       expect(KenwoodDriver.cwDialectFrom(config), KenwoodCwDialect.kenwood, reason: key);

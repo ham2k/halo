@@ -414,7 +414,7 @@ open, and libserialport's `setFlowControl(none)` does not lower them (a line it 
 left alone). Two node settings say where they go (`rtsHigh`, `dtrHigh` in
 `serial_transport_config.dart`), and **both are off unless the operator turns them on**, on every
 entry in the catalogue but the few whose radio is known to wait for RTS — the Orions and Kenwood's own
-(the TS-590SG, the TS-480 and the generic Kenwood), whose ports use RTS/CTS as their handshake. Each
+(the TS-590SG, the TS-480SAT and HX, the TS-2000 and the generic Kenwood), whose ports use RTS/CTS as their handshake. Each
 of those prefills RTS high as a default the operator can turn off, and `cat_serial_lines_test.dart`
 names every one, so a new one is a deliberate edit; the other rigs on Kenwood's protocol keep it low.
 A prefill is where an added node starts, never what an existing one reads: the editor opens a serial
@@ -2113,21 +2113,46 @@ generic Yaesu entry names none.
 | FlexRadio | `interlock state=`, PUSHED — costs nothing; it speaks for the whole radio, so a slice whose transmit flag (`tx=1`) is on another of the app's radios' slices — or a slice the radio does not have — reads it as receiving, and one keying takes the flag from there first; a flag on a slice no session reads is a split, left where it is | power out and SWR: the transmitter's `FWDPWR` (dBm, turned to watts) and `SWR` meters, from the VITA-49 meter stream that carries the slice's LEVEL; tenths, at most four a second |
 | Yaesu (FT-891) | `TX;`, polled | power out, SWR, ALC, volts — for a radio whose entry names a table |
 | Yaesu (FT-817/857/897) | bit 7 of `F7`, polled | none: the PO meter is a 0-15 nibble and HI SWR is one bit, neither with a published scale |
-| Kenwood | the flag in `IF`, one place ahead of the mode; on a TX-500 in LAB599, `PT;` too, which still answers in DIG, where `IF` does not | none — see below — but on the TX-500 line: power out from `SM0;`, volts from `VL;` |
+| Kenwood | the flag in `IF`, one place ahead of the mode; on a TX-500 in LAB599, `PT;` too, which still answers in DIG, where `IF` does not | for an entry whose calibration file scales them: the S-meter and power out from `SM0;`, SWR, COMP and ALC from a bare `RM;`; on the TX-500 line, volts from `VL;` — see below |
+
+**Kenwood's meters** come from two reads, neither of which selects anything on the radio's panel:
+
+- **`SM0;`** reads the bar graph, which is the S-meter while receiving and power out while keyed (the
+  TS-590S reference says so; the TS-480's and Lab599's give the range alone). Which of the two an
+  answer is depends on when the radio read it, so each reading is held until the next `IF` (or a
+  TX-500's `PT`) and reported only if that still says what the session thought when the reading
+  came: an S9 answered just after the unkey would otherwise stand on the strip as power out for the
+  meter linger. A strength table's 0 dB is S9, reported as −73 dBm.
+- **A bare `RM;`**, asked only while keyed, reads SWR, COMP and ALC. `RM` with a digit SELECTS the
+  meter the radio displays, which would change the operator's own front panel, and is never sent. The
+  TS-590S answers all three every time, and the TS-2000 only the one its operator has selected.
+  Kenwood's TS-480 reference describes the TS-2000's behaviour, on 0–10; Hamlib reads all three
+  from it, on 0–20, and the TS-480 tables follow Hamlib's scale. The driver takes each answer by the
+  meter it names, so one answer or three both read, but a radio answering on 0–10 would read low
+  until a capture corrects the table. Not asked while receiving: the TS-590S answers ALC then too,
+  during voice-memory recording.
+
+Every answer is in dots (0–20 on a TS-480, 0–30 on a TS-590, TS-2000 or TX-500) on a scale no
+Kenwood reference states, so the driver meters only what an entry's calibration file scales; a
+generic Kenwood names no file and reads none. The S-meter and SWR scales, and the TS-590's power
+curve, are Hamlib's; every other row is PROVISIONAL, linear after Hamlib's own scaling, until a
+capture replaces it. The TS-480SAT and HX are separate entries because their power scales differ.
+That capture is a developer-mode switch on every entry on this driver but the K4 (the Elecrafts and
+QRP Labs rigs included), which asks `SM0;` on every watch and `RM;` while keyed whether or not a
+table exists, and shows the raw dots on the diagnostic line and the console, or the whole answer,
+quoted, when it is not in the shape the driver reads. Like the transmit flag, the meters wait on the
+`IF` mode offset: until it is learned no reading is confirmed, the S-meter's included. The TX-500
+side of the session is the `_Lab599` mixin in `kenwood_lab599.dart`; the meters are
+`kenwood_meters.dart`.
 
 Two things are still deliberately missing:
 
-- **Kenwood's meter reads require SELECTING which meter the radio displays**, so reading SWR would
-  change what is on the operator's own front panel, and the scale behind the answer is unpublished
-  besides. (Yaesu's do not: `MS` is a separate command, so `RM4/5/6/8` leave the panel alone.)
-  Lab599's TX-500 line is the exception: `SM0;` reads its bar graph, which is power out while it
-  transmits, and `VL;` its supply in volts (LAB599 protocol only), and neither selects anything. The
-  bar graph's 0–30 dots have no published scale, so `info/lab599/tx500.json` is PROVISIONAL: linear
-  to the rated output, until a dummy-load capture replaces it. An `SM` answer arriving after the
-  radio unkeys is the S-meter, so each cycle asks `SM0;` before `PT;` and `IF;` and reports the dots
-  only if the first of those to answer still says keyed. SWR and ALC stay off: a bare `RM;` reads
-  only whichever meter the operator has selected on the panel, again in dots of no stated scale. The
-  TX-500 side of the session is the `_Lab599` mixin in `kenwood_lab599.dart`.
+- **The TS-890S and TS-990S.** `info/kenwood/` holds their tables, but no entry: neither has `MD`
+  (both report mode with `OM`), the TS-890S has no `IF`, and the TS-990S's `IF` carries no transmit
+  flag, so this driver could neither read their mode nor see them keyed. Their meters also speak
+  another `RM`: numbered 1 ALC, 2 SWR, 3 COMP, 4 drain, 5 supply, on 0–70, each answered only once
+  `RMn1;` has enabled it (which the radio forgets at power-off, and which leaves the display, `MT`'s,
+  alone); the TS-890S's `SM;` takes no receiver digit.
 - **An Icom's supply voltage.** Icom's Vd scale is a two-segment curve for a 13.8 V radio, and the
   CI-V file describes the whole line — an IC-705 runs on USB, a battery or external DC and almost
   certainly does not share it. The battery-derating check above is unaffected: it compares the raw

@@ -690,6 +690,7 @@ void main() {
         'qcx-serial',
         'ts590sg-serial',
         'ts480-serial',
+        'ts480hx-serial',
         'g90-serial',
       ]) {
         final type = registry.typeFor(key)!;

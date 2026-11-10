@@ -7131,6 +7131,9 @@ class Translations$settings$station$en {
 	/// en: 'Reads the radio's power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.'
 	String get yaesuBinaryMeterCaptureDescription => 'Reads the radio\'s power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.';
 
+	/// en: 'Reads the radio's S-meter while receiving and its power, SWR, COMP and ALC meters while transmitting, and prints the raw values to the log. For building the scales Kenwood does not publish.'
+	String get kenwoodMeterCaptureDescription => 'Reads the radio\'s S-meter while receiving and its power, SWR, COMP and ALC meters while transmitting, and prints the raw values to the log. For building the scales Kenwood does not publish.';
+
 	/// en: 'Reads the radio's PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.'
 	String get yaesuMeterCaptureDescription => 'Reads the radio\'s PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.';
 
@@ -8906,6 +8909,9 @@ class Translations$operation$layout$panels$en {
 	/// en: 'ALC'
 	String get radioAlc => 'ALC';
 
+	/// en: 'COMP'
+	String get radioComp => 'COMP';
+
 	/// en: 'V'
 	String get radioVolts => 'V';
 
@@ -10475,8 +10481,14 @@ class Translations$settings$station$models$en {
 	/// en: 'Kenwood TS-590SG'
 	String get ts590sg => 'Kenwood TS-590SG';
 
-	/// en: 'Kenwood TS-480'
-	String get ts480 => 'Kenwood TS-480';
+	/// en: 'Kenwood TS-480SAT'
+	String get ts480 => 'Kenwood TS-480SAT';
+
+	/// en: 'Kenwood TS-480HX'
+	String get ts480hx => 'Kenwood TS-480HX';
+
+	/// en: 'Kenwood TS-2000'
+	String get ts2000 => 'Kenwood TS-2000';
 
 	/// en: 'QRP Labs QMX'
 	String get qmx => 'QRP Labs QMX';
@@ -11828,6 +11840,7 @@ extension on Translations {
 			'operation.layout.panels.radioTransmitting' => 'TX',
 			'operation.layout.panels.radioSwr' => 'SWR',
 			'operation.layout.panels.radioAlc' => 'ALC',
+			'operation.layout.panels.radioComp' => 'COMP',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'high SWR',
 			'operation.layout.panels.rotatorDescription' => 'Where the antenna points, on a map centred on the station. Tap the map to turn it.',
@@ -12178,9 +12191,9 @@ extension on Translations {
 			'loggingControls.sent' => 'Sent',
 			'loggingControls.rcvd' => 'Rcvd',
 			'loggingControls.more' => 'More',
-			'loggingControls.revert' => 'Revert',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.revert' => 'Revert',
 			'loggingControls.undoDelete' => 'Undo delete',
 			'loggingControls.restore' => 'Restore',
 			'loggingControls.wipe' => 'Wipe',
@@ -12692,9 +12705,9 @@ extension on Translations {
 			'settings.radio.voiceMessages.problemFileFailed' => 'The recording couldn\'t be saved in the message\'s place, so the message was left as it was.',
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'That message needs words you haven\'t recorded: ${words}.',
 			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'That message\'s template has a problem: ${error}',
-			'settings.radio.voiceMessages.problemNoOperation' => 'Messages said with your words play in an operation, where there is a contact to say them for.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemNoOperation' => 'Messages said with your words play in an operation, where there is a contact to say them for.',
 			'settings.radio.voiceMessages.problemNothingSaid' => 'That message says nothing for this contact.',
 			'settings.radio.voiceMessages.templateField' => 'Say with my words',
 			'settings.radio.voiceMessages.templateHelp' => 'Leave empty to play the recording. Otherwise the message is said with the words you recorded, filled in for each contact, using these values:',
@@ -13144,7 +13157,9 @@ extension on Translations {
 			'settings.station.models.icomGeneric' => 'Icom - Generic',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Generic',
 			'settings.station.models.ts590sg' => 'Kenwood TS-590SG',
-			'settings.station.models.ts480' => 'Kenwood TS-480',
+			'settings.station.models.ts480' => 'Kenwood TS-480SAT',
+			'settings.station.models.ts480hx' => 'Kenwood TS-480HX',
+			'settings.station.models.ts2000' => 'Kenwood TS-2000',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
 			'settings.station.models.tx500' => 'Lab599 TX-500',
@@ -13204,11 +13219,11 @@ extension on Translations {
 			'settings.station.models.airspyHf' => 'Airspy HF+',
 			'settings.station.models.spyServer' => 'SpyServer (any receiver)',
 			'settings.station.transports.network' => 'Network/WiFi',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.transports.tci' => 'TCI',
 			'settings.station.transports.secureNetwork' => 'Secure Network/WiFi',
 			'settings.station.transports.usbSerial' => 'USB Serial',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.transports.wifi' => 'Network/WiFi',
 			'settings.station.transports.bluetoothSerial' => 'Bluetooth Serial',
 			'settings.station.transports.bleSerial' => 'Bluetooth LE',
@@ -13459,6 +13474,7 @@ extension on Translations {
 			'settings.station.voiceMemoriesInvalid' => 'A whole number, 0 or more',
 			'settings.station.yaesuMeterCapture' => 'Capture meter readings',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Reads the radio\'s power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
+			'settings.station.kenwoodMeterCaptureDescription' => 'Reads the radio\'s S-meter while receiving and its power, SWR, COMP and ALC meters while transmitting, and prints the raw values to the log. For building the scales Kenwood does not publish.',
 			'settings.station.yaesuMeterCaptureDescription' => 'Reads the radio\'s PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.telemetryInterval' => 'Meter reading interval (ms)',
 			'settings.station.telemetryIntervalDescription' => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can handle, up to 200 ms.',
@@ -13717,12 +13733,12 @@ extension on Translations {
 			'commands.sentryTestSent' => 'Test error report sent to Sentry',
 			'commands.idleMetricsEnabled' => 'Idle metrics enabled in the status bar',
 			'commands.idleMetricsDisabled' => 'Idle metrics disabled',
+			_ => null,
+		} ?? switch (path) {
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'That command needs an open operation',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'Don\'t know how to mark a \'${kind}\'',
 			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
-			_ => null,
-		} ?? switch (path) {
 			'commands.goUnknown' => ({required Object to}) => 'Don\'t know how to go to \'${to}\'',
 			'commands.goBlocked' => 'Close the open dialog first',
 			'commands.operationAlreadyStarted' => 'This operation already has a start marker',

@@ -203,6 +203,10 @@ enum RadioMeter {
 
   /// DC input to the radio, in volts.
   supplyVolts,
+
+  /// How hard the speech processor is compressing, in dB, on the radio's
+  /// own COMP scale.
+  compression,
 }
 
 /// The SWR at which the operator is warned.

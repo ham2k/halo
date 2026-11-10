@@ -25,6 +25,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../error_reporting_service.dart';
@@ -51,6 +52,7 @@ import 'voice_activity_tracker.dart';
 part 'k4_spectrum_session.dart';
 part 'kenwood_equipment.dart';
 part 'kenwood_lab599.dart';
+part 'kenwood_meters.dart';
 
 /// `IF;` out, and the ~38-byte status packet back — much the largest TX
 /// watch of any driver here, because Kenwood is the only line with no
@@ -73,7 +75,7 @@ const kenwoodPassbandReadEvery = 5;
 const kenwoodAntennaReadEvery = 5;
 
 class KenwoodSession
-    with _Lab599
+    with _Lab599, _KenwoodMeters
     implements
         ReadBackSession,
         CwKeyerSession,
@@ -90,6 +92,7 @@ class KenwoodSession
   final bool remote;
   bool? _remoteTransmitting;
 
+  @override
   bool get _transmitting => remote ? _remoteTransmitting == true : _telemetry.transmitting;
 
   bool _noteTransmitting(bool value) {
@@ -122,27 +125,28 @@ class KenwoodSession
 
   /// Watches for the operator to key the rig, by asking for the `IF` packet
   /// that carries the flag — see [_handleInfo] — and on a TX-500 for `PT`
-  /// besides, see [_watchLab599Ptt].
-  ///
-  /// The watch has no meter half but on the TX-500 line. Kenwood's meter
-  /// reads (`RM`) require SELECTING which meter the radio displays, so
-  /// reading SWR would change what is on the operator's own front panel; and
-  /// the scale behind the answer is unpublished besides. The TX-500's `SM0;`
-  /// and `VL;` select nothing — see [_readLab599Meters].
+  /// besides, see [_watchLab599Ptt]. The meters an entry's calibration file
+  /// gives a scale to are asked ahead of them, see [_readMeters].
   @override
   late final TelemetryPoller _telemetry = TelemetryPoller(
     onPoll: (transmitting) {
-      if (transmitting && _lab599) _readLab599Meters();
+      _readMeters(transmitting);
+      if (transmitting && _lab599) _readLab599Volts();
       if (_lab599) _watchLab599Ptt();
       _send(buildKenwoodReadInfoCommand());
     },
-    idleInterval: telemetryIntervalFor(_config, cycleBytes: _txWatchBytes + (_lab599 ? lab599PttBytes : 0), baudRate: serialBaudRateOrNull(_config)),
-    txInterval: telemetryIntervalFor(
-      _config,
-      cycleBytes: _txWatchBytes + (_lab599 ? lab599PttBytes + lab599MeterBytes : 0),
-      baudRate: serialBaudRateOrNull(_config),
-    ),
+    idleInterval: _telemetryInterval(transmitting: false),
+    txInterval: _telemetryInterval(transmitting: true),
   );
+
+  Duration _telemetryInterval({required bool transmitting}) => telemetryIntervalFor(
+    _config,
+    cycleBytes: _txWatchBytes + kenwoodMeterCycleBytes(_meterCalibration, transmitting: transmitting, capturing: _capturingMeters, lab599: _lab599),
+    baudRate: serialBaudRateOrNull(_config),
+  );
+
+  @override
+  num? get _meterRatedWatts => _lab599 ? _lab599RatedWatts : null;
 
   /// `IF;` out, and the ~38-byte status packet back — much the largest TX
   /// watch of any driver here, because it is the only one that cannot ask
@@ -732,8 +736,12 @@ class KenwoodSession
         final level = parseKenwoodPowerParams(command.params);
         if (level != null) _sink.reportPower(_lab599 ? lab599WattsForLevel(level, ratedWatts: _lab599RatedWatts) : level);
 
-      case 'SM' || 'VL' when _lab599:
-        _handleLab599Meter(command);
+      case 'SM':
+        _handleSMeter(command.params);
+      case 'RM':
+        _handleMeterRead(command.params);
+      case 'VL' when _lab599:
+        _handleLab599Volts(command.params);
 
       case 'PT' when _lab599:
         _handleLab599Ptt(command.params);
@@ -898,7 +906,7 @@ class KenwoodSession
     if (learned != null) {
       _vfo = parseKenwoodInfoVfoAfterMode(params, learned);
       final transmitting = parseKenwoodInfoTransmittingBeforeMode(params, learned);
-      if (_lab599) _lab599TransmitSays(transmitting: transmitting);
+      _meterTransmitSays(transmitting: transmitting);
       if (transmitting != null && _noteTransmitting(transmitting)) {
         _sink.reportTransmitting(transmitting);
       }
@@ -1361,7 +1369,8 @@ class KenwoodSession
     _antennaPollsToSkip = 0;
     _antennaRead.reset();
     _lab599Protocol = null;
-    _lab599Dots = null;
+    _heldMeters.clear();
+    _rawMeters.clear();
     _started = true;
     // K4n clears K2 meta mode; K31 explicitly includes the DATA submode in
     // IF. Do this before AI or any reads, on each USB or TCP connection.

@@ -2,14 +2,14 @@
   "manufacturer": "Kenwood",
   "model": "TS-590S",
   "meterCalibration": {
-    "_comments": "As reported in Hamlib",
+    "_comments": "strength, swr and power as reported in Hamlib. compression and alc PROVISIONAL, after Hamlib's scaling: COMP one dB a dot, ALC to the top of its zone at 30. Kenwood's TS-590S PC command reference gives SM0 (the S-meter while receiving, power out while transmitting) and RM (SWR, COMP and ALC, all three every time) as 0-30 dots and no scale. Replace with points read against a dummy load: the developer-mode meter capture prints the raw dots.",
     "strength": [
       { "value": 0, "db": -60 },
       { "value": 3, "db": -48 },
       { "value": 6, "db": -36 },
       { "value": 9, "db": -24 },
       { "value": 12, "db": -12 },
-      { "value": 15, "db": 0 },
+      { "value": 15, "db": 0, "tick": "S9" },
       { "value": 20, "db": 20 },
       { "value": 25, "db": 40 },
       { "value": 30, "db": 60 }
@@ -20,6 +20,23 @@
       { "value": 12, "ratio": 2.0 },
       { "value": 18, "ratio": 3.0 },
       { "value": 30, "ratio": 10.0 }
+    ],
+    "power": [
+      { "value": 0, "watts": 0.0 },
+      { "value": 3, "watts": 5.0 },
+      { "value": 6, "watts": 10.0 },
+      { "value": 8, "watts": 15.0 },
+      { "value": 12, "watts": 25.0 },
+      { "value": 17, "watts": 50.0 },
+      { "value": 30, "watts": 100.0 }
+    ],
+    "compression": [
+      { "value": 0, "db": 0.0 },
+      { "value": 30, "db": 30.0 }
+    ],
+    "alc": [
+      { "value": 0, "level": 0.0 },
+      { "value": 30, "level": 1.0 }
     ]
   }
 }

@@ -3170,6 +3170,7 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get voiceMemoriesInvalid => 'a whole number, 0 or more';
 	@override String get yaesuMeterCapture => 'capture meter readings';
 	@override String get yaesuBinaryMeterCaptureDescription => 'reads the radio\'s power-output meter and high-swr flag while transmitting and prints the raw values to the log. for building the scale yaesu does not publish — the values are not shown as meters.';
+	@override String get kenwoodMeterCaptureDescription => 'reads the radio\'s s-meter while receiving and its power, swr, comp and alc meters while transmitting, and prints the raw values to the log. for building the scales kenwood does not publish.';
 	@override String get yaesuMeterCaptureDescription => 'reads the radio\'s po, swr and alc meters while transmitting and prints the raw values to the log. for building the scale yaesu does not publish — the values are not shown as meters.';
 	@override String get telemetryInterval => 'meter reading interval (ms)';
 	@override String get telemetryIntervalDescription => 'how often to read the radio\'s meters while it is transmitting. leave blank for the fastest this connection can handle, up to 200 ms.';
@@ -3918,6 +3919,7 @@ class _Translations$operation$layout$panels$qrp extends Translations$operation$l
 	@override String get radioTransmitting => 'tx';
 	@override String get radioSwr => 'swr';
 	@override String get radioAlc => 'alc';
+	@override String get radioComp => 'comp';
 	@override String get radioVolts => 'v';
 	@override String get radioSwrHigh => 'high swr';
 	@override String get rotatorDescription => 'where the antenna points, on a map centred on the station. tap the map to turn it.';
@@ -4718,7 +4720,9 @@ class _Translations$settings$station$models$qrp extends Translations$settings$st
 	@override String get icomGeneric => 'icom - generic';
 	@override String get kenwoodGeneric => 'kenwood - generic';
 	@override String get ts590sg => 'kenwood ts-590sg';
-	@override String get ts480 => 'kenwood ts-480';
+	@override String get ts480 => 'kenwood ts-480sat';
+	@override String get ts480hx => 'kenwood ts-480hx';
+	@override String get ts2000 => 'kenwood ts-2000';
 	@override String get qmx => 'qrp labs qmx';
 	@override String get fx4cr => 'bg2fx fx-4cr';
 	@override String get tx500 => 'lab599 tx-500';
@@ -5694,6 +5698,7 @@ extension on TranslationsQrp {
 			'operation.layout.panels.radioTransmitting' => 'tx',
 			'operation.layout.panels.radioSwr' => 'swr',
 			'operation.layout.panels.radioAlc' => 'alc',
+			'operation.layout.panels.radioComp' => 'comp',
 			'operation.layout.panels.radioVolts' => 'v',
 			'operation.layout.panels.radioSwrHigh' => 'high swr',
 			'operation.layout.panels.rotatorDescription' => 'where the antenna points, on a map centred on the station. tap the map to turn it.',
@@ -6044,9 +6049,9 @@ extension on TranslationsQrp {
 			'loggingControls.sent' => 'sent',
 			'loggingControls.rcvd' => 'rcvd',
 			'loggingControls.more' => 'more',
-			'loggingControls.revert' => 'revert',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.revert' => 'revert',
 			'loggingControls.undoDelete' => 'undo delete',
 			'loggingControls.restore' => 'restore',
 			'loggingControls.wipe' => 'wipe',
@@ -6558,9 +6563,9 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.problemFileFailed' => 'the recording couldn\'t be saved in the message\'s place, so the message was left as it was.',
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'that message needs words you haven\'t recorded: ${words}.',
 			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'that message\'s template has a problem: ${error}',
-			'settings.radio.voiceMessages.problemNoOperation' => 'messages said with your words play in an operation, where there is a contact to say them for.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemNoOperation' => 'messages said with your words play in an operation, where there is a contact to say them for.',
 			'settings.radio.voiceMessages.problemNothingSaid' => 'that message says nothing for this contact.',
 			'settings.radio.voiceMessages.templateField' => 'say with my words',
 			'settings.radio.voiceMessages.templateHelp' => 'leave empty to play the recording. otherwise the message is said with the words you recorded, filled in for each contact, using these values:',
@@ -7010,7 +7015,9 @@ extension on TranslationsQrp {
 			'settings.station.models.icomGeneric' => 'icom - generic',
 			'settings.station.models.kenwoodGeneric' => 'kenwood - generic',
 			'settings.station.models.ts590sg' => 'kenwood ts-590sg',
-			'settings.station.models.ts480' => 'kenwood ts-480',
+			'settings.station.models.ts480' => 'kenwood ts-480sat',
+			'settings.station.models.ts480hx' => 'kenwood ts-480hx',
+			'settings.station.models.ts2000' => 'kenwood ts-2000',
 			'settings.station.models.qmx' => 'qrp labs qmx',
 			'settings.station.models.fx4cr' => 'bg2fx fx-4cr',
 			'settings.station.models.tx500' => 'lab599 tx-500',
@@ -7070,11 +7077,11 @@ extension on TranslationsQrp {
 			'settings.station.models.airspyHf' => 'airspy hf+',
 			'settings.station.models.spyServer' => 'spyserver (any receiver)',
 			'settings.station.transports.network' => 'network/wifi',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.transports.tci' => 'tci',
 			'settings.station.transports.secureNetwork' => 'secure network/wifi',
 			'settings.station.transports.usbSerial' => 'usb serial',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.transports.wifi' => 'network/wifi',
 			'settings.station.transports.bluetoothSerial' => 'bluetooth serial',
 			'settings.station.transports.bleSerial' => 'bluetooth le',
@@ -7325,6 +7332,7 @@ extension on TranslationsQrp {
 			'settings.station.voiceMemoriesInvalid' => 'a whole number, 0 or more',
 			'settings.station.yaesuMeterCapture' => 'capture meter readings',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'reads the radio\'s power-output meter and high-swr flag while transmitting and prints the raw values to the log. for building the scale yaesu does not publish — the values are not shown as meters.',
+			'settings.station.kenwoodMeterCaptureDescription' => 'reads the radio\'s s-meter while receiving and its power, swr, comp and alc meters while transmitting, and prints the raw values to the log. for building the scales kenwood does not publish.',
 			'settings.station.yaesuMeterCaptureDescription' => 'reads the radio\'s po, swr and alc meters while transmitting and prints the raw values to the log. for building the scale yaesu does not publish — the values are not shown as meters.',
 			'settings.station.telemetryInterval' => 'meter reading interval (ms)',
 			'settings.station.telemetryIntervalDescription' => 'how often to read the radio\'s meters while it is transmitting. leave blank for the fastest this connection can handle, up to 200 ms.',
@@ -7583,12 +7591,12 @@ extension on TranslationsQrp {
 			'commands.sentryTestSent' => 'test error report sent to sentry',
 			'commands.idleMetricsEnabled' => 'idle metrics enabled in the status bar',
 			'commands.idleMetricsDisabled' => 'idle metrics disabled',
+			_ => null,
+		} ?? switch (path) {
 			'commands.sentryTestLocalOnly' => 'sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'that command needs an open operation',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'don\'t know how to mark a \'${kind}\'',
 			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
-			_ => null,
-		} ?? switch (path) {
 			'commands.goUnknown' => ({required Object to}) => 'don\'t know how to go to \'${to}\'',
 			'commands.goBlocked' => 'close the open dialog first',
 			'commands.operationAlreadyStarted' => 'this operation already has a start marker',

@@ -1,0 +1,37 @@
+{
+  "manufacturer": "Kenwood",
+  "model": "TS-480HX",
+  "meterCalibration": {
+    "_comments": "strength and swr as reported in Hamlib (strength from the LCD's bars). Hamlib also reports that RM answers all three meters on 0-20, where Kenwood's TS-480 reference gives one, the panel's, on 0-10; the driver reads either. power, compression and alc PROVISIONAL, after Hamlib's scaling: SM0 while transmitting as a share of 20 dots of the rated 200 W, COMP one dB a dot, ALC to the top of its zone at 20. Replace with points read against a dummy load: the developer-mode meter capture prints the raw dots.",
+    "strength": [
+      { "value": 0, "db": -60 },
+      { "value": 3, "db": -48 },
+      { "value": 5, "db": -36 },
+      { "value": 7, "db": -24 },
+      { "value": 9, "db": -12 },
+      { "value": 11, "db": 0, "tick": "S9" },
+      { "value": 14, "db": 20 },
+      { "value": 17, "db": 40 },
+      { "value": 20, "db": 60 }
+    ],
+    "power": [
+      { "value": 0, "watts": 0.0 },
+      { "value": 20, "watts": 200.0 }
+    ],
+    "swr": [
+      { "value": 0, "ratio": 1.0 },
+      { "value": 4, "ratio": 1.5 },
+      { "value": 8, "ratio": 2.0 },
+      { "value": 12, "ratio": 3.0 },
+      { "value": 20, "ratio": 10.0 }
+    ],
+    "compression": [
+      { "value": 0, "db": 0.0 },
+      { "value": 20, "db": 20.0 }
+    ],
+    "alc": [
+      { "value": 0, "level": 0.0 },
+      { "value": 20, "level": 1.0 }
+    ]
+  }
+}

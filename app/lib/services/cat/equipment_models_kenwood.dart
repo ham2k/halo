@@ -23,6 +23,8 @@ const _fx4crSerialKey = 'fx4cr-serial';
 const _qcxSerialKey = 'qcx-serial';
 const _ts590sgSerialKey = 'ts590sg-serial';
 const _ts480SerialKey = 'ts480-serial';
+const _ts480hxSerialKey = 'ts480hx-serial';
+const _ts2000SerialKey = 'ts2000-serial';
 const _elecraftSerialKey = 'elecraft-serial';
 const _kx2SerialKey = 'kx2-serial';
 const _kx3SerialKey = 'kx3-serial';
@@ -66,6 +68,7 @@ const ts590sgModel = EquipmentModel(
         KenwoodDriver.passbandDialectKey: 'ts590sg',
         KenwoodDriver.antennaDialectKey: 'ts590',
         KenwoodDriver.receiveLevelsKey: true,
+        meterInfoConfigKey: 'kenwood/ts-590s',
       },
       notes: _kenwoodSerialNotes,
     ),
@@ -74,9 +77,10 @@ const ts590sgModel = EquipmentModel(
 
 String _ts590sgName() => t.settings.station.models.ts590sg;
 
-/// Kenwood TS-480 (SAT and HX) over its RS-232 CAT port, through a cable
-/// such as a Digirig, at the 9600 it was reported working on. Same keyer,
-/// voice and `IF` reasoning as [ts590sgModel].
+/// Kenwood TS-480SAT over its RS-232 CAT port, through a cable such as a
+/// Digirig, at the 9600 it was reported working on. Same keyer, voice and
+/// `IF` reasoning as [ts590sgModel]. Its keys are `ts480`, not `ts480sat`:
+/// a configured node stores its variant's key, and a rename orphans it.
 const ts480Model = EquipmentModel(
   key: 'ts480',
   manufacturer: kenwoodBrand,
@@ -88,19 +92,67 @@ const ts480Model = EquipmentModel(
       driver: KenwoodDriver(),
       transport: SerialTransport(),
       defaultConfig: {..._kenwoodRtsHigh, 'baudRate': KenwoodDriver.defaultBaudRate},
-      overrides: {
-        KenwoodDriver.cwDialectKey: 'kenwood',
-        KenwoodDriver.voiceDialectKey: '',
-        KenwoodDriver.voiceMemoriesKey: 0,
-        KenwoodDriver.antennaDialectKey: 'twoPort',
-        KenwoodDriver.receiveLevelsKey: true,
-      },
+      overrides: {..._ts480Overrides, meterInfoConfigKey: 'kenwood/ts-480sat'},
       notes: _kenwoodSerialNotes,
     ),
   ],
 );
 
+/// The TS-480HX: the SAT's CAT, at 200 W. A model of
+/// its own because its power meter's full scale is twice the SAT's.
+const ts480hxModel = EquipmentModel(
+  key: 'ts480hx',
+  manufacturer: kenwoodBrand,
+  category: kCategoryTransceiver,
+  name: _ts480hxName,
+  variants: [
+    EquipmentVariant(
+      key: _ts480hxSerialKey,
+      driver: KenwoodDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {..._kenwoodRtsHigh, 'baudRate': KenwoodDriver.defaultBaudRate},
+      overrides: {..._ts480Overrides, meterInfoConfigKey: 'kenwood/ts-480hx'},
+      notes: _kenwoodSerialNotes,
+    ),
+  ],
+);
+
+const _ts480Overrides = {
+  KenwoodDriver.cwDialectKey: 'kenwood',
+  KenwoodDriver.voiceDialectKey: '',
+  KenwoodDriver.voiceMemoriesKey: 0,
+  KenwoodDriver.antennaDialectKey: 'twoPort',
+  KenwoodDriver.receiveLevelsKey: true,
+};
+
 String _ts480Name() => t.settings.station.models.ts480;
+
+String _ts480hxName() => t.settings.station.models.ts480hx;
+
+/// Kenwood TS-2000 over its RS-232 CAT port, at the 9600 its menu ships on.
+/// Reads frequency, mode and transmit state like any Kenwood, its `IF`
+/// layout learned rather than declared — it is the TS-2000-era one the
+/// driver exists to tell apart — and its meters. Nothing else is pinned:
+/// no report has confirmed its `KY` takes the TS-590's padding, or which
+/// of its receive commands match the TS-480's.
+const ts2000Model = EquipmentModel(
+  key: 'ts2000',
+  manufacturer: kenwoodBrand,
+  category: kCategoryTransceiver,
+  name: _ts2000Name,
+  variants: [
+    EquipmentVariant(
+      key: _ts2000SerialKey,
+      driver: KenwoodDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {..._kenwoodRtsHigh, 'baudRate': KenwoodDriver.defaultBaudRate},
+      overrides: {KenwoodDriver.cwDialectKey: '', KenwoodDriver.voiceDialectKey: '', KenwoodDriver.voiceMemoriesKey: 0, meterInfoConfigKey: 'kenwood/ts-2000'},
+      notes: _kenwoodSerialNotes,
+    ),
+  ],
+);
+
+String _ts2000Name() => t.settings.station.models.ts2000;
 
 /// Any radio speaking Kenwood CAT over a serial port — the Kenwood line, and
 /// equally the SDR front-ends that implement the same protocol. Elecraft is

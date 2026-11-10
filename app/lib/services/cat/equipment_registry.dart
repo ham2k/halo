@@ -637,6 +637,8 @@ const _defaultModels = [
   elecraftGenericModel,
   ts590sgModel,
   ts480Model,
+  ts480hxModel,
+  ts2000Model,
   kenwoodGenericModel,
   tx500Model,
   tx500mpModel,

@@ -3783,7 +3783,8 @@ export interface PanelRadioState {
   mode: string | null
   powerWatts: number | null
   transmitting: boolean | null
-  meters: Partial<Record<"signalDbm" | "powerOut" | "swr" | "alc" | "supplyVolts", number>>
+  /** `compression` is extension API 22. */
+  meters: Partial<Record<"signalDbm" | "powerOut" | "swr" | "alc" | "supplyVolts" | "compression", number>>
   canTune: boolean
   /** The model's rated output ceiling, where the app knows it (extension API 7). */
   maxWatts?: number | null

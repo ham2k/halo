@@ -513,8 +513,10 @@ class RadioReadout extends StatelessWidget {
       case RadioMeter.signalDbm:
       case RadioMeter.alc:
       case RadioMeter.supplyVolts:
+      case RadioMeter.compression:
         // A supply voltage has no scale worth drawing — it is 13.8 or it is
-        // a problem — and ALC is a number for a developer, not a gauge.
+        // a problem — and ALC and COMP are numbers to adjust the drive and
+        // the processor by, not gauges.
         return null;
     }
   }
@@ -596,6 +598,7 @@ class RadioReadout extends StatelessWidget {
       RadioMeter.swr => p.radioSwr,
       RadioMeter.alc => p.radioAlc,
       RadioMeter.supplyVolts => p.radioVolts,
+      RadioMeter.compression => p.radioComp,
     };
   }
 
@@ -607,6 +610,7 @@ class RadioReadout extends StatelessWidget {
       RadioMeter.swr => '${p.radioSwr} ${value.toStringAsFixed(1)}',
       RadioMeter.alc => '${p.radioAlc} ${(value * 100).round()}%',
       RadioMeter.supplyVolts => '${value.toStringAsFixed(1)} ${p.radioVolts}',
+      RadioMeter.compression => '${p.radioComp} ${value.round()} dB',
     };
   }
 

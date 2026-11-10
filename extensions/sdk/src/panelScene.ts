@@ -41,6 +41,8 @@ export type PanelSceneRadioValue =
   | "radio.swr"
   | "radio.alc"
   | "radio.supplyVolts"
+  /** The speech processor's compression, dB, while transmitting. Extension API 22. */
+  | "radio.compression"
   | "radio.transmitting"
   /** The SWR averaged over the transmission under way, or else the last one. Extension API 7. */
   | "radio.swrAverage"

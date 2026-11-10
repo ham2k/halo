@@ -134,13 +134,36 @@ String buildLab599SetPowerCommand(num watts, {required num ratedWatts}) => 'PC${
 /// To a tenth of a watt: one level of a 10 W radio is 0.1 W.
 num lab599WattsForLevel(int level, {required num ratedWatts}) => (level * ratedWatts / 10).round() / 10;
 
-/// `SM0;` reads the bar graph: the S-meter while receiving, power out while
-/// transmitting — 0 to 30 dots, on a scale the reference does not state. Read only while
-/// transmitting, and only ever through a calibration file's table.
-String buildLab599ReadMeterCommand() => 'SM0;';
+/// `SM0;` reads the radio's bar graph: the S-meter while receiving, power
+/// out while transmitting (the TS-590S reference says so; the TS-480's and
+/// Lab599's give the range alone). In dots — 0–20 on a TS-480, 0–30 on a
+/// TS-590 or TX-500 — on a scale no reference states, so only ever read
+/// through a calibration file's table.
+String buildKenwoodReadSMeterCommand() => 'SM0;';
 
 /// `SM00015;` → 15.
-int? parseLab599MeterParams(String params) => RegExp(r'^0\d{4}$').hasMatch(params) ? int.parse(params.substring(1)) : null;
+int? parseKenwoodSMeterParams(String params) => RegExp(r'^0\d{4}$').hasMatch(params) ? int.parse(params.substring(1)) : null;
+
+/// `SM0;` and its answer.
+const kenwoodSMeterBytes = 4 + 8;
+
+/// A bare `RM;` READS, and selects nothing: only `RM` with a digit sets the
+/// meter on the radio's panel, which this app never sends. The TS-590S
+/// answers all three meters every time; the TS-2000 only the one its
+/// operator has selected. Either way each answer names its own meter.
+String buildKenwoodReadMeterCommand() => 'RM;';
+
+/// Which meter an `RM` answer's first digit names.
+enum KenwoodMeter { swr, comp, alc }
+
+/// `RM10004;` → SWR at 4 dots. `RM0…`, no meter selected, is null.
+({KenwoodMeter meter, int dots})? parseKenwoodMeterParams(String params) {
+  if (!RegExp(r'^[123]\d{4}$').hasMatch(params)) return null;
+  return (meter: KenwoodMeter.values[int.parse(params[0]) - 1], dots: int.parse(params.substring(1)));
+}
+
+/// `RM;` and the TS-590's three answers to it — the most it can cost.
+const kenwoodMeterReadBytes = 3 + 3 * 8;
 
 /// `VL;` reads the supply voltage, in volts, on the LAB599 protocol only.
 String buildLab599ReadVoltageCommand() => 'VL;';
@@ -152,9 +175,8 @@ double? parseLab599VoltageParams(String params) {
   return RegExp(r'^\d{1,2}\.\d{1,2}$').hasMatch(text) ? double.parse(text) : null;
 }
 
-/// `SM0;` and `VL;`, and their answers — what a LAB599 meter cycle adds to
-/// the `IF` watch.
-const lab599MeterBytes = 4 + 8 + 3 + 8;
+/// `VL;` and its answer — what a LAB599 meter cycle adds to the S-meter's.
+const lab599VoltsBytes = 3 + 8;
 
 /// `PT;` reads whether the radio is transmitting, on the LAB599 protocol.
 /// The TX watch asks it beside `IF;`, which the reference says goes

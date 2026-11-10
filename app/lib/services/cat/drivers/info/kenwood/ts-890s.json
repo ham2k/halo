@@ -2,15 +2,26 @@
   "manufacturer": "Kenwood",
   "model": "TS-890S",
   "meterCalibration": {
-    "_comments": "As reported in Hamlib",
+    "_comments": "As reported in Hamlib: strength for the IARU meter type (menu 0-11 = 1; Kenwood's own type, the factory default, reads S9 at the same 35 dots but compresses below it), the rest on the 0-70 dots of Kenwood's TS-890S PC command reference, whose RM numbers its meters 1 ALC, 2 SWR, 3 COMP, 4 drain, 5 supply, each read only once enabled with RMn1 (the display is MT's, not RM's), and whose SM takes no receiver digit. Not wired to an entry: the TS-890S has no MD or IF, so the driver could neither read its mode nor see it keyed.",
     "strength": [
-      { "value": 0, "db": -54, "tick": "S0" },
-      { "value": 4, "db": -48, "tick": "S1" },
-      { "value": 11, "db": -36, "tick": "S3" },
-      { "value": 19, "db": -24, "tick": "S5" },
-      { "value": 27, "db": -12, "tick": "S7" },
-      { "value": 37, "db": 0, "tick": "S9" },
-      { "value": 70, "db": 60, "tick": "S9+60" }
+      { "value": 0, "db": -54 },
+      { "value": 3, "db": -48 },
+      { "value": 11, "db": -36 },
+      { "value": 19, "db": -24 },
+      { "value": 27, "db": -12 },
+      { "value": 35, "db": 0, "tick": "S9" },
+      { "value": 48, "db": 20 },
+      { "value": 59, "db": 40 },
+      { "value": 70, "db": 60 }
+    ],
+    "power": [
+      { "value": 0, "watts": 0.0 },
+      { "value": 5, "watts": 5.0 },
+      { "value": 10, "watts": 10.0 },
+      { "value": 19, "watts": 25.0 },
+      { "value": 35, "watts": 50.0 },
+      { "value": 59, "watts": 100.0 },
+      { "value": 70, "watts": 150.0 }
     ],
     "swr": [
       { "value": 0, "ratio": 1.0 },
@@ -19,6 +30,23 @@
       { "value": 35, "ratio": 3.0 },
       { "value": 70, "ratio": 15.0 }
     ],
-    "_alc": "Parked, not loaded. These rows read { value: 0, level: 0 }, { value: 255, level: 35 } — but alc is documented as a 0.0-1.0 fraction of the radio's ALC zone, and 35 renders as 3500%. Whatever 35 measures here (a raw span, a dB figure) has to be stated before this can be a fraction; restore it as \"alc\" once it is."
+    "compression": [
+      { "value": 0, "db": 0.0 },
+      { "value": 20, "db": 10.0 },
+      { "value": 50, "db": 20.0 },
+      { "value": 70, "db": 25.0 }
+    ],
+    "alc": [
+      { "value": 0, "level": 0.0 },
+      { "value": 35, "level": 1.0 }
+    ],
+    "voltage": [
+      { "value": 0, "volts": 0.0 },
+      { "value": 65, "volts": 15.0 }
+    ],
+    "drain": [
+      { "value": 0, "amperes": 0.0 },
+      { "value": 70, "amperes": 20.0 }
+    ]
   }
 }

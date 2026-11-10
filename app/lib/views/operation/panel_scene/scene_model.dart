@@ -33,6 +33,7 @@ const sceneRadioValues = {
   'radio.swr',
   'radio.alc',
   'radio.supplyVolts',
+  'radio.compression',
   'radio.transmitting',
   'radio.swrAverage',
   'radio.secondsSinceTransmit',

@@ -46,8 +46,8 @@ void main() {
   });
 
   group('Kenwood', () {
-    test('the TS-590SG and TS-480 are sent AG0 and RG', () {
-      for (final key in ['ts590sg-serial', 'ts480-serial']) {
+    test('the TS-590SG and TS-480s are sent AG0 and RG', () {
+      for (final key in ['ts590sg-serial', 'ts480-serial', 'ts480hx-serial']) {
         final sink = _Sink();
         final session = _session(key, sink);
         expect(session.receiveLevels.af && session.receiveLevels.rf, isTrue, reason: key);

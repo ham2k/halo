@@ -102,6 +102,10 @@ class KenwoodDriver extends EquipmentDriver {
   /// per entry like the dialects above. Absent is Kenwood's own.
   static const modeDialectKey = 'modeDialect';
 
+  /// The developer-mode bench capture: raw `SM` and `RM` readings to the
+  /// diagnostic line and the console, whether or not a table converts them.
+  static const meterCaptureKey = 'kenwoodMeterCapture';
+
   static KenwoodModeDialect? modeDialectFrom(Map<String, dynamic> config) =>
       KenwoodModeDialect.values.where((d) => d.name == config[modeDialectKey]).firstOrNull;
 
@@ -154,28 +158,35 @@ class KenwoodDriver extends EquipmentDriver {
     modeDialectKey,
     receiveLevelsKey,
     meterInfoConfigKey,
+    meterCaptureKey,
     'maxWatts',
   };
 
   @override
   int get telemetryWatchBytes => kenwoodTxWatchBytes;
 
-  /// Per node: only the TX-500 line reads meters, so any other Kenwood's
-  /// placeholder is its watch's alone.
+  /// Per node: only an entry whose calibration file scales a meter reads it,
+  /// so a generic Kenwood's placeholder is its watch's alone.
   @override
   Duration defaultTelemetryInterval(Map<String, dynamic> config) => telemetryIntervalFor(
     const {},
-    cycleBytes: kenwoodTxWatchBytes + (modeDialectFrom(config) == KenwoodModeDialect.lab599 ? lab599PttBytes + lab599MeterBytes : 0),
+    cycleBytes:
+        kenwoodTxWatchBytes +
+        kenwoodMeterCycleBytes(
+          calibrationFor(config),
+          transmitting: true,
+          capturing: config[meterCaptureKey] == true,
+          lab599: modeDialectFrom(config) == KenwoodModeDialect.lab599,
+        ),
     baudRate: serialBaudRateOrNull(config),
   );
 
-  /// Only the TX-500 line, whose `SM0;` reads power out and `VL;` the supply
-  /// without touching the front panel. Every other radio here meters through
-  /// `RM`, which changes the meter the operator is looking at.
+  /// What the entry's calibration file scales, and a TX-500's supply. A
+  /// generic entry names no file, since it cannot know which radio's scale
+  /// applies, and so reads none.
   @override
-  Set<RadioMeter> telemetryMetersWith(Map<String, dynamic> config) => modeDialectFrom(config) != KenwoodModeDialect.lab599
-      ? const {}
-      : {if (calibrationFor(config)?.has(MeterTable.powerFraction) ?? false) RadioMeter.powerOut, RadioMeter.supplyVolts};
+  Set<RadioMeter> telemetryMetersWith(Map<String, dynamic> config) =>
+      isK4 ? const {} : kenwoodMetersFor(calibrationFor(config), lab599: modeDialectFrom(config) == KenwoodModeDialect.lab599);
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
@@ -259,6 +270,17 @@ class KenwoodDriver extends EquipmentDriver {
         ],
       },
     if (!overrides.containsKey(voiceMemoriesKey)) voiceMemoriesConfigElement(),
+    // Developer mode only, and off by default: it exists to BUILD the
+    // scales in info/kenwood/, not to be a feature.
+    if (!isK4)
+      {
+        'type': 'field',
+        'fieldType': 'checkbox',
+        'key': meterCaptureKey,
+        'label': t.settings.station.yaesuMeterCapture,
+        'description': t.settings.station.kenwoodMeterCaptureDescription,
+        'devMode': true,
+      },
     if (!remote) telemetryConfigElement(),
     if (!remote) pollConfigElement(),
   ];

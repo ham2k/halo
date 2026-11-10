@@ -977,12 +977,15 @@ void main() {
         addTearDown(() => MeterCalibrations.instance.setForTesting({}));
       });
 
-      test('the TX-500 entries read power out and volts, and no other Kenwood reads any', () {
-        // Every other Kenwood meters through RM, which changes the meter on
-        // the operator's own panel.
+      test('the TX-500 entries read the S-meter, power out and volts', () {
+        // Its file has no RM tables, so RM is never asked.
         for (final key in ['tx500-serial', 'tx500mp-serial', 'tx500mp-ble']) {
           final type = EquipmentRegistry().typeFor(key)!;
-          expect(type.driver.telemetryMetersWith(type.driverConfig(const {})), {RadioMeter.powerOut, RadioMeter.supplyVolts}, reason: key);
+          expect(type.driver.telemetryMetersWith(type.driverConfig(const {})), {
+            RadioMeter.signalDbm,
+            RadioMeter.powerOut,
+            RadioMeter.supplyVolts,
+          }, reason: key);
         }
         final kenwood = EquipmentRegistry().typeFor('kenwood-serial')!;
         expect(kenwood.driver.telemetryMetersWith(kenwood.driverConfig(const {})), isEmpty);
@@ -999,6 +1002,16 @@ void main() {
           expect(sink.meterReports, [(RadioMeter.supplyVolts, 11.7), (RadioMeter.powerOut, 5.0)]);
           session.teardown();
         });
+      });
+
+      test('receiving, SM0 is the S-meter, on the strength table with S9 at 15 dots', () {
+        final session = sessionFor('tx500mp-ble');
+        receive(session, 'ID505;');
+        for (final freq in ['00014074000', '00014075000']) {
+          receive(session, 'MD2;IF$freq${'0000+00000'}2;');
+        }
+        receive(session, 'SM00015;$rxInfo');
+        expect(sink.meterReports, [(RadioMeter.signalDbm, kenwoodS9Dbm)]);
       });
 
       test('an SM answer while receiving is the S-meter, and is not reported as power', () {
@@ -1046,15 +1059,15 @@ void main() {
         });
       });
 
-      test('only the TX-500 line\'s placeholder cadence counts its meter reads', () {
-        // Every Kenwood shares the driver: counted for all, a TS-590 at 9600
-        // shows a slower default than it runs at.
+      test('only an entry with meters counts their reads in its placeholder cadence', () {
+        // Every Kenwood shares the driver: counted for all, a generic Kenwood
+        // at 9600 shows a slower default than it runs at.
         final kenwood = EquipmentRegistry().typeFor('kenwood-serial')!;
         expect(kenwood.defaultTelemetryIntervalFor(const {'baudRate': 9600}), kTelemetryInterval);
         final tx500 = EquipmentRegistry().typeFor('tx500mp-serial')!;
         expect(
           tx500.defaultTelemetryIntervalFor(const {'baudRate': 9600}),
-          telemetryFloor(cycleBytes: kenwoodTxWatchBytes + lab599PttBytes + lab599MeterBytes, baudRate: 9600),
+          telemetryFloor(cycleBytes: kenwoodTxWatchBytes + kenwoodSMeterBytes + lab599PttBytes + lab599VoltsBytes, baudRate: 9600),
         );
       });
 
@@ -1071,6 +1084,176 @@ void main() {
           session.teardown();
         });
       });
+    });
+  });
+
+  group('Kenwood meters', () {
+    late _FakeSink sink;
+
+    // The TX flag sits one character ahead of the mode.
+    const txInfo = 'IF00014074000${'0000+00001'}2;';
+    const rxInfo = 'IF00014074000${'0000+00000'}2;';
+
+    setUp(() {
+      sink = _FakeSink();
+      MeterCalibrations.instance.setForTesting({
+        for (final name in ['ts-480sat', 'ts-480hx', 'ts-590s', 'ts-2000'])
+          'kenwood/$name': MeterCalibration.fromJson(
+            jsonDecode(File('lib/services/cat/drivers/info/kenwood/$name.json').readAsStringSync()) as Map<String, dynamic>,
+          ),
+      });
+      addTearDown(() => MeterCalibrations.instance.setForTesting({}));
+    });
+
+    KenwoodSession sessionFor(String typeKey, {Map<String, dynamic> config = const {}}) {
+      final type = EquipmentRegistry().typeFor(typeKey)!;
+      return type.driver.createSession(sink, type.driverConfig(config)) as KenwoodSession;
+    }
+
+    void receive(KenwoodSession session, String text) => session.handleData(Uint8List.fromList(ascii.encode(text)));
+
+    // Learns the IF offset — the transmit flag is read against it — while
+    // receiving.
+    void learned(KenwoodSession session) {
+      receive(session, 'FA00014074000;');
+      for (final freq in ['00014074000', '00014075000']) {
+        receive(session, 'MD2;IF$freq${'0000+00000'}2;');
+      }
+    }
+
+    test('the TS-480s and the TS-590SG read every meter their files scale; a generic Kenwood none', () {
+      // A generic entry cannot know whose scale applies, and an invented
+      // SWR would be measured against the threshold the operator is warned at.
+      for (final key in ['ts480-serial', 'ts480hx-serial', 'ts590sg-serial', 'ts2000-serial']) {
+        final type = EquipmentRegistry().typeFor(key)!;
+        expect(type.driver.telemetryMetersWith(type.driverConfig(const {})), {
+          RadioMeter.signalDbm,
+          RadioMeter.powerOut,
+          RadioMeter.swr,
+          RadioMeter.alc,
+          RadioMeter.compression,
+        }, reason: key);
+      }
+      final kenwood = EquipmentRegistry().typeFor('kenwood-serial')!;
+      expect(kenwood.driver.telemetryMetersWith(kenwood.driverConfig(const {})), isEmpty);
+    });
+
+    test('keyed, a TS-480 reads SM0 as power and a bare RM as the selected meter, and never selects one', () {
+      fakeAsync((async) {
+        final session = sessionFor('ts480-serial')..startUpdates();
+        learned(session);
+        receive(session, txInfo);
+        sink.sent.clear();
+        async.elapse(const Duration(seconds: 1));
+        expect(sink.sent, containsAllInOrder(['SM0;', 'RM;', 'IF;']), reason: 'the IF after them is what confirms them');
+        // `RM1;` would switch the operator's own meter to SWR.
+        expect(sink.sent.where((c) => c.startsWith('RM')), everyElement('RM;'));
+
+        receive(session, 'SM00010;RM10004;$txInfo');
+        expect(sink.meterReports, [(RadioMeter.powerOut, 50.0), (RadioMeter.swr, 1.5)]);
+        session.teardown();
+      });
+    });
+
+    test('the HX reads the same dots as twice the SAT\'s watts', () {
+      // One entry for both would show an HX at full power as 100 W.
+      fakeAsync((async) {
+        final session = sessionFor('ts480hx-serial');
+        learned(session);
+        receive(session, '${txInfo}SM00020;$txInfo');
+        expect(sink.meterReports, [(RadioMeter.powerOut, 200.0)]);
+      });
+    });
+
+    test('receiving, SM0 is the S-meter in dBm and RM is not asked', () {
+      fakeAsync((async) {
+        final session = sessionFor('ts480-serial')..startUpdates();
+        learned(session);
+        sink.sent.clear();
+        async.elapse(const Duration(seconds: 1));
+        expect(sink.sent, contains('SM0;'));
+        // The TS-590S answers ALC while receiving, during voice-memory
+        // recording: read then, it would stand on the strip as the over's.
+        expect(sink.sent, isNot(contains('RM;')));
+
+        receive(session, 'SM00011;$rxInfo');
+        expect(sink.meterReports, [(RadioMeter.signalDbm, kenwoodS9Dbm)], reason: 'S9 at 11 of the TS-480\'s 20 bars');
+        session.teardown();
+      });
+    });
+
+    test('an S-meter reading the next IF finds keyed is dropped, and so is power the next IF finds unkeyed', () {
+      // SM0 answers with whichever the radio is doing when it reads it, so a
+      // reading taken across a key or unkey is the other meter's.
+      final session = sessionFor('ts480-serial');
+      learned(session);
+      receive(session, 'SM00015;$txInfo');
+      receive(session, 'SM00015;RM10004;$rxInfo');
+      expect(sink.meterReports, isEmpty);
+    });
+
+    test('an RM answered while receiving is not reported', () {
+      final session = sessionFor('ts590sg-serial');
+      learned(session);
+      receive(session, 'RM30030;$rxInfo');
+      expect(sink.meterReports, isEmpty);
+    });
+
+    test('a TS-590SG\'s RM answers all three meters, each on its own table', () {
+      final session = sessionFor('ts590sg-serial');
+      learned(session);
+      // 17 dots is 50 W on the TS-590's curve, not the 57 W a straight
+      // line to 30 would make it.
+      receive(session, '${txInfo}SM00017;RM10006;RM20015;RM30030;$txInfo');
+      expect(sink.meterReports, [(RadioMeter.powerOut, 50.0), (RadioMeter.swr, 1.5), (RadioMeter.compression, 15.0), (RadioMeter.alc, 1.0)]);
+    });
+
+    test('a TS-2000\'s RM answers the one meter its panel shows, and only that one is reported', () {
+      fakeAsync((async) {
+        final session = sessionFor('ts2000-serial')..startUpdates();
+        learned(session);
+        receive(session, txInfo);
+        sink.sent.clear();
+        async.elapse(const Duration(seconds: 1));
+        expect(sink.sent, containsAllInOrder(['SM0;', 'RM;', 'IF;']));
+
+        receive(session, 'SM00015;RM30010;$txInfo');
+        expect(sink.meterReports, [(RadioMeter.powerOut, 50.0), (RadioMeter.alc, 0.5)]);
+        session.teardown();
+      });
+    });
+
+    test('the capture asks a generic Kenwood for its raw meters and shows them, converting nothing', () {
+      // How a table gets built for a radio that has none yet.
+      fakeAsync((async) {
+        final session = sessionFor('kenwood-serial', config: const {KenwoodDriver.meterCaptureKey: true})..startUpdates();
+        learned(session);
+        sink.sent.clear();
+        async.elapse(const Duration(seconds: 1));
+        expect(sink.sent, contains('SM0;'));
+        receive(session, 'SM00007;$txInfo');
+        sink.sent.clear();
+        async.elapse(const Duration(seconds: 1));
+        expect(sink.sent, containsAllInOrder(['SM0;', 'RM;']));
+        receive(session, 'SM00012;RM30004;$txInfo');
+
+        expect(sink.diagnostics, contains('TX SM=12 RM3=4'));
+        // A radio answering in another shape (an Elecraft's four-digit SM,
+        // a TS-2000 with no meter selected) is exactly what a capture is
+        // run to find out; dropped, it looks like a radio that never answered.
+        receive(session, 'SM0035;RM00000;');
+        expect(sink.diagnostics.last, 'TX SM="0035" RM3=4 RM="00000"');
+        expect(sink.meterReports, isEmpty);
+        session.teardown();
+      });
+    });
+
+    test('a TS-480 counts its S-meter, and keyed its RM, in its placeholder cadence', () {
+      final ts480 = EquipmentRegistry().typeFor('ts480-serial')!;
+      expect(
+        ts480.defaultTelemetryIntervalFor(const {'baudRate': 9600}),
+        telemetryFloor(cycleBytes: kenwoodTxWatchBytes + kenwoodSMeterBytes + kenwoodMeterReadBytes, baudRate: 9600),
+      );
     });
   });
 }

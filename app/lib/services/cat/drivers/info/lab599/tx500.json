@@ -2,7 +2,18 @@
   "manufacturer": "Lab599",
   "model": "TX-500",
   "meterCalibration": {
-    "_comments": "PROVISIONAL, not measured: SM0 while transmitting reads power out as 0-30 dots (Lab599 CAT protocol reference, rev. 3), taken as linear to the radio's rated output. Replace with points from a dummy load at known power.",
+    "_comments": "strength as reported in Hamlib. powerFraction PROVISIONAL, not measured: SM0 while transmitting reads power out as 0-30 dots (Lab599 CAT protocol reference, rev. 3), taken as linear to the radio's rated output. Replace with points from a dummy load at known power.",
+    "strength": [
+      { "value": 0, "db": -54 },
+      { "value": 3, "db": -48 },
+      { "value": 6, "db": -36 },
+      { "value": 9, "db": -24 },
+      { "value": 12, "db": -12 },
+      { "value": 15, "db": 0, "tick": "S9" },
+      { "value": 20, "db": 20 },
+      { "value": 25, "db": 40 },
+      { "value": 30, "db": 60 }
+    ],
     "powerFraction": [
       { "value": 0, "fraction": 0.0 },
       { "value": 30, "fraction": 1.0 }

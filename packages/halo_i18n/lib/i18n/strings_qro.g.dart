@@ -3170,6 +3170,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get voiceMemoriesInvalid => 'A WHOLE NUMBER, 0 OR MORE';
 	@override String get yaesuMeterCapture => 'CAPTURE METER READINGS';
 	@override String get yaesuBinaryMeterCaptureDescription => 'READS THE RADIO\'S POWER-OUTPUT METER AND HIGH-SWR FLAG WHILE TRANSMITTING AND PRINTS THE RAW VALUES TO THE LOG. FOR BUILDING THE SCALE YAESU DOES NOT PUBLISH — THE VALUES ARE NOT SHOWN AS METERS.';
+	@override String get kenwoodMeterCaptureDescription => 'READS THE RADIO\'S S-METER WHILE RECEIVING AND ITS POWER, SWR, COMP AND ALC METERS WHILE TRANSMITTING, AND PRINTS THE RAW VALUES TO THE LOG. FOR BUILDING THE SCALES KENWOOD DOES NOT PUBLISH.';
 	@override String get yaesuMeterCaptureDescription => 'READS THE RADIO\'S PO, SWR AND ALC METERS WHILE TRANSMITTING AND PRINTS THE RAW VALUES TO THE LOG. FOR BUILDING THE SCALE YAESU DOES NOT PUBLISH — THE VALUES ARE NOT SHOWN AS METERS.';
 	@override String get telemetryInterval => 'METER READING INTERVAL (MS)';
 	@override String get telemetryIntervalDescription => 'HOW OFTEN TO READ THE RADIO\'S METERS WHILE IT IS TRANSMITTING. LEAVE BLANK FOR THE FASTEST THIS CONNECTION CAN HANDLE, UP TO 200 MS.';
@@ -3918,6 +3919,7 @@ class _Translations$operation$layout$panels$qro extends Translations$operation$l
 	@override String get radioTransmitting => 'TX';
 	@override String get radioSwr => 'SWR';
 	@override String get radioAlc => 'ALC';
+	@override String get radioComp => 'COMP';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'HIGH SWR';
 	@override String get rotatorDescription => 'WHERE THE ANTENNA POINTS, ON A MAP CENTRED ON THE STATION. TAP THE MAP TO TURN IT.';
@@ -4718,7 +4720,9 @@ class _Translations$settings$station$models$qro extends Translations$settings$st
 	@override String get icomGeneric => 'ICOM - GENERIC';
 	@override String get kenwoodGeneric => 'KENWOOD - GENERIC';
 	@override String get ts590sg => 'KENWOOD TS-590SG';
-	@override String get ts480 => 'KENWOOD TS-480';
+	@override String get ts480 => 'KENWOOD TS-480SAT';
+	@override String get ts480hx => 'KENWOOD TS-480HX';
+	@override String get ts2000 => 'KENWOOD TS-2000';
 	@override String get qmx => 'QRP LABS QMX';
 	@override String get fx4cr => 'BG2FX FX-4CR';
 	@override String get tx500 => 'LAB599 TX-500';
@@ -5694,6 +5698,7 @@ extension on TranslationsQro {
 			'operation.layout.panels.radioTransmitting' => 'TX',
 			'operation.layout.panels.radioSwr' => 'SWR',
 			'operation.layout.panels.radioAlc' => 'ALC',
+			'operation.layout.panels.radioComp' => 'COMP',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'HIGH SWR',
 			'operation.layout.panels.rotatorDescription' => 'WHERE THE ANTENNA POINTS, ON A MAP CENTRED ON THE STATION. TAP THE MAP TO TURN IT.',
@@ -6044,9 +6049,9 @@ extension on TranslationsQro {
 			'loggingControls.sent' => 'SENT',
 			'loggingControls.rcvd' => 'RCVD',
 			'loggingControls.more' => 'MORE',
-			'loggingControls.revert' => 'REVERT',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.revert' => 'REVERT',
 			'loggingControls.undoDelete' => 'UNDO DELETE',
 			'loggingControls.restore' => 'RESTORE',
 			'loggingControls.wipe' => 'WIPE',
@@ -6558,9 +6563,9 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.problemFileFailed' => 'THE RECORDING COULDN\'T BE SAVED IN THE MESSAGE\'S PLACE, SO THE MESSAGE WAS LEFT AS IT WAS.',
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'THAT MESSAGE NEEDS WORDS YOU HAVEN\'T RECORDED: ${words}.',
 			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'THAT MESSAGE\'S TEMPLATE HAS A PROBLEM: ${error}',
-			'settings.radio.voiceMessages.problemNoOperation' => 'MESSAGES SAID WITH YOUR WORDS PLAY IN AN OPERATION, WHERE THERE IS A CONTACT TO SAY THEM FOR.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemNoOperation' => 'MESSAGES SAID WITH YOUR WORDS PLAY IN AN OPERATION, WHERE THERE IS A CONTACT TO SAY THEM FOR.',
 			'settings.radio.voiceMessages.problemNothingSaid' => 'THAT MESSAGE SAYS NOTHING FOR THIS CONTACT.',
 			'settings.radio.voiceMessages.templateField' => 'SAY WITH MY WORDS',
 			'settings.radio.voiceMessages.templateHelp' => 'LEAVE EMPTY TO PLAY THE RECORDING. OTHERWISE THE MESSAGE IS SAID WITH THE WORDS YOU RECORDED, FILLED IN FOR EACH CONTACT, USING THESE VALUES:',
@@ -7010,7 +7015,9 @@ extension on TranslationsQro {
 			'settings.station.models.icomGeneric' => 'ICOM - GENERIC',
 			'settings.station.models.kenwoodGeneric' => 'KENWOOD - GENERIC',
 			'settings.station.models.ts590sg' => 'KENWOOD TS-590SG',
-			'settings.station.models.ts480' => 'KENWOOD TS-480',
+			'settings.station.models.ts480' => 'KENWOOD TS-480SAT',
+			'settings.station.models.ts480hx' => 'KENWOOD TS-480HX',
+			'settings.station.models.ts2000' => 'KENWOOD TS-2000',
 			'settings.station.models.qmx' => 'QRP LABS QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
 			'settings.station.models.tx500' => 'LAB599 TX-500',
@@ -7070,11 +7077,11 @@ extension on TranslationsQro {
 			'settings.station.models.airspyHf' => 'AIRSPY HF+',
 			'settings.station.models.spyServer' => 'SPYSERVER (ANY RECEIVER)',
 			'settings.station.transports.network' => 'NETWORK/WIFI',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.transports.tci' => 'TCI',
 			'settings.station.transports.secureNetwork' => 'SECURE NETWORK/WIFI',
 			'settings.station.transports.usbSerial' => 'USB SERIAL',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.transports.wifi' => 'NETWORK/WIFI',
 			'settings.station.transports.bluetoothSerial' => 'BLUETOOTH SERIAL',
 			'settings.station.transports.bleSerial' => 'BLUETOOTH LE',
@@ -7325,6 +7332,7 @@ extension on TranslationsQro {
 			'settings.station.voiceMemoriesInvalid' => 'A WHOLE NUMBER, 0 OR MORE',
 			'settings.station.yaesuMeterCapture' => 'CAPTURE METER READINGS',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'READS THE RADIO\'S POWER-OUTPUT METER AND HIGH-SWR FLAG WHILE TRANSMITTING AND PRINTS THE RAW VALUES TO THE LOG. FOR BUILDING THE SCALE YAESU DOES NOT PUBLISH — THE VALUES ARE NOT SHOWN AS METERS.',
+			'settings.station.kenwoodMeterCaptureDescription' => 'READS THE RADIO\'S S-METER WHILE RECEIVING AND ITS POWER, SWR, COMP AND ALC METERS WHILE TRANSMITTING, AND PRINTS THE RAW VALUES TO THE LOG. FOR BUILDING THE SCALES KENWOOD DOES NOT PUBLISH.',
 			'settings.station.yaesuMeterCaptureDescription' => 'READS THE RADIO\'S PO, SWR AND ALC METERS WHILE TRANSMITTING AND PRINTS THE RAW VALUES TO THE LOG. FOR BUILDING THE SCALE YAESU DOES NOT PUBLISH — THE VALUES ARE NOT SHOWN AS METERS.',
 			'settings.station.telemetryInterval' => 'METER READING INTERVAL (MS)',
 			'settings.station.telemetryIntervalDescription' => 'HOW OFTEN TO READ THE RADIO\'S METERS WHILE IT IS TRANSMITTING. LEAVE BLANK FOR THE FASTEST THIS CONNECTION CAN HANDLE, UP TO 200 MS.',
@@ -7583,12 +7591,12 @@ extension on TranslationsQro {
 			'commands.sentryTestSent' => 'TEST ERROR REPORT SENT TO SENTRY',
 			'commands.idleMetricsEnabled' => 'IDLE METRICS ENABLED IN THE STATUS BAR',
 			'commands.idleMetricsDisabled' => 'IDLE METRICS DISABLED',
+			_ => null,
+		} ?? switch (path) {
 			'commands.sentryTestLocalOnly' => 'SENTRY IS DISABLED IN THIS BUILD — TEST ERROR LOGGED LOCALLY ONLY',
 			'commands.noOperationOpen' => 'THAT COMMAND NEEDS AN OPEN OPERATION',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'DON\'T KNOW HOW TO MARK A \'${kind}\'',
 			'commands.goUnavailable' => ({required Object place}) => '${place} ISN\'T TURNED ON IN THIS APP',
-			_ => null,
-		} ?? switch (path) {
 			'commands.goUnknown' => ({required Object to}) => 'DON\'T KNOW HOW TO GO TO \'${to}\'',
 			'commands.goBlocked' => 'CLOSE THE OPEN DIALOG FIRST',
 			'commands.operationAlreadyStarted' => 'THIS OPERATION ALREADY HAS A START MARKER',

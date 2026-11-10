@@ -1,0 +1,37 @@
+{
+  "manufacturer": "Kenwood",
+  "model": "TS-2000",
+  "meterCalibration": {
+    "_comments": "strength and swr as reported in Hamlib; its RM answers only the meter selected on the panel, on 0-20. power, compression and alc PROVISIONAL, after Hamlib's scaling: SM0 while transmitting as a share of 30 dots of 100 W, the HF, 6 m and 2 m rating (it is 50 W on 70 cm, and this table reads high there), COMP one dB a dot, ALC to the top of its zone at 20. Replace with points read against a dummy load: the developer-mode meter capture prints the raw dots.",
+    "strength": [
+      { "value": 0, "db": -54 },
+      { "value": 3, "db": -48 },
+      { "value": 6, "db": -36 },
+      { "value": 9, "db": -24 },
+      { "value": 12, "db": -12 },
+      { "value": 15, "db": 0, "tick": "S9" },
+      { "value": 20, "db": 20 },
+      { "value": 25, "db": 40 },
+      { "value": 30, "db": 60 }
+    ],
+    "swr": [
+      { "value": 0, "ratio": 1.0 },
+      { "value": 4, "ratio": 1.5 },
+      { "value": 8, "ratio": 2.0 },
+      { "value": 12, "ratio": 3.0 },
+      { "value": 20, "ratio": 10.0 }
+    ],
+    "power": [
+      { "value": 0, "watts": 0.0 },
+      { "value": 30, "watts": 100.0 }
+    ],
+    "compression": [
+      { "value": 0, "db": 0.0 },
+      { "value": 20, "db": 20.0 }
+    ],
+    "alc": [
+      { "value": 0, "level": 0.0 },
+      { "value": 20, "level": 1.0 }
+    ]
+  }
+}
