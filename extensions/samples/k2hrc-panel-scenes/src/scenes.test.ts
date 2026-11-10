@@ -44,3 +44,26 @@ test("native controls round-trip strings through onEvent", async () => {
   assert.equal(other.scene.strings?.call, "")
   await assert.rejects(panel.onEvent!({ ...controls("two"), event: { controlId: "spot", action: "spot", phase: "activate", sequence: 1 } }, ctx), /No callsign/)
 })
+
+// Every cell the board declares must be placed by its layout exactly once, or
+// the host refuses the whole scene; a key added to the cells but not the grid
+// is the mistake this catches before the host does.
+test("the grid board places every cell once and answers its keys", async () => {
+  const panel = createScenePanels()
+  const grid: PanelRenderArgs = { ...args(), panelKey: "grid" }
+  const content = await panel.render(grid, ctx)
+  if (content.kind !== "scene") throw Error("scene expected")
+  const placed: string[] = []
+  const visit = (node: unknown) => {
+    const n = node as Record<string, unknown>
+    if (typeof n.cell === "string") placed.push(n.cell)
+    for (const kind of ["grid", "row", "column", "wrap"]) for (const child of (n[kind] as unknown[] | undefined) ?? []) visit(child)
+  }
+  visit(content.scene.layout)
+  assert.deepEqual(placed.sort(), content.scene.cells!.map((c) => c.id).sort())
+  const press = (action: string) => ({ controlId: action, action, phase: "activate" as const, sequence: 1 })
+  const atu = await panel.onEvent!({ ...grid, event: press("atu") }, ctx)
+  assert.equal(atu.values.atu, 1)
+  const mode = await panel.onEvent!({ ...grid, event: press("mode:FT8") }, ctx)
+  assert.equal(mode.strings?.mode, "FT8")
+})

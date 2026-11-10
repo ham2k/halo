@@ -51,7 +51,7 @@ void main() {
     final panels = PanelService(service);
     addTearDown(panels.dispose);
     await panels.refreshExtensionPanels();
-    expect(panels.catalog.length, 3);
+    expect(panels.catalog.length, 4);
     final radio = panels['ext:k2hrc-panel-scenes:radio#1']!;
     final other = panels['ext:k2hrc-panel-scenes:radio#2']!;
     final weather = panels['ext:k2hrc-panel-scenes:weather#1']!;
@@ -71,6 +71,11 @@ void main() {
     expect(chart.scene!.controls.single.event, isNull);
     expect(chart.scene!.layers.any((l) => l.text?['samples'] != null), isTrue);
     expect(service.events, 1);
+    // The SDK's shape of a grid board is one the host accepts whole: a cell or layout field the
+    // two read differently refuses the scene rather than drawing part of it.
+    final board = PanelContent.fromJson(await panels.render(panels['ext:k2hrc-panel-scenes:grid#1']!, args))!;
+    expect(board.scene!.cells, isNotEmpty);
+    expect(board.scene!.layout!.type, 'grid');
   });
   testWidgets('a gesture reaches the real extension and updates the rendered panel', (tester) async {
     final host = (await tester.runAsync(startHost))!;

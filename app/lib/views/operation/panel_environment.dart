@@ -13,7 +13,6 @@ import 'package:halo_widgets/halo_widgets.dart';
 /// animation — the typing path extension_panel.dart keeps panels off.
 Map<String, dynamic> panelEnvironment(BuildContext context, Size size) {
   final theme = Theme.of(context);
-  final colors = theme.colorScheme;
   final textScaler = MediaQuery.textScalerOf(context);
   final safe = PaneSafeArea.paddingOf(context);
   String rgb(Color c) => '#${(c.toARGB32() & 0xffffff).toRadixString(16).padLeft(6, '0')}';
@@ -37,20 +36,7 @@ Map<String, dynamic> panelEnvironment(BuildContext context, Size size) {
     'height': size.height.isFinite ? size.height : MediaQuery.sizeOf(context).height,
     'safeInsets': {'left': safe.left, 'top': safe.top, 'right': safe.right, 'bottom': safe.bottom},
     'brightness': theme.brightness.name,
-    'colors': {
-      'surface': rgb(colors.surface),
-      'surfaceContainer': rgb(colors.surfaceContainer),
-      'onSurface': rgb(colors.onSurface),
-      'onSurfaceVariant': rgb(colors.onSurfaceVariant),
-      'accent': rgb(HaLoColors.of(context).onSurfaceAccent),
-      'primary': rgb(colors.primary),
-      'onPrimary': rgb(colors.onPrimary),
-      'secondary': rgb(colors.secondary),
-      'outline': rgb(colors.outline),
-      'outlineVariant': rgb(colors.outlineVariant),
-      'error': rgb(colors.error),
-      'onError': rgb(colors.onError),
-    },
+    'colors': {for (final role in panelColorRoles) role: rgb(panelColorRole(context, role)!)},
     'typography': {for (final role in panelTextRoles) role: type(panelTextRole(context, role))},
     'locale': Localizations.localeOf(context).toLanguageTag(),
     'textDirection': Directionality.of(context).name,
@@ -59,6 +45,29 @@ Map<String, dynamic> panelEnvironment(BuildContext context, Size size) {
     'highContrast': MediaQuery.highContrastOf(context),
   };
 }
+
+/// The color behind each role the environment names, so a scene that styles a
+/// grid by role is painted in the color the extension was told. One table: a
+/// role advertised is a role a scene may name.
+final Map<String, Color Function(BuildContext)> _colorRoles = {
+  'surface': (context) => Theme.of(context).colorScheme.surface,
+  'surfaceContainer': (context) => Theme.of(context).colorScheme.surfaceContainer,
+  'onSurface': (context) => Theme.of(context).colorScheme.onSurface,
+  'onSurfaceVariant': (context) => Theme.of(context).colorScheme.onSurfaceVariant,
+  'accent': (context) => HaLoColors.of(context).onSurfaceAccent,
+  'primary': (context) => Theme.of(context).colorScheme.primary,
+  'onPrimary': (context) => Theme.of(context).colorScheme.onPrimary,
+  'secondary': (context) => Theme.of(context).colorScheme.secondary,
+  'outline': (context) => Theme.of(context).colorScheme.outline,
+  'outlineVariant': (context) => Theme.of(context).colorScheme.outlineVariant,
+  'error': (context) => Theme.of(context).colorScheme.error,
+  'onError': (context) => Theme.of(context).colorScheme.onError,
+};
+
+final panelColorRoles = List<String>.unmodifiable(_colorRoles.keys);
+
+/// The theme's color for [role], or null for a name that is not one.
+Color? panelColorRole(BuildContext context, String role) => _colorRoles[role]?.call(context);
 
 /// The style behind each typography role the environment describes, so a
 /// scene's `nativeText` in a role is drawn in the style the extension was told.

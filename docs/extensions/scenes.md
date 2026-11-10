@@ -33,7 +33,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 17 | `bandScope` as the band scope's kind, `spectrum` for its upper section where it took `pan`, and its `gestures`, default axis and `levelScale`, `vfoLabel`, `widthHz`, `stepHz` and `vfoHz`, `layers`, and a click's step that follows the zoom |
 | 19 | `radio.reportedFrequencyHz`, the radio's own report beside the dial |
 | 20 | the band scope's `minWidthHz` and `maxWidthHz`, its `vfoLabel`'s `arrow`, up to 512 of its `layers` and 256 `annotations`, and an annotation's `collapsed` |
-| 22 | the band scope's `window` and `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed one's `width: 'box'`, a zoom's `commit` of its middle as a pan, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click; `radio.compression` |
+| 22 | the band scope's `window` and `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed one's `width: 'box'`, a zoom's `commit` of its middle as a pan, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click; `radio.compression`; `cells`, the `grid` and `cell` layout nodes, and a layout up to 12 deep and 512 nodes; a slider's or knob's `invertScroll` |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -48,7 +48,8 @@ at install rather than showing the panel as an unknown kind.
 | `strings` | `{ name: string }`: what text fields and choices hold. At most 256, each up to 4,096 characters. A name is in `values` or `strings`, never both |
 | `layers` | Painted in order, each over the ones before: `svg` artwork, `text`, or an `icon`. At most 512 (128 before API 12), and 1,048,576 characters of artwork and text in all. A layer's `svg` is self-contained vector artwork, no `<image>`, `<script>` or `<foreignObject>`, no entity declarations, at most 16,384 elements nested at most 32 deep |
 | `controls` | At most 256 (64 before API 12). Drawn or native; below |
-| `layout` | Optional. Where rect-less native controls and the artwork go; omitted, the artwork fills the pane |
+| `layout` | Optional. Where rect-less native controls, cells and the artwork go; omitted, the artwork fills the pane |
+| `cells` | Optional, `[{ id, width, height }]` (API 22): pieces drawn at their own size, below. At most 256. Each needs a `layout` to place it |
 | `scroll` | Optional, `{ axis?, value, event? }` (API 12): a scene longer than its pane along `axis` (`y` by default), scrolled natively by wheel, trackpad and drag (a drag begun on a button included) with no call to the extension. It fills the pane across and runs on past it. The position in scene units is written to the scene value `value`; a render that changes that value moves the view, one that leaves it alone leaves the operator's scroll alone. `event` is sent as a `commit`, the position as `value`, once a scroll comes to rest. Layers and controls with `fixed: true` stay put over the pane, in pane coordinates; a drag along the scroll on a slider or knob that scrolls with the content is the scroll's, so make one that must be dragged `fixed`. Not with `layout` |
 | `radio` | Optional, `{ node? }` (API 7): the app feeds that radio's live readings into the reserved `radio.*` values. `node` is an id from `listRadios`; omitted, the logging radio |
 
@@ -87,6 +88,17 @@ scales text once. A text layer also takes `prefix`, `suffix`, `decimals` and
 **Icons** (API 12) are `{ name, color? }`, a Material Design Icons or `fa-`
 name drawn in the layer's rect.
 
+**Cells** (API 22) are pieces of the scene drawn at their own size in
+logical pixels, never scaled with the pane: a meter 144 wide is 144 wide in
+any pane, and the layout moves it rather than shrinking it. A cell is
+declared in `cells` with its `width` and `height`, and placed by a
+`{ cell: id }` node in the layout. A layer or a control with `cell` belongs
+to it: its rect is in the cell's coordinates, 0,0 at the cell's top left,
+and the cell clips what it paints. Bindings, `when`, `hoverSet` and events
+work in a cell as anywhere else, and the scene's budgets count every cell's
+pieces together. A control in a cell needs a rect, its `after` names a layer
+in the same cell, and nothing in a cell is `fixed`.
+
 ## Controls
 
 Every control has an `id` and a `label`, its accessible name; the app has no
@@ -97,8 +109,8 @@ and never reaches the extension. `value` names what it shows and sets.
 | Kind | Binds to | Sends | Also takes |
 | --- | --- | --- | --- |
 | `button` | | `activate` | `menu`; `tapAt` (API 12: a click's `value` is where along the longer side it landed, 0 at the top or left end to 1; a key or a screen reader activates with none; needs an `event` and takes no `menu`) |
-| `slider` | number | `commit` | `min`, `max`, `step`, `discrete`, `hover` (local-only sliders), `valueLabels`, `continuous`, `scrollThrough` |
-| `knob` | number | `commit` | `min`, `max`, `step`, `sensitivity`, `invertDrag`, `scrollThrough`, `valueLabels`, `continuous`, `menu` (a click opens it; a scroll or a drag still turns the knob), a second axis (`valueY`, `eventY`, `minY`, `maxY`, `stepY`, `sensitivityY`) |
+| `slider` | number | `commit` | `min`, `max`, `step`, `discrete`, `hover` (local-only sliders), `valueLabels`, `continuous`, `scrollThrough`, `invertScroll` |
+| `knob` | number | `commit` | `min`, `max`, `step`, `sensitivity`, `invertDrag`, `invertScroll`, `scrollThrough`, `valueLabels`, `continuous`, `menu` (a click opens it; a scroll or a drag still turns the knob), a second axis (`valueY`, `eventY`, `minY`, `maxY`, `stepY`, `sensitivityY`) |
 | `nativeButton` | | `activate` | `variant` (`filled`, `tonal`, `outlined`, `text`), `icon`, `menu`; needs `event` or `menu` |
 | `nativeSlider` | number | `commit` | `min`, `max`, `step`, `valueLabels`, `continuous` |
 | `nativeTextField` | string | `commit` on Enter, or on leaving it after typing | `placeholder`, `continuous` |
@@ -119,8 +131,10 @@ may also take:
   drawn kinds; a native control omits all four to be placed by `layout`, and
   with a rect takes its width and its own height, up to the rect's, so give a
   field a rect tall enough for it.
-- `after`: with a rect, the layer it paints directly after. Otherwise a
-  control paints above every layer.
+- `cell` (API 22): the [cell](#layers-and-bindings) it is drawn in, its
+  rect in that cell's coordinates.
+- `after`: with a rect, the layer it paints directly after, in the same
+  cell or none. Otherwise a control paints above every layer.
 - `opacity`: 0 to 1, fixed or bound like a layer's. At 0 the control takes
   no clicks, focus or screen-reader node.
 - `disabled`: shown, but nothing acts on it.
@@ -160,14 +174,17 @@ that lands while the operator is typing does not overwrite the typing.
 native control hands focus back to the callsign field. A drawn `button`
 never takes focus from a click. A drawn `slider` or `knob` holds focus for
 three seconds after its last use, long enough for the arrow keys, then hands
-it back; focus that arrives by Tab stays. A scroll steps a slider or knob by
+it back; in a [cell](#layers-and-bindings) it takes none from a click or a
+drag, as a button does, since a board is worked while the operator types.
+Focus that arrives by Tab stays. A scroll steps a slider or knob by
 its `step`, down and left lowering it, and a one-axis control takes a
 sideways scroll by its own direction. `scrollThrough` (API 12) lets a slider
 or knob also take the scrolls landing on drawn buttons over it, so labels
 drawn over a knob do not stop the scroll; anything else in the way (a native
 control, a `blocksPointer` layer, another slider or knob) keeps the scroll
 from it. `invertDrag` (API 12) moves a knob the other way to a drag, as
-content under a finger does, while its scroll is unchanged.
+content under a finger does, while its scroll is unchanged. `invertScroll`
+(API 22) turns a slider's or knob's scroll around: down and left raise it.
 
 **The `zoom` strip** is drawn by nothing: it claims a drag that begins on it
 along a scrolling scene's axis. Away from the pane's middle zooms in and
@@ -187,14 +204,17 @@ commits as a drag does.
 ## Layout
 
 A native control either has a rect or is placed by `scene.layout`, a tree
-of `row`, `column` and `wrap` nodes:
+of `row`, `column`, `wrap` and `grid` nodes, which also places the artwork
+and the cells:
 
 | Node | |
 | --- | --- |
 | `{ row: [...] }`, `{ column: [...] }` | `mainAxisAlignment` (`start`, `center`, `end`, `spaceBetween`, `spaceAround`, `spaceEvenly`), `crossAxisAlignment` (`start`, `center`, `end`, `stretch`), `spacing` |
 | `{ wrap: [...] }` | `spacing`, `runSpacing`, the same alignments but no `stretch` |
+| `{ grid: [...] }` | Slots, below (API 22) |
 | `{ control: "id" }` | A native control without a rect. Each appears exactly once |
-| `{ scene: true }` | The artwork, scaled to fit. At most once; a layout without it shows no artwork |
+| `{ cell: "id" }` | A cell, at its own size (API 22). Each appears exactly once |
+| `{ scene: true }` | The artwork, scaled to fit. At most once; a layout without it shows no artwork, and a scene drawn entirely in cells needs none |
 | `{ spacer: n }` | Flexible empty space |
 
 Any node may add `width`, `height` and `padding` (one number, or
@@ -203,8 +223,60 @@ with `fit: "tight"` (the default) or `"loose"`. Sizes are logical pixels. A
 text field or dropdown given no width is 200 wide; a row's children that do
 not fit overflow, so use `flex` or `wrap`. A `flex` only shares space its row
 or column has: in a row that is itself an unflexed child of a row there is
-none, and its children lay out at their own size. The layout is at most 8
-deep and 128 nodes.
+none, and its children lay out at their own size. The layout is at most 12
+deep and 512 nodes (8 and 128 before API 22).
+
+### Grids
+
+A grid (API 22) puts its children in slots, row by row in the order written,
+each at the first place it fits from where the one before it went, so what
+comes later never goes back into a hole left earlier. A narrower pane moves
+children onto more rows; nothing is scaled.
+
+```js
+layout: {
+  grid: [
+    { cell: "smeter", span: [3, 2] },
+    { grid: [{ cell: "cw" }, { cell: "ssb" }, { cell: "fm" }], columns: 6, style: { title: "Mode" } },
+    { control: "band" },
+  ],
+  unit: [48, 48], gap: 4, padding: 8,
+  style: { background: "surfaceContainer", radius: 8 },
+}
+```
+
+| Field | |
+| --- | --- |
+| `unit` | `[width, height]` of one slot. The outermost grid needs one; a grid within a grid takes its parent's unless it names its own |
+| `gap` | The space between slots, one number or `[across, down]`; inherited like `unit`, else 0 |
+| `columns` | The grid's width in slots. Past the room it is given it scrolls sideways on its own, so a row of controls scrolls while the board around it stays put. Omitted, as many as fit, and never fewer than its widest child |
+| `style` | The grid's box, drawn by the app: `background`, `border` (`{ color, width? }`), `radius`, and a `title` above the slots in the label typography. A color is one of the render environment's `colors` names, which follows the theme, or `#RRGGBB` / `#AARRGGBB`. A border `width` of 0 draws none |
+| `padding` | Inside the box, between its border and the slots |
+
+A grid's direct child takes `span: [across, down]` slots, the area it is
+given whole; a cell without one takes the slots its size covers, centered in
+them, and anything else one slot. A grid within a grid takes no `span`: one
+with `columns` takes the slots its content needs, and one that wraps takes a
+whole row of its parent and wraps within it. A grid or a cell within a grid is its
+direct child, never inside a row or column in one.
+
+A cell is never cut short or spread over its neighbors, so a layout that
+would do either is refused when the scene arrives: a `span` smaller than its
+cell's size or wider than its grid's `columns`, a wrapping grid wider than
+its parent's `columns`, a `width`, `height`, `flex` or `padding` on a cell,
+and a `width`, `height` or `padding` on a grid's child (the grid gives it its
+slots; a grid's own `padding` is inside its box). A child covers at most 256
+slots across and down, and all a scene's grids at most 16,384 between them.
+A grid that has no width to fill, in a row with no `flex`, is as many slots
+wide as its widest child.
+
+The outermost grid fills the pane's width and scrolls the pane: down when
+its rows run past the bottom, across when its widest child is wider than the
+pane. These scrolls are the app's own and send no events. A grid that
+scrolls is dragged by any pointer, a mouse included, except where a drag
+begins on a knob in a cell, or goes mostly across on a slider in one, which
+keeps it; a disabled one keeps nothing, and a trackpad's swipe scrolls. An edge with content
+hidden past it fades out, and the fade thins away as that content runs out.
 
 ## Controls among the layers
 

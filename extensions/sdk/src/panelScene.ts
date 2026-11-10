@@ -1,6 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MIT
 
+import type { PanelEnvironment } from "./types.ts"
+
 /** Experimental v1 panel scene contract. All coordinates are in the scene's viewBox. */
 export interface PanelScene {
   version: 1
@@ -12,8 +14,14 @@ export interface PanelScene {
   /** Painted in order, each over the ones before. */
   layers: PanelSceneLayer[]
   controls?: PanelSceneControl[]
-  /** Where rect-less native controls and the artwork go. Omitted, the artwork fills the panel. */
+  /** Where rect-less native controls, cells and the artwork go. Omitted, the artwork fills the panel. */
   layout?: PanelSceneLayoutNode
+  /**
+   * Fixed-size pieces the layout places, each drawn at its own size in logical pixels and never
+   * scaled: a layer or control naming one has its rect in the cell's coordinates, 0,0 at its top
+   * left. Each is placed by exactly one `{ cell: id }` in `layout`. At most 256. Extension API 22.
+   */
+  cells?: PanelSceneCell[]
   /**
    * Have the host feed a radio's live readings into `values` — the `PanelSceneRadioValue` names —
    * and `strings` — the `PanelSceneRadioString` names — updated as the radio reports them, with no
@@ -126,6 +134,8 @@ export interface PanelSceneLayer {
   blocksPointer?: boolean
   /** In a scene with `scroll`: drawn over the pane where it is, in pane coordinates, not scrolled. Extension API 12. */
   fixed?: boolean
+  /** The cell it is drawn in, its rect in that cell's coordinates; omitted, the artwork. Not with `fixed`. Extension API 22. */
+  cell?: string
   /**
    * While a `zoom` strip is dragged, scaled along the scroll about the pane's middle, rather than
    * moved there at its own size: for a background, or a line that runs the whole way. Extension API 12.
@@ -814,6 +824,11 @@ export interface PanelSceneControl extends PanelSceneSpectrum {
   /** In a scene with `scroll`: placed over the pane, in pane coordinates, not scrolled. Needs a rect. Extension API 12. */
   fixed?: boolean
   /**
+   * The cell it is drawn in, its rect in that cell's coordinates; needs a rect, and an `after`
+   * names a layer in the same cell. Not with `fixed`. Extension API 22.
+   */
+  cell?: string
+  /**
    * A drawn control only (`button`, `slider`, `knob`): while the pointer is over it, the scene value
    * `value` reads `to`, set by the host with no call to the extension; leaving puts back the scene's
    * own value. Artwork bound to it lights up under the pointer — a spot's line with its call.
@@ -860,6 +875,8 @@ export interface PanelSceneControl extends PanelSceneSpectrum {
    * by dragging, rather than a dial turned. Scrolling is unchanged. Extension API 12.
    */
   invertDrag?: boolean
+  /** A slider or knob only: a scroll moves the value the other way, down and left raising it. Extension API 22. */
+  invertScroll?: boolean
   /**
    * A slider or knob only: it also takes the scrolls that land on drawn buttons over it — labels
    * drawn over a knob that scrolls the artwork. A native control, a `blocksPointer` layer or another
@@ -935,12 +952,37 @@ export interface PanelSceneEventResult {
   strings?: Record<string, string>
 }
 
+/** A fixed-size piece of a scene, in logical pixels; see `PanelScene.cells`. Extension API 22. */
+export interface PanelSceneCell {
+  id: string
+  width: number
+  height: number
+}
+
+/** A color a scene names by the render environment's role, following the theme. */
+export type PanelColorRole = keyof PanelEnvironment["colors"]
+
 /**
- * Flutter's Row, Column and Wrap, with Flexible, Spacer and SizedBox as fields.
- * Sizes are logical pixels, like the render environment's. At most 8 deep and 128 nodes.
+ * A grid's box, drawn by the app around its slots. Colors are a `PanelColorRole` or `#RRGGBB` /
+ * `#AARRGGBB`. Extension API 22.
+ */
+export interface PanelSceneGridStyle {
+  background?: PanelColorRole | string
+  border?: { color: PanelColorRole | string; width?: number }
+  radius?: number
+  /** Above the slots, in the label typography. Up to 256 characters. */
+  title?: string
+}
+
+/**
+ * Flutter's Row, Column and Wrap, with Flexible, Spacer and SizedBox as fields, and a grid.
+ * Sizes are logical pixels, like the render environment's. At most 12 deep and 512 nodes (8 and
+ * 128 before extension API 22).
  *
  * - `{row: [...]}` / `{column: [...]}` / `{wrap: [...]}` lay out their children.
+ * - `{grid: [...]}` puts its children in slots, row by row in order; see `unit`. Extension API 22.
  * - `{control: "id"}` places a native control that has no rect. Each appears exactly once.
+ * - `{cell: "id"}` places a cell at its own size. Each appears exactly once. Extension API 22.
  * - `{scene: true}` places the artwork, scaled to fit. At most once.
  * - `{spacer: flex}` takes a share of the free space.
  *
@@ -950,10 +992,32 @@ export type PanelSceneLayoutNode = (
   | { row: PanelSceneLayoutNode[] }
   | { column: PanelSceneLayoutNode[] }
   | { wrap: PanelSceneLayoutNode[] }
+  | { grid: PanelSceneLayoutNode[] }
   | { control: string }
+  | { cell: string }
   | { scene: true }
   | { spacer: number }
 ) & {
+  /**
+   * A grid's slot, `[width, height]`. The outermost grid needs one; a grid within a grid takes
+   * its parent's unless it names its own. Extension API 22.
+   */
+  unit?: [number, number]
+  /** A grid's space between slots, across and down, or one number for both; inherited like `unit`. Extension API 22. */
+  gap?: number | [number, number]
+  /**
+   * A grid's width in slots; past the room it is given, it scrolls sideways on its own. Omitted,
+   * as many as fit, wrapping onto new rows. Extension API 22.
+   */
+  columns?: number
+  /** A grid's box, drawn by the app. Extension API 22. */
+  style?: PanelSceneGridStyle
+  /**
+   * A grid's direct child only, never a grid: the slots it takes, `[across, down]`. Omitted, a cell
+   * takes the slots its size covers and anything else one. A grid within a grid has no span: one
+   * with `columns` takes the slots its content needs, and one that wraps a whole row. Extension API 22.
+   */
+  span?: [number, number]
   /** Only on a row or column's direct child: share the free space, like Expanded (`tight`, the default) or Flexible (`loose`). */
   flex?: number
   fit?: "tight" | "loose"

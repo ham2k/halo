@@ -243,12 +243,18 @@ void main() {
             values: {'v': 1},
             controls: [],
             layout: {
-              'column': many(129, (i) => {'spacer': 1}),
+              'column': many(SceneLayoutNode.maxNodes + 1, (i) => {'spacer': 1}),
             },
           ),
         ),
         // The node count shares the budget and the bound; only the message says which was crossed.
-        throwsA(isA<PanelContentRefusal>().having((r) => r.message, 'message', 'scene has 129 layout children, at most 128')),
+        throwsA(
+          isA<PanelContentRefusal>().having(
+            (r) => r.message,
+            'message',
+            'scene has ${SceneLayoutNode.maxNodes + 1} layout children, at most ${SceneLayoutNode.maxNodes}',
+          ),
+        ),
       );
       expect(
         () => PanelScene(
@@ -257,16 +263,16 @@ void main() {
             layout: {
               'column': [
                 {
-                  'column': many(64, (i) => {'spacer': 1}),
+                  'column': many(SceneLayoutNode.maxNodes ~/ 2, (i) => {'spacer': 1}),
                 },
                 {
-                  'column': many(64, (i) => {'spacer': 1}),
+                  'column': many(SceneLayoutNode.maxNodes ~/ 2, (i) => {'spacer': 1}),
                 },
               ],
             },
           ),
         ),
-        throwsA(isA<PanelContentRefusal>().having((r) => r.message, 'message', 'scene layout has more than 128 nodes')),
+        throwsA(isA<PanelContentRefusal>().having((r) => r.message, 'message', 'scene layout has more than ${SceneLayoutNode.maxNodes} nodes')),
       );
       final conditioned = layer('w', '<svg/>', when: {'value': 'v', 'in': List.filled(257, 1)});
       expect(() => PanelScene(scene(layers: [conditioned], values: {'v': 1})), refusedFor(PanelBudget.items, max: 256));
@@ -301,8 +307,9 @@ void main() {
         ),
         refusedFor(PanelBudget.stringLength, max: 4096),
       );
-      expect(() => PanelScene(scene(layers: [layer('a', '<svg/>')], layout: nestedLayout(9))), refusedFor(PanelBudget.layoutDepth, max: 8));
-      expect(PanelScene(scene(layers: [layer('a', '<svg/>')], layout: nestedLayout(8))).layout, isNotNull);
+      const cap = SceneLayoutNode.maxDepth;
+      expect(() => PanelScene(scene(layers: [layer('a', '<svg/>')], layout: nestedLayout(cap + 1))), refusedFor(PanelBudget.layoutDepth, max: cap));
+      expect(PanelScene(scene(layers: [layer('a', '<svg/>')], layout: nestedLayout(cap))).layout, isNotNull);
     });
 
     test('holds its samples, value labels, annotations and waterfall colors to their bounds by name too', () {
@@ -578,7 +585,7 @@ void main() {
             (scene(layers: base, controls: many(257, (i) => button('c$i'))), 'its scene has more than 256 controls'),
             (scene(layers: base, values: {for (var i = 0; i < 257; i++) 'v$i': 0.0}), 'part of its scene has more than 256 entries'),
             (scene(layers: base, strings: {'s': 'x' * 4097}), 'a scene string is longer than 4,096 characters'),
-            (scene(layers: base, layout: nestedLayout(9)), 'its layout nests more than 8 levels deep'),
+            (scene(layers: base, layout: nestedLayout(SceneLayoutNode.maxDepth + 1)), 'its layout nests more than ${SceneLayoutNode.maxDepth} levels deep'),
           ];
           final panels = _Panels({'kind': 'scene', 'scene': cases.first.$1});
           for (final (i, (document, expected)) in cases.indexed) {

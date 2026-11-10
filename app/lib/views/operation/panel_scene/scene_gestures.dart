@@ -56,9 +56,11 @@ class HorizontalRegionDrag extends HorizontalDragGestureRecognizer {
 /// up-and-down scroll where it has one. Down and left are less. A one-axis control takes a
 /// sideways scroll by its own direction, so a horizontal swipe is not read as an upward one.
 ({bool second, double delta}) sceneScrollStep(SceneControl c, Offset d) {
-  if (c.yAxis case final y? when d.dy.abs() >= d.dx.abs()) return (second: true, delta: d.dy > 0 ? -y.step : y.step);
-  if (c.yAxis != null || d.dx.abs() > d.dy.abs()) return (second: false, delta: d.dx > 0 ? c.step : -c.step);
-  return (second: false, delta: d.dy > 0 ? -c.step : c.step);
+  // `invertScroll`: the scroll moves the value the other way, every axis alike.
+  final sign = c.invertScroll ? -1 : 1;
+  if (c.yAxis case final y? when d.dy.abs() >= d.dx.abs()) return (second: true, delta: sign * (d.dy > 0 ? -y.step : y.step));
+  if (c.yAxis != null || d.dx.abs() > d.dy.abs()) return (second: false, delta: sign * (d.dx > 0 ? c.step : -c.step));
+  return (second: false, delta: sign * (d.dy > 0 ? -c.step : c.step));
 }
 
 /// A step a spectrum tunes by while it shows [hzPerPixel]: the smallest 1, 2 or 5 × 10ⁿ Hz that

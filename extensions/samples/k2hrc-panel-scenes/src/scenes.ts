@@ -22,6 +22,16 @@ type FormState = { strings: Record<string, string>; values: Record<string, numbe
 export function createScenePanels(now: () => number = () => Date.now()): PanelHook {
   const radios = new Map<string, RadioState>()
   const forms = new Map<string, FormState>()
+  const boards = new Map<string, FormState>()
+  function board(id: string): FormState {
+    let b = boards.get(id)
+    if (!b) {
+      if (boards.size >= 64) boards.delete(boards.keys().next().value!)
+      b = { strings: { mode: "CW", band: "20m" }, values: { drive: 40, atu: 0, nb: 1 } }
+      boards.set(id, b)
+    }
+    return b
+  }
   function form(id: string): FormState {
     let f = forms.get(id)
     if (!f) {
@@ -54,10 +64,12 @@ export function createScenePanels(now: () => number = () => Date.now()): PanelHo
         { key: "radio", title: "Radio Front Face · Simulation", icon: "radio-tower", multiple: true, on: ["tick:1"] },
         { key: "weather", title: "Weather Chart · Simulation", icon: "weather-partly-cloudy", multiple: true },
         { key: "controls", title: "Native Controls · Simulation", icon: "form-textbox", multiple: true },
+        { key: "grid", title: "Grid Board · Simulation", icon: "view-grid", multiple: true },
       ]
     },
     async render(args): Promise<PanelContent> {
       if (args.panelKey === "controls") return { kind: "scene", scene: controlsScene(form(args.instanceId ?? args.panelKey)) }
+      if (args.panelKey === "grid") return { kind: "scene", scene: gridScene(board(args.instanceId ?? args.panelKey)) }
       if (args.panelKey === "weather") {
         const temperatures = [17, 18, 21, 24, 25, 23, 20, 18]
         const points = temperatures.map((t, i) => `${60 + i * 74},${265 - (t - 15) * 14}`).join(" ")
@@ -247,6 +259,13 @@ export function createScenePanels(now: () => number = () => Date.now()): PanelHo
         }
         return { values: f.values, strings: f.strings }
       }
+      if (args.panelKey === "grid") {
+        const b = board(args.instanceId ?? args.panelKey)
+        if (event.action === "atu" || event.action === "nb") b.values[event.action] = 1 - b.values[event.action]
+        if (event.action.startsWith("mode:")) b.strings.mode = event.action.slice("mode:".length)
+        if (event.controlId === "band" && event.text !== undefined) b.strings.band = event.text
+        return { values: b.values, strings: b.strings }
+      }
       const s = state(args.instanceId ?? args.panelKey)
       if (event.action === "connect") {
         s.connected = 1 - s.connected
@@ -356,6 +375,146 @@ function controlsScene(f: FormState): PanelScene {
       padding: 12,
       spacing: 8,
       crossAxisAlignment: "stretch",
+    },
+  }
+}
+
+const MODES = ["CW", "SSB", "FT8", "RTTY", "AM", "FM"]
+
+/** A cell's face: a rounded key with a caption. */
+const key = (cell: string, width: number, height: number, caption: string): PanelSceneLayer[] => [
+  { id: `${cell}-face`, cell, x: 0, y: 0, width, height, svg: svg(`<rect width="${width}" height="${height}" rx="6" fill="#283b52"/>`, width, height) },
+  { id: `${cell}-caption`, cell, x: 8, y: height / 2 - 9, width: width - 16, height: 18, text: { literal: caption, size: 13, color: "#e7edf4" } },
+]
+
+/** A lamp at a cell's top right, lit while `value` is 1 or `when` holds. */
+const lamp = (cell: string, width: number, value?: string, when?: PanelSceneLayer["when"]): PanelSceneLayer => ({
+  id: `${cell}-lamp`,
+  cell,
+  x: width - 14,
+  y: 6,
+  width: 8,
+  height: 8,
+  svg: svg('<circle cx="4" cy="4" r="4" fill="#7CFC9A"/>', 8, 8),
+  ...(value ? { opacity: { value, input: [0, 1], output: [0.15, 1] } } : {}),
+  ...(when ? { when } : {}),
+})
+
+/**
+ * A board on a grid: cells that keep their size and reflow with the pane, a drive bar dragged by
+ * its own fill, a group of mode keys that scrolls sideways on its own when the pane is narrow, and
+ * a native dropdown in a slot.
+ */
+function gridScene(b: FormState): PanelScene {
+  const unit = 48,
+    gap = 4
+  const wide = 3 * unit + 2 * gap
+  const pair = 2 * unit + gap
+  return {
+    version: 1,
+    width: 1,
+    height: 1,
+    values: b.values,
+    strings: b.strings,
+    cells: [
+      { id: "meter", width: wide, height: unit },
+      { id: "atu", width: pair, height: unit },
+      { id: "nb", width: pair, height: unit },
+      ...MODES.map((m) => ({ id: `mode-${m}`, width: unit, height: unit })),
+    ],
+    layers: [
+      {
+        id: "meter-track",
+        cell: "meter",
+        x: 0,
+        y: 0,
+        width: wide,
+        height: unit,
+        svg: svg(`<rect width="${wide}" height="${unit}" rx="6" fill="#142337"/>`, wide, unit),
+      },
+      {
+        id: "meter-fill",
+        cell: "meter",
+        x: 6,
+        y: 30,
+        width: wide - 12,
+        height: 10,
+        svg: svg(`<rect width="${wide - 12}" height="10" rx="3" fill="#8bdccc"/>`, wide - 12, 10),
+        pivot: [0, 0.5],
+        scaleX: bind("drive", [0, 100], [0, 1]),
+      },
+      {
+        id: "meter-caption",
+        cell: "meter",
+        x: 8,
+        y: 6,
+        width: wide - 16,
+        height: 18,
+        text: { value: "drive", prefix: "Drive ", suffix: "%", size: 13, color: "#a9efcf" },
+      },
+      ...key("atu", pair, unit, "ATU"),
+      lamp("atu", pair, "atu"),
+      ...key("nb", pair, unit, "NB"),
+      lamp("nb", pair, "nb"),
+      ...MODES.flatMap((m) => [...key(`mode-${m}`, unit, unit, m), lamp(`mode-${m}`, unit, undefined, { value: "mode", is: m })]),
+    ],
+    controls: [
+      // Over the bar's own track, the whole cell tall: the meter is what the operator drags, and the
+      // fill's end follows the pointer because the slider spans exactly what the fill can cover.
+      {
+        id: "drive",
+        kind: "slider",
+        label: "Drive",
+        cell: "meter",
+        x: 6,
+        y: 0,
+        width: wide - 12,
+        height: unit,
+        value: "drive",
+        min: 0,
+        max: 100,
+        step: 1,
+        invertScroll: true,
+      },
+      { id: "atu", kind: "button", label: "ATU", cell: "atu", x: 0, y: 0, width: pair, height: unit, event: "atu" },
+      { id: "nb", kind: "button", label: "Noise blanker", cell: "nb", x: 0, y: 0, width: pair, height: unit, event: "nb" },
+      ...MODES.map((m) => ({
+        id: `mode-${m}`,
+        kind: "button" as const,
+        label: m,
+        cell: `mode-${m}`,
+        x: 0,
+        y: 0,
+        width: unit,
+        height: unit,
+        event: `mode:${m}`,
+      })),
+      {
+        id: "band",
+        kind: "nativeDropdown",
+        label: "Band",
+        value: "band",
+        event: "set",
+        options: ["40m", "20m", "15m", "10m"].map((band) => ({ label: band, value: band })),
+      },
+    ],
+    layout: {
+      grid: [
+        { cell: "meter" },
+        { cell: "atu" },
+        { cell: "nb" },
+        {
+          grid: MODES.map((m) => ({ cell: `mode-${m}` })),
+          columns: MODES.length,
+          padding: 6,
+          style: { title: "Mode", border: { color: "outlineVariant" }, radius: 8 },
+        },
+        { control: "band", span: [3, 1] },
+      ],
+      unit: [unit, unit],
+      gap,
+      padding: 8,
+      style: { background: "surfaceContainer" },
     },
   }
 }

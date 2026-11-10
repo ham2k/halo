@@ -1,6 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart' show parseExtensionColor;
 
@@ -11,6 +13,7 @@ part 'scene_model_spectrum_layers.dart';
 part 'scene_model_spectrum_gestures.dart';
 part 'scene_model_spectrum_trace.dart';
 part 'scene_model_spectrum_annotations.dart';
+part 'scene_model_layout.dart';
 
 /// The values a scene that names a [PanelScene.radio] is given, live, by the
 /// host: its meters and whether it is transmitting (1 or 0). A missing reading
@@ -73,6 +76,11 @@ class PanelScene {
   /// Null: the artwork fills the panel and every control has a rect.
   final SceneLayoutNode? layout;
 
+  /// Fixed-size pieces of the scene the layout places (`{cell: id}`), each drawn at its own size
+  /// in logical pixels, never scaled: the layers and controls naming one have their rects in its
+  /// coordinates, 0,0 at its top left. By id, in the order declared.
+  final Map<String, Size> cells;
+
   /// A scene longer than its panel along [axis] (`x` or `y`), scrolled natively: scaled to fill the
   /// panel across, it runs on past it along the axis. The position, in scene units from the start,
   /// is written to the scene value [value] as it scrolls; a render that changes that value moves
@@ -90,6 +98,7 @@ class PanelScene {
       controls = items(json['controls'] ?? [], 256, budget: PanelBudget.controls, what: 'controls').map(SceneControl.new).toList(),
       controlsById = {},
       layout = json['layout'] == null ? null : SceneLayoutNode.parse(json['layout']),
+      cells = _cells(json['cells']),
       scroll = json['scroll'] is Map
           ? (
               axis: _oneOf(json['scroll'] as Map<dynamic, dynamic>, 'axis', const ['x', 'y']) ?? 'y',
@@ -107,10 +116,20 @@ class PanelScene {
     // A layout places the artwork among native controls; a scroll would leave them stranded.
     if (json['scroll'] != null && (scroll == null || json['layout'] != null)) throw const FormatException('Invalid scene scroll');
     if (scroll case final s? when !values.containsKey(s.value)) throw const FormatException('Unknown scroll value');
+    // Only the layout places a cell, and a scene that scrolls has none.
+    if (cells.isNotEmpty && layout == null) throw const FormatException('Cells need a layout to place them');
     bool reserved(String name) => sceneRadioValues.contains(name) || sceneRadioStrings.contains(name);
     if (values.keys.any(reserved) || strings.keys.any(reserved)) {
       throw const FormatException('A scene value uses a name the host reserves');
     }
+    // A cell is drawn where the layout puts it, at its own size: it neither scrolls nor stays put
+    // over a scroll, so `fixed` means nothing in one.
+    void checkCell(String? cell, {required bool fixed, required String where}) {
+      if (cell == null) return;
+      if (!cells.containsKey(cell)) throw FormatException('Unknown cell: $where');
+      if (fixed) throw FormatException('A cell cannot hold a fixed piece: $where');
+    }
+
     bool known(String name) => values.containsKey(name) || (hasRadio && sceneRadioValues.contains(name));
     bool knownString(String name) => strings.containsKey(name) || (hasRadio && sceneRadioStrings.contains(name));
     // Checked here, the one place that knows whether a name is a number or a string: a test written
@@ -131,11 +150,13 @@ class PanelScene {
         'scene artwork and text are $artwork characters in all, at most $kSceneArtworkMaxChars',
       );
     }
-    final layerIds = <String>{};
+    final layerCells = <String, String?>{};
     final fixedLayers = <String>{};
     for (final layer in layers) {
-      if (!layerIds.add(layer.id)) throw const FormatException('Duplicate layer ID');
+      if (layerCells.containsKey(layer.id)) throw const FormatException('Duplicate layer ID');
+      layerCells[layer.id] = layer.cell;
       if (layer.fixed) fixedLayers.add(layer.id);
+      checkCell(layer.cell, fixed: layer.fixed, where: layer.id);
       for (final binding in layer.bindings.values) {
         if (!known(binding.value)) {
           throw const FormatException('Unknown bound value');
@@ -188,9 +209,11 @@ class PanelScene {
       if (control.spectrum case final spectrum? when spectrum.layers.map((l) => l.id).toSet().length != spectrum.layers.length) {
         throw FormatException('Duplicate spectrum layer ID: ${control.id}');
       }
+      checkCell(control.cell, fixed: control.fixed, where: control.id);
+      if (control.cell != null && control.rect == null) throw FormatException('A control in a cell needs a rect: ${control.id}');
       // Only a rect puts a control over the artwork, so only a rect gives it
-      // a place among the layers.
-      if (control.after != null && (control.rect == null || !layerIds.contains(control.after))) {
+      // a place among the layers, and only among the layers it is drawn with.
+      if (control.after != null && (control.rect == null || !layerCells.containsKey(control.after) || layerCells[control.after] != control.cell)) {
         throw FormatException('Control cannot be placed after that layer: ${control.id}');
       }
       // Fixed and scrolling are drawn apart: a control can only sit among the layers it moves with.
@@ -206,21 +229,30 @@ class PanelScene {
     // by a node in the layout. A control placed nowhere would be silently
     // missing, and one placed twice would be two widgets sharing one state.
     final placed = <String>{};
+    final placedCells = <String>{};
     var sceneLeaves = 0;
     layout?.visit((node) {
       if (node.control case final id?) {
         if (controlsById[id] == null || controlsById[id]!.rect != null) throw FormatException('Layout names a control it cannot place: $id');
         if (!placed.add(id)) throw const FormatException('Layout places a control twice');
       }
+      if (node.cell case final id?) {
+        if (!cells.containsKey(id)) throw FormatException('Layout names an unknown cell: $id');
+        if (!placedCells.add(id)) throw const FormatException('Layout places a cell twice');
+      }
       if (node.type == 'scene') sceneLeaves++;
     });
     for (final control in controls) {
       if (control.rect == null && !placed.contains(control.id)) throw FormatException('Control has no rect and is not in the layout: ${control.id}');
     }
-    if (layout != null && sceneLeaves == 0 && (layers.isNotEmpty || controls.any((c) => c.rect != null))) {
+    for (final id in cells.keys) {
+      if (!placedCells.contains(id)) throw FormatException('Cell is not in the layout: $id');
+    }
+    if (layout != null && sceneLeaves == 0 && (layers.any((l) => l.cell == null) || controls.any((c) => c.rect != null && c.cell == null))) {
       throw const FormatException('Layout has no scene node for its layers');
     }
     if (sceneLeaves > 1) throw const FormatException('Layout shows the scene twice');
+    if (layout case final root?) _checkGrids(root);
   }
 }
 
@@ -436,6 +468,9 @@ class SceneLayer {
   /// scrolled with the rest.
   final bool fixed;
 
+  /// The cell it is drawn in, its rect in that cell's coordinates; null for the artwork.
+  final String? cell;
+
   /// While a zoom strip is dragged, scaled along the scroll rather than moved at its size: for a
   /// background, or a line that runs the whole way.
   final bool stretch;
@@ -451,6 +486,7 @@ class SceneLayer {
       rect = bounds(json),
       blocksPointer = json['blocksPointer'] == true,
       fixed = json['fixed'] == true,
+      cell = json['cell'] == null ? null : string(json, 'cell'),
       stretch = json['stretch'] == true,
       svg = json['svg'] == null ? null : string(json, 'svg'),
       text = json['text'] as Map<dynamic, dynamic>?,
@@ -572,6 +608,9 @@ class SceneControl {
   /// A knob's drag moves its value the other way: content held under the finger, not a dial.
   final bool invertDrag;
 
+  /// A slider's or knob's scroll moves its value the other way: down and left raise it.
+  final bool invertScroll;
+
   /// A slider or knob takes the scrolls that land on drawn buttons over it.
   final bool scrollThrough;
 
@@ -581,6 +620,9 @@ class SceneControl {
 
   /// In a scrolling scene, placed over the panel rather than scrolled; see [SceneLayer.fixed].
   final bool fixed;
+
+  /// The cell it is drawn in, its rect in that cell's coordinates; see [SceneLayer.cell].
+  final String? cell;
   final List<String>? valueLabels;
   final SceneMenu? menu;
   final List<({String label, String value})>? options;
@@ -658,9 +700,11 @@ class SceneControl {
       align = _oneOf(json, 'align', const ['start', 'center', 'end']),
       hover = json['hover'] == true,
       invertDrag = json['invertDrag'] == true,
+      invertScroll = json['invertScroll'] == true,
       scrollThrough = json['scrollThrough'] == true,
       tapAt = json['tapAt'] == true,
       fixed = json['fixed'] == true,
+      cell = json['cell'] == null ? null : string(json, 'cell'),
       continuous = json['continuous'] == true,
       discrete = json['discrete'] == true,
       valueLabels = json['valueLabels'] == null ? null : (json['valueLabels'] as List).map((v) => string({'v': v}, 'v')).toList(),
@@ -697,6 +741,7 @@ class SceneControl {
         !only(align, {'nativeText'}) ||
         !only(continuous, {'slider', 'knob', 'nativeSlider', 'nativeTextField'}) ||
         !only(json['invertDrag'], {'knob'}) ||
+        !only(json['invertScroll'], {'slider', 'knob'}) ||
         !only(json['scrollThrough'], {'slider', 'knob'}) ||
         !only(json['tapAt'], {'button'}) ||
         // A click on a menu's button opens the menu, and one with no event goes nowhere: either way the place is lost.
@@ -1307,84 +1352,4 @@ class SceneSpectrumSpec {
     for (final layer in layers) ...layer.valueNames,
     for (final overlay in overlays) ...overlay.valueNames,
   ];
-}
-
-/// One node of a scene's layout: Flutter's Row, Column and Wrap, with
-/// Flexible, Spacer and SizedBox folded in as fields. JSON names the type by
-/// its one key — `{row: [...]}`, `{control: 'id'}`, `{scene: true}`,
-/// `{spacer: 1}`.
-///
-/// Refused here, rather than left to throw in layout: a `flex` anywhere but a
-/// row or column's direct child (Flutter asserts on the parent data). One the
-/// parser cannot see — a row with no room to share, itself an unflexed child
-/// of a row — is laid out unflexed by the view instead.
-class SceneLayoutNode {
-  static const maxDepth = 8, maxNodes = 128;
-  static const _types = ['row', 'column', 'wrap', 'control', 'scene', 'spacer'];
-
-  final String type;
-  final List<SceneLayoutNode> children;
-  final String? control;
-  final int? flex;
-  final bool tight;
-  final double? width, height;
-  final EdgeInsetsDirectional padding;
-  final double spacing, runSpacing;
-  final String mainAxisAlignment, crossAxisAlignment;
-
-  SceneLayoutNode._(Map<dynamic, dynamic> json, this.type, this.children, {required bool inFlex})
-    : control = type == 'control' ? string(json, 'control') : null,
-      flex = type == 'spacer'
-          ? number(json, 'spacer', min: 1, max: 1000).round()
-          : json['flex'] == null
-          ? null
-          : number(json, 'flex', min: 1, max: 1000).round(),
-      tight = _oneOf(json, 'fit', const ['tight', 'loose']) != 'loose',
-      width = json['width'] == null ? null : number(json, 'width', min: 0, max: 8192),
-      height = json['height'] == null ? null : number(json, 'height', min: 0, max: 8192),
-      padding = _padding(json['padding']),
-      spacing = number(json, 'spacing', fallback: 0, min: 0, max: 1000),
-      runSpacing = number(json, 'runSpacing', fallback: 0, min: 0, max: 1000),
-      mainAxisAlignment = _oneOf(json, 'mainAxisAlignment', const ['start', 'center', 'end', 'spaceBetween', 'spaceAround', 'spaceEvenly']) ?? 'start',
-      crossAxisAlignment = _oneOf(json, 'crossAxisAlignment', const ['start', 'center', 'end', 'stretch']) ?? 'center' {
-    if (type == 'scene' && json['scene'] != true) throw const FormatException('Invalid scene layout node');
-    if (flex != null && !inFlex) throw const FormatException('Layout flex outside a row or column');
-    if (type == 'wrap' && crossAxisAlignment == 'stretch') throw const FormatException('A wrap cannot stretch its runs');
-  }
-
-  static SceneLayoutNode parse(Object? json) {
-    var count = 0;
-    SceneLayoutNode node(Object? raw, int depth, {required bool inFlex}) {
-      if (raw is! Map<dynamic, dynamic>) throw const FormatException('Invalid scene layout');
-      if (++count > maxNodes) throw PanelContentRefusal(PanelBudget.items, maxNodes, 'scene layout has more than $maxNodes nodes');
-      if (depth > maxDepth) throw PanelContentRefusal(PanelBudget.layoutDepth, maxDepth, 'scene layout nests $depth deep, at most $maxDepth');
-      final types = _types.where(raw.containsKey).toList();
-      if (types.length != 1) throw const FormatException('A layout node needs exactly one type');
-      final type = types.single;
-      final children = const {'row', 'column', 'wrap'}.contains(type)
-          ? items(raw[type], maxNodes, what: 'layout children').map((c) => node(c, depth + 1, inFlex: type != 'wrap')).toList()
-          : const <SceneLayoutNode>[];
-      return SceneLayoutNode._(raw, type, children, inFlex: inFlex);
-    }
-
-    return node(json, 1, inFlex: false);
-  }
-
-  void visit(void Function(SceneLayoutNode) f) {
-    f(this);
-    for (final child in children) {
-      child.visit(f);
-    }
-  }
-}
-
-/// A number for all four sides, or `[start, top, end, bottom]`.
-EdgeInsetsDirectional _padding(Object? raw) {
-  if (raw == null) return EdgeInsetsDirectional.zero;
-  if (raw is num) return EdgeInsetsDirectional.all(number({'p': raw}, 'p', min: 0, max: 1000));
-  if (raw is! List || raw.length != 4) throw const FormatException('Invalid layout padding');
-  final p = [
-    for (final v in raw) number({'p': v}, 'p', min: 0, max: 1000),
-  ];
-  return EdgeInsetsDirectional.fromSTEB(p[0], p[1], p[2], p[3]);
 }

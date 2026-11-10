@@ -12,11 +12,13 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../panel_environment.dart';
+import 'scene_grid.dart';
 import 'scene_model.dart';
 import 'scene_spectrum.dart';
 import 'scene_gestures.dart';
 
 part 'scene_layer_view.dart';
+part 'scene_view_grid.dart';
 
 /// Sends one control event and answers with the values to show: a patch keyed
 /// by value name, a double for a number and a String for a string.
@@ -511,9 +513,9 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
   }
 
   /// Positions are compared only within [button]'s own stack: a fixed control's rect is in pane
-  /// coordinates, a scrolling one's in the content's.
+  /// coordinates, a scrolling one's in the content's, and one in a cell in that cell's.
   SceneControl? _scrolledBeneath(SceneControl button, Offset at) {
-    final painted = _painted(button.fixed).toList();
+    final painted = _painted(button.fixed, cell: button.cell).toList();
     for (final piece in painted.sublist(0, painted.indexOf(button)).reversed) {
       switch (piece) {
         case SceneLayer layer when layer.blocksPointer && layer.rect.contains(at) && layer.opacityAt(_values, _strings) > 0:
@@ -788,23 +790,23 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     );
   }
 
-  /// The scene's layers and the controls placed among them, in paint order, bottom first: all of
-  /// them, or with [fixed] only the ones that are, or only the ones that are not.
-  Iterable<Object> _painted(bool? fixed) sync* {
+  /// The layers and the controls placed among them in the artwork, or in [cell], in paint order,
+  /// bottom first: all of them, or with [fixed] only the ones that are, or only the ones that are not.
+  Iterable<Object> _painted(bool? fixed, {String? cell}) sync* {
     final scene = widget.scene;
     bool drawn(bool isFixed) => fixed == null || isFixed == fixed;
     for (final layer in scene.layers) {
-      if (!drawn(layer.fixed)) continue;
+      if (!drawn(layer.fixed) || layer.cell != cell) continue;
       yield layer;
       yield* scene.controls.where((c) => c.after == layer.id);
     }
     // Placed after no layer: above every layer.
-    yield* scene.controls.where((c) => c.rect != null && c.after == null && c.kind != 'zoom' && drawn(c.fixed));
+    yield* scene.controls.where((c) => c.rect != null && c.after == null && c.kind != 'zoom' && drawn(c.fixed) && c.cell == cell);
   }
 
-  Widget _stack(bool reduceMotion, {bool? fixed}) => Stack(
+  Widget _stack(bool reduceMotion, {bool? fixed, String? cell}) => Stack(
     children: [
-      for (final piece in _painted(fixed))
+      for (final piece in _painted(fixed, cell: cell))
         if (piece is SceneLayer)
           // Keyed, as is each control's: without it, a layer added
           // before a control shifts the Stack's children, and the
@@ -833,17 +835,20 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
   /// [room]: whether the parent row or column has a bounded main axis to
   /// share. A row that is itself an unflexed child of a row has none, and a
   /// Flexible there is a Flutter assertion, so its children lay out unflexed.
-  Widget _layout(SceneLayoutNode node, Widget Function() artwork, {bool room = false}) {
+  /// [inGrid]: whether a grid is among the node's ancestors, so a grid here is not the outermost.
+  Widget _layout(SceneLayoutNode node, Widget Function() artwork, {bool room = false, bool inGrid = false}) {
     Widget child = switch (node.type) {
       'scene' => artwork(),
       'control' => _native(widget.scene.controlsById[node.control]!),
+      'cell' => _cell(node.cell!),
+      'grid' => _grid(node, artwork, outermost: !inGrid),
       'spacer' => const SizedBox.shrink(),
       'wrap' => Wrap(
         spacing: node.spacing,
         runSpacing: node.runSpacing,
         alignment: WrapAlignment.values.byName(node.mainAxisAlignment),
         crossAxisAlignment: WrapCrossAlignment.values.byName(node.crossAxisAlignment),
-        children: [for (final c in node.children) _layout(c, artwork)],
+        children: [for (final c in node.children) _layout(c, artwork, inGrid: inGrid)],
       ),
       _ => LayoutBuilder(
         builder: (context, box) {
@@ -857,13 +862,14 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
             spacing: node.spacing,
             mainAxisAlignment: MainAxisAlignment.values.byName(node.mainAxisAlignment),
             crossAxisAlignment: cross,
-            children: [for (final c in node.children) _layout(c, artwork, room: row ? box.hasBoundedWidth : box.hasBoundedHeight)],
+            children: [for (final c in node.children) _layout(c, artwork, room: row ? box.hasBoundedWidth : box.hasBoundedHeight, inGrid: inGrid)],
           );
         },
       ),
     };
     if (node.width != null || node.height != null) child = SizedBox(width: node.width, height: node.height, child: child);
-    if (node.padding != EdgeInsetsDirectional.zero) child = Padding(padding: node.padding, child: child);
+    // A grid's padding is inside its box, between its border and its slots.
+    if (node.padding != EdgeInsetsDirectional.zero && node.type != 'grid') child = Padding(padding: node.padding, child: child);
     if (node.flex case final flex? when room) child = Flexible(flex: flex, fit: node.tight ? FlexFit.tight : FlexFit.loose, child: child);
     return child;
   }
@@ -1028,6 +1034,7 @@ class _ControlViewState extends State<_ControlView> {
   Widget build(BuildContext context) {
     final c = widget.control;
     final button = c.kind == 'button';
+    final ownsDrag = !button && c.cell != null;
     // A knob keeps its own gestures, and opens its menu on a click — see [_openMenu].
     if (c.menu != null && c.kind != 'knob') {
       return PopupMenuButton<String>(
@@ -1116,97 +1123,43 @@ class _ControlViewState extends State<_ControlView> {
                         });
                       }
                     },
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                excludeFromSemantics: true,
-                onTapDown: (d) => _tapPosition = d.localPosition,
-                onTap: widget.disabled
-                    ? null
-                    : () {
-                        // A button takes no focus from a click: it has nothing to
-                        // do with keys afterwards, and the operator's typing stays
-                        // where it was. Tab still reaches it. A slider or knob
-                        // takes it for [_pointerFocusHold].
-                        if (c.kind == 'knob' && c.menu != null) {
-                          unawaited(_openMenu(context));
-                          return;
-                        }
-                        if (!button) _focusFromPointer(Focus.of(context));
-                        if (widget.onTapAt case final tapAt? when button) {
-                          final size = context.size ?? Size.zero;
-                          final along = size.height > size.width ? _tapPosition.dy / size.height : _tapPosition.dx / size.width;
-                          tapAt(along.isFinite ? along.clamp(0.0, 1.0) : 0.0);
-                          return;
-                        }
-                        if (c.kind == 'slider') {
-                          widget.onChange(c.atX(_tapPosition.dx));
-                        }
-                        if (button || c.kind == 'slider') widget.onCommit();
-                      },
-                onPanStart: button
-                    ? null
-                    : (d) {
-                        if (widget.disabled) return;
-                        _dragging = true;
-                        _focusFromPointer(Focus.of(context), hold: false);
-                        widget.onStart();
-                        _dragValue = widget.value;
-                        _dragValueY = widget.valueY ?? 0;
-                        _movedX = _movedY = false;
-                        if (c.kind == 'slider') {
-                          widget.onChange(c.atX(d.localPosition.dx));
-                        }
-                      },
-                onPanUpdate: button
-                    ? null
-                    : (d) {
-                        if (!_dragging) return;
-                        if (c.kind == 'slider') {
-                          widget.onChange(c.atX(d.localPosition.dx));
-                        } else {
-                          // Range only, not `c.clamp`: that also snaps to the step, and
-                          // a slow drag whose deltas are under half a step would never
-                          // move. Unclamped, a drag past an end stop owes the same
-                          // distance back before the value moves again.
-                          // `invertDrag`: the value moves the other way, as content held under the finger does.
-                          final delta = c.invertDrag ? -d.delta : d.delta;
-                          if (c.yAxis case final y?) {
-                            // Each axis its own: across for the first value, up for the second.
-                            if (delta.dx != 0) {
-                              _movedX = true;
-                              _dragValue = (_dragValue + delta.dx * c.sensitivity).clamp(c.min, c.max).toDouble();
-                              widget.onChange(_dragValue);
-                            }
-                            if (delta.dy != 0) {
-                              _movedY = true;
-                              _dragValueY = (_dragValueY - delta.dy * y.sensitivity).clamp(y.min, y.max).toDouble();
-                              widget.onChangeY!(_dragValueY);
-                            }
-                          } else {
-                            _dragValue = (_dragValue + (delta.dx - delta.dy) * c.sensitivity).clamp(c.min, c.max).toDouble();
-                            widget.onChange(_dragValue);
+              child: _draggedInCell(
+                context,
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  excludeFromSemantics: true,
+                  onTapDown: (d) => _tapPosition = d.localPosition,
+                  onTap: widget.disabled
+                      ? null
+                      : () {
+                          // A button takes no focus from a click: it has nothing to
+                          // do with keys afterwards, and the operator's typing stays
+                          // where it was. Tab still reaches it. A slider or knob
+                          // takes it for [_pointerFocusHold], except in a cell: see
+                          // [_focusesFromPointer].
+                          if (c.kind == 'knob' && c.menu != null) {
+                            unawaited(_openMenu(context));
+                            return;
                           }
-                        }
-                      },
-                onPanEnd: button
-                    ? null
-                    : (_) {
-                        if (!_dragging) return;
-                        _dragging = false;
-                        _holdPointerFocus(Focus.of(context));
-                        if (c.yAxis == null || _movedX) widget.onCommit();
-                        if (_movedY) widget.onCommitY?.call();
-                      },
-                onPanCancel: button
-                    ? null
-                    : () {
-                        if (!_dragging) return;
-                        _dragging = false;
-                        _holdPointerFocus(Focus.of(context));
-                        widget.onCancel();
-                      },
-                child: DecoratedBox(
-                  decoration: BoxDecoration(border: _focused ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2) : null),
+                          if (!button && _focusesFromPointer) _focusFromPointer(Focus.of(context));
+                          if (widget.onTapAt case final tapAt? when button) {
+                            final size = context.size ?? Size.zero;
+                            final along = size.height > size.width ? _tapPosition.dy / size.height : _tapPosition.dx / size.width;
+                            tapAt(along.isFinite ? along.clamp(0.0, 1.0) : 0.0);
+                            return;
+                          }
+                          if (c.kind == 'slider') {
+                            widget.onChange(c.atX(_tapPosition.dx));
+                          }
+                          if (button || c.kind == 'slider') widget.onCommit();
+                        },
+                  onPanStart: button || ownsDrag ? null : (d) => _panStart(context, d),
+                  onPanUpdate: button || ownsDrag ? null : _panUpdate,
+                  onPanEnd: button || ownsDrag ? null : (_) => _panEnd(context),
+                  onPanCancel: button || ownsDrag ? null : () => _panCancel(context),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(border: _focused ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2) : null),
+                  ),
                 ),
               ),
             ),

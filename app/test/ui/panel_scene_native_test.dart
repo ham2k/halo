@@ -140,8 +140,9 @@ void main() {
           : {
               'column': [nested(depth - 1)],
             };
-      expect(() => PanelScene(scene(artwork: false, controls: [callField], layout: nested(7))), returnsNormally);
-      refused(scene(artwork: false, controls: [callField], layout: nested(8)), 'layout depth is capped');
+      const cap = SceneLayoutNode.maxDepth;
+      expect(() => PanelScene(scene(artwork: false, controls: [callField], layout: nested(cap - 1))), returnsNormally);
+      refused(scene(artwork: false, controls: [callField], layout: nested(cap)), 'layout depth is capped');
     });
 
     test('with a FormatException naming the control, not a crash', () {

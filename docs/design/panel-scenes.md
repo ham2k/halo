@@ -202,7 +202,21 @@ The public contract is in [panel scenes](../extensions/scenes.md) and
   it, but only for three seconds after its last click, drag or key; then focus
   goes back where it came from, so a knob nudged with the mouse mid-QSO does not
   catch the operator's next keystrokes. Focus that arrived by Tab is the
-  operator's choice and stays.
+  operator's choice and stays. A slider or knob in a cell takes no focus from
+  the pointer at all, as a button does: a control board is worked mid-QSO,
+  where even three seconds of the arrow keys belonging to a knob would catch
+  the operator's typing. Tab reaches it, and the wheel adjusts it unfocused.
+- **In a grid that scrolls, a drag begun on a cell's slider or knob is the
+  control's.** A plain pan claims a drag only past twice the distance a
+  scroll view's drag needs, so the grid would win every one. The cell's pan
+  accepts at the scroll's own distance and, deeper in the hit path, hears each
+  move first, at the device's own slop as the scroll view has it. A slider
+  claims only a drag that goes mostly across, its one axis: a swipe down the
+  board that happens to start on a meter is a scroll, and claimed, it would
+  set the meter to wherever the finger landed. A disabled control claims
+  nothing, and a trackpad's two-finger swipe is always the scroll's. A scene
+  `scroll` keeps the opposite rule, its documented one: a drag along it is
+  the scroll's.
 
 ## Band scope
 
