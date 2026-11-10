@@ -8,7 +8,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show ValueListenable;
+import 'package:flutter/foundation.dart' show ValueListenable, listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HardwareKeyboard, KeyDownEvent, KeyEvent, KeyRepeatEvent, LogicalKeyboardKey;
 import 'package:halo_core/halo_core.dart';
@@ -27,6 +27,7 @@ import '../services/cat/zero_beat.dart';
 import '../services/extensions/extension_service.dart' show TemplateError;
 import '../services/spot_board_service.dart' show SpotBoardSubscription;
 import '../services/assistant_service.dart' show AssistantFeed;
+import '../services/panel_equipment_service.dart' show equipmentSignature;
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../services/wake_lock_service.dart';
@@ -109,6 +110,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     log: _logForPanels,
     spotsRevision: _spotsRevision,
     lookupRevision: _lookupRevision,
+    equipmentRevision: _equipmentRevision,
   );
 
   @override
@@ -484,6 +486,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     widget.services.spots.bandAnnotations.addListener(_onSpotsChanged);
     // And the assistants' marks: they change what `getSpots` answers.
     widget.services.extensions.spotMarks.addListener(_onSpotsChanged);
+    _equipmentSeen = equipmentSignature(widget.services.cat);
+    widget.services.cat.addListener(_onEquipmentChanged);
   }
 
   /// This view's hold on the spot board, and how it says what it shows.
@@ -493,6 +497,24 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// exists only to fire an extension panel's `spots` trigger, and the
   /// panels that care read the board themselves.
   int _spotsRevision = 0;
+
+  int _equipmentRevision = 0;
+
+  /// Kept current whether or not anything declares `equipment`: a snapshot
+  /// taken only once something does would either fire for a change nobody
+  /// made or miss the first one that was.
+  List<Object?> _equipmentSeen = const [];
+
+  /// Every CAT notice passes through here, at reading rate on a live rig: the
+  /// signature is a few values per device, and the dock is walked only for a
+  /// change it shows.
+  void _onEquipmentChanged() {
+    if (!mounted) return;
+    final seen = equipmentSignature(widget.services.cat);
+    if (listEquals(seen, _equipmentSeen)) return;
+    _equipmentSeen = seen;
+    if (_anyPanelWants('equipment')) setState(() => _equipmentRevision++);
+  }
 
   void _onSpotsChanged() {
     // Every other operation view would be rebuilding itself on every board
@@ -727,6 +749,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     widget.services.spotBoard.removeListener(_onSpotsChanged);
     widget.services.spots.bandAnnotations.removeListener(_onSpotsChanged);
     widget.services.extensions.spotMarks.removeListener(_onSpotsChanged);
+    widget.services.cat.removeListener(_onEquipmentChanged);
     // "Listen for other apps" stops routing captures here once this view
     // closes — but only if THIS operation is still the one receiving; a
     // second OperationView may have taken over already. Unconditional,

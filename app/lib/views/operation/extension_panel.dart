@@ -290,6 +290,9 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       return;
     }
     final fired = widget.renderContext.changesFrom(old.renderContext).intersection(_triggers);
+    // The switches and rotators are the radio's to read: the dock hands a
+    // spectrum source only to a panel that may.
+    if (widget.spectrum == null) fired.remove('equipment');
     if (fired.isEmpty) return;
     // Read fresh, not from `_visible`: this method runs before
     // didChangeDependencies, so a pane hidden in the same pump that fired
@@ -314,9 +317,10 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   void _watchRadio() {
     final asked = _triggers.contains('radio');
     // The dock hands no source to a panel that may not read the radio.
-    if (asked && widget.spectrum == null && !_saidUnread) {
+    final unread = _triggers.intersection(const {'radio', 'equipment'});
+    if (unread.isNotEmpty && widget.spectrum == null && !_saidUnread) {
       _saidUnread = true;
-      debugPrint('[panels] "${widget.panel.id}" asked for the radio trigger without requiresRadioRead; it will never fire');
+      debugPrint('[panels] "${widget.panel.id}" asked for the ${unread.join(' and ')} trigger without requiresRadioRead; it will never fire');
     }
     final source = asked ? widget.spectrum : null;
     final next = source?.readingChanges;

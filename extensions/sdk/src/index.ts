@@ -41,6 +41,8 @@ import type {
   Spot,
   SpotMark,
   DraftPatch,
+  StationEquipment,
+  StationEquipmentResult,
   ClusterPostSpotRequest,
   ClusterReply,
   SuggestedQso,
@@ -380,6 +382,22 @@ export const host = {
   /** Stops all CW, voice and PTT the app is keying, and a tune it started (extension API 9), as Escape does. Needs `requiresRadioWrite` and extension API 7. */
   async stopRadioTransmit(args: PanelRadioTarget): Promise<PanelRadioResult> {
     return (await hostCallFn()("stopRadioTransmit", { ...args })) as PanelRadioResult
+  },
+  /** The station's antenna switches and rotators. `requiresRadioRead`; extension API 22. */
+  async listEquipment(): Promise<StationEquipment[]> {
+    return (await hostCallFn()("listEquipment", {})) as StationEquipment[]
+  },
+  /** Routes a switch's `port` to its `antenna`, by the switch's own keys. `requiresRadioWrite`; extension API 22. */
+  async setAntenna(args: { id: string; port: string; antenna: string }): Promise<StationEquipmentResult> {
+    return (await hostCallFn()("setAntenna", { ...args })) as StationEquipmentResult
+  },
+  /** Turns a rotator, in true degrees; the device's limits may turn it elsewhere, which `state.target` says. `requiresRadioWrite`; extension API 22. */
+  async setRotator(args: { id: string; azimuth: number; elevation?: number }): Promise<StationEquipmentResult> {
+    return (await hostCallFn()("setRotator", { ...args })) as StationEquipmentResult
+  },
+  /** Stops a rotator where it is. Never paced. `requiresRadioWrite`; extension API 22. */
+  async stopRotator(args: { id: string }): Promise<StationEquipmentResult> {
+    return (await hostCallFn()("stopRotator", { ...args })) as StationEquipmentResult
   },
   /**
    * Writes any command in the radio's own protocol — one that transmits included — and collects the

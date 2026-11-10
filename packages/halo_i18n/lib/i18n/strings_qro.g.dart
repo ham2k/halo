@@ -208,8 +208,8 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 	@override String canHoldConnection({required Object host}) => '${host}, OVER A LIVE CONNECTION';
 	@override String get canHoldLocalConnection => 'DEVICES ON YOUR LOCAL NETWORK, OVER A LIVE CONNECTION';
 	@override String get canUseLocation => 'YOUR LOCATION';
-	@override String get canReadRadio => 'YOUR RADIO, TO READ ITS FREQUENCY AND MODE';
-	@override String get canControlRadio => 'YOUR RADIO, TO CONTROL IT AND TO TRANSMIT WITH IT — TUNING, POWER, CW, VOICE MEMORIES AND PTT';
+	@override String get canReadRadio => 'YOUR RADIO, ANTENNA SWITCHES AND ROTATORS, TO READ THEIR SETTINGS';
+	@override String get canControlRadio => 'YOUR RADIO, ANTENNA SWITCHES AND ROTATORS, TO CONTROL THEM AND TO TRANSMIT — TUNING, POWER, CW, VOICE MEMORIES, PTT, ANTENNAS AND HEADINGS';
 	@override String get canCommandRadioRaw => 'YOUR RADIO, TO SEND IT ANY COMMAND IN ITS OWN PROTOCOL — INCLUDING ONES THAT TRANSMIT OR CHANGE ITS SETTINGS';
 	@override String get canReadCluster => 'THE DX CLUSTER, LOGGED IN AS YOU, TO READ WHAT IT SENDS';
 	@override String get canSpotCluster => 'THE DX CLUSTER, LOGGED IN AS YOU, TO POST SPOTS IN YOUR NAME';
@@ -5057,8 +5057,8 @@ extension on TranslationsQro {
 			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host}, OVER A LIVE CONNECTION',
 			'extensionsPanel.canHoldLocalConnection' => 'DEVICES ON YOUR LOCAL NETWORK, OVER A LIVE CONNECTION',
 			'extensionsPanel.canUseLocation' => 'YOUR LOCATION',
-			'extensionsPanel.canReadRadio' => 'YOUR RADIO, TO READ ITS FREQUENCY AND MODE',
-			'extensionsPanel.canControlRadio' => 'YOUR RADIO, TO CONTROL IT AND TO TRANSMIT WITH IT — TUNING, POWER, CW, VOICE MEMORIES AND PTT',
+			'extensionsPanel.canReadRadio' => 'YOUR RADIO, ANTENNA SWITCHES AND ROTATORS, TO READ THEIR SETTINGS',
+			'extensionsPanel.canControlRadio' => 'YOUR RADIO, ANTENNA SWITCHES AND ROTATORS, TO CONTROL THEM AND TO TRANSMIT — TUNING, POWER, CW, VOICE MEMORIES, PTT, ANTENNAS AND HEADINGS',
 			'extensionsPanel.canCommandRadioRaw' => 'YOUR RADIO, TO SEND IT ANY COMMAND IN ITS OWN PROTOCOL — INCLUDING ONES THAT TRANSMIT OR CHANGE ITS SETTINGS',
 			'extensionsPanel.canReadCluster' => 'THE DX CLUSTER, LOGGED IN AS YOU, TO READ WHAT IT SENDS',
 			'extensionsPanel.canSpotCluster' => 'THE DX CLUSTER, LOGGED IN AS YOU, TO POST SPOTS IN YOUR NAME',

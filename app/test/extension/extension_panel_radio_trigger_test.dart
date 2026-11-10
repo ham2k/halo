@@ -26,7 +26,7 @@ void main() {
   PanelDefinition panel(List<String> triggers) =>
       PanelDefinition(id: 'ext:map:band', title: 'Band Map', source: PanelSource.extension, hookKey: 'map', panelKey: 'band', triggers: triggers);
 
-  Widget harness(_Panels panels, PanelDefinition definition, _Radio? radio, {bool visible = true}) => TranslationProvider(
+  Widget harness(_Panels panels, PanelDefinition definition, _Radio? radio, {bool visible = true, int equipment = 0}) => TranslationProvider(
     child: MaterialApp(
       home: Scaffold(
         body: DockPaneVisibility(
@@ -37,6 +37,7 @@ void main() {
             spectrum: radio,
             renderContext: PanelRenderContext(
               operation: Operation(uuid: 'op-1', data: const {}),
+              equipmentRevision: equipment,
             ),
           ),
         ),
@@ -83,6 +84,28 @@ void main() {
       debugPrint = print;
     }
     expect(said.where((line) => line.contains('requiresRadioRead')), hasLength(1));
+  });
+
+  // The switches and rotators are the radio's to read, and the dock hands a
+  // source only to a panel that may: without that gate a panel lacking
+  // requiresRadioRead wakes on every antenna switched and every turn ordered.
+  testWidgets('an `equipment` change renders a panel that may read the radio', (tester) async {
+    final radio = _Radio(), panels = _Panels();
+    addTearDown(radio.dispose);
+    await tester.pumpWidget(harness(panels, panel(['equipment']), radio));
+    await settle(tester);
+    await tester.pumpWidget(harness(panels, panel(['equipment']), radio, equipment: 1));
+    await settle(tester);
+    expect(panels.renders, ['initial', 'equipment']);
+  });
+
+  testWidgets('an `equipment` change never renders a panel that may not read the radio', (tester) async {
+    final panels = _Panels();
+    await tester.pumpWidget(harness(panels, panel(['equipment']), null));
+    await settle(tester);
+    await tester.pumpWidget(harness(panels, panel(['equipment']), null, equipment: 1));
+    await settle(tester);
+    expect(panels.renders, ['initial']);
   });
 
   testWidgets('an update that adds `radio` to the same panel is followed without remounting it', (tester) async {

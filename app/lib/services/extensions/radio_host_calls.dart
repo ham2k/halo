@@ -4,12 +4,14 @@
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'extension_info.dart';
+import '../panel_equipment_service.dart';
 import '../panel_radio_service.dart';
 
 /// The radio host calls and the manifest capabilities that gate them:
-/// `requiresRadioRead` for `listRadios`/`readRadio`, `requiresRadioWrite` for
-/// everything that commands one — settings, connection, scope, and keying
-/// (CW, voice memories, PTT) — and `requiresRadioRaw` for `sendRadioRaw`, any
+/// `requiresRadioRead` for `listRadios`/`readRadio` and the station's antenna
+/// switches and rotators (`listEquipment`), `requiresRadioWrite` for
+/// everything that commands one — settings, connection, scope, keying (CW,
+/// voice memories, PTT), an antenna selected or a rotator turned — and `requiresRadioRaw` for `sendRadioRaw`, any
 /// command in the radio's own protocol, which implies both. Without the gate
 /// any installed bundle could retune the rig, drop the CAT link or key the
 /// transmitter from any hook, with nothing in its manifest saying so.
@@ -21,7 +23,7 @@ import '../panel_radio_service.dart';
 /// stamps it (kernel.ts `IDENTITY_HOST_METHODS`); a method missing from that
 /// list arrives carrying whatever the extension chose to write there.
 class RadioHostCalls {
-  static const _reads = {'listRadios', 'readRadio'};
+  static const _reads = {'listRadios', 'readRadio', 'listEquipment'};
   static const _writes = {
     'setRadio',
     'tuneRadio',
@@ -31,6 +33,9 @@ class RadioHostCalls {
     'playRadioVoice',
     'setRadioPtt',
     'stopRadioTransmit',
+    'setAntenna',
+    'setRotator',
+    'stopRotator',
   };
 
   static const _raw = 'sendRadioRaw';
@@ -40,6 +45,10 @@ class RadioHostCalls {
   /// Null on a host with no CAT service behind it: reads answer empty and
   /// commands are refused as `disconnected`.
   PanelRadioService? radio;
+
+  /// The antenna switches and rotators; null on a host with no CAT service,
+  /// answered as for [radio].
+  PanelEquipmentService? equipment;
 
   CapabilityGrant _read = const CapabilityGrant();
   CapabilityGrant _write = const CapabilityGrant();
@@ -77,6 +86,10 @@ class RadioHostCalls {
     const unavailable = {'accepted': false, 'reason': 'disconnected', 'state': null};
     return switch (method) {
       'listRadios' => radio?.list() ?? [],
+      'listEquipment' => equipment?.list() ?? [],
+      'setAntenna' => equipment?.setAntenna(params) ?? unavailable,
+      'setRotator' => equipment?.setRotator(params) ?? unavailable,
+      'stopRotator' => equipment?.stopRotator(params) ?? unavailable,
       'readRadio' => radio?.readFor(params['id'] as String?),
       'setRadioConnection' => radio?.setConnection(params) ?? unavailable,
       'setRadioSpectrum' => radio?.setSpectrum(params) ?? unavailable,

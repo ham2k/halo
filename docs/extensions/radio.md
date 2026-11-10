@@ -3,7 +3,8 @@
 An extension reads and commands the operator's local radios through host
 calls: what a radio reports, setting its frequency, mode, power and more,
 keying it, running its scope, and, with the operator's leave, any command
-in its own protocol. A [panel scene](scenes.md) is the usual place for them,
+in its own protocol. The station's antenna switches and rotators come under
+the same capabilities. A [panel scene](scenes.md) is the usual place for them,
 and its `spectrum` control and radio values draw from the same radio.
 
 ## Capabilities
@@ -13,12 +14,13 @@ to the operator at install:
 
 - **`requiresRadioRead`** allows `host.listRadios()` and `host.readRadio()`,
   a scene's `spectrum` control and `radio` values, and a panel's `radio`
-  trigger.
+  trigger; from API 22, `host.listEquipment()` and the `equipment` trigger.
 - **`requiresRadioWrite`** allows `host.setRadio()`,
   `host.setRadioConnection()` and `host.setRadioSpectrum()`, and
   transmitting with `host.sendRadioCw()`, `host.playRadioVoice()`,
-  `host.setRadioPtt()` and `host.stopRadioTransmit()`. Implies read, since
-  a command answers with the radio's state.
+  `host.setRadioPtt()` and `host.stopRadioTransmit()`; from API 22,
+  `host.setAntenna()`, `host.setRotator()` and `host.stopRotator()`.
+  Implies read, since a command answers with the radio's state.
 - **`requiresRadioRaw`** (extension API 11) also allows
   `host.sendRadioRaw()`, any command in the radio's own protocol. Implies
   write.
@@ -262,6 +264,49 @@ and leaves `spanHz` alone; setting `spanHz` too has the panels take turns.
 (API 6) changes them; a span between two the radio offers is snapped to the
 nearer. It answers `stopped` when no control is running the scope; nothing
 is queued for later.
+
+## Antenna switches and rotators
+
+Extension API 22. `host.listEquipment()` answers every antenna switch and
+rotator the operator has set up, connected or not:
+
+```ts
+// { id, kind: "antennaSwitch" | "rotator", name, connected,
+//   antennas?: [{ key, name }],
+//   ports?: [{ key, label, antenna?, auto, band?, transmitting }],
+//   azimuth?, elevation?, target?: { azimuth, elevation? } }
+host.setAntenna({ id, port, antenna })        // by the switch's own keys
+host.setRotator({ id, azimuth, elevation? })  // true degrees
+host.stopRotator({ id })
+```
+
+A switch names its antennas and its radio ports by its own keys, never by
+position. A port marked `auto` is choosing its antenna from band data
+itself, and a selection made there stands until the next band change. No
+antenna is switched while a radio the switch may be feeding transmits.
+A rotator's `azimuth` and `elevation` are where it points, and `target`
+where it was told to turn, until it gets there, is stopped, or stalls short
+of it. An `azimuth` is taken modulo 360, so -10 turns it to 350; an
+`elevation` outside 0–180 is `invalid`. Its limits may turn it somewhere other
+than asked; the answer's `state.target` says where.
+
+Each command answers `{ accepted, reason?, state }`, `state` being the
+device as `listEquipment` describes it. `accepted` means sent, not done:
+the device's reports confirm it. Refusals: `invalid` for no such device of
+that kind, or a key it does not have; `disconnected`, also for a switch that
+has not yet said what it has; `transmitting`; `failed` when the device's
+driver could not send it, which the operator is told of; `busy` and
+`expired`. Commands to one device go out at least 250 ms apart, in the order
+they were made, under `setRadio`'s rules: four of one extension's may wait at
+once, the one being sent included, and a fifth is answered `busy`; one still
+waiting two seconds after it was made is answered `expired`. `stopRotator`
+never waits, and the turns still waiting for that rotator answer `expired`.
+
+The `equipment` [trigger](panels.md#triggers) fires when a switch routes a
+port to another antenna, its antennas or a port's `auto` or `band` change, a
+device connects or drops, or a rotator is told to turn, arrives or stops; not
+when a port's `transmitting` flips, nor for each heading a turning rotator
+reports.
 
 ## Example
 

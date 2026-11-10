@@ -3667,7 +3667,7 @@ export interface FyiMessageParams {
 /// A panel with no triggers renders once when it appears, and again only
 /// when its own config form changes — right for a panel showing static
 /// reference material.
-export type PanelTrigger = "operation" | "qso" | "qsoLogged" | "lookup" | "spots" | "radio" | `tick:${number}`
+export type PanelTrigger = "operation" | "qso" | "qsoLogged" | "lookup" | "spots" | "radio" | "equipment" | `tick:${number}`
 
 /// One panel an extension contributes. Several may come from one extension,
 /// each with its own identity and config form; the host addresses them as
@@ -3950,6 +3950,47 @@ export interface PanelRadioRawResult extends PanelRadioResult {
   /** What came back within `replyMs`, possibly nothing, at most 64 KiB; absent without `replyMs`. `text` is it as UTF-8. */
   reply?: { text: string; bytes: number[] }
 }
+/// An antenna switch or a rotator the operator has set up, as
+/// `host.listEquipment` answers. Extension API 22; needs `requiresRadioRead`.
+export interface StationEquipment {
+  /** The device's id, what `setAntenna`, `setRotator` and `stopRotator` name. */
+  id: string
+  kind: "antennaSwitch" | "rotator"
+  /** The operator's name for it, else its model's. */
+  name: string
+  connected: boolean
+  /** A switch's antennas, by the switch's own keys. Absent for a rotator. */
+  antennas?: { key: string; name: string }[]
+  /**
+   * A switch's radio ports and the antenna each is routed to; `auto` when the switch is choosing
+   * from band data, and a selection then stands only until the next band change. Absent for a
+   * rotator.
+   */
+  ports?: { key: string; label: string; antenna?: string; auto: boolean; band?: string; transmitting: boolean }[]
+  /** A rotator's heading in true degrees, and its elevation where it has one. */
+  azimuth?: number
+  elevation?: number
+  /** Where a rotator was told to turn, until it gets there or is stopped. */
+  target?: { azimuth: number; elevation?: number }
+}
+
+/// What `host.setAntenna`, `setRotator` and `stopRotator` answer. Extension
+/// API 22.
+export interface StationEquipmentResult {
+  /** Sent to the device; confirmation comes from its reported state. */
+  accepted: boolean
+  /**
+   * `invalid`: no such device of that kind, or a port or antenna it does not have.
+   * `disconnected`: the device is not connected, or a switch has not yet said what it has.
+   * `transmitting`: a radio the switch may be feeding is keyed; no relay is thrown under RF.
+   * `failed`: the device's driver could not send it; the operator is told.
+   * `busy`: four of this extension's commands are already waiting; nothing was sent.
+   * `expired`: still waiting two seconds after it was made, or a stop came first; nothing was sent.
+   */
+  reason?: "invalid" | "disconnected" | "transmitting" | "failed" | "busy" | "expired"
+  state: StationEquipment | null
+}
+
 export interface PanelRadioResult {
   /** Accepted by the host; confirmation still comes from reported state. */
   accepted: boolean

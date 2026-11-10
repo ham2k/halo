@@ -65,7 +65,19 @@ class PanelRenderContext {
   final int spotsRevision;
   final int lookupRevision;
 
-  const PanelRenderContext({this.operation, this.qso, this.qsoCount = 0, this.log, this.spotsRevision = 0, this.lookupRevision = 0});
+  /// Bumped when an antenna switch's routing or a rotator's target changes
+  /// (`equipmentSignature`), never for a heading reading.
+  final int equipmentRevision;
+
+  const PanelRenderContext({
+    this.operation,
+    this.qso,
+    this.qsoCount = 0,
+    this.log,
+    this.spotsRevision = 0,
+    this.lookupRevision = 0,
+    this.equipmentRevision = 0,
+  });
 
   /// The triggers that fired between [previous] and this — empty means
   /// nothing this panel could have asked for actually changed.
@@ -75,6 +87,7 @@ class PanelRenderContext {
     if (qsoCount != previous.qsoCount || _logChanged(log, previous.log)) 'qsoLogged',
     if (spotsRevision != previous.spotsRevision) 'spots',
     if (lookupRevision != previous.lookupRevision) 'lookup',
+    if (equipmentRevision != previous.equipmentRevision) 'equipment',
   };
 
   /// Whether the log moved between [previous] and [log]. The stream emits a
@@ -359,7 +372,7 @@ class PanelDefinition {
 /// in a descriptor doing nothing, so it is rejected at parse time WITH a
 /// line in the console — a panel that renders once and never again is
 /// otherwise indistinguishable from a panel that meant to.
-const knownPanelTriggers = {'operation', 'qso', 'qsoLogged', 'lookup', 'spots', 'radio'};
+const knownPanelTriggers = {'operation', 'qso', 'qsoLogged', 'lookup', 'spots', 'radio', 'equipment'};
 
 bool isKnownPanelTrigger(String trigger) {
   if (knownPanelTriggers.contains(trigger)) return true;

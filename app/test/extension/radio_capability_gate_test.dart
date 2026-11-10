@@ -150,6 +150,18 @@ void main() {
 
   Matcher blockedFor(String capability) => throwsA(isA<ExtensionHostException>().having((e) => e.toString(), 'message', contains(capability)));
 
+  // The station's switches and rotators come under the same grants, through
+  // the same kernel stamp: reading them is the radio's read, moving one its
+  // write.
+  test('antenna switches and rotators are read under radio read and moved only under radio write', () async {
+    await expectLater(call('plain', 'listEquipment'), blockedFor('requiresRadioRead'));
+    expect(await call('reader', 'listEquipment'), isEmpty, reason: 'no equipment service behind it here');
+    for (final method in ['setAntenna', 'setRotator', 'stopRotator']) {
+      await expectLater(call('reader', method, {'id': 'r'}), blockedFor('requiresRadioWrite'));
+      expect(await call('writer', method, {'id': 'r'}), containsPair('reason', 'disconnected'), reason: method);
+    }
+  });
+
   test('an extension that declares nothing can neither read nor command a radio', () async {
     await expectLater(call('plain', 'listRadios'), blockedFor('requiresRadioRead'));
     await expectLater(call('plain', 'readRadio'), blockedFor('requiresRadioRead'));

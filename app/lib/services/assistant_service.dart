@@ -270,8 +270,10 @@ class AssistantService extends ChangeNotifier {
         debugPrint('[assistants] "${assistant.id}" is already claimed; ignoring the duplicate');
         continue;
       }
-      if (assistant.triggers.contains('radio') && !extensions.canReadRadio(assistant.hookKey)) {
-        debugPrint('[assistants] "${assistant.id}" declares "radio", which never fires: its extension does not declare requiresRadioRead');
+      for (final trigger in const ['radio', 'equipment']) {
+        if (assistant.triggers.contains(trigger) && !extensions.canReadRadio(assistant.hookKey)) {
+          debugPrint('[assistants] "${assistant.id}" declares "$trigger", which never fires: its extension does not declare requiresRadioRead');
+        }
       }
       assistants.add(assistant);
     }
@@ -298,6 +300,9 @@ class AssistantService extends ChangeNotifier {
   void _feedChanged(AssistantFeed feed, Set<String> changes) {
     for (final assistant in _enabled) {
       final fired = changes.intersection(assistant.triggers.toSet());
+      // The switches and rotators are the radio's to read, as the `radio`
+      // trigger is.
+      if (!extensions.canReadRadio(assistant.hookKey)) fired.remove('equipment');
       for (final reason in fired) {
         _fire(assistant, feed, reason);
       }

@@ -15,6 +15,7 @@ import 'cluster/cluster_service.dart';
 import 'cluster/cluster_settings.dart';
 import 'extensions/extension_catalog_migration.dart';
 import 'halo_services.dart';
+import 'panel_equipment_service.dart';
 import 'spots_for_extensions.dart';
 import 'spotting_settings.dart';
 
@@ -36,6 +37,7 @@ void wireExtensions(HaLoServices services) {
   extensions.qsos = services.qsos;
   extensions.location = services.location;
   extensions.radioCalls.radio = services.panelRadio;
+  extensions.radioCalls.equipment = PanelEquipmentService(services.cat);
   _wireOpStyle(services);
   _wireCluster(services);
   (services.settingsRegistry[SpottingSettings.group]! as SpottingSettingsGroup)

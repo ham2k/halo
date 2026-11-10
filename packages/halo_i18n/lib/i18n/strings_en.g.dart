@@ -373,11 +373,11 @@ class Translations$extensionsPanel$en {
 	/// en: 'Your location'
 	String get canUseLocation => 'Your location';
 
-	/// en: 'Your radio, to read its frequency and mode'
-	String get canReadRadio => 'Your radio, to read its frequency and mode';
+	/// en: 'Your radio, antenna switches and rotators, to read their settings'
+	String get canReadRadio => 'Your radio, antenna switches and rotators, to read their settings';
 
-	/// en: 'Your radio, to control it and to transmit with it — tuning, power, CW, voice memories and PTT'
-	String get canControlRadio => 'Your radio, to control it and to transmit with it — tuning, power, CW, voice memories and PTT';
+	/// en: 'Your radio, antenna switches and rotators, to control them and to transmit — tuning, power, CW, voice memories, PTT, antennas and headings'
+	String get canControlRadio => 'Your radio, antenna switches and rotators, to control them and to transmit — tuning, power, CW, voice memories, PTT, antennas and headings';
 
 	/// en: 'Your radio, to send it any command in its own protocol — including ones that transmit or change its settings'
 	String get canCommandRadioRaw => 'Your radio, to send it any command in its own protocol — including ones that transmit or change its settings';
@@ -11111,8 +11111,8 @@ extension on Translations {
 			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host}, over a live connection',
 			'extensionsPanel.canHoldLocalConnection' => 'Devices on your local network, over a live connection',
 			'extensionsPanel.canUseLocation' => 'Your location',
-			'extensionsPanel.canReadRadio' => 'Your radio, to read its frequency and mode',
-			'extensionsPanel.canControlRadio' => 'Your radio, to control it and to transmit with it — tuning, power, CW, voice memories and PTT',
+			'extensionsPanel.canReadRadio' => 'Your radio, antenna switches and rotators, to read their settings',
+			'extensionsPanel.canControlRadio' => 'Your radio, antenna switches and rotators, to control them and to transmit — tuning, power, CW, voice memories, PTT, antennas and headings',
 			'extensionsPanel.canCommandRadioRaw' => 'Your radio, to send it any command in its own protocol — including ones that transmit or change its settings',
 			'extensionsPanel.canReadCluster' => 'The DX cluster, logged in as you, to read what it sends',
 			'extensionsPanel.canSpotCluster' => 'The DX cluster, logged in as you, to post spots in your name',

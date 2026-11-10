@@ -67,13 +67,14 @@ Return nothing. Everything an assistant says goes through the host:
 | Add spots of its own | `host.spots.put`, with a `spots` hook | [Spots](spots.md#spots) |
 | Fill in or change the contact being logged | `host.updateDraft`, with `requiresDraftWrite` | [The host API](host.md#hostupdatedraftpatch--replace-operationuuid-) |
 | Tune or set the radio | `host.setRadio` | [Radio control](radio.md) |
+| Pick an antenna, turn a rotator | `host.setAntenna`, `host.setRotator` | [Radio control](radio.md#antenna-switches-and-rotators) |
 | Show a running summary | a `panel` registered beside it | [Panels](panels.md) |
 
 ### Triggers
 
 `on` takes the [panel triggers](panels.md#triggers): `operation`,
-`qsoLogged`, `qso`, `lookup`, `spots`, `radio` (with `requiresRadioRead`)
-and `tick:<seconds>`. They fire on the same changes, with three differences:
+`qsoLogged`, `qso`, `lookup`, `spots`, `radio` and `equipment` (both with
+`requiresRadioRead`), and `tick:<seconds>`. They fire on the same changes, with three differences:
 
 - **Nothing pauses them.** No pane has to be placed or in front. They fire
   while the app is hidden too, as far as the platform lets the app run.

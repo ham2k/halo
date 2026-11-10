@@ -311,6 +311,26 @@ void main() {
     });
   });
 
+  // A switch or rotator is the radio's to read: an assistant whose extension
+  // may not read the radio is not told the equipment moved.
+  test('the equipment trigger wakes only an assistant whose extension may read the radio', () {
+    fakeAsync((async) {
+      final service = start(async, [
+        _assistant('ant', const ['equipment'], hookKey: 'k1abc-reader'),
+        _assistant('ant', const ['equipment'], hookKey: 'k1abc-other'),
+      ]);
+      extensions.radioReaders.add('k1abc-reader');
+      final feed = service.openFeed()..update(const PanelRenderContext(operation: _op1));
+      async.elapse(_pastGap);
+      extensions.calls.clear();
+
+      feed.update(const PanelRenderContext(operation: _op1, equipmentRevision: 1));
+      async.elapse(_pastGap);
+      expect(extensions.calls.map((c) => c.about(c.hookKey)), ['k1abc-reader equipment']);
+      service.dispose();
+    });
+  });
+
   test('an operation closed is never called about again', () {
     fakeAsync((async) {
       final service = start(async, [

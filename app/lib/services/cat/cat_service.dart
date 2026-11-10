@@ -782,18 +782,15 @@ class CatService extends ChangeNotifier
   /// [setPower]: a station can run several switches and the operator is
   /// acting on the row in front of them, not on a designated one.
   ///
-  /// A no-op on a node that is not connected, or whose driver does not route
-  /// anything. The panel only offers this on a connected switch, so both are
-  /// races rather than states — the operator tapping a selection as the
-  /// connection drops.
-  void selectAntenna(String uuid, String portKey, String antennaKey) {
+  /// Answers null once sent, else why not: `disconnected` (a race — the panel
+  /// offers this only on a connected switch), `transmitting`, or `failed`.
+  String? selectAntenna(String uuid, String portKey, String antennaKey) {
     final session = _runtimes[uuid]?.session;
-    if (session is! AntennaSwitchSession) return;
+    if (session is! AntennaSwitchSession) return 'disconnected';
     // Nothing throws a relay under RF: that is what destroys one. A switch
     // that senses its own ports refuses this in its driver and this changes
     // nothing for it — but a switch with no RF sensing at all (the Sierra
-    // CX-1 has no PTT input) has only what the RADIO says, and until
-    // telemetry there was nothing here that knew.
+    // CX-1 has no PTT input) has only what the RADIO says.
     //
     // Asked of the designated radio, whose antenna this switch is routing
     // (docs/design/cat.md § The picks belong to the radio) — and under SO2R
@@ -810,13 +807,15 @@ class CatService extends ChangeNotifier
       // other way to tell those apart.
       final keyed = radio1IsTransmitting ? _localRadio1 : radio2;
       debugPrint('[cat] antenna selection refused: ${keyed == null ? 'a radio' : displayNameFor(nodeFor(keyed)!)} is transmitting');
-      return;
+      return 'transmitting';
     }
     try {
       session.selectAntenna(portKey, antennaKey);
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:select-antenna');
+      return 'failed';
     }
+    return null;
   }
 
   /// Turns a rotator to [azimuth], and to [elevation] on one that has it.
@@ -842,16 +841,18 @@ class CatService extends ChangeNotifier
     }
   }
 
-  /// Stops a rotator wherever it has got to. See [rotateTo].
-  void stopRotator(String uuid) {
+  /// Stops a rotator wherever it has got to; true once sent. See [rotateTo].
+  bool stopRotator(String uuid) {
     final session = _runtimes[uuid]?.session;
-    if (session is! RotatorSession) return;
+    if (session is! RotatorSession) return false;
     try {
       session.stopRotation();
-      _setState(uuid, stateFor(uuid).copyWith(clearRotatorTarget: true));
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:rotate-stop');
+      return false;
     }
+    _setState(uuid, stateFor(uuid).copyWith(clearRotatorTarget: true));
+    return true;
   }
 
   /// Whether the radio driving `vfoA` is keyed RIGHT NOW: it says so, or the app

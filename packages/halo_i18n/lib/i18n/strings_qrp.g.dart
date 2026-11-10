@@ -208,8 +208,8 @@ class _Translations$extensionsPanel$qrp extends Translations$extensionsPanel$en 
 	@override String canHoldConnection({required Object host}) => '${host}, over a live connection';
 	@override String get canHoldLocalConnection => 'devices on your local network, over a live connection';
 	@override String get canUseLocation => 'your location';
-	@override String get canReadRadio => 'your radio, to read its frequency and mode';
-	@override String get canControlRadio => 'your radio, to control it and to transmit with it — tuning, power, cw, voice memories and ptt';
+	@override String get canReadRadio => 'your radio, antenna switches and rotators, to read their settings';
+	@override String get canControlRadio => 'your radio, antenna switches and rotators, to control them and to transmit — tuning, power, cw, voice memories, ptt, antennas and headings';
 	@override String get canCommandRadioRaw => 'your radio, to send it any command in its own protocol — including ones that transmit or change its settings';
 	@override String get canReadCluster => 'the dx cluster, logged in as you, to read what it sends';
 	@override String get canSpotCluster => 'the dx cluster, logged in as you, to post spots in your name';
@@ -5057,8 +5057,8 @@ extension on TranslationsQrp {
 			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host}, over a live connection',
 			'extensionsPanel.canHoldLocalConnection' => 'devices on your local network, over a live connection',
 			'extensionsPanel.canUseLocation' => 'your location',
-			'extensionsPanel.canReadRadio' => 'your radio, to read its frequency and mode',
-			'extensionsPanel.canControlRadio' => 'your radio, to control it and to transmit with it — tuning, power, cw, voice memories and ptt',
+			'extensionsPanel.canReadRadio' => 'your radio, antenna switches and rotators, to read their settings',
+			'extensionsPanel.canControlRadio' => 'your radio, antenna switches and rotators, to control them and to transmit — tuning, power, cw, voice memories, ptt, antennas and headings',
 			'extensionsPanel.canCommandRadioRaw' => 'your radio, to send it any command in its own protocol — including ones that transmit or change its settings',
 			'extensionsPanel.canReadCluster' => 'the dx cluster, logged in as you, to read what it sends',
 			'extensionsPanel.canSpotCluster' => 'the dx cluster, logged in as you, to post spots in your name',
