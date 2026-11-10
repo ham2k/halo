@@ -195,8 +195,16 @@ class Ft891Driver extends EquipmentDriver {
     ];
   }
 
+  /// What [meterNumbersFor]'s reads cost a transmit cycle, on average: COMP
+  /// is asked on one cycle in [yaesuCompReadEvery] but during a capture.
+  static int meterCycleBytesFor(MeterCalibration? calibration, {required bool capturing}) {
+    final meters = meterNumbersFor(calibration, capturing: capturing);
+    if (capturing || !meters.contains(yaesuMeterComp)) return meters.length * yaesuMeterReadBytes;
+    return (meters.length - 1) * yaesuMeterReadBytes + (yaesuMeterReadBytes / yaesuCompReadEvery).ceil();
+  }
+
   int _cycleBytesFor(Map<String, dynamic> config) =>
-      yaesuTxWatchBytes + meterNumbersFor(calibrationFor(config), capturing: config[yaesuMeterCaptureConfigKey] == true).length * yaesuMeterReadBytes;
+      yaesuTxWatchBytes + meterCycleBytesFor(calibrationFor(config), capturing: config[yaesuMeterCaptureConfigKey] == true);
 
   /// Per NODE, unlike the base rule, because the capture is per node: with
   /// it off — which is every radio but a developer's — a transmitting Yaesu
@@ -222,7 +230,7 @@ class Ft891Driver extends EquipmentDriver {
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
     ...keyerConfigElements(overrides),
-    // Developer mode only, and off by default: it puts three extra reads
+    // Developer mode only, and off by default: it puts five extra reads
     // on the wire for every transmission and shows a line of raw numbers
     // nobody but a developer can use. It exists to BUILD the scale that
     // will make them meters (yaesu_cat_codec.dart), not to be a feature.
@@ -273,6 +281,7 @@ const _metersByTable = <MeterTable, RadioMeter>{
   MeterTable.power: RadioMeter.powerOut,
   MeterTable.swr: RadioMeter.swr,
   MeterTable.alc: RadioMeter.alc,
+  MeterTable.compression: RadioMeter.compression,
   MeterTable.voltage: RadioMeter.supplyVolts,
 };
 
@@ -280,8 +289,24 @@ const _tablesByMeterNumber = <int, MeterTable>{
   yaesuMeterPowerOut: MeterTable.power,
   yaesuMeterSwr: MeterTable.swr,
   yaesuMeterAlc: MeterTable.alc,
+  yaesuMeterComp: MeterTable.compression,
   yaesuMeterVdd: MeterTable.voltage,
 };
+
+/// At most how many keyed polls go by between reads of COMP. The meter
+/// moves with every word, but what it is read for — whether the processor
+/// is set right — is judged from a sample every few polls, and reading it
+/// on every one would slow the SWR and power the operator is watching.
+const yaesuCompReadEvery = 4;
+
+/// How many keyed polls go by between COMP reads at [txInterval]: fewer
+/// as the polls slow, so a reading is always replaced within half of
+/// [meterLinger]. At an operator's slow interval, four polls apart would
+/// let the strip's COMP expire between reads and blink. The budget counts
+/// the one-in-[yaesuCompReadEvery] rate: an interval slow enough to read
+/// it more often has the wire to spare.
+int yaesuCompReadEveryAt(Duration txInterval) =>
+    (meterLinger.inMilliseconds ~/ 2 ~/ (txInterval.inMilliseconds < 1 ? 1 : txInterval.inMilliseconds)).clamp(1, yaesuCompReadEvery);
 
 /// The config key for the bench capture — see this driver's config field.
 const yaesuMeterCaptureConfigKey = 'yaesuMeterCapture';
@@ -535,7 +560,7 @@ class Ft891Session
     idleInterval: telemetryIntervalFor(_config, cycleBytes: _txWatchBytes, baudRate: serialBaudRateOrNull(_config)),
     txInterval: telemetryIntervalFor(
       _config,
-      cycleBytes: _txWatchBytes + Ft891Driver.meterNumbersFor(_calibration, capturing: _captureMeters).length * yaesuMeterReadBytes,
+      cycleBytes: _txWatchBytes + Ft891Driver.meterCycleBytesFor(_calibration, capturing: _captureMeters),
       baudRate: serialBaudRateOrNull(_config),
     ),
   );
@@ -549,13 +574,23 @@ class Ft891Session
   /// warned about, which is the one place a guess must not end up.
   void _pollTelemetry(bool transmitting) {
     _send(buildReadTransmitStatusCommand());
-    if (!transmitting) return;
+    if (!transmitting) {
+      // Every over reads COMP on its first poll: carried across the unkey,
+      // a short over could end before the count came round and show none.
+      _keyedPollsUntilComp = 0;
+      return;
+    }
     // Resolved per poll, not once: the tables load asynchronously, so a
     // session that came up first starts asking the moment they land.
+    final readComp = _captureMeters || _keyedPollsUntilComp == 0;
+    _keyedPollsUntilComp = readComp ? yaesuCompReadEveryAt(_telemetry.txInterval) - 1 : _keyedPollsUntilComp - 1;
     for (final meter in Ft891Driver.meterNumbersFor(_calibration, capturing: _captureMeters)) {
-      _send(buildReadMeterCommand(meter));
+      if (meter != yaesuMeterComp || readComp) _send(buildReadMeterCommand(meter));
     }
   }
+
+  /// Keyed polls left before the next COMP read — see [yaesuCompReadEveryAt].
+  int _keyedPollsUntilComp = 0;
 
   void _handleMeterReading(int meter, int level) {
     final table = _tablesByMeterNumber[meter];
@@ -1226,6 +1261,7 @@ class Ft891Session
   void startUpdates() {
     _framer.reset();
     _pollsUntilTunerRead = 0;
+    _keyedPollsUntilComp = 0;
     _pollsUntilPassbandRead = 0;
     _pollsUntilAntennaRead = 0;
     _send(buildAutoInformationCommand(true));

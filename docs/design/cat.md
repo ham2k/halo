@@ -2111,7 +2111,7 @@ generic Yaesu entry names none.
 | DXLab Commander | `CmdSendTX`, slowed after two unanswered | none: Commander publishes no meter message |
 | N3FJP | none: the API has no PTT read | none |
 | FlexRadio | `interlock state=`, PUSHED — costs nothing; it speaks for the whole radio, so a slice whose transmit flag (`tx=1`) is on another of the app's radios' slices — or a slice the radio does not have — reads it as receiving, and one keying takes the flag from there first; a flag on a slice no session reads is a split, left where it is | power out and SWR: the transmitter's `FWDPWR` (dBm, turned to watts) and `SWR` meters, from the VITA-49 meter stream that carries the slice's LEVEL; tenths, at most four a second |
-| Yaesu (FT-891) | `TX;`, polled | power out, SWR, ALC, volts — for a radio whose entry names a table |
+| Yaesu (FT-891) | `TX;`, polled | power out, SWR, ALC, volts, and COMP (`RM3`) on the first keyed poll of an over and one in four after it, closer together at a slow interval — for a radio whose entry names a table |
 | Yaesu (FT-817/857/897) | bit 7 of `F7`, polled | none: the PO meter is a 0-15 nibble and HI SWR is one bit, neither with a published scale |
 | Kenwood | the flag in `IF`, one place ahead of the mode; on a TX-500 in LAB599, `PT;` too, which still answers in DIG, where `IF` does not | for an entry whose calibration file scales them: the S-meter and power out from `SM0;`, SWR, COMP and ALC from a bare `RM;`; on the TX-500 line, volts from `VL;` — see below |
 

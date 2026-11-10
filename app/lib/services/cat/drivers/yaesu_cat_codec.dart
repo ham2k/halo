@@ -444,6 +444,10 @@ const yaesuMeterAlc = 4;
 const yaesuMeterPowerOut = 5;
 const yaesuMeterSwr = 6;
 
+/// The speech processor's compression — `RM3` in the FT-891's CAT manual,
+/// and the number Hamlib reads it from on every radio here.
+const yaesuMeterComp = 3;
+
 /// DC input voltage — on the FTDX10, which has it; the FT-891's table stops
 /// at 7 (ID) and answers this with nothing useful. Asked anyway during a
 /// capture: a radio that does not have the meter simply does not answer,
@@ -451,7 +455,7 @@ const yaesuMeterSwr = 6;
 const yaesuMeterVdd = 8;
 
 /// The meters a capture reads, in the order asked.
-const yaesuCaptureMeters = [yaesuMeterPowerOut, yaesuMeterSwr, yaesuMeterAlc, yaesuMeterVdd];
+const yaesuCaptureMeters = [yaesuMeterPowerOut, yaesuMeterSwr, yaesuMeterAlc, yaesuMeterComp, yaesuMeterVdd];
 
 String buildReadMeterCommand(int meter) => 'RM$meter;';
 

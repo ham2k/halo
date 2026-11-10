@@ -15,6 +15,7 @@
     - "New Serial over TCP connection for a radio behind a network serial bridge (Other…)"
     - "New meters for Kenwood TS-480, TS-590SG and TS-2000; S-meter on TX-500"
     - "Added Kenwood TS-2000 and TS-480HX to the radio list"
+    - "New COMP meter on the Radio panel for Yaesu radios"
 
 "192":
   changes:

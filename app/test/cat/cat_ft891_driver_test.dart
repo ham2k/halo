@@ -11,6 +11,7 @@
 // since. `hardwareVerified` is false for exactly that reason.
 
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
@@ -986,8 +987,10 @@ void main() {
         // The watch rides along with the meters: re-asking `TX;` is how the
         // unkey is noticed, and dropping it would leave the capture running
         // after the transmission ended.
-        // PO, SWR, ALC and — on an FTDX10, which has the meter — VDD.
-        expect(sink.sent, ['TX;', 'RM5;', 'RM6;', 'RM4;', 'RM8;']);
+        // PO, SWR, ALC, COMP and — on an FTDX10, which has the meter — VDD.
+        // COMP on every cycle here, not one in four: a capture is building
+        // its scale, and every reading skipped is one fewer point.
+        expect(sink.sent, ['TX;', 'RM5;', 'RM6;', 'RM4;', 'RM3;', 'RM8;']);
 
         sink.sent.clear();
         session.feed('TX0;');
@@ -1068,6 +1071,78 @@ void main() {
       session.feed('RM4064;');
       expect(sink.meterReports.length, 2);
       session.teardown();
+    });
+
+    test('COMP is read on one keyed poll in four, and shown in dB on its table', () {
+      // A sample every few polls is enough to judge the processor setting;
+      // read on every one, it would slow the SWR and power the operator is
+      // watching.
+      MeterCalibrations.instance.setForTesting({
+        'yaesu/ft-891': MeterCalibration.fromJson(
+          jsonDecode(File('lib/services/cat/drivers/info/yaesu/ft-891.json').readAsStringSync()) as Map<String, dynamic>,
+        ),
+      });
+      addTearDown(() => MeterCalibrations.instance.setForTesting({}));
+      expect(const Ft891Driver().telemetryMetersWith(const {meterInfoConfigKey: 'yaesu/ft-891'}), contains(RadioMeter.compression));
+
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = Ft891Session(sink, config: const {telemetryIntervalConfigKey: 200, meterInfoConfigKey: 'yaesu/ft-891'});
+        session.startUpdates();
+        session.feed('TX1;');
+        for (var i = 0; i < 7; i++) {
+          async.elapse(const Duration(milliseconds: 200));
+          session.feed('TX1;');
+        }
+        final polls = sink.sent.where((c) => c == 'RM5;').length;
+        expect(polls, greaterThanOrEqualTo(8));
+        expect(sink.sent.where((c) => c == 'RM3;').length, (polls / yaesuCompReadEvery).ceil());
+
+        session.feed('RM3135;');
+        expect(sink.meterReports.last, (RadioMeter.compression, 10.0));
+        session.teardown();
+      });
+    });
+
+    test('every over reads COMP on its first keyed poll, however the last one ended', () {
+      // Carried across the unkey, the count could leave a short over (a
+      // search-and-pounce call) without a single COMP read, and the slot
+      // would come and go from one over to the next.
+      MeterCalibrations.instance.setForTesting({
+        'yaesu/ft-891': MeterCalibration(
+          model: 'FT-891',
+          tables: const {
+            MeterTable.compression: [MeterPoint(0, 0.0), MeterPoint(220, 20.0)],
+          },
+        ),
+      });
+      addTearDown(() => MeterCalibrations.instance.setForTesting({}));
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = Ft891Session(sink, config: const {telemetryIntervalConfigKey: 200, meterInfoConfigKey: 'yaesu/ft-891'});
+        session.startUpdates();
+        session.feed('TX1;');
+        async.elapse(const Duration(milliseconds: 200));
+        session.feed('TX1;');
+        session.feed('TX0;');
+        async.elapse(const Duration(milliseconds: 200));
+        sink.sent.clear();
+        session.feed('TX1;');
+        expect(sink.sent, contains('RM3;'));
+        session.teardown();
+      });
+    });
+
+    test('at a slow interval COMP is read often enough never to expire from the strip', () {
+      // Four polls apart at 2.5 s is 10 s between reads, past the 8 s a
+      // reading stays on the strip: COMP would blink off on every fourth over.
+      // Only intervals inside that 8 s: past it, every meter expires between
+      // polls, COMP or not.
+      expect(yaesuCompReadEveryAt(const Duration(milliseconds: 200)), yaesuCompReadEvery);
+      for (final ms in [1500, 2500, 5000, 7900]) {
+        expect(yaesuCompReadEveryAt(Duration(milliseconds: ms)) * ms, lessThanOrEqualTo(meterLinger.inMilliseconds ~/ 2 + ms), reason: '$ms ms');
+        expect(yaesuCompReadEveryAt(Duration(milliseconds: ms)) * ms, lessThan(meterLinger.inMilliseconds), reason: '$ms ms');
+      }
     });
 
     test('a radio with no calibration reads no meters at all', () {
