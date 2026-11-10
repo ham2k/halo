@@ -107,7 +107,9 @@ String buildKenwoodReadInfoCommand() => 'IF;';
 /// command sets RF output power directly, not a percentage of some other
 /// maximum). Clamped rather than truncated: a value this driver has never
 /// seen a real radio reject beats a malformed command it silently ignores.
-String buildKenwoodSetPowerCommand(num watts) => 'PC${watts.round().clamp(0, 100).toString().padLeft(3, '0')};';
+/// The ceiling is the entry's rated output: 100 W but on a radio pinned
+/// higher, such as the TS-480HX's `PC005`–`PC200`.
+String buildKenwoodSetPowerCommand(num watts, {num maxWatts = 100}) => 'PC${watts.round().clamp(0, maxWatts.round()).toString().padLeft(3, '0')};';
 
 /// `AG0nnn;` and `RGnnn;`: the TS-590SG's and TS-480's AF and RF gain,
 /// 000–255. Elecraft's and Lab599's take other ranges, and are not sent

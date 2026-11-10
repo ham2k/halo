@@ -1644,7 +1644,7 @@ writing it:
 - **The K4** is the exception on the Kenwood driver: `PCX` reads real watts in explicit L/H/X ranges
   ([k4-cat.md](k4-cat.md)).
 - **Kenwood, FT-891, Icom CI-V, FlexRadio** represent power as a relative scale (Kenwood/FT-891's
-  `PC` 0-100; CI-V's 0-255 level; SmartSDR's `rfpower` 0-100) with no command that states the radio's
+  `PC` 0-100, a Kenwood's in watts up to its entry's `maxWatts`, 200 on the TS-480HX; CI-V's 0-255 level; SmartSDR's `rfpower` 0-100) with no command that states the radio's
   own maximum, on both reads and writes. Each driver documents its own assumption (see
   `civ_power.dart`'s `civAssumedMaxWatts`). The Icom CI-V driver is model-agnostic — the ceiling
   comes from `IcomCivSession.maxWatts`, sourced from the pairing's config rather than hardcoded — so

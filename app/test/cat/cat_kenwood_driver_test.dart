@@ -141,6 +141,7 @@ void main() {
     test('a power outside the documented range is clamped, not sent malformed', () {
       expect(buildKenwoodSetPowerCommand(150), 'PC100;');
       expect(buildKenwoodSetPowerCommand(-5), 'PC000;');
+      expect(buildKenwoodSetPowerCommand(250, maxWatts: 200), 'PC200;');
     });
   });
 
@@ -1254,6 +1255,19 @@ void main() {
         ts480.defaultTelemetryIntervalFor(const {'baudRate': 9600}),
         telemetryFloor(cycleBytes: kenwoodTxWatchBytes + kenwoodSMeterBytes + kenwoodMeterReadBytes, baudRate: 9600),
       );
+    });
+  });
+
+  group('Kenwood power', () {
+    test('the TS-480HX is set up to its 200 W; the SAT, and any entry naming no rating, stop at 100', () {
+      // Clamped at 100 for all, an HX operator asking for 150 W gets 100
+      // with nothing saying so.
+      for (final (key, sent) in [('ts480hx-serial', 'PC150;'), ('ts480-serial', 'PC100;'), ('kenwood-serial', 'PC100;')]) {
+        final sink = _FakeSink();
+        final type = EquipmentRegistry().typeFor(key)!;
+        (type.driver.createSession(sink, type.driverConfig(const {})) as KenwoodSession).setPower(150);
+        expect(sink.sent, [sent], reason: key);
+      }
     });
   });
 }

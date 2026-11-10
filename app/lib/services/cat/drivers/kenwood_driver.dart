@@ -46,6 +46,7 @@ import 'keyer_config.dart';
 import 'meter_calibration.dart';
 import 'optional_read.dart';
 import 'poll_config.dart';
+import 'rated_power_config.dart';
 import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
 
@@ -1041,7 +1042,7 @@ class KenwoodSession
       return;
     }
     if (!isK4) {
-      _send(buildKenwoodSetPowerCommand(watts));
+      _send(buildKenwoodSetPowerCommand(watts, maxWatts: ratedWattsFrom(_config)));
       return;
     }
     // Read the range each time: the operator can change to a transverter

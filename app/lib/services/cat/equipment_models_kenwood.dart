@@ -98,8 +98,8 @@ const ts480Model = EquipmentModel(
   ],
 );
 
-/// The TS-480HX: the SAT's CAT, at 200 W. A model of
-/// its own because its power meter's full scale is twice the SAT's.
+/// The TS-480HX: the SAT's CAT, at 200 W. A model of its own because its
+/// power meter's full scale, and its `PC` ceiling, are twice the SAT's.
 const ts480hxModel = EquipmentModel(
   key: 'ts480hx',
   manufacturer: kenwoodBrand,
@@ -111,7 +111,7 @@ const ts480hxModel = EquipmentModel(
       driver: KenwoodDriver(),
       transport: SerialTransport(),
       defaultConfig: {..._kenwoodRtsHigh, 'baudRate': KenwoodDriver.defaultBaudRate},
-      overrides: {..._ts480Overrides, meterInfoConfigKey: 'kenwood/ts-480hx'},
+      overrides: {..._ts480Overrides, meterInfoConfigKey: 'kenwood/ts-480hx', 'maxWatts': 200},
       notes: _kenwoodSerialNotes,
     ),
   ],
