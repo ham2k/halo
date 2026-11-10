@@ -67,6 +67,38 @@ class _Cat extends Fake implements CatService {
   EquipmentType? typeFor(EquipmentNode node) => _Transceiver();
 }
 
+class _Kind extends Fake implements EquipmentType {
+  _Kind(this.category);
+  @override
+  final String category;
+}
+
+/// A rotator and an antenna switch, each as the station's equipment holds it.
+class _Station extends Fake implements CatService {
+  final kinds = {'rot': kCategoryRotator, 'sw': kCategoryAntennaSwitch};
+  final states = {
+    'rot': const EquipmentState(status: EquipmentStatus.connected, rotator: RotatorPosition(azimuth: 120), rotatorTarget: RotatorPosition(azimuth: 180)),
+    'sw': const EquipmentState(
+      status: EquipmentStatus.connected,
+      switchAntennas: [
+        SwitchAntenna(key: '1', name: 'Yagi'),
+        SwitchAntenna(key: '4', name: 'Antenna_4', configured: false),
+      ],
+      switchPorts: [
+        SwitchPort(key: '1', label: 'A', selectedAntennaKey: '1', auto: true),
+        SwitchPort(key: '2', label: 'B', selectedAntennaKey: '4', auto: false),
+      ],
+    ),
+  };
+
+  @override
+  EquipmentNode? nodeFor(String uuid) => kinds.containsKey(uuid) ? EquipmentNode(uuid: uuid, typeKey: uuid) : null;
+  @override
+  EquipmentType? typeFor(EquipmentNode node) => _Kind(kinds[node.uuid]!);
+  @override
+  EquipmentState stateFor(String uuid) => states[uuid] ?? const EquipmentState();
+}
+
 class _Settings extends Fake implements SettingsService {
   final bool keyer;
   _Settings({this.keyer = true});
@@ -194,5 +226,26 @@ void main() {
     final before = source.dialState();
     cat.style = OperatingStyle.normal;
     expect(source.dialState(), isNot(before));
+  });
+
+  // A scene and the render beside it read a device the same way: `listEquipment` describes it.
+  test("a rotator gives where it points and where it is turning; a switch its ports by their keys", () {
+    final source = CatSpectrumSource(_Station());
+    final rotator = source.equipment('rot', 'rotator');
+    expect(rotator.numbers, {'connected': 1, 'azimuth': 120, 'targetAzimuth': 180, 'moving': 1});
+    expect(rotator.words, isEmpty);
+    final (:numbers, :words) = source.equipment('sw', 'antennaSwitch');
+    expect(numbers, {'connected': 1, '1.auto': 1, '2.auto': 0});
+    // Port 2 is on an antenna the operator never set up: `listEquipment` names none, so neither does this.
+    expect(words, {'1.antenna': '1', '1.antennaName': 'Yagi', '2.antenna': '4'});
+  });
+
+  test('a device of another kind than the source names reads as nothing', () {
+    // Read as a rotator, a switch would be a connected rotator that never turns.
+    final source = CatSpectrumSource(_Station());
+    for (final (id, kind) in [('sw', 'rotator'), ('rot', 'antennaSwitch'), ('nope', 'rotator')]) {
+      final readings = source.equipment(id, kind);
+      expect([readings.numbers, readings.words], [isEmpty, isEmpty], reason: '$id as $kind');
+    }
   });
 }

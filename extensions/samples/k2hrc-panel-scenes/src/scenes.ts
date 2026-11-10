@@ -443,6 +443,22 @@ function gridScene(b: FormState): PanelScene {
         pivot: [0, 0.5],
         scaleX: bind("drive", [0, 100], [0, 1]),
       },
+      // Ten segments drawn whole, lit a segment at a time from the left, the peak held a second.
+      {
+        id: "meter-peak",
+        cell: "meter",
+        x: 6,
+        y: 42,
+        width: wide - 12,
+        height: 4,
+        svg: svg(
+          Array.from({ length: 10 }, (_, i) => `<rect x="${(i * (wide - 12)) / 10}" width="${(wide - 12) / 10 - 2}" height="4" fill="#f7c576"/>`).join(""),
+          wide - 12,
+          4,
+        ),
+        pivot: [0, 0.5],
+        clipX: { value: "drive", scale: 0.1, truncate: true, input: [0, 10], output: [0, 1], hold: { ms: 1000 } },
+      },
       {
         id: "meter-caption",
         cell: "meter",

@@ -31,6 +31,17 @@ export interface PanelScene {
    */
   radio?: { node?: string }
   /**
+   * Named live sources, each feeding its readings under its own name, as `radio` does under
+   * `radio.`: a radio (`{ radio: id }`, or `{ radio: null }` for the designated one) gives every
+   * `PanelSceneRadioValue` and `PanelSceneRadioString` (`main.signalDbm`, `main.mode`); a rotator
+   * (`{ rotator: id }`, from `listEquipment`) the `PanelSceneRotatorValue` names; an antenna switch
+   * (`{ antennaSwitch: id }`) `connected`, and each port's `<port>.auto` (1 or 0) and, in `strings`,
+   * `<port>.antenna` and `<port>.antennaName`, by the port's `key` in `listEquipment()`, never its label. A name an identifier,
+   * not `radio`; at most 16. Reserved like the `radio.` names; needs `requiresRadioRead`. A reading
+   * the device has not given is missing, as a radio's is. Extension API 22.
+   */
+  sources?: Record<string, PanelSceneSource>
+  /**
    * A scene longer than its pane along `axis` (default `y`), scrolled by the app itself — wheel,
    * trackpad and drag, a drag begun on a button included — with no call to the extension. Scaled
    * to fill the pane across, it runs on past it along the axis. The position, in scene units from
@@ -70,6 +81,22 @@ export type PanelSceneRadioValue =
   | "radio.ptt"
   /** 1 while the radio is connected and answering, else 0. Extension API 13. */
   | "radio.connected"
+
+/** A named live source of a scene: see `PanelScene.sources`. Extension API 22. */
+export type PanelSceneSource = { radio: string | null } | { rotator: string } | { antennaSwitch: string }
+
+/** What a rotator source gives, under its name, as numbers. Extension API 22. */
+export type PanelSceneRotatorValue =
+  /** Where it points, in degrees from true north. */
+  | "azimuth"
+  /** Above the horizon, for an az/el rotator. */
+  | "elevation"
+  /** Where it was told to turn, until it arrives, is stopped or stalls. */
+  | "targetAzimuth"
+  /** 1 while turning toward a target, else 0. */
+  | "moving"
+  /** 1 while connected, else 0. */
+  | "connected"
 
 /**
  * Host-fed words of a scene with `radio`, in `strings`; empty when the radio has not said.
@@ -112,6 +139,13 @@ export interface SceneBinding {
   output: [number, number]
   /** Optional equally spaced output samples over input; replaces the output ramp. */
   samples?: number[]
+  /**
+   * A layer's binding only: a peak meter's hold. The highest reading stands for `ms`, then falls
+   * toward the live one at `fallPerSecond`, in the bound value's own units (by default the whole
+   * input range a second, never slower than the range in ten minutes), with no render. Needs a positive
+   * `scale` and no `modulo`; not on a `blocksPointer` layer's opacity. Extension API 22.
+   */
+  hold?: { ms: number; fallPerSecond?: number }
 }
 
 export interface PanelSceneLayer {
@@ -174,6 +208,14 @@ export interface PanelSceneLayer {
   scaleX?: SceneBinding
   scaleY?: SceneBinding
   opacity?: SceneBinding
+  /**
+   * The share of the layer shown across or down, 0 to 1, growing from `pivot` as a scale does but
+   * keeping the artwork's shape: a bar of LED segments lights segment by segment. With `scale` and
+   * `truncate` before the ramp, it steps a segment at a time. Its `output` and `samples` are shares
+   * from 0 to 1; not on a `blocksPointer` layer. Extension API 22.
+   */
+  clipX?: SceneBinding
+  clipY?: SceneBinding
   /** Drawn only while this holds. Extension API 13. */
   when?: SceneCondition
   /** Rotation and scale origin as fractions of this layer's dimensions; default [0.5, 0.5]. */
@@ -237,7 +279,7 @@ export type PanelSceneSpectrumNumber = number | string
  * `#AARRGGBB` with transparency. Defaults follow the app's theme.
  */
 export interface PanelSceneSpectrum {
-  /** A radio's id from `listRadios`. Omitted, the designated radio. */
+  /** A radio's id from `listRadios`, or the name of the scene's radio source (API 22). Omitted, the designated radio. */
   radio?: string
   /** Default `both`. `pan` is `spectrum`'s name before extension API 17. */
   display?: "both" | "spectrum" | "pan" | "waterfall"

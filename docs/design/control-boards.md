@@ -140,14 +140,14 @@ The first set:
 | Layout | Group (a nested grid), Spacer |
 | Panels | Embedded panel (§7) |
 
-Host additions the widgets may need, settled in the scene stage:
+Two scene features serve the meters:
 
-- A **reveal** binding (`clipX`/`clipY`, a fraction of the layer shown). With
-  `samples` it steps segment by segment, so an LED bar is two layers (dim and
-  lit) rather than one layer per segment, which 512 layers would not afford
-  across a board.
-- **Peak hold** as a binding modifier (`holdMs`), kept by the host. Without it
-  a peak needs a render per reading.
+- The **reveal** binding (`clipX`/`clipY`, the share of the layer shown, from
+  its pivot). With `scale` and `truncate` it steps segment by segment, so an
+  LED bar is two layers (dim and lit) rather than one layer per segment,
+  which 512 layers would not afford across a board.
+- **Peak hold**, a binding's `hold: { ms, fallPerSecond }`, kept by the host.
+  Without it a peak needs a render per reading.
 
 ## 5. Values
 

@@ -50,6 +50,12 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   List<Object?> dialState() => [live['frequencyHz'], words['mode']];
   @override
   Listenable get readingChanges => this;
+
+  @override
+  ({Map<String, num> numbers, Map<String, String> words}) equipment(String id, String kind) => (numbers: const {}, words: const {});
+
+  @override
+  Listenable get equipmentChanges => this;
   @override
   bool recenter(String uuid, int centerHz) => false;
   @override

@@ -33,7 +33,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 17 | `bandScope` as the band scope's kind, `spectrum` for its upper section where it took `pan`, and its `gestures`, default axis and `levelScale`, `vfoLabel`, `widthHz`, `stepHz` and `vfoHz`, `layers`, and a click's step that follows the zoom |
 | 19 | `radio.reportedFrequencyHz`, the radio's own report beside the dial |
 | 20 | the band scope's `minWidthHz` and `maxWidthHz`, its `vfoLabel`'s `arrow`, up to 512 of its `layers` and 256 `annotations`, and an annotation's `collapsed` |
-| 22 | the band scope's `window` and `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed one's `width: 'box'`, a zoom's `commit` of its middle as a pan, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click; `radio.compression`; `cells`, the `grid` and `cell` layout nodes, and a layout up to 12 deep and 512 nodes; a slider's or knob's `invertScroll` |
+| 22 | the band scope's `window` and `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed one's `width: 'box'`, a zoom's `commit` of its middle as a pan, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click; `radio.compression`; `cells`, the `grid` and `cell` layout nodes, and a layout up to 12 deep and 512 nodes; a slider's or knob's `invertScroll`; named `sources` for radios, rotators and antenna switches, a band scope's `radio` naming one; a layer's `clipX` and `clipY`, and a binding's `hold` |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -52,6 +52,7 @@ at install rather than showing the panel as an unknown kind.
 | `cells` | Optional, `[{ id, width, height }]` (API 22): pieces drawn at their own size, below. At most 256. Each needs a `layout` to place it |
 | `scroll` | Optional, `{ axis?, value, event? }` (API 12): a scene longer than its pane along `axis` (`y` by default), scrolled natively by wheel, trackpad and drag (a drag begun on a button included) with no call to the extension. It fills the pane across and runs on past it. The position in scene units is written to the scene value `value`; a render that changes that value moves the view, one that leaves it alone leaves the operator's scroll alone. `event` is sent as a `commit`, the position as `value`, once a scroll comes to rest. Layers and controls with `fixed: true` stay put over the pane, in pane coordinates; a drag along the scroll on a slider or knob that scrolls with the content is the scroll's, so make one that must be dragged `fixed`. Not with `layout` |
 | `radio` | Optional, `{ node? }` (API 7): the app feeds that radio's live readings into the reserved `radio.*` values. `node` is an id from `listRadios`; omitted, the logging radio |
+| `sources` | Optional (API 22): radios, rotators and antenna switches fed live under names of the scene's own; [Named sources](#named-sources) |
 
 Every rule here is checked when the scene arrives, and a scene that breaks
 one is refused whole rather than drawn in part: the pane says the panel
@@ -70,6 +71,19 @@ Rotation and scale turn about the layer's `pivot`, so `scaleX` with
 `transitionMs` eases a change. The app interpolates and clamps locally, so a
 meter needle, a chart marker or a callout follows a reading with no bridge
 call.
+
+`clipX` and `clipY` (API 22) show a share of the layer, 0 to 1, growing from
+its `pivot` as a scale does but keeping the artwork's shape: a bar of LED
+segments drawn whole lights segment by segment where a scale would squash
+it, and with `scale` and `truncate` before the ramp it steps a segment at a
+time. A binding's `hold` (API 22), `{ ms, fallPerSecond? }`, makes it a peak
+meter: the highest reading stands for `ms` after the reading drops, then
+falls toward it at `fallPerSecond` in the bound value's own units (by
+default the whole input range a second, and never slower than the whole
+range in ten minutes), with no render. A steady reading holds nothing. Only a
+layer's bindings hold, with a positive `scale` and no `modulo`. A reveal's
+`output` and `samples` are shares from 0 to 1, and a `blocksPointer` layer
+can neither reveal nor hold: it would take clicks where nothing is drawn.
 
 **Text layers** are the typography path; SVG `<text>` is not portable through
 the renderer. A text layer takes a `literal` or a bound `value` (a number
@@ -438,7 +452,8 @@ API 17 its kind is `spectrum` and its spectrum `pan`, names it still reads the
 same. It needs `requiresRadioRead`; without it, or on a host or radio without
 a scope, the control says why instead. Placed like a native control, it takes:
 
-- `radio` (an id from `listRadios`; omitted, the designated radio),
+- `radio` (an id from `listRadios`, or the name of one of the scene's radio
+  [sources](#named-sources); omitted, the designated radio),
   `display` (`both`, `spectrum`, `waterfall`), `split`, and `flow`, which way
   the waterfall moves (`down`, `up`, `right`, `left`), the spectrum on the
   side it comes from.
@@ -787,6 +802,39 @@ or no longer fresh, is missing: the bottom of a binding's range, and `—` in
 a text layer.
 `radio.secondsSinceTransmit` is re-read on its own for fifteen seconds after
 a transmission, so a hold or a fade bound to it ends on time.
+
+## Named sources
+
+A scene's `sources` (API 22) are radios, rotators and antenna switches the
+app feeds live, each under a name of the scene's choosing, as `radio` feeds
+the logging radio under `radio.`: a board with a meter for each of two
+radios reads `main.signalDbm` and `sub.signalDbm`, and one showing a
+switch's port reads `ant.1.antennaName`.
+
+```js
+sources: {
+  main: { radio: "…id from listRadios…" },   // or { radio: null }, the designated radio
+  rot:  { rotator: "…id from listEquipment…" },
+  ant:  { antennaSwitch: "…id from listEquipment…" },
+}
+```
+
+| Source | Gives |
+| --- | --- |
+| A radio | Every [radio value](#radio-values) and word, under its name: `main.signalDbm`, `main.frequencyHz`, `main.mode` |
+| A rotator | `azimuth`, `elevation`, `targetAzimuth` (where it was told to turn, until it gets there), `moving` (1 while turning there) and `connected`, as numbers |
+| An antenna switch | `connected`, and for each port by its `key` in `listEquipment()` (not its label: an Antenna Genius's ports are keyed `1` and `2`, labeled A and B), `<port>.auto` (1 or 0) as a number and `<port>.antenna` (the antenna's key) and `<port>.antennaName` (for an antenna the operator has set up) as words |
+
+A switch names its ports its own way, so any port name is accepted and one
+the switch does not have reads as missing, as does a source given the id of
+a device of another kind. A band scope's `radio` may name a radio source,
+never a rotator or a switch. A name is an identifier, never
+`radio`; a scene has at most 16 sources. Their names are reserved as the
+`radio.` ones are: a scene may not declare them, and an `onEvent` answer
+does not set them. They need `requiresRadioRead`, and they follow
+`readRadio()` and `listEquipment()`, so a scene and a render never disagree:
+a reading a device has not given, or a device that is not there, is
+missing.
 
 ## Examples
 

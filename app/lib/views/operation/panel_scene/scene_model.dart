@@ -14,6 +14,7 @@ part 'scene_model_spectrum_gestures.dart';
 part 'scene_model_spectrum_trace.dart';
 part 'scene_model_spectrum_annotations.dart';
 part 'scene_model_layout.dart';
+part 'scene_model_sources.dart';
 
 /// The values a scene that names a [PanelScene.radio] is given, live, by the
 /// host: its meters and whether it is transmitting (1 or 0). A missing reading
@@ -66,6 +67,13 @@ class PanelScene {
   final bool hasRadio;
   final String? radio;
 
+  /// Named live sources, by name: see [SceneSource].
+  final Map<String, SceneSource> sources;
+
+  /// The names under [sources] the scene reads, numbers and words: what the host feeds. A name a
+  /// source does not give is read as missing.
+  final Set<String> sourceValues = {}, sourceStrings = {};
+
   /// A key names one value: it is in [values] or here, never both, so a patch
   /// or an event can name it without saying which.
   final Map<String, String> strings;
@@ -93,6 +101,7 @@ class PanelScene {
       values = parseValues(json['values']),
       hasRadio = json['radio'] is Map,
       radio = json['radio'] is Map && (json['radio'] as Map)['node'] != null ? string(json['radio'] as Map, 'node') : null,
+      sources = SceneSource.parse(json['sources']),
       strings = parseStrings(json['strings'] ?? const {}),
       layers = items(json['layers'], 512, budget: PanelBudget.layers, what: 'layers').map(SceneLayer.new).toList(),
       controls = items(json['controls'] ?? [], 256, budget: PanelBudget.controls, what: 'controls').map(SceneControl.new).toList(),
@@ -118,7 +127,7 @@ class PanelScene {
     if (scroll case final s? when !values.containsKey(s.value)) throw const FormatException('Unknown scroll value');
     // Only the layout places a cell, and a scene that scrolls has none.
     if (cells.isNotEmpty && layout == null) throw const FormatException('Cells need a layout to place them');
-    bool reserved(String name) => sceneRadioValues.contains(name) || sceneRadioStrings.contains(name);
+    bool reserved(String name) => isHostValue(name);
     if (values.keys.any(reserved) || strings.keys.any(reserved)) {
       throw const FormatException('A scene value uses a name the host reserves');
     }
@@ -130,8 +139,18 @@ class PanelScene {
       if (fixed) throw FormatException('A cell cannot hold a fixed piece: $where');
     }
 
-    bool known(String name) => values.containsKey(name) || (hasRadio && sceneRadioValues.contains(name));
-    bool knownString(String name) => strings.containsKey(name) || (hasRadio && sceneRadioStrings.contains(name));
+    // A name under a source is the host's when that source gives it, and is remembered as read.
+    bool fromSource(String name, {required bool word}) {
+      final under = sourceOf(name);
+      if (under == null) return false;
+      final source = sources[under.source]!;
+      if (!(word ? source.givesString(under.rest) : source.givesNumber(under.rest))) return false;
+      (word ? sourceStrings : sourceValues).add(name);
+      return true;
+    }
+
+    bool known(String name) => values.containsKey(name) || (hasRadio && sceneRadioValues.contains(name)) || fromSource(name, word: false);
+    bool knownString(String name) => strings.containsKey(name) || (hasRadio && sceneRadioStrings.contains(name)) || fromSource(name, word: true);
     // Checked here, the one place that knows whether a name is a number or a string: a test written
     // for the other kind could never pass, and would hide its layer for good.
     void checkWhen(SceneCondition? when, String where) {
@@ -157,6 +176,17 @@ class PanelScene {
       layerCells[layer.id] = layer.cell;
       if (layer.fixed) fixedLayers.add(layer.id);
       checkCell(layer.cell, fixed: layer.fixed, where: layer.id);
+      // A blocking layer takes the clicks where it stands; revealed in part or held visible, it would
+      // take them where nothing is drawn, or after it has gone.
+      if (layer.blocksPointer && (layer.bindings.containsKey('clipX') || layer.bindings.containsKey('clipY') || layer.bindings['opacity']?.hold != null)) {
+        throw FormatException('A blocking layer can neither reveal nor hold: ${layer.id}');
+      }
+      for (final key in const ['clipX', 'clipY']) {
+        final clip = layer.bindings[key];
+        if (clip != null && [...clip.output, ...?clip.samples].any((share) => share < 0 || share > 1)) {
+          throw FormatException('A reveal shows a share from 0 to 1: ${layer.id}');
+        }
+      }
       for (final binding in layer.bindings.values) {
         if (!known(binding.value)) {
           throw const FormatException('Unknown bound value');
@@ -196,9 +226,14 @@ class PanelScene {
       if (control.opacityBinding != null && !known(control.opacityBinding!.value)) {
         throw FormatException('Unknown opacity value: ${control.id}');
       }
+      // A held peak is a layer's: a control faded by one would stay clickable while it lingers.
+      if (control.opacityBinding?.hold != null) throw FormatException('A control opacity cannot hold a peak: ${control.id}');
       checkWhen(control.when, control.id);
       if (control.hoverSet case final hover? when !values.containsKey(hover.value)) {
         throw FormatException('Unknown hoverSet value: ${control.id}');
+      }
+      if (sources[control.spectrum?.radio] case final source? when source.kind != 'radio') {
+        throw FormatException('A band scope radio names a source that is not a radio: ${control.id}');
       }
       if (control.spectrum?.valueNames.any((name) => !values.containsKey(name)) ?? false) {
         throw FormatException('Unknown spectrum value: ${control.id}');
@@ -341,8 +376,15 @@ class SceneBinding {
   final bool truncate;
   final List<double> input, output;
   final List<double>? samples;
+
+  /// A peak meter's hold: the highest reading stands for [ms] milliseconds, then falls toward the
+  /// live one at [fallPerSecond] of the bound value's own units a second; null, the binding
+  /// follows the reading.
+  final ({double ms, double fallPerSecond})? hold;
+
   SceneBinding(Map<dynamic, dynamic> json)
     : value = string(json, 'value'),
+      hold = json['hold'] == null ? null : _hold(json),
       scale = number(json, 'scale', fallback: 1),
       modulo = json['modulo'] == null ? null : number(json, 'modulo', min: 1e-9),
       truncate = json['truncate'] == true,
@@ -353,15 +395,25 @@ class SceneBinding {
       throw const FormatException('Invalid binding range');
     }
   }
-  double evaluate(Map<String, double> values) {
+  double evaluate(Map<String, double> values) => map(sourceOf(values));
+
+  /// The bound value as the ramp reads it: scaled, truncated and wrapped, in input units, or
+  /// negative infinity for a reading that is missing.
+  double sourceOf(Map<String, double> values) {
     final raw = values[value]!;
-    var source = raw * scale;
-    if (truncate) source = (source + 1e-7).floorToDouble();
-    if (modulo != null) source %= modulo!;
     // A radio value with no reading is negative infinity: the bottom of the
     // range, decided before any arithmetic — a negative scale would turn it
     // into the top — and never a NaN that would put a layer nowhere.
-    final t = raw == double.negativeInfinity || source.isNaN ? 0.0 : ((source - input[0]) / (input[1] - input[0])).clamp(0.0, 1.0);
+    if (raw == double.negativeInfinity) return raw;
+    var source = raw * scale;
+    if (truncate) source = (source + 1e-7).floorToDouble();
+    if (modulo != null) source %= modulo!;
+    return source;
+  }
+
+  /// [source], as [sourceOf] gives it, through the ramp or the samples.
+  double map(double source) {
+    final t = source == double.negativeInfinity || source.isNaN ? 0.0 : ((source - input[0]) / (input[1] - input[0])).clamp(0.0, 1.0);
     if (samples != null) {
       final position = t * (samples!.length - 1);
       final index = position.floor();
@@ -370,6 +422,23 @@ class SceneBinding {
     }
     return output[0] + (output[1] - output[0]) * t;
   }
+}
+
+({double ms, double fallPerSecond}) _hold(Map<dynamic, dynamic> json) {
+  final hold = _map(json, 'hold');
+  final range = pair(json['input']);
+  final scale = number(json, 'scale', fallback: 1);
+  // A peak is the highest reading: under a zero or negative scale it is not the top of the ramp,
+  // and under a modulo it wraps, so neither holds anything a meter would show.
+  if (scale <= 0 || json['modulo'] != null) throw const FormatException('A held binding has a positive scale and no modulo');
+  // The input range in the bound value's own units, which the fall is measured in.
+  final span = math.min((range[1] - range[0]) / scale, 1e12);
+  return (
+    ms: number(hold, 'ms', min: 0, max: 60000),
+    // By default the whole range in a second: as quick as a needle settles, slow enough to read.
+    // Never slower than the whole range in ten minutes, so a hold ends and its ticker stops.
+    fallPerSecond: number(hold, 'fallPerSecond', fallback: span, min: span / 600, max: 1e12),
+  );
 }
 
 /// A layer's or control's `when`: it is shown only while [value] passes the test — `is` one
@@ -492,7 +561,7 @@ class SceneLayer {
       text = json['text'] as Map<dynamic, dynamic>?,
       icon = json['icon'] is Map ? _layerIcon(json['icon'] as Map<dynamic, dynamic>) : null,
       bindings = {
-        for (final key in ['rotation', 'translateX', 'translateY', 'scaleX', 'scaleY', 'opacity'])
+        for (final key in ['rotation', 'translateX', 'translateY', 'scaleX', 'scaleY', 'opacity', 'clipX', 'clipY'])
           if (json[key] != null) key: SceneBinding(json[key] as Map<dynamic, dynamic>),
       },
       when = json['when'] == null ? null : SceneCondition(_map(json, 'when')),

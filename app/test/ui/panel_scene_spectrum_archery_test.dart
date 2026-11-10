@@ -52,6 +52,12 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   List<Object?> dialState() => const [];
   @override
   Listenable get readingChanges => this;
+
+  @override
+  ({Map<String, num> numbers, Map<String, String> words}) equipment(String id, String kind) => (numbers: const {}, words: const {});
+
+  @override
+  Listenable get equipmentChanges => this;
   @override
   void showWidth(String uuid, Object owner, int? widthHz) {}
   @override

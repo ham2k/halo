@@ -65,6 +65,12 @@ class _Source extends ChangeNotifier implements SceneSpectrumSource {
   List<Object?> dialState() => const [];
   @override
   Listenable get readingChanges => this;
+
+  @override
+  ({Map<String, num> numbers, Map<String, String> words}) equipment(String id, String kind) => (numbers: const {}, words: const {});
+
+  @override
+  Listenable get equipmentChanges => this;
   final recentered = <int>[];
   final widths = <(String, Object), int>{};
   @override

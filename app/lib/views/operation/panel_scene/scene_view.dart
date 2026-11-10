@@ -4,8 +4,10 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:halo_i18n/halo_i18n.dart';
@@ -91,20 +93,48 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
   /// CAT: nothing crosses the bridge, and the extension renders no faster for
   /// a meter that moves four times a second.
   void _readRadio() {
-    if (!widget.scene.hasRadio) return;
+    final scene = widget.scene;
     final source = widget.spectrum;
-    final uuid = source?.resolve(widget.scene.radio);
-    final readings = uuid == null ? const <String, num>{} : source!.readings(uuid);
-    for (final name in sceneRadioValues) {
-      _values[name] = readings[name.substring('radio.'.length)]?.toDouble() ?? double.negativeInfinity;
+    // The dock hands no source to a panel that may not read the radio: every reading is missing.
+    if (source == null && (scene.hasRadio || scene.sources.isNotEmpty) && !_saidUnread) {
+      _saidUnread = true;
+      debugPrint('[panels] a scene reads radios or equipment without requiresRadioRead; every reading will be missing');
     }
-    final words = uuid == null ? const <String, String>{} : source!.readingStrings(uuid);
-    for (final name in sceneRadioStrings) {
-      _strings[name] = words[name.substring('radio.'.length)] ?? '';
+    if (scene.hasRadio) {
+      final uuid = source?.resolve(scene.radio);
+      final readings = uuid == null ? const <String, num>{} : source!.readings(uuid);
+      for (final name in sceneRadioValues) {
+        _values[name] = readings[name.substring('radio.'.length)]?.toDouble() ?? double.negativeInfinity;
+      }
+      final words = uuid == null ? const <String, String>{} : source!.readingStrings(uuid);
+      for (final name in sceneRadioStrings) {
+        _strings[name] = words[name.substring('radio.'.length)] ?? '';
+      }
+    }
+    // Each named source fills the names the scene reads under it; one it does not give is missing.
+    final read = <String, ({Map<String, num> numbers, Map<String, String> words})>{};
+    ({Map<String, num> numbers, Map<String, String> words}) readingsOf(String name) => read.putIfAbsent(name, () {
+      final src = scene.sources[name]!;
+      if (source == null) return (numbers: const {}, words: const {});
+      if (src.kind != 'radio') return source.equipment(src.id!, src.kind);
+      final uuid = source.resolve(src.id);
+      return uuid == null ? (numbers: const {}, words: const {}) : (numbers: source.readings(uuid), words: source.readingStrings(uuid));
+    });
+    for (final name in scene.sourceValues) {
+      final under = scene.sourceOf(name)!;
+      _values[name] = readingsOf(under.source).numbers[under.rest]?.toDouble() ?? double.negativeInfinity;
+    }
+    for (final name in scene.sourceStrings) {
+      final under = scene.sourceOf(name)!;
+      _strings[name] = readingsOf(under.source).words[under.rest] ?? '';
     }
     // Nothing notifies as time passes, so a scene shortly after a transmission reads again on its
     // own: a hold bound to the seconds since, ends on time.
-    final since = _values['radio.secondsSinceTransmit'] ?? double.infinity;
+    final since = [
+      _values['radio.secondsSinceTransmit'],
+      for (final name in scene.sourceValues)
+        if (name.endsWith('.secondsSinceTransmit')) _values[name],
+    ].nonNulls.where((s) => s >= 0).fold(double.infinity, math.min);
     if (since >= 0 && since < 15) {
       _sinceTransmitTick ??= Timer(const Duration(milliseconds: 250), () {
         _sinceTransmitTick = null;
@@ -114,18 +144,24 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
   }
 
   Timer? _sinceTransmitTick;
+  bool _saidUnread = false;
 
   void _onRadioReading() {
     if (mounted) setState(_readRadio);
   }
 
-  void _listenToRadio(PanelSceneView? old, PanelSceneView next) {
-    final before = old != null && old.scene.hasRadio ? old.spectrum?.readingChanges : null;
-    final after = next.scene.hasRadio ? next.spectrum?.readingChanges : null;
-    if (identical(before, after)) return;
-    before?.removeListener(_onRadioReading);
-    after?.addListener(_onRadioReading);
+  void _listenToRadio(PanelSceneView? old, PanelSceneView? next) {
+    Listenable? radios(PanelSceneView? view) => view != null && _readsRadios(view.scene) ? view.spectrum?.readingChanges : null;
+    Listenable? equipment(PanelSceneView? view) => view != null && _readsEquipment(view.scene) ? view.spectrum?.equipmentChanges : null;
+    for (final (before, after) in [(radios(old), radios(next)), (equipment(old), equipment(next))]) {
+      if (identical(before, after)) continue;
+      before?.removeListener(_onRadioReading);
+      after?.addListener(_onRadioReading);
+    }
   }
+
+  static bool _readsRadios(PanelScene scene) => scene.hasRadio || scene.sources.values.any((s) => s.kind == 'radio');
+  static bool _readsEquipment(PanelScene scene) => scene.sources.values.any((s) => s.kind != 'radio');
 
   bool _visible(AppLifecycleState? state) => state == null || state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
 
@@ -272,7 +308,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
           setState(() {
             for (final MapEntry(:key, :value) in patch.entries) {
               // The host's alone: a patch would show a dial the radio is not on until its next reading.
-              if (_active.contains(key) || sceneRadioValues.contains(key) || sceneRadioStrings.contains(key)) continue;
+              if (_active.contains(key) || widget.scene.isHostValue(key)) continue;
               if (value is double && _values.containsKey(key)) _values[key] = value;
               if (value is String && _strings.containsKey(key)) _strings[key] = value;
             }
@@ -319,7 +355,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     _settle?.cancel();
     _scroller.dispose();
     _sinceTransmitTick?.cancel();
-    if (widget.scene.hasRadio) widget.spectrum?.readingChanges.removeListener(_onRadioReading);
+    _listenToRadio(widget, null);
     WidgetsBinding.instance.removeObserver(this);
     _queue.clear();
     _spectrumKeys.clear();
@@ -376,6 +412,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
       key: _spectrumKeys.putIfAbsent(control.id, GlobalKey.new),
       control: control,
       source: widget.spectrum,
+      radio: widget.scene.radioNodeFor(spec.radio),
       awake: _appVisible && DockPaneVisibility.of(context) && control.opacityAt(_values, _strings) > 0,
       values: _values,
       onHover: spec.hoverHz == null && spec.hoverDb == null

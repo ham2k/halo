@@ -73,6 +73,18 @@ abstract class SceneSpectrumSource {
   /// rate, so only what draws them listens.
   Listenable get readingChanges;
 
+  /// An antenna switch's or rotator's readings, by the name a scene's source
+  /// gives them after its own: a rotator's `sceneRotatorValues`, a switch's
+  /// `connected` and each port's `<port>.auto` as numbers, and its
+  /// `<port>.antenna` and `<port>.antennaName` as words. Empty for an id that
+  /// names no device of [kind] (`rotator` or `antennaSwitch`): a source given
+  /// a switch's id for a rotator reads as missing, not as half a rotator.
+  ({Map<String, num> numbers, Map<String, String> words}) equipment(String id, String kind);
+
+  /// Fires when [equipment] may have changed, a turning rotator's heading
+  /// included.
+  Listenable get equipmentChanges;
+
   /// Every radio's dial — frequency, mode, passband, transmitting, PTT,
   /// connection and its set's operating style, never a meter — as a list
   /// equal to an earlier answer exactly when none of them moved: what a
@@ -154,6 +166,10 @@ class SceneSpectrumView extends StatefulWidget {
   final SceneControl control;
   final SceneSpectrumSource? source;
 
+  /// The radio to show, as [SceneSpectrumSource.resolve] takes it: the control's own `radio`, or
+  /// the node its scene's radio source of that name gives (`PanelScene.radioNodeFor`).
+  final String? radio;
+
   /// Off while the pane or the app is hidden: the radio's scope stops with
   /// the last display that is actually seen.
   final bool awake;
@@ -194,6 +210,7 @@ class SceneSpectrumView extends StatefulWidget {
     super.key,
     required this.control,
     required this.source,
+    required this.radio,
     required this.awake,
     this.values = const {},
     this.onHover,
@@ -495,7 +512,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     // A scene that moves the window's middle takes it back from the operator's pan.
     if (was.centerHz != _spec.centerHz) _viewCenter = null;
     // A dial held for one radio is not another's.
-    if (old.source != widget.source || was.radio != _spec.radio) _heldVfo = null;
+    if (old.source != widget.source || old.radio != widget.radio) _heldVfo = null;
     if (was.palette != _spec.palette || !listEquals(was.waterfallColors, _spec.waterfallColors)) {
       _palette = _paletteFor(_spec);
       _clearRows();
@@ -542,7 +559,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   }
 
   void _subscribe() {
-    final resolved = widget.source?.resolve(_spec.radio);
+    final resolved = widget.source?.resolve(widget.radio);
     final identity = (source: widget.source, uuid: resolved);
     final changed = identity != _historyIdentity;
     if (changed) {
@@ -842,7 +859,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   @override
   Widget build(BuildContext context) {
     final source = widget.source;
-    final uuid = _uuid ?? source?.resolve(_spec.radio);
+    final uuid = _uuid ?? source?.resolve(widget.radio);
     final message = _sweepless
         ? null
         : source == null

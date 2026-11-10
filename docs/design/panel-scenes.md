@@ -188,6 +188,26 @@ The public contract is in [panel scenes](../extensions/scenes.md) and
   its next reading. The dial values follow `readRadio()`'s rules for what a
   radio that is not live still shows, so a scene and the render beside it
   never disagree.
+- **Named sources are the `radio` block, several times over.** A board shows
+  two radios, a rotator and a switch at once, and the single `radio` block
+  could feed one. Each source's readings land under its name by the same
+  path, through the same `SceneSpectrumSource` the panel's radio grant hands
+  the scene, which gives equipment readings beside the radio's as
+  `listEquipment` describes them. The view fills only the names the scene
+  reads, collected when it is parsed, so a switch port the scene names but
+  the switch lacks is a missing reading rather than a crash at the first
+  binding to look it up.
+- **A reveal is a clip, not a scale.** `scaleX` squashes a bar of LED
+  segments into narrower segments; `clipX` shows the segments whole, as many
+  as the reading reaches. Stepping a segment at a time is `scale` and
+  `truncate` on the binding, which already existed, rather than a second way
+  to quantise.
+- **A peak hold lives in the layer, on a ticker that stops.** A held peak is
+  state over time, so the layer keeping it owns a ticker, running only while
+  a held value stands above the live one; the hold counts from the last
+  moment the reading was at its peak, which keeps a steady reading from ever
+  starting it. A control's opacity may not hold: a control lingering visible
+  after its reading fell would still take clicks.
 - **Only a pending action disables action controls.** On desktop, pressing a
   button blurs the text field before the click completes, and the field sends
   its text; if any event in flight disabled buttons, that commit would swallow

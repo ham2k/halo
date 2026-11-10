@@ -158,6 +158,46 @@ class CatSpectrumSource implements SceneSpectrumSource {
   @override
   Listenable get readingChanges => Listenable.merge([cat.dialChanges, cat.vfoChanges]);
 
+  /// As `listEquipment` describes a device, so a scene and a render never disagree about one.
+  @override
+  ({Map<String, num> numbers, Map<String, String> words}) equipment(String id, String kind) {
+    final node = cat.nodeFor(id);
+    final category = node == null ? null : cat.typeFor(node)?.category;
+    final wanted = kind == 'rotator' ? kCategoryRotator : kCategoryAntennaSwitch;
+    if (category != wanted) return (numbers: const {}, words: const {});
+    final state = cat.stateFor(id);
+    final connected = state.status == EquipmentStatus.connected ? 1 : 0;
+    if (category == kCategoryRotator) {
+      final target = state.rotatorTarget;
+      return (
+        numbers: {
+          'connected': connected,
+          'azimuth': ?state.rotator?.azimuth,
+          'elevation': ?state.rotator?.elevation,
+          'targetAzimuth': ?target?.azimuth,
+          // Told to turn, until it arrives, is stopped or stalls.
+          'moving': target == null ? 0 : 1,
+        },
+        words: const {},
+      );
+    }
+    // Only the antennas the operator set up are named, as `listEquipment` names them.
+    final names = {
+      for (final antenna in state.switchAntennas)
+        if (antenna.configured) antenna.key: antenna.name,
+    };
+    return (
+      numbers: {'connected': connected, for (final port in state.switchPorts) '${port.key}.auto': port.auto ? 1 : 0},
+      words: {
+        for (final port in state.switchPorts)
+          if (port.selectedAntennaKey case final key?) ...{'${port.key}.antenna': key, '${port.key}.antennaName': ?names[key]},
+      },
+    );
+  }
+
+  @override
+  Listenable get equipmentChanges => cat;
+
   @override
   bool recenter(String uuid, int centerHz) {
     if (!canCommand || !(cat.spectrumCapabilitiesFor(uuid)?.canRecenter ?? false)) return false;

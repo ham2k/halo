@@ -185,6 +185,12 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   Map<String, String> readingStrings(String uuid) => const {'mode': 'USB'};
   @override
   Listenable get readingChanges => this;
+
+  @override
+  ({Map<String, num> numbers, Map<String, String> words}) equipment(String id, String kind) => (numbers: const {}, words: const {});
+
+  @override
+  Listenable get equipmentChanges => this;
   @override
   String? resolve(String? radio) => radio ?? 'radio-1';
   @override
