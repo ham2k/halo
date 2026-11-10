@@ -1,0 +1,12 @@
+{
+  "key": "control-board",
+  "name": "Control Boards",
+  "version": "0.1.0",
+  "api": 23,
+  "description": "Panels of buttons, meters and controls for the station, laid out on grids that reflow with the pane",
+  "icon": "view-dashboard-variant",
+  "experiments": ["boards"],
+  "hooks": ["panel"],
+  "requiresRadioRead": true,
+  "requiresRadioWrite": true
+}

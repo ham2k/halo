@@ -23,10 +23,12 @@
     "@ham2k/lib-qson-cabrillo": "^1.2.0",
     "@ham2k/lib-qson-tools": "^1.4.1",
     "i18next": "^23.11.5",
+    "js-yaml": "^4.3.2",
     "liquidjs": "^10.28.0"
   },
   "devDependencies": {
     "@ham2k/extension-sdk": "file:./sdk",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.13.3",
     "dts-bundle-generator": "^9.5.1",
     "esbuild": "^0.25.5",

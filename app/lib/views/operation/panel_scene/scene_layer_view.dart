@@ -51,7 +51,7 @@ class _SceneLayerViewState extends State<_SceneLayerView> with SingleTickerProvi
   }
 
   static bool _sameHold(SceneBinding a, SceneBinding b) =>
-      a.value == b.value && a.scale == b.scale && a.truncate == b.truncate && listEquals(a.input, b.input) && a.hold == b.hold;
+      a.value == b.value && a.offset == b.offset && a.scale == b.scale && a.truncate == b.truncate && listEquals(a.input, b.input) && a.hold == b.hold;
 
   @override
   void dispose() {
@@ -77,7 +77,7 @@ class _SceneLayerViewState extends State<_SceneLayerView> with SingleTickerProvi
       if (hold == null) continue;
       // Above the top of the range a reading draws the same as at the top: a peak held from higher
       // would fall for seconds with nothing on screen moving.
-      final live = math.min(widget.values[binding.value]!, binding.input[1] / binding.scale);
+      final live = math.min(widget.values[binding.value]!, binding.rawAt(binding.input[1]));
       var held = _held[key];
       if (held == null || live >= held.peak) {
         _held[key] = (peak: live, at: _now);
@@ -92,7 +92,7 @@ class _SceneLayerViewState extends State<_SceneLayerView> with SingleTickerProvi
       final standing = (_now - held.at).inMicroseconds / 1000 - hold.ms;
       final fallen = standing <= 0 ? held.peak : held.peak - hold.fallPerSecond * standing / 1000;
       // A held binding's scale is positive (the parser's rule), so the bottom of its range is this.
-      final floor = live.isFinite ? live : binding.input[0] / binding.scale;
+      final floor = live.isFinite ? live : binding.rawAt(binding.input[0]);
       // Not above the floor, NaN included: done, or a reading no fall would ever meet would keep
       // the ticker running.
       if (!(fallen > floor)) {

@@ -378,6 +378,10 @@ List<double> pair(Object? value) {
 
 class SceneBinding {
   final String value;
+
+  /// Added to the reading before [scale]: a ramp's steps counted from its own bottom rather than
+  /// from zero, so `truncate` lights an LED bar from -130 dBm a whole segment at a time.
+  final double offset;
   final double scale;
   final double? modulo;
   final bool truncate;
@@ -391,6 +395,7 @@ class SceneBinding {
 
   SceneBinding(Map<dynamic, dynamic> json)
     : value = string(json, 'value'),
+      offset = number(json, 'offset', fallback: 0),
       hold = json['hold'] == null ? null : _hold(json),
       scale = number(json, 'scale', fallback: 1),
       modulo = json['modulo'] == null ? null : number(json, 'modulo', min: 1e-9),
@@ -404,7 +409,7 @@ class SceneBinding {
   }
   double evaluate(Map<String, double> values) => map(sourceOf(values));
 
-  /// The bound value as the ramp reads it: scaled, truncated and wrapped, in input units, or
+  /// The bound value as the ramp reads it: offset, scaled, truncated and wrapped, in input units, or
   /// negative infinity for a reading that is missing.
   double sourceOf(Map<String, double> values) {
     final raw = values[value]!;
@@ -412,11 +417,15 @@ class SceneBinding {
     // range, decided before any arithmetic — a negative scale would turn it
     // into the top — and never a NaN that would put a layer nowhere.
     if (raw == double.negativeInfinity) return raw;
-    var source = raw * scale;
+    var source = (raw + offset) * scale;
     if (truncate) source = (source + 1e-7).floorToDouble();
     if (modulo != null) source %= modulo!;
     return source;
   }
+
+  /// The reading [input] stands for: [sourceOf] undone, but for `truncate` and `modulo`, which
+  /// have no one reading to undo to.
+  double rawAt(double input) => input / scale - offset;
 
   /// [source], as [sourceOf] gives it, through the ramp or the samples.
   double map(double source) {

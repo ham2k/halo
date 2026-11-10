@@ -34,7 +34,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 19 | `radio.reportedFrequencyHz`, the radio's own report beside the dial |
 | 20 | the band scope's `minWidthHz` and `maxWidthHz`, its `vfoLabel`'s `arrow`, up to 512 of its `layers` and 256 `annotations`, and an annotation's `collapsed` |
 | 22 | the band scope's `window` and `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed one's `width: 'box'`, a zoom's `commit` of its middle as a pan, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click; `radio.compression`; `cells`, the `grid` and `cell` layout nodes, and a layout up to 12 deep and 512 nodes; a slider's or knob's `invertScroll`; named `sources` for radios, rotators and antenna switches, a band scope's `radio` naming one; a layer's `clipX` and `clipY`, and a binding's `hold` |
-| 23 | the rotator map control (`rotatorMap`), a `nativeButton`'s `icon` variant, and an event's `bearing` and `km` |
+| 23 | the rotator map control (`rotatorMap`), a `nativeButton`'s `icon` variant, an event's `bearing` and `km`, and a binding's `offset` |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -68,7 +68,8 @@ A layer has an `id`, a rect (`x`, `y`, `width`, `height`) and one of `svg`,
 output: [lo, hi] }` ramps, or `samples` equally spaced over the input range.
 Rotation and scale turn about the layer's `pivot`, so `scaleX` with
 `pivot: [0, 0.5]` grows a bar's fill from its left end. Bindings accept
-`scale`, `truncate` and `modulo`, applied to the value before the ramp, and a
+`offset` (API 23), `scale`, `truncate` and `modulo`, applied to the value in
+that order before the ramp, and a
 `transitionMs` eases a change. The app interpolates and clamps locally, so a
 meter needle, a chart marker or a callout follows a reading with no bridge
 call.
@@ -77,7 +78,7 @@ call.
 its `pivot` as a scale does but keeping the artwork's shape: a bar of LED
 segments drawn whole lights segment by segment where a scale would squash
 it, and with `scale` and `truncate` before the ramp it steps a segment at a
-time. A binding's `hold` (API 22), `{ ms, fallPerSecond? }`, makes it a peak
+time, counting from the ramp's bottom with an `offset` of its own. A binding's `hold` (API 22), `{ ms, fallPerSecond? }`, makes it a peak
 meter: the highest reading stands for `ms` after the reading drops, then
 falls toward it at `fallPerSecond` in the bound value's own units (by
 default the whole input range a second, and never slower than the whole

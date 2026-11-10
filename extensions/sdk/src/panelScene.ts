@@ -131,6 +131,11 @@ export interface SceneCondition {
 /** A clamped, linear mapping. No expressions or extension code run per frame. */
 export interface SceneBinding {
   value: string
+  /**
+   * Added to the reading before `scale`, so a ramp's steps count from its own bottom: an LED bar
+   * from -130 dBm in 12-dB segments takes `offset: 130`. Extension API 23.
+   */
+  offset?: number
   /** Transform the source before mapping (for example selecting a display digit). */
   scale?: number
   truncate?: boolean

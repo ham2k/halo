@@ -486,6 +486,32 @@ void main() {
       expect(shown(tester), const Rect.fromLTWH(200, 0, 200, 20), reason: 'pivoted right, the right half');
     });
 
+    testWidgets('steps a whole segment at a time from its own bottom, with an offset', (tester) async {
+      // Without the offset, -130 dBm in 10-dB segments counts its steps from zero and lights
+      // part of a segment: floor(-7.3) is -8, two thirds of a segment off where it should be.
+      final station = _Station();
+      station.radios['rig-a'] = {'signalDbm': -73};
+      await show(
+        tester,
+        scene(
+          layers: [
+            bar({
+              'clipX': {
+                'value': 'main.signalDbm',
+                'offset': 130,
+                'scale': 0.1,
+                'truncate': true,
+                'input': [0, 12],
+                'output': [0, 1],
+              },
+            }),
+          ],
+        ),
+        station,
+      );
+      expect(shown(tester).width, closeTo(400 * 5 / 12, 0.01), reason: '57 dB above the bottom: five whole 10-dB segments');
+    });
+
     Map<String, dynamic> held() => bar({
       'translateX': {
         'value': 'main.signalDbm',
@@ -540,6 +566,18 @@ void main() {
       await show(tester, scene(layers: [rebound]), station);
       expect(x(tester), closeTo(50, 0.5));
       expect(tester.binding.hasScheduledFrame, isFalse);
+    });
+
+    testWidgets('lets go of a held peak when only its offset moves the ramp', (tester) async {
+      // A meter's range edited by its offset alone is another ramp: the old peak, on it, reads wrong.
+      final station = _Station();
+      station.radios['rig-a'] = {'signalDbm': -20};
+      await show(tester, scene(layers: [held()]), station);
+      final shifted = held();
+      (shifted['translateX'] as Map)['offset'] = 10;
+      station.radios['rig-a'] = {'signalDbm': -80};
+      await show(tester, scene(layers: [shifted]), station);
+      expect(x(tester), closeTo(60, 0.5), reason: '-80 + 10 is -70 on the ramp, not the old peak');
     });
 
     testWidgets('a steady reading never holds, and a missing one lets the peak fall to the bottom and stop', (tester) async {

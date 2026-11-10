@@ -190,3 +190,10 @@ experiments:
     name: Operation Lifecycle
     description: Start, pause and finish an operation, and see its state where the entry row sits.
     aliases: [lifecycle]
+  # Control boards (docs/design/control-boards.md): panels of buttons, meters
+  # and controls on grids, each placement's board written in its settings.
+  # Gated until the board editor lands, since writing YAML by hand is not
+  # how operators should meet it.
+  - key: boards
+    name: Control Boards
+    description: Place a Control Board panel and lay out its buttons and meters in its settings.

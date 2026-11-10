@@ -200,8 +200,9 @@ The public contract is in [panel scenes](../extensions/scenes.md) and
 - **A reveal is a clip, not a scale.** `scaleX` squashes a bar of LED
   segments into narrower segments; `clipX` shows the segments whole, as many
   as the reading reaches. Stepping a segment at a time is `scale` and
-  `truncate` on the binding, which already existed, rather than a second way
-  to quantise.
+  `truncate` on the binding, rather than a second way to quantise, with an
+  `offset` first so the steps count from the ramp's own bottom: truncated
+  from zero, -130 dBm in 10-dB segments lights two thirds of one.
 - **A peak hold lives in the layer, on a ticker that stops.** A held peak is
   state over time, so the layer keeping it owns a ticker, running only while
   a held value stands above the live one; the hold counts from the last

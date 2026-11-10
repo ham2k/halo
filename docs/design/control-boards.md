@@ -33,10 +33,10 @@ code through the SDK.
 
 | Piece | Owner | Why there |
 | --- | --- | --- |
-| Grids, cells, multi-source live values, new bindings | Host (Dart), scene API 22 | They are layout and painting. Reflow at native speed with no bridge call is the whole point |
+| Grids, cells, multi-source live values, new bindings | Host (Dart), scene API 22 and 23 | They are layout and painting. Reflow at native speed with no bridge call is the whole point |
 | Definition → scene compiler, widget library, Liquid, declarative actions | Core extension `control-board` (TypeScript), compiler also exported by the SDK | Liquid already lives in the extension runtime. Widgets as code emitting scene parts ship without a host release. Extensions get boards through the same compiler |
 | Board scripts (the JS subset) | Isolated context, §6 | Operator-written code must not see the extension's own globals |
-| Per-placement parameter form | Host, API 22 | A board's parameters differ per placement, and a descriptor's `form` is fixed |
+| Per-placement parameter form | Host, API 23 | A board's parameters differ per placement, and a descriptor's `form` is fixed |
 | Embedded panels | Host | They are the views' own widgets |
 | Editor | Host (Flutter) | HTML panels are unavailable on web and Linux, and the editor needs real drag and drop |
 
@@ -158,7 +158,7 @@ switch on each property.
 | --- | --- | --- | --- |
 | Literal | `20` | never | Fixed settings |
 | Text | `"{{ params.radio1.name }} — {{ op.station }}"` | at render, as Liquid | Labels, titles, menu items |
-| Live | `{ live: radio1.signalDbm }` | by the host as the source reports, no bridge call | Meters, readouts, lights, `when` |
+| Live | `value: radio1.signalDbm`, a widget's value naming a source's reading or a var | by the host as the source reports, no bridge call | Meters, readouts, lights, `when` |
 | Script | `{ js: "…" }` | at render, §6; **not in the first phase** | Anything computed |
 
 - **A meter is never driven by a script.** Polling an expression is a bridge
@@ -238,7 +238,7 @@ A grid slot can hold another panel: `{ type: panel, panel: map, span: [6, 4], se
 
 - **Only panels that say they are embeddable.** A panel opts in with an
   `embeddable` flag on its definition, native (`PanelDefinition`) or an
-  extension's descriptor (API 22). Maps, Weather, Solar, Clock, Rotator, a
+  extension's descriptor (API 23). Maps, Weather, Solar, Clock, Rotator, a
   scene panel: things that read well in a fixed box. Lists (QSOs, Spots,
   Operations) do not opt in: they need the pane's height and their own
   scrolling, and a fixed slot inside a scrolling board gives them neither.
@@ -256,34 +256,120 @@ A grid slot can hold another panel: `{ type: panel, panel: map, span: [6, 4], se
 - A map's own pan and zoom inside a scrolling board: the inner one wins while
   the pointer is over it, as nested scroll views do.
 
-## 8. The `.h2kboard` file
+## 8. The board format
+
+A board is YAML, in its pane's settings and in a `.h2kboard` file alike. The
+board extension reads it with the YAML core schema alone: no merge keys, no
+`!!omap`, nothing beyond JSON's types, since boards are text operators share;
+its text is capped at 256 KB, and its items at 1,024 counted each time an
+alias repeats them, so a few lines of nested aliases cannot make a board of
+millions.
+
+```yaml
+ham2k-board: 1
+name: Station
+sources:
+  rig: { radio: null }          # the designated radio; or a node id
+  rot: { rotator: "…id…" }
+vars:
+  drive: 40
+  details: false                # true/false are 1 and 0
+unit: [48, 48]
+gap: 4
+items:
+  - { type: needle, value: rig.signalDbm, min: -130, max: -10, label: S, hold: 800 }
+  - { type: ledBar, value: rig.powerOut, max: 100, hold: 1000, zones: [[80, error]] }
+  - { type: segmented, value: rig.mode, options: [{ value: CW }, { value: USB }],
+      onSelect: { setRadio: { mode: $value } } }
+  - type: group
+    title: Rotator
+    columns: 6
+    background: surfaceContainer
+    items:
+      - { type: readout, value: rot.azimuth, suffix: "°", label: Heading }
+      - { type: button, label: North, onPress: { turnRotator: { source: rot, azimuth: 0 } } }
+```
+
+- **Only the keys a thing takes.** A key a widget, grid or action does not
+  take is refused, naming the ones it does: a typo (`onpress`, `colour`)
+  would otherwise draw a board that quietly does less.
+- **The root and each group are grids**: `unit`, `gap`, `padding`,
+  `columns`, `title`, `background`, `border` (a theme role, or `#RRGGBB`),
+  `radius` and `items`. A group inherits its parent's unit and gap, and
+  takes no `span` or `when`.
+- **Every widget** takes a `type`, a `span` (each has a default) and a
+  `when`, a scene condition that hides the whole widget, except a widget
+  lit by a condition of its own (a toggle, a segmented choice, a button
+  with `active`): a scene tests one condition, and the `when` would take
+  the place of its own.
+- **A value** is `<source>.<reading>` or `var.<name>`. A reading the source
+  does not give, a var the board does not declare, or a word where a meter
+  needs a number is refused when the board is read, as is a condition whose
+  test does not suit its value (a number's `true` and `false` are 1 and 0),
+  or a widget missing the `value` or `var` it shows.
+- **Text** (`label`, `text`, `title`, an option's `label`) is Liquid,
+  rendered with the pane's template context; the panel declares the
+  triggers its templates need, and a template that cannot render is refused
+  naming its item.
+- **Widgets:** `label` (`text`, `style`, `align`, `color`), `readout`
+  (`value`, `decimals`, `scale`, `prefix`, `suffix`), `frequency` (`value`
+  in Hz), `button` (`onPress`, `active` a condition that lights it),
+  `toggle` (a `var` it flips, or an `on` condition and an `onPress`), `bar`
+  (`value`, `min`, `max`, `color`, `hold`; `adjustable` on a var, dragged by
+  its fill, its scroll inverted unless `invertScroll: false`), `ledBar`
+  (`segments`, `zones` `[[level, color]…]` rising, `hold`; whole segments
+  counted from its `min`), `needle` (`hold`, `minLabel`, `maxLabel`), `knob`
+  and `slider` (`var`, `min`, `max`, `step`, `onChange`), `menuButton`
+  (`items: [{ label, onSelect }]`), `segmented` (`value`, `options` as
+  `[{ value, label? }]` or bare values, `onSelect`; on a var it sets the
+  var), and `group`. A widget wider than its grid's `columns`, too small
+  for its parts (an LED segment under 3 pixels) or over 8192 pixels either
+  way, is refused, as is a board past a panel's budgets (512 layers, 256
+  controls and cells, 512 grids and widgets, 12 levels).
+- **Actions** (`onPress`, `onChange`, `onSelect`; one or a list):
+  `setRadio` (`source` a radio source, else the designated radio; `mode`,
+  upper-cased as radios report it, `frequencyHz`, `powerWatts`,
+  `tunerInline`, `startTune`, `keyerSpeedWpm`), `turnRotator` (`source`,
+  `azimuth`, `elevation`), `stopRotator`, `selectAntenna` (`source`,
+  `port`, `antenna`), `setVar` and `toggleVar`.
+  - `$value` is the control's own value, only where it has one: a knob's
+    or slider's `onChange`, a segmented choice's `onSelect`.
+  - A tune (`startTune`, `tunerInline`) puts a carrier on the air, so it
+    goes only on a press, never on a knob a wheel passes over; `startTune`
+    goes alone, as the host takes it. A frequency a knob or slider sets is
+    sent as a dial turning, which the app settles as the radio's own.
+  - Text is Liquid, and a number is a number as written: text that renders
+    empty or as a word is refused, never sent as 0, which would turn a
+    rotator north or a radio's power off.
+  - A host call is made under its own rules (`setRadio` by the radio's id
+    read just before, as the band scope does). The first one refused stops
+    the rest: its reason is a status-bar notice, the control goes back to
+    where the board has it, and the var it set is not kept. A refusal is
+    the operator's to read, not a failure for the app to report.
+- **Events carry a stamp of the board's text.** One sent from a board since
+  edited is refused rather than run on whatever item is at its place now.
+- **Vars** live per placement while the app runs, and start over when the
+  board is edited. An event's answer names only the vars it changed, so a
+  knob still under the operator's hand is not put back. *Open: whether
+  they persist (`kvSet` by instance id) once boards carry parameters.*
+- A board that cannot be read or compiled shows the reason in its pane, in
+  words that say where (`item 7.2`, counting from 1).
+
+### The `.h2kboard` file
+
+The same YAML, with a first line naming it and, from stage 3b, `params`:
 
 ```yaml
 # Ham2K Logger board
 ham2k-board: 1
 name: Station
-description: Main radio, amp and rotator
-uses: [radioWrite, equipmentWrite]
 params:
   radio1: { type: radio, label: Main transceiver }
   rot:    { type: rotator, label: Rotator }
 sources:
   radio1: { radio: "{{ params.radio1 }}" }
   rot:    { rotator: "{{ params.rot }}" }
-grid:
-  unit: [48, 48]
-  gap: 4
-  padding: 8
-  children:
-    - type: group
-      title: "{{ params.radio1.name }}"
-      columns: 8
-      style: { background: surfaceContainer, radius: 8 }
-      children:
-        - { type: needleMeter, value: { live: radio1.signalDbm }, scale: sUnits, span: [3, 2] }
-        - { type: ledBarMeter, value: { live: radio1.powerOut }, max: 100, zones: [[80, warn]], span: [5, 1] }
-        - { type: button, label: CW, onPress: { setRadio: { source: radio1, mode: CW } } }
-    - { type: rotatorCompass, source: rot, span: [3, 3] }
+items: [ … ]
 ```
 
 Parameter types: `radio`, `rotator`, `antennaSwitch`, `band`, `mode`,
@@ -291,15 +377,14 @@ Parameter types: `radio`, `rotator`, `antennaSwitch`, `band`, `mode`,
 (`$core.radios`, `$core.rotators`, `$core.antennaSwitches`) beside
 `$core.bands` and `$core.modes`.
 
-Reading follows the layout file's rules: YAML, refused with a readable
-reason, alias expansion and nesting capped. An imported board's parameters
-start empty, since another device's radio ids mean nothing here.
+An imported board's parameters start empty, since another device's radio
+ids mean nothing here.
 
 ## 9. Parameters, outside the editor
 
 Parameters are the board's settings an operator changes without editing it:
 which radio is *radio1*, which rotator, a callsign. A render result may
-carry a `form` (API 22) that replaces the descriptor's for that placement, the
+carry a `form` (API 23) that replaces the descriptor's for that placement, the
 way `triggers` already adds to it per placement. The board answers its
 parameters as that form, and the values land in the placement's config beside
 the definition. The operator reaches it from the **pane's menu**
@@ -345,11 +430,13 @@ Each is one branch, landed on its own.
      and peak hold.
 
    Each is proven with a hand-written scene in the SDK samples.
-3. **The board panel:** the `control-board` core extension, the definition
-   format, the compiler and the first widgets, Liquid, declarative actions,
-   *Blank* and *Sample* in the add-panel list, the per-placement parameter
-   form and system lists, the pane menu, `.h2kboard` import and export. Boards are edited
-   as YAML in the pane's settings at this point.
+3. **The board panel**, in two branches:
+   - **3a:** the `control-board` core extension behind the `boards`
+     experiment, the format (§8), the compiler and the widgets, Liquid,
+     declarative actions. Boards are written as YAML in the pane's settings.
+   - **3b:** per-placement parameters (the render result's `form`, the
+     system lists, `setParam`), the pane menu, `.h2kboard` import and
+     export, and the *Sample* station board.
 4. **The editor.**
 5. **Embedded panels:** the `embeddable` flag, the `PanelService` config
    seam, Map and Weather first.
