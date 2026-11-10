@@ -12,6 +12,7 @@
     - "Improved Station settings: connect buttons and live readings on inventory radios"
     - "Icom bandscope auto-adjust moved under the current radio's More details"
     - "Local spots are now off by default (Settings → Spotting)"
+    - "New Serial over TCP connection for a radio behind a network serial bridge (Other…)"
 
 "192":
   changes:

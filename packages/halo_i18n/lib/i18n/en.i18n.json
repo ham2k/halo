@@ -2150,6 +2150,8 @@
       "nameDescription": "What you call it — \"Left Radio\". Optional.",
       "transport": "Connection",
       "transportOther": "Other…",
+      "serialTcpNotes": "A network serial bridge (ser2net, a serial device server, socat) hands the radio's serial port to a TCP socket, and the app talks to the radio through it as through a cable. Enter the bridge's address and port, not the radio's.\n\n- **Raw mode only.** A bridge in telnet or RFC 2217 mode adds its own bytes to the stream, which the radio reads as garbage. In ser2net, make the connection's accepter plain `tcp`, with no `telnet`.\n- **The bridge sets the speed**, and it must match the radio's CAT rate, as with a cable. Set Speed under Advanced Settings to the same, so the app paces itself for that wire. A line the radio needs held, such as RTS on a Kenwood, is the bridge's to hold too.\n- **One client at a time.** Most bridges take one connection per port and close any other at once. If the connection opens and drops straight away, something else has the port: a logger, WSJT-X or rigctld at the station.\n- **The app waits half a second after connecting** before it sends anything, while the bridge opens the radio's port: a bridge drops what arrives before then.",
+      "serialTcpBaudRateDescription": "The speed the bridge runs the radio's serial port at: the radio's CAT rate. The bridge's own setting is what sets it; this tells the app how fast that wire is.",
       "moreBand": "More",
       "host": "Address",
       "hostDescription": "The radio's hostname or IP address on your network.",
@@ -2412,6 +2414,7 @@
         "wifi": "Network/WiFi",
         "bluetoothSerial": "Bluetooth Serial",
         "bleSerial": "Bluetooth LE",
+        "serialTcp": "Serial over TCP",
         "placeholder": "Placeholder",
         "usb": "USB",
         "everywareServer": "Through its Everyware server"

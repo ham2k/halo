@@ -2824,6 +2824,8 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get nameDescription => 'what you call it — "left radio". optional.';
 	@override String get transport => 'connection';
 	@override String get transportOther => 'other…';
+	@override String get serialTcpNotes => 'a network serial bridge (ser2net, a serial device server, socat) hands the radio\'s serial port to a tcp socket, and the app talks to the radio through it as through a cable. enter the bridge\'s address and port, not the radio\'s.\n\n- **raw mode only.** a bridge in telnet or rfc 2217 mode adds its own bytes to the stream, which the radio reads as garbage. in ser2net, make the connection\'s accepter plain `tcp`, with no `telnet`.\n- **the bridge sets the speed**, and it must match the radio\'s cat rate, as with a cable. set speed under advanced settings to the same, so the app paces itself for that wire. a line the radio needs held, such as rts on a kenwood, is the bridge\'s to hold too.\n- **one client at a time.** most bridges take one connection per port and close any other at once. if the connection opens and drops straight away, something else has the port: a logger, wsjt-x or rigctld at the station.\n- **the app waits half a second after connecting** before it sends anything, while the bridge opens the radio\'s port: a bridge drops what arrives before then.';
+	@override String get serialTcpBaudRateDescription => 'the speed the bridge runs the radio\'s serial port at: the radio\'s cat rate. the bridge\'s own setting is what sets it; this tells the app how fast that wire is.';
 	@override String get moreBand => 'more';
 	@override String get host => 'address';
 	@override String get hostDescription => 'the radio\'s hostname or ip address on your network.';
@@ -4791,6 +4793,7 @@ class _Translations$settings$station$transports$qrp extends Translations$setting
 	@override String get wifi => 'network/wifi';
 	@override String get bluetoothSerial => 'bluetooth serial';
 	@override String get bleSerial => 'bluetooth le';
+	@override String get serialTcp => 'serial over tcp';
 	@override String get placeholder => 'placeholder';
 	@override String get usb => 'usb';
 	@override String get everywareServer => 'through its everyware server';
@@ -6812,6 +6815,8 @@ extension on TranslationsQrp {
 			'settings.station.nameDescription' => 'what you call it — "left radio". optional.',
 			'settings.station.transport' => 'connection',
 			'settings.station.transportOther' => 'other…',
+			'settings.station.serialTcpNotes' => 'a network serial bridge (ser2net, a serial device server, socat) hands the radio\'s serial port to a tcp socket, and the app talks to the radio through it as through a cable. enter the bridge\'s address and port, not the radio\'s.\n\n- **raw mode only.** a bridge in telnet or rfc 2217 mode adds its own bytes to the stream, which the radio reads as garbage. in ser2net, make the connection\'s accepter plain `tcp`, with no `telnet`.\n- **the bridge sets the speed**, and it must match the radio\'s cat rate, as with a cable. set speed under advanced settings to the same, so the app paces itself for that wire. a line the radio needs held, such as rts on a kenwood, is the bridge\'s to hold too.\n- **one client at a time.** most bridges take one connection per port and close any other at once. if the connection opens and drops straight away, something else has the port: a logger, wsjt-x or rigctld at the station.\n- **the app waits half a second after connecting** before it sends anything, while the bridge opens the radio\'s port: a bridge drops what arrives before then.',
+			'settings.station.serialTcpBaudRateDescription' => 'the speed the bridge runs the radio\'s serial port at: the radio\'s cat rate. the bridge\'s own setting is what sets it; this tells the app how fast that wire is.',
 			'settings.station.moreBand' => 'more',
 			'settings.station.host' => 'address',
 			'settings.station.hostDescription' => 'the radio\'s hostname or ip address on your network.',
@@ -7068,11 +7073,12 @@ extension on TranslationsQrp {
 			'settings.station.transports.tci' => 'tci',
 			'settings.station.transports.secureNetwork' => 'secure network/wifi',
 			'settings.station.transports.usbSerial' => 'usb serial',
-			'settings.station.transports.wifi' => 'network/wifi',
-			'settings.station.transports.bluetoothSerial' => 'bluetooth serial',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.transports.wifi' => 'network/wifi',
+			'settings.station.transports.bluetoothSerial' => 'bluetooth serial',
 			'settings.station.transports.bleSerial' => 'bluetooth le',
+			'settings.station.transports.serialTcp' => 'serial over tcp',
 			'settings.station.transports.placeholder' => 'placeholder',
 			'settings.station.transports.usb' => 'usb',
 			'settings.station.transports.everywareServer' => 'through its everyware server',
@@ -7581,11 +7587,11 @@ extension on TranslationsQrp {
 			'commands.noOperationOpen' => 'that command needs an open operation',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'don\'t know how to mark a \'${kind}\'',
 			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
+			_ => null,
+		} ?? switch (path) {
 			'commands.goUnknown' => ({required Object to}) => 'don\'t know how to go to \'${to}\'',
 			'commands.goBlocked' => 'close the open dialog first',
 			'commands.operationAlreadyStarted' => 'this operation already has a start marker',
-			_ => null,
-		} ?? switch (path) {
 			'commands.couldNotOpenLocation' => 'added the break, but could not open the location screen',
 			'commands.noTestOperations' => 'no test operations to purge',
 			'commands.purgeTestsUnavailable' => 'purgetests needs to show a confirmation dialog, which isn\'t available here',

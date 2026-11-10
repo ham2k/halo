@@ -50,6 +50,7 @@ import 'transports/bluetooth_serial_transport.dart';
 import 'transports/placeholder_transport.dart';
 import 'transports/icom_network_transport.dart';
 import 'transports/sdr_usb_transport.dart';
+import 'transports/serial_tcp_transport.dart';
 import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
 import 'transports/everyware_transport.dart';
@@ -155,14 +156,16 @@ class EquipmentModel {
   final String category;
 
   /// At least one. Order is what the transport picker offers, then the
-  /// derived variants: Bluetooth LE for a model with a serial one, and the
-  /// placeholder last for a model that [offersPlaceholder].
+  /// derived variants: Bluetooth LE and Serial over TCP for a model with a
+  /// serial one, and the placeholder last for a model that
+  /// [offersPlaceholder].
   final List<EquipmentVariant> _variants;
 
   List<EquipmentVariant> get variants {
     if (!offersPlaceholder) return _variants;
     final ble = bleSerialVariantFor(this);
-    return [..._variants, ?ble, placeholderVariantFor(key)];
+    final serialTcp = serialTcpVariantFor(this);
+    return [..._variants, ?ble, ?serialTcp, placeholderVariantFor(key)];
   }
 
   /// Every real transceiver can be run as the placeholder radio. Not the
@@ -250,7 +253,7 @@ class EquipmentModel {
   }
 
   /// Whether [variant] is one the catalogue derives for every radio of its
-  /// kind (Bluetooth LE for each serial radio) rather than one this model
+  /// kind (Bluetooth LE and Serial over TCP for each serial radio) rather than one this model
   /// declares. The editor keeps these behind its Other menu: they are the
   /// same handful on every radio, and as tabs they would bury the ways this
   /// one is actually connected. The placeholder is derived too but is not
@@ -293,6 +296,50 @@ EquipmentVariant? bleSerialVariantFor(EquipmentModel model) => _bleSerialVariant
 });
 
 final _bleSerialVariants = <String, EquipmentVariant?>{};
+
+/// A real transceiver's serial pairing, reached through a bridge that hands
+/// the port's bytes to a TCP socket (ser2net in raw mode, a serial device
+/// server): the same driver and the driver's own pins and prefills, and of
+/// the port's only its speed — no port to pick and no RTS/DTR, since the
+/// bridge holds the wire. The speed ([serialTcpLinkBaudKey]) is prefilled,
+/// restricted and pinned exactly as on the serial pairing, for
+/// [bleSerialVariantFor]'s reason: the wire behind the bridge is the radio's
+/// 9600 or 38400, however fast the network in front of it. A field rather
+/// than a pin, unlike Bluetooth LE: a bridge runs at whatever the operator
+/// set it to, and a module's speed is the module's. Null for a model with no
+/// serial variant. Key `<model>-serial-tcp`, stable, since a node stores it.
+///
+/// Every model, for the same reason as Bluetooth LE: a bridge carries any
+/// radio's serial CAT.
+EquipmentVariant? serialTcpVariantFor(EquipmentModel model) => _serialTcpVariants.putIfAbsent(model.key, () {
+  final serial = model._variants.where((v) => v.transportKey == SerialTransport.transportKey).firstOrNull;
+  if (serial == null) return null;
+  final driverKeys = serial.driver.recognizedConfigKeys;
+  Map<String, dynamic> driverOnly(Map<String, dynamic> config) => {
+    for (final entry in config.entries)
+      if (driverKeys.contains(entry.key)) entry.key: entry.value,
+  };
+  Map<String, dynamic> linkSpeed(Map<String, dynamic> config) => {
+    ...driverOnly(config),
+    if (config.containsKey('baudRate')) serialTcpLinkBaudKey: config['baudRate'],
+  };
+  return EquipmentVariant(
+    key: '${model.key}-serial-tcp',
+    driver: serial.driver,
+    transport: const SerialTcpTransport(),
+    defaultConfig: linkSpeed(serial.defaultConfig),
+    overrides: linkSpeed(serial.overrides),
+    restrictions: linkSpeed(serial.restrictions),
+    extraValidate: serial.extraValidate,
+    notes: _serialTcpNotes,
+  );
+});
+
+final _serialTcpVariants = <String, EquipmentVariant?>{};
+
+List<Map<String, dynamic>> _serialTcpNotes() => [
+  {'type': 'markdown', 'collapsible': true, 'title': t.settings.station.troubleshootingNotes, 'text': t.settings.station.serialTcpNotes},
+];
 
 /// A model bound to one of its transports — what a configured node points at,
 /// and the whole of what [CatService] and the Station panel need to connect,
@@ -504,6 +551,7 @@ String? transportLabelFor(String transportKey) {
     SdrUsbTransport.transportKey => labels.usb,
     BluetoothSerialTransport.transportKey => labels.bluetoothSerial,
     BleSerialTransport.transportKey => labels.bleSerial,
+    SerialTcpTransport.transportKey => labels.serialTcp,
     IcomNetworkTransport.transportKey => labels.wifi,
     PlaceholderTransport.transportKey => labels.placeholder,
     _ => null,
@@ -526,6 +574,7 @@ String? transportIconNameFor(String transportKey) => switch (transportKey) {
   SerialTransport.transportKey || SdrUsbTransport.transportKey => 'usb-port',
   BluetoothSerialTransport.transportKey || BleSerialTransport.transportKey => 'bluetooth',
   TcpTransport.transportKey ||
+  SerialTcpTransport.transportKey ||
   UdpTransport.transportKey ||
   IcomNetworkTransport.transportKey ||
   K4RemoteTransport.transportKey ||
@@ -644,6 +693,7 @@ class EquipmentRegistry {
             SerialTransport.transportKey: const SerialTransport(),
             BluetoothSerialTransport.transportKey: const BluetoothSerialTransport(),
             BleSerialTransport.transportKey: const BleSerialTransport(),
+            SerialTcpTransport.transportKey: const SerialTcpTransport(),
             IcomNetworkTransport.transportKey: const IcomNetworkTransport(),
             PlaceholderTransport.transportKey: const PlaceholderTransport(),
             SdrUsbTransport.transportKey: const SdrUsbTransport(),
@@ -673,10 +723,10 @@ class EquipmentRegistry {
   /// cannot connect — without it, its editor has no connection to show and
   /// nothing to move the node to.
   ///
-  /// On iOS a radio with no pairing left but its placeholder is not offered
-  /// at all: an iPhone reaches a radio over the network or Bluetooth LE, and
-  /// a catalogue full of rigs that can only ever be placeholders there reads
-  /// as a list of radios the app connects to. Elsewhere the placeholder alone
+  /// On iOS a radio with no pairing left but its placeholder (and Serial over
+  /// TCP, see below) is not offered at all: an iPhone reaches a radio over the
+  /// network or Bluetooth LE, and a catalogue full of rigs that can only ever
+  /// be placeholders there reads as a list of radios the app connects to. Elsewhere the placeholder alone
   /// still keeps a radio listed — on web it is how an operator names a
   /// networked rig on the log.
   List<EquipmentType> offeredVariants(EquipmentModel model, {required bool tx500Experiment, EquipmentType? current}) {
@@ -685,8 +735,17 @@ class EquipmentRegistry {
         if (typeFor(variant.key) case final type?)
           if (type == current || type.isSupportedOnThisPlatform && (tx500Experiment || !isBehindTx500Experiment(type))) type,
     ];
-    final placeholderOnly = model.offersPlaceholder && offered.length == 1 && offered.single.key == placeholderVariantFor(model.key).key;
-    if (placeholderOnly && offered.single != current && !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) return const [];
+    // Serial over TCP does not count toward keeping a radio listed there: a
+    // bridge's socket reaches any serial radio, and an iPhone's catalogue of
+    // every serial rig on that strength alone would read as one it connects
+    // to. A node already on it keeps it.
+    final placeholder = placeholderVariantFor(model.key).key;
+    final reachable = [
+      for (final type in offered)
+        if (type.key != placeholder && type.transportKey != SerialTcpTransport.transportKey) type,
+    ];
+    final placeholderOnly = model.offersPlaceholder && reachable.isEmpty && !offered.contains(current);
+    if (placeholderOnly && !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) return const [];
     return offered;
   }
 

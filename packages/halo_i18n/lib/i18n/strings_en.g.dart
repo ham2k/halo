@@ -6119,6 +6119,12 @@ class Translations$settings$station$en {
 	/// en: 'Other…'
 	String get transportOther => 'Other…';
 
+	/// en: 'A network serial bridge (ser2net, a serial device server, socat) hands the radio's serial port to a TCP socket, and the app talks to the radio through it as through a cable. Enter the bridge's address and port, not the radio's. - **Raw mode only.** A bridge in telnet or RFC 2217 mode adds its own bytes to the stream, which the radio reads as garbage. In ser2net, make the connection's accepter plain `tcp`, with no `telnet`. - **The bridge sets the speed**, and it must match the radio's CAT rate, as with a cable. Set Speed under Advanced Settings to the same, so the app paces itself for that wire. A line the radio needs held, such as RTS on a Kenwood, is the bridge's to hold too. - **One client at a time.** Most bridges take one connection per port and close any other at once. If the connection opens and drops straight away, something else has the port: a logger, WSJT-X or rigctld at the station. - **The app waits half a second after connecting** before it sends anything, while the bridge opens the radio's port: a bridge drops what arrives before then.'
+	String get serialTcpNotes => 'A network serial bridge (ser2net, a serial device server, socat) hands the radio\'s serial port to a TCP socket, and the app talks to the radio through it as through a cable. Enter the bridge\'s address and port, not the radio\'s.\n\n- **Raw mode only.** A bridge in telnet or RFC 2217 mode adds its own bytes to the stream, which the radio reads as garbage. In ser2net, make the connection\'s accepter plain `tcp`, with no `telnet`.\n- **The bridge sets the speed**, and it must match the radio\'s CAT rate, as with a cable. Set Speed under Advanced Settings to the same, so the app paces itself for that wire. A line the radio needs held, such as RTS on a Kenwood, is the bridge\'s to hold too.\n- **One client at a time.** Most bridges take one connection per port and close any other at once. If the connection opens and drops straight away, something else has the port: a logger, WSJT-X or rigctld at the station.\n- **The app waits half a second after connecting** before it sends anything, while the bridge opens the radio\'s port: a bridge drops what arrives before then.';
+
+	/// en: 'The speed the bridge runs the radio's serial port at: the radio's CAT rate. The bridge's own setting is what sets it; this tells the app how fast that wire is.'
+	String get serialTcpBaudRateDescription => 'The speed the bridge runs the radio\'s serial port at: the radio\'s CAT rate. The bridge\'s own setting is what sets it; this tells the app how fast that wire is.';
+
 	/// en: 'More'
 	String get moreBand => 'More';
 
@@ -10676,6 +10682,9 @@ class Translations$settings$station$transports$en {
 	/// en: 'Bluetooth LE'
 	String get bleSerial => 'Bluetooth LE';
 
+	/// en: 'Serial over TCP'
+	String get serialTcp => 'Serial over TCP';
+
 	/// en: 'Placeholder'
 	String get placeholder => 'Placeholder';
 
@@ -12940,6 +12949,8 @@ extension on Translations {
 			'settings.station.nameDescription' => 'What you call it — "Left Radio". Optional.',
 			'settings.station.transport' => 'Connection',
 			'settings.station.transportOther' => 'Other…',
+			'settings.station.serialTcpNotes' => 'A network serial bridge (ser2net, a serial device server, socat) hands the radio\'s serial port to a TCP socket, and the app talks to the radio through it as through a cable. Enter the bridge\'s address and port, not the radio\'s.\n\n- **Raw mode only.** A bridge in telnet or RFC 2217 mode adds its own bytes to the stream, which the radio reads as garbage. In ser2net, make the connection\'s accepter plain `tcp`, with no `telnet`.\n- **The bridge sets the speed**, and it must match the radio\'s CAT rate, as with a cable. Set Speed under Advanced Settings to the same, so the app paces itself for that wire. A line the radio needs held, such as RTS on a Kenwood, is the bridge\'s to hold too.\n- **One client at a time.** Most bridges take one connection per port and close any other at once. If the connection opens and drops straight away, something else has the port: a logger, WSJT-X or rigctld at the station.\n- **The app waits half a second after connecting** before it sends anything, while the bridge opens the radio\'s port: a bridge drops what arrives before then.',
+			'settings.station.serialTcpBaudRateDescription' => 'The speed the bridge runs the radio\'s serial port at: the radio\'s CAT rate. The bridge\'s own setting is what sets it; this tells the app how fast that wire is.',
 			'settings.station.moreBand' => 'More',
 			'settings.station.host' => 'Address',
 			'settings.station.hostDescription' => 'The radio\'s hostname or IP address on your network.',
@@ -13196,11 +13207,12 @@ extension on Translations {
 			'settings.station.transports.tci' => 'TCI',
 			'settings.station.transports.secureNetwork' => 'Secure Network/WiFi',
 			'settings.station.transports.usbSerial' => 'USB Serial',
-			'settings.station.transports.wifi' => 'Network/WiFi',
-			'settings.station.transports.bluetoothSerial' => 'Bluetooth Serial',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.transports.wifi' => 'Network/WiFi',
+			'settings.station.transports.bluetoothSerial' => 'Bluetooth Serial',
 			'settings.station.transports.bleSerial' => 'Bluetooth LE',
+			'settings.station.transports.serialTcp' => 'Serial over TCP',
 			'settings.station.transports.placeholder' => 'Placeholder',
 			'settings.station.transports.usb' => 'USB',
 			'settings.station.transports.everywareServer' => 'Through its Everyware server',
@@ -13709,11 +13721,11 @@ extension on Translations {
 			'commands.noOperationOpen' => 'That command needs an open operation',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'Don\'t know how to mark a \'${kind}\'',
 			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
+			_ => null,
+		} ?? switch (path) {
 			'commands.goUnknown' => ({required Object to}) => 'Don\'t know how to go to \'${to}\'',
 			'commands.goBlocked' => 'Close the open dialog first',
 			'commands.operationAlreadyStarted' => 'This operation already has a start marker',
-			_ => null,
-		} ?? switch (path) {
 			'commands.couldNotOpenLocation' => 'Added the break, but could not open the location screen',
 			'commands.noTestOperations' => 'No Test Operations to purge',
 			'commands.purgeTestsUnavailable' => 'PURGETESTS needs to show a confirmation dialog, which isn\'t available here',

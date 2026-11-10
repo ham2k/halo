@@ -27,6 +27,7 @@ import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transports/ble_serial_transport.dart';
 import 'package:ham2k_logger/services/cat/transports/none_transport.dart';
+import 'package:ham2k_logger/services/cat/transports/serial_tcp_transport.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' as native show SerialTransport;
 
@@ -251,7 +252,7 @@ void main() {
     // the derived ones it shares a mechanism with.
     for (final type in registry.types) {
       final behindOther = type.model.offersBehindOther(type.variant);
-      expect(behindOther, type.transportKey == BleSerialTransport.transportKey, reason: type.key);
+      expect(behindOther, type.transportKey == BleSerialTransport.transportKey || type.transportKey == SerialTcpTransport.transportKey, reason: type.key);
     }
   });
 
@@ -460,6 +461,53 @@ void main() {
       'tentec-599-ble',
       'tentec-565-ble',
       'tentec-566-ble',
+      // And again over a network serial bridge (ser2net and the like).
+      'ft891-serial-tcp',
+      'ft991a-serial-tcp',
+      'ft710-serial-tcp',
+      'ftdx10-serial-tcp',
+      'ftx1-serial-tcp',
+      'ft450-serial-tcp',
+      'ftdx3000-serial-tcp',
+      'ft950-serial-tcp',
+      'ftdx1200-serial-tcp',
+      'ft2000-serial-tcp',
+      'ftdx5000-serial-tcp',
+      'ft817-serial-tcp',
+      'ft857-serial-tcp',
+      'ft897-serial-tcp',
+      'q900-serial-tcp',
+      'yaesu-generic-serial-tcp',
+      'ic705-serial-tcp',
+      'ic7300-serial-tcp',
+      'ic7300mk2-serial-tcp',
+      'ic706mkiig-serial-tcp',
+      'ic7100-serial-tcp',
+      'ic7200-serial-tcp',
+      'ic7610-serial-tcp',
+      'ic7760-serial-tcp',
+      'ic9700-serial-tcp',
+      'ic905-serial-tcp',
+      'ic7850-serial-tcp',
+      'ic7851-serial-tcp',
+      'x6100-serial-tcp',
+      'g90-serial-tcp',
+      'icom-generic-serial-tcp',
+      'qmx-serial-tcp',
+      'fx4cr-serial-tcp',
+      'qcx-serial-tcp',
+      'kx2-serial-tcp',
+      'kx3-serial-tcp',
+      'k4-serial-tcp',
+      'elecraft-generic-serial-tcp',
+      'ts590sg-serial-tcp',
+      'ts480-serial-tcp',
+      'kenwood-generic-serial-tcp',
+      'tx500-serial-tcp',
+      'tx500mp-serial-tcp',
+      'tentec-599-serial-tcp',
+      'tentec-565-serial-tcp',
+      'tentec-566-serial-tcp',
     });
   });
 
@@ -666,6 +714,21 @@ void main() {
       'x6100-ble': 10,
       'g90-ble': 20,
       'ic705-ble': 10,
+      // And over a network serial bridge, for the same reason.
+      'ic7300-serial-tcp': 100,
+      'ic7300mk2-serial-tcp': 100,
+      'ic706mkiig-serial-tcp': 100,
+      'ic7100-serial-tcp': 100,
+      'ic7200-serial-tcp': 100,
+      'ic7610-serial-tcp': 100,
+      'ic7760-serial-tcp': 200,
+      'ic9700-serial-tcp': 100,
+      'ic905-serial-tcp': 10,
+      'ic7850-serial-tcp': 200,
+      'ic7851-serial-tcp': 200,
+      'x6100-serial-tcp': 10,
+      'g90-serial-tcp': 20,
+      'ic705-serial-tcp': 10,
     };
     final named = registry.types.where((type) => type.driver.key == 'icom-civ' && !type.key.startsWith('icom-generic-'));
     expect(named.map((type) => type.key), unorderedEquals(rated.keys));

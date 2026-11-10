@@ -297,7 +297,7 @@ void main() {
   group('the connection tabs', () {
     String label(String typeKey) => services.cat.registry.typeFor(typeKey)!.transportLabel;
 
-    testWidgets('a radio offers its own ways in and the placeholder; Bluetooth LE waits behind Other', (tester) async {
+    testWidgets('a radio offers its own ways in and the placeholder; the generated pairings wait behind Other', (tester) async {
       // The trap: every pairing the catalogue derives as a tab of its own,
       // the same few on every radio, burying the ways this one connects.
       await services.settings.setExperimentEnabled('500mp' /* stored key, see experiments.yaml */, true);
@@ -308,6 +308,7 @@ void main() {
       expect(find.text(label('ft817-placeholder')), findsOneWidget);
       expect(find.text(st.transportOther), findsOneWidget);
       expect(find.text(label('ft817-ble')), findsNothing, reason: 'in the menu, not a tab');
+      expect(find.text(label('ft817-serial-tcp')), findsNothing, reason: 'in the menu, not a tab');
 
       await tester.tap(find.text(st.transportOther));
       // The menu is placed a frame after it opens; a tap before then lands
@@ -321,7 +322,7 @@ void main() {
       expect(find.text(label('ft817-ble')), findsOneWidget, reason: 'the pick is a tab now');
       double left(String text) => tester.getTopLeft(find.text(text)).dx;
       expect(left(label('ft817-ble')), lessThan(left(label('ft817-placeholder'))), reason: 'among the real connections, ahead of "no control"');
-      expect(find.text(st.transportOther), findsNothing, reason: 'nothing is left behind it');
+      expect(find.text(st.transportOther), findsOneWidget, reason: 'Serial over TCP still waits behind it');
 
       // Back to USB: the picked pairing stays a tab, so a second look at it
       // costs no second trip through the menu.
@@ -340,7 +341,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text(label('ft817-ble')), findsOneWidget);
-      expect(find.text(t.settings.station.transportOther), findsNothing, reason: 'its one extra is already a tab');
+      expect(find.text(t.settings.station.transportOther), findsOneWidget, reason: 'Serial over TCP still waits behind it');
     });
 
     testWidgets("an antenna's bands come straight after its name, under no band", (tester) async {
@@ -362,9 +363,14 @@ void main() {
       expect(find.text(st.moreBand), findsNothing);
     });
 
-    testWidgets('with EXP 500MP off there is no Other, since nothing waits behind it', (tester) async {
+    testWidgets('with EXP 500MP off, Other offers Serial over TCP and not Bluetooth LE', (tester) async {
+      // The traps: the ungated bridge pairing hidden with the gated one, or
+      // the gated one let through with it.
       await pick(tester, 'FT-817', t.settings.station.models.ft817);
-      expect(find.text(t.settings.station.transportOther), findsNothing);
+      await tester.tap(find.text(t.settings.station.transportOther));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text(label('ft817-serial-tcp')), findsOneWidget);
       expect(find.text(label('ft817-ble')), findsNothing);
     });
   });

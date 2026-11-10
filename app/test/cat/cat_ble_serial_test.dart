@@ -506,7 +506,10 @@ void main() {
         expect(registry.offeredVariants(ic705Model, tx500Experiment: false), isNotEmpty);
         expect(registry.offeredVariants(placeholderRadioModel, tx500Experiment: false), isNotEmpty);
         final saved = registry.typeFor(placeholderVariantFor(ft891Model.key).key);
-        expect(registry.offeredVariants(ft891Model, tx500Experiment: false, current: saved), [saved]);
+        // A radio already added keeps every pairing iOS can connect: Serial
+        // over TCP does not bring a radio into the catalogue, but it is a
+        // way to connect one that is there.
+        expect(registry.offeredVariants(ft891Model, tx500Experiment: false, current: saved), [registry.typeFor('ft891-serial-tcp'), saved]);
 
         debugDefaultTargetPlatformOverride = TargetPlatform.android;
         expect(registry.offeredVariants(ft891Model, tx500Experiment: false), isNotEmpty);

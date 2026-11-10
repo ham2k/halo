@@ -135,7 +135,7 @@ Two consequences worth stating, because both are load-bearing:
 - **The editor's tabs are the model's own pairings; the derived ones wait behind Other.** The
   connection choice shows the variants a model declares, then the placeholder, as tabs. A variant
   the registry derives for every radio of its kind (`EquipmentModel.offersBehindOther` — Bluetooth
-  LE today) sits in the menu of a last **Other…** tab instead: the same few on every radio would
+  LE and Serial over TCP) sits in the menu of a last **Other…** tab instead: the same few on every radio would
   otherwise bury the ways this one is connected. The menu opens under its tab. A pick from it
   becomes a tab, ahead of the placeholder, for as long as the editor is open, and a node already
   on one opens with it as a tab. The menu lists only what is not a tab yet, and Other goes once nothing is left behind it — or
@@ -824,6 +824,41 @@ Mode 4 alone.
   around the operator.
 - **Not on web.** The plugin is kept off that build, as for peer sync; the transport reports itself
   unsupported there and its variants are not offered.
+
+## Serial over TCP
+
+A network serial bridge — ser2net in raw mode, a serial device server in its TCP-server mode,
+socat — hands a radio's serial port to a TCP socket, which is how a remote station's radio is
+reached when nothing at the station speaks a network protocol of its own (a K3, an FT-891).
+`SerialTcpTransport` is the TCP transport under its own key and label, so the editor files it
+with the derived pairings behind Other rather than beside a radio's own network pairing.
+
+- **Every serial radio gets it, derived**, as for Bluetooth LE: `serialTcpVariantFor` gives each
+  real transceiver with a serial variant a `<model>-serial-tcp` one, with the same driver and the
+  driver's own pins, prefills and restrictions, and of the port's only its speed
+  (`serialTcpLinkBaudKey`, the serial pairing's `baudRate`): prefilled with the radio's serial
+  default, under Advanced Settings, so a driver that paces by baud paces for the wire behind the
+  bridge rather than for the network in front of it. A field rather than Bluetooth LE's pin: a
+  bridge runs at whatever its operator set, and that speed is never sent anywhere. Not gated: nothing about
+  a raw socket is new to the app. The keys are derived but persisted, so the shipped-key test
+  lists them.
+- **Its port has its own key** (`serialTcpPort`): the serial pairing keeps the port's name under
+  `port`, and a radio with its own network pairing keeps its LAN port under `tcpPort` — a K4's
+  9200 has no business in a bridge's box, and a bridge has no standard port to prefill.
+- **Raw bytes only.** Telnet and RFC 2217 framing would reach the driver as garbage, and nothing
+  here negotiates them; the pairing's notes tell the operator to set the bridge to raw. RTS, DTR
+  and the real speed are the bridge's to set.
+- **Not a reason to list a radio on iOS.** An iPhone has no serial ports, and a serial-only radio
+  stays out of its catalogue (`offeredVariants`) even though a bridge could reach it; a node
+  already on Serial over TCP keeps it.
+- **A bridge loses what arrives while it opens the radio's port**, so the connection stays quiet
+  for `serialTcpSettle` (half a second) after the accept. What a driver sends first is its
+  one-shot setup — a K3's `AI2;`, a K4's `K40;K31;` — and nothing sends it again: lost, a K3 is
+  followed only at poll rate, and a K4 rejects every `IF` reply. A K3 behind ser2net at a remote
+  station answered `FA`, `MD`, `IF` and `PC` in raw mode, 60–160 ms apart over the internet, and
+  lost the first command after a connect; the app followed it on this pairing.
+- **Most bridges take one client per port** and close any other at once. Such a connection reads
+  as connected and then dropped, with no reason given — the same as on every TCP pairing.
 
 ## Platforms
 
