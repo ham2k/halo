@@ -14,6 +14,7 @@ part 'scene_model_spectrum_gestures.dart';
 part 'scene_model_spectrum_trace.dart';
 part 'scene_model_spectrum_annotations.dart';
 part 'scene_model_layout.dart';
+part 'scene_model_rotator.dart';
 part 'scene_model_sources.dart';
 
 /// The values a scene that names a [PanelScene.radio] is given, live, by the
@@ -246,6 +247,12 @@ class PanelScene {
       }
       checkCell(control.cell, fixed: control.fixed, where: control.id);
       if (control.cell != null && control.rect == null) throw FormatException('A control in a cell needs a rect: ${control.id}');
+      if (control.rotatorMap?.valueNames.any((name) => !values.containsKey(name)) ?? false) {
+        throw FormatException('Unknown rotator map value: ${control.id}');
+      }
+      if (control.rotatorMap?.statusNames.any((name) => !strings.containsKey(name)) ?? false) {
+        throw FormatException('Unknown rotator map status string: ${control.id}');
+      }
       // Only a rect puts a control over the artwork, so only a rect gives it
       // a place among the layers, and only among the layers it is drawn with.
       if (control.after != null && (control.rect == null || !layerCells.containsKey(control.after) || layerCells[control.after] != control.cell)) {
@@ -659,6 +666,9 @@ const _nativeKinds = {
   // Painted by the host from the radio's sweeps, which never cross the
   // bridge; its event carries the frequency clicked, as `value`.
   'spectrum': SceneBinds.none,
+  // Painted by the host from a rotator's heading; its event carries the
+  // bearing clicked, as `value`.
+  'rotatorMap': SceneBinds.none,
 };
 
 /// `bandScope` is the band scope control's name from extension API 17;
@@ -712,6 +722,9 @@ class SceneControl {
   /// Set on a `spectrum` control, and only on one.
   final SceneSpectrumSpec? spectrum;
 
+  /// Set on a `rotatorMap` control, and only on one.
+  final SceneRotatorSpec? rotatorMap;
+
   /// A drawn control's `hoverSet`: while the pointer is over it, the scene
   /// value [hoverSet.value] reads [hoverSet.to], set by the host with no call
   /// to the extension, so artwork bound to it lights up under the pointer.
@@ -742,6 +755,7 @@ class SceneControl {
             }, isYAxis: true),
       after = json['after'] == null ? null : string(json, 'after'),
       spectrum = _kindOf(json['kind']) == 'spectrum' ? SceneSpectrumSpec(json) : null,
+      rotatorMap = json['kind'] == 'rotatorMap' ? SceneRotatorSpec(json) : null,
       hoverSet = json['hoverSet'] is Map
           ? (value: string(json['hoverSet'] as Map<dynamic, dynamic>, 'value'), to: number(json['hoverSet'] as Map<dynamic, dynamic>, 'to'))
           : null,
@@ -762,7 +776,7 @@ class SceneControl {
           : bounds(json),
       multi = json['multi'] == true,
       disabled = json['disabled'] == true,
-      variant = _oneOf(json, 'variant', const ['filled', 'tonal', 'outlined', 'text']),
+      variant = _oneOf(json, 'variant', const ['filled', 'tonal', 'outlined', 'text', 'icon']),
       icon = json['icon'] == null ? null : string(json, 'icon'),
       placeholder = json['placeholder'] == null ? null : string(json, 'placeholder'),
       style = _oneOf(json, 'style', panelTextRoles),
@@ -804,6 +818,8 @@ class SceneControl {
         ((kind == 'nativeButton' || (kind == 'nativeChip' && value == null)) && event == null && menu == null) ||
         (kind == 'nativeText' && event != null) ||
         !only(json['variant'], {'nativeButton'}) ||
+        // An icon-only button with no icon would draw nothing to press.
+        (json['variant'] == 'icon' && json['icon'] == null) ||
         !only(icon, {'nativeButton', 'nativeChip'}) ||
         !only(placeholder, {'nativeTextField', 'nativeDropdown'}) ||
         !only(style, {'nativeText'}) ||
@@ -818,7 +834,8 @@ class SceneControl {
         (json['valueY'] != null && kind != 'knob') ||
         // An event carries no other mark of which axis moved: the second needs its own.
         (!isYAxis && json['valueY'] != null && json['event'] != null && (json['eventY'] == null || json['eventY'] == json['event'])) ||
-        SceneSpectrumSpec.keys.any((key) => !only(json[key], {'spectrum'}))) {
+        SceneSpectrumSpec.keys.any((key) => !only(json[key], {'spectrum', if (SceneRotatorSpec.sharedKeys.contains(key)) 'rotatorMap'})) ||
+        SceneRotatorSpec.keys.any((key) => !only(json[key], {'rotatorMap'}))) {
       throw FormatException('Invalid scene control: $id');
     }
   }

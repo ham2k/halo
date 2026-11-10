@@ -63,7 +63,7 @@ import { adoptExtensionTimers, clearInterval, clearTimeout, setInterval, setTime
  * `^1.<api>.0` range names the oldest API an extension needs and admits every
  * later one.
  */
-export const API_VERSION = 22
+export const API_VERSION = 23
 
 export * from "./types.ts"
 export * from "./hookCategories.ts"
@@ -401,6 +401,10 @@ export const host = {
   /** Stops a rotator where it is. Never paced. `requiresRadioWrite`; extension API 22. */
   async stopRotator(args: { id: string }): Promise<StationEquipmentResult> {
     return (await hostCallFn()("stopRotator", { ...args })) as StationEquipmentResult
+  },
+  /** Connects or disconnects an antenna switch or a rotator, as the station's own plug does. `requiresRadioWrite`; extension API 23. */
+  async setEquipmentConnection(args: { id: string; connected: boolean }): Promise<StationEquipmentResult> {
+    return (await hostCallFn()("setEquipmentConnection", { ...args })) as StationEquipmentResult
   },
   /**
    * Writes any command in the radio's own protocol — one that transmits included — and collects the

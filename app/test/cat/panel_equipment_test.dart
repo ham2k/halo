@@ -330,6 +330,34 @@ void main() {
     expect((await equipment.setRotator({'id': node.uuid, 'azimuth': 90, 'elevation': 400}))['reason'], 'invalid');
   });
 
+  // A rotator map's connect button acts on whichever devices it shows; one
+  // that also reached a radio would drop the CAT link from a rotator panel.
+  test('connects and disconnects a switch or a rotator, and nothing else', () async {
+    final node = await cat.addNode(typeKey: 'test-rotator-type', config: {'host': 'rotator.local'});
+    expect(equipment.setConnection({'id': node.uuid, 'connected': true})['accepted'], isTrue);
+    await pumpEventQueue();
+    expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+    expect(equipment.setConnection({'id': node.uuid, 'connected': false})['accepted'], isTrue);
+    await pumpEventQueue();
+    expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+
+    final rig = await cat.addNode(typeKey: 'test-radio-type', config: {'host': 'radio.local'});
+    expect(equipment.setConnection({'id': rig.uuid, 'connected': true})['reason'], 'invalid');
+    expect(equipment.setConnection({'id': node.uuid, 'connected': 'yes'})['reason'], 'invalid');
+    await pumpEventQueue();
+    expect(cat.stateFor(rig.uuid).status, isNot(EquipmentStatus.connected));
+  });
+
+  test("a rotator lists its antenna's beam where the device reports one", () async {
+    final node = await cat.addNode(typeKey: 'test-rotator-type', config: {'host': 'rotator.local'});
+    await cat.connect(node.uuid);
+    final sink = (rotatorDriver.sessions.single as _RotatorSession).sink as RotatorSink;
+    sink.reportRotator(const RotatorPosition(azimuth: 45));
+    expect(equipment.list().single.containsKey('beamWidth'), isFalse);
+    sink.reportRotator(const RotatorPosition(azimuth: 45, beamWidth: 90));
+    expect(equipment.list().single['beamWidth'], 90);
+  });
+
   test('a device not connected is answered disconnected, and sent nothing', () async {
     final node = await cat.addNode(typeKey: 'test-rotator-type', config: {'host': 'rotator.local'});
     expect((await equipment.setRotator({'id': node.uuid, 'azimuth': 90}))['reason'], 'disconnected');

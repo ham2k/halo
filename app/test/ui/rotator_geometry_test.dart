@@ -10,6 +10,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' show Rect;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -62,7 +63,7 @@ void main() {
   // instant: a raster that shaded one anyway would leave the setting doing
   // nothing.
   test('a raster with no instant is all day, and one with an instant has a night side', () {
-    final raster = DiscRaster(AzimuthalProjection(gridToLocation('FN31pr')!), LandMask.fill(const []), 64);
+    final raster = MapRaster(AzimuthalProjection(gridToLocation('FN31pr')!), LandMask.fill(const []), const Rect.fromLTRB(-1, -1, 1, 1), 64, 64);
     Set<int> colours(DateTime? utc) {
       final pixels = raster.pixels(sea: 0xFF76ACD6, land: 0xFF9E7E3D, night: 0xFF000814, nightStep: 0.1, utc: utc);
       return {

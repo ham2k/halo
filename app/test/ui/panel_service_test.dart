@@ -62,6 +62,33 @@ void main() {
     expect(panel.formFields.map((f) => f['key'] ?? f['title']), ['display', 'Band Scope Settings', 'floor']);
   });
 
+  // A config read by the drawn elements alone would never load or forget a
+  // row's members: the operator's per-rotator switches would save and read
+  // back as their defaults.
+  test("a row's members are the panel's config fields, and the row itself is kept to draw them", () {
+    final panel = PanelDefinition.fromExtensionEntry(
+      entry(
+        form: [
+          {'type': 'field', 'fieldType': 'select', 'key': 'rotator'},
+          {
+            'type': 'row',
+            'label': 'Tower beam',
+            'elements': [
+              {'type': 'field', 'fieldType': 'checkbox', 'key': 'use:a'},
+              {'type': 'field', 'fieldType': 'text', 'key': 'label:a'},
+              // Drawn, it would take the operator's typing and save it nowhere.
+              {'type': 'field', 'fieldType': 'text', 'label': 'No key'},
+            ],
+          },
+          {'type': 'header', 'title': 'Map'},
+        ],
+      ),
+    )!;
+    expect(panel.formFields.map((f) => f['key'] ?? f['label'] ?? f['title']), ['rotator', 'Tower beam', 'Map']);
+    expect(panel.configFields.map((f) => f['key']), ['rotator', 'use:a', 'label:a']);
+    expect((panel.formFields[1]['elements'] as List).length, 2);
+  });
+
   test('a panel with no form and no settings target offers no settings', () {
     // What decides whether a gear appears beside it in Layout Setup.
     expect(PanelDefinition.fromExtensionEntry(entry())!.hasSettings, isFalse);

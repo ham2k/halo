@@ -1645,7 +1645,6 @@ class _Translations$operation$tabs$zh extends Translations$operation$tabs$en {
 	@override String get remoteScreen => '远程屏幕';
 	@override String get solar => '太阳活动';
 	@override String get radio => '电台';
-	@override String get rotator => '旋转器';
 	@override String get summaries => '操作摘要';
 }
 
@@ -3550,25 +3549,11 @@ class _Translations$operation$layout$panels$zh extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'SWR 过高';
-	@override String get rotatorDescription => '天线的指向，显示在以电台为中心的地图上。点按地图可转动天线。';
-	@override String get rotatorRotator => '旋转器';
-	@override String rotatorAutoNamed({required Object name}) => '自动 — ${name}';
-	@override String get rotatorAutoNone => '自动 — 尚无旋转器';
-	@override String get rotatorBeamWidth => '波束宽度';
-	@override String get rotatorBeamWidthDescription => '以度为单位，绘制在指向周围。0 表示不绘制。';
-	@override String get rotatorLocation => '位置';
-	@override String get rotatorLocationDescription => '网格或经纬度，用作地图中心。留空则使用操作的位置。';
-	@override String get rotatorTheme => '主题';
-	@override String get rotatorThemeColor => '彩色';
-	@override String get rotatorThemeGray => '灰色';
-	@override String get rotatorThemeMuted => '柔和';
-	@override String get rotatorGrayline => '显示灰线';
 	@override String get rotatorNoRotator => '没有可显示的旋转器。请在此面板的设置中选择，或在“电台配置”中添加。';
 	@override String get rotatorNoLocation => '没有可作为地图中心的位置。请在此面板的设置中设置。';
 	@override String get rotatorDisconnected => '已断开';
 	@override String get rotatorNoReading => '—';
 	@override String get rotatorNotResponding => '无响应';
-	@override String get rotatorLocationInvalid => '无法读取此面板设置中的位置。请使用网格，或 40.7, -74.0 这样的经纬度。';
 	@override String rotatorElevation({required Object degrees}) => '仰角 ${degrees}°';
 	@override String get rotatorNorth => '北';
 	@override String get rotatorEast => '东';
@@ -4836,7 +4821,6 @@ extension on TranslationsZh {
 			'operation.tabs.remoteScreen' => '远程屏幕',
 			'operation.tabs.solar' => '太阳活动',
 			'operation.tabs.radio' => '电台',
-			'operation.tabs.rotator' => '旋转器',
 			'operation.tabs.summaries' => '操作摘要',
 			'operation.positions.nobodyYet' => '还没有其他操作位共享此操作。',
 			'operation.positions.positionLabel' => ({required Object number}) => '操作位：${number}',
@@ -4973,9 +4957,9 @@ extension on TranslationsZh {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} 无法显示：其场景的某部分包含超过 ${max} 个条目',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} 无法显示：某个场景字符串长度超过 ${max} 个字符',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} 无法显示：其布局嵌套超过 ${max} 层',
+			'operation.layout.panelRenderRetry' => '重试',
 			_ => null,
 		} ?? switch (path) {
-			'operation.layout.panelRenderRetry' => '重试',
 			'operation.layout.panelActionFailed' => '该面板操作失败，请重试。',
 			'operation.layout.panels.loggingDescription' => '日志和输入字段',
 			'operation.layout.panels.infoDescription' => '关于正在通联电台的信息',
@@ -5110,25 +5094,11 @@ extension on TranslationsZh {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'SWR 过高',
-			'operation.layout.panels.rotatorDescription' => '天线的指向，显示在以电台为中心的地图上。点按地图可转动天线。',
-			'operation.layout.panels.rotatorRotator' => '旋转器',
-			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => '自动 — ${name}',
-			'operation.layout.panels.rotatorAutoNone' => '自动 — 尚无旋转器',
-			'operation.layout.panels.rotatorBeamWidth' => '波束宽度',
-			'operation.layout.panels.rotatorBeamWidthDescription' => '以度为单位，绘制在指向周围。0 表示不绘制。',
-			'operation.layout.panels.rotatorLocation' => '位置',
-			'operation.layout.panels.rotatorLocationDescription' => '网格或经纬度，用作地图中心。留空则使用操作的位置。',
-			'operation.layout.panels.rotatorTheme' => '主题',
-			'operation.layout.panels.rotatorThemeColor' => '彩色',
-			'operation.layout.panels.rotatorThemeGray' => '灰色',
-			'operation.layout.panels.rotatorThemeMuted' => '柔和',
-			'operation.layout.panels.rotatorGrayline' => '显示灰线',
 			'operation.layout.panels.rotatorNoRotator' => '没有可显示的旋转器。请在此面板的设置中选择，或在“电台配置”中添加。',
 			'operation.layout.panels.rotatorNoLocation' => '没有可作为地图中心的位置。请在此面板的设置中设置。',
 			'operation.layout.panels.rotatorDisconnected' => '已断开',
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => '无响应',
-			'operation.layout.panels.rotatorLocationInvalid' => '无法读取此面板设置中的位置。请使用网格，或 40.7, -74.0 这样的经纬度。',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '仰角 ${degrees}°',
 			'operation.layout.panels.rotatorNorth' => '北',
 			'operation.layout.panels.rotatorEast' => '东',
@@ -5487,8 +5457,6 @@ extension on TranslationsZh {
 			'loggingControls.saveFailed' => ({required Object error}) => '无法保存：${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => '无法删除：${error}',
 			'loggingControls.info.noQsos' => '还没有 QSO…开始通联吧！',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 个 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} 个 QSO',
 			'loggingControls.info.qsosInTime' => ({required Object time, required Object count}) => '${time} 内 ${count}',
@@ -5504,6 +5472,8 @@ extension on TranslationsZh {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}：${notice}',
 			'loggingControls.info.noticeDupe' => '重复！',
 			'loggingControls.info.noticeNewBand' => '新频段',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewMode' => '新模式',
 			'loggingControls.info.noticeNewDXCC' => '新 DXCC',
 			'loggingControls.info.noticeNewState' => '新州',
@@ -6001,8 +5971,6 @@ extension on TranslationsZh {
 			'settings.sync.moreSettings' => '更多同步设置',
 			'settings.sync.enable' => '启用同步',
 			'settings.sync.deviceKey' => '设备密钥',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.title' => '对等设备',
 			'settings.peers.enable' => '连接到其他设备',
 			'settings.peers.enableDescription' => '允许通过本地网络与其他设备共享操作、记录、CAT 和 GPS',
@@ -6018,6 +5986,8 @@ extension on TranslationsZh {
 			'settings.peers.connected' => '已连接',
 			'settings.peers.viaBluetooth' => '通过蓝牙',
 			'settings.peers.connecting' => '连接中…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.syncing' => '同步中…',
 			'settings.peers.waitingForThem' => '等待另一台设备',
 			'settings.peers.notConnected' => '未连接',
@@ -6515,8 +6485,6 @@ extension on TranslationsZh {
 			'settings.station.placeholderFreq' => '频率（kHz）',
 			'settings.station.placeholderFreqDescription' => '占位电台的起始频率。之后应用调谐到哪里，它就报告哪里。',
 			'settings.station.placeholderMode' => '模式',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => '占位电台的起始模式，例如 USB、CW、FT8。',
 			'settings.station.placeholderPower' => '功率（瓦）',
 			'settings.station.placeholderPurpose' => '用它来记下您正在使用哪台电台，以便记入日志',
@@ -6532,6 +6500,8 @@ extension on TranslationsZh {
 			'settings.station.yaesuMeterCaptureDescription' => '在发射时读取电台的 PO、SWR 和 ALC 表头，并将原始值输出到日志。用于建立 Yaesu 未公布的刻度——这些值不会以表头形式显示。',
 			'settings.station.telemetryInterval' => '表头读取间隔（ms）',
 			'settings.station.telemetryIntervalDescription' => '电台发射时多久读取一次表头。留空则使用此连接能承受的最快速度，上限 200 ms。',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '整数毫秒，${min} 到 ${max}',
 			'settings.station.pollInterval' => '空闲轮询间隔（ms）',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '在频率和模式都没有变化时，多久向电台查询一次频率和模式。留空则为 ${fallback} ms。',
@@ -7029,8 +6999,6 @@ extension on TranslationsZh {
 			'qsonImport.busy' => '已有导入正在进行。请等待其完成后再开始新的导入。',
 			'adifImport.title' => '从 ADIF 导入 QSO',
 			'adifImport.reading' => ({required Object filename}) => '正在读取 ${filename}…',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '此文件中有 ${count} 个 QSO', other: '此文件中有 ${formatted} 个 QSO', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个已在您的日志中', other: '${formatted} 个已在您的日志中', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '将导入 ${count} 个', other: '将导入 ${formatted} 个', ), 
@@ -7046,6 +7014,8 @@ extension on TranslationsZh {
 			'adifImport.importing' => ({required Object filename}) => '正在导入 ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已从 ${filename} 导入 ${count} 个通联', other: '已从 ${filename} 导入 ${formatted} 个通联', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '无法导入 ${filename}：${error}',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} 看起来不是 ADIF 文件',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '警告：此 ADIF 包含来自 ${calls} 的 QSO，但如果继续，它们将作为 ${station} 导入。',
 			'adifImport.stationCallJoin' => ' 和 ',

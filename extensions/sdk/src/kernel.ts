@@ -473,6 +473,7 @@ const IDENTITY_HOST_METHODS = new Set([
   "setAntenna",
   "setRotator",
   "stopRotator",
+  "setEquipmentConnection",
   "clusterStatus",
   "clusterLines",
   "clusterSubscribe",

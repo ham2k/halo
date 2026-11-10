@@ -3925,9 +3925,6 @@ class Translations$operation$tabs$en {
 	/// en: 'Radio'
 	String get radio => 'Radio';
 
-	/// en: 'Rotator'
-	String get rotator => 'Rotator';
-
 	/// en: 'Operation Summaries'
 	String get summaries => 'Operation Summaries';
 }
@@ -8927,45 +8924,6 @@ class Translations$operation$layout$panels$en {
 	/// en: 'high SWR'
 	String get radioSwrHigh => 'high SWR';
 
-	/// en: 'Where the antenna points, on a map centred on the station. Tap the map to turn it.'
-	String get rotatorDescription => 'Where the antenna points, on a map centred on the station. Tap the map to turn it.';
-
-	/// en: 'Rotator'
-	String get rotatorRotator => 'Rotator';
-
-	/// en: 'Automatic — ${name}'
-	String rotatorAutoNamed({required Object name}) => 'Automatic — ${name}';
-
-	/// en: 'Automatic — no rotator yet'
-	String get rotatorAutoNone => 'Automatic — no rotator yet';
-
-	/// en: 'Beam width'
-	String get rotatorBeamWidth => 'Beam width';
-
-	/// en: 'In degrees, drawn around the heading. 0 draws none. An antenna that reports its own beam, like a Green Heron directional switch, draws that instead.'
-	String get rotatorBeamWidthDescription => 'In degrees, drawn around the heading. 0 draws none. An antenna that reports its own beam, like a Green Heron directional switch, draws that instead.';
-
-	/// en: 'Location'
-	String get rotatorLocation => 'Location';
-
-	/// en: 'A grid square, or a latitude and longitude, to centre the map on. Blank uses the operation's location.'
-	String get rotatorLocationDescription => 'A grid square, or a latitude and longitude, to centre the map on. Blank uses the operation\'s location.';
-
-	/// en: 'Theme'
-	String get rotatorTheme => 'Theme';
-
-	/// en: 'Color'
-	String get rotatorThemeColor => 'Color';
-
-	/// en: 'Gray'
-	String get rotatorThemeGray => 'Gray';
-
-	/// en: 'Muted'
-	String get rotatorThemeMuted => 'Muted';
-
-	/// en: 'Show the grayline'
-	String get rotatorGrayline => 'Show the grayline';
-
 	/// en: 'No rotator to show. Pick one in this panel's settings, or add one under Station Configuration.'
 	String get rotatorNoRotator => 'No rotator to show. Pick one in this panel\'s settings, or add one under Station Configuration.';
 
@@ -8981,8 +8939,8 @@ class Translations$operation$layout$panels$en {
 	/// en: 'not responding'
 	String get rotatorNotResponding => 'not responding';
 
-	/// en: 'Can't read the location in this panel's settings. Use a grid square, or a latitude and longitude like 40.7, -74.0.'
-	String get rotatorLocationInvalid => 'Can\'t read the location in this panel\'s settings. Use a grid square, or a latitude and longitude like 40.7, -74.0.';
+	/// en: 'Show the whole map again'
+	String get rotatorResetView => 'Show the whole map again';
 
 	/// en: '${degrees}° el'
 	String rotatorElevation({required Object degrees}) => '${degrees}° el';
@@ -11555,7 +11513,6 @@ extension on Translations {
 			'operation.tabs.remoteScreen' => 'Remote Screen',
 			'operation.tabs.solar' => 'Solar',
 			'operation.tabs.radio' => 'Radio',
-			'operation.tabs.rotator' => 'Rotator',
 			'operation.tabs.summaries' => 'Operation Summaries',
 			'operation.positions.nobodyYet' => 'No other operating positions are sharing this operation yet.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Pos: ${number}',
@@ -11686,9 +11643,9 @@ extension on Translations {
 			'operation.layout.layouts.problemNewerVersion' => 'it was written by a newer version of the app',
 			'operation.layout.layouts.problemNoArrangement' => 'it holds no arrangement',
 			'operation.layout.layouts.problemMalformed' => 'part of it doesn’t follow the layout format',
+			'operation.layout.layouts.problemTooLarge' => 'it is too large',
 			_ => null,
 		} ?? switch (path) {
-			'operation.layout.layouts.problemTooLarge' => 'it is too large',
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Couldn\'t open the file: ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Couldn\'t import the layout: ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Couldn\'t copy the layout: ${error}',
@@ -11853,25 +11810,12 @@ extension on Translations {
 			'operation.layout.panels.radioComp' => 'COMP',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'high SWR',
-			'operation.layout.panels.rotatorDescription' => 'Where the antenna points, on a map centred on the station. Tap the map to turn it.',
-			'operation.layout.panels.rotatorRotator' => 'Rotator',
-			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'Automatic — ${name}',
-			'operation.layout.panels.rotatorAutoNone' => 'Automatic — no rotator yet',
-			'operation.layout.panels.rotatorBeamWidth' => 'Beam width',
-			'operation.layout.panels.rotatorBeamWidthDescription' => 'In degrees, drawn around the heading. 0 draws none. An antenna that reports its own beam, like a Green Heron directional switch, draws that instead.',
-			'operation.layout.panels.rotatorLocation' => 'Location',
-			'operation.layout.panels.rotatorLocationDescription' => 'A grid square, or a latitude and longitude, to centre the map on. Blank uses the operation\'s location.',
-			'operation.layout.panels.rotatorTheme' => 'Theme',
-			'operation.layout.panels.rotatorThemeColor' => 'Color',
-			'operation.layout.panels.rotatorThemeGray' => 'Gray',
-			'operation.layout.panels.rotatorThemeMuted' => 'Muted',
-			'operation.layout.panels.rotatorGrayline' => 'Show the grayline',
 			'operation.layout.panels.rotatorNoRotator' => 'No rotator to show. Pick one in this panel\'s settings, or add one under Station Configuration.',
 			'operation.layout.panels.rotatorNoLocation' => 'No location to centre a map on. Set one in this panel\'s settings.',
 			'operation.layout.panels.rotatorDisconnected' => 'disconnected',
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => 'not responding',
-			'operation.layout.panels.rotatorLocationInvalid' => 'Can\'t read the location in this panel\'s settings. Use a grid square, or a latitude and longitude like 40.7, -74.0.',
+			'operation.layout.panels.rotatorResetView' => 'Show the whole map again',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
 			'operation.layout.panels.rotatorNorth' => 'N',
 			'operation.layout.panels.rotatorEast' => 'E',
@@ -12200,8 +12144,6 @@ extension on Translations {
 			'loggingControls.todoField' => 'Todo',
 			'loggingControls.sent' => 'Sent',
 			'loggingControls.rcvd' => 'Rcvd',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.more' => 'More',
 			'loggingControls.revert' => 'Revert',
 			'loggingControls.undoDelete' => 'Undo delete',
@@ -12216,6 +12158,8 @@ extension on Translations {
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => 'Deleted ${kind}',
 			'loggingControls.timeControl' => 'Time',
 			'loggingControls.radioControl' => 'Radio',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.powerControl' => 'Power',
 			'loggingControls.notesControl' => 'Notes',
 			'loggingControls.operatorControl' => 'Operator',
@@ -12714,8 +12658,6 @@ extension on Translations {
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'The recording was cut short, so the message was left as it was. Check that the recording device is still connected and that there is room on the disk.',
 			'settings.radio.voiceMessages.problemFileFailed' => 'The recording couldn\'t be saved in the message\'s place, so the message was left as it was.',
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'That message needs words you haven\'t recorded: ${words}.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'That message\'s template has a problem: ${error}',
 			'settings.radio.voiceMessages.problemNoOperation' => 'Messages said with your words play in an operation, where there is a contact to say them for.',
 			'settings.radio.voiceMessages.problemNothingSaid' => 'That message says nothing for this contact.',
@@ -12730,6 +12672,8 @@ extension on Translations {
 			'settings.radio.voiceMessages.templateHelpReport' => 'The report you give them',
 			'settings.radio.voiceMessages.templateHelpMessage' => 'Message 2\'s recording, played as recorded',
 			'settings.radio.voiceMessages.voiced' => 'Said with your words',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'Says: ${words}',
 			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'Not recorded yet: ${words}',
 			'settings.radio.voiceMessages.previewNoOperation' => 'Open an operation to see what it will say.',
@@ -13228,8 +13172,6 @@ extension on Translations {
 			'settings.station.models.airspy' => 'Airspy R2 / Mini',
 			'settings.station.models.airspyHf' => 'Airspy HF+',
 			'settings.station.models.spyServer' => 'SpyServer (any receiver)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.transports.network' => 'Network/WiFi',
 			'settings.station.transports.tci' => 'TCI',
 			'settings.station.transports.secureNetwork' => 'Secure Network/WiFi',
@@ -13244,6 +13186,8 @@ extension on Translations {
 			'settings.station.troubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **CAT RTS off at the radio, or Hold RTS high on.** With **CAT RTS** on (FT-891 menu **05-08**), the radio stays silent while RTS is low — it may answer once as the port opens, then nothing. Picking the radio\'s own USB port turns on **Hold RTS high** under Advanced Settings. On a Digirig, SignaLink or most home-brew cables RTS is PTT, and holding it high keys your transmitter: turn CAT RTS off at the radio instead.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'If the radio connects but shows no frequency',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuBinaryTroubleshooting' => 'This radio speaks Yaesu\'s older five-byte CAT, and it does not respond at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB; it needs a CT-62 or an equivalent adapter. A plain audio or data cable won\'t work for CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). With a mismatch, the radio sends nothing back, and never an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying. An older interface powered from DTR is the exception: turn on **Hold DTR high** under Advanced Settings for that one.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.tenTecTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.tenTecEagleTroubleshooting' => '- **The USB-B port on the back is the CAT link.** The radio shows up as a USB serial port; on Windows it needs Ten-Tec\'s USB to UART driver, which appears in Device Manager as "USB to UART (COMx)".\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open, and so does Ten-Tec\'s firmware updater.\n- **Setting the filter width from the app takes it away from the BW knob** until the radio is switched off and on again. That is how the radio works.\n\nThis driver was written from Ten-Tec\'s programmer\'s reference guide. If it half-works, that is worth reporting, with the firmware version from the radio\'s menu.',
@@ -13742,8 +13686,6 @@ extension on Translations {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'Test error report sent to Sentry',
 			'commands.idleMetricsEnabled' => 'Idle metrics enabled in the status bar',
-			_ => null,
-		} ?? switch (path) {
 			'commands.idleMetricsDisabled' => 'Idle metrics disabled',
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'That command needs an open operation',
@@ -13758,6 +13700,8 @@ extension on Translations {
 			'commands.syncAllUnavailable' => 'SYNCALL needs to show a confirmation dialog, which isn\'t available here',
 			'commands.testOperationsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} Test Operation', other: 'Purged ${count} Test Operations', ), 
 			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again',
+			_ => null,
+		} ?? switch (path) {
 			'commands.testContactsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} test contact with no operation', other: 'Purged ${count} test contacts with no operation', ), 
 			'commands.purgeTestsContactsFailed' => 'Purged the Test Operations, but the test contacts with no operation failed; try PURGETESTS again',
 			'commands.purgeTestsNothingToDo' => 'Nothing was purged',

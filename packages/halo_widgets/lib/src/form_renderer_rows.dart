@@ -18,6 +18,28 @@ mixin _RowFields on State<FormRenderer> {
   Future<void> _handleFieldBlurOrInteraction(String key, dynamic value);
   Widget _buildTextRow(Map<String, dynamic> el, String fieldType, ThemeData theme);
 
+  /// A checkbox on a `row`'s line: a bare switch, its label its accessible
+  /// name. A list tile needs the whole width, and beside other controls has
+  /// none.
+  Widget _buildRowMemberSwitch(String key, String label, FocusNode? focusNode, {required bool disabled}) => Focus(
+    focusNode: focusNode,
+    child: Semantics(
+      label: label,
+      child: Switch(
+        value: _values[key] == true,
+        onChanged: _isSubmitting || disabled
+            ? null
+            : (val) {
+                setState(() {
+                  _values[key] = val;
+                  _errors.remove(key);
+                });
+                _handleFieldBlurOrInteraction(key, val);
+              },
+      ),
+    ),
+  );
+
   /// The settings-panel row shape: an optional leading icon, bold title, an
   /// optional description underneath (or the validation error, in its
   /// place). The

@@ -1645,7 +1645,6 @@ class _Translations$operation$tabs$ko extends Translations$operation$tabs$en {
 	@override String get remoteScreen => '원격 화면';
 	@override String get solar => '태양 활동';
 	@override String get radio => '무전기';
-	@override String get rotator => '로테이터';
 	@override String get summaries => '운용 요약';
 }
 
@@ -3550,25 +3549,11 @@ class _Translations$operation$layout$panels$ko extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'SWR 높음';
-	@override String get rotatorDescription => '무선국을 중심으로 한 지도에 안테나 방향을 표시합니다. 지도를 탭하면 회전합니다.';
-	@override String get rotatorRotator => '로테이터';
-	@override String rotatorAutoNamed({required Object name}) => '자동 — ${name}';
-	@override String get rotatorAutoNone => '자동 — 아직 로테이터 없음';
-	@override String get rotatorBeamWidth => '빔 폭';
-	@override String get rotatorBeamWidthDescription => '도 단위로, 방위 주위에 그려집니다. 0이면 그리지 않습니다.';
-	@override String get rotatorLocation => '위치';
-	@override String get rotatorLocationDescription => '지도의 중심이 될 그리드 스퀘어 또는 위도와 경도. 비워 두면 운용 위치를 사용합니다.';
-	@override String get rotatorTheme => '테마';
-	@override String get rotatorThemeColor => '컬러';
-	@override String get rotatorThemeGray => '회색';
-	@override String get rotatorThemeMuted => '차분한 색';
-	@override String get rotatorGrayline => '그레이라인 표시';
 	@override String get rotatorNoRotator => '표시할 로테이터가 없습니다. 패널 설정에서 선택하거나 무선국 구성에서 추가하세요.';
 	@override String get rotatorNoLocation => '지도의 중심으로 삼을 위치가 없습니다. 패널 설정에서 설정하세요.';
 	@override String get rotatorDisconnected => '연결 끊김';
 	@override String get rotatorNoReading => '—';
 	@override String get rotatorNotResponding => '응답 없음';
-	@override String get rotatorLocationInvalid => '패널 설정의 위치를 읽을 수 없습니다. 그리드 스퀘어나 40.7, -74.0 같은 위도와 경도를 사용하세요.';
 	@override String rotatorElevation({required Object degrees}) => 'EL ${degrees}°';
 	@override String get rotatorNorth => 'N';
 	@override String get rotatorEast => 'E';
@@ -4836,7 +4821,6 @@ extension on TranslationsKo {
 			'operation.tabs.remoteScreen' => '원격 화면',
 			'operation.tabs.solar' => '태양 활동',
 			'operation.tabs.radio' => '무전기',
-			'operation.tabs.rotator' => '로테이터',
 			'operation.tabs.summaries' => '운용 요약',
 			'operation.positions.nobodyYet' => '아직 이 운용을 공유하는 다른 운용 포지션이 없습니다.',
 			'operation.positions.positionLabel' => ({required Object number}) => '포지션: ${number}',
@@ -4973,9 +4957,9 @@ extension on TranslationsKo {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel}을(를) 표시할 수 없습니다: 씬의 일부에 항목이 ${max}개를 초과합니다',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel}을(를) 표시할 수 없습니다: 씬 문자열이 ${max}자를 초과합니다',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel}을(를) 표시할 수 없습니다: 레이아웃의 중첩 깊이가 ${max}단계를 초과합니다',
+			'operation.layout.panelRenderRetry' => '다시 시도',
 			_ => null,
 		} ?? switch (path) {
-			'operation.layout.panelRenderRetry' => '다시 시도',
 			'operation.layout.panelActionFailed' => '패널 작업에 실패했습니다. 다시 시도하세요.',
 			'operation.layout.panels.loggingDescription' => '로그와 입력 필드',
 			'operation.layout.panels.infoDescription' => '교신 중인 무선국에 대한 정보',
@@ -5110,25 +5094,11 @@ extension on TranslationsKo {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'SWR 높음',
-			'operation.layout.panels.rotatorDescription' => '무선국을 중심으로 한 지도에 안테나 방향을 표시합니다. 지도를 탭하면 회전합니다.',
-			'operation.layout.panels.rotatorRotator' => '로테이터',
-			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => '자동 — ${name}',
-			'operation.layout.panels.rotatorAutoNone' => '자동 — 아직 로테이터 없음',
-			'operation.layout.panels.rotatorBeamWidth' => '빔 폭',
-			'operation.layout.panels.rotatorBeamWidthDescription' => '도 단위로, 방위 주위에 그려집니다. 0이면 그리지 않습니다.',
-			'operation.layout.panels.rotatorLocation' => '위치',
-			'operation.layout.panels.rotatorLocationDescription' => '지도의 중심이 될 그리드 스퀘어 또는 위도와 경도. 비워 두면 운용 위치를 사용합니다.',
-			'operation.layout.panels.rotatorTheme' => '테마',
-			'operation.layout.panels.rotatorThemeColor' => '컬러',
-			'operation.layout.panels.rotatorThemeGray' => '회색',
-			'operation.layout.panels.rotatorThemeMuted' => '차분한 색',
-			'operation.layout.panels.rotatorGrayline' => '그레이라인 표시',
 			'operation.layout.panels.rotatorNoRotator' => '표시할 로테이터가 없습니다. 패널 설정에서 선택하거나 무선국 구성에서 추가하세요.',
 			'operation.layout.panels.rotatorNoLocation' => '지도의 중심으로 삼을 위치가 없습니다. 패널 설정에서 설정하세요.',
 			'operation.layout.panels.rotatorDisconnected' => '연결 끊김',
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => '응답 없음',
-			'operation.layout.panels.rotatorLocationInvalid' => '패널 설정의 위치를 읽을 수 없습니다. 그리드 스퀘어나 40.7, -74.0 같은 위도와 경도를 사용하세요.',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => 'EL ${degrees}°',
 			'operation.layout.panels.rotatorNorth' => 'N',
 			'operation.layout.panels.rotatorEast' => 'E',
@@ -5487,8 +5457,6 @@ extension on TranslationsKo {
 			'loggingControls.saveFailed' => ({required Object error}) => '저장할 수 없습니다: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => '삭제할 수 없습니다: ${error}',
 			'loggingControls.info.noQsos' => '아직 QSO가 없습니다... 운용을 시작하세요!',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSO',
 			'loggingControls.info.qsosInTime' => ({required Object time, required Object count}) => '${time} 동안 ${count}',
@@ -5504,6 +5472,8 @@ extension on TranslationsKo {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => '중복!',
 			'loggingControls.info.noticeNewBand' => '새로운 밴드',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewMode' => '새로운 모드',
 			'loggingControls.info.noticeNewDXCC' => '새로운 DXCC',
 			'loggingControls.info.noticeNewState' => '새로운 주',
@@ -6001,8 +5971,6 @@ extension on TranslationsKo {
 			'settings.sync.moreSettings' => '추가 동기화 설정',
 			'settings.sync.enable' => '동기화 활성화',
 			'settings.sync.deviceKey' => '기기 키',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.title' => '피어 기기',
 			'settings.peers.enable' => '다른 기기와 연결',
 			'settings.peers.enableDescription' => '로컬 네트워크를 통해 다른 기기와 운용, 로깅, CAT 및 GPS 공유 허용',
@@ -6018,6 +5986,8 @@ extension on TranslationsKo {
 			'settings.peers.connected' => '연결됨',
 			'settings.peers.viaBluetooth' => '블루투스 경유',
 			'settings.peers.connecting' => '연결 중…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.syncing' => '동기화 중…',
 			'settings.peers.waitingForThem' => '상대 기기 대기 중',
 			'settings.peers.notConnected' => '연결 안 됨',
@@ -6515,8 +6485,6 @@ extension on TranslationsKo {
 			'settings.station.placeholderFreq' => '주파수 (kHz)',
 			'settings.station.placeholderFreqDescription' => '임시 무전기의 시작 주파수. 이후에는 앱이 튜닝한 값을 그대로 보고합니다.',
 			'settings.station.placeholderMode' => '모드',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => '임시 무전기의 시작 모드. 예: USB, CW, FT8.',
 			'settings.station.placeholderPower' => '출력 (와트)',
 			'settings.station.placeholderPurpose' => '로깅을 위해 어떤 장비를 사용 중인지 기록하는 데 이 무전기를 사용하세요',
@@ -6532,6 +6500,8 @@ extension on TranslationsKo {
 			'settings.station.yaesuMeterCaptureDescription' => '송신 중 무전기의 PO, SWR, ALC 미터를 읽어 원시 값을 로그에 기록합니다. Yaesu가 공개하지 않은 눈금을 만들기 위한 것이며, 값은 미터로 표시되지 않습니다.',
 			'settings.station.telemetryInterval' => '미터 읽기 간격 (ms)',
 			'settings.station.telemetryIntervalDescription' => '송신 중 무전기의 미터를 읽는 간격. 비워 두면 이 연결이 처리할 수 있는 가장 빠른 간격(최대 200 ms)을 사용합니다.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '${min}에서 ${max} 사이의 정수 밀리초',
 			'settings.station.pollInterval' => '유휴 폴링 간격 (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '주파수와 모드가 바뀌지 않는 동안 무전기에 이를 묻는 간격. 비워 두면 ${fallback} ms입니다.',
@@ -7029,8 +6999,6 @@ extension on TranslationsKo {
 			'qsonImport.busy' => '이미 가져오기가 진행 중입니다. 완료될 때까지 기다린 후 시작하세요.',
 			'adifImport.title' => 'ADIF에서 QSO 가져오기',
 			'adifImport.reading' => ({required Object filename}) => '${filename} 읽는 중…',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '이 파일의 QSO ${count}개', other: '이 파일의 QSO ${formatted}개', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count}개는 이미 로그에 있음', other: '${formatted}개는 이미 로그에 있음', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count}개를 가져옵니다', other: '${formatted}개를 가져옵니다', ), 
@@ -7046,6 +7014,8 @@ extension on TranslationsKo {
 			'adifImport.importing' => ({required Object filename}) => '${filename} 가져오는 중…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${filename}에서 교신 ${count}개를 가져왔습니다', other: '${filename}에서 교신 ${formatted}개를 가져왔습니다', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename}을(를) 가져올 수 없습니다: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename}은(는) ADIF 파일이 아닌 것 같습니다',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '경고: 이 ADIF에는 ${calls}의 QSO가 있지만, 계속하면 ${station}(으)로 가져옵니다.',
 			'adifImport.stationCallJoin' => ' 및 ',

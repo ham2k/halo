@@ -125,7 +125,7 @@ extension LayoutControls<T extends StatefulWidget> on DockHost<T> {
                           initial: panelConfig,
                           developerMode: dockServices.settings.developerMode,
                           onFieldChange: (key, value, state) async {
-                            final field = embeddablePanel.formFields.firstWhere((f) => f['key'] == key, orElse: () => const {});
+                            final field = embeddablePanel.configFields.firstWhere((f) => f['key'] == key, orElse: () => const {});
                             if (sameConfigValue(value, panelConfig[key], field['value'])) return;
                             await dockServices.extensions.commitSettingsFieldValue(
                               kind: 'simple',

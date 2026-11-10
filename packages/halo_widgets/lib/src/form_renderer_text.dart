@@ -42,7 +42,10 @@ mixin _TextFields on State<FormRenderer> {
       subtitle = Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12));
     } else {
       final value = _displayValue(el, fieldType);
-      final shown = value.isNotEmpty ? value : (el['placeholder'] as String? ?? el['description'] as String? ?? '');
+      // `valueFormat` says the value in words — `${value} degrees` — where the bare number would not.
+      final format = el['valueFormat'] as String?;
+      final said = value.isNotEmpty && format != null ? format.replaceAll(r'${value}', value) : value;
+      final shown = said.isNotEmpty ? said : (el['placeholder'] as String? ?? el['description'] as String? ?? '');
       if (shown.isNotEmpty) {
         subtitle = Text(
           shown,

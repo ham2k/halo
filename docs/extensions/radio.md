@@ -274,10 +274,11 @@ rotator the operator has set up, connected or not:
 // { id, kind: "antennaSwitch" | "rotator", name, connected,
 //   antennas?: [{ key, name }],
 //   ports?: [{ key, label, antenna?, auto, band?, transmitting }],
-//   azimuth?, elevation?, target?: { azimuth, elevation? } }
+//   azimuth?, elevation?, target?: { azimuth, elevation? }, beamWidth? }
 host.setAntenna({ id, port, antenna })        // by the switch's own keys
 host.setRotator({ id, azimuth, elevation? })  // true degrees
 host.stopRotator({ id })
+host.setEquipmentConnection({ id, connected })  // API 23
 ```
 
 A switch names its antennas and its radio ports by its own keys, never by
@@ -288,7 +289,19 @@ A rotator's `azimuth` and `elevation` are where it points, and `target`
 where it was told to turn, until it gets there, is stopped, or stalls short
 of it. An `azimuth` is taken modulo 360, so -10 turns it to 350; an
 `elevation` outside 0–180 is `invalid`. Its limits may turn it somewhere other
-than asked; the answer's `state.target` says where.
+than asked; the answer's `state.target` says where. From API 23, `beamWidth`
+is the antenna's beam in degrees where the device knows it, as a directional
+switch does; a rotator alone never does.
+
+`setEquipmentConnection` (API 23) connects or disconnects a switch or a
+rotator, as the station's own plug does. It never waits behind other
+commands, and `accepted` means the connection was asked for: `connected`
+says when it is up. Its one refusal is `invalid`, for no such device or a
+`connected` that is not a boolean.
+
+A scene's [`rotatorMap` control](scenes.md#rotator-map) shows a rotator under
+`requiresRadioRead` and turns it on a click or a drag under
+`requiresRadioWrite`.
 
 Each command answers `{ accepted, reason?, state }`, `state` being the
 device as `listEquipment` describes it. `accepted` means sent, not done:

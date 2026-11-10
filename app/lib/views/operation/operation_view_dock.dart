@@ -350,6 +350,8 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
       // are reachable from the panel, and its LAYOUT options from its header
       // (see `LayoutControls.paneEditControls`); the two are different questions and
       // this is the one that belongs to the panel.
+      operationLocation: _operationForPanels?.location,
+      callLocation: callInfoLocation(_callInfo),
       tabActions: {
         'logging': (context) => _buildLoggingSettingsButton(qsos, context: context),
         'map': (context) => _buildMapSettingsButton(context: context),
@@ -374,14 +376,12 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
           // request per keystroke. The DISPLAY grid, so a pane reading it gets
           // the operation's real position where one is stored.
           operationGrid: _operationForPanels?.displayGrid,
-          operationLocation: _operationForPanels?.location,
           // From `_callInfo`, which this view keeps current unconditionally —
           // NOT from the QSO draft, which is only produced when a panel
           // declares `qso` and costs a rebuild plus a deep compare on every
           // keystroke. A pull-only question asked once a minute must not put
           // the whole view on the typing path to answer it.
           isEnteringQso: () => (_callInfo?.call ?? '').isNotEmpty,
-          callInfo: _callInfo,
         ),
       },
     );

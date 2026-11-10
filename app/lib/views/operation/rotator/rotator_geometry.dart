@@ -16,6 +16,7 @@
 
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui' show Rect;
 
 import 'package:halo_core/halo_core.dart' show GridLocation;
 
@@ -140,11 +141,14 @@ class LandMask {
   }
 }
 
-/// The disc as a square of pixels: which are land and which sea, and where
-/// on Earth each one is, kept so the night can be laid over it again each
-/// minute without projecting anything.
-class DiscRaster {
-  final int size;
+/// A stretch of the disc as a grid of pixels: which are land and which sea,
+/// and where on Earth each one is, kept so the night can be laid over it
+/// again each minute without projecting anything.
+class MapRaster {
+  final int width, height;
+
+  /// The stretch of the disc it covers, in the disc's units (the antipode at 1).
+  final Rect disc;
 
   /// Per pixel: 0 off the disc, 1 sea, 2 land.
   final Uint8List _surface;
@@ -153,17 +157,16 @@ class DiscRaster {
   /// is a dot product with.
   final Float32List _points;
 
-  DiscRaster._(this.size, this._surface, this._points);
+  MapRaster._(this.width, this.height, this.disc, this._surface, this._points);
 
-  factory DiscRaster(AzimuthalProjection projection, LandMask mask, int size) {
-    final surface = Uint8List(size * size);
-    final points = Float32List(size * size * 3);
-    final half = size / 2;
-    for (var py = 0; py < size; py++) {
-      for (var px = 0; px < size; px++) {
-        final place = projection.locate((px + 0.5 - half) / half, (py + 0.5 - half) / half);
+  factory MapRaster(AzimuthalProjection projection, LandMask mask, Rect disc, int width, int height) {
+    final surface = Uint8List(width * height);
+    final points = Float32List(width * height * 3);
+    for (var py = 0; py < height; py++) {
+      for (var px = 0; px < width; px++) {
+        final place = projection.locate(disc.left + (px + 0.5) / width * disc.width, disc.top + (py + 0.5) / height * disc.height);
         if (place == null) continue;
-        final i = py * size + px;
+        final i = py * width + px;
         surface[i] = mask.isLand(place.latitude, place.longitude) ? 2 : 1;
         final lat = place.latitude * _toRadians;
         final lon = place.longitude * _toRadians;
@@ -172,36 +175,56 @@ class DiscRaster {
         points[i * 3 + 2] = math.sin(lat);
       }
     }
-    return DiscRaster._(size, surface, points);
+    return MapRaster._(width, height, disc, surface, points);
   }
 
   /// RGBA bytes: [sea] and [land] (0xAARRGGBB), each darkened toward [night]
   /// by [nightStep] for every one of [graylineSunAltitudes] the sun is below
   /// at [utc] — the Map tab's grayline steps. A null [utc] draws no night.
-  Uint8List pixels({required int sea, required int land, required int night, required double nightStep, DateTime? utc}) {
-    final steps = graylineSunAltitudes.length;
+  ///
+  /// [altitudes] replaces those steps. [blend], in degrees of the sun's
+  /// altitude, fades each step in across that much of the sky rather than at
+  /// a hard edge.
+  Uint8List pixels({
+    required int sea,
+    required int land,
+    required int night,
+    required double nightStep,
+    DateTime? utc,
+    List<double> altitudes = graylineSunAltitudes,
+    double blend = 0,
+  }) {
+    final steps = altitudes.length;
     // Each surface's colour after 0…steps layers of night.
     final shades = [
-      for (final base in [0, sea, land]) [for (var n = 0; n <= steps; n++) _darken(base, night, 1 - math.pow(1 - nightStep, n).toDouble())],
+      for (final base in [0, sea, land]) [for (var n = 0; n <= steps; n++) _mix(base, night, 1 - math.pow(1 - nightStep, n).toDouble())],
     ];
-    final thresholds = [for (final altitude in graylineSunAltitudes) math.sin(altitude * _toRadians)];
+    final thresholds = [for (final altitude in altitudes) math.sin(altitude * _toRadians)];
+    // Near the horizon a sine is its angle in radians, which is all a blend a degree or two wide needs.
+    final fade = blend * _toRadians;
     final sun = utc == null ? null : subsolarPoint(utc);
     final sx = sun == null ? 0.0 : math.cos(sun.latitude * _toRadians) * math.cos(sun.longitude * _toRadians);
     final sy = sun == null ? 0.0 : math.cos(sun.latitude * _toRadians) * math.sin(sun.longitude * _toRadians);
     final sz = sun == null ? 0.0 : math.sin(sun.latitude * _toRadians);
 
-    final out = Uint8List(size * size * 4);
-    for (var i = 0; i < size * size; i++) {
+    final out = Uint8List(width * height * 4);
+    for (var i = 0; i < width * height; i++) {
       final kind = _surface[i];
       if (kind == 0) continue;
-      var n = 0;
+      var n = 0.0;
       if (sun != null) {
         final altitude = _points[i * 3] * sx + _points[i * 3 + 1] * sy + _points[i * 3 + 2] * sz;
-        while (n < steps && altitude < thresholds[n]) {
-          n++;
+        for (final threshold in thresholds) {
+          if (fade <= 0) {
+            if (altitude < threshold) n++;
+          } else {
+            final t = ((threshold - altitude) / fade + 0.5).clamp(0.0, 1.0);
+            n += t * t * (3 - 2 * t);
+          }
         }
       }
-      final color = shades[kind][n];
+      final whole = n.floor();
+      final color = whole >= steps ? shades[kind][steps] : _mix(shades[kind][whole], shades[kind][whole + 1], n - whole);
       out[i * 4] = (color >> 16) & 0xFF;
       out[i * 4 + 1] = (color >> 8) & 0xFF;
       out[i * 4 + 2] = color & 0xFF;
@@ -211,11 +234,13 @@ class DiscRaster {
   }
 }
 
-int _darken(int color, int toward, double amount) {
+/// [from] [amount] of the way to [to], opaque.
+int _mix(int from, int to, double amount) {
+  if (amount <= 0) return from;
   int channel(int shift) {
-    final from = (color >> shift) & 0xFF;
-    final to = (toward >> shift) & 0xFF;
-    return (from + (to - from) * amount).round() & 0xFF;
+    final a = (from >> shift) & 0xFF;
+    final b = (to >> shift) & 0xFF;
+    return (a + (b - a) * amount).round() & 0xFF;
   }
 
   return 0xFF000000 | channel(16) << 16 | channel(8) << 8 | channel(0);

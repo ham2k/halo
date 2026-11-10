@@ -1645,7 +1645,6 @@ class _Translations$operation$tabs$cs extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'Vzdálená obrazovka';
 	@override String get solar => 'Sluneční aktivita';
 	@override String get radio => 'Rádio';
-	@override String get rotator => 'Rotátor';
 	@override String get summaries => 'Souhrny aktivity';
 }
 
@@ -3550,25 +3549,11 @@ class _Translations$operation$layout$panels$cs extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'vysoké PSV';
-	@override String get rotatorDescription => 'Kam míří anténa, na mapě se středem ve stanici. Klepnutím na mapu ji otočíte.';
-	@override String get rotatorRotator => 'Rotátor';
-	@override String rotatorAutoNamed({required Object name}) => 'Automaticky — ${name}';
-	@override String get rotatorAutoNone => 'Automaticky — zatím žádný rotátor';
-	@override String get rotatorBeamWidth => 'Šířka svazku';
-	@override String get rotatorBeamWidthDescription => 'Ve stupních, vykreslí se kolem směru. 0 nevykreslí nic.';
-	@override String get rotatorLocation => 'Poloha';
-	@override String get rotatorLocationDescription => 'Lokátor nebo zeměpisná šířka a délka, na které se mapa vystředí. Prázdné použije polohu aktivity.';
-	@override String get rotatorTheme => 'Téma';
-	@override String get rotatorThemeColor => 'Barevné';
-	@override String get rotatorThemeGray => 'Šedé';
-	@override String get rotatorThemeMuted => 'Tlumené';
-	@override String get rotatorGrayline => 'Zobrazit šedou linii';
 	@override String get rotatorNoRotator => 'Žádný rotátor k zobrazení. Vyberte ho v nastavení tohoto panelu, nebo ho přidejte v Konfiguraci stanice.';
 	@override String get rotatorNoLocation => 'Není poloha, na kterou mapu vystředit. Nastavte ji v nastavení tohoto panelu.';
 	@override String get rotatorDisconnected => 'odpojeno';
 	@override String get rotatorNoReading => '—';
 	@override String get rotatorNotResponding => 'neodpovídá';
-	@override String get rotatorLocationInvalid => 'Polohu v nastavení tohoto panelu nelze přečíst. Použijte lokátor, nebo zeměpisnou šířku a délku jako 40.7, -74.0.';
 	@override String rotatorElevation({required Object degrees}) => '${degrees}° el';
 	@override String get rotatorNorth => 'S';
 	@override String get rotatorEast => 'V';
@@ -4836,7 +4821,6 @@ extension on TranslationsCs {
 			'operation.tabs.remoteScreen' => 'Vzdálená obrazovka',
 			'operation.tabs.solar' => 'Sluneční aktivita',
 			'operation.tabs.radio' => 'Rádio',
-			'operation.tabs.rotator' => 'Rotátor',
 			'operation.tabs.summaries' => 'Souhrny aktivity',
 			'operation.positions.nobodyYet' => 'Tuto aktivitu zatím nesdílí žádná další operátorská pracoviště.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Prac.: ${number}',
@@ -4973,9 +4957,9 @@ extension on TranslationsCs {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} nelze zobrazit: část jeho scény má více než ${max} položek',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} nelze zobrazit: řetězec ve scéně je delší než ${max} znaků',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} nelze zobrazit: jeho rozložení je vnořené do více než ${max} úrovní',
+			'operation.layout.panelRenderRetry' => 'Zkusit znovu',
 			_ => null,
 		} ?? switch (path) {
-			'operation.layout.panelRenderRetry' => 'Zkusit znovu',
 			'operation.layout.panelActionFailed' => 'Akce panelu selhala. Zkuste to znovu.',
 			'operation.layout.panels.loggingDescription' => 'Log a vstupní pole',
 			'operation.layout.panels.infoDescription' => 'Co víme o protistanici',
@@ -5110,25 +5094,11 @@ extension on TranslationsCs {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'vysoké PSV',
-			'operation.layout.panels.rotatorDescription' => 'Kam míří anténa, na mapě se středem ve stanici. Klepnutím na mapu ji otočíte.',
-			'operation.layout.panels.rotatorRotator' => 'Rotátor',
-			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'Automaticky — ${name}',
-			'operation.layout.panels.rotatorAutoNone' => 'Automaticky — zatím žádný rotátor',
-			'operation.layout.panels.rotatorBeamWidth' => 'Šířka svazku',
-			'operation.layout.panels.rotatorBeamWidthDescription' => 'Ve stupních, vykreslí se kolem směru. 0 nevykreslí nic.',
-			'operation.layout.panels.rotatorLocation' => 'Poloha',
-			'operation.layout.panels.rotatorLocationDescription' => 'Lokátor nebo zeměpisná šířka a délka, na které se mapa vystředí. Prázdné použije polohu aktivity.',
-			'operation.layout.panels.rotatorTheme' => 'Téma',
-			'operation.layout.panels.rotatorThemeColor' => 'Barevné',
-			'operation.layout.panels.rotatorThemeGray' => 'Šedé',
-			'operation.layout.panels.rotatorThemeMuted' => 'Tlumené',
-			'operation.layout.panels.rotatorGrayline' => 'Zobrazit šedou linii',
 			'operation.layout.panels.rotatorNoRotator' => 'Žádný rotátor k zobrazení. Vyberte ho v nastavení tohoto panelu, nebo ho přidejte v Konfiguraci stanice.',
 			'operation.layout.panels.rotatorNoLocation' => 'Není poloha, na kterou mapu vystředit. Nastavte ji v nastavení tohoto panelu.',
 			'operation.layout.panels.rotatorDisconnected' => 'odpojeno',
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => 'neodpovídá',
-			'operation.layout.panels.rotatorLocationInvalid' => 'Polohu v nastavení tohoto panelu nelze přečíst. Použijte lokátor, nebo zeměpisnou šířku a délku jako 40.7, -74.0.',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
 			'operation.layout.panels.rotatorNorth' => 'S',
 			'operation.layout.panels.rotatorEast' => 'V',
@@ -5487,8 +5457,6 @@ extension on TranslationsCs {
 			'loggingControls.saveFailed' => ({required Object error}) => 'Nelze uložit: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Nelze smazat: ${error}',
 			'loggingControls.info.noQsos' => 'Zatím žádná QSO… Vzhůru do éteru!',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSO',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} za ${time}',
@@ -5504,6 +5472,8 @@ extension on TranslationsCs {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => 'Duplicita!',
 			'loggingControls.info.noticeNewBand' => 'Nové pásmo',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewMode' => 'Nový mód',
 			'loggingControls.info.noticeNewDXCC' => 'Nové DXCC',
 			'loggingControls.info.noticeNewState' => 'Nový stát',
@@ -6001,8 +5971,6 @@ extension on TranslationsCs {
 			'settings.sync.moreSettings' => 'Další nastavení synchronizace',
 			'settings.sync.enable' => 'Zapnout synchronizaci',
 			'settings.sync.deviceKey' => 'Klíč zařízení',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.title' => 'Spárovaná zařízení',
 			'settings.peers.enable' => 'Připojovat se k jiným zařízením',
 			'settings.peers.enableDescription' => 'Povolit sdílení aktivit, logování, CAT a GPS s jinými zařízeními v místní síti',
@@ -6018,6 +5986,8 @@ extension on TranslationsCs {
 			'settings.peers.connected' => 'Připojeno',
 			'settings.peers.viaBluetooth' => 'přes Bluetooth',
 			'settings.peers.connecting' => 'Připojování…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.syncing' => 'Synchronizace…',
 			'settings.peers.waitingForThem' => 'Čeká se na druhé zařízení',
 			'settings.peers.notConnected' => 'Nepřipojeno',
@@ -6515,8 +6485,6 @@ extension on TranslationsCs {
 			'settings.station.placeholderFreq' => 'Frekvence (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Kde zástupné rádio začíná. Poté hlásí cokoli, na co ho aplikace naladí.',
 			'settings.station.placeholderMode' => 'Mód',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'Mód, ve kterém zástupné rádio začíná, např. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Výkon (watty)',
 			'settings.station.placeholderPurpose' => 'Toto rádio použijte k evidenci, který transceiver používáte, pro účely logování',
@@ -6532,6 +6500,8 @@ extension on TranslationsCs {
 			'settings.station.yaesuMeterCaptureDescription' => 'Při vysílání čte měřidla PO, SWR a ALC rádia a zapisuje surové hodnoty do logu. Slouží k sestavení stupnice, kterou Yaesu nepublikuje — hodnoty se nezobrazují jako měřidla.',
 			'settings.station.telemetryInterval' => 'Interval čtení měřidel (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Jak často číst měřidla rádia během vysílání. Ponechte prázdné pro nejrychlejší, co toto připojení zvládne, až 200 ms.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Celé číslo milisekund, ${min} až ${max}',
 			'settings.station.pollInterval' => 'Interval dotazování v klidu (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Jak často se ptát rádia na frekvenci a mód, když se ani jedno nemění. Ponechte prázdné pro ${fallback} ms.',
@@ -7029,8 +6999,6 @@ extension on TranslationsCs {
 			'qsonImport.busy' => 'Import už probíhá. Než spustíte další, počkejte, až skončí.',
 			'adifImport.title' => 'Importovat QSO z ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Čtení ${filename}…',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} QSO v tomto souboru', other: '${formatted} QSO v tomto souboru', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} už je ve vašem logu', other: '${formatted} už je ve vašem logu', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} bude importováno', other: '${formatted} bude importováno', ), 
@@ -7046,6 +7014,8 @@ extension on TranslationsCs {
 			'adifImport.importing' => ({required Object filename}) => 'Importování ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Importováno ${count} spojení z ${filename}', other: 'Importováno ${formatted} spojení z ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} nelze importovat: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} nevypadá jako soubor ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Upozornění: tento ADIF obsahuje QSO od ${calls}, ale pokud budete pokračovat, budou importována jako ${station}.',
 			'adifImport.stationCallJoin' => ' a ',

@@ -394,7 +394,7 @@ extension NamedLayouts<T extends StatefulWidget> on DockHost<T> {
     // Secret fields left out of the read, not only the result: each is a
     // keychain read, which can prompt or fail.
     final fields = [
-      for (final field in panel.formFields)
+      for (final field in panel.configFields)
         if (includeSecrets || field['fieldType'] != 'secret') field,
     ];
     if (fields.isEmpty) return const {};
@@ -418,7 +418,7 @@ extension NamedLayouts<T extends StatefulWidget> on DockHost<T> {
     // it is installed and declares them.
     final panel = dockServices.panels[id];
     for (final entry in values.entries) {
-      final field = panel?.formFields.where((f) => f['key'] == entry.key).firstOrNull;
+      final field = panel?.configFields.where((f) => f['key'] == entry.key).firstOrNull;
       await dockServices.extensions.commitSettingsFieldValue(
         kind: 'simple',
         hookKey: panel?.hookKey ?? id,

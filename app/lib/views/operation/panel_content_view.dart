@@ -14,6 +14,7 @@
 import 'dart:convert';
 
 import 'panel_scene/scene_model.dart';
+import 'panel_scene/scene_rotator.dart';
 import 'panel_scene/scene_spectrum.dart';
 import 'panel_scene/scene_view.dart';
 
@@ -136,8 +137,9 @@ class PanelContentView extends StatelessWidget {
   final VoidCallback? onRetry;
   final SceneEventHandler? onSceneEvent;
   final SceneSpectrumSource? spectrum;
+  final SceneRotatorSource? rotator;
 
-  const PanelContentView({super.key, required this.content, this.error, this.onRetry, this.onSceneEvent, this.spectrum});
+  const PanelContentView({super.key, required this.content, this.error, this.onRetry, this.onSceneEvent, this.spectrum, this.rotator});
 
   @override
   Widget build(BuildContext context) {
@@ -146,7 +148,7 @@ class PanelContentView extends StatelessWidget {
     if (content == null) return const Center(child: CircularProgressIndicator());
     switch (content.kind) {
       case 'scene' when content.scene != null:
-        return PanelSceneView(scene: content.scene!, onEvent: onSceneEvent, spectrum: spectrum);
+        return PanelSceneView(scene: content.scene!, onEvent: onSceneEvent, spectrum: spectrum, rotator: rotator);
       case 'markdown':
         return SingleChildScrollView(
           padding: const EdgeInsets.all(Space.lg),

@@ -1645,7 +1645,6 @@ class _Translations$operation$tabs$ja extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'リモート画面';
 	@override String get solar => '太陽活動';
 	@override String get radio => '無線機';
-	@override String get rotator => 'ローテーター';
 	@override String get summaries => 'オペレーション概要';
 }
 
@@ -3550,25 +3549,11 @@ class _Translations$operation$layout$panels$ja extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'SWR高';
-	@override String get rotatorDescription => 'アンテナの向きを、局を中心にした地図上に表示します。地図をタップすると回転します。';
-	@override String get rotatorRotator => 'ローテーター';
-	@override String rotatorAutoNamed({required Object name}) => '自動 — ${name}';
-	@override String get rotatorAutoNone => '自動 — ローテーターはまだありません';
-	@override String get rotatorBeamWidth => 'ビーム幅';
-	@override String get rotatorBeamWidthDescription => '方位の周りに描く角度（度）。0なら描画しません。';
-	@override String get rotatorLocation => '場所';
-	@override String get rotatorLocationDescription => '地図の中心にするグリッドスクエアまたは緯度経度。空欄ならオペレーションの場所を使います。';
-	@override String get rotatorTheme => 'テーマ';
-	@override String get rotatorThemeColor => 'カラー';
-	@override String get rotatorThemeGray => 'グレー';
-	@override String get rotatorThemeMuted => '淡色';
-	@override String get rotatorGrayline => 'グレイラインを表示';
 	@override String get rotatorNoRotator => '表示するローテーターがありません。このパネルの設定で選ぶか、ステーション構成で追加してください。';
 	@override String get rotatorNoLocation => '地図の中心にする場所がありません。このパネルの設定で指定してください。';
 	@override String get rotatorDisconnected => '未接続';
 	@override String get rotatorNoReading => '—';
 	@override String get rotatorNotResponding => '応答なし';
-	@override String get rotatorLocationInvalid => 'このパネルの設定の場所を読み取れません。グリッドスクエアか、40.7, -74.0 のような緯度経度を使ってください。';
 	@override String rotatorElevation({required Object degrees}) => '仰角${degrees}°';
 	@override String get rotatorNorth => 'N';
 	@override String get rotatorEast => 'E';
@@ -4836,7 +4821,6 @@ extension on TranslationsJa {
 			'operation.tabs.remoteScreen' => 'リモート画面',
 			'operation.tabs.solar' => '太陽活動',
 			'operation.tabs.radio' => '無線機',
-			'operation.tabs.rotator' => 'ローテーター',
 			'operation.tabs.summaries' => 'オペレーション概要',
 			'operation.positions.nobodyYet' => 'このオペレーションを共有している他の運用ポジションはまだありません。',
 			'operation.positions.positionLabel' => ({required Object number}) => 'ポジション：${number}',
@@ -4973,9 +4957,9 @@ extension on TranslationsJa {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンの一部のエントリーが${max}個を超えています',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンの文字列が${max}文字を超えています',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：レイアウトのネストが${max}階層を超えています',
+			'operation.layout.panelRenderRetry' => '再試行',
 			_ => null,
 		} ?? switch (path) {
-			'operation.layout.panelRenderRetry' => '再試行',
 			'operation.layout.panelActionFailed' => 'パネルの操作に失敗しました。再試行してください。',
 			'operation.layout.panels.loggingDescription' => 'ログと入力フィールド',
 			'operation.layout.panels.infoDescription' => '交信中の局について分かっている情報',
@@ -5110,25 +5094,11 @@ extension on TranslationsJa {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'SWR高',
-			'operation.layout.panels.rotatorDescription' => 'アンテナの向きを、局を中心にした地図上に表示します。地図をタップすると回転します。',
-			'operation.layout.panels.rotatorRotator' => 'ローテーター',
-			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => '自動 — ${name}',
-			'operation.layout.panels.rotatorAutoNone' => '自動 — ローテーターはまだありません',
-			'operation.layout.panels.rotatorBeamWidth' => 'ビーム幅',
-			'operation.layout.panels.rotatorBeamWidthDescription' => '方位の周りに描く角度（度）。0なら描画しません。',
-			'operation.layout.panels.rotatorLocation' => '場所',
-			'operation.layout.panels.rotatorLocationDescription' => '地図の中心にするグリッドスクエアまたは緯度経度。空欄ならオペレーションの場所を使います。',
-			'operation.layout.panels.rotatorTheme' => 'テーマ',
-			'operation.layout.panels.rotatorThemeColor' => 'カラー',
-			'operation.layout.panels.rotatorThemeGray' => 'グレー',
-			'operation.layout.panels.rotatorThemeMuted' => '淡色',
-			'operation.layout.panels.rotatorGrayline' => 'グレイラインを表示',
 			'operation.layout.panels.rotatorNoRotator' => '表示するローテーターがありません。このパネルの設定で選ぶか、ステーション構成で追加してください。',
 			'operation.layout.panels.rotatorNoLocation' => '地図の中心にする場所がありません。このパネルの設定で指定してください。',
 			'operation.layout.panels.rotatorDisconnected' => '未接続',
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => '応答なし',
-			'operation.layout.panels.rotatorLocationInvalid' => 'このパネルの設定の場所を読み取れません。グリッドスクエアか、40.7, -74.0 のような緯度経度を使ってください。',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '仰角${degrees}°',
 			'operation.layout.panels.rotatorNorth' => 'N',
 			'operation.layout.panels.rotatorEast' => 'E',
@@ -5487,8 +5457,6 @@ extension on TranslationsJa {
 			'loggingControls.saveFailed' => ({required Object error}) => '保存できませんでした：${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => '削除できませんでした：${error}',
 			'loggingControls.info.noQsos' => 'まだQSOがありません... オンエアしましょう！',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSO',
 			'loggingControls.info.qsosInTime' => ({required Object time, required Object count}) => '${time}で${count}',
@@ -5504,6 +5472,8 @@ extension on TranslationsJa {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}：${notice}',
 			'loggingControls.info.noticeDupe' => '重複！',
 			'loggingControls.info.noticeNewBand' => '新しいバンド',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewMode' => '新しいモード',
 			'loggingControls.info.noticeNewDXCC' => '新しいDXCC',
 			'loggingControls.info.noticeNewState' => '新しい州',
@@ -6001,8 +5971,6 @@ extension on TranslationsJa {
 			'settings.sync.moreSettings' => 'その他の同期設定',
 			'settings.sync.enable' => '同期を有効化',
 			'settings.sync.deviceKey' => 'デバイスキー',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.title' => 'ピアデバイス',
 			'settings.peers.enable' => '他のデバイスに接続',
 			'settings.peers.enableDescription' => 'ローカルネットワーク経由で、他のデバイスとオペレーション、ロギング、CAT、GPSを共有できるようにします',
@@ -6018,6 +5986,8 @@ extension on TranslationsJa {
 			'settings.peers.connected' => '接続済み',
 			'settings.peers.viaBluetooth' => 'Bluetooth経由',
 			'settings.peers.connecting' => '接続中…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.syncing' => '同期中…',
 			'settings.peers.waitingForThem' => '相手のデバイスを待っています',
 			'settings.peers.notConnected' => '未接続',
@@ -6515,8 +6485,6 @@ extension on TranslationsJa {
 			'settings.station.placeholderFreq' => '周波数（kHz）',
 			'settings.station.placeholderFreqDescription' => 'プレースホルダー無線機の初期周波数。その後はアプリがチューニングした値を報告します。',
 			'settings.station.placeholderMode' => 'モード',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'プレースホルダー無線機の初期モード（例：USB、CW、FT8）。',
 			'settings.station.placeholderPower' => 'パワー（ワット）',
 			'settings.station.placeholderPurpose' => 'ロギングのために、使用中のリグを記録するための無線機です',
@@ -6532,6 +6500,8 @@ extension on TranslationsJa {
 			'settings.station.yaesuMeterCaptureDescription' => '送信中に無線機のPO、SWR、ALCメーターを読み取り、生の値をログに出力します。Yaesuが公開していない目盛りを作成するためのもので、値はメーターとして表示されません。',
 			'settings.station.telemetryInterval' => 'メーター読み取り間隔（ms）',
 			'settings.station.telemetryIntervalDescription' => '送信中に無線機のメーターを読み取る頻度。空欄にすると、この接続で可能な最速（最大200 ms）になります。',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '${min}〜${max}のミリ秒単位の整数',
 			'settings.station.pollInterval' => 'アイドル時のポーリング間隔（ms）',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '周波数とモードが変化していない間に、無線機に問い合わせる頻度。空欄の場合は${fallback} msです。',
@@ -7029,8 +6999,6 @@ extension on TranslationsJa {
 			'qsonImport.busy' => 'すでにインポートを実行中です。完了してから次のインポートを開始してください。',
 			'adifImport.title' => 'ADIFからQSOをインポート',
 			'adifImport.reading' => ({required Object filename}) => '${filename}を読み込み中…',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'このファイルのQSO：${count}件', other: 'このファイルのQSO：${formatted}件', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件はすでにログにあります', other: '${formatted}件はすでにログにあります', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件をインポートします', other: '${formatted}件をインポートします', ), 
@@ -7046,6 +7014,8 @@ extension on TranslationsJa {
 			'adifImport.importing' => ({required Object filename}) => '${filename}をインポート中…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${filename}から${count}件のコンタクトをインポートしました', other: '${filename}から${formatted}件のコンタクトをインポートしました', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename}をインポートできませんでした：${error}',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename}はADIFファイルではないようです',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '警告：このADIFには${calls}のQSOが含まれていますが、続行すると${station}としてインポートされます。',
 			'adifImport.stationCallJoin' => 'と',

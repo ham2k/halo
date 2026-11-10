@@ -102,7 +102,7 @@ test("the scope is all the pane shows: its settings are behind the gear, with no
     ),
   ).getPanels({}, context)
   assert.deepEqual(
-    descriptor.form!.map((field) => ("key" in field ? field.key : field.title)),
+    descriptor.form!.map((field) => ("key" in field ? field.key : "title" in field ? field.title : field.type)),
     // The view and the spots up front; what the scope draws and asks of the radio folded under a heading.
     ["display", "spots", "notes", "age", "spotLevel", "plan", "Band Scope Settings", "floor", "average", "fps", "rows", "ref", "speed"],
   )

@@ -1645,7 +1645,6 @@ class _Translations$operation$tabs$fr extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'Écran distant';
 	@override String get solar => 'Solaire';
 	@override String get radio => 'Radio';
-	@override String get rotator => 'Rotor';
 	@override String get summaries => 'Résumés d\'opération';
 }
 
@@ -3550,25 +3549,11 @@ class _Translations$operation$layout$panels$fr extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'ROS élevé';
-	@override String get rotatorDescription => 'Où pointe l\'antenne, sur une carte centrée sur la station. Appuyez sur la carte pour la tourner.';
-	@override String get rotatorRotator => 'Rotor';
-	@override String rotatorAutoNamed({required Object name}) => 'Automatique — ${name}';
-	@override String get rotatorAutoNone => 'Automatique — aucun rotor pour l\'instant';
-	@override String get rotatorBeamWidth => 'Largeur de faisceau';
-	@override String get rotatorBeamWidthDescription => 'En degrés, tracée autour de l\'azimut. 0 n\'en trace aucune.';
-	@override String get rotatorLocation => 'Emplacement';
-	@override String get rotatorLocationDescription => 'Un carré locator, ou une latitude et une longitude, pour centrer la carte. Vide : l\'emplacement de l\'opération est utilisé.';
-	@override String get rotatorTheme => 'Thème';
-	@override String get rotatorThemeColor => 'Couleur';
-	@override String get rotatorThemeGray => 'Gris';
-	@override String get rotatorThemeMuted => 'Atténué';
-	@override String get rotatorGrayline => 'Afficher la ligne grise';
 	@override String get rotatorNoRotator => 'Aucun rotor à afficher. Choisissez-en un dans les paramètres de ce panneau, ou ajoutez-en un dans Configuration de la station.';
 	@override String get rotatorNoLocation => 'Aucun emplacement pour centrer la carte. Définissez-en un dans les paramètres de ce panneau.';
 	@override String get rotatorDisconnected => 'déconnecté';
 	@override String get rotatorNoReading => '—';
 	@override String get rotatorNotResponding => 'ne répond pas';
-	@override String get rotatorLocationInvalid => 'Impossible de lire l\'emplacement dans les paramètres de ce panneau. Utilisez un carré locator, ou une latitude et une longitude comme 40.7, -74.0.';
 	@override String rotatorElevation({required Object degrees}) => '${degrees}° él';
 	@override String get rotatorNorth => 'N';
 	@override String get rotatorEast => 'E';
@@ -4836,7 +4821,6 @@ extension on TranslationsFr {
 			'operation.tabs.remoteScreen' => 'Écran distant',
 			'operation.tabs.solar' => 'Solaire',
 			'operation.tabs.radio' => 'Radio',
-			'operation.tabs.rotator' => 'Rotor',
 			'operation.tabs.summaries' => 'Résumés d\'opération',
 			'operation.positions.nobodyYet' => 'Aucune autre position d\'opération ne partage encore cette opération.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Pos : ${number}',
@@ -4973,9 +4957,9 @@ extension on TranslationsFr {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} n\'a pas pu être affiché : une partie de sa scène contient plus de ${max} entrées',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} n\'a pas pu être affiché : une chaîne de la scène dépasse ${max} caractères',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} n\'a pas pu être affiché : sa disposition est imbriquée sur plus de ${max} niveaux',
+			'operation.layout.panelRenderRetry' => 'Réessayer',
 			_ => null,
 		} ?? switch (path) {
-			'operation.layout.panelRenderRetry' => 'Réessayer',
 			'operation.layout.panelActionFailed' => 'L\'action du panneau a échoué. Réessayez.',
 			'operation.layout.panels.loggingDescription' => 'Le journal et les champs de saisie',
 			'operation.layout.panels.infoDescription' => 'Ce que nous savons de la station contactée',
@@ -5110,25 +5094,11 @@ extension on TranslationsFr {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'ROS élevé',
-			'operation.layout.panels.rotatorDescription' => 'Où pointe l\'antenne, sur une carte centrée sur la station. Appuyez sur la carte pour la tourner.',
-			'operation.layout.panels.rotatorRotator' => 'Rotor',
-			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'Automatique — ${name}',
-			'operation.layout.panels.rotatorAutoNone' => 'Automatique — aucun rotor pour l\'instant',
-			'operation.layout.panels.rotatorBeamWidth' => 'Largeur de faisceau',
-			'operation.layout.panels.rotatorBeamWidthDescription' => 'En degrés, tracée autour de l\'azimut. 0 n\'en trace aucune.',
-			'operation.layout.panels.rotatorLocation' => 'Emplacement',
-			'operation.layout.panels.rotatorLocationDescription' => 'Un carré locator, ou une latitude et une longitude, pour centrer la carte. Vide : l\'emplacement de l\'opération est utilisé.',
-			'operation.layout.panels.rotatorTheme' => 'Thème',
-			'operation.layout.panels.rotatorThemeColor' => 'Couleur',
-			'operation.layout.panels.rotatorThemeGray' => 'Gris',
-			'operation.layout.panels.rotatorThemeMuted' => 'Atténué',
-			'operation.layout.panels.rotatorGrayline' => 'Afficher la ligne grise',
 			'operation.layout.panels.rotatorNoRotator' => 'Aucun rotor à afficher. Choisissez-en un dans les paramètres de ce panneau, ou ajoutez-en un dans Configuration de la station.',
 			'operation.layout.panels.rotatorNoLocation' => 'Aucun emplacement pour centrer la carte. Définissez-en un dans les paramètres de ce panneau.',
 			'operation.layout.panels.rotatorDisconnected' => 'déconnecté',
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => 'ne répond pas',
-			'operation.layout.panels.rotatorLocationInvalid' => 'Impossible de lire l\'emplacement dans les paramètres de ce panneau. Utilisez un carré locator, ou une latitude et une longitude comme 40.7, -74.0.',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° él',
 			'operation.layout.panels.rotatorNorth' => 'N',
 			'operation.layout.panels.rotatorEast' => 'E',
@@ -5487,8 +5457,6 @@ extension on TranslationsFr {
 			'loggingControls.saveFailed' => ({required Object error}) => 'Impossible d\'enregistrer : ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Impossible de supprimer : ${error}',
 			'loggingControls.info.noQsos' => 'Pas encore de QSOs… Allez faire de la radio !',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} en ${time}',
@@ -5504,6 +5472,8 @@ extension on TranslationsFr {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer} : ${notice}',
 			'loggingControls.info.noticeDupe' => 'Doublon !',
 			'loggingControls.info.noticeNewBand' => 'Nouvelle bande',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewMode' => 'Nouveau mode',
 			'loggingControls.info.noticeNewDXCC' => 'Nouveau DXCC',
 			'loggingControls.info.noticeNewState' => 'Nouvel état',
@@ -6001,8 +5971,6 @@ extension on TranslationsFr {
 			'settings.sync.moreSettings' => 'Plus de paramètres de synchronisation',
 			'settings.sync.enable' => 'Activer la synchronisation',
 			'settings.sync.deviceKey' => 'Clé de l\'appareil',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.title' => 'Appareils pairs',
 			'settings.peers.enable' => 'Se connecter à d\'autres appareils',
 			'settings.peers.enableDescription' => 'Permettre de partager les opérations, la saisie, le CAT et le GPS avec d\'autres appareils sur le réseau local',
@@ -6018,6 +5986,8 @@ extension on TranslationsFr {
 			'settings.peers.connected' => 'Connecté',
 			'settings.peers.viaBluetooth' => 'via Bluetooth',
 			'settings.peers.connecting' => 'Connexion…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.syncing' => 'Synchronisation…',
 			'settings.peers.waitingForThem' => 'En attente de l\'autre appareil',
 			'settings.peers.notConnected' => 'Non connecté',
@@ -6515,8 +6485,6 @@ extension on TranslationsFr {
 			'settings.station.placeholderFreq' => 'Fréquence (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Fréquence de départ de la radio provisoire. Elle renvoie ensuite ce sur quoi l\'application l\'accorde.',
 			'settings.station.placeholderMode' => 'Mode',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'Le mode de départ de la radio provisoire, par ex. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Puissance (watts)',
 			'settings.station.placeholderPurpose' => 'Utilisez cette radio pour garder trace du poste que vous utilisez, à des fins de journal',
@@ -6532,6 +6500,8 @@ extension on TranslationsFr {
 			'settings.station.yaesuMeterCaptureDescription' => 'Lit les indicateurs PO, SWR et ALC de la radio pendant l\'émission, et écrit les valeurs brutes dans le log. Sert à établir l\'échelle que Yaesu ne publie pas — les valeurs ne sont pas affichées sous forme d\'indicateurs.',
 			'settings.station.telemetryInterval' => 'Intervalle de lecture des indicateurs (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Fréquence de lecture des indicateurs de la radio pendant l\'émission. Laissez vide pour le plus rapide que cette connexion supporte, jusqu\'à 200 ms.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Un nombre entier de millisecondes, de ${min} à ${max}',
 			'settings.station.pollInterval' => 'Intervalle d\'interrogation au repos (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Fréquence à laquelle demander à la radio sa fréquence et son mode quand rien ne change. Laissez vide pour ${fallback} ms.',
@@ -7029,8 +6999,6 @@ extension on TranslationsFr {
 			'qsonImport.busy' => 'Une importation est déjà en cours. Attendez qu\'elle se termine avant d\'en lancer une autre.',
 			'adifImport.title' => 'Importer des QSOs depuis ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Lecture de ${filename}…',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} QSO dans ce fichier', other: '${formatted} QSOs dans ce fichier', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} déjà dans votre journal', other: '${formatted} déjà dans votre journal', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} sera importé', other: '${formatted} seront importés', ), 
@@ -7046,6 +7014,8 @@ extension on TranslationsFr {
 			'adifImport.importing' => ({required Object filename}) => 'Importation de ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} contact importé depuis ${filename}', other: '${formatted} contacts importés depuis ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Impossible d\'importer ${filename} : ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} ne ressemble pas à un fichier ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Attention : cet ADIF contient des QSOs de ${calls}, mais ils seront importés comme ${station} si vous continuez.',
 			'adifImport.stationCallJoin' => ' et ',

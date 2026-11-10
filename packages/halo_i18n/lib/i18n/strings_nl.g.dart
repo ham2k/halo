@@ -1645,7 +1645,6 @@ class _Translations$operation$tabs$nl extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'Extern scherm';
 	@override String get solar => 'Zon';
 	@override String get radio => 'Radio';
-	@override String get rotator => 'Rotor';
 	@override String get summaries => 'Samenvattingen';
 }
 
@@ -3550,25 +3549,11 @@ class _Translations$operation$layout$panels$nl extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'hoge SWR';
-	@override String get rotatorDescription => 'Waar de antenne heen wijst, op een kaart rond het station. Tik op de kaart om te draaien.';
-	@override String get rotatorRotator => 'Rotor';
-	@override String rotatorAutoNamed({required Object name}) => 'Automatisch — ${name}';
-	@override String get rotatorAutoNone => 'Automatisch — nog geen rotor';
-	@override String get rotatorBeamWidth => 'Openingshoek';
-	@override String get rotatorBeamWidthDescription => 'In graden, getekend rond de richting. 0 tekent niets.';
-	@override String get rotatorLocation => 'Locatie';
-	@override String get rotatorLocationDescription => 'Een grid square, of een breedte- en lengtegraad, om de kaart op te centreren. Leeg gebruikt de locatie van de activatie.';
-	@override String get rotatorTheme => 'Thema';
-	@override String get rotatorThemeColor => 'Kleur';
-	@override String get rotatorThemeGray => 'Grijs';
-	@override String get rotatorThemeMuted => 'Gedempt';
-	@override String get rotatorGrayline => 'Grayline tonen';
 	@override String get rotatorNoRotator => 'Geen rotor om te tonen. Kies er een in de instellingen van dit paneel, of voeg er een toe onder Stationsconfiguratie.';
 	@override String get rotatorNoLocation => 'Geen locatie om een kaart op te centreren. Stel er een in via de instellingen van dit paneel.';
 	@override String get rotatorDisconnected => 'niet verbonden';
 	@override String get rotatorNoReading => '—';
 	@override String get rotatorNotResponding => 'reageert niet';
-	@override String get rotatorLocationInvalid => 'Kan de locatie in de instellingen van dit paneel niet lezen. Gebruik een grid square, of een breedte- en lengtegraad zoals 40.7, -74.0.';
 	@override String rotatorElevation({required Object degrees}) => '${degrees}° el';
 	@override String get rotatorNorth => 'N';
 	@override String get rotatorEast => 'O';
@@ -4836,7 +4821,6 @@ extension on TranslationsNl {
 			'operation.tabs.remoteScreen' => 'Extern scherm',
 			'operation.tabs.solar' => 'Zon',
 			'operation.tabs.radio' => 'Radio',
-			'operation.tabs.rotator' => 'Rotor',
 			'operation.tabs.summaries' => 'Samenvattingen',
 			'operation.positions.nobodyYet' => 'Nog geen andere operatorposities delen deze activatie.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Pos: ${number}',
@@ -4973,9 +4957,9 @@ extension on TranslationsNl {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: een deel van de scène heeft meer dan ${max} items',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: een tekst in de scène is langer dan ${max} tekens',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de indeling is meer dan ${max} niveaus diep genest',
+			'operation.layout.panelRenderRetry' => 'Opnieuw proberen',
 			_ => null,
 		} ?? switch (path) {
-			'operation.layout.panelRenderRetry' => 'Opnieuw proberen',
 			'operation.layout.panelActionFailed' => 'Die paneelactie is mislukt. Probeer het opnieuw.',
 			'operation.layout.panels.loggingDescription' => 'Het logboek en de invoervelden',
 			'operation.layout.panels.infoDescription' => 'Wat we weten over het gewerkte station',
@@ -5110,25 +5094,11 @@ extension on TranslationsNl {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'hoge SWR',
-			'operation.layout.panels.rotatorDescription' => 'Waar de antenne heen wijst, op een kaart rond het station. Tik op de kaart om te draaien.',
-			'operation.layout.panels.rotatorRotator' => 'Rotor',
-			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'Automatisch — ${name}',
-			'operation.layout.panels.rotatorAutoNone' => 'Automatisch — nog geen rotor',
-			'operation.layout.panels.rotatorBeamWidth' => 'Openingshoek',
-			'operation.layout.panels.rotatorBeamWidthDescription' => 'In graden, getekend rond de richting. 0 tekent niets.',
-			'operation.layout.panels.rotatorLocation' => 'Locatie',
-			'operation.layout.panels.rotatorLocationDescription' => 'Een grid square, of een breedte- en lengtegraad, om de kaart op te centreren. Leeg gebruikt de locatie van de activatie.',
-			'operation.layout.panels.rotatorTheme' => 'Thema',
-			'operation.layout.panels.rotatorThemeColor' => 'Kleur',
-			'operation.layout.panels.rotatorThemeGray' => 'Grijs',
-			'operation.layout.panels.rotatorThemeMuted' => 'Gedempt',
-			'operation.layout.panels.rotatorGrayline' => 'Grayline tonen',
 			'operation.layout.panels.rotatorNoRotator' => 'Geen rotor om te tonen. Kies er een in de instellingen van dit paneel, of voeg er een toe onder Stationsconfiguratie.',
 			'operation.layout.panels.rotatorNoLocation' => 'Geen locatie om een kaart op te centreren. Stel er een in via de instellingen van dit paneel.',
 			'operation.layout.panels.rotatorDisconnected' => 'niet verbonden',
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => 'reageert niet',
-			'operation.layout.panels.rotatorLocationInvalid' => 'Kan de locatie in de instellingen van dit paneel niet lezen. Gebruik een grid square, of een breedte- en lengtegraad zoals 40.7, -74.0.',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
 			'operation.layout.panels.rotatorNorth' => 'N',
 			'operation.layout.panels.rotatorEast' => 'O',
@@ -5487,8 +5457,6 @@ extension on TranslationsNl {
 			'loggingControls.saveFailed' => ({required Object error}) => 'Kon niet opslaan: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Kon niet verwijderen: ${error}',
 			'loggingControls.info.noQsos' => 'Nog geen QSO\'s… Laten we starten!',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSO\'s',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} in ${time}',
@@ -5504,6 +5472,8 @@ extension on TranslationsNl {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => 'Dupe!',
 			'loggingControls.info.noticeNewBand' => 'Nieuwe band',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewMode' => 'Nieuwe mode',
 			'loggingControls.info.noticeNewDXCC' => 'Nieuwe DXCC',
 			'loggingControls.info.noticeNewState' => 'Nieuwe staat',
@@ -6001,8 +5971,6 @@ extension on TranslationsNl {
 			'settings.sync.moreSettings' => 'Meer synchronisatie-instellingen',
 			'settings.sync.enable' => 'Synchronisatie inschakelen',
 			'settings.sync.deviceKey' => 'Apparaatsleutel',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.title' => 'Peer-apparaten',
 			'settings.peers.enable' => 'Verbinden met andere apparaten',
 			'settings.peers.enableDescription' => 'Activaties, loggen, CAT en GPS delen met andere apparaten via het lokale netwerk',
@@ -6018,6 +5986,8 @@ extension on TranslationsNl {
 			'settings.peers.connected' => 'Verbonden',
 			'settings.peers.viaBluetooth' => 'via Bluetooth',
 			'settings.peers.connecting' => 'Verbinden…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.syncing' => 'Synchroniseren…',
 			'settings.peers.waitingForThem' => 'Wachten op het andere apparaat',
 			'settings.peers.notConnected' => 'Niet verbonden',
@@ -6515,8 +6485,6 @@ extension on TranslationsNl {
 			'settings.station.placeholderFreq' => 'Frequentie (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Waar de tijdelijke radio begint. Daarna meldt hij terug waarop de app hem ook afstemt.',
 			'settings.station.placeholderMode' => 'Mode',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'De mode waarmee de tijdelijke radio begint, bijv. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Vermogen (watt)',
 			'settings.station.placeholderPurpose' => 'Gebruik deze radio om bij te houden welke rig je gebruikt, voor je logboek',
@@ -6532,6 +6500,8 @@ extension on TranslationsNl {
 			'settings.station.yaesuMeterCaptureDescription' => 'Leest tijdens het zenden de PO-, SWR- en ALC-meters van de radio uit en schrijft de ruwe waarden naar het log. Bedoeld om de schaal op te bouwen die Yaesu niet publiceert — de waarden worden niet als meters getoond.',
 			'settings.station.telemetryInterval' => 'Interval meteruitlezing (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Hoe vaak de meters van de radio tijdens het zenden worden uitgelezen. Laat leeg voor het snelste wat deze verbinding aankan, tot 200 ms.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Een geheel aantal milliseconden, ${min} tot ${max}',
 			'settings.station.pollInterval' => 'Pollinginterval in rust (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Hoe vaak de radio om frequentie en mode wordt gevraagd zolang geen van beide verandert. Laat leeg voor ${fallback} ms.',
@@ -7029,8 +6999,6 @@ extension on TranslationsNl {
 			'qsonImport.busy' => 'Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.',
 			'adifImport.title' => 'QSO\'s importeren uit ADIF',
 			'adifImport.reading' => ({required Object filename}) => '${filename} lezen…',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO in dit bestand', other: '${formatted} QSO\'s in dit bestand', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} staat al in je logboek', other: '${formatted} staan al in je logboek', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} wordt geïmporteerd', other: '${formatted} worden geïmporteerd', ), 
@@ -7046,6 +7014,8 @@ extension on TranslationsNl {
 			'adifImport.importing' => ({required Object filename}) => '${filename} importeren…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO geïmporteerd uit ${filename}', other: '${formatted} QSO\'s geïmporteerd uit ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Kon ${filename} niet importeren: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} lijkt geen ADIF-bestand',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Waarschuwing: deze ADIF bevat QSO\'s van ${calls}, maar ze worden geïmporteerd als ${station} als je doorgaat.',
 			'adifImport.stationCallJoin' => ' en ',

@@ -37,6 +37,7 @@ import '../../services/panel_service.dart';
 import 'panel_content_view.dart';
 import 'panel_environment.dart';
 import 'panel_scene/scene_model.dart';
+import 'panel_scene/scene_rotator.dart';
 import 'panel_scene/scene_spectrum.dart';
 
 export '../../services/panel_service.dart' show PanelRenderContext, operationHookArgs;
@@ -55,11 +56,24 @@ class ExtensionPanel extends StatefulWidget {
   /// the radio.
   final SceneSpectrumSource? spectrum;
 
+  /// For a scene's `rotatorMap` controls; null when this panel may not read
+  /// the rotators.
+  final SceneRotatorSource? rotator;
+
   /// How a markdown pane draws its images: the extension's own, from
   /// `extensionImagesFor`. Null draws each as its alt text.
   final MarkdownSizedImageBuilder? markdownImages;
 
-  const ExtensionPanel({super.key, required this.panel, required this.panels, required this.renderContext, this.onTitle, this.spectrum, this.markdownImages});
+  const ExtensionPanel({
+    super.key,
+    required this.panel,
+    required this.panels,
+    required this.renderContext,
+    this.onTitle,
+    this.spectrum,
+    this.rotator,
+    this.markdownImages,
+  });
 
   @override
   State<ExtensionPanel> createState() => _ExtensionPanelState();
@@ -732,6 +746,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         onRetry: _error == null ? null : _retry,
         onSceneEvent: _sceneEvent,
         spectrum: widget.spectrum,
+        rotator: widget.rotator,
       );
       final images = widget.markdownImages;
       return images == null ? view : MarkdownImages(builder: images, child: view);

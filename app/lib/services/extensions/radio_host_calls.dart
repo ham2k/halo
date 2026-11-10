@@ -11,7 +11,7 @@ import '../panel_radio_service.dart';
 /// `requiresRadioRead` for `listRadios`/`readRadio` and the station's antenna
 /// switches and rotators (`listEquipment`), `requiresRadioWrite` for
 /// everything that commands one — settings, connection, scope, keying (CW,
-/// voice memories, PTT), an antenna selected or a rotator turned — and `requiresRadioRaw` for `sendRadioRaw`, any
+/// voice memories, PTT), an antenna selected, a rotator turned, either connected — and `requiresRadioRaw` for `sendRadioRaw`, any
 /// command in the radio's own protocol, which implies both. Without the gate
 /// any installed bundle could retune the rig, drop the CAT link or key the
 /// transmitter from any hook, with nothing in its manifest saying so.
@@ -36,6 +36,7 @@ class RadioHostCalls {
     'setAntenna',
     'setRotator',
     'stopRotator',
+    'setEquipmentConnection',
   };
 
   static const _raw = 'sendRadioRaw';
@@ -90,6 +91,7 @@ class RadioHostCalls {
       'setAntenna' => equipment?.setAntenna(params) ?? unavailable,
       'setRotator' => equipment?.setRotator(params) ?? unavailable,
       'stopRotator' => equipment?.stopRotator(params) ?? unavailable,
+      'setEquipmentConnection' => equipment?.setConnection(params) ?? unavailable,
       'readRadio' => radio?.readFor(params['id'] as String?),
       'setRadioConnection' => radio?.setConnection(params) ?? unavailable,
       'setRadioSpectrum' => radio?.setSpectrum(params) ?? unavailable,

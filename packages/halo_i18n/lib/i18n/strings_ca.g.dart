@@ -1645,7 +1645,6 @@ class _Translations$operation$tabs$ca extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'Pantalla remota';
 	@override String get solar => 'Solar';
 	@override String get radio => 'Ràdio';
-	@override String get rotator => 'Rotor';
 	@override String get summaries => 'Resums de l\'operació';
 }
 
@@ -3550,25 +3549,11 @@ class _Translations$operation$layout$panels$ca extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'ROE alta';
-	@override String get rotatorDescription => 'Cap a on apunta l\'antena, en un mapa centrat a l\'estació. Toca el mapa per girar-la.';
-	@override String get rotatorRotator => 'Rotor';
-	@override String rotatorAutoNamed({required Object name}) => 'Automàtic — ${name}';
-	@override String get rotatorAutoNone => 'Automàtic — encara no hi ha cap rotor';
-	@override String get rotatorBeamWidth => 'Amplada del feix';
-	@override String get rotatorBeamWidthDescription => 'En graus, dibuixada al voltant del rumb. 0 no en dibuixa cap.';
-	@override String get rotatorLocation => 'Ubicació';
-	@override String get rotatorLocationDescription => 'Una graella, o una latitud i longitud, per centrar-hi el mapa. En blanc, es fa servir la ubicació de l\'operació.';
-	@override String get rotatorTheme => 'Tema';
-	@override String get rotatorThemeColor => 'Color';
-	@override String get rotatorThemeGray => 'Gris';
-	@override String get rotatorThemeMuted => 'Apagat';
-	@override String get rotatorGrayline => 'Mostra la línia grisa';
 	@override String get rotatorNoRotator => 'No hi ha cap rotor per mostrar. Tria\'n un a la configuració d\'aquest panell, o afegeix-ne un a Configuració de l\'estació.';
 	@override String get rotatorNoLocation => 'No hi ha cap ubicació on centrar el mapa. Defineix-ne una a la configuració d\'aquest panell.';
 	@override String get rotatorDisconnected => 'desconnectat';
 	@override String get rotatorNoReading => '—';
 	@override String get rotatorNotResponding => 'no respon';
-	@override String get rotatorLocationInvalid => 'No es pot llegir la ubicació de la configuració d\'aquest panell. Fes servir una graella, o una latitud i longitud com 40.7, -74.0.';
 	@override String rotatorElevation({required Object degrees}) => '${degrees}° el';
 	@override String get rotatorNorth => 'N';
 	@override String get rotatorEast => 'E';
@@ -4836,7 +4821,6 @@ extension on TranslationsCa {
 			'operation.tabs.remoteScreen' => 'Pantalla remota',
 			'operation.tabs.solar' => 'Solar',
 			'operation.tabs.radio' => 'Ràdio',
-			'operation.tabs.rotator' => 'Rotor',
 			'operation.tabs.summaries' => 'Resums de l\'operació',
 			'operation.positions.nobodyYet' => 'Encara no hi ha cap altra posició d\'operació que comparteixi aquesta operació.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Pos: ${number}',
@@ -4973,9 +4957,9 @@ extension on TranslationsCa {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => 'No s\'ha pogut mostrar ${panel}: una part de la seva escena té més de ${max} entrades',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => 'No s\'ha pogut mostrar ${panel}: una cadena de l\'escena té més de ${max} caràcters',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => 'No s\'ha pogut mostrar ${panel}: la seva disposició té més de ${max} nivells d\'imbricació',
+			'operation.layout.panelRenderRetry' => 'Torna-ho a provar',
 			_ => null,
 		} ?? switch (path) {
-			'operation.layout.panelRenderRetry' => 'Torna-ho a provar',
 			'operation.layout.panelActionFailed' => 'L\'acció del panell ha fallat. Torna-ho a provar.',
 			'operation.layout.panels.loggingDescription' => 'El registre i els camps d\'entrada',
 			'operation.layout.panels.infoDescription' => 'El que sabem de l\'estació amb qui contactem',
@@ -5110,25 +5094,11 @@ extension on TranslationsCa {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'ROE alta',
-			'operation.layout.panels.rotatorDescription' => 'Cap a on apunta l\'antena, en un mapa centrat a l\'estació. Toca el mapa per girar-la.',
-			'operation.layout.panels.rotatorRotator' => 'Rotor',
-			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'Automàtic — ${name}',
-			'operation.layout.panels.rotatorAutoNone' => 'Automàtic — encara no hi ha cap rotor',
-			'operation.layout.panels.rotatorBeamWidth' => 'Amplada del feix',
-			'operation.layout.panels.rotatorBeamWidthDescription' => 'En graus, dibuixada al voltant del rumb. 0 no en dibuixa cap.',
-			'operation.layout.panels.rotatorLocation' => 'Ubicació',
-			'operation.layout.panels.rotatorLocationDescription' => 'Una graella, o una latitud i longitud, per centrar-hi el mapa. En blanc, es fa servir la ubicació de l\'operació.',
-			'operation.layout.panels.rotatorTheme' => 'Tema',
-			'operation.layout.panels.rotatorThemeColor' => 'Color',
-			'operation.layout.panels.rotatorThemeGray' => 'Gris',
-			'operation.layout.panels.rotatorThemeMuted' => 'Apagat',
-			'operation.layout.panels.rotatorGrayline' => 'Mostra la línia grisa',
 			'operation.layout.panels.rotatorNoRotator' => 'No hi ha cap rotor per mostrar. Tria\'n un a la configuració d\'aquest panell, o afegeix-ne un a Configuració de l\'estació.',
 			'operation.layout.panels.rotatorNoLocation' => 'No hi ha cap ubicació on centrar el mapa. Defineix-ne una a la configuració d\'aquest panell.',
 			'operation.layout.panels.rotatorDisconnected' => 'desconnectat',
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => 'no respon',
-			'operation.layout.panels.rotatorLocationInvalid' => 'No es pot llegir la ubicació de la configuració d\'aquest panell. Fes servir una graella, o una latitud i longitud com 40.7, -74.0.',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
 			'operation.layout.panels.rotatorNorth' => 'N',
 			'operation.layout.panels.rotatorEast' => 'E',
@@ -5487,8 +5457,6 @@ extension on TranslationsCa {
 			'loggingControls.saveFailed' => ({required Object error}) => 'No s\'ha pogut desar: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'No s\'ha pogut esborrar: ${error}',
 			'loggingControls.info.noQsos' => 'Cap QSO encara… Som-hi, sortim a l\'aire!',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} en ${time}',
@@ -5504,6 +5472,8 @@ extension on TranslationsCa {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => 'Duplicat!',
 			'loggingControls.info.noticeNewBand' => 'Banda Nova',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewMode' => 'Mode Nou',
 			'loggingControls.info.noticeNewDXCC' => 'DXCC Nou',
 			'loggingControls.info.noticeNewState' => 'Estat Nou',
@@ -6001,8 +5971,6 @@ extension on TranslationsCa {
 			'settings.sync.moreSettings' => 'Més opcions de sincronització',
 			'settings.sync.enable' => 'Activa la sincronització',
 			'settings.sync.deviceKey' => 'Clau del dispositiu',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.title' => 'Dispositius associats',
 			'settings.peers.enable' => 'Connecta amb altres dispositius',
 			'settings.peers.enableDescription' => 'Permet compartir operacions, registre, CAT i GPS amb altres dispositius per la xarxa local',
@@ -6018,6 +5986,8 @@ extension on TranslationsCa {
 			'settings.peers.connected' => 'Connectat',
 			'settings.peers.viaBluetooth' => 'per Bluetooth',
 			'settings.peers.connecting' => 'Connectant…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.syncing' => 'Sincronitzant…',
 			'settings.peers.waitingForThem' => 'Esperant l\'altre dispositiu',
 			'settings.peers.notConnected' => 'No connectat',
@@ -6515,8 +6485,6 @@ extension on TranslationsCa {
 			'settings.station.placeholderFreq' => 'Freqüència (kHz)',
 			'settings.station.placeholderFreqDescription' => 'On comença la ràdio provisional. Després informa de qualsevol freqüència a la qual la sintonitzi l\'aplicació.',
 			'settings.station.placeholderMode' => 'Mode',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'El mode amb què comença la ràdio provisional, p. ex. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Potència (watts)',
 			'settings.station.placeholderPurpose' => 'Utilitza aquesta ràdio per tenir constància de quin equip fas servir a efectes de registre',
@@ -6532,6 +6500,8 @@ extension on TranslationsCa {
 			'settings.station.yaesuMeterCaptureDescription' => 'Llegeix els mesuradors PO, SWR i ALC de la ràdio mentre transmet i escriu els valors en brut al registre. Serveix per construir l\'escala que Yaesu no publica — els valors no es mostren com a mesuradors.',
 			'settings.station.telemetryInterval' => 'Interval de lectura dels mesuradors (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Cada quant es llegeixen els mesuradors de la ràdio mentre transmet. Deixa-ho en blanc per al més ràpid que admeti aquesta connexió, fins a 200 ms.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Un nombre enter de mil·lisegons, de ${min} a ${max}',
 			'settings.station.pollInterval' => 'Interval de consulta en repòs (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Cada quant es demana a la ràdio la freqüència i el mode mentre cap dels dos canvia. Deixa-ho en blanc per a ${fallback} ms.',
@@ -7029,8 +6999,6 @@ extension on TranslationsCa {
 			'qsonImport.busy' => 'Ja hi ha una importació en curs. Espera que acabi abans de començar-ne una altra.',
 			'adifImport.title' => 'Importa QSOs des d\'ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Llegint ${filename}…',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} QSO en aquest fitxer', other: '${formatted} QSOs en aquest fitxer', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} ja és al teu registre', other: '${formatted} ja són al teu registre', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Se n\'importarà ${count}', other: 'Se n\'importaran ${formatted}', ), 
@@ -7046,6 +7014,8 @@ extension on TranslationsCa {
 			'adifImport.importing' => ({required Object filename}) => 'Important ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'S\'ha importat ${count} contacte de ${filename}', other: 'S\'han importat ${formatted} contactes de ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'No s\'ha pogut importar ${filename}: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} no sembla un fitxer ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Avís: aquest ADIF té QSOs de ${calls}, però s\'importaran com a ${station} si continues.',
 			'adifImport.stationCallJoin' => ' i ',

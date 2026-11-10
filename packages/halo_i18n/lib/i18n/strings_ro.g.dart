@@ -1645,7 +1645,6 @@ class _Translations$operation$tabs$ro extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'Ecran la distanță';
 	@override String get solar => 'Solar';
 	@override String get radio => 'Radio';
-	@override String get rotator => 'Rotor';
 	@override String get summaries => 'Rezumate operațiune';
 }
 
@@ -3550,25 +3549,11 @@ class _Translations$operation$layout$panels$ro extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'SWR ridicat';
-	@override String get rotatorDescription => 'Încotro arată antena, pe o hartă centrată pe stație. Atingeți harta pentru a o roti.';
-	@override String get rotatorRotator => 'Rotor';
-	@override String rotatorAutoNamed({required Object name}) => 'Automat — ${name}';
-	@override String get rotatorAutoNone => 'Automat — încă niciun rotor';
-	@override String get rotatorBeamWidth => 'Lățimea fasciculului';
-	@override String get rotatorBeamWidthDescription => 'În grade, desenată în jurul direcției. 0 nu desenează nimic.';
-	@override String get rotatorLocation => 'Locație';
-	@override String get rotatorLocationDescription => 'O grilă sau o latitudine și o longitudine pe care să se centreze harta. Lăsată goală, folosește locația operațiunii.';
-	@override String get rotatorTheme => 'Temă';
-	@override String get rotatorThemeColor => 'Color';
-	@override String get rotatorThemeGray => 'Gri';
-	@override String get rotatorThemeMuted => 'Estompat';
-	@override String get rotatorGrayline => 'Afișează linia gri';
 	@override String get rotatorNoRotator => 'Niciun rotor de afișat. Alegeți unul în setările acestui panou sau adăugați unul în Configurația stației.';
 	@override String get rotatorNoLocation => 'Nicio locație pe care să se centreze harta. Setați una în setările acestui panou.';
 	@override String get rotatorDisconnected => 'deconectat';
 	@override String get rotatorNoReading => '—';
 	@override String get rotatorNotResponding => 'nu răspunde';
-	@override String get rotatorLocationInvalid => 'Locația din setările acestui panou nu poate fi citită. Folosiți o grilă sau o latitudine și o longitudine, ca 40.7, -74.0.';
 	@override String rotatorElevation({required Object degrees}) => '${degrees}° el';
 	@override String get rotatorNorth => 'N';
 	@override String get rotatorEast => 'E';
@@ -4836,7 +4821,6 @@ extension on TranslationsRo {
 			'operation.tabs.remoteScreen' => 'Ecran la distanță',
 			'operation.tabs.solar' => 'Solar',
 			'operation.tabs.radio' => 'Radio',
-			'operation.tabs.rotator' => 'Rotor',
 			'operation.tabs.summaries' => 'Rezumate operațiune',
 			'operation.positions.nobodyYet' => 'Nicio altă poziție de operare nu partajează încă această operațiune.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Poz: ${number}',
@@ -4973,9 +4957,9 @@ extension on TranslationsRo {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} nu a putut fi afișat: o parte a scenei lui are mai mult de ${max} intrări',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} nu a putut fi afișat: un text din scenă depășește ${max} caractere',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} nu a putut fi afișat: aranjamentul lui are mai mult de ${max} niveluri de imbricare',
+			'operation.layout.panelRenderRetry' => 'Încercați din nou',
 			_ => null,
 		} ?? switch (path) {
-			'operation.layout.panelRenderRetry' => 'Încercați din nou',
 			'operation.layout.panelActionFailed' => 'Acțiunea panoului a eșuat. Încercați din nou.',
 			'operation.layout.panels.loggingDescription' => 'Jurnalul și câmpurile de introducere',
 			'operation.layout.panels.infoDescription' => 'Ce știm despre stația lucrată',
@@ -5110,25 +5094,11 @@ extension on TranslationsRo {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'SWR ridicat',
-			'operation.layout.panels.rotatorDescription' => 'Încotro arată antena, pe o hartă centrată pe stație. Atingeți harta pentru a o roti.',
-			'operation.layout.panels.rotatorRotator' => 'Rotor',
-			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'Automat — ${name}',
-			'operation.layout.panels.rotatorAutoNone' => 'Automat — încă niciun rotor',
-			'operation.layout.panels.rotatorBeamWidth' => 'Lățimea fasciculului',
-			'operation.layout.panels.rotatorBeamWidthDescription' => 'În grade, desenată în jurul direcției. 0 nu desenează nimic.',
-			'operation.layout.panels.rotatorLocation' => 'Locație',
-			'operation.layout.panels.rotatorLocationDescription' => 'O grilă sau o latitudine și o longitudine pe care să se centreze harta. Lăsată goală, folosește locația operațiunii.',
-			'operation.layout.panels.rotatorTheme' => 'Temă',
-			'operation.layout.panels.rotatorThemeColor' => 'Color',
-			'operation.layout.panels.rotatorThemeGray' => 'Gri',
-			'operation.layout.panels.rotatorThemeMuted' => 'Estompat',
-			'operation.layout.panels.rotatorGrayline' => 'Afișează linia gri',
 			'operation.layout.panels.rotatorNoRotator' => 'Niciun rotor de afișat. Alegeți unul în setările acestui panou sau adăugați unul în Configurația stației.',
 			'operation.layout.panels.rotatorNoLocation' => 'Nicio locație pe care să se centreze harta. Setați una în setările acestui panou.',
 			'operation.layout.panels.rotatorDisconnected' => 'deconectat',
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => 'nu răspunde',
-			'operation.layout.panels.rotatorLocationInvalid' => 'Locația din setările acestui panou nu poate fi citită. Folosiți o grilă sau o latitudine și o longitudine, ca 40.7, -74.0.',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
 			'operation.layout.panels.rotatorNorth' => 'N',
 			'operation.layout.panels.rotatorEast' => 'E',
@@ -5487,8 +5457,6 @@ extension on TranslationsRo {
 			'loggingControls.saveFailed' => ({required Object error}) => 'Nu s-a putut salva: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Nu s-a putut șterge: ${error}',
 			'loggingControls.info.noQsos' => 'Niciun QSO încă... hai să operăm!',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSO-uri',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} în ${time}',
@@ -5504,6 +5472,8 @@ extension on TranslationsRo {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => 'Duplicat!',
 			'loggingControls.info.noticeNewBand' => 'Bandă nouă',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewMode' => 'Mod nou',
 			'loggingControls.info.noticeNewDXCC' => 'DXCC nou',
 			'loggingControls.info.noticeNewState' => 'Stat nou',
@@ -6001,8 +5971,6 @@ extension on TranslationsRo {
 			'settings.sync.moreSettings' => 'Mai multe setări de sincronizare',
 			'settings.sync.enable' => 'Activează sincronizarea',
 			'settings.sync.deviceKey' => 'Cheia dispozitivului',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.title' => 'Dispozitive pereche',
 			'settings.peers.enable' => 'Conectare la alte dispozitive',
 			'settings.peers.enableDescription' => 'Permite partajarea operațiunilor, înregistrării, CAT și GPS cu alte dispozitive prin rețeaua locală',
@@ -6018,6 +5986,8 @@ extension on TranslationsRo {
 			'settings.peers.connected' => 'Conectat',
 			'settings.peers.viaBluetooth' => 'prin Bluetooth',
 			'settings.peers.connecting' => 'Se conectează…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.syncing' => 'Se sincronizează…',
 			'settings.peers.waitingForThem' => 'Se așteaptă celălalt dispozitiv',
 			'settings.peers.notConnected' => 'Neconectat',
@@ -6515,8 +6485,6 @@ extension on TranslationsRo {
 			'settings.station.placeholderFreq' => 'Frecvență (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Unde pornește stația substituent. Ulterior raportează orice frecvență setează aplicația.',
 			'settings.station.placeholderMode' => 'Mod',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'Modul în care pornește stația substituent, de ex. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Putere (wați)',
 			'settings.station.placeholderPurpose' => 'Folosiți această stație pentru a ține evidența aparatului folosit, în scopul înregistrării',
@@ -6532,6 +6500,8 @@ extension on TranslationsRo {
 			'settings.station.yaesuMeterCaptureDescription' => 'Citește instrumentele PO, SWR și ALC ale stației în timpul emisiei și scrie valorile brute în jurnalul de diagnostic. Pentru construirea scalei pe care Yaesu nu o publică — valorile nu sunt afișate ca instrumente.',
 			'settings.station.telemetryInterval' => 'Interval de citire a instrumentelor (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Cât de des se citesc instrumentele stației în timpul emisiei. Lăsați gol pentru cea mai mare viteză suportată de conexiune, până la 200 ms.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Un număr întreg de milisecunde, de la ${min} la ${max}',
 			'settings.station.pollInterval' => 'Interval de interogare în repaus (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Cât de des se cer stației frecvența și modul cât timp niciunul nu se schimbă. Lăsați gol pentru ${fallback} ms.',
@@ -7029,8 +6999,6 @@ extension on TranslationsRo {
 			'qsonImport.busy' => 'Un import rulează deja. Așteptați să se termine înainte de a porni altul.',
 			'adifImport.title' => 'Importă QSO-uri din ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Se citește ${filename}…',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} QSO în acest fișier', other: '${formatted} QSO-uri în acest fișier', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} se află deja în jurnal', other: '${formatted} se află deja în jurnal', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} va fi importat', other: '${formatted} vor fi importate', ), 
@@ -7046,6 +7014,8 @@ extension on TranslationsRo {
 			'adifImport.importing' => ({required Object filename}) => 'Se importă ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'S-a importat ${count} contact din ${filename}', other: 'S-au importat ${formatted} contacte din ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} nu a putut fi importat: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} nu pare a fi un fișier ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Atenție: acest ADIF are QSO-uri de la ${calls}, dar vor fi importate ca ${station} dacă continuați.',
 			'adifImport.stationCallJoin' => ' și ',

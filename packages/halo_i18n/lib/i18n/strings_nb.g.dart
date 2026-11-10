@@ -1645,7 +1645,6 @@ class _Translations$operation$tabs$nb extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'Fjernskjerm';
 	@override String get solar => 'Sol';
 	@override String get radio => 'Radio';
-	@override String get rotator => 'Rotor';
 	@override String get summaries => 'Operasjonssammendrag';
 }
 
@@ -3550,25 +3549,11 @@ class _Translations$operation$layout$panels$nb extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'høy SWR';
-	@override String get rotatorDescription => 'Hvor antennen peker, på et kart sentrert på stasjonen. Trykk på kartet for å dreie den.';
-	@override String get rotatorRotator => 'Rotor';
-	@override String rotatorAutoNamed({required Object name}) => 'Automatisk — ${name}';
-	@override String get rotatorAutoNone => 'Automatisk — ingen rotor ennå';
-	@override String get rotatorBeamWidth => 'Åpningsvinkel';
-	@override String get rotatorBeamWidthDescription => 'I grader, tegnet rundt retningen. 0 tegner ingen.';
-	@override String get rotatorLocation => 'Plassering';
-	@override String get rotatorLocationDescription => 'En Maidenhead-rute, eller bredde- og lengdegrad, som kartet sentreres på. Tomt bruker operasjonens plassering.';
-	@override String get rotatorTheme => 'Tema';
-	@override String get rotatorThemeColor => 'Farge';
-	@override String get rotatorThemeGray => 'Grå';
-	@override String get rotatorThemeMuted => 'Dempet';
-	@override String get rotatorGrayline => 'Vis grålinjen';
 	@override String get rotatorNoRotator => 'Ingen rotor å vise. Velg en i innstillingene for dette panelet, eller legg til en under Stasjonsoppsett.';
 	@override String get rotatorNoLocation => 'Ingen plassering å sentrere kartet på. Angi en i innstillingene for dette panelet.';
 	@override String get rotatorDisconnected => 'frakoblet';
 	@override String get rotatorNoReading => '—';
 	@override String get rotatorNotResponding => 'svarer ikke';
-	@override String get rotatorLocationInvalid => 'Kan ikke lese plasseringen i innstillingene for dette panelet. Bruk en Maidenhead-rute, eller bredde- og lengdegrad som 40.7, -74.0.';
 	@override String rotatorElevation({required Object degrees}) => '${degrees}° el';
 	@override String get rotatorNorth => 'N';
 	@override String get rotatorEast => 'Ø';
@@ -4836,7 +4821,6 @@ extension on TranslationsNb {
 			'operation.tabs.remoteScreen' => 'Fjernskjerm',
 			'operation.tabs.solar' => 'Sol',
 			'operation.tabs.radio' => 'Radio',
-			'operation.tabs.rotator' => 'Rotor',
 			'operation.tabs.summaries' => 'Operasjonssammendrag',
 			'operation.positions.nobodyYet' => 'Ingen andre operatørplasser deler denne operasjonen ennå.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Plass: ${number}',
@@ -4973,9 +4957,9 @@ extension on TranslationsNb {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: en del av scenen har mer enn ${max} oppføringer',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: en scenestreng er lengre enn ${max} tegn',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: oppsettet er nøstet mer enn ${max} nivåer dypt',
+			'operation.layout.panelRenderRetry' => 'Prøv igjen',
 			_ => null,
 		} ?? switch (path) {
-			'operation.layout.panelRenderRetry' => 'Prøv igjen',
 			'operation.layout.panelActionFailed' => 'Panelhandlingen mislyktes. Prøv igjen.',
 			'operation.layout.panels.loggingDescription' => 'Loggen og registreringsfeltene',
 			'operation.layout.panels.infoDescription' => 'Det vi vet om stasjonen vi har kontakt med',
@@ -5110,25 +5094,11 @@ extension on TranslationsNb {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'høy SWR',
-			'operation.layout.panels.rotatorDescription' => 'Hvor antennen peker, på et kart sentrert på stasjonen. Trykk på kartet for å dreie den.',
-			'operation.layout.panels.rotatorRotator' => 'Rotor',
-			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'Automatisk — ${name}',
-			'operation.layout.panels.rotatorAutoNone' => 'Automatisk — ingen rotor ennå',
-			'operation.layout.panels.rotatorBeamWidth' => 'Åpningsvinkel',
-			'operation.layout.panels.rotatorBeamWidthDescription' => 'I grader, tegnet rundt retningen. 0 tegner ingen.',
-			'operation.layout.panels.rotatorLocation' => 'Plassering',
-			'operation.layout.panels.rotatorLocationDescription' => 'En Maidenhead-rute, eller bredde- og lengdegrad, som kartet sentreres på. Tomt bruker operasjonens plassering.',
-			'operation.layout.panels.rotatorTheme' => 'Tema',
-			'operation.layout.panels.rotatorThemeColor' => 'Farge',
-			'operation.layout.panels.rotatorThemeGray' => 'Grå',
-			'operation.layout.panels.rotatorThemeMuted' => 'Dempet',
-			'operation.layout.panels.rotatorGrayline' => 'Vis grålinjen',
 			'operation.layout.panels.rotatorNoRotator' => 'Ingen rotor å vise. Velg en i innstillingene for dette panelet, eller legg til en under Stasjonsoppsett.',
 			'operation.layout.panels.rotatorNoLocation' => 'Ingen plassering å sentrere kartet på. Angi en i innstillingene for dette panelet.',
 			'operation.layout.panels.rotatorDisconnected' => 'frakoblet',
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => 'svarer ikke',
-			'operation.layout.panels.rotatorLocationInvalid' => 'Kan ikke lese plasseringen i innstillingene for dette panelet. Bruk en Maidenhead-rute, eller bredde- og lengdegrad som 40.7, -74.0.',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
 			'operation.layout.panels.rotatorNorth' => 'N',
 			'operation.layout.panels.rotatorEast' => 'Ø',
@@ -5487,8 +5457,6 @@ extension on TranslationsNb {
 			'loggingControls.saveFailed' => ({required Object error}) => 'Kunne ikke lagre: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Kunne ikke slette: ${error}',
 			'loggingControls.info.noQsos' => 'Ingen QSOer ennå... la oss gå på lufta!',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOer',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} på ${time}',
@@ -5504,6 +5472,8 @@ extension on TranslationsNb {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => 'Duplikat!',
 			'loggingControls.info.noticeNewBand' => 'Nytt bånd',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewMode' => 'Ny modus',
 			'loggingControls.info.noticeNewDXCC' => 'Ny DXCC',
 			'loggingControls.info.noticeNewState' => 'Ny stat',
@@ -6001,8 +5971,6 @@ extension on TranslationsNb {
 			'settings.sync.moreSettings' => 'Flere synkroniseringsinnstillinger',
 			'settings.sync.enable' => 'Aktiver synkronisering',
 			'settings.sync.deviceKey' => 'Enhetsnøkkel',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.title' => 'Andre enheter',
 			'settings.peers.enable' => 'Koble til andre enheter',
 			'settings.peers.enableDescription' => 'Tillat deling av operasjoner, logging, CAT og GPS med andre enheter over det lokale nettverket',
@@ -6018,6 +5986,8 @@ extension on TranslationsNb {
 			'settings.peers.connected' => 'Tilkoblet',
 			'settings.peers.viaBluetooth' => 'via Bluetooth',
 			'settings.peers.connecting' => 'Kobler til…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.syncing' => 'Synkroniserer…',
 			'settings.peers.waitingForThem' => 'Venter på den andre enheten',
 			'settings.peers.notConnected' => 'Ikke tilkoblet',
@@ -6515,8 +6485,6 @@ extension on TranslationsNb {
 			'settings.station.placeholderFreq' => 'Frekvens (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Hvor plassholderradioen starter. Etterpå rapporterer den tilbake det appen stiller den inn på.',
 			'settings.station.placeholderMode' => 'Modus',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'Modusen plassholderradioen starter på, f.eks. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Effekt (watt)',
 			'settings.station.placeholderPurpose' => 'Bruk denne radioen til å holde rede på hvilken rigg du bruker, for loggformål',
@@ -6532,6 +6500,8 @@ extension on TranslationsNb {
 			'settings.station.yaesuMeterCaptureDescription' => 'Leser radioens PO-, SWR- og ALC-målere under sending og skriver råverdiene til loggen. For å bygge skalaen Yaesu ikke publiserer — verdiene vises ikke som målere.',
 			'settings.station.telemetryInterval' => 'Intervall for måleravlesning (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Hvor ofte radioens målere leses mens den sender. La stå tomt for det raskeste denne tilkoblingen klarer, opptil 200 ms.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Et helt antall millisekunder, ${min} til ${max}',
 			'settings.station.pollInterval' => 'Spørreintervall i hvile (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Hvor ofte radioen spørres om frekvens og modus når ingen av dem endres. La stå tomt for ${fallback} ms.',
@@ -7029,8 +6999,6 @@ extension on TranslationsNb {
 			'qsonImport.busy' => 'En import pågår allerede. Vent til den er ferdig før du starter en ny.',
 			'adifImport.title' => 'Importer QSOer fra ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Leser ${filename}…',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} QSO i denne filen', other: '${formatted} QSOer i denne filen', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} finnes allerede i loggen din', other: '${formatted} finnes allerede i loggen din', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} blir importert', other: '${formatted} blir importert', ), 
@@ -7046,6 +7014,8 @@ extension on TranslationsNb {
 			'adifImport.importing' => ({required Object filename}) => 'Importerer ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Importerte ${count} kontakt fra ${filename}', other: 'Importerte ${formatted} kontakter fra ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Kunne ikke importere ${filename}: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} ser ikke ut som en ADIF-fil',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Advarsel: denne ADIF-filen har QSOer fra ${calls}, men de blir importert som ${station} hvis du fortsetter.',
 			'adifImport.stationCallJoin' => ' og ',

@@ -10,6 +10,8 @@
 // stopRotator) change nothing on a node that cannot take one and say so to
 // no one.
 
+import 'dart:async';
+
 import 'package:halo_core/halo_core.dart' show realNowMillis;
 
 import 'cat/cat_service.dart';
@@ -80,6 +82,7 @@ class PanelEquipmentService {
       if (kind == kCategoryRotator) ...{
         'azimuth': ?state.rotator?.azimuth,
         'elevation': ?state.rotator?.elevation,
+        'beamWidth': ?state.rotator?.beamWidth,
         if (state.rotatorTarget case final target?) 'target': {'azimuth': target.azimuth, 'elevation': ?target.elevation},
       },
     };
@@ -180,6 +183,19 @@ class PanelEquipmentService {
       if (cat.rotateTo(node.uuid, azimuth: azimuth % 360, elevation: elevation as num?) == null) return _refused('failed', node);
       return _sent(node);
     });
+  }
+
+  /// Connects or disconnects a switch or a rotator, as the station's own
+  /// plug does. Never queued: it changes the link the queue sends over, and
+  /// the device's status, not this answer, says when it is done.
+  Map<String, dynamic> setConnection(Map<String, dynamic> args) {
+    final id = args['id'];
+    final node = id is String ? cat.nodeFor(id) : null;
+    if (node == null || !_kinds.contains(cat.typeFor(node)?.category) || args['connected'] is! bool) {
+      return {'accepted': false, 'reason': 'invalid', 'state': node == null ? null : _read(node)};
+    }
+    unawaited(args['connected'] == true ? cat.connect(node.uuid) : cat.disconnect(node.uuid));
+    return {'accepted': true, 'state': _read(node)};
   }
 
   /// Stops a rotator wherever it has got to, and takes every turn still

@@ -27,26 +27,28 @@ void main() {
   // The row inset a form pane gives its rows.
   const inset = 24.0;
 
-  Widget form(List<Map<String, dynamic>> elements, {Map<String, dynamic> initialState = const {}, FormValidator? validator}) => MaterialApp(
-    home: Scaffold(
-      body: ListTileTheme.merge(
-        contentPadding: const EdgeInsets.symmetric(horizontal: inset),
-        child: SingleChildScrollView(
-          child: FormRenderer(
-            formDefinition: {'elements': elements},
-            initialState: initialState,
-            validator: validator,
-            onAction: (key, method, state) async {
-              actions.add(key);
-              return null;
-            },
-            onSubmit: (values) => submitted = values,
-            onCancel: () {},
+  Widget form(List<Map<String, dynamic>> elements, {Map<String, dynamic> initialState = const {}, FormValidator? validator, bool settingsList = false}) =>
+      MaterialApp(
+        home: Scaffold(
+          body: ListTileTheme.merge(
+            contentPadding: const EdgeInsets.symmetric(horizontal: inset),
+            child: SingleChildScrollView(
+              child: FormRenderer(
+                formDefinition: {'elements': elements},
+                initialState: initialState,
+                validator: validator,
+                settingsList: settingsList,
+                onAction: (key, method, state) async {
+                  actions.add(key);
+                  return null;
+                },
+                onSubmit: (values) => submitted = values,
+                onCancel: () {},
+              ),
+            ),
           ),
         ),
-      ),
-    ),
-  );
+      );
 
   Future<void> save(WidgetTester tester) async {
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
@@ -273,5 +275,47 @@ void main() {
     await show({'type': 'action', 'key': 'connect', 'label': 'Connect', 'icon': 'power-plug-off', 'busy': true});
     expect(find.byType(IconButton), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
+  // In a settings list every checkbox is a full-width row of its own; one
+  // drawn that way inside a row takes the line from the members beside it.
+  testWidgets('a labelled row in a settings list names its item at the start, its checkbox a bare switch, saved like any field', (tester) async {
+    await tester.pumpWidget(
+      form(
+        [
+          {
+            'type': 'row',
+            'label': 'Tower beam',
+            'elements': [_field('use', fieldType: 'checkbox', flex: 0), _field('name', flex: 3)],
+          },
+        ],
+        initialState: const {'use': false, 'name': 'Beam'},
+        settingsList: true,
+      ),
+    );
+    expect(find.byType(CheckboxListTile), findsNothing);
+    final label = tester.getRect(find.text('Tower beam'));
+    final toggle = tester.getRect(find.byType(Switch));
+    expect(toggle.left, greaterThan(label.left));
+    expect(toggle.center.dy, closeTo(label.center.dy, 1));
+
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+    await save(tester);
+    expect(submitted, {'use': true, 'name': 'Beam'});
+  });
+
+  testWidgets('a settings row says its value through valueFormat, and the placeholder while it has none', (tester) async {
+    Map<String, dynamic> width() => {
+      ..._field('width', fieldType: 'number'),
+      'placeholder': '30 degrees (Default for type)',
+      'valueFormat': r'${value} degrees (Manually specified)',
+    };
+    await tester.pumpWidget(form([width()], initialState: const {'width': 45}, settingsList: true));
+    expect(find.text('45 degrees (Manually specified)'), findsOneWidget);
+
+    await tester.pumpWidget(Container());
+    await tester.pumpWidget(form([width()], settingsList: true));
+    expect(find.text('30 degrees (Default for type)'), findsOneWidget);
   });
 }

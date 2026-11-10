@@ -25,6 +25,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import '../services/cat/cat_service.dart';
 import '../services/cat/equipment.dart';
+import 'operation/panel_scene/cat_rotator_source.dart';
 import 'operation/panel_scene/cat_spectrum_source.dart';
 import '../services/error_reporting_service.dart';
 import '../services/extensions/app_control_host_calls.dart' show LayoutControl;
@@ -47,7 +48,6 @@ import 'operation/solar/solar_panel.dart';
 import 'operation/weather/weather_panel.dart';
 import 'operation/radio/radio_panel.dart';
 import 'operation/remote_screen/remote_screen_panel.dart';
-import 'operation/rotator/rotator_panel.dart';
 import 'operation/remote_screen/remote_screen_picker.dart';
 import 'operation/website/website_panel.dart';
 import 'dock_layouts/layout_file.dart';
@@ -1114,10 +1114,15 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// [extraChildren] is for a native panel the host builds per PLACEMENT
   /// rather than once (the clock, one widget per instance id), which this
   /// cannot do for it: only the host knows the widget.
+  ///
+  /// [operationLocation] and [callLocation] are what only an operation has:
+  /// a scene's rotator map centres on the first and marks the second.
   Widget buildDock({
     required Map<String, Widget> children,
     Map<String, Widget> Function(List<String> inLayout)? extraChildren,
     Map<String, Widget Function(BuildContext)> tabActions = const {},
+    GridLocation? operationLocation,
+    GridLocation? callLocation,
   }) {
     ensureDockSpec();
     final inLayout = dockSpec!.collectModules();
@@ -1156,6 +1161,14 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                             final info? => (info.runtimeApi ?? 17) >= 17,
                             null => false,
                           },
+                        )
+                      : null,
+                  rotator: dockServices.extensions.radioCalls.canRead(dockServices.panels[id]!.hookKey)
+                      ? CatRotatorSource(
+                          dockServices.cat,
+                          canTurn: dockServices.extensions.radioCalls.canWrite(dockServices.panels[id]!.hookKey),
+                          home: operationLocation,
+                          call: callLocation,
                         )
                       : null,
                 )

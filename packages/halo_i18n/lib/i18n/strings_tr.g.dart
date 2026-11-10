@@ -1645,7 +1645,6 @@ class _Translations$operation$tabs$tr extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'Uzak Ekran';
 	@override String get solar => 'Güneş';
 	@override String get radio => 'Radyo';
-	@override String get rotator => 'Rotor';
 	@override String get summaries => 'Operasyon Özetleri';
 }
 
@@ -3550,25 +3549,11 @@ class _Translations$operation$layout$panels$tr extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'yüksek SWR';
-	@override String get rotatorDescription => 'Antenin nereye baktığı, istasyon merkezli bir haritada. Döndürmek için haritaya dokunun.';
-	@override String get rotatorRotator => 'Rotor';
-	@override String rotatorAutoNamed({required Object name}) => 'Otomatik — ${name}';
-	@override String get rotatorAutoNone => 'Otomatik — henüz rotor yok';
-	@override String get rotatorBeamWidth => 'Huzme genişliği';
-	@override String get rotatorBeamWidthDescription => 'Derece olarak, yön çizgisinin etrafına çizilir. 0 hiç çizmez.';
-	@override String get rotatorLocation => 'Konum';
-	@override String get rotatorLocationDescription => 'Haritayı ortalamak için bir grid karesi ya da enlem ve boylam. Boş bırakılırsa operasyonun konumu kullanılır.';
-	@override String get rotatorTheme => 'Tema';
-	@override String get rotatorThemeColor => 'Renkli';
-	@override String get rotatorThemeGray => 'Gri';
-	@override String get rotatorThemeMuted => 'Soluk';
-	@override String get rotatorGrayline => 'Grayline\'ı göster';
 	@override String get rotatorNoRotator => 'Gösterilecek rotor yok. Bu panelin ayarlarından birini seçin veya İstasyon Yapılandırması altında bir tane ekleyin.';
 	@override String get rotatorNoLocation => 'Haritayı ortalayacak konum yok. Bu panelin ayarlarından bir tane belirleyin.';
 	@override String get rotatorDisconnected => 'bağlı değil';
 	@override String get rotatorNoReading => '—';
 	@override String get rotatorNotResponding => 'yanıt vermiyor';
-	@override String get rotatorLocationInvalid => 'Bu panelin ayarlarındaki konum okunamıyor. Bir grid karesi ya da 40.7, -74.0 gibi bir enlem ve boylam kullanın.';
 	@override String rotatorElevation({required Object degrees}) => '${degrees}° el';
 	@override String get rotatorNorth => 'K';
 	@override String get rotatorEast => 'D';
@@ -4836,7 +4821,6 @@ extension on TranslationsTr {
 			'operation.tabs.remoteScreen' => 'Uzak Ekran',
 			'operation.tabs.solar' => 'Güneş',
 			'operation.tabs.radio' => 'Radyo',
-			'operation.tabs.rotator' => 'Rotor',
 			'operation.tabs.summaries' => 'Operasyon Özetleri',
 			'operation.positions.nobodyYet' => 'Henüz bu operasyonu paylaşan başka operasyon pozisyonu yok.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Poz: ${number}',
@@ -4973,9 +4957,9 @@ extension on TranslationsTr {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: sahnesinin bir kısmı ${max} girdiden fazla içeriyor',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: bir sahne metni ${max} karakterden uzun',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: düzeni ${max} seviyeden derin iç içe geçiyor',
+			'operation.layout.panelRenderRetry' => 'Tekrar dene',
 			_ => null,
 		} ?? switch (path) {
-			'operation.layout.panelRenderRetry' => 'Tekrar dene',
 			'operation.layout.panelActionFailed' => 'Bu panel eylemi başarısız oldu. Tekrar deneyin.',
 			'operation.layout.panels.loggingDescription' => 'Günlük ve giriş alanları',
 			'operation.layout.panels.infoDescription' => 'Çalışılan istasyon hakkında bildiklerimiz',
@@ -5110,25 +5094,11 @@ extension on TranslationsTr {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'yüksek SWR',
-			'operation.layout.panels.rotatorDescription' => 'Antenin nereye baktığı, istasyon merkezli bir haritada. Döndürmek için haritaya dokunun.',
-			'operation.layout.panels.rotatorRotator' => 'Rotor',
-			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'Otomatik — ${name}',
-			'operation.layout.panels.rotatorAutoNone' => 'Otomatik — henüz rotor yok',
-			'operation.layout.panels.rotatorBeamWidth' => 'Huzme genişliği',
-			'operation.layout.panels.rotatorBeamWidthDescription' => 'Derece olarak, yön çizgisinin etrafına çizilir. 0 hiç çizmez.',
-			'operation.layout.panels.rotatorLocation' => 'Konum',
-			'operation.layout.panels.rotatorLocationDescription' => 'Haritayı ortalamak için bir grid karesi ya da enlem ve boylam. Boş bırakılırsa operasyonun konumu kullanılır.',
-			'operation.layout.panels.rotatorTheme' => 'Tema',
-			'operation.layout.panels.rotatorThemeColor' => 'Renkli',
-			'operation.layout.panels.rotatorThemeGray' => 'Gri',
-			'operation.layout.panels.rotatorThemeMuted' => 'Soluk',
-			'operation.layout.panels.rotatorGrayline' => 'Grayline\'ı göster',
 			'operation.layout.panels.rotatorNoRotator' => 'Gösterilecek rotor yok. Bu panelin ayarlarından birini seçin veya İstasyon Yapılandırması altında bir tane ekleyin.',
 			'operation.layout.panels.rotatorNoLocation' => 'Haritayı ortalayacak konum yok. Bu panelin ayarlarından bir tane belirleyin.',
 			'operation.layout.panels.rotatorDisconnected' => 'bağlı değil',
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => 'yanıt vermiyor',
-			'operation.layout.panels.rotatorLocationInvalid' => 'Bu panelin ayarlarındaki konum okunamıyor. Bir grid karesi ya da 40.7, -74.0 gibi bir enlem ve boylam kullanın.',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
 			'operation.layout.panels.rotatorNorth' => 'K',
 			'operation.layout.panels.rotatorEast' => 'D',
@@ -5487,8 +5457,6 @@ extension on TranslationsTr {
 			'loggingControls.saveFailed' => ({required Object error}) => 'Kaydedilemedi: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Silinemedi: ${error}',
 			'loggingControls.info.noQsos' => 'Henüz QSO yok... hadi havaya çıkalım!',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSO',
 			'loggingControls.info.qsosInTime' => ({required Object time, required Object count}) => '${time} içinde ${count}',
@@ -5504,6 +5472,8 @@ extension on TranslationsTr {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => 'Çift!',
 			'loggingControls.info.noticeNewBand' => 'Yeni Bant',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewMode' => 'Yeni Mod',
 			'loggingControls.info.noticeNewDXCC' => 'Yeni DXCC',
 			'loggingControls.info.noticeNewState' => 'Yeni Eyalet',
@@ -6001,8 +5971,6 @@ extension on TranslationsTr {
 			'settings.sync.moreSettings' => 'Diğer senkronizasyon ayarları',
 			'settings.sync.enable' => 'Senkronizasyonu Etkinleştir',
 			'settings.sync.deviceKey' => 'Cihaz Anahtarı',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.title' => 'Eş Cihazlar',
 			'settings.peers.enable' => 'Diğer cihazlara bağlan',
 			'settings.peers.enableDescription' => 'Yerel ağ üzerinden diğer cihazlarla operasyon, kayıt, CAT ve GPS paylaşımına izin ver',
@@ -6018,6 +5986,8 @@ extension on TranslationsTr {
 			'settings.peers.connected' => 'Bağlı',
 			'settings.peers.viaBluetooth' => 'Bluetooth üzerinden',
 			'settings.peers.connecting' => 'Bağlanıyor…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.syncing' => 'Senkronize ediliyor…',
 			'settings.peers.waitingForThem' => 'Diğer cihaz bekleniyor',
 			'settings.peers.notConnected' => 'Bağlı değil',
@@ -6515,8 +6485,6 @@ extension on TranslationsTr {
 			'settings.station.placeholderFreq' => 'Frekans (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Yer tutucu radyonun başladığı frekans. Ardından uygulama onu nereye ayarlarsa onu bildirir.',
 			'settings.station.placeholderMode' => 'Mod',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'Yer tutucu radyonun başladığı mod, örn. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Güç (watt)',
 			'settings.station.placeholderPurpose' => 'Kayıt amacıyla hangi cihazı kullandığınızı takip etmek için bu radyoyu kullanın',
@@ -6532,6 +6500,8 @@ extension on TranslationsTr {
 			'settings.station.yaesuMeterCaptureDescription' => 'Yayın sırasında radyonun PO, SWR ve ALC ölçerlerini okur, ham değerleri günlüğe yazar. Yaesu\'nun yayımlamadığı ölçeği oluşturmak içindir — değerler ölçer olarak gösterilmez.',
 			'settings.station.telemetryInterval' => 'Ölçer okuma aralığı (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Radyo yayındayken ölçerlerinin ne sıklıkla okunacağı. Bu bağlantının kaldırabileceği en hızlı değer için boş bırakın, en fazla 200 ms.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '${min} ile ${max} arasında tam sayı milisaniye',
 			'settings.station.pollInterval' => 'Boşta sorgulama aralığı (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Frekans ve mod değişmezken radyoya ne sıklıkla sorulacağı. ${fallback} ms için boş bırakın.',
@@ -7029,8 +6999,6 @@ extension on TranslationsTr {
 			'qsonImport.busy' => 'Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.',
 			'adifImport.title' => 'ADIF\'ten QSO İçe Aktar',
 			'adifImport.reading' => ({required Object filename}) => '${filename} okunuyor…',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Bu dosyada ${count} QSO', other: 'Bu dosyada ${formatted} QSO', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} tanesi zaten günlüğünüzde', other: '${formatted} tanesi zaten günlüğünüzde', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} tanesi içe aktarılacak', other: '${formatted} tanesi içe aktarılacak', ), 
@@ -7046,6 +7014,8 @@ extension on TranslationsTr {
 			'adifImport.importing' => ({required Object filename}) => '${filename} içe aktarılıyor…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${filename} dosyasından ${count} QSO içe aktarıldı', other: '${filename} dosyasından ${formatted} QSO içe aktarıldı', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} içe aktarılamadı: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} bir ADIF dosyasına benzemiyor',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Uyarı: bu ADIF\'te ${calls} çağrılarına ait QSO\'lar var, ancak devam ederseniz ${station} olarak içe aktarılacaklar.',
 			'adifImport.stationCallJoin' => ' ve ',

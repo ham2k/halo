@@ -657,6 +657,68 @@ published panels name them; what API 17 added has the new names only.
   default one, with ticks, so there is always a strip to drag; `scale: false`
   is the way to have none.
 
+## Rotator map
+
+A rotator map (`rotatorMap`, extension API 23) shows a rotator on an
+azimuthal equidistant map centred on the station, and whatever the scene
+places over it by bearing and distance or by place on Earth. The public
+contract is in [panel scenes](../extensions/scenes.md#rotator-map) and
+`PanelSceneRotatorMap`. It is the station's equipment under the radio's
+grants ([radio.md § Antenna switches and rotators](../extensions/radio.md#antenna-switches-and-rotators)):
+`requiresRadioRead` shows it and `requiresRadioWrite` turns it. The app's own
+Rotator panel (`extensions/core/rotator`) is the reference panel: one
+rotator or several in their own colours, a beam's width or a switched
+array's fixed bearings, its readouts and buttons at the pane's corners, and
+the operator's zoom and pan kept per placement in the key-value store.
+
+- **A control, as the band scope is.** It takes clicks and drags and fills
+  space in the layout. The map and the rotator's readings are the host's:
+  the land, night and outlines are painted from bundled data, and a heading
+  reaches the scene only as the values it writes.
+- **Decorations are placed on the map, not in scene units.** The map's
+  scale and centre move with every zoom and pan, so a beam drawn in scene
+  units would have to be re-rendered by the extension on each. A bearing
+  and a distance (`heading+15deg`, `rim-8px`, `1000km`), a `lat`/`lon`, or a
+  share along an earlier line stay put on their own.
+- **`defaults` is the host's own decorations, in the scene's order.** A
+  scene draws under and over the beam, target, heading and call marker
+  without redrawing them, and without seeing the palette they are drawn
+  in.
+- **Zoom, pan and rim follow red-ham-toolkit's rotator widget.** Zoomed all
+  the way out the rim is a circle round the whole Earth; closing in, it
+  becomes a rounded box whose corners tighten with the zoom. Panning moves
+  the station, never further than `0.95·zoom − 1` disc radii from the
+  pane's middle, which keeps the antipode — the disc's edge — out of view,
+  so a map at zoom 1 does not pan. The box stretches toward the side the
+  station moved to, and the corner across from it opens toward a round,
+  so the rim leans with the pan (`scene_rotator_frame.dart`).
+- **Turning is a click or a drag of a decoration, never a drag of the map.**
+  A drag that starts on the station pans; the wheel, a trackpad's scroll
+  and a pinch zoom; a drag anywhere else does nothing, so a pan meant for
+  the view never turns the antenna. A drag of a decoration turns on
+  release only: a rotator told every frame of a drag would chase it.
+- **A turn shows at once.** The target is drawn the moment it is sent and
+  held for 2 seconds, long enough for a polled rotator's own report to
+  catch up, so a click is never followed by a moment with nothing drawn.
+- **The raster covers everywhere the pan can reach.** Land and night are a
+  raster asking each pixel where on Earth it is (the reason is in
+  [cat.md § Rotators](cat.md#rotators)). It is built for the zoom, over the whole
+  stretch of disc a pan at that zoom can show, at most 1024 pixels a side,
+  so a pan moves a picture rather than projecting it again; off the UI
+  isolate except on the web. Its night is three steps — sunset, civil and
+  nautical twilight — each 20% darker (25% on a dark theme) and faded in
+  across 1.5° of the sun's altitude rather than at the hard edges of the
+  Map tab's four.
+- **States and provinces fade in as the view closes in.** Natural Earth's
+  1:50m first-order divisions, which that scale has only for the USA,
+  Canada, Brazil, Russia, China, India and Australia
+  (`assets/geo/admin1-50m.json`, by `scripts/admin1-outlines.py`), faded
+  in between zoom 2.5 and 4.
+- **The heading it writes is the last one given.** `headingDeg` holds the
+  rotator's last heading while it is disconnected or not answering, so a
+  readout does not blank on a dropped connection; `status` says whether it
+  is current.
+
 ## Radio values
 
 A scene with a `radio` block (extension API 7) is fed one radio's readings —

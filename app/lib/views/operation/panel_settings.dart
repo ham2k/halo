@@ -94,7 +94,7 @@ Future<void> showPanelSettings(BuildContext context, {required HaLoServices serv
   // Written field by field through the same path a Tier 1 settings panel
   // uses, under the PANEL's id — so a panel's config travels with the panel
   // rather than with whichever extension happens to own it today.
-  for (final field in panel.formFields) {
+  for (final field in panel.configFields) {
     final key = field['key'] as String?;
     if (key == null) continue;
     if (sameConfigValue(result[key], current[key], field['value'])) continue;

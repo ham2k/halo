@@ -155,6 +155,15 @@ class PanelDefinition {
   /// decides whether a settings control appears next to it at all.
   final List<Map<String, dynamic>> formFields;
 
+  /// Every field that holds a value, a `row`'s members among them: what the
+  /// panel's config is read, saved and forgotten by. [formFields] is what is
+  /// drawn, rows and headers included.
+  List<Map<String, dynamic>> get configFields => [
+    for (final element in formFields)
+      for (final field in element['type'] == 'row' ? (element['elements'] as List?) ?? const [] : [element])
+        if (field is Map && field['key'] is String) field.cast<String, dynamic>(),
+  ];
+
   /// Native panels whose settings are assembled from declared settings
   /// targeting them (the logging panel's tune dialog), rather than from a
   /// form of their own.
@@ -325,7 +334,21 @@ class PanelDefinition {
           // or handed back as `config`, so the operator would fill in a
           // control that does nothing. A header holds no value: every reader
           // of the fields skips what has no key.
-          if (f is Map && (f['key'] is String || f['type'] == 'header'))
+          if (f is Map && f['type'] == 'row')
+            {
+              ...f.cast<String, dynamic>(),
+              'elements': [
+                for (final member in (f['elements'] as List?) ?? const [])
+                  if (member is Map && member['key'] is String)
+                    member.cast<String, dynamic>()
+                  else
+                    ...() {
+                      debugPrint('[panels] dropping a config field with no key from a row in "$panelKey"');
+                      return const <Map<String, dynamic>>[];
+                    }(),
+              ],
+            }
+          else if (f is Map && (f['key'] is String || f['type'] == 'header'))
             f.cast<String, dynamic>()
           else
             ...() {
@@ -778,7 +801,7 @@ class PanelService extends ChangeNotifier {
     return (source as PanelEventSource).panelEvent(hookKey: panel.hookKey!, panelKey: panel.panelKey!, args: {...args, 'instanceId': panel.id});
   }
 
-  Future<Map<String, dynamic>> configFor(PanelDefinition panel) => extensions.readPanelConfig(panelKey: panel.id, fields: panel.formFields);
+  Future<Map<String, dynamic>> configFor(PanelDefinition panel) => extensions.readPanelConfig(panelKey: panel.id, fields: panel.configFields);
 
   /// Throws away what a removed pane held, for INSTANCES only.
   ///
@@ -813,8 +836,8 @@ class PanelService extends ChangeNotifier {
     // its contents behind for the next placement to inherit, which is the
     // one outcome this must not have.
     final panel = this[descriptorId];
-    if (panel == null || panel.formFields.isEmpty) return;
-    await extensions.forgetPanelConfig(panelKey: id, fields: panel.formFields);
+    if (panel == null || panel.configFields.isEmpty) return;
+    await extensions.forgetPanelConfig(panelKey: id, fields: panel.configFields);
     _configRevisions.remove(id);
   }
 }

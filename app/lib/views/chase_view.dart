@@ -770,6 +770,8 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
                   ChaseView.infoPanelId: infoPanel,
                   ChaseView.mapPanelId: KeyedSubtree(key: _mapKey, child: mapPanel),
                 },
+                operationLocation: operation.location,
+                callLocation: callInfoLocation(_callInfo),
                 tabActions: {
                   ChaseView.loggingPanelId: (context) => buildTargetSettingsButton(
                     context,
@@ -790,8 +792,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
                   ),
                   ChaseView.mapPanelId: (context) => buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle),
                 },
-                extraChildren: (inLayout) =>
-                    sharedDashboardPanes(inLayout, operationGrid: operation.displayGrid, operationLocation: operation.location, callInfo: _callInfo),
+                extraChildren: (inLayout) => sharedDashboardPanes(inLayout, operationGrid: operation.displayGrid),
               ),
             ),
           ),

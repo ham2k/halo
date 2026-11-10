@@ -1812,7 +1812,6 @@ class _Translations$operation$tabs$qrp extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'remote screen';
 	@override String get solar => 'solar';
 	@override String get radio => 'radio';
-	@override String get rotator => 'rotator';
 	@override String get summaries => 'operation summaries';
 }
 
@@ -3925,25 +3924,12 @@ class _Translations$operation$layout$panels$qrp extends Translations$operation$l
 	@override String get radioComp => 'comp';
 	@override String get radioVolts => 'v';
 	@override String get radioSwrHigh => 'high swr';
-	@override String get rotatorDescription => 'where the antenna points, on a map centred on the station. tap the map to turn it.';
-	@override String get rotatorRotator => 'rotator';
-	@override String rotatorAutoNamed({required Object name}) => 'automatic — ${name}';
-	@override String get rotatorAutoNone => 'automatic — no rotator yet';
-	@override String get rotatorBeamWidth => 'beam width';
-	@override String get rotatorBeamWidthDescription => 'in degrees, drawn around the heading. 0 draws none. an antenna that reports its own beam, like a green heron directional switch, draws that instead.';
-	@override String get rotatorLocation => 'location';
-	@override String get rotatorLocationDescription => 'a grid square, or a latitude and longitude, to centre the map on. blank uses the operation\'s location.';
-	@override String get rotatorTheme => 'theme';
-	@override String get rotatorThemeColor => 'color';
-	@override String get rotatorThemeGray => 'gray';
-	@override String get rotatorThemeMuted => 'muted';
-	@override String get rotatorGrayline => 'show the grayline';
 	@override String get rotatorNoRotator => 'no rotator to show. pick one in this panel\'s settings, or add one under station configuration.';
 	@override String get rotatorNoLocation => 'no location to centre a map on. set one in this panel\'s settings.';
 	@override String get rotatorDisconnected => 'disconnected';
 	@override String get rotatorNoReading => '—';
 	@override String get rotatorNotResponding => 'not responding';
-	@override String get rotatorLocationInvalid => 'can\'t read the location in this panel\'s settings. use a grid square, or a latitude and longitude like 40.7, -74.0.';
+	@override String get rotatorResetView => 'show the whole map again';
 	@override String rotatorElevation({required Object degrees}) => '${degrees}° el';
 	@override String get rotatorNorth => 'n';
 	@override String get rotatorEast => 'e';
@@ -5407,7 +5393,6 @@ extension on TranslationsQrp {
 			'operation.tabs.remoteScreen' => 'remote screen',
 			'operation.tabs.solar' => 'solar',
 			'operation.tabs.radio' => 'radio',
-			'operation.tabs.rotator' => 'rotator',
 			'operation.tabs.summaries' => 'operation summaries',
 			'operation.positions.nobodyYet' => 'no other operating positions are sharing this operation yet.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'pos: ${number}',
@@ -5538,9 +5523,9 @@ extension on TranslationsQrp {
 			'operation.layout.layouts.problemNewerVersion' => 'it was written by a newer version of the app',
 			'operation.layout.layouts.problemNoArrangement' => 'it holds no arrangement',
 			'operation.layout.layouts.problemMalformed' => 'part of it doesn’t follow the layout format',
+			'operation.layout.layouts.problemTooLarge' => 'it is too large',
 			_ => null,
 		} ?? switch (path) {
-			'operation.layout.layouts.problemTooLarge' => 'it is too large',
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'couldn\'t open the file: ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => 'couldn\'t import the layout: ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'couldn\'t copy the layout: ${error}',
@@ -5705,25 +5690,12 @@ extension on TranslationsQrp {
 			'operation.layout.panels.radioComp' => 'comp',
 			'operation.layout.panels.radioVolts' => 'v',
 			'operation.layout.panels.radioSwrHigh' => 'high swr',
-			'operation.layout.panels.rotatorDescription' => 'where the antenna points, on a map centred on the station. tap the map to turn it.',
-			'operation.layout.panels.rotatorRotator' => 'rotator',
-			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'automatic — ${name}',
-			'operation.layout.panels.rotatorAutoNone' => 'automatic — no rotator yet',
-			'operation.layout.panels.rotatorBeamWidth' => 'beam width',
-			'operation.layout.panels.rotatorBeamWidthDescription' => 'in degrees, drawn around the heading. 0 draws none. an antenna that reports its own beam, like a green heron directional switch, draws that instead.',
-			'operation.layout.panels.rotatorLocation' => 'location',
-			'operation.layout.panels.rotatorLocationDescription' => 'a grid square, or a latitude and longitude, to centre the map on. blank uses the operation\'s location.',
-			'operation.layout.panels.rotatorTheme' => 'theme',
-			'operation.layout.panels.rotatorThemeColor' => 'color',
-			'operation.layout.panels.rotatorThemeGray' => 'gray',
-			'operation.layout.panels.rotatorThemeMuted' => 'muted',
-			'operation.layout.panels.rotatorGrayline' => 'show the grayline',
 			'operation.layout.panels.rotatorNoRotator' => 'no rotator to show. pick one in this panel\'s settings, or add one under station configuration.',
 			'operation.layout.panels.rotatorNoLocation' => 'no location to centre a map on. set one in this panel\'s settings.',
 			'operation.layout.panels.rotatorDisconnected' => 'disconnected',
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => 'not responding',
-			'operation.layout.panels.rotatorLocationInvalid' => 'can\'t read the location in this panel\'s settings. use a grid square, or a latitude and longitude like 40.7, -74.0.',
+			'operation.layout.panels.rotatorResetView' => 'show the whole map again',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
 			'operation.layout.panels.rotatorNorth' => 'n',
 			'operation.layout.panels.rotatorEast' => 'e',
@@ -6052,8 +6024,6 @@ extension on TranslationsQrp {
 			'loggingControls.todoField' => 'todo',
 			'loggingControls.sent' => 'sent',
 			'loggingControls.rcvd' => 'rcvd',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.more' => 'more',
 			'loggingControls.revert' => 'revert',
 			'loggingControls.undoDelete' => 'undo delete',
@@ -6068,6 +6038,8 @@ extension on TranslationsQrp {
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => 'deleted ${kind}',
 			'loggingControls.timeControl' => 'time',
 			'loggingControls.radioControl' => 'radio',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.powerControl' => 'power',
 			'loggingControls.notesControl' => 'notes',
 			'loggingControls.operatorControl' => 'operator',
@@ -6566,8 +6538,6 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'the recording was cut short, so the message was left as it was. check that the recording device is still connected and that there is room on the disk.',
 			'settings.radio.voiceMessages.problemFileFailed' => 'the recording couldn\'t be saved in the message\'s place, so the message was left as it was.',
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'that message needs words you haven\'t recorded: ${words}.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'that message\'s template has a problem: ${error}',
 			'settings.radio.voiceMessages.problemNoOperation' => 'messages said with your words play in an operation, where there is a contact to say them for.',
 			'settings.radio.voiceMessages.problemNothingSaid' => 'that message says nothing for this contact.',
@@ -6582,6 +6552,8 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.templateHelpReport' => 'the report you give them',
 			'settings.radio.voiceMessages.templateHelpMessage' => 'message 2\'s recording, played as recorded',
 			'settings.radio.voiceMessages.voiced' => 'said with your words',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'says: ${words}',
 			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'not recorded yet: ${words}',
 			'settings.radio.voiceMessages.previewNoOperation' => 'open an operation to see what it will say.',
@@ -7080,8 +7052,6 @@ extension on TranslationsQrp {
 			'settings.station.models.airspy' => 'airspy r2 / mini',
 			'settings.station.models.airspyHf' => 'airspy hf+',
 			'settings.station.models.spyServer' => 'spyserver (any receiver)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.transports.network' => 'network/wifi',
 			'settings.station.transports.tci' => 'tci',
 			'settings.station.transports.secureNetwork' => 'secure network/wifi',
@@ -7096,6 +7066,8 @@ extension on TranslationsQrp {
 			'settings.station.troubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **cat rts off at the radio, or hold rts high on.** with **cat rts** on (ft-891 menu **05-08**), the radio stays silent while rts is low — it may answer once as the port opens, then nothing. picking the radio\'s own usb port turns on **hold rts high** under advanced settings. on a digirig, signalink or most home-brew cables rts is ptt, and holding it high keys your transmitter: turn cat rts off at the radio instead.\n- **speed must match** the radio\'s cat rate (menu **05-06**). with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'if the radio connects but shows no frequency',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuBinaryTroubleshooting' => 'this radio speaks yaesu\'s older five-byte cat, and it does not respond at all when something is off. almost always one of:\n\n- **the cable must convert levels.** the cat jack on the back is not rs-232 and not usb; it needs a ct-62 or an equivalent adapter. a plain audio or data cable won\'t work for cat.\n- **speed must match** the radio\'s cat rate menu (**#14** on an ft-817, **#19** on an ft-857 or ft-897). with a mismatch, the radio sends nothing back, and never an error.\n- **never let anything raise rts or dtr on this port.** on most cables for these radios those lines are ptt and keying. an older interface powered from dtr is the exception: turn on **hold dtr high** under advanced settings for that one.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n\nthis driver was written from yaesu\'s published cat chart and has not been run against one of these radios. if it half-works, that is worth reporting.',
 			'settings.station.tenTecTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.tenTecEagleTroubleshooting' => '- **the usb-b port on the back is the cat link.** the radio shows up as a usb serial port; on windows it needs ten-tec\'s usb to uart driver, which appears in device manager as "usb to uart (comx)".\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open, and so does ten-tec\'s firmware updater.\n- **setting the filter width from the app takes it away from the bw knob** until the radio is switched off and on again. that is how the radio works.\n\nthis driver was written from ten-tec\'s programmer\'s reference guide. if it half-works, that is worth reporting, with the firmware version from the radio\'s menu.',
@@ -7594,8 +7566,6 @@ extension on TranslationsQrp {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'test error report sent to sentry',
 			'commands.idleMetricsEnabled' => 'idle metrics enabled in the status bar',
-			_ => null,
-		} ?? switch (path) {
 			'commands.idleMetricsDisabled' => 'idle metrics disabled',
 			'commands.sentryTestLocalOnly' => 'sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'that command needs an open operation',
@@ -7610,6 +7580,8 @@ extension on TranslationsQrp {
 			'commands.syncAllUnavailable' => 'syncall needs to show a confirmation dialog, which isn\'t available here',
 			'commands.testOperationsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'purged ${count} test operation', other: 'purged ${count} test operations', ), 
 			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'purged ${purged} of ${total} test operations — the rest failed; try purgetests again',
+			_ => null,
+		} ?? switch (path) {
 			'commands.testContactsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'purged ${count} test contact with no operation', other: 'purged ${count} test contacts with no operation', ), 
 			'commands.purgeTestsContactsFailed' => 'purged the test operations, but the test contacts with no operation failed; try purgetests again',
 			'commands.purgeTestsNothingToDo' => 'nothing was purged',

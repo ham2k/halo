@@ -3283,6 +3283,12 @@ export interface FormField {
   /// discriminator away and back preserves what was already typed. Read the
   /// value you want by the discriminator, never by "whichever is non-empty".
   visibleWhen?: { field: string; equals: any }
+  /// A text-like field's value in words on its settings-list row, `${value}`
+  /// standing for it: `"${value} degrees"`. The row shows the placeholder
+  /// while the field is empty. Extension API 23.
+  valueFormat?: string
+  /// Inside a `row`: this field's share of the line (1 when absent).
+  flex?: number
   /// Only meaningful within a settingsPanel (ignored in ad hoc forms) — see
   /// docs/extensions/settings.md's "Common Preferences and environment
   /// gating". Also shows this field on the app's Common Preferences
@@ -3430,7 +3436,24 @@ export interface FormLinkElement {
   environment?: string | string[]
 }
 
-export type FormElement = FormField | FormHeader | FormSectionEnd | FormSectionDivider | FormMarkdownBlock | FormActionElement | FormLinkElement
+/**
+ * Several fields on one line, each its `flex` share of it: on a settings list a checkbox is a bare
+ * switch there and a select a dropdown, rather than rows of their own. With a `label` it is one
+ * item's settings — a rotator's switch, name and colour — named at its start. It shows while
+ * `visibleWhen` holds and any member's does; its members are saved as fields of the form.
+ * Extension API 23.
+ */
+export interface FormRowElement {
+  type: "row"
+  label?: string
+  /// The label's share of the line (2 when absent).
+  labelFlex?: number
+  elements: FormField[]
+  visibleWhen?: { field: string; equals: any }
+}
+
+export type FormElement =
+  FormField | FormHeader | FormSectionEnd | FormSectionDivider | FormMarkdownBlock | FormActionElement | FormLinkElement | FormRowElement
 
 export interface FormDefinition {
   title?: string
@@ -3710,8 +3733,9 @@ export interface PanelDescriptor {
   /// SimpleSettingsPanel uses and rendered by the same core form renderer.
   /// Values are host-persisted per panel and handed back in
   /// `PanelRenderArgs.config`. A `section` header folds the fields under it;
-  /// an app older than that shows the fields without it.
-  form?: (SettingsField | FormHeader)[]
+  /// an app older than that shows the fields without it. A `row` (extension
+  /// API 23) puts several on one line.
+  form?: (SettingsField | FormHeader | FormRowElement)[]
 }
 
 /** Resolved host typography; sizes are logical pixels, not the app Font Scale. */
@@ -3977,6 +4001,8 @@ export interface StationEquipment {
   elevation?: number
   /** Where a rotator was told to turn, until it gets there or is stopped. */
   target?: { azimuth: number; elevation?: number }
+  /** A directional antenna's beam, in degrees, where the device knows it. Extension API 23. */
+  beamWidth?: number
 }
 
 /// What `host.setAntenna`, `setRotator` and `stopRotator` answer. Extension

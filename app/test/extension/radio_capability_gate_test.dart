@@ -156,7 +156,7 @@ void main() {
   test('antenna switches and rotators are read under radio read and moved only under radio write', () async {
     await expectLater(call('plain', 'listEquipment'), blockedFor('requiresRadioRead'));
     expect(await call('reader', 'listEquipment'), isEmpty, reason: 'no equipment service behind it here');
-    for (final method in ['setAntenna', 'setRotator', 'stopRotator']) {
+    for (final method in ['setAntenna', 'setRotator', 'stopRotator', 'setEquipmentConnection']) {
       await expectLater(call('reader', method, {'id': 'r'}), blockedFor('requiresRadioWrite'));
       expect(await call('writer', method, {'id': 'r'}), containsPair('reason', 'disconnected'), reason: method);
     }

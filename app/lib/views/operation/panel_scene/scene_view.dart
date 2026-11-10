@@ -16,6 +16,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../panel_environment.dart';
 import 'scene_grid.dart';
 import 'scene_model.dart';
+import 'scene_rotator.dart';
 import 'scene_spectrum.dart';
 import 'scene_gestures.dart';
 
@@ -41,7 +42,11 @@ class PanelSceneView extends StatefulWidget {
   /// Where `spectrum` controls get their sweeps — null for a panel that may
   /// not read the radio.
   final SceneSpectrumSource? spectrum;
-  const PanelSceneView({super.key, required this.scene, this.onEvent, this.spectrum});
+
+  /// Where `rotatorMap` controls get their rotators — null for a panel that
+  /// may not read them.
+  final SceneRotatorSource? rotator;
+  const PanelSceneView({super.key, required this.scene, this.onEvent, this.spectrum, this.rotator});
   @override
   State<PanelSceneView> createState() => _PanelSceneViewState();
 }
@@ -181,6 +186,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
       ...widget.scene.controls.where((c) => c.event == null && !c.isAction && c.kind != 'nativeText').map((c) => c.value),
       // Written by the control — the pointer, the width shown — never by the extension.
       for (final c in widget.scene.controls) ...[?c.spectrum?.hoverHz, ?c.spectrum?.hoverDb, ?c.spectrum?.widthHz, ?c.spectrum?.stepHz, ?c.spectrum?.vfoHz],
+      for (final c in widget.scene.controls) ...?c.rotatorMap?.written,
       // A hover value is the pointer's only while it is over the control; otherwise a render's.
       ..._hovering,
     };
@@ -404,7 +410,31 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     );
   }
 
-  Widget _native(SceneControl control) => _faded(control, control.spectrum == null ? _nativeView(control) : _spectrumView(control));
+  Widget _native(SceneControl control) => _faded(
+    control,
+    control.spectrum != null
+        ? _spectrumView(control)
+        : control.rotatorMap != null
+        ? _rotatorView(control)
+        : _nativeView(control),
+  );
+
+  Widget _rotatorView(SceneControl control) => SceneRotatorView(
+    key: ValueKey('rotator:${control.id}'),
+    control: control,
+    source: widget.rotator,
+    values: _values,
+    disabled: control.disabled,
+    onTurn: control.event == null || control.disabled ? null : (bearing) => _sendControl(control, 'commit', value: bearing),
+    onLayer: control.disabled
+        ? null
+        : (layer, action, bearing, at) => _sendControl(control, 'activate', action: action, value: bearing, layer: layer.id, at: at),
+    onGesture: control.event == null || control.disabled
+        ? null
+        : (gesture, value, at) => _sendControl(control, 'commit', value: value, gesture: gesture, at: at),
+    onReadout: (name, value) => setState(() => _values[name] = value),
+    onReadoutString: (name, value) => setState(() => _strings[name] = value),
+  );
 
   Widget _spectrumView(SceneControl control) {
     final spec = control.spectrum!;
@@ -1274,6 +1304,11 @@ class _NativeControlViewState extends State<_NativeControlView> {
         Widget button(VoidCallback? onPressed) {
           final label = Text(c.label, maxLines: 1, overflow: TextOverflow.ellipsis);
           return switch (c.variant) {
+            // The label is still its name, for a screen reader; there are no tooltips to show it.
+            'icon' => IconButton(
+              onPressed: onPressed,
+              icon: Icon(resolveIconName(c.icon), semanticLabel: c.label),
+            ),
             'tonal' => FilledButton.tonalIcon(onPressed: onPressed, icon: icon, label: label),
             'outlined' => OutlinedButton.icon(onPressed: onPressed, icon: icon, label: label),
             'text' => TextButton.icon(onPressed: onPressed, icon: icon, label: label),

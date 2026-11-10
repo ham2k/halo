@@ -34,6 +34,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 19 | `radio.reportedFrequencyHz`, the radio's own report beside the dial |
 | 20 | the band scope's `minWidthHz` and `maxWidthHz`, its `vfoLabel`'s `arrow`, up to 512 of its `layers` and 256 `annotations`, and an annotation's `collapsed` |
 | 22 | the band scope's `window` and `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed one's `width: 'box'`, a zoom's `commit` of its middle as a pan, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click; `radio.compression`; `cells`, the `grid` and `cell` layout nodes, and a layout up to 12 deep and 512 nodes; a slider's or knob's `invertScroll`; named `sources` for radios, rotators and antenna switches, a band scope's `radio` naming one; a layer's `clipX` and `clipY`, and a binding's `hold` |
+| 23 | the rotator map control (`rotatorMap`), a `nativeButton`'s `icon` variant, and an event's `bearing` and `km` |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -125,7 +126,7 @@ and never reaches the extension. `value` names what it shows and sets.
 | `button` | | `activate` | `menu`; `tapAt` (API 12: a click's `value` is where along the longer side it landed, 0 at the top or left end to 1; a key or a screen reader activates with none; needs an `event` and takes no `menu`) |
 | `slider` | number | `commit` | `min`, `max`, `step`, `discrete`, `hover` (local-only sliders), `valueLabels`, `continuous`, `scrollThrough`, `invertScroll` |
 | `knob` | number | `commit` | `min`, `max`, `step`, `sensitivity`, `invertDrag`, `invertScroll`, `scrollThrough`, `valueLabels`, `continuous`, `menu` (a click opens it; a scroll or a drag still turns the knob), a second axis (`valueY`, `eventY`, `minY`, `maxY`, `stepY`, `sensitivityY`) |
-| `nativeButton` | | `activate` | `variant` (`filled`, `tonal`, `outlined`, `text`), `icon`, `menu`; needs `event` or `menu` |
+| `nativeButton` | | `activate` | `variant` (`filled`, `tonal`, `outlined`, `text`, or from API 23 `icon`, the icon alone with `label` its accessible name), `icon`, `menu`; needs `event` or `menu` |
 | `nativeSlider` | number | `commit` | `min`, `max`, `step`, `valueLabels`, `continuous` |
 | `nativeTextField` | string | `commit` on Enter, or on leaving it after typing | `placeholder`, `continuous` |
 | `nativeDropdown` | string | `commit` | `options`, `placeholder` |
@@ -135,6 +136,7 @@ and never reaches the extension. `value` names what it shows and sets.
 | `nativeChip` | number, 1 or 0, or none | `commit`; `activate` without a value | `icon`; needs `event` without a value |
 | `nativeText` | number, string, or none | | `style` (a typography role), `align` |
 | `bandScope` | | `commit` with the frequency clicked, where the scene hears its tunes; `activate` from an annotation or a layer; `change` and `commit` for a zoom, pan, split or level drag it hears | below |
+| `rotatorMap` | | `commit` with the bearing clicked, where the scene hears its turns; `activate` from a decoration; `commit` for a zoom or pan | below |
 | `zoom` | | `commit` with the factor, on release | `min`, `max` (the factors allowed); needs `event`; only with `scroll`; API 12; below |
 
 The three drawn kinds are invisible hit areas over artwork you paint; the
@@ -336,8 +338,8 @@ event: {
   value?: number                    // for a control bound to `values`
   text?: string                     // for a control bound to `strings`
   annotation?: string               // a band scope annotation's id
-  layer?: string                    // a band scope layer's id; API 17
-  gesture?: "zoom" | "pan" | "split" | "floor" | "range" | "speed"  // a band scope gesture; API 17
+  layer?: string                    // a band scope layer's id; API 17; a rotator map decoration's; API 23
+  gesture?: "zoom" | "pan" | "split" | "floor" | "range" | "speed"  // a band scope gesture; API 17; a rotator map's zoom or pan; API 23
   at?: {                            // where a band scope annotation or layer was clicked; API 17
     x: number, y: number            // pixels in the control, the ones a layer's `px` measures
     sceneX?: number, sceneY?: number  // scene units, for a band scope placed by a rect
@@ -345,6 +347,7 @@ event: {
     hz?: number                     // the frequency clicked
     db?: number, aboveNoiseDb?: number  // on the spectrum: the level clicked, on the radio's scale and above the noise
     ageSeconds?: number, atMillis?: number  // on the waterfall: the row's age, and when it was taken
+    bearing?: number, km?: number   // on a rotator map: the bearing and distance from the station clicked; API 23
   }
 }
 ```
@@ -760,6 +763,167 @@ a scope, the control says why instead. Placed like a native control, it takes:
 Each waterfall row stays at the frequencies it was taken on: when the radio
 retunes its scope the history slides sideways, and when the span changes it
 stretches.
+
+## Rotator map
+
+A `rotatorMap` control is a rotator on a map of the world centered on the
+station: where the antenna points, where it is turning to, and whatever the
+scene draws over the map by bearing and distance. API 23, with the rotator
+calls ([Radio control](radio.md#antenna-switches-and-rotators)). It needs
+`requiresRadioRead`; without it, or with no rotator in the station, it says
+so instead. Turning the rotator from the map needs `requiresRadioWrite`;
+without it a click or a drag is the scene's event, where the control has
+one. Placed like a native control, it takes:
+
+- `rotator`, a rotator's id from `listEquipment`; omitted, the station's first.
+- `home`, `{ lat, lon }`, the map's center; omitted, the operation's
+  location. With neither, the map says it has no place to center on and
+  draws a bare compass, still true and still clickable.
+- `map`: `palette` (`color`, `gray`, `muted`, `contrast`, `teal`), then any of
+  `sea`, `land`, `coast`, `borders`, `divisions` (the lines between states
+  and provinces, drawn as the view closes in), `graticule` and `background`
+  over it. `grayline: false` leaves the night side unshaded; `world: false`
+  draws no map at all.
+- `rim`: the map's edge, a circle while the whole Earth is in view and a
+  rounded box zoomed in. `color`, `width` (1.5), `background` (filled
+  outside the edge), and up to 16 sets each of `ticks` and `labels`, every
+  `every` degrees from north or at the bearings in `at`. A tick takes
+  `color`, `length` (6) and `width` (1); a label `color`, `size` (12),
+  `weight` and `offset`, pixels inside the rim (12; outside where
+  negative), and with `at`, `text`, one for each bearing. Omitted, ticks
+  every 10° and N, E, S and W.
+- `rings`: up to 16 circles at a `distance` on the ground, in `unit` `km`
+  (the default) or `mi`, each with `color`, `width`, `dashed` and up to 16
+  `labels` at bearings: `{ az, text, size, color }`, the distance when
+  `text` is omitted.
+- `zoom`: `{ min, max, initial }`, 1 fitting the whole Earth; 1 to 20 when
+  omitted. `initial` may name a scene value.
+- `pan`: where the station may be moved to, within the `area` `square`
+  around the circle the widest zoom draws, or anywhere in the `pane` (the
+  default), no nearer that area's edge than `margin` percent of the pane's
+  shorter side (10). Never further than keeps the far side of the Earth out
+  of view, so a map zoomed all the way out does not pan. `x` and `y`, pixels
+  from the pane's middle, numbers or scene values, put the station there
+  until the operator moves it.
+- `beamWidth`: the default decorations' beam, in degrees (30; 0 draws none). An antenna whose device reports its own beam is drawn with that instead.
+- `snap`: pixels (12). A click this near the station in the call field turns
+  to its exact bearing.
+- `stops`: the only bearings the antenna can point at, a 4-square's four or
+  a switched array's eight. A click, an aim and a drag each land on the
+  nearest. Omitted, any bearing.
+- `hud`: `false` hides the app's heading readout. `actions`: `false` hides
+  its connect, stop and whole-map buttons. Draw your own with the values
+  below and `nativeButton` controls.
+- `decorations`: up to 256 layers, below. Omitted, the app's own: the beam,
+  the target, the heading and the station in the call field.
+
+The control writes scene values, each named by the scene and declared in its
+`values`: `headingDeg`, the rotator's heading, kept at the last one it gave
+while it is not connected and answering; `targetDeg` while it turns;
+`elevationDeg` for one that tilts; `hoverAz` and `hoverKm`, the bearing and
+distance under the pointer; and `zoomValue`. `status` names a string in
+`strings` the control writes with the rotator's state: `connected`,
+`turning`, `stale` (connected and not answering), `connecting`,
+`disconnecting`, `disconnected`, `error`, or `none` with no rotator, for a
+`when` to test. `rotators`, up to 8 `{ rotator, headingDeg, targetDeg,
+status }`, writes the same for rotators the scene draws beside the
+control's own. A reading the rotator has not given, a target while it is
+not turning, is missing, as a radio's is: the bottom of a binding's range,
+`—` in a text layer, and failing a `when`.
+
+### Decorations
+
+A decoration is drawn over the map, in order, each over the ones before,
+and cut at the rim unless `clip: false`, which draws it past the rim: an
+arrow's head or a label sitting on the edge. The rim's line and marks are
+drawn just before the first decoration with `clip: false`, so the cut ones
+listed before it lie under the line, and those after it over it. Each has
+an `id` and a `kind`:
+
+- `line`: `from` and `to`, two points. `head: { width, length }` makes its
+  end an arrow's point. `width`, `dashed`, and `casing`, a color drawn a
+  pixel wider either side under it and round its head, so it stands off
+  whatever it crosses.
+- `wedge`: from bearing `az` clockwise to `az2`, from distance `r` to `r2`
+  (the center to the rim when omitted). `fill` and `color` for its edge;
+  `casing` runs a pixel along the outside of each straight side.
+- `circle`: at `at`, `radius` pixels, `fill` and `color`.
+- `text`: at `at`, one of `text`, `value` (a scene value, with `decimals`)
+  or `show`, one of the map's own readings: the rotator's `heading`,
+  `target` or `elevation`, or this layer's place's `bearing`, `km` or `mi`
+  from the station. `prefix`, `suffix`, `size`, `weight`, `fontFamily`,
+  `italic`, `background` and `padding`; `align` (`start`, `center`, `end`)
+  and `valign` (`top`, `center`, `bottom`) say which end and edge sit at
+  its place.
+- `svg`: artwork, drawn upright and centered on `at`, `svgWidth` by
+  `svgHeight` pixels (24), under the same rules as an `svg` layer's.
+- `defaults`: nothing but its `id`. The app's own beam, target, heading and
+  call marker, drawn at that place in the list, so you can draw under and
+  over them without drawing them. A list holds it once, and then no other
+  decoration takes the ids `heading` or `target`.
+
+A point is one of:
+
+- `az` and `r`: a bearing and a distance from the station.
+- `lat` and `lon`: a place on Earth.
+- `place: 'call'`: the station in the call field, where its lookup puts it.
+  A decoration placed there is not drawn while the call field has none.
+- `on` and `along`: a share of the way along a `line` drawn earlier in the
+  list, 0 its start and 1 its end (the default). With `defaults` drawn
+  before, `heading` and `target` are such lines.
+
+Then `dx` and `dy`, pixels right and down that do not turn with the bearing:
+a label set beside its place.
+
+A bearing is `heading` or `target` (the rotator's), `call` (the station in
+the call field), or `az:` and degrees or a scene value, then degrees added:
+`heading+15deg`, `az:120`, `az:aimDeg-5deg`. A number is that many degrees.
+A distance is `rim` or `center`, then any of `±<n>%` (a share of the way to
+the rim along that bearing), `±<n>km`, `±<n>mi` and `±<n>px`: `rim-8px`,
+`60%`, `1000km+4px`. A number is pixels. A decoration that needs a reading
+the rotator has not given, or the call field's station when there is none,
+is not drawn.
+
+`rotator` names the rotator a decoration's `heading` and `target` are;
+omitted, the control's. `turningColor` and `turningFill` replace `color`
+and `fill` while that rotator turns to a target. `width`, `radius`,
+`size`, `weight` and `padding`, and an `az:` bearing, may name a scene
+value.
+
+A decoration acts on a click with one of:
+
+- `aim: true`: turns its rotator toward the decoration's place.
+- `event`: sends `activate` with that action, `layer` its id, `value` the
+  bearing clicked, and `at` with `x`, `y`, `bearing` and `km`.
+- `menu`: `[{ label, event }]`, opened where clicked; the item picked is
+  sent as `event` is.
+
+`drag` turns the rotator when the decoration is dragged: `turn` to where
+the pointer points, or `{ axis: 'x' | 'y', degPerPx }`, moving the target
+by `degPerPx` degrees (1) for every pixel along that axis. The decoration
+shows where the drag will land as it moves; the rotator is told once, on
+release. A rotator not connected and answering is not dragged.
+
+### Gestures
+
+`gestures` takes `turn` (`native`, `event`, `off`), `zoom` and `pan`
+(`native`, `off`):
+
+- `turn` is a click on the map or a drag of a decoration. Native, with
+  `requiresRadioWrite`, the app turns the rotator, shows the target at
+  once and holds it for 2 seconds while the rotator's own report catches
+  up; as an event, `commit` with the bearing as `value`. A click on a
+  decoration that acts is that decoration's.
+- `zoom` is the mouse wheel, a trackpad's two-finger scroll or a pinch.
+  It sends `commit` with `gesture: 'zoom'` and the zoom as `value` once it
+  settles. The app's whole-map button sends a zoom of `0`.
+- `pan` is a drag that starts on the station, which moves it within the
+  limits above. It sends `commit` with `gesture: 'pan'`, `at.x` and `at.y`
+  where the station is, in pixels from the pane's middle. A drag anywhere
+  else on the map moves nothing, so a scene that scrolls keeps its drag.
+
+To keep the operator's view, store each `commit` and give it back as
+`zoom.initial` and `pan.x` and `pan.y`; forget it on a zoom of `0`.
 
 ## Radio values
 

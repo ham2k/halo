@@ -3467,25 +3467,20 @@ until Stop is pressed in the app. Counted in readings, not seconds, so a slow
 poll interval is not taken for a stall. A heading changed at the controller's
 own knob sets none, and is not drawn as a turn.
 
-**The Rotator panel** (`views/operation/rotator/`, also behind the
-experiment) ports red-ham-toolkit's Node-RED rotator widget without its zoom:
-an azimuthal equidistant map centred on the station — the one projection on
+**The Rotator panel** (also behind the experiment) is the core extension
+`extensions/core/rotator`, drawing a `rotatorMap` scene control
+([panel-scenes.md § Rotator map](panel-scenes.md#rotator-map)). Its map is
+azimuthal equidistant and centred on the station — the one projection on
 which every great circle from the centre is a straight radius, so the beam is
-a radius and a tap's angle IS the heading to send. It shows the heading with a
-beam-width wedge, the target while turning, the grayline, and the station in
-the call field (snapped to its exact heading when tapped near), in the
-Operation and Chase views alike. The centre is the panel's own location if
-set — a grid or a `lat, lon` pair, read as the Weather panel reads one —
-else the operation's coordinate rather than its grid, since every heading is
-measured from it (locations.md); with neither it is a bare compass, still
-true and still tappable. A location the panel names and cannot read is said
-so, never replaced by the operation's: the map would be right and every
-bearing on it wrong. A stale rotator reads "not responding" and turns
-nothing, and the pane shows a failed connect and a driver problem under the
-map. It rebuilds for its own rotator's state only, not for each reading from
-a live radio. The world is Natural Earth's 1:110m,
-bundled as `assets/geo/world-110m.json` by `scripts/world-outlines.py`. Land
-and night are a raster asking each pixel where on Earth it is, because the
+a radius and a click's angle IS the heading to send. The centre is the
+panel's own location if set — a grid or a `lat, lon` pair — else the
+operation's coordinate rather than its grid, since every heading is measured
+from it (locations.md); with neither it is a bare compass, still true and
+still clickable. A location the panel names and cannot read is said so,
+never replaced by the operation's: the map would be right and every bearing
+on it wrong. The world is Natural Earth's 1:110m, bundled as
+`assets/geo/world-110m.json` by `scripts/world-outlines.py`. Land and night
+are a raster asking each pixel where on Earth it is, because the
 projection's rim is a single point — the antipode — and a polygon round it
 projects inside out (New Zealand seen from Spain); only the outlines are
 lines, broken near the antipode.

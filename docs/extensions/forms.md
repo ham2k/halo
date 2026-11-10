@@ -60,6 +60,9 @@ interface FormField {
   environment?: string | string[]
   target?: string | string[]
   restartOnChange?: boolean
+  // text-like, on a settings list's row: the value in words, `${value}` standing for it (API 23)
+  valueFormat?: string
+  flex?: number                 // inside a row: its share of the line, 1 when absent
 }
 // A settings panel's SettingsField is a FormField without the validate/transform closures,
 // plus pattern?, patternError? and aliases?: string | string[]
@@ -84,7 +87,11 @@ interface FormMarkdownBlock { type: "markdown"; text: string; collapsible?: bool
 interface FormActionElement { type: "action"; key: string; label: string; method: string; style?: "row"; icon?: string; devMode?: boolean; common?: boolean; environment?: string | string[]; target?: string | string[] }   // style "row" is an icon row with a chevron; omit it for a button
 interface FormLinkElement { type: "link"; label: string; url: string; key?: string; icon?: string; description?: string; devMode?: boolean; common?: boolean; environment?: string | string[] }   // http, https and mailto only; how it opens is the app's; carries no value and never appears in form state
 
-type FormElement = FormField | FormHeader | FormSectionEnd | FormSectionDivider | FormMarkdownBlock | FormActionElement | FormLinkElement
+// Several fields on one line (API 23): on a settings list a checkbox is a bare switch there and a
+// select a dropdown. With a label, one item's settings, named at its start; members save as fields
+interface FormRowElement { type: "row"; label?: string; labelFlex?: number; elements: FormField[]; visibleWhen?: { field: string; equals: any } }
+
+type FormElement = FormField | FormHeader | FormSectionEnd | FormSectionDivider | FormMarkdownBlock | FormActionElement | FormLinkElement | FormRowElement
 
 interface FormDefinition {
   title?: string

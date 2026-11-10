@@ -156,6 +156,10 @@ mixin _Elements on State<FormRenderer> {
   ///
   /// A button pads its label less here: at phone width, beside two boxes,
   /// the default padding is room a box needs for its label.
+  ///
+  /// With a `label`, the row is one item's settings — a rotator's switch,
+  /// name and colour — named at its start, its members centred on the line,
+  /// since a switch has no text baseline to line up on.
   Widget _buildRow(Map<String, dynamic> el, ThemeData theme) {
     final members = _members(el).where(_visibleWhenHolds).toList();
     final inset = _rowContentPadding;
@@ -175,9 +179,16 @@ mixin _Elements on State<FormRenderer> {
           style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: Space.md)).merge(theme.outlinedButtonTheme.style),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
+          crossAxisAlignment: el['label'] is String ? CrossAxisAlignment.center : CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
+            if (el['label'] case final String label) ...[
+              Expanded(
+                flex: el['labelFlex'] as int? ?? 2,
+                child: Text(label, style: theme.textTheme.bodyLarge),
+              ),
+              const SizedBox(width: Space.md),
+            ],
             for (final (index, member) in members.indexed) ...[
               if (index > 0) const SizedBox(width: Space.md),
               switch (member['flex'] as int? ?? 1) {

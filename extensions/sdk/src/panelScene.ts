@@ -268,6 +268,7 @@ export type PanelSceneControlKind =
   | "bandScope"
   | "spectrum"
   | "zoom"
+  | "rotatorMap"
 
 /** A literal, or the name of a scene value — which a slider with no `event` retunes with no bridge call. */
 export type PanelSceneSpectrumNumber = number | string
@@ -458,6 +459,8 @@ export interface PanelSceneSpectrum {
    * it did. Extension API 17.
    */
   gestures?: {
+    /** A rotator map's click or drag that turns the rotator (extension API 23); its `zoom` and `pan` are `native` or `off`. */
+    turn?: "native" | "event" | "off"
     tune?: "native" | "event" | "off"
     zoom?: "native" | "event" | "off"
     pan?: "native" | "event" | "off"
@@ -826,7 +829,222 @@ export interface PanelSceneSpectrumTrace {
   fillColors?: string[] | PanelSceneSpectrumStop[]
 }
 
-export interface PanelSceneControl extends PanelSceneSpectrum {
+/**
+ * A bearing on a rotator map: `heading` or `target` (a rotator's), `call` (the station in the call
+ * field), or `az:` and degrees or a scene value — then degrees added: `heading+15deg`, `az:120`,
+ * `az:aimDeg-5deg`. A number is that many degrees from north.
+ */
+export type PanelSceneRotatorAngle = string | number
+
+/**
+ * A distance from the station along a bearing: `rim` or `center`, then any of `±<n>%` (a share of
+ * the way to the rim), `±<n>km`, `±<n>mi` (on the ground) and `±<n>px` — `rim-8px`, `60%`,
+ * `1000km`. A number is pixels.
+ */
+export type PanelSceneRotatorRadius = string | number
+
+/**
+ * Where a rotator map layer puts something: a bearing and a distance (`az`, `r`), a place on Earth
+ * (`lat`, `lon`), the station in the call field (`place: 'call'`), or a share of the way along an
+ * earlier line layer (`on`, `along`: 0 its start, 1 its end) — then screen pixels that do not turn
+ * with the bearing (`dx` right, `dy` down).
+ */
+export interface PanelSceneRotatorPoint {
+  az?: PanelSceneRotatorAngle
+  r?: PanelSceneRotatorRadius
+  lat?: number
+  lon?: number
+  place?: "call"
+  on?: string
+  along?: number
+  dx?: number
+  dy?: number
+}
+
+/**
+ * Something a rotator map draws over the map, in order, each over the ones before. `defaults` takes
+ * nothing but its `id`: the app's own beam, target (`target`), heading (`heading`) and call marker,
+ * drawn at that place in the list, so a scene can draw under and over them.
+ */
+export interface PanelSceneRotatorLayer {
+  id: string
+  kind: "line" | "wedge" | "circle" | "text" | "svg" | "defaults"
+  /** A line's ends; `head` makes the end an arrow's point. */
+  from?: PanelSceneRotatorPoint
+  to?: PanelSceneRotatorPoint
+  head?: { width: number; length: number }
+  /** A circle's, text's or artwork's place. */
+  at?: PanelSceneRotatorPoint
+  /** A wedge's two bearings, clockwise from the first, and its distances (from the centre to the rim when omitted). */
+  az?: PanelSceneRotatorAngle
+  az2?: PanelSceneRotatorAngle
+  r?: PanelSceneRotatorRadius
+  r2?: PanelSceneRotatorRadius
+  /** The rotator its `heading` and `target` are; omitted, the control's. */
+  rotator?: string
+  color?: string
+  fill?: string
+  /** In place of `color`, and of `fill`, while its rotator is turning to a target. */
+  turningColor?: string
+  turningFill?: string
+  /**
+   * A line's casing, a pixel wider either side under it and round its head; or a wedge's, a pixel
+   * along the outside of each straight side (not inside, nor along its arcs, which mostly lie on the
+   * rim): to stand off what it crosses.
+   */
+  casing?: string
+  width?: PanelSceneSpectrumNumber
+  dashed?: boolean
+  /** A circle's radius, in pixels. */
+  radius?: PanelSceneSpectrumNumber
+  /** Text: words, a scene value, or one of the map's own readings — the rotator's, or this layer's place's bearing and distance. */
+  text?: string
+  value?: string
+  show?: "heading" | "target" | "elevation" | "bearing" | "km" | "mi"
+  decimals?: number
+  prefix?: string
+  suffix?: string
+  /** Which end of the text, and which edge, is at its place; `center` by default. */
+  align?: "start" | "center" | "end"
+  valign?: "top" | "center" | "bottom"
+  size?: PanelSceneSpectrumNumber
+  weight?: PanelSceneSpectrumNumber
+  fontFamily?: string
+  italic?: boolean
+  background?: string
+  padding?: PanelSceneSpectrumNumber
+  /** Artwork, drawn upright and centred on its place, `svgWidth` by `svgHeight` pixels (24 by default). */
+  svg?: string
+  svgWidth?: number
+  svgHeight?: number
+  /** Sent as `activate` when clicked, with the bearing clicked as `value` and the layer's id as `layer`. */
+  event?: string
+  /** Opens where clicked, and sends the item picked the same way. */
+  menu?: { label: string; event: string }[]
+  /** A click turns the rotator toward this layer's place. */
+  aim?: boolean
+  /**
+   * `false` draws it past the rim, where it is otherwise cut: an arrow's head or a label on the
+   * edge. The rim's line is drawn just before the first decoration with `clip: false`, over the cut
+   * ones listed before it and under everything after.
+   */
+  clip?: boolean
+  /**
+   * A drag turns the rotator: to where the pointer points (`turn`), or by `degPerPx` degrees for
+   * every pixel along `axis`. The rotator is told once, on release.
+   */
+  drag?: "turn" | { axis: "x" | "y"; degPerPx?: number }
+}
+
+/** Tick marks or labels on a rotator map's rim, every `every` degrees or at the bearings in `at`. */
+export interface PanelSceneRotatorRimMarks {
+  every?: number
+  at?: number[]
+  /** A label's words, one for each of `at`; omitted, the bearing in degrees. */
+  text?: string[]
+  color?: string
+  /** A tick's length and width, in pixels. */
+  length?: number
+  width?: number
+  /** A label's size and weight, and how far inside the rim it sits (outside where negative). */
+  size?: number
+  weight?: number
+  offset?: number
+}
+
+/** A `rotatorMap` control (extension API 23). */
+export interface PanelSceneRotatorMap {
+  /** A rotator's id from `listEquipment`; omitted, the station's first. */
+  rotator?: string
+  /** The map's centre; omitted, the operation's location. */
+  home?: { lat: number; lon: number }
+  map?: {
+    palette?: "color" | "gray" | "muted" | "contrast" | "teal"
+    sea?: string
+    land?: string
+    coast?: string
+    borders?: string
+    /** The lines between states and provinces, drawn as the view closes in. */
+    divisions?: string
+    graticule?: string
+    background?: string
+    /** The night side, shaded; on by default. */
+    grayline?: boolean
+    /** `false`: a bare compass, no map. */
+    world?: boolean
+  }
+  /** The map's edge: a circle with the whole Earth in view, a rounded box zoomed in. Omitted, ticks every 10° and N, E, S, W. */
+  rim?: { color?: string; width?: number; background?: string; ticks?: PanelSceneRotatorRimMarks[]; labels?: PanelSceneRotatorRimMarks[] }
+  /** Circles at distances on the ground, with labels at bearings on them. */
+  rings?: {
+    distance: number
+    unit?: "km" | "mi"
+    color?: string
+    width?: number
+    dashed?: boolean
+    labels?: { az: number; text?: string; size?: number; color?: string }[]
+  }[]
+  /** 1 fits the whole Earth; omitted, 1 to 20. `initial` may name a scene value. */
+  zoom?: { min?: number; max?: number; initial?: PanelSceneSpectrumNumber }
+  /**
+   * Where the station may be panned: within the `square` around the circle the widest zoom draws, or
+   * anywhere in the `pane` (the default) — no nearer that area's edge than `margin` percent of the
+   * pane's shorter side (10 by default). Further in, the far side of the Earth would show.
+   */
+  pan?: {
+    area?: "square" | "pane"
+    margin?: number
+    /**
+     * Where the station is panned to until the operator pans, in pixels from the pane's middle, numbers
+     * or scene values: a panel keeping where the operator left the view gives back the last pan's
+     * `commit`, whose `at` carries `x` and `y`.
+     */
+    x?: PanelSceneSpectrumNumber
+    y?: PanelSceneSpectrumNumber
+  }
+  /** The default decorations' beam, in degrees (30 by default; 0 draws none); an antenna whose device reports its own beam is drawn with that. */
+  beamWidth?: PanelSceneSpectrumNumber
+  /** How close, in pixels, a click near the station in the call field turns to its exact bearing. */
+  snap?: number
+  /**
+   * The only bearings the antenna can point at — a 4-square's four, a switched array's eight. A
+   * click, an aim and a drag each land on the nearest; omitted, any bearing.
+   */
+  stops?: number[]
+  /**
+   * Scene values the control writes: the rotator's heading — the last it gave, kept while it is not
+   * connected and answering, which `status` tells — its target and elevation, the pointer's bearing
+   * and distance, the zoom.
+   */
+  headingDeg?: string
+  targetDeg?: string
+  elevationDeg?: string
+  hoverAz?: string
+  hoverKm?: string
+  zoomValue?: string
+  /**
+   * A scene string the control writes with the rotator's state, for a `when` to test: `connected`,
+   * `turning`, `stale`, `connecting`, `disconnecting`, `disconnected`, `error`, or `none` with no
+   * rotator.
+   */
+  status?: string
+  /**
+   * Other rotators whose readings the map writes too — those the scene draws beside the control's
+   * own, by their `rotator` — each into the scene values and string named.
+   */
+  rotators?: { rotator: string; headingDeg?: string; targetDeg?: string; status?: string }[]
+  /** The app's heading readout, and its connect, stop and whole-map buttons; on by default. */
+  hud?: boolean
+  actions?: boolean
+  /**
+   * Up to 256 lines, wedges, circles, text and artwork placed by bearing and distance or by place
+   * on Earth. Omitted, the app's own: the beam, the target, the heading and the station in the call
+   * field.
+   */
+  decorations?: PanelSceneRotatorLayer[]
+}
+
+export interface PanelSceneControl extends PanelSceneSpectrum, PanelSceneRotatorMap {
   id: string
   label: string
   kind: PanelSceneControlKind
@@ -892,7 +1110,8 @@ export interface PanelSceneControl extends PanelSceneSpectrum {
   /** Shown only while this holds, hidden as at opacity 0. Extension API 13. */
   when?: SceneCondition
   /** `nativeButton` only. Default `filled`. */
-  variant?: "filled" | "tonal" | "outlined" | "text"
+  /** `icon` (extension API 23) draws the `icon` alone, its `label` its name for a screen reader. */
+  variant?: "filled" | "tonal" | "outlined" | "text" | "icon"
   /** `nativeButton` and `nativeChip`: a Material Design Icons name, such as `radio-tower`. */
   icon?: string
   /** `nativeTextField` and `nativeDropdown`: shown while empty. */
@@ -950,19 +1169,24 @@ export interface PanelSceneEvent {
   text?: string
   /** The `id` of the band scope annotation clicked; `value` is its frequency. */
   annotation?: string
-  /** The `id` of the band scope layer clicked; `value` is the frequency clicked. Extension API 17. */
+  /**
+   * The `id` of the band scope layer clicked, `value` the frequency clicked (extension API 17); or of
+   * the rotator map decoration clicked, `value` the bearing clicked (extension API 23).
+   */
   layer?: string
   /**
    * A band scope's zoom (`value` the width in Hz), pan (`value` its middle), split (`value` the
    * spectrum's share of the height), or a drag on its level strip: `floor` (dB added to the radio's
    * floor), `range` (the spectrum's height in dB) or `speed` (waterfall rows a second). API 17.
+   * A rotator map's zoom (`value` the zoom, 0 for the whole map again) or pan (`at.x` and `at.y`
+   * where the station is, in pixels from the pane's middle). API 23.
    */
   gesture?: "zoom" | "pan" | "split" | "floor" | "range" | "speed"
-  /** Where a band scope annotation or layer was clicked. Extension API 17. */
+  /** Where a band scope annotation or layer (extension API 17), or a rotator map decoration (extension API 23), was clicked. */
   at?: PanelSceneSpectrumClick
 }
 
-/** Where a click on a band scope landed. */
+/** Where a click on a band scope, or on a rotator map, landed. */
 export interface PanelSceneSpectrumClick {
   /** Pixels in the control, the ones a layer's `px` measures. */
   x: number
@@ -981,6 +1205,10 @@ export interface PanelSceneSpectrumClick {
   ageSeconds?: number
   /** On the waterfall, when the row clicked was taken, on the app's clock. */
   atMillis?: number
+  /** On a rotator map, the bearing from the station clicked. Extension API 23. */
+  bearing?: number
+  /** On a rotator map, how far from the station the point clicked is on the ground. Extension API 23. */
+  km?: number
   /**
    * On an annotation open with its `more` lines, the line clicked: 0 its own text, 1 the first of
    * `more`. Extension API 22.

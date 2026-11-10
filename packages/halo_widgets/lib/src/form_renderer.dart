@@ -1071,7 +1071,8 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
     // The surface decides, with `icon` as the standing exception: a form
     // whose element asked for the row shape still gets it, which is how
     // several extension forms already read.
-    if ((widget.settingsList || el['icon'] != null) && _settingsRowSupportedTypes.contains(fieldType)) {
+    // A row's members are controls on a shared line, never rows of their own.
+    if ((widget.settingsList || el['icon'] != null) && !_buildingRowMembers && _settingsRowSupportedTypes.contains(fieldType)) {
       return _buildSettingsRowField(el, fieldType!, theme);
     }
 
@@ -1363,6 +1364,7 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
         // leaves an operator hunting for a setting they remember, where a
         // greyed one with a description says why it does not apply here.
         final disabled = el['disabled'] == true;
+        if (_buildingRowMembers) return _buildRowMemberSwitch(key, label, _focusNodes[key], disabled: disabled);
         return Focus(
           focusNode: _focusNodes[key],
           child: CheckboxListTile(

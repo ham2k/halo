@@ -76,8 +76,9 @@ import yazl from "yazl"
 /// and its `centerHz`, its annotations' `baseline`, `stretch`, `more` and
 /// `badge` among others (docs/extensions/packaging.md lists them), and
 /// `host.updateDraft` with its `requiresDraftWrite` grant, `host.updateSetting`,
-/// and `host.layouts` with its `requiresLayoutControl` grant.
-export const H2KEXT_API_VERSION = 22
+/// and `host.layouts` with its `requiresLayoutControl` grant; 23 adds a scene's
+/// `rotatorMap` control and `host.setEquipmentConnection`.
+export const H2KEXT_API_VERSION = 23
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -268,6 +269,7 @@ SHARED_MODULES_BY_API[19] = SHARED_MODULES_BY_API[18]
 SHARED_MODULES_BY_API[20] = SHARED_MODULES_BY_API[19]
 SHARED_MODULES_BY_API[21] = SHARED_MODULES_BY_API[20]
 SHARED_MODULES_BY_API[22] = SHARED_MODULES_BY_API[21]
+SHARED_MODULES_BY_API[23] = SHARED_MODULES_BY_API[22]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

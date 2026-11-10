@@ -353,6 +353,7 @@ documents them.
 | `host.sendRadioRaw({ id, selection?, text \| bytes, replyMs?, until? })` | `requiresRadioRaw` | 11 |
 | `host.listEquipment()`: the antenna switches and rotators | `requiresRadioRead` | 22 |
 | `host.setAntenna({ id, port, antenna })`, `host.setRotator({ id, azimuth, elevation? })`, `host.stopRotator({ id })` | `requiresRadioWrite` | 22 |
+| `host.setEquipmentConnection({ id, connected })` | `requiresRadioWrite` | 23 |
 
 ## The DX cluster
 
