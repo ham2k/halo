@@ -3202,8 +3202,6 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String switchCommandRefused({required Object command, required Object code}) => 'the switch refused "${command}" (error ${code})';
 	@override String get switchBusyTransmitting => 'that port is transmitting — antenna not changed';
 	@override String get switchNoAntenna => 'none';
-	@override String switchAntennaFor({required Object port}) => 'antenna on port ${port}';
-	@override String get switchAntennaForDescription => 'which of your antennas is connected to this port on the switch.';
 	@override String switchLayoutSides({required Object antennas, required Object radios}) => '${antennas} antennas, ${radios} radios';
 	@override String switchLayoutSidesOneRadio({required Object antennas}) => '${antennas} antennas, 1 radio';
 	@override String switchLayoutSidesOneAntenna({required Object radios}) => '1 antenna, ${radios} radios';
@@ -3217,6 +3215,9 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get switchCurrentStateHeader => 'current state';
 	@override String get switchCurrentStateDescription => 'which antenna each radio port is on right now. changes take effect immediately.';
 	@override String get switchWiringHeader => 'wiring';
+	@override String get switchWiringDescription => 'name each antenna port as you know it, and pick which of your antennas is on it.';
+	@override String get switchPortNamePlaceholder => 'your name for it';
+	@override String get switchPortAntenna => 'antenna';
 	@override String get switchPortInhibitedHint => 'transmit inhibited';
 	@override String get rotatorAxes => 'axes';
 	@override String get rotatorAxesDescription => 'whether the rotator turns in azimuth only, or in elevation too (a g-5500 or similar).';
@@ -3243,6 +3244,40 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String rotctldTimedOut({required Object code}) => 'rotctld got no answer from the rotator (hamlib error ${code}). check the rotator\'s connection to the computer running rotctld.';
 	@override String get rotctldUnreadable => 'something answers on this port, but not as rotctld does. check the host and port.';
 	@override String get rotctldTroubleshooting => 'this connects to a **rotctld daemon you run yourself**, not to the rotator directly — hamlib\'s backend talks to the controller and supports most of them.\n\n- **the daemon must already be running**, e.g. `rotctld -m 601 -r /dev/ttyUSB0` for a gs-232a. find your controller\'s model number with `rotctl -l`.\n- **from another machine**, allow port 4533 through that machine\'s firewall. rotctld listens on every address unless started with `-T`.\n- **port** is 4533 unless you started the daemon with `-t`.\n- **pstrotator** answers too, with **gpredict** selected as its tracker and tracking on.\n- turns go only as far as the limits rotctld enforces, which it reports itself — set them with `-C min_az=…,max_az=…` when starting it. the offsets here are for a controller whose zero is not true north.';
+	@override String connectionRouted({required Object port, required Object antenna}) => '${port}: ${antenna}';
+	@override String connectionDevices({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${count} device',
+		other: '${count} devices',
+	);
+	@override String get everywareUser => 'user';
+	@override String get everywareUserDescription => 'only when the server asks for a login. leave it blank otherwise.';
+	@override String get everywarePassword => 'password';
+	@override String get everywareNeedsLogin => 'this server asks for a user and password.';
+	@override String get everywareLoginRefused => 'the server refused this user and password.';
+	@override String get everywareServerOffline => 'connect its everyware server first.';
+	@override String get everywareRotorUnreachable => 'the server cannot reach this rotator\'s controller.';
+	@override String get everywareDeviceGone => 'the server no longer has this device.';
+	@override String get everywareNoDirectionOpen => 'every direction is locked out by another switch.';
+	@override String everywarePositionLocked({required Object position}) => '${position} is locked out by another switch.';
+	@override String get everywareDevicesHeader => 'devices';
+	@override String get everywareDevicesDescription => 'each one switched on becomes equipment of its own, in this list and in every panel. switching one off removes it.';
+	@override String get everywareDevicesDisconnected => 'connect to see this server\'s rotators and switches.';
+	@override String get everywareDevicesLastSeen => 'not connected: these are what the server had when last connected.';
+	@override String get everywareKindRotor => 'rotator';
+	@override String get everywareKindSwitch => 'switch';
+	@override String get everywareKindMap => 'directional switch';
+	@override String get everywareKindBand => 'band switch';
+	@override String get everywareKindBank => 'on/off switch bank, not supported yet';
+	@override String get everywareKindStack => 'stack, not supported yet';
+	@override String get everywareFollowHeader => 'automatic switching';
+	@override String get everywareFollowRadio => 'following';
+	@override String get everywareFollowRadioA => 'radio a';
+	@override String get everywareFollowRadioB => 'radio b (so2r)';
+	@override String get everywareFollowBand => 'follow the radio\'s band';
+	@override String get everywareFollowBandDescription => 'picks the position covering the main radio\'s frequency whenever it changes. others sharing the station see it switch too.';
+	@override String get everywareFollowBearing => 'point toward the station being worked';
+	@override String get everywareFollowBearingDescription => 'picks the direction nearest the station in the call field whenever it changes. others sharing the station see it switch too.';
+	@override String get everywareTroubleshooting => 'this connects to a **gh everyware server**, the program that shares a station\'s green heron rotators and switches over the network.\n\n- **port** is 17220 unless the server was set up on another one. from outside the station\'s network, the router must forward that port to the server\'s computer.\n- **user and password** only when the server has user authentication turned on. leave both blank otherwise.\n- **the server takes a limited number of clients**, four unless set otherwise. when it is full, close another client and connect again.\n- once connected, tick the rotators and switches you want under **devices**. each becomes equipment of its own, in this list and in every panel.\n- **other operators may share the station.** turning a rotator or switching an antenna here moves it for everyone.';
 	@override String get pstRotatorTroubleshooting => 'pstrotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **turn on udp control** in pstrotator\'s setup menu.\n- **match the port**: communication → udp control port, 12000 unless changed. pstrotator answers on the next port up (12001), which has to be free on this device.\n- **connect pstrotator to its controller.** until it is, it answers nothing over udp.\n- **allow it through the firewall** on the pc running pstrotator, and on this device, which listens for the answers.\n- **on a mac, iphone or ipad**, ham2k logger needs local network access (settings → privacy & security → local network).';
 	@override String rotatorCurrentStateHeader({required Object position}) => 'current state: ${position}';
 	@override String get rotatorDisconnected => 'disconnected';
@@ -3888,7 +3923,7 @@ class _Translations$operation$layout$panels$qrp extends Translations$operation$l
 	@override String rotatorAutoNamed({required Object name}) => 'automatic — ${name}';
 	@override String get rotatorAutoNone => 'automatic — no rotator yet';
 	@override String get rotatorBeamWidth => 'beam width';
-	@override String get rotatorBeamWidthDescription => 'in degrees, drawn around the heading. 0 draws none.';
+	@override String get rotatorBeamWidthDescription => 'in degrees, drawn around the heading. 0 draws none. an antenna that reports its own beam, like a green heron directional switch, draws that instead.';
 	@override String get rotatorLocation => 'location';
 	@override String get rotatorLocationDescription => 'a grid square, or a latitude and longitude, to centre the map on. blank uses the operation\'s location.';
 	@override String get rotatorTheme => 'theme';
@@ -4726,6 +4761,10 @@ class _Translations$settings$station$models$qrp extends Translations$settings$st
 	@override String get gs232a => 'yaesu gs-232a rotator interface';
 	@override String get pstRotator => 'pstrotator (udp control)';
 	@override String get rotctld => 'hamlib rotctld';
+	@override String get everywareServer => 'green heron everyware server';
+	@override String get everywareRotor => 'green heron everyware rotator';
+	@override String get everywareSwitch => 'green heron everyware switch';
+	@override String get everywareDirectional => 'green heron everyware directional switch';
 	@override String get otrsp => 'so2r switcher (otrsp)';
 	@override String get rigSelectPro => 'dx engineering rigselect pro';
 	@override String get ycccSo2r => 'yccc so2r box';
@@ -4754,6 +4793,7 @@ class _Translations$settings$station$transports$qrp extends Translations$setting
 	@override String get bleSerial => 'bluetooth le';
 	@override String get placeholder => 'placeholder';
 	@override String get usb => 'usb';
+	@override String get everywareServer => 'through its everyware server';
 }
 
 // Path: settings.station.antennaTypes
@@ -5658,7 +5698,7 @@ extension on TranslationsQrp {
 			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'automatic — ${name}',
 			'operation.layout.panels.rotatorAutoNone' => 'automatic — no rotator yet',
 			'operation.layout.panels.rotatorBeamWidth' => 'beam width',
-			'operation.layout.panels.rotatorBeamWidthDescription' => 'in degrees, drawn around the heading. 0 draws none.',
+			'operation.layout.panels.rotatorBeamWidthDescription' => 'in degrees, drawn around the heading. 0 draws none. an antenna that reports its own beam, like a green heron directional switch, draws that instead.',
 			'operation.layout.panels.rotatorLocation' => 'location',
 			'operation.layout.panels.rotatorLocationDescription' => 'a grid square, or a latitude and longitude, to centre the map on. blank uses the operation\'s location.',
 			'operation.layout.panels.rotatorTheme' => 'theme',
@@ -7010,6 +7050,10 @@ extension on TranslationsQrp {
 			'settings.station.models.gs232a' => 'yaesu gs-232a rotator interface',
 			'settings.station.models.pstRotator' => 'pstrotator (udp control)',
 			'settings.station.models.rotctld' => 'hamlib rotctld',
+			'settings.station.models.everywareServer' => 'green heron everyware server',
+			'settings.station.models.everywareRotor' => 'green heron everyware rotator',
+			'settings.station.models.everywareSwitch' => 'green heron everyware switch',
+			'settings.station.models.everywareDirectional' => 'green heron everyware directional switch',
 			'settings.station.models.otrsp' => 'so2r switcher (otrsp)',
 			'settings.station.models.rigSelectPro' => 'dx engineering rigselect pro',
 			'settings.station.models.ycccSo2r' => 'yccc so2r box',
@@ -7026,12 +7070,13 @@ extension on TranslationsQrp {
 			'settings.station.transports.usbSerial' => 'usb serial',
 			'settings.station.transports.wifi' => 'network/wifi',
 			'settings.station.transports.bluetoothSerial' => 'bluetooth serial',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.transports.bleSerial' => 'bluetooth le',
 			'settings.station.transports.placeholder' => 'placeholder',
 			'settings.station.transports.usb' => 'usb',
+			'settings.station.transports.everywareServer' => 'through its everyware server',
 			'settings.station.troubleshootingTitle' => 'if the radio connects but shows no frequency',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ft891Troubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **cat rts off at the radio, or hold rts high on.** with **cat rts** on (ft-891 menu **05-08**), the radio stays silent while rts is low — it may answer once as the port opens, then nothing. picking the radio\'s own usb port turns on **hold rts high** under advanced settings. on a digirig, signalink or most home-brew cables rts is ptt, and holding it high keys your transmitter: turn cat rts off at the radio instead.\n- **speed must match** the radio\'s cat rate (menu **05-06**). with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.yaesuBinaryTroubleshooting' => 'this radio speaks yaesu\'s older five-byte cat, and it does not respond at all when something is off. almost always one of:\n\n- **the cable must convert levels.** the cat jack on the back is not rs-232 and not usb; it needs a ct-62 or an equivalent adapter. a plain audio or data cable won\'t work for cat.\n- **speed must match** the radio\'s cat rate menu (**#14** on an ft-817, **#19** on an ft-857 or ft-897). with a mismatch, the radio sends nothing back, and never an error.\n- **never let anything raise rts or dtr on this port.** on most cables for these radios those lines are ptt and keying. an older interface powered from dtr is the exception: turn on **hold dtr high** under advanced settings for that one.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n\nthis driver was written from yaesu\'s published cat chart and has not been run against one of these radios. if it half-works, that is worth reporting.',
@@ -7308,8 +7353,6 @@ extension on TranslationsQrp {
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'the switch refused "${command}" (error ${code})',
 			'settings.station.switchBusyTransmitting' => 'that port is transmitting — antenna not changed',
 			'settings.station.switchNoAntenna' => 'none',
-			'settings.station.switchAntennaFor' => ({required Object port}) => 'antenna on port ${port}',
-			'settings.station.switchAntennaForDescription' => 'which of your antennas is connected to this port on the switch.',
 			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => '${antennas} antennas, ${radios} radios',
 			'settings.station.switchLayoutSidesOneRadio' => ({required Object antennas}) => '${antennas} antennas, 1 radio',
 			'settings.station.switchLayoutSidesOneAntenna' => ({required Object radios}) => '1 antenna, ${radios} radios',
@@ -7323,6 +7366,9 @@ extension on TranslationsQrp {
 			'settings.station.switchCurrentStateHeader' => 'current state',
 			'settings.station.switchCurrentStateDescription' => 'which antenna each radio port is on right now. changes take effect immediately.',
 			'settings.station.switchWiringHeader' => 'wiring',
+			'settings.station.switchWiringDescription' => 'name each antenna port as you know it, and pick which of your antennas is on it.',
+			'settings.station.switchPortNamePlaceholder' => 'your name for it',
+			'settings.station.switchPortAntenna' => 'antenna',
 			'settings.station.switchPortInhibitedHint' => 'transmit inhibited',
 			'settings.station.rotatorAxes' => 'axes',
 			'settings.station.rotatorAxesDescription' => 'whether the rotator turns in azimuth only, or in elevation too (a g-5500 or similar).',
@@ -7349,6 +7395,37 @@ extension on TranslationsQrp {
 			'settings.station.rotctldTimedOut' => ({required Object code}) => 'rotctld got no answer from the rotator (hamlib error ${code}). check the rotator\'s connection to the computer running rotctld.',
 			'settings.station.rotctldUnreadable' => 'something answers on this port, but not as rotctld does. check the host and port.',
 			'settings.station.rotctldTroubleshooting' => 'this connects to a **rotctld daemon you run yourself**, not to the rotator directly — hamlib\'s backend talks to the controller and supports most of them.\n\n- **the daemon must already be running**, e.g. `rotctld -m 601 -r /dev/ttyUSB0` for a gs-232a. find your controller\'s model number with `rotctl -l`.\n- **from another machine**, allow port 4533 through that machine\'s firewall. rotctld listens on every address unless started with `-T`.\n- **port** is 4533 unless you started the daemon with `-t`.\n- **pstrotator** answers too, with **gpredict** selected as its tracker and tracking on.\n- turns go only as far as the limits rotctld enforces, which it reports itself — set them with `-C min_az=…,max_az=…` when starting it. the offsets here are for a controller whose zero is not true north.',
+			'settings.station.connectionRouted' => ({required Object port, required Object antenna}) => '${port}: ${antenna}',
+			'settings.station.connectionDevices' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} device', other: '${count} devices', ), 
+			'settings.station.everywareUser' => 'user',
+			'settings.station.everywareUserDescription' => 'only when the server asks for a login. leave it blank otherwise.',
+			'settings.station.everywarePassword' => 'password',
+			'settings.station.everywareNeedsLogin' => 'this server asks for a user and password.',
+			'settings.station.everywareLoginRefused' => 'the server refused this user and password.',
+			'settings.station.everywareServerOffline' => 'connect its everyware server first.',
+			'settings.station.everywareRotorUnreachable' => 'the server cannot reach this rotator\'s controller.',
+			'settings.station.everywareDeviceGone' => 'the server no longer has this device.',
+			'settings.station.everywareNoDirectionOpen' => 'every direction is locked out by another switch.',
+			'settings.station.everywarePositionLocked' => ({required Object position}) => '${position} is locked out by another switch.',
+			'settings.station.everywareDevicesHeader' => 'devices',
+			'settings.station.everywareDevicesDescription' => 'each one switched on becomes equipment of its own, in this list and in every panel. switching one off removes it.',
+			'settings.station.everywareDevicesDisconnected' => 'connect to see this server\'s rotators and switches.',
+			'settings.station.everywareDevicesLastSeen' => 'not connected: these are what the server had when last connected.',
+			'settings.station.everywareKindRotor' => 'rotator',
+			'settings.station.everywareKindSwitch' => 'switch',
+			'settings.station.everywareKindMap' => 'directional switch',
+			'settings.station.everywareKindBand' => 'band switch',
+			'settings.station.everywareKindBank' => 'on/off switch bank, not supported yet',
+			'settings.station.everywareKindStack' => 'stack, not supported yet',
+			'settings.station.everywareFollowHeader' => 'automatic switching',
+			'settings.station.everywareFollowRadio' => 'following',
+			'settings.station.everywareFollowRadioA' => 'radio a',
+			'settings.station.everywareFollowRadioB' => 'radio b (so2r)',
+			'settings.station.everywareFollowBand' => 'follow the radio\'s band',
+			'settings.station.everywareFollowBandDescription' => 'picks the position covering the main radio\'s frequency whenever it changes. others sharing the station see it switch too.',
+			'settings.station.everywareFollowBearing' => 'point toward the station being worked',
+			'settings.station.everywareFollowBearingDescription' => 'picks the direction nearest the station in the call field whenever it changes. others sharing the station see it switch too.',
+			'settings.station.everywareTroubleshooting' => 'this connects to a **gh everyware server**, the program that shares a station\'s green heron rotators and switches over the network.\n\n- **port** is 17220 unless the server was set up on another one. from outside the station\'s network, the router must forward that port to the server\'s computer.\n- **user and password** only when the server has user authentication turned on. leave both blank otherwise.\n- **the server takes a limited number of clients**, four unless set otherwise. when it is full, close another client and connect again.\n- once connected, tick the rotators and switches you want under **devices**. each becomes equipment of its own, in this list and in every panel.\n- **other operators may share the station.** turning a rotator or switching an antenna here moves it for everyone.',
 			'settings.station.pstRotatorTroubleshooting' => 'pstrotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **turn on udp control** in pstrotator\'s setup menu.\n- **match the port**: communication → udp control port, 12000 unless changed. pstrotator answers on the next port up (12001), which has to be free on this device.\n- **connect pstrotator to its controller.** until it is, it answers nothing over udp.\n- **allow it through the firewall** on the pc running pstrotator, and on this device, which listens for the answers.\n- **on a mac, iphone or ipad**, ham2k logger needs local network access (settings → privacy & security → local network).',
 			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'current state: ${position}',
 			'settings.station.rotatorDisconnected' => 'disconnected',
@@ -7507,6 +7584,8 @@ extension on TranslationsQrp {
 			'commands.goUnknown' => ({required Object to}) => 'don\'t know how to go to \'${to}\'',
 			'commands.goBlocked' => 'close the open dialog first',
 			'commands.operationAlreadyStarted' => 'this operation already has a start marker',
+			_ => null,
+		} ?? switch (path) {
 			'commands.couldNotOpenLocation' => 'added the break, but could not open the location screen',
 			'commands.noTestOperations' => 'no test operations to purge',
 			'commands.purgeTestsUnavailable' => 'purgetests needs to show a confirmation dialog, which isn\'t available here',
@@ -7544,8 +7623,6 @@ extension on TranslationsQrp {
 			'commands.opStyleUnknown' => ({required Object opStyle}) => 'not an operating style: ${opStyle}',
 			'commands.so2rNoRadioB' => 'nothing sent: pick a radio b in station configuration to key from this set',
 			'commands.swapExperimentOff' => 'so2r is off — turn it on with exp so2r',
-			_ => null,
-		} ?? switch (path) {
 			'commands.swapNeedsOperation' => 'open an operation to swap radios',
 			'commands.swapNoRadioB' => 'nothing swapped: pick a radio b in station configuration',
 			'commands.swapEditing' => 'nothing swapped: finish editing the contact first',

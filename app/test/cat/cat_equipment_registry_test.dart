@@ -340,6 +340,10 @@ void main() {
       'gs232a-tcp',
       'pstrotator-udp',
       'rotctld-tcp',
+      'gh-everyware-tcp',
+      'gh-everyware-rotor',
+      'gh-everyware-switch',
+      'gh-everyware-directional',
       'otrsp-serial',
       'otrsp-tcp',
       'rigselect-pro-serial',
@@ -925,7 +929,23 @@ void main() {
     // An SDR streams continuously and has no dial of its own to settle.
     // An OTRSP box pushes its RX events, a front-panel switch included.
     // A TCI server sends every change to every client.
-    const pushes = {'flexradio', 'placeholder-radio', 'antenna-genius', 'winkeyer', 'rtl-tcp', 'spyserver', 'sdr-usb', 'otrsp', 'tci'};
+    // An Everyware server repeats every heading and switch position on its
+    // own, and its devices hear only what it pushes.
+    const pushes = {
+      'flexradio',
+      'placeholder-radio',
+      'antenna-genius',
+      'winkeyer',
+      'rtl-tcp',
+      'spyserver',
+      'sdr-usb',
+      'otrsp',
+      'tci',
+      'gh-everyware',
+      'gh-everyware-rotor',
+      'gh-everyware-switch',
+      'gh-everyware-directional',
+    };
 
     // Antenna/Key have no live connection at all — see NoneTransport — so
     // createSession is documented to throw rather than answer either way.

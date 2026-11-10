@@ -2444,8 +2444,6 @@
       "switchCommandRefused": "Prepínač odmietol „$command“ (chyba $code)",
       "switchBusyTransmitting": "Tento port vysiela — anténa sa nezmenila",
       "switchNoAntenna": "Žiadna",
-      "switchAntennaFor": "Anténa na porte $port",
-      "switchAntennaForDescription": "Ktorá z vašich antén je pripojená k tomuto portu prepínača.",
       "switchLayoutSides": "Antény: $antennas, rádiostanice: $radios",
       "switchLayoutSidesOneRadio": "Antény: $antennas, 1 rádiostanica",
       "switchLayoutSidesOneAntenna": "1 anténa, rádiostanice: $radios",

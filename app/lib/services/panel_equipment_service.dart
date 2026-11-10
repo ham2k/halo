@@ -174,8 +174,9 @@ class PanelEquipmentService {
     return _queued(args, kCategoryRotator, () {
       final (:node, :refused) = _commandable(args, kCategoryRotator);
       if (node == null) return refused!;
-      // With a live session checked just above, nothing sent is a driver
-      // that threw.
+      if (cat.rotationHeldByTransmit(node.uuid)) return _refused('transmitting', node);
+      // With a live session and no hold checked just above, nothing sent is
+      // a driver that threw.
       if (cat.rotateTo(node.uuid, azimuth: azimuth % 360, elevation: elevation as num?) == null) return _refused('failed', node);
       return _sent(node);
     });

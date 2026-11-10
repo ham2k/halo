@@ -268,8 +268,10 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
       // the other one-off equipment rather than under their maker's brand.
       if (model.category == kCategoryAntennaSwitch) {
         switches.add(row);
-      } else if (model.category == kCategoryRotator) {
-        // Station plumbing, for the switches' reason.
+      } else if (model.category == kCategoryRotator || model.category == kCategoryStationController) {
+        // Station plumbing, for the switches' reason. A station controller
+        // rides with the rotators, under their experiment: its devices are
+        // rotators and switches.
         if (widget.showRotator) rotators.add(row);
       } else if (model.category == kCategorySo2rSwitch) {
         // Station plumbing, for the switches' reason.

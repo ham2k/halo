@@ -29,6 +29,7 @@ import '../settings/core_settings_groups.dart' show GeneralSettingsGroup, Loggin
 import '../settings/settings_scan.dart' show frontSettingsOverrides;
 import '../settings/settings_target_dialog.dart';
 import 'dock_host.dart';
+import 'operation/everyware_steering.dart';
 import 'extensions_panel.dart';
 import 'home_navigation_rail.dart';
 import 'chase_import_flow.dart';
@@ -344,6 +345,9 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
   int _closeSlidesSerial = 0;
   ({int serial, Map<String, dynamic> qso})? _logRequest;
   CallInfoData? _callInfo;
+
+  /// The call the Everyware map switches were last pointed toward.
+  String? _everywareSteeredFor;
   String? _selectedQsoUuid;
   int _realQsoCount = 0;
   List<Qso>? _logForPanels;
@@ -671,7 +675,20 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
       logRequest: _logRequest,
       onLogRequestHeld: () => dockKey.currentState?.revealModule(ChaseView.loggingPanelId),
       onSelectionChanged: (uuid) => setState(() => _selectedQsoUuid = uuid),
-      onCallInfoChanged: (info) => setState(() => _callInfo = info),
+      onCallInfoChanged: (info) {
+        // Once per call answered for, as the operation view does: a guess
+        // per keystroke would click a shared station's relays as the call is
+        // typed.
+        // A null info is the call-info area making way for a message, not
+        // news about the call: forgetting here would steer again when it
+        // comes back.
+        if (info != null) {
+          final answeredFor = info.guess == null ? null : info.call;
+          if (answeredFor != null && answeredFor != _everywareSteeredFor) steerEverywareTowardCall(widget.services.cat, _operation.location, info);
+          _everywareSteeredFor = answeredFor;
+        }
+        setState(() => _callInfo = info);
+      },
       stampQso: (qso) => qsoWithChaseLocation(qso, _location),
     );
     final spotsPanel = SpotsPanel(

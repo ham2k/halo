@@ -2913,8 +2913,6 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String switchCommandRefused({required Object command, required Object code}) => 'Bryteren avviste «${command}» (feil ${code})';
 	@override String get switchBusyTransmitting => 'Den porten sender — antennen ble ikke byttet';
 	@override String get switchNoAntenna => 'Ingen';
-	@override String switchAntennaFor({required Object port}) => 'Antenne på port ${port}';
-	@override String get switchAntennaForDescription => 'Hvilken av antennene dine som er koblet til denne porten på bryteren.';
 	@override String switchLayoutSides({required Object antennas, required Object radios}) => '${antennas} antenner, ${radios} radioer';
 	@override String switchLayoutSidesOneRadio({required Object antennas}) => '${antennas} antenner, 1 radio';
 	@override String switchLayoutSidesOneAntenna({required Object radios}) => '1 antenne, ${radios} radioer';
@@ -6562,8 +6560,6 @@ extension on TranslationsNb {
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'Bryteren avviste «${command}» (feil ${code})',
 			'settings.station.switchBusyTransmitting' => 'Den porten sender — antennen ble ikke byttet',
 			'settings.station.switchNoAntenna' => 'Ingen',
-			'settings.station.switchAntennaFor' => ({required Object port}) => 'Antenne på port ${port}',
-			'settings.station.switchAntennaForDescription' => 'Hvilken av antennene dine som er koblet til denne porten på bryteren.',
 			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => '${antennas} antenner, ${radios} radioer',
 			'settings.station.switchLayoutSidesOneRadio' => ({required Object antennas}) => '${antennas} antenner, 1 radio',
 			'settings.station.switchLayoutSidesOneAntenna' => ({required Object radios}) => '1 antenne, ${radios} radioer',
@@ -7031,10 +7027,10 @@ extension on TranslationsNb {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} er ikke en JSON-fil, så det er ikke en QSON-fil',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} inneholder ingen QSON-operasjon',
 			'qsonImport.busy' => 'En import pågår allerede. Vent til den er ferdig før du starter en ny.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.title' => 'Importer QSOer fra ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Leser ${filename}…',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} QSO i denne filen', other: '${formatted} QSOer i denne filen', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} finnes allerede i loggen din', other: '${formatted} finnes allerede i loggen din', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} blir importert', other: '${formatted} blir importert', ), 

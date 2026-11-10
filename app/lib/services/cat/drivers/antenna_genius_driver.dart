@@ -118,6 +118,11 @@ bool isSwitchPortRoutingFormKey(String key) => key.startsWith('switchRouting_');
 /// survives the operator renaming an antenna on the switch itself.
 String switchAntennaNodeConfigKey(String antennaKey) => 'antennaNode_$antennaKey';
 
+/// The config key holding the operator's own name for one of the switch's
+/// antenna ports, keyed as [switchAntennaNodeConfigKey] is. Blank leaves the
+/// port named as the linked antenna, else as the switch names it.
+String switchPortNameConfigKey(String antennaKey) => 'portName_$antennaKey';
+
 class AntennaGeniusDriver extends EquipmentDriver {
   const AntennaGeniusDriver();
 

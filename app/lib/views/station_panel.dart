@@ -22,11 +22,17 @@ import 'add_equipment_dialog.dart';
 import 'midi_controller_pane.dart';
 import '../services/cat/equipment.dart';
 import '../services/cat/telemetry_poller.dart';
+import '../services/cat/transports/everyware_transport.dart' show EverywareDeviceTransport;
+import '../services/cat/transports/none_transport.dart' show NoneTransport;
 import '../services/cat/transports/placeholder_transport.dart' show PlaceholderTransport;
 import '../services/cat/transports/serial_transport.dart' show SerialTransportConfig, serialDtrHighConfigKey, serialRtsHighConfigKey;
 import '../services/cat/drivers/antenna_genius_driver.dart';
 import '../services/cat/drivers/icom_civ_driver.dart' show civScopeAdjustConfigKey, civScopeConfigKey;
 import '../services/cat/drivers/rotator_config.dart';
+import '../services/cat/drivers/everyware_codec.dart' show EverywareSwitchKind;
+import '../services/cat/drivers/everyware_devices.dart'
+    show everywareFollowConfigKey, everywareFollowRadioA, everywareFollowRadioB, everywareFollowRadioConfigKey;
+import '../services/cat/drivers/everyware_server.dart';
 import '../services/cat/equipment_registry.dart';
 import '../services/cat/cat_service.dart';
 import '../services/peer/peer_remote_radios.dart';
@@ -40,6 +46,8 @@ import 'settings_view.dart' show settingsGroupRows;
 import '../settings/core_settings_groups.dart' show moreStationSettingsKey, stationConfigurationSectionKey;
 
 part 'station_panel_annotations.dart';
+part 'station_panel_everyware.dart';
+part 'station_power_field.dart';
 
 /// Shown as the HINT of a secret field whose value is already in the keychain,
 /// never as its value: a hint cannot be submitted, cannot be revealed by the
@@ -213,7 +221,7 @@ class StationPanel extends StatelessWidget {
 
     final transceivers = inCategory((category) => category == kCategoryTransceiver);
     final antennas = inCategory((category) => category == kCategoryAntenna);
-    final other = inCategory((category) => category != kCategoryTransceiver && category != kCategoryAntenna);
+    final other = _devicesUnderServers(inCategory((category) => category != kCategoryTransceiver && category != kCategoryAntenna));
     // Peers' radios count as Transceivers rows. That section always shows;
     // the others only when they have something in them.
     final radios = transceivers.length + services.peerRemoteRadios.all.length;
@@ -308,9 +316,11 @@ class StationPanel extends StatelessWidget {
 
     await prepareVariants();
     if (!context.mounted) return null;
-    // A connected rotator's editor refreshes faster, so its readout keeps up
-    // with a turn — but still enumerates ports only every [_portRefresh].
-    final refreshEvery = model.category == kCategoryRotator ? _rotatorReadoutRefresh : _portRefresh;
+    // A saved node's editor refreshes faster, so the status beside Connect
+    // and a rotator's readout keep up — but rebuilds the connection's own
+    // fields, which enumerates serial ports on the UI isolate, only every
+    // [_portRefresh] ([buildElements]'s `fresh`).
+    final refreshEvery = node != null ? _stateReadoutRefresh : _portRefresh;
     final ticksPerPrepare = _portRefresh.inMilliseconds ~/ refreshEvery.inMilliseconds;
     var refreshTicks = 0;
 
@@ -322,13 +332,19 @@ class StationPanel extends StatelessWidget {
     // those enumerates serial ports, and the form rebuilds every few seconds.
     final linkKeys = {for (final candidate in variants) ...candidate.transport.recognizedConfigKeys};
     final connects = choosable || linkKeys.isNotEmpty;
+    // Saved equipment that opens a connection gets Connect under Connection —
+    // an Everyware device too, which has no fields there of its own: its
+    // Connect is its server's.
+    final connectable = node != null && type.transportKey != NoneTransport.transportKey;
 
     // Reused whenever an action changes what's available to pick (a newly
     // granted USB device, say) — configElements() reflects the transport's
     // CURRENT state each time it's called, so rebuilding from it is enough;
     // nothing here needs to know what specifically changed.
-    List<Map<String, dynamic>> buildElements() {
-      final connection = [
+    List<Map<String, dynamic>>? connectionCache;
+    List<Map<String, dynamic>> buildElements({bool fresh = true}) {
+      if (fresh) connectionCache = null;
+      final connection = connectionCache ??= [
         for (final candidate in variants)
           for (final element in _annotateChannels(candidate, node, context))
             // The switch's layout field is re-emitted under Wiring below,
@@ -371,7 +387,7 @@ class StationPanel extends StatelessWidget {
       bool isNote(Map<String, dynamic> element) => element['type'] == 'markdown' && element['collapsible'] == true;
       bool isAdvanced(Map<String, dynamic> element) => element['advanced'] == true && !isNote(element);
       bool isLinkAdvanced(Map<String, dynamic> element) => isAdvanced(element) && linkKeys.contains(element['key']);
-      List<Map<String, dynamic>> rotatorRows(List<Map<String, dynamic>> rows) => model.category == kCategoryRotator ? _addressRows(rows) : rows;
+      List<Map<String, dynamic>> addressRows(List<Map<String, dynamic>> rows) => _addressRows(rows, rotator: model.category == kCategoryRotator);
       return [
         {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': st.name, 'description': st.nameDescription},
         // What the category itself asks first — an antenna's bands, a
@@ -413,7 +429,7 @@ class StationPanel extends StatelessWidget {
         // lists). Only for equipment that is connected at all — an antenna's
         // own fields are not a connection — and gone when the chosen pairing
         // asks nothing.
-        if (connects) {'type': 'header', 'style': 'category', 'title': st.transport, 'hideWhenEmpty': true},
+        if (connects || connectable) {'type': 'header', 'style': 'category', 'title': st.transport, 'hideWhenEmpty': true},
         if (choosable)
           {
             'type': 'field',
@@ -437,12 +453,13 @@ class StationPanel extends StatelessWidget {
             // A pick joins the model's own ways in, ahead of "no control".
             'moreBefore': PlaceholderTransport.transportKey,
           },
-        ...rotatorRows(connection.where((element) => !isAdvanced(element) && !isNote(element)).toList()),
+        ...addressRows(connection.where((element) => !isAdvanced(element) && !isNote(element)).toList()),
         // Closed until asked for: holding a serial line high can key a
         // transmitter, and most operators never need to. FormRenderer hides
         // the fold whenever the chosen pairing has nothing in it, and opens
         // it on an error inside.
-        {'type': 'disclosure', 'key': _advancedDisclosureKey, 'title': st.advancedSettings, 'elements': rotatorRows(connection.where(isLinkAdvanced).toList())},
+        {'type': 'disclosure', 'key': _advancedDisclosureKey, 'title': st.advancedSettings, 'elements': addressRows(connection.where(isLinkAdvanced).toList())},
+        if (connectable) _connectionRow(context, node),
         // Which of the operator's own antennas is on each of the switch's
         // antenna ports. Here rather than in the driver's own
         // configElements(): a driver is pure catalogue data with no access
@@ -455,11 +472,12 @@ class StationPanel extends StatelessWidget {
         // More rather than inside either.
         if (model.category == kCategoryAntennaSwitch) ...[..._switchCurrentState(context, node), ..._switchWiring(context, type, node)],
         if (model.category == kCategoryRotator) ..._rotatorCurrentState(context, node),
+        ..._everywareElements(context, model, node),
         // Everything else, last: the driver's rarely-touched fields — the
         // poll and meter cadences — and the pairing's troubleshooting
         // notes. Gone when the chosen pairing leaves nothing under it.
         {'type': 'header', 'style': 'category', 'title': st.moreBand, 'hideWhenEmpty': true},
-        ...rotatorRows(connection.where((element) => isAdvanced(element) && !isLinkAdvanced(element)).toList()),
+        ...addressRows(connection.where((element) => isAdvanced(element) && !isLinkAdvanced(element)).toList()),
         ...connection.where(isNote),
       ];
     }
@@ -495,6 +513,7 @@ class StationPanel extends StatelessWidget {
         // from the prefill, as an added one does.
         if (node != null && type.transport is SerialTransportConfig) ...{serialRtsHighConfigKey: false, serialDtrHighConfigKey: false},
         ...config,
+        ...everywareDeviceToggles(config),
         if (choosable) 'transport': type.transportKey,
         // Where each device port is pointing right now — live state, seeded
         // so the pickers open on the truth rather than blank. Last, so a key
@@ -581,8 +600,9 @@ class StationPanel extends StatelessWidget {
       refreshElements: (
         every: refreshEvery,
         build: () async {
-          if (++refreshTicks % ticksPerPrepare == 0) await prepareVariants();
-          return buildElements();
+          final portTick = ++refreshTicks % ticksPerPrepare == 0;
+          if (portTick) await prepareVariants();
+          return buildElements(fresh: portTick);
         },
       ),
       // Cancel/Save/Close and the rest of the pane's chrome. Without this
@@ -623,7 +643,14 @@ class StationPanel extends StatelessWidget {
           // record, and the panel would then have two answers to which
           // antenna is live.
           // Nor are a rotator's target boxes: a heading is a command.
-          if (entry.key != 'name' && entry.key != 'transport' && !isSwitchPortRoutingFormKey(entry.key) && !isRotatorFormKey(entry.key)) entry.key: entry.value,
+          // Nor an Everyware server's device switches: they fold into its list.
+          if (entry.key != 'name' &&
+              entry.key != 'transport' &&
+              !isSwitchPortRoutingFormKey(entry.key) &&
+              !isRotatorFormKey(entry.key) &&
+              !isEverywareDeviceFormKey(entry.key))
+            entry.key: entry.value,
+        ...everywareDevicesFromForm(result),
       },
     );
   }
@@ -653,12 +680,15 @@ class StationPanel extends StatelessWidget {
 
   /// What to call one of a switch's antenna ports.
   ///
-  /// The operator's own antenna node wins where they linked one: the switch
+  /// The operator's own name for the port wins, typed in Wiring for exactly
+  /// this. Then their own antenna node, where they linked one: the switch
   /// calls it what somebody typed into the switch's own web page, possibly
   /// years ago and on a different antenna. Falls back to the switch's name
-  /// when there is no link, or when the link points at a node that has since
+  /// when there is neither, or when the link points at a node that has since
   /// been removed — a stale uuid must not render as a blank row.
   String _switchAntennaLabel(EquipmentNode node, SwitchAntenna antenna) {
+    final named = node.config[switchPortNameConfigKey(antenna.key)];
+    if (named is String && named.trim().isNotEmpty) return named.trim();
     final uuid = node.config[switchAntennaNodeConfigKey(antenna.key)];
     if (uuid is String && uuid.isNotEmpty) {
       if (_cat.nodeFor(uuid) case final linked?) return _displayName(linked);
@@ -1408,93 +1438,6 @@ class StationPanel extends StatelessWidget {
       context,
       destructive: TextButton(onPressed: onMoreSettings, child: Text(st.moreSettings)),
       cancel: TextButton(onPressed: () => Navigator.of(context).maybePop(), child: Text(context.t.common.done)),
-    );
-  }
-}
-
-/// The Power field's own text state, kept in a controller rather than
-/// [TextFormField]'s bare `initialValue` — the field's value has TWO writers
-/// (the operator typing, and a live CAT reading arriving from the radio) and
-/// only a controller can tell "external update" apart from "an edit in
-/// progress" rather than clobbering focus/cursor on every keystroke the way
-/// a value-keyed `initialValue` field would.
-///
-/// Commits (to [SettingsService.currentPower] and the radio) on submit or on
-/// losing focus, never per keystroke — the same reason the VFO frequency
-/// sync dedupes against `lastSent` (docs/design/cat.md): a command per digit
-/// would briefly send the radio through every intermediate value.
-class _PowerField extends StatefulWidget {
-  final num? power;
-  final String label;
-  final String wattsLabel;
-  final double width;
-  final TextStyle style;
-  final ValueChanged<num?> onCommit;
-
-  const _PowerField({required this.power, required this.label, required this.wattsLabel, required this.width, required this.style, required this.onCommit});
-
-  @override
-  State<_PowerField> createState() => _PowerFieldState();
-}
-
-class _PowerFieldState extends State<_PowerField> {
-  late final TextEditingController _controller = TextEditingController(text: _textFor(widget.power));
-  final FocusNode _focusNode = FocusNode();
-
-  static String _textFor(num? power) => power?.toString() ?? '';
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode.addListener(_onFocusChange);
-  }
-
-  void _onFocusChange() {
-    if (!_focusNode.hasFocus) _commit();
-  }
-
-  @override
-  void didUpdateWidget(_PowerField old) {
-    super.didUpdateWidget(old);
-    // A live CAT reading arriving behind this field's back must not
-    // clobber what the operator is mid-typing — only take it while the
-    // field isn't focused, the same rule the VFO frequency field follows
-    // (docs/design/cat.md, "Never over the operator").
-    if (!_focusNode.hasFocus && widget.power != old.power) {
-      _controller.text = _textFor(widget.power);
-    }
-  }
-
-  void _commit() => widget.onCommit(num.tryParse(_controller.text));
-
-  @override
-  void dispose() {
-    _focusNode
-      ..removeListener(_onFocusChange)
-      ..dispose();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        SizedBox(
-          width: widget.width,
-          child: TextFormField(
-            controller: _controller,
-            focusNode: _focusNode,
-            keyboardType: const TextInputType.numberWithOptions(decimal: false),
-            decoration: poloFieldDecoration(context, widget.label),
-            onFieldSubmitted: (_) => _commit(),
-          ),
-        ),
-        const SizedBox(width: Space.md),
-        Text(widget.wattsLabel, style: widget.style),
-      ],
     );
   }
 }

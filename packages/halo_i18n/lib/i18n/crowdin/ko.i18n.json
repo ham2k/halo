@@ -2444,8 +2444,6 @@
       "switchCommandRefused": "스위치가 \"$command\"을(를) 거부했습니다 (오류 $code)",
       "switchBusyTransmitting": "해당 포트가 송신 중입니다 — 안테나를 변경하지 않았습니다",
       "switchNoAntenna": "없음",
-      "switchAntennaFor": "포트 $port 안테나",
-      "switchAntennaForDescription": "스위치의 이 포트에 연결된 안테나.",
       "switchLayoutSides": "안테나 ${antennas}개, 무전기 ${radios}대",
       "switchLayoutSidesOneRadio": "안테나 ${antennas}개, 무전기 1대",
       "switchLayoutSidesOneAntenna": "안테나 1개, 무전기 ${radios}대",

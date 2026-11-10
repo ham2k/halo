@@ -60,6 +60,12 @@ const kCategoryRotator = 'rotator';
 /// an antenna switch: it switches what the operator hears, not coax.
 const kCategorySo2rSwitch = 'so2rSwitch';
 
+/// A server that controls other equipment — a Green Heron Everyware server,
+/// whose rotors and switches are nodes of their own under it. Never a
+/// rotator or a switch itself: the rotator panel's "first rotator" would
+/// otherwise pick a server with no heading.
+const kCategoryStationController = 'stationController';
+
 /// A MIDI controller — a knob box, a DJ controller, a footswitch — whose
 /// controls drive Radio A and SO2R's Radio B (docs/design/cat.md § MIDI
 /// controllers). Nothing in CAT connects to it: MidiService binds its device.
@@ -582,16 +588,21 @@ class RotatorPosition {
   /// controller that has not said.
   final int? elevation;
 
-  const RotatorPosition({required this.azimuth, this.elevation});
+  /// The antenna's beam, in degrees, when the equipment knows it — a
+  /// directional switch's selected direction. Null for a rotator, which
+  /// turns whatever antenna is on it: the rotator panel's own setting says.
+  final int? beamWidth;
+
+  const RotatorPosition({required this.azimuth, this.elevation, this.beamWidth});
 
   @override
-  bool operator ==(Object other) => other is RotatorPosition && other.azimuth == azimuth && other.elevation == elevation;
+  bool operator ==(Object other) => other is RotatorPosition && other.azimuth == azimuth && other.elevation == elevation && other.beamWidth == beamWidth;
 
   @override
-  int get hashCode => Object.hash(azimuth, elevation);
+  int get hashCode => Object.hash(azimuth, elevation, beamWidth);
 
   @override
-  String toString() => 'RotatorPosition($azimuth${elevation == null ? '' : '/$elevation'})';
+  String toString() => 'RotatorPosition($azimuth${elevation == null ? '' : '/$elevation'}${beamWidth == null ? '' : ' ±${beamWidth! ~/ 2}'})';
 }
 
 /// How close, in degrees, a rotator's azimuth has to come to its target to

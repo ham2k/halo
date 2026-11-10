@@ -17,6 +17,7 @@ import '../services/cat/equipment_registry.dart';
 import 'operation/radio/radio_faces.dart' show powerText;
 import '../services/cat/drivers/icom_civ_driver.dart' show civScopeAdjustApp, civScopeAdjustConfigKey, civScopeAdjustRadio;
 import '../services/cat/transports/none_transport.dart';
+import '../services/cat/transports/everyware_transport.dart' show EverywareDeviceTransport;
 import '../services/cat/transports/serial_transport_config.dart';
 import '../services/peer/peer_station_radios.dart';
 import '../services/cat/cat_service.dart';
@@ -482,7 +483,12 @@ class EquipmentTile extends StatelessWidget {
       // says there is a connection here to make once it has somewhere to go.
       plug: RowPlug(busy: busy, connected: connected, onConnect: unconfigured ? null : onConnect, onDisconnect: onDisconnect),
       child: ListTile(
-        contentPadding: inset.copyWith(right: currentRowGutters(context).right),
+        // A device under an Everyware server sits under it, indented: it is
+        // that server's, not equipment of its own standing.
+        contentPadding: inset.copyWith(
+          left: inset.left + (resolvedType.transportKey == EverywareDeviceTransport.transportKey ? Space.xl : 0),
+          right: currentRowGutters(context).right,
+        ),
         leading: Icon(iconForCategory(resolvedType.category)),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

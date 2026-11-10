@@ -2913,8 +2913,6 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String switchCommandRefused({required Object command, required Object code}) => 'Anahtar "${command}" komutunu reddetti (hata ${code})';
 	@override String get switchBusyTransmitting => 'Bu port yayında — anten değiştirilmedi';
 	@override String get switchNoAntenna => 'Yok';
-	@override String switchAntennaFor({required Object port}) => '${port} numaralı porttaki anten';
-	@override String get switchAntennaForDescription => 'Antenlerinizden hangisinin anahtardaki bu porta bağlı olduğu.';
 	@override String switchLayoutSides({required Object antennas, required Object radios}) => '${antennas} Anten, ${radios} Radyo';
 	@override String switchLayoutSidesOneRadio({required Object antennas}) => '${antennas} Anten, 1 Radyo';
 	@override String switchLayoutSidesOneAntenna({required Object radios}) => '1 Anten, ${radios} Radyo';
@@ -6562,8 +6560,6 @@ extension on TranslationsTr {
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'Anahtar "${command}" komutunu reddetti (hata ${code})',
 			'settings.station.switchBusyTransmitting' => 'Bu port yayında — anten değiştirilmedi',
 			'settings.station.switchNoAntenna' => 'Yok',
-			'settings.station.switchAntennaFor' => ({required Object port}) => '${port} numaralı porttaki anten',
-			'settings.station.switchAntennaForDescription' => 'Antenlerinizden hangisinin anahtardaki bu porta bağlı olduğu.',
 			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => '${antennas} Anten, ${radios} Radyo',
 			'settings.station.switchLayoutSidesOneRadio' => ({required Object antennas}) => '${antennas} Anten, 1 Radyo',
 			'settings.station.switchLayoutSidesOneAntenna' => ({required Object radios}) => '1 Anten, ${radios} Radyo',
@@ -7031,10 +7027,10 @@ extension on TranslationsTr {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} bir JSON dosyası değil, dolayısıyla bir QSON dosyası değil',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} bir QSON operasyonu içermiyor',
 			'qsonImport.busy' => 'Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.title' => 'ADIF\'ten QSO İçe Aktar',
 			'adifImport.reading' => ({required Object filename}) => '${filename} okunuyor…',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Bu dosyada ${count} QSO', other: 'Bu dosyada ${formatted} QSO', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} tanesi zaten günlüğünüzde', other: '${formatted} tanesi zaten günlüğünüzde', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} tanesi içe aktarılacak', other: '${formatted} tanesi içe aktarılacak', ), 

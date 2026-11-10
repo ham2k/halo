@@ -37,6 +37,7 @@ import 'equipment_brands.dart';
 import 'equipment_bridges.dart';
 import 'equipment_k4.dart';
 import 'equipment_models_accessories.dart';
+import 'equipment_models_green_heron.dart';
 import 'equipment_models_icom.dart';
 import 'equipment_models_kenwood.dart';
 import 'equipment_models_other_radios.dart';
@@ -51,11 +52,13 @@ import 'transports/icom_network_transport.dart';
 import 'transports/sdr_usb_transport.dart';
 import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
+import 'transports/everyware_transport.dart';
 import 'transports/udp_transport.dart';
 import 'transports/websocket_transport.dart';
 import 'transports/k4_remote_transport.dart';
 
 export 'equipment_models_accessories.dart';
+export 'equipment_models_green_heron.dart';
 export 'equipment_models_icom.dart';
 export 'equipment_models_kenwood.dart';
 export 'equipment_models_other_radios.dart';
@@ -492,7 +495,9 @@ class EquipmentType {
 String? transportLabelFor(String transportKey) {
   final labels = t.settings.station.transports;
   return switch (transportKey) {
-    TcpTransport.transportKey || UdpTransport.transportKey => labels.network,
+    TcpTransport.transportKey || UdpTransport.transportKey || EverywareServerTransport.transportKey => labels.network,
+    // Not a way of plugging in: the device is reached through its server.
+    EverywareDeviceTransport.transportKey => labels.everywareServer,
     WebSocketTransport.transportKey => labels.tci,
     K4RemoteTransport.transportKey => labels.secureNetwork,
     SerialTransport.transportKey => labels.usbSerial,
@@ -524,7 +529,9 @@ String? transportIconNameFor(String transportKey) => switch (transportKey) {
   UdpTransport.transportKey ||
   IcomNetworkTransport.transportKey ||
   K4RemoteTransport.transportKey ||
-  WebSocketTransport.transportKey => 'wifi',
+  WebSocketTransport.transportKey ||
+  EverywareServerTransport.transportKey ||
+  EverywareDeviceTransport.transportKey => 'wifi',
   // Not a way of plugging anything in — the exception the rule above
   // allows for, because what this transport connects to is nothing.
   PlaceholderTransport.transportKey => 'flask-outline',
@@ -604,6 +611,7 @@ const _defaultModels = [
   winkeyerModel,
   midiControllerModel,
   ...sdrModels,
+  ...greenHeronModels,
 ];
 
 /// What `EXP 500MP` holds back from the catalogue: the Lab599 radios, and
@@ -640,6 +648,8 @@ class EquipmentRegistry {
             PlaceholderTransport.transportKey: const PlaceholderTransport(),
             SdrUsbTransport.transportKey: const SdrUsbTransport(),
             WebSocketTransport.transportKey: const WebSocketTransport(),
+            EverywareServerTransport.transportKey: const EverywareServerTransport(),
+            EverywareDeviceTransport.transportKey: const EverywareDeviceTransport(),
           };
 
   /// Every config key that is a credential for ANY pairing in the catalogue.

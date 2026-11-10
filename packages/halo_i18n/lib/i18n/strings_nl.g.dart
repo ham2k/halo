@@ -2913,8 +2913,6 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String switchCommandRefused({required Object command, required Object code}) => 'De schakelaar weigerde "${command}" (fout ${code})';
 	@override String get switchBusyTransmitting => 'Die poort is aan het zenden — antenne niet gewijzigd';
 	@override String get switchNoAntenna => 'Geen';
-	@override String switchAntennaFor({required Object port}) => 'Antenne op poort ${port}';
-	@override String get switchAntennaForDescription => 'Welke van je antennes op deze poort van de schakelaar is aangesloten.';
 	@override String switchLayoutSides({required Object antennas, required Object radios}) => '${antennas} antennes, ${radios} radio\'s';
 	@override String switchLayoutSidesOneRadio({required Object antennas}) => '${antennas} antennes, 1 radio';
 	@override String switchLayoutSidesOneAntenna({required Object radios}) => '1 antenne, ${radios} radio\'s';
@@ -6562,8 +6560,6 @@ extension on TranslationsNl {
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'De schakelaar weigerde "${command}" (fout ${code})',
 			'settings.station.switchBusyTransmitting' => 'Die poort is aan het zenden — antenne niet gewijzigd',
 			'settings.station.switchNoAntenna' => 'Geen',
-			'settings.station.switchAntennaFor' => ({required Object port}) => 'Antenne op poort ${port}',
-			'settings.station.switchAntennaForDescription' => 'Welke van je antennes op deze poort van de schakelaar is aangesloten.',
 			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => '${antennas} antennes, ${radios} radio\'s',
 			'settings.station.switchLayoutSidesOneRadio' => ({required Object antennas}) => '${antennas} antennes, 1 radio',
 			'settings.station.switchLayoutSidesOneAntenna' => ({required Object radios}) => '1 antenne, ${radios} radio\'s',
@@ -7031,10 +7027,10 @@ extension on TranslationsNl {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} is geen JSON-bestand, dus geen QSON-bestand',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} bevat geen QSON-activatie',
 			'qsonImport.busy' => 'Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.title' => 'QSO\'s importeren uit ADIF',
 			'adifImport.reading' => ({required Object filename}) => '${filename} lezen…',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO in dit bestand', other: '${formatted} QSO\'s in dit bestand', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} staat al in je logboek', other: '${formatted} staan al in je logboek', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} wordt geïmporteerd', other: '${formatted} worden geïmporteerd', ), 

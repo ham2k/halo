@@ -81,6 +81,8 @@ Each piece of equipment has
 - transport configuration: details relevant to the transport
 - user-defined name (i.e. "Left Radio")
 
+Some equipment is reached only through other equipment. A Green Heron Everyware server's rotators and switches are each a piece of equipment of their own, whose configuration names the server they hang off; they are made and removed from the server's own configuration, and follow its connection ([cat.md](cat.md) § Green Heron Everyware).
+
 Based on the category and characteristics, each equipment provides a set of ports, providing inputs, outputs and/or controls, such as "antA", "antB", "ptt", "audio", "mic", "key"
 
 A station definition the includes which equipment is active, and how one equipment's ports connect to other equipments.

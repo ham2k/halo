@@ -2444,8 +2444,6 @@
       "switchCommandRefused": "De schakelaar weigerde \"$command\" (fout $code)",
       "switchBusyTransmitting": "Die poort is aan het zenden — antenne niet gewijzigd",
       "switchNoAntenna": "Geen",
-      "switchAntennaFor": "Antenne op poort $port",
-      "switchAntennaForDescription": "Welke van je antennes op deze poort van de schakelaar is aangesloten.",
       "switchLayoutSides": "$antennas antennes, $radios radio's",
       "switchLayoutSidesOneRadio": "$antennas antennes, 1 radio",
       "switchLayoutSidesOneAntenna": "1 antenne, $radios radio's",

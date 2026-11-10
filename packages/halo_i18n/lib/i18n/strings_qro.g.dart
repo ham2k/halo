@@ -3202,8 +3202,6 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String switchCommandRefused({required Object command, required Object code}) => 'THE SWITCH REFUSED "${command}" (ERROR ${code})';
 	@override String get switchBusyTransmitting => 'THAT PORT IS TRANSMITTING — ANTENNA NOT CHANGED';
 	@override String get switchNoAntenna => 'NONE';
-	@override String switchAntennaFor({required Object port}) => 'ANTENNA ON PORT ${port}';
-	@override String get switchAntennaForDescription => 'WHICH OF YOUR ANTENNAS IS CONNECTED TO THIS PORT ON THE SWITCH.';
 	@override String switchLayoutSides({required Object antennas, required Object radios}) => '${antennas} ANTENNAS, ${radios} RADIOS';
 	@override String switchLayoutSidesOneRadio({required Object antennas}) => '${antennas} ANTENNAS, 1 RADIO';
 	@override String switchLayoutSidesOneAntenna({required Object radios}) => '1 ANTENNA, ${radios} RADIOS';
@@ -3217,6 +3215,9 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get switchCurrentStateHeader => 'CURRENT STATE';
 	@override String get switchCurrentStateDescription => 'WHICH ANTENNA EACH RADIO PORT IS ON RIGHT NOW. CHANGES TAKE EFFECT IMMEDIATELY.';
 	@override String get switchWiringHeader => 'WIRING';
+	@override String get switchWiringDescription => 'NAME EACH ANTENNA PORT AS YOU KNOW IT, AND PICK WHICH OF YOUR ANTENNAS IS ON IT.';
+	@override String get switchPortNamePlaceholder => 'YOUR NAME FOR IT';
+	@override String get switchPortAntenna => 'ANTENNA';
 	@override String get switchPortInhibitedHint => 'TRANSMIT INHIBITED';
 	@override String get rotatorAxes => 'AXES';
 	@override String get rotatorAxesDescription => 'WHETHER THE ROTATOR TURNS IN AZIMUTH ONLY, OR IN ELEVATION TOO (A G-5500 OR SIMILAR).';
@@ -3243,6 +3244,40 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String rotctldTimedOut({required Object code}) => 'ROTCTLD GOT NO ANSWER FROM THE ROTATOR (HAMLIB ERROR ${code}). CHECK THE ROTATOR\'S CONNECTION TO THE COMPUTER RUNNING ROTCTLD.';
 	@override String get rotctldUnreadable => 'SOMETHING ANSWERS ON THIS PORT, BUT NOT AS ROTCTLD DOES. CHECK THE HOST AND PORT.';
 	@override String get rotctldTroubleshooting => 'THIS CONNECTS TO A **ROTCTLD DAEMON YOU RUN YOURSELF**, NOT TO THE ROTATOR DIRECTLY — HAMLIB\'S BACKEND TALKS TO THE CONTROLLER AND SUPPORTS MOST OF THEM.\n\n- **THE DAEMON MUST ALREADY BE RUNNING**, E.G. `rotctld -m 601 -r /dev/ttyUSB0` FOR A GS-232A. FIND YOUR CONTROLLER\'S MODEL NUMBER WITH `rotctl -l`.\n- **FROM ANOTHER MACHINE**, ALLOW PORT 4533 THROUGH THAT MACHINE\'S FIREWALL. ROTCTLD LISTENS ON EVERY ADDRESS UNLESS STARTED WITH `-T`.\n- **PORT** IS 4533 UNLESS YOU STARTED THE DAEMON WITH `-t`.\n- **PSTROTATOR** ANSWERS TOO, WITH **GPREDICT** SELECTED AS ITS TRACKER AND TRACKING ON.\n- TURNS GO ONLY AS FAR AS THE LIMITS ROTCTLD ENFORCES, WHICH IT REPORTS ITSELF — SET THEM WITH `-C min_az=…,max_az=…` WHEN STARTING IT. THE OFFSETS HERE ARE FOR A CONTROLLER WHOSE ZERO IS NOT TRUE NORTH.';
+	@override String connectionRouted({required Object port, required Object antenna}) => '${port}: ${antenna}';
+	@override String connectionDevices({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} DEVICE',
+		other: '${count} DEVICES',
+	);
+	@override String get everywareUser => 'USER';
+	@override String get everywareUserDescription => 'ONLY WHEN THE SERVER ASKS FOR A LOGIN. LEAVE IT BLANK OTHERWISE.';
+	@override String get everywarePassword => 'PASSWORD';
+	@override String get everywareNeedsLogin => 'THIS SERVER ASKS FOR A USER AND PASSWORD.';
+	@override String get everywareLoginRefused => 'THE SERVER REFUSED THIS USER AND PASSWORD.';
+	@override String get everywareServerOffline => 'CONNECT ITS EVERYWARE SERVER FIRST.';
+	@override String get everywareRotorUnreachable => 'THE SERVER CANNOT REACH THIS ROTATOR\'S CONTROLLER.';
+	@override String get everywareDeviceGone => 'THE SERVER NO LONGER HAS THIS DEVICE.';
+	@override String get everywareNoDirectionOpen => 'EVERY DIRECTION IS LOCKED OUT BY ANOTHER SWITCH.';
+	@override String everywarePositionLocked({required Object position}) => '${position} IS LOCKED OUT BY ANOTHER SWITCH.';
+	@override String get everywareDevicesHeader => 'DEVICES';
+	@override String get everywareDevicesDescription => 'EACH ONE SWITCHED ON BECOMES EQUIPMENT OF ITS OWN, IN THIS LIST AND IN EVERY PANEL. SWITCHING ONE OFF REMOVES IT.';
+	@override String get everywareDevicesDisconnected => 'CONNECT TO SEE THIS SERVER\'S ROTATORS AND SWITCHES.';
+	@override String get everywareDevicesLastSeen => 'NOT CONNECTED: THESE ARE WHAT THE SERVER HAD WHEN LAST CONNECTED.';
+	@override String get everywareKindRotor => 'ROTATOR';
+	@override String get everywareKindSwitch => 'SWITCH';
+	@override String get everywareKindMap => 'DIRECTIONAL SWITCH';
+	@override String get everywareKindBand => 'BAND SWITCH';
+	@override String get everywareKindBank => 'ON/OFF SWITCH BANK, NOT SUPPORTED YET';
+	@override String get everywareKindStack => 'STACK, NOT SUPPORTED YET';
+	@override String get everywareFollowHeader => 'AUTOMATIC SWITCHING';
+	@override String get everywareFollowRadio => 'FOLLOWING';
+	@override String get everywareFollowRadioA => 'RADIO A';
+	@override String get everywareFollowRadioB => 'RADIO B (SO2R)';
+	@override String get everywareFollowBand => 'FOLLOW THE RADIO\'S BAND';
+	@override String get everywareFollowBandDescription => 'PICKS THE POSITION COVERING THE MAIN RADIO\'S FREQUENCY WHENEVER IT CHANGES. OTHERS SHARING THE STATION SEE IT SWITCH TOO.';
+	@override String get everywareFollowBearing => 'POINT TOWARD THE STATION BEING WORKED';
+	@override String get everywareFollowBearingDescription => 'PICKS THE DIRECTION NEAREST THE STATION IN THE CALL FIELD WHENEVER IT CHANGES. OTHERS SHARING THE STATION SEE IT SWITCH TOO.';
+	@override String get everywareTroubleshooting => 'THIS CONNECTS TO A **GH EVERYWARE SERVER**, THE PROGRAM THAT SHARES A STATION\'S GREEN HERON ROTATORS AND SWITCHES OVER THE NETWORK.\n\n- **PORT** IS 17220 UNLESS THE SERVER WAS SET UP ON ANOTHER ONE. FROM OUTSIDE THE STATION\'S NETWORK, THE ROUTER MUST FORWARD THAT PORT TO THE SERVER\'S COMPUTER.\n- **USER AND PASSWORD** ONLY WHEN THE SERVER HAS USER AUTHENTICATION TURNED ON. LEAVE BOTH BLANK OTHERWISE.\n- **THE SERVER TAKES A LIMITED NUMBER OF CLIENTS**, FOUR UNLESS SET OTHERWISE. WHEN IT IS FULL, CLOSE ANOTHER CLIENT AND CONNECT AGAIN.\n- ONCE CONNECTED, TICK THE ROTATORS AND SWITCHES YOU WANT UNDER **DEVICES**. EACH BECOMES EQUIPMENT OF ITS OWN, IN THIS LIST AND IN EVERY PANEL.\n- **OTHER OPERATORS MAY SHARE THE STATION.** TURNING A ROTATOR OR SWITCHING AN ANTENNA HERE MOVES IT FOR EVERYONE.';
 	@override String get pstRotatorTroubleshooting => 'PSTROTATOR ANSWERS ONLY ONCE IT IS SET UP FOR IT, AND SAYS NOTHING AT ALL OTHERWISE:\n\n- **TURN ON UDP CONTROL** IN PSTROTATOR\'S SETUP MENU.\n- **MATCH THE PORT**: COMMUNICATION → UDP CONTROL PORT, 12000 UNLESS CHANGED. PSTROTATOR ANSWERS ON THE NEXT PORT UP (12001), WHICH HAS TO BE FREE ON THIS DEVICE.\n- **CONNECT PSTROTATOR TO ITS CONTROLLER.** UNTIL IT IS, IT ANSWERS NOTHING OVER UDP.\n- **ALLOW IT THROUGH THE FIREWALL** ON THE PC RUNNING PSTROTATOR, AND ON THIS DEVICE, WHICH LISTENS FOR THE ANSWERS.\n- **ON A MAC, IPHONE OR IPAD**, HAM2K LOGGER NEEDS LOCAL NETWORK ACCESS (SETTINGS → PRIVACY & SECURITY → LOCAL NETWORK).';
 	@override String rotatorCurrentStateHeader({required Object position}) => 'CURRENT STATE: ${position}';
 	@override String get rotatorDisconnected => 'DISCONNECTED';
@@ -3888,7 +3923,7 @@ class _Translations$operation$layout$panels$qro extends Translations$operation$l
 	@override String rotatorAutoNamed({required Object name}) => 'AUTOMATIC — ${name}';
 	@override String get rotatorAutoNone => 'AUTOMATIC — NO ROTATOR YET';
 	@override String get rotatorBeamWidth => 'BEAM WIDTH';
-	@override String get rotatorBeamWidthDescription => 'IN DEGREES, DRAWN AROUND THE HEADING. 0 DRAWS NONE.';
+	@override String get rotatorBeamWidthDescription => 'IN DEGREES, DRAWN AROUND THE HEADING. 0 DRAWS NONE. AN ANTENNA THAT REPORTS ITS OWN BEAM, LIKE A GREEN HERON DIRECTIONAL SWITCH, DRAWS THAT INSTEAD.';
 	@override String get rotatorLocation => 'LOCATION';
 	@override String get rotatorLocationDescription => 'A GRID SQUARE, OR A LATITUDE AND LONGITUDE, TO CENTRE THE MAP ON. BLANK USES THE OPERATION\'S LOCATION.';
 	@override String get rotatorTheme => 'THEME';
@@ -4726,6 +4761,10 @@ class _Translations$settings$station$models$qro extends Translations$settings$st
 	@override String get gs232a => 'YAESU GS-232A ROTATOR INTERFACE';
 	@override String get pstRotator => 'PSTROTATOR (UDP CONTROL)';
 	@override String get rotctld => 'HAMLIB ROTCTLD';
+	@override String get everywareServer => 'GREEN HERON EVERYWARE SERVER';
+	@override String get everywareRotor => 'GREEN HERON EVERYWARE ROTATOR';
+	@override String get everywareSwitch => 'GREEN HERON EVERYWARE SWITCH';
+	@override String get everywareDirectional => 'GREEN HERON EVERYWARE DIRECTIONAL SWITCH';
 	@override String get otrsp => 'SO2R SWITCHER (OTRSP)';
 	@override String get rigSelectPro => 'DX ENGINEERING RIGSELECT PRO';
 	@override String get ycccSo2r => 'YCCC SO2R BOX';
@@ -4754,6 +4793,7 @@ class _Translations$settings$station$transports$qro extends Translations$setting
 	@override String get bleSerial => 'BLUETOOTH LE';
 	@override String get placeholder => 'PLACEHOLDER';
 	@override String get usb => 'USB';
+	@override String get everywareServer => 'THROUGH ITS EVERYWARE SERVER';
 }
 
 // Path: settings.station.antennaTypes
@@ -5658,7 +5698,7 @@ extension on TranslationsQro {
 			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'AUTOMATIC — ${name}',
 			'operation.layout.panels.rotatorAutoNone' => 'AUTOMATIC — NO ROTATOR YET',
 			'operation.layout.panels.rotatorBeamWidth' => 'BEAM WIDTH',
-			'operation.layout.panels.rotatorBeamWidthDescription' => 'IN DEGREES, DRAWN AROUND THE HEADING. 0 DRAWS NONE.',
+			'operation.layout.panels.rotatorBeamWidthDescription' => 'IN DEGREES, DRAWN AROUND THE HEADING. 0 DRAWS NONE. AN ANTENNA THAT REPORTS ITS OWN BEAM, LIKE A GREEN HERON DIRECTIONAL SWITCH, DRAWS THAT INSTEAD.',
 			'operation.layout.panels.rotatorLocation' => 'LOCATION',
 			'operation.layout.panels.rotatorLocationDescription' => 'A GRID SQUARE, OR A LATITUDE AND LONGITUDE, TO CENTRE THE MAP ON. BLANK USES THE OPERATION\'S LOCATION.',
 			'operation.layout.panels.rotatorTheme' => 'THEME',
@@ -7010,6 +7050,10 @@ extension on TranslationsQro {
 			'settings.station.models.gs232a' => 'YAESU GS-232A ROTATOR INTERFACE',
 			'settings.station.models.pstRotator' => 'PSTROTATOR (UDP CONTROL)',
 			'settings.station.models.rotctld' => 'HAMLIB ROTCTLD',
+			'settings.station.models.everywareServer' => 'GREEN HERON EVERYWARE SERVER',
+			'settings.station.models.everywareRotor' => 'GREEN HERON EVERYWARE ROTATOR',
+			'settings.station.models.everywareSwitch' => 'GREEN HERON EVERYWARE SWITCH',
+			'settings.station.models.everywareDirectional' => 'GREEN HERON EVERYWARE DIRECTIONAL SWITCH',
 			'settings.station.models.otrsp' => 'SO2R SWITCHER (OTRSP)',
 			'settings.station.models.rigSelectPro' => 'DX ENGINEERING RIGSELECT PRO',
 			'settings.station.models.ycccSo2r' => 'YCCC SO2R BOX',
@@ -7026,12 +7070,13 @@ extension on TranslationsQro {
 			'settings.station.transports.usbSerial' => 'USB SERIAL',
 			'settings.station.transports.wifi' => 'NETWORK/WIFI',
 			'settings.station.transports.bluetoothSerial' => 'BLUETOOTH SERIAL',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.transports.bleSerial' => 'BLUETOOTH LE',
 			'settings.station.transports.placeholder' => 'PLACEHOLDER',
 			'settings.station.transports.usb' => 'USB',
+			'settings.station.transports.everywareServer' => 'THROUGH ITS EVERYWARE SERVER',
 			'settings.station.troubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ft891Troubleshooting' => 'THE RADIO IS RECEIVING COMMANDS BUT NOT RESPONDING. ALMOST ALWAYS ONE OF:\n\n- **CAT RTS OFF AT THE RADIO, OR HOLD RTS HIGH ON.** WITH **CAT RTS** ON (FT-891 MENU **05-08**), THE RADIO STAYS SILENT WHILE RTS IS LOW — IT MAY ANSWER ONCE AS THE PORT OPENS, THEN NOTHING. PICKING THE RADIO\'S OWN USB PORT TURNS ON **HOLD RTS HIGH** UNDER ADVANCED SETTINGS. ON A DIGIRIG, SIGNALINK OR MOST HOME-BREW CABLES RTS IS PTT, AND HOLDING IT HIGH KEYS YOUR TRANSMITTER: TURN CAT RTS OFF AT THE RADIO INSTEAD.\n- **SPEED MUST MATCH** THE RADIO\'S CAT RATE (MENU **05-06**). WITH A MISMATCH, THE RADIO SENDS BACK GARBAGE OR NOTHING, AND NEVER AN ERROR.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
 			'settings.station.yaesuBinaryTroubleshooting' => 'THIS RADIO SPEAKS YAESU\'S OLDER FIVE-BYTE CAT, AND IT DOES NOT RESPOND AT ALL WHEN SOMETHING IS OFF. ALMOST ALWAYS ONE OF:\n\n- **THE CABLE MUST CONVERT LEVELS.** THE CAT JACK ON THE BACK IS NOT RS-232 AND NOT USB; IT NEEDS A CT-62 OR AN EQUIVALENT ADAPTER. A PLAIN AUDIO OR DATA CABLE WON\'T WORK FOR CAT.\n- **SPEED MUST MATCH** THE RADIO\'S CAT RATE MENU (**#14** ON AN FT-817, **#19** ON AN FT-857 OR FT-897). WITH A MISMATCH, THE RADIO SENDS NOTHING BACK, AND NEVER AN ERROR.\n- **NEVER LET ANYTHING RAISE RTS OR DTR ON THIS PORT.** ON MOST CABLES FOR THESE RADIOS THOSE LINES ARE PTT AND KEYING. AN OLDER INTERFACE POWERED FROM DTR IS THE EXCEPTION: TURN ON **HOLD DTR HIGH** UNDER ADVANCED SETTINGS FOR THAT ONE.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n\nTHIS DRIVER WAS WRITTEN FROM YAESU\'S PUBLISHED CAT CHART AND HAS NOT BEEN RUN AGAINST ONE OF THESE RADIOS. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
@@ -7308,8 +7353,6 @@ extension on TranslationsQro {
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'THE SWITCH REFUSED "${command}" (ERROR ${code})',
 			'settings.station.switchBusyTransmitting' => 'THAT PORT IS TRANSMITTING — ANTENNA NOT CHANGED',
 			'settings.station.switchNoAntenna' => 'NONE',
-			'settings.station.switchAntennaFor' => ({required Object port}) => 'ANTENNA ON PORT ${port}',
-			'settings.station.switchAntennaForDescription' => 'WHICH OF YOUR ANTENNAS IS CONNECTED TO THIS PORT ON THE SWITCH.',
 			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => '${antennas} ANTENNAS, ${radios} RADIOS',
 			'settings.station.switchLayoutSidesOneRadio' => ({required Object antennas}) => '${antennas} ANTENNAS, 1 RADIO',
 			'settings.station.switchLayoutSidesOneAntenna' => ({required Object radios}) => '1 ANTENNA, ${radios} RADIOS',
@@ -7323,6 +7366,9 @@ extension on TranslationsQro {
 			'settings.station.switchCurrentStateHeader' => 'CURRENT STATE',
 			'settings.station.switchCurrentStateDescription' => 'WHICH ANTENNA EACH RADIO PORT IS ON RIGHT NOW. CHANGES TAKE EFFECT IMMEDIATELY.',
 			'settings.station.switchWiringHeader' => 'WIRING',
+			'settings.station.switchWiringDescription' => 'NAME EACH ANTENNA PORT AS YOU KNOW IT, AND PICK WHICH OF YOUR ANTENNAS IS ON IT.',
+			'settings.station.switchPortNamePlaceholder' => 'YOUR NAME FOR IT',
+			'settings.station.switchPortAntenna' => 'ANTENNA',
 			'settings.station.switchPortInhibitedHint' => 'TRANSMIT INHIBITED',
 			'settings.station.rotatorAxes' => 'AXES',
 			'settings.station.rotatorAxesDescription' => 'WHETHER THE ROTATOR TURNS IN AZIMUTH ONLY, OR IN ELEVATION TOO (A G-5500 OR SIMILAR).',
@@ -7349,6 +7395,37 @@ extension on TranslationsQro {
 			'settings.station.rotctldTimedOut' => ({required Object code}) => 'ROTCTLD GOT NO ANSWER FROM THE ROTATOR (HAMLIB ERROR ${code}). CHECK THE ROTATOR\'S CONNECTION TO THE COMPUTER RUNNING ROTCTLD.',
 			'settings.station.rotctldUnreadable' => 'SOMETHING ANSWERS ON THIS PORT, BUT NOT AS ROTCTLD DOES. CHECK THE HOST AND PORT.',
 			'settings.station.rotctldTroubleshooting' => 'THIS CONNECTS TO A **ROTCTLD DAEMON YOU RUN YOURSELF**, NOT TO THE ROTATOR DIRECTLY — HAMLIB\'S BACKEND TALKS TO THE CONTROLLER AND SUPPORTS MOST OF THEM.\n\n- **THE DAEMON MUST ALREADY BE RUNNING**, E.G. `rotctld -m 601 -r /dev/ttyUSB0` FOR A GS-232A. FIND YOUR CONTROLLER\'S MODEL NUMBER WITH `rotctl -l`.\n- **FROM ANOTHER MACHINE**, ALLOW PORT 4533 THROUGH THAT MACHINE\'S FIREWALL. ROTCTLD LISTENS ON EVERY ADDRESS UNLESS STARTED WITH `-T`.\n- **PORT** IS 4533 UNLESS YOU STARTED THE DAEMON WITH `-t`.\n- **PSTROTATOR** ANSWERS TOO, WITH **GPREDICT** SELECTED AS ITS TRACKER AND TRACKING ON.\n- TURNS GO ONLY AS FAR AS THE LIMITS ROTCTLD ENFORCES, WHICH IT REPORTS ITSELF — SET THEM WITH `-C min_az=…,max_az=…` WHEN STARTING IT. THE OFFSETS HERE ARE FOR A CONTROLLER WHOSE ZERO IS NOT TRUE NORTH.',
+			'settings.station.connectionRouted' => ({required Object port, required Object antenna}) => '${port}: ${antenna}',
+			'settings.station.connectionDevices' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} DEVICE', other: '${count} DEVICES', ), 
+			'settings.station.everywareUser' => 'USER',
+			'settings.station.everywareUserDescription' => 'ONLY WHEN THE SERVER ASKS FOR A LOGIN. LEAVE IT BLANK OTHERWISE.',
+			'settings.station.everywarePassword' => 'PASSWORD',
+			'settings.station.everywareNeedsLogin' => 'THIS SERVER ASKS FOR A USER AND PASSWORD.',
+			'settings.station.everywareLoginRefused' => 'THE SERVER REFUSED THIS USER AND PASSWORD.',
+			'settings.station.everywareServerOffline' => 'CONNECT ITS EVERYWARE SERVER FIRST.',
+			'settings.station.everywareRotorUnreachable' => 'THE SERVER CANNOT REACH THIS ROTATOR\'S CONTROLLER.',
+			'settings.station.everywareDeviceGone' => 'THE SERVER NO LONGER HAS THIS DEVICE.',
+			'settings.station.everywareNoDirectionOpen' => 'EVERY DIRECTION IS LOCKED OUT BY ANOTHER SWITCH.',
+			'settings.station.everywarePositionLocked' => ({required Object position}) => '${position} IS LOCKED OUT BY ANOTHER SWITCH.',
+			'settings.station.everywareDevicesHeader' => 'DEVICES',
+			'settings.station.everywareDevicesDescription' => 'EACH ONE SWITCHED ON BECOMES EQUIPMENT OF ITS OWN, IN THIS LIST AND IN EVERY PANEL. SWITCHING ONE OFF REMOVES IT.',
+			'settings.station.everywareDevicesDisconnected' => 'CONNECT TO SEE THIS SERVER\'S ROTATORS AND SWITCHES.',
+			'settings.station.everywareDevicesLastSeen' => 'NOT CONNECTED: THESE ARE WHAT THE SERVER HAD WHEN LAST CONNECTED.',
+			'settings.station.everywareKindRotor' => 'ROTATOR',
+			'settings.station.everywareKindSwitch' => 'SWITCH',
+			'settings.station.everywareKindMap' => 'DIRECTIONAL SWITCH',
+			'settings.station.everywareKindBand' => 'BAND SWITCH',
+			'settings.station.everywareKindBank' => 'ON/OFF SWITCH BANK, NOT SUPPORTED YET',
+			'settings.station.everywareKindStack' => 'STACK, NOT SUPPORTED YET',
+			'settings.station.everywareFollowHeader' => 'AUTOMATIC SWITCHING',
+			'settings.station.everywareFollowRadio' => 'FOLLOWING',
+			'settings.station.everywareFollowRadioA' => 'RADIO A',
+			'settings.station.everywareFollowRadioB' => 'RADIO B (SO2R)',
+			'settings.station.everywareFollowBand' => 'FOLLOW THE RADIO\'S BAND',
+			'settings.station.everywareFollowBandDescription' => 'PICKS THE POSITION COVERING THE MAIN RADIO\'S FREQUENCY WHENEVER IT CHANGES. OTHERS SHARING THE STATION SEE IT SWITCH TOO.',
+			'settings.station.everywareFollowBearing' => 'POINT TOWARD THE STATION BEING WORKED',
+			'settings.station.everywareFollowBearingDescription' => 'PICKS THE DIRECTION NEAREST THE STATION IN THE CALL FIELD WHENEVER IT CHANGES. OTHERS SHARING THE STATION SEE IT SWITCH TOO.',
+			'settings.station.everywareTroubleshooting' => 'THIS CONNECTS TO A **GH EVERYWARE SERVER**, THE PROGRAM THAT SHARES A STATION\'S GREEN HERON ROTATORS AND SWITCHES OVER THE NETWORK.\n\n- **PORT** IS 17220 UNLESS THE SERVER WAS SET UP ON ANOTHER ONE. FROM OUTSIDE THE STATION\'S NETWORK, THE ROUTER MUST FORWARD THAT PORT TO THE SERVER\'S COMPUTER.\n- **USER AND PASSWORD** ONLY WHEN THE SERVER HAS USER AUTHENTICATION TURNED ON. LEAVE BOTH BLANK OTHERWISE.\n- **THE SERVER TAKES A LIMITED NUMBER OF CLIENTS**, FOUR UNLESS SET OTHERWISE. WHEN IT IS FULL, CLOSE ANOTHER CLIENT AND CONNECT AGAIN.\n- ONCE CONNECTED, TICK THE ROTATORS AND SWITCHES YOU WANT UNDER **DEVICES**. EACH BECOMES EQUIPMENT OF ITS OWN, IN THIS LIST AND IN EVERY PANEL.\n- **OTHER OPERATORS MAY SHARE THE STATION.** TURNING A ROTATOR OR SWITCHING AN ANTENNA HERE MOVES IT FOR EVERYONE.',
 			'settings.station.pstRotatorTroubleshooting' => 'PSTROTATOR ANSWERS ONLY ONCE IT IS SET UP FOR IT, AND SAYS NOTHING AT ALL OTHERWISE:\n\n- **TURN ON UDP CONTROL** IN PSTROTATOR\'S SETUP MENU.\n- **MATCH THE PORT**: COMMUNICATION → UDP CONTROL PORT, 12000 UNLESS CHANGED. PSTROTATOR ANSWERS ON THE NEXT PORT UP (12001), WHICH HAS TO BE FREE ON THIS DEVICE.\n- **CONNECT PSTROTATOR TO ITS CONTROLLER.** UNTIL IT IS, IT ANSWERS NOTHING OVER UDP.\n- **ALLOW IT THROUGH THE FIREWALL** ON THE PC RUNNING PSTROTATOR, AND ON THIS DEVICE, WHICH LISTENS FOR THE ANSWERS.\n- **ON A MAC, IPHONE OR IPAD**, HAM2K LOGGER NEEDS LOCAL NETWORK ACCESS (SETTINGS → PRIVACY & SECURITY → LOCAL NETWORK).',
 			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'CURRENT STATE: ${position}',
 			'settings.station.rotatorDisconnected' => 'DISCONNECTED',
@@ -7507,6 +7584,8 @@ extension on TranslationsQro {
 			'commands.goUnknown' => ({required Object to}) => 'DON\'T KNOW HOW TO GO TO \'${to}\'',
 			'commands.goBlocked' => 'CLOSE THE OPEN DIALOG FIRST',
 			'commands.operationAlreadyStarted' => 'THIS OPERATION ALREADY HAS A START MARKER',
+			_ => null,
+		} ?? switch (path) {
 			'commands.couldNotOpenLocation' => 'ADDED THE BREAK, BUT COULD NOT OPEN THE LOCATION SCREEN',
 			'commands.noTestOperations' => 'NO TEST OPERATIONS TO PURGE',
 			'commands.purgeTestsUnavailable' => 'PURGETESTS NEEDS TO SHOW A CONFIRMATION DIALOG, WHICH ISN\'T AVAILABLE HERE',
@@ -7544,8 +7623,6 @@ extension on TranslationsQro {
 			'commands.opStyleUnknown' => ({required Object opStyle}) => 'NOT AN OPERATING STYLE: ${opStyle}',
 			'commands.so2rNoRadioB' => 'NOTHING SENT: PICK A RADIO B IN STATION CONFIGURATION TO KEY FROM THIS SET',
 			'commands.swapExperimentOff' => 'SO2R IS OFF — TURN IT ON WITH EXP SO2R',
-			_ => null,
-		} ?? switch (path) {
 			'commands.swapNeedsOperation' => 'OPEN AN OPERATION TO SWAP RADIOS',
 			'commands.swapNoRadioB' => 'NOTHING SWAPPED: PICK A RADIO B IN STATION CONFIGURATION',
 			'commands.swapEditing' => 'NOTHING SWAPPED: FINISH EDITING THE CONTACT FIRST',

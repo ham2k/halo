@@ -2444,8 +2444,6 @@
       "switchCommandRefused": "Anahtar \"$command\" komutunu reddetti (hata $code)",
       "switchBusyTransmitting": "Bu port yayında — anten değiştirilmedi",
       "switchNoAntenna": "Yok",
-      "switchAntennaFor": "$port numaralı porttaki anten",
-      "switchAntennaForDescription": "Antenlerinizden hangisinin anahtardaki bu porta bağlı olduğu.",
       "switchLayoutSides": "$antennas Anten, $radios Radyo",
       "switchLayoutSidesOneRadio": "$antennas Anten, 1 Radyo",
       "switchLayoutSidesOneAntenna": "1 Anten, $radios Radyo",

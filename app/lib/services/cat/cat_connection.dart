@@ -155,6 +155,8 @@ extension _Connection on CatService {
               open: transport.connect,
               cancel: cancel,
             )
+          : _isEverywareDevice(node)
+          ? _everywareDeviceConnection(node)
           : await transport.connect(type.targetFor(config), cancel: cancel);
     } on CatCancelledException {
       // A newer connect (or a disconnect) owns this node now — not a
@@ -318,6 +320,7 @@ extension _Connection on CatService {
       onChannels: (channels) {
         if (runtime.connection != connection) return;
         if (listEquals(stateFor(uuid).channels, channels)) return;
+        _everywareDevicesAnnounced(uuid, channels);
         _setState(uuid, stateFor(uuid).copyWith(channels: channels));
       },
       onSwitchState: (antennas, ports) {
@@ -462,9 +465,15 @@ extension _Connection on CatService {
         // CI-V drivers poll every 5s). Dropping the session without tearing
         // it down leaves them ticking for the life of the process — once per
         // drop — each one retaining its sink and this dead connection.
+        // An Everyware server closes a connection whose login it refused: the
+        // refusal is why it is gone, and stays on its row.
+        final refused = session is EverywareServerSession ? stateFor(uuid).problem : null;
         unawaited(_closeSession(runtime));
         if (isSdr(uuid)) runtime.sdrDropReason = droppedBecause ?? t.settings.station.spectrumSdrServerClosed;
-        _setState(uuid, const EquipmentState(status: EquipmentStatus.disconnected));
+        _setState(
+          uuid,
+          refused == null ? const EquipmentState(status: EquipmentStatus.disconnected) : EquipmentState(status: EquipmentStatus.error, error: refused),
+        );
         _autoReconnectAfterDrop(uuid);
         // An SDR comes back for the display still waiting on it.
         _retrySdr(runtime);

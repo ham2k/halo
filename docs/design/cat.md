@@ -3238,6 +3238,15 @@ access to the station's inventory. When the switch is disconnected the editor
 falls back to `EquipmentDriver.antennaPortCount` — the case that matters, since
 setting a switch up is something an operator does before ever connecting it.
 
+**Wiring is a line per antenna port: the operator's name for it, then the
+antenna on it.** The name box is labelled with the port as the switch names
+it, and the name typed there (`portName_<key>`, beside the link's
+`antennaNode_<key>`) is what the port is called wherever it is shown — the
+Current State pickers, the status beside Connect — ahead of the linked
+antenna's name, which is ahead of the switch's own. An operator naming a
+port has said what they call it; the antenna linked to it is a guess at
+that, and the switch's name a guess made by someone else, maybe years ago.
+
 ### 4O3A Antenna Genius
 
 Verified against an 8x2 on firmware 4.1.16. 4O3A does not publish the
@@ -3337,16 +3346,31 @@ Responding — the switch's lesson, learned before it could happen here.
 stays the same shape as every other node's, as with a switch: a saved
 rotator's editor grows a Current State section whose band carries the
 heading ("Current State: 45° azimuth, 30° elevation", "az"/"el" on a phone;
-"Current State: disconnected") and the station rows' plug toggle, over one row holding a target azimuth (and
+"Current State: disconnected"), over one row holding a target azimuth (and
 elevation, on an az/el rotator), Turn and Stop. Unlike the switch's section
 it shows while disconnected, its controls greyed: the pane is where a rotator
-is turned, so it is where it is connected, and Connect reaches the rotator as
-saved rather than as edited. The editor also sets the address beside what
-completes it, host beside port or serial port beside speed. Unlike the
+is turned, so it is where it is connected — with the Connect that ends every
+editor's Connection (below). Every equipment editor sets a host beside its
+port, two to one, and a login's user beside its password, half each; a
+rotator's also sets its serial port beside its speed. Unlike the
 switch's pickers, the readout follows the rotator while the pane is open —
-the editor republishes its elements every second for a rotator (still
-enumerating serial ports at the usual three) — because a heading is mostly
-watched while it moves. The target boxes are a command's arguments: their
+the editor republishes its elements every second for saved equipment —
+because a heading is mostly watched while it moves — but rebuilds the
+connection's own fields only at the usual three seconds: building them lists
+the serial ports, synchronously on the UI isolate.
+
+**Every saved equipment's Connection ends in Connect**, a labelled
+borderless button led by the station row's plug, in the row's colors, with
+what the connection says beside it on the same line — green while it is up
+and well, red when it failed or has a problem: why it failed,
+that it is connecting or not responding, a problem the driver reported, or
+once it is up what the equipment itself said — a radio's mode and
+frequency, a rotator's heading, what a switch routes, how many devices a
+server carries. Connect reaches the equipment as saved, not as edited, as
+the row's plug does; it is here too because Connect pressed in the pane
+fails where the row's own message is out of sight. Equipment with nothing
+to connect (an antenna, a key) has none; an Everyware device has one though
+it has no fields of its own there, and it acts on its server. The target boxes are a command's arguments: their
 keys are stripped before the record is stored, the Save validator skips them,
 and Turn checks them itself, so a heading typed and never sent cannot block a
 rename. A turn the limits held short says where it is going instead, since
@@ -3525,6 +3549,158 @@ same protocol with its Gpredict tracker selected.
   is answered `RPRT 0`; a failed read, or a line that is not rotctld at
   all, is one until a position answers again — and that line does not
   count as the node answering.
+
+## Green Heron Everyware
+
+`everyware_codec.dart`, `everyware_server.dart` and `everyware_devices.dart`
+in `drivers/`, `transports/everyware_transport.dart`, `cat_everyware.dart`,
+and the models in `equipment_models_green_heron.dart`. Behind `EXP ROTATOR`,
+with the rotators. From a capture of WU2X's server (three rotors, seven
+switches) and from GHMac's [protocol notes](https://github.com/mikeg-dal/GHMac/blob/main/docs/PROTOCOL.md)
+(MIT) for what an open server cannot show: the login, and the commands no
+one was asked to send.
+
+An Everyware server shares a station's rotators and switches with every
+client on the network, one TCP connection each. The wire is CP1252 text, a
+message a line, fields split by U+001F and a switch position's sub-fields by
+U+001D. On connect the server pushes everything it has — `ADD` per rotor,
+`SWITCHADD` per switch — and from then on it never goes quiet: every rotor's
+`POINT` about once a second and every switch's `SWITCHUPDATE` every few
+seconds, moving or not. A client turns a rotor with `TURN␟name␟heading` and
+`STOP␟name`, and picks a switch position with `SET_SWITCH␟name␟position`.
+
+**The first equipment that has equipment under it.** The server node holds
+the address and the login and owns the one connection; each rotor or switch
+the operator switches on in its editor is a node of its own, which every
+panel takes for an ordinary rotator or antenna switch. **Devices** lists
+every device the server announced, a row each with its kind and a switch on
+the right — what the server reports live while it is connected, and what it
+last reported (kept on the server node, `everywareKnownDevices`) while it is
+not, so a device can be switched off without connecting first. What a
+connect announces is merged into that list rather than replacing it — the
+server announces one device at a time, and replaced at each the list would
+be saved ever longer on every connect, and left short by a link dropped
+part-way; only a device the server withdraws leaves it, its last one
+included. A save from the
+editor keeps the list the service has, not the one the editor opened with. The
+switches fold into the server's list on save; a device node is made for each
+one switched on and removed for each switched off, a device removed from its
+own editor is switched off on its server, and removing the server removes
+its devices, since nothing else could reach them. A device is keyed by kind and the server's name for it, the only
+identity a device has on the wire, so a device the server renamed is a new
+node. A bank switch (type 4) and a stack (`STACKADD`) are listed but
+greyed, never made nodes: a bank's positions are each on or off, and a stack
+switches several antennas in at once, neither of which a one-selection
+switch can show — and there is nothing to verify either against.
+
+**A device rides its server's connection.** Its "connection" is an
+`EverywareDeviceConnection` the server's session (the hub) hands out: the
+hub's lines about that one device, starting with everything already said
+about it — the announcement, the last position, the last locks — and its
+commands going out over the hub's socket. One socket, not one per device,
+because the server takes four clients unless told otherwise, and a station
+with a rotor and three switches would fill it alone. So the device sessions
+read plain protocol lines and never see another device's. A device follows
+its server: it comes up when the server first announces something — not
+when the socket opens, since a server refusing the login announces nothing,
+and a device up before that would read connected to nothing — drops when
+the server's connection does, and its Connect and Disconnect are the
+server's, from its row or anywhere else — except while the server is up or
+on its way: up and announcing, a device's Connect brings up that device
+alone, and connecting or not yet announcing, it does nothing, since the
+device comes up with the first announcement. Either way, reconnecting the
+server for one device would restart its login and drop every other. A device the server has not named
+within `everywareAnnounceWait` (10 s) says the server no longer has it: one
+renamed or removed on the server while the app was away would otherwise read
+connected while nothing ever comes. Nothing reconnects the server after a
+drop, as nothing reconnects any rotator.
+
+**The silence watch needs nothing special**, because the server repeats
+itself: a rotor's own `POINT`s keep its node alive, and a switch's
+`SWITCHUPDATE`s every few seconds keep its node alive, well inside the 30 s
+window. Every repeat counts, the ones with no heading to report included —
+a fixed antenna's 999, an unreachable controller's stale heading, a
+direction the server calls `UNKNOWN` — or the node would go "not
+responding" over the reason it already has.
+
+**Rotors** report whole degrees, as every rotator here does; at rest the
+controller's tenths flicker between two readings a step apart (248.6, 249.2),
+which a whole degree mostly absorbs. The server already speaks true headings
+— the controller behind it has its own calibration and end stops — so the
+node carries no offsets and no limits, as PstRotator's does not. A turn
+showed its first movement about six seconds after the command, with the old
+heading repeated every second meanwhile; reported, five of those would end
+the turn as stalled (`rotatorStalledAfterReadings`) before the mast moved.
+So for `everywareTurnStartWait` (10 s) after a turn, or until the heading
+first changes, an unchanged heading is only a sign of life. Status `1` or `5`
+means the server cannot reach the controller: the heading is withheld and
+the node says why. Above 360 is a fixed antenna's "no heading".
+
+**Switches** are one port, named for the switch, whose antennas are its
+positions — buttons and a band switch (each position a frequency range)
+alike. `SWITCHLOCKS` names the positions another switch's selection holds;
+they are reported unconfigured, which keeps them out of the picker, and a
+selection of one is refused rather than sent, its refusal standing until a
+selection goes through.
+
+**A directional switch is a rotator.** A map switch (a 4-square, a
+crossfire array; each position a direction with a beamwidth) points an
+antenna, so its node is a rotator's (`gh-everyware-directional`), driven and
+drawn like any other: its heading is the selected direction's, and a turn —
+the editor's Turn, a tap on the rotator panel — picks the open direction
+nearest the heading asked for and is answered with that direction's heading,
+so the turn arrives the moment the switch reports it. With every direction
+locked out it says so and answers with where it already points, never with
+the heading asked for, which would be drawn as a turn that never comes. Its
+turn is held while radio1 or radio2 transmits, as an antenna switch's
+selection is: it throws relays. Stop has nothing to stop. Each direction
+announces its own beamwidth, which its reading carries
+(`RotatorPosition.beamWidth`) and the rotator panel draws in place of its
+own setting: a rotator turns whatever antenna is on it and never knows. A
+bidirectional direction fires both ways, and is drawn along the lobe nearer
+the heading last asked for: picked for its back and drawn along its front,
+it would read as pointing away from the station it was turned toward.
+
+Its kind is known only from the server's announcement, so a map switch
+ticked before the server said what it is is made a plain switch, and
+retyped where it stands — the same node, its name, links and every panel
+pointed at it kept — once the server says. Only from what the server has
+announced on the current connection: it announces one device at a time, and
+a device not announced yet is not a different kind, only not said yet;
+read as one, a directional switch would turn into a plain switch and back
+on every connect. The reconciles a burst of announcements starts run one at
+a time per server.
+
+**A switch moves by itself only when its node opts in** (Automatic
+Switching, off by default), because the station is shared and the antenna
+moved is everyone's. A band switch then follows a radio's frequency — Radio
+A's, or with SO2R, Radio B's, picked per switch, since each radio has its own
+band switch and one moved with the other radio is on the wrong band — by the
+Everyware client's own rule so an operator moving
+between the two sees one behaviour: the current position stays while its
+range still covers the frequency; a position called OFF or with DUMMY in its
+name is parked and stays; otherwise the first range covering it, skipping a
+locked one; nothing covering it leaves the switch alone. A directional
+switch points the nearest open direction toward the station in the call field, a
+bidirectional position counting its back too: the operation and chase
+views hand the bearing over once per call a lookup answers for
+(`steerEverywareTowardCall`), since the call field is the view's and not
+CatService's — never per keystroke, which would click a shared station's
+relays as the call is typed. Neither moves while radio1 or
+radio2 is transmitting, as `selectAntenna` refuses then; the next change
+asks again. The server repeats the old position until the relay moves, so a
+selection sent stands in for the switch's word until the switch reports it,
+or for `everywareSelectionPending` (5 s) — long enough not to send it twice,
+short enough that a refused one is asked again.
+
+**The login** is optional and only ever asked: `USER:`, the user name, then
+`PASS:<challenge>`, answered with 32 raw bytes and no line end —
+SHA-256(user ‖ challenge ‖ SHA-256(user ‖ the low byte of each UTF-16 unit
+of the password)). The password is the transport's secret, kept in the
+keychain like a radio's. A refusal is the server's problem, and stays on
+its row as the reason when the server then hangs up. A keepalive NUL goes out from 10 s and every 5 s
+after, alone in its write and skipped within 5 s of a command: the server
+reads raw chunks, and a NUL right behind a command corrupts it.
 
 ## Tuner, passband and the radio's own antenna ports
 

@@ -60,3 +60,31 @@ extension _CatCredentials on CatService {
     return merged;
   }
 }
+
+/// Public, unlike the rest of this file: the editor asks it.
+extension CatStoredSecrets on CatService {
+  /// Which of a node's secret fields have something stored — the field KEYS,
+  /// never the values.
+  ///
+  /// The editor needs to show that a password exists without ever loading it
+  /// into a form: a form's values get written back on save, and the whole
+  /// point of [_stashSecrets] is that a secret never travels in the config
+  /// blob. So the editor asks which fields are populated and renders a
+  /// placeholder, and an untouched field still submits empty — which
+  /// [_stashSecrets] reads as "unchanged".
+  Future<Set<String>> storedSecretFields(String uuid) async {
+    final node = _nodes[uuid];
+    if (node == null) return const {};
+    final stored = <String>{};
+    // Catalogue-wide, because the editor renders every variant's fields: a
+    // password stored while the node was on WiFi has to show its placeholder
+    // when the operator switches back to it, whatever the node is bound to
+    // right now. Reporting only the current pairing's shows an empty box
+    // beside a password that is still in force.
+    for (final field in registry.allSecretFields) {
+      final value = await _settings.equipmentSecret(_k4Identity(node), field);
+      if (value != null && value.isNotEmpty) stored.add(field);
+    }
+    return stored;
+  }
+}

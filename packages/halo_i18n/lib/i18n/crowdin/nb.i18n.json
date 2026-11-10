@@ -2444,8 +2444,6 @@
       "switchCommandRefused": "Bryteren avviste «$command» (feil $code)",
       "switchBusyTransmitting": "Den porten sender — antennen ble ikke byttet",
       "switchNoAntenna": "Ingen",
-      "switchAntennaFor": "Antenne på port $port",
-      "switchAntennaForDescription": "Hvilken av antennene dine som er koblet til denne porten på bryteren.",
       "switchLayoutSides": "$antennas antenner, $radios radioer",
       "switchLayoutSidesOneRadio": "$antennas antenner, 1 radio",
       "switchLayoutSidesOneAntenna": "1 antenne, $radios radioer",

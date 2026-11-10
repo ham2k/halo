@@ -2913,8 +2913,6 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String switchCommandRefused({required Object command, required Object code}) => 'スイッチが「${command}」を拒否しました（エラー ${code}）';
 	@override String get switchBusyTransmitting => 'そのポートは送信中です。アンテナは変更されませんでした';
 	@override String get switchNoAntenna => 'なし';
-	@override String switchAntennaFor({required Object port}) => 'ポート${port}のアンテナ';
-	@override String get switchAntennaForDescription => 'スイッチのこのポートに接続されているアンテナ。';
 	@override String switchLayoutSides({required Object antennas, required Object radios}) => 'アンテナ${antennas}本、無線機${radios}台';
 	@override String switchLayoutSidesOneRadio({required Object antennas}) => 'アンテナ${antennas}本、無線機1台';
 	@override String switchLayoutSidesOneAntenna({required Object radios}) => 'アンテナ1本、無線機${radios}台';
@@ -6562,8 +6560,6 @@ extension on TranslationsJa {
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'スイッチが「${command}」を拒否しました（エラー ${code}）',
 			'settings.station.switchBusyTransmitting' => 'そのポートは送信中です。アンテナは変更されませんでした',
 			'settings.station.switchNoAntenna' => 'なし',
-			'settings.station.switchAntennaFor' => ({required Object port}) => 'ポート${port}のアンテナ',
-			'settings.station.switchAntennaForDescription' => 'スイッチのこのポートに接続されているアンテナ。',
 			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => 'アンテナ${antennas}本、無線機${radios}台',
 			'settings.station.switchLayoutSidesOneRadio' => ({required Object antennas}) => 'アンテナ${antennas}本、無線機1台',
 			'settings.station.switchLayoutSidesOneAntenna' => ({required Object radios}) => 'アンテナ1本、無線機${radios}台',
@@ -7031,10 +7027,10 @@ extension on TranslationsJa {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename}はJSONファイルではないため、QSONファイルではありません',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename}にはQSONオペレーションが含まれていません',
 			'qsonImport.busy' => 'すでにインポートを実行中です。完了してから次のインポートを開始してください。',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.title' => 'ADIFからQSOをインポート',
 			'adifImport.reading' => ({required Object filename}) => '${filename}を読み込み中…',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'このファイルのQSO：${count}件', other: 'このファイルのQSO：${formatted}件', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件はすでにログにあります', other: '${formatted}件はすでにログにあります', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件をインポートします', other: '${formatted}件をインポートします', ), 

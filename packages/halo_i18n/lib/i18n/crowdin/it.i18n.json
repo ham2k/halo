@@ -2444,8 +2444,6 @@
       "switchCommandRefused": "Il commutatore ha rifiutato \"$command\" (errore $code)",
       "switchBusyTransmitting": "Quella porta è in trasmissione — antenna non cambiata",
       "switchNoAntenna": "Nessuna",
-      "switchAntennaFor": "Antenna sulla porta $port",
-      "switchAntennaForDescription": "Quale delle tue antenne è collegata a questa porta del commutatore.",
       "switchLayoutSides": "$antennas Antenne, $radios Radio",
       "switchLayoutSidesOneRadio": "$antennas Antenne, 1 Radio",
       "switchLayoutSidesOneAntenna": "1 Antenna, $radios Radio",

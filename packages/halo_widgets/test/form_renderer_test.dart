@@ -1393,6 +1393,61 @@ void main() {
       expect(find.text('Connected'), findsOneWidget);
     });
 
+    testWidgets('a plain action is a borderless button led by its icon, in its tone, and a busy one cannot be pressed', (tester) async {
+      Future<void> pump(Map<String, dynamic> action) => tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: {
+                'elements': [
+                  action,
+                  {'type': 'markdown', 'text': 'Connected', 'tone': 'connected'},
+                  {'type': 'markdown', 'text': 'Refused', 'tone': 'error'},
+                ],
+              },
+              initialState: const {},
+              onAction: (actionKey, method, state) async => null,
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
+          ),
+        ),
+      );
+      await pump({'type': 'action', 'style': 'plain', 'key': 'plug', 'label': 'Disconnect', 'icon': 'power-plug', 'tone': 'connected'});
+      final theme = Theme.of(tester.element(find.byType(FormRenderer)));
+      expect(find.byType(OutlinedButton), findsNothing);
+      final button = find.widgetWithText(TextButton, 'Disconnect');
+      expect(tester.widget<Icon>(find.descendant(of: button, matching: find.byType(Icon))).color, connectedGreen(theme));
+      // The status colors are the station rows': green when up, the scheme's
+      // error color when not.
+      // The color the words are drawn in: the deepest span that says one,
+      // since a span's own color wins over its parent's.
+      Color? colorOf(String text) {
+        final span = tester
+            .widget<RichText>(
+              find.descendant(of: find.byType(HaloMarkdown), matching: find.byWidgetPredicate((w) => w is RichText && w.text.toPlainText() == text)),
+            )
+            .text;
+        Color? color = span.style?.color;
+        span.visitChildren((child) {
+          color = child.style?.color ?? color;
+          return true;
+        });
+        return color;
+      }
+
+      expect(colorOf('Connected'), connectedGreen(theme));
+      expect(colorOf('Refused'), theme.colorScheme.error);
+
+      await pump({'type': 'action', 'style': 'plain', 'key': 'plug', 'label': 'Connect', 'icon': 'power-plug-off', 'busy': true});
+      expect(
+        tester.widget<TextButton>(find.widgetWithText(TextButton, 'Connect')).onPressed,
+        isNull,
+        reason: 'a second tap would only queue a change behind the first',
+      );
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+
     testWidgets('an action\'s fieldUpdates land in the sibling field it names, not just a message', (tester) async {
       // The case this exists for: a browser device picker (or any action
       // that picks a value on the operator's behalf) handing that value

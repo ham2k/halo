@@ -9,6 +9,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/cat/drivers/antenna_genius_driver.dart' show switchPortNameConfigKey;
+import 'package:ham2k_logger/services/cat/drivers/everyware_server.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/cat/equipment_models_green_heron.dart';
 import 'package:ham2k_logger/services/cat/equipment_models_other_radios.dart' show placeholderRadioModel;
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 import 'package:ham2k_logger/views/station_panel.dart';
@@ -80,6 +84,132 @@ void main() {
     if (box.evaluate().isNotEmpty) return tester.widget<Checkbox>(box.first).value;
     return tester.widget<Switch>(find.descendant(of: row.first, matching: find.byType(Switch)).first).value;
   }
+
+  /// The input box a field's label belongs to.
+  Rect box(WidgetTester tester, String label) => tester.getRect(find.ancestor(of: find.text(label), matching: find.byType(InputDecorator)).first);
+
+  testWidgets('an address sits beside its port, two to one, on every networked equipment', (tester) async {
+    // A radio, not a rotator: the trap is pairing these fields for rotators only.
+    await pick(tester, 'rigctld', t.settings.station.models.rigctld);
+    final st = t.settings.station;
+    final host = box(tester, st.host), port = box(tester, st.port);
+    expect(port.top, host.top, reason: 'one line');
+    expect(port.left, greaterThan(host.right));
+    expect(host.width / port.width, closeTo(2, 0.1));
+  });
+
+  testWidgets("a radio's login is one line, half each", (tester) async {
+    await pick(tester, 'IC-705', t.settings.station.models.ic705);
+    final st = t.settings.station;
+    final network = find.text(st.transports.wifi);
+    if (network.evaluate().isNotEmpty) {
+      await tester.tap(network.first);
+      await tester.pump();
+    }
+    final user = box(tester, st.radioUser), password = box(tester, st.radioPass);
+    expect(password.top, user.top, reason: 'one line');
+    expect(user.width, closeTo(password.width, 1));
+  });
+
+  /// The editor of equipment saved as [typeKey], under "other" equipment.
+  Future<EquipmentNode> editSaved(WidgetTester tester, String typeKey, String name, Map<String, dynamic> config) async {
+    final node = await services.cat.addNode(typeKey: typeKey, name: name, config: config);
+    await showPanel(tester);
+    if (find.text(name).evaluate().isEmpty) {
+      // The server, and any device it already made: every node here is "other".
+      await tester.tap(find.text(t.settings.station.sectionOtherEquipment(count: services.cat.nodes.length)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    await tester.tap(find.text(name));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    return node;
+  }
+
+  /// The editor of an Everyware server saved with [config].
+  Future<EquipmentNode> editServer(WidgetTester tester, Map<String, dynamic> config) =>
+      editSaved(tester, everywareServerTypeKey, 'Shack server', {'host': '10.0.0.9', 'port': 17220, ...config});
+
+  testWidgets('a switch port is named and wired on one line, and both are kept', (tester) async {
+    final node = await editSaved(tester, 'sierra-coax-serial', 'Coax relay', const {});
+    final st = t.settings.station;
+    // Never connected, the CX-1's four ports are offered by number.
+    final name = find.ancestor(of: find.text('1'), matching: find.byType(InputDecorator)).first;
+    final antenna = find.ancestor(of: find.text(st.switchPortAntenna).first, matching: find.byType(InputDecorator)).first;
+    // One line, aligned on the text: a select and a text box are laid out
+    // differently above their baselines, so their tops do not quite agree.
+    expect(tester.getRect(antenna).center.dy, closeTo(tester.getRect(name).center.dy, 12), reason: 'the antenna on the port sits beside the name');
+    expect(tester.getRect(antenna).left, greaterThan(tester.getRect(name).right));
+
+    await tester.enterText(find.descendant(of: name, matching: find.byType(EditableText)), 'Hex');
+    await tester.tap(find.text(t.common.save));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(services.cat.nodeFor(node.uuid)!.config[switchPortNameConfigKey('1')], 'Hex');
+  });
+
+  testWidgets('Connection ends in Connect, and beside it what the connection says', (tester) async {
+    await editServer(tester, const {});
+    final st = t.settings.station;
+    final connect = find.widgetWithText(TextButton, st.connect);
+    // The station row's plug, unplugged, and no outline: a toggle, not a form button.
+    expect(find.descendant(of: connect, matching: find.byIcon(MdiIcons.powerPlugOff)), findsOneWidget);
+    expect(connect, findsOneWidget);
+    // On the button's line, not under it: the answer belongs beside the
+    // question, and a status line below reads as another field.
+    expect(tester.getCenter(find.text(st.statusDisconnected)).dy, closeTo(tester.getCenter(connect).dy, 12));
+    // Last in Connection: after its address, before what comes next.
+    expect(tester.getTopLeft(connect).dy, greaterThan(tester.getTopLeft(find.text(st.host)).dy));
+    expect(tester.getTopLeft(connect).dy, lessThan(tester.getTopLeft(find.text(st.everywareDevicesHeader)).dy));
+  });
+
+  testWidgets('a rotator under a server has Connect too, though it has no connection fields of its own', (tester) async {
+    await editServer(tester, {
+      everywareDevicesConfigKey: ['rotor:Tower 3'],
+    });
+    await tester.tap(find.text(t.common.cancel));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Tower 3').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.widgetWithText(TextButton, t.settings.station.connect), findsOneWidget);
+  });
+
+  testWidgets("a server lists every device it last had, each with a switch, and a save keeps the switches' word", (tester) async {
+    final node = await editServer(tester, {
+      everywareDevicesConfigKey: ['rotor:Tower 3'],
+      everywareKnownDevicesConfigKey: [
+        {'key': 'rotor:Tower 3'},
+        {'key': 'switchBox:80m 4 sq', 'kind': 'map'},
+        {'key': 'switchBox:Bank', 'kind': 'bank'},
+      ],
+    });
+    final st = t.settings.station;
+    Switch switchOf(String label) => tester.widget<Switch>(
+      find.descendant(
+        of: find.ancestor(of: find.text(label).last, matching: find.byType(ListTile)).first,
+        matching: find.byType(Switch),
+      ),
+    );
+    expect(find.text(st.everywareDevicesLastSeen), findsOneWidget, reason: 'listed while disconnected, and saying from when');
+    expect(switchOf('Tower 3').value, isTrue);
+    expect(switchOf('80m 4 sq').value, isFalse, reason: 'listed though not enabled');
+    expect(switchOf('Bank').onChanged, isNull, reason: 'shown, but nothing here can drive a bank');
+
+    // The editor's rows, over the station list's own row for the same device.
+    await tester.tap(find.text('80m 4 sq').last);
+    await tester.pump();
+    await tester.tap(find.text('Tower 3').last);
+    await tester.pump();
+    await tester.tap(find.text(t.common.save));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    final saved = services.cat.nodeFor(node.uuid)!.config;
+    expect(saved[everywareDevicesConfigKey], ['switchBox:80m 4 sq']);
+    expect(saved.keys.where((key) => key.startsWith('everywareDevice/')), isEmpty, reason: 'the switches are the list, not settings of their own');
+  });
 
   testWidgets('a serial radio folds its lines into the connection, closed, and keeps its cadences under More', (tester) async {
     await pick(tester, 'FT-817', t.settings.station.models.ft817);

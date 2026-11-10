@@ -2913,8 +2913,6 @@ class Translations$settings$station$pt extends Translations$settings$station$en 
 	@override String switchCommandRefused({required Object command, required Object code}) => 'O comutador recusou "${command}" (erro ${code})';
 	@override String get switchBusyTransmitting => 'Essa porta está a transmitir — antena não alterada';
 	@override String get switchNoAntenna => 'Nenhuma';
-	@override String switchAntennaFor({required Object port}) => 'Antena na porta ${port}';
-	@override String get switchAntennaForDescription => 'Qual das suas antenas está ligada a esta porta do comutador.';
 	@override String switchLayoutSides({required Object antennas, required Object radios}) => '${antennas} Antenas, ${radios} Rádios';
 	@override String switchLayoutSidesOneRadio({required Object antennas}) => '${antennas} Antenas, 1 Rádio';
 	@override String switchLayoutSidesOneAntenna({required Object radios}) => '1 Antena, ${radios} Rádios';
@@ -6562,8 +6560,6 @@ extension on TranslationsPt {
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'O comutador recusou "${command}" (erro ${code})',
 			'settings.station.switchBusyTransmitting' => 'Essa porta está a transmitir — antena não alterada',
 			'settings.station.switchNoAntenna' => 'Nenhuma',
-			'settings.station.switchAntennaFor' => ({required Object port}) => 'Antena na porta ${port}',
-			'settings.station.switchAntennaForDescription' => 'Qual das suas antenas está ligada a esta porta do comutador.',
 			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => '${antennas} Antenas, ${radios} Rádios',
 			'settings.station.switchLayoutSidesOneRadio' => ({required Object antennas}) => '${antennas} Antenas, 1 Rádio',
 			'settings.station.switchLayoutSidesOneAntenna' => ({required Object radios}) => '1 Antena, ${radios} Rádios',
@@ -7031,10 +7027,10 @@ extension on TranslationsPt {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} não é um ficheiro JSON, por isso não é um ficheiro QSON',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} não contém uma operação QSON',
 			'qsonImport.busy' => 'Já está a decorrer uma importação. Aguarde que termine antes de iniciar outra.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.title' => 'Importar QSOs de ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'A ler ${filename}…',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} QSO neste ficheiro', other: '${formatted} QSOs neste ficheiro', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} já no seu registo', other: '${formatted} já no seu registo', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} será importado', other: '${formatted} serão importados', ), 

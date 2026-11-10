@@ -2913,8 +2913,6 @@ class _Translations$settings$station$ro extends Translations$settings$station$en
 	@override String switchCommandRefused({required Object command, required Object code}) => 'Comutatorul a refuzat "${command}" (eroare ${code})';
 	@override String get switchBusyTransmitting => 'Acel port este pe emisie — antena nu a fost schimbată';
 	@override String get switchNoAntenna => 'Niciuna';
-	@override String switchAntennaFor({required Object port}) => 'Antena de pe portul ${port}';
-	@override String get switchAntennaForDescription => 'Care dintre antenele dvs. este conectată la acest port al comutatorului.';
 	@override String switchLayoutSides({required Object antennas, required Object radios}) => '${antennas} antene, ${radios} stații radio';
 	@override String switchLayoutSidesOneRadio({required Object antennas}) => '${antennas} antene, 1 stație radio';
 	@override String switchLayoutSidesOneAntenna({required Object radios}) => '1 antenă, ${radios} stații radio';
@@ -6562,8 +6560,6 @@ extension on TranslationsRo {
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'Comutatorul a refuzat "${command}" (eroare ${code})',
 			'settings.station.switchBusyTransmitting' => 'Acel port este pe emisie — antena nu a fost schimbată',
 			'settings.station.switchNoAntenna' => 'Niciuna',
-			'settings.station.switchAntennaFor' => ({required Object port}) => 'Antena de pe portul ${port}',
-			'settings.station.switchAntennaForDescription' => 'Care dintre antenele dvs. este conectată la acest port al comutatorului.',
 			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => '${antennas} antene, ${radios} stații radio',
 			'settings.station.switchLayoutSidesOneRadio' => ({required Object antennas}) => '${antennas} antene, 1 stație radio',
 			'settings.station.switchLayoutSidesOneAntenna' => ({required Object radios}) => '1 antenă, ${radios} stații radio',
@@ -7031,10 +7027,10 @@ extension on TranslationsRo {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} nu este un fișier JSON, deci nu este un fișier QSON',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} nu conține o operațiune QSON',
 			'qsonImport.busy' => 'Un import rulează deja. Așteptați să se termine înainte de a porni altul.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.title' => 'Importă QSO-uri din ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Se citește ${filename}…',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} QSO în acest fișier', other: '${formatted} QSO-uri în acest fișier', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} se află deja în jurnal', other: '${formatted} se află deja în jurnal', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} va fi importat', other: '${formatted} vor fi importate', ), 

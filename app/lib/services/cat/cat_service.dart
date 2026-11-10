@@ -37,6 +37,10 @@ import 'equipment_tag.dart';
 import 'radio_proof.dart';
 import 'spectrum.dart';
 import 'transports/k4_shared_connection.dart';
+import 'transports/everyware_transport.dart';
+import 'drivers/everyware_devices.dart' show BearingFollower, EverywareDirectionalSession, FrequencyFollower;
+import 'drivers/everyware_codec.dart' show EverywareSwitchKind;
+import 'drivers/everyware_server.dart';
 import 'transports/k4_remote_transport.dart';
 import 'transports/sdr_usb_transport.dart' show SdrUsbConnection, SdrUsbTransport;
 import 'drivers/kenwood_driver.dart' show KenwoodDriver;
@@ -82,6 +86,7 @@ part 'cat_so2r.dart';
 part 'cat_so2r_audio.dart';
 part 'cat_k4.dart';
 part 'cat_credentials.dart';
+part 'cat_everyware.dart';
 
 /// Bump when the stored shape changes in a way a reader has to know about.
 ///
@@ -830,6 +835,7 @@ class CatService extends ChangeNotifier
     final runtime = _runtimes[uuid];
     final session = runtime?.session;
     if (runtime == null || session is! RotatorSession) return null;
+    if (rotationHeldByTransmit(uuid)) return null;
     try {
       final target = session.rotateTo(azimuth: azimuth, elevation: elevation);
       runtime.rotatorStillReadings = 0;
@@ -988,6 +994,7 @@ class CatService extends ChangeNotifier
       if (category == kCategoryKey && !designatedKeyIsKeyer) _designateNow(kCategoryKey, stored.uuid);
     });
     await _save();
+    await _everywareNodeSaved(stored.uuid);
     _trackRadio('radio_added', stored, extra: {'via': via});
     notifyListeners();
     return stored;
@@ -1031,10 +1038,12 @@ class CatService extends ChangeNotifier
       if (sdrEdited && stateFor(node.uuid).status != EquipmentStatus.disconnected) {
         await disconnect(node.uuid, byUser: !toSdr);
       } else if (previous.typeKey != node.typeKey && !sdrEdited) {
-        await disconnect(node.uuid);
+        await disconnect(node.uuid, byUser: _everywareServerOf(node.uuid) == null);
       }
-      _nodes[node.uuid] = await _stashSecrets(node);
+      final stored = await _stashSecrets(node);
+      _nodes[node.uuid] = _everywareKeepAnnounced(_nodes[node.uuid] ?? previous, stored);
       await _save();
+      await _everywareNodeSaved(node.uuid);
     } finally {
       if (sdr != null) sdr.sdrBusy--;
     }
@@ -1049,33 +1058,9 @@ class CatService extends ChangeNotifier
     }
   }
 
-  /// Which of a node's secret fields have something stored — the field KEYS,
-  /// never the values.
-  ///
-  /// The editor needs to show that a password exists without ever loading it
-  /// into a form: a form's values get written back on save, and the whole
-  /// point of [_stashSecrets] is that a secret never travels in the config
-  /// blob. So the editor asks which fields are populated and renders a
-  /// placeholder, and an untouched field still submits empty — which
-  /// [_stashSecrets] reads as "unchanged".
-  Future<Set<String>> storedSecretFields(String uuid) async {
-    final node = _nodes[uuid];
-    if (node == null) return const {};
-    final stored = <String>{};
-    // Catalogue-wide, because the editor renders every variant's fields: a
-    // password stored while the node was on WiFi has to show its placeholder
-    // when the operator switches back to it, whatever the node is bound to
-    // right now. Reporting only the current pairing's shows an empty box
-    // beside a password that is still in force.
-    for (final field in registry.allSecretFields) {
-      final value = await _settings.equipmentSecret(_k4Identity(node), field);
-      if (value != null && value.isNotEmpty) stored.add(field);
-    }
-    return stored;
-  }
-
   Future<void> removeNode(String uuid) async {
-    await disconnect(uuid);
+    await _everywareNodeRemoving(uuid);
+    await disconnect(uuid, byUser: _everywareServerOf(uuid) == null);
     // The keychain entry outlives the prefs blob unless we say otherwise —
     // and catalogue-wide, since a node re-typed away from the pairing that
     // stored a secret would otherwise leave it behind with nothing left that
@@ -1148,6 +1133,7 @@ class CatService extends ChangeNotifier
   final _equipmentTag = EquipmentTag();
 
   Future<void> connect(String uuid) async {
+    if (_everywareServerOf(uuid) case final server? when !_everywareServerAnnounced(server)) return _connectEverywareServer(server);
     // Asking for it back cancels a previous Disconnect, so the idle retry may
     // resume looking after this node.
     _runtimeFor(uuid)
@@ -1198,6 +1184,7 @@ class CatService extends ChangeNotifier
   /// — an SDR no display wants any more — which must not read as the
   /// operator switching it off.
   Future<void> disconnect(String uuid, {bool byUser = true}) async {
+    if (_everywareServerOf(uuid) case final server? when byUser) return disconnect(server);
     final runtime = _runtimes[uuid];
     if (runtime == null) return;
     // Recorded BEFORE the teardown, because the retry loop reads it later and

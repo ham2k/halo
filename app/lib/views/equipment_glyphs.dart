@@ -24,6 +24,7 @@ IconData iconForCategory(String? category) => switch (category) {
   kCategoryRotator => MdiIcons.compassOutline,
   kCategorySo2rSwitch => MdiIcons.headphones,
   kCategoryMidi => MdiIcons.midi,
+  kCategoryStationController => MdiIcons.serverNetwork,
   _ => MdiIcons.developerBoard,
 };
 

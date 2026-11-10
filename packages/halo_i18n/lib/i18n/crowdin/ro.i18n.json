@@ -2444,8 +2444,6 @@
       "switchCommandRefused": "Comutatorul a refuzat \"$command\" (eroare $code)",
       "switchBusyTransmitting": "Acel port este pe emisie — antena nu a fost schimbată",
       "switchNoAntenna": "Niciuna",
-      "switchAntennaFor": "Antena de pe portul $port",
-      "switchAntennaForDescription": "Care dintre antenele dvs. este conectată la acest port al comutatorului.",
       "switchLayoutSides": "$antennas antene, $radios stații radio",
       "switchLayoutSidesOneRadio": "$antennas antene, 1 stație radio",
       "switchLayoutSidesOneAntenna": "1 antenă, $radios stații radio",

@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/driver.dart' show EquipmentDriver;
 import 'package:ham2k_logger/services/cat/drivers/gs232_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
@@ -53,6 +54,12 @@ class _Transport extends EquipmentTransport {
 }
 
 class FakeGs232Line {
+  /// What speaks on this line: a GS-232 unless a test needs another
+  /// rotator's protocol over the same line.
+  final EquipmentDriver driver;
+
+  FakeGs232Line({this.driver = const Gs232Driver()});
+
   /// Every command the driver sent, as text.
   final sent = <String>[];
 
@@ -66,7 +73,7 @@ class FakeGs232Line {
         key: 'fake-gs232',
         category: kCategoryRotator,
         name: () => 'Fake Rotator',
-        variants: [EquipmentVariant(key: fakeGs232TypeKey, driver: const Gs232Driver(), transport: _transport)],
+        variants: [EquipmentVariant(key: fakeGs232TypeKey, driver: driver, transport: _transport)],
       ),
     ],
     transports: {_transport.key: _transport},

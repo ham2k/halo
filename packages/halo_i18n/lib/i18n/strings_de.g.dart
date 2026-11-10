@@ -2913,8 +2913,6 @@ class _Translations$settings$station$de extends Translations$settings$station$en
 	@override String switchCommandRefused({required Object command, required Object code}) => 'Der Schalter hat „${command}“ abgelehnt (Fehler ${code})';
 	@override String get switchBusyTransmitting => 'Dieser Port sendet — Antenne nicht geändert';
 	@override String get switchNoAntenna => 'Keine';
-	@override String switchAntennaFor({required Object port}) => 'Antenne an Port ${port}';
-	@override String get switchAntennaForDescription => 'Welche deiner Antennen an diesem Port des Schalters angeschlossen ist.';
 	@override String switchLayoutSides({required Object antennas, required Object radios}) => '${antennas} Antennen, ${radios} Funkgeräte';
 	@override String switchLayoutSidesOneRadio({required Object antennas}) => '${antennas} Antennen, 1 Funkgerät';
 	@override String switchLayoutSidesOneAntenna({required Object radios}) => '1 Antenne, ${radios} Funkgeräte';
@@ -6562,8 +6560,6 @@ extension on TranslationsDe {
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'Der Schalter hat „${command}“ abgelehnt (Fehler ${code})',
 			'settings.station.switchBusyTransmitting' => 'Dieser Port sendet — Antenne nicht geändert',
 			'settings.station.switchNoAntenna' => 'Keine',
-			'settings.station.switchAntennaFor' => ({required Object port}) => 'Antenne an Port ${port}',
-			'settings.station.switchAntennaForDescription' => 'Welche deiner Antennen an diesem Port des Schalters angeschlossen ist.',
 			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => '${antennas} Antennen, ${radios} Funkgeräte',
 			'settings.station.switchLayoutSidesOneRadio' => ({required Object antennas}) => '${antennas} Antennen, 1 Funkgerät',
 			'settings.station.switchLayoutSidesOneAntenna' => ({required Object radios}) => '1 Antenne, ${radios} Funkgeräte',
@@ -7031,10 +7027,10 @@ extension on TranslationsDe {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} ist keine JSON-Datei, also keine QSON-Datei',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} enthält keinen QSON-Betrieb',
 			'qsonImport.busy' => 'Ein Import läuft bereits. Warte, bis er fertig ist, bevor du einen weiteren startest.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.title' => 'QSOs aus ADIF importieren',
 			'adifImport.reading' => ({required Object filename}) => 'Lese ${filename}…',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} QSO in dieser Datei', other: '${formatted} QSOs in dieser Datei', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} bereits in deinem Log', other: '${formatted} bereits in deinem Log', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} wird importiert', other: '${formatted} werden importiert', ), 

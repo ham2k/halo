@@ -2444,8 +2444,6 @@
       "switchCommandRefused": "A chave recusou \"$command\" (erro $code)",
       "switchBusyTransmitting": "Essa porta está transmitindo — antena não alterada",
       "switchNoAntenna": "Nenhuma",
-      "switchAntennaFor": "Antena na porta $port",
-      "switchAntennaForDescription": "Qual das suas antenas está conectada a esta porta da chave.",
       "switchLayoutSides": "$antennas antenas, $radios rádios",
       "switchLayoutSidesOneRadio": "$antennas antenas, 1 rádio",
       "switchLayoutSidesOneAntenna": "1 antena, $radios rádios",

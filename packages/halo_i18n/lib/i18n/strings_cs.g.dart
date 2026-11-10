@@ -2913,8 +2913,6 @@ class _Translations$settings$station$cs extends Translations$settings$station$en
 	@override String switchCommandRefused({required Object command, required Object code}) => 'Přepínač odmítl „${command}“ (chyba ${code})';
 	@override String get switchBusyTransmitting => 'Tento port vysílá — anténa nebyla změněna';
 	@override String get switchNoAntenna => 'Žádná';
-	@override String switchAntennaFor({required Object port}) => 'Anténa na portu ${port}';
-	@override String get switchAntennaForDescription => 'Která z vašich antén je připojena k tomuto portu přepínače.';
 	@override String switchLayoutSides({required Object antennas, required Object radios}) => 'Antény: ${antennas}, rádia: ${radios}';
 	@override String switchLayoutSidesOneRadio({required Object antennas}) => 'Antény: ${antennas}, 1 rádio';
 	@override String switchLayoutSidesOneAntenna({required Object radios}) => '1 anténa, rádia: ${radios}';
@@ -6562,8 +6560,6 @@ extension on TranslationsCs {
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'Přepínač odmítl „${command}“ (chyba ${code})',
 			'settings.station.switchBusyTransmitting' => 'Tento port vysílá — anténa nebyla změněna',
 			'settings.station.switchNoAntenna' => 'Žádná',
-			'settings.station.switchAntennaFor' => ({required Object port}) => 'Anténa na portu ${port}',
-			'settings.station.switchAntennaForDescription' => 'Která z vašich antén je připojena k tomuto portu přepínače.',
 			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => 'Antény: ${antennas}, rádia: ${radios}',
 			'settings.station.switchLayoutSidesOneRadio' => ({required Object antennas}) => 'Antény: ${antennas}, 1 rádio',
 			'settings.station.switchLayoutSidesOneAntenna' => ({required Object radios}) => '1 anténa, rádia: ${radios}',
@@ -7031,10 +7027,10 @@ extension on TranslationsCs {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} není soubor JSON, takže to není soubor QSON',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} neobsahuje aktivitu QSON',
 			'qsonImport.busy' => 'Import už probíhá. Než spustíte další, počkejte, až skončí.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.title' => 'Importovat QSO z ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Čtení ${filename}…',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} QSO v tomto souboru', other: '${formatted} QSO v tomto souboru', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} už je ve vašem logu', other: '${formatted} už je ve vašem logu', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} bude importováno', other: '${formatted} bude importováno', ), 

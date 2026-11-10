@@ -209,6 +209,7 @@ extension _Readings on CatService {
     // Smart VFO Snap is radio1's, and measures the knob by [merged]: the radio's frequency, where
     // [report] may leave it out.
     if (vfoKey == 'vfoA') _noteSnapReading(merged);
+    if (reading.freqKHz case final freqKHz?) _followEverywareFrequency(freqKHz, radioB: vfoKey == 'vfoB');
   }
 
   void _followRadio(String vfoKey, VfoReading report) {

@@ -2913,8 +2913,6 @@ class _Translations$settings$station$ca extends Translations$settings$station$en
 	@override String switchCommandRefused({required Object command, required Object code}) => 'El commutador ha rebutjat "${command}" (error ${code})';
 	@override String get switchBusyTransmitting => 'Aquest port està transmetent — no s\'ha canviat l\'antena';
 	@override String get switchNoAntenna => 'Cap';
-	@override String switchAntennaFor({required Object port}) => 'Antena al port ${port}';
-	@override String get switchAntennaForDescription => 'Quina de les teves antenes està connectada a aquest port del commutador.';
 	@override String switchLayoutSides({required Object antennas, required Object radios}) => '${antennas} antenes, ${radios} ràdios';
 	@override String switchLayoutSidesOneRadio({required Object antennas}) => '${antennas} antenes, 1 ràdio';
 	@override String switchLayoutSidesOneAntenna({required Object radios}) => '1 antena, ${radios} ràdios';
@@ -6562,8 +6560,6 @@ extension on TranslationsCa {
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'El commutador ha rebutjat "${command}" (error ${code})',
 			'settings.station.switchBusyTransmitting' => 'Aquest port està transmetent — no s\'ha canviat l\'antena',
 			'settings.station.switchNoAntenna' => 'Cap',
-			'settings.station.switchAntennaFor' => ({required Object port}) => 'Antena al port ${port}',
-			'settings.station.switchAntennaForDescription' => 'Quina de les teves antenes està connectada a aquest port del commutador.',
 			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => '${antennas} antenes, ${radios} ràdios',
 			'settings.station.switchLayoutSidesOneRadio' => ({required Object antennas}) => '${antennas} antenes, 1 ràdio',
 			'settings.station.switchLayoutSidesOneAntenna' => ({required Object radios}) => '1 antena, ${radios} ràdios',
@@ -7031,10 +7027,10 @@ extension on TranslationsCa {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} no és un fitxer JSON, així que no és un fitxer QSON',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} no conté cap operació QSON',
 			'qsonImport.busy' => 'Ja hi ha una importació en curs. Espera que acabi abans de començar-ne una altra.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.title' => 'Importa QSOs des d\'ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Llegint ${filename}…',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} QSO en aquest fitxer', other: '${formatted} QSOs en aquest fitxer', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} ja és al teu registre', other: '${formatted} ja són al teu registre', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Se n\'importarà ${count}', other: 'Se n\'importaran ${formatted}', ), 

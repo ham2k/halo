@@ -2444,8 +2444,6 @@
       "switchCommandRefused": "El commutador ha rebutjat \"$command\" (error $code)",
       "switchBusyTransmitting": "Aquest port està transmetent — no s'ha canviat l'antena",
       "switchNoAntenna": "Cap",
-      "switchAntennaFor": "Antena al port $port",
-      "switchAntennaForDescription": "Quina de les teves antenes està connectada a aquest port del commutador.",
       "switchLayoutSides": "$antennas antenes, $radios ràdios",
       "switchLayoutSidesOneRadio": "$antennas antenes, 1 ràdio",
       "switchLayoutSidesOneAntenna": "1 antena, $radios ràdios",

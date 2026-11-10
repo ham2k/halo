@@ -14,6 +14,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/drivers/everyware_devices.dart';
+import 'package:ham2k_logger/services/cat/drivers/everyware_server.dart' show everywareDeviceConfigKey;
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/halo_services.dart';
 import 'package:ham2k_logger/views/operation/rotator/rotator_map.dart';
@@ -131,5 +133,41 @@ void main() {
       await hear(tester, '?>\r\n');
       expect(find.text(t.settings.station.rotatorRefused), findsOneWidget);
     });
+  });
+
+  // A directional switch knows its antenna's beam, which a rotator never
+  // does: drawn with the pane's setting instead, a 90° 4-square shows a beam
+  // a third of the width it has.
+  testWidgets("an antenna that reports its own beam is drawn with it, over the pane's setting", (tester) async {
+    final line = FakeGs232Line(driver: const EverywareDirectionalDriver());
+    late final CatService cat;
+    final harness = await makeHaLoServices(cat: (settings) => cat = line.catService(settings));
+    final uuid = (await cat.addNode(typeKey: fakeGs232TypeKey, name: '4-square', config: {everywareDeviceConfigKey: '80m 4 sq'})).uuid;
+    unawaited(cat.connect(uuid));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 400,
+              height: 400,
+              child: RotatorPanel(panelId: 'rotator#1', services: harness.services, operationLocation: home),
+            ),
+          ),
+        ),
+      ),
+    );
+    line.say(
+      'SWITCHADD\u001F2\u001F80m 4 sq\u001FNE\u001D45\u001D90\u001Dfalse\u001FSW\u001D225\u001D90\u001Dfalse\r\n'
+      'SWITCHUPDATE\u001F80m 4 sq\u001FSW\u001F0\u001F0\r\n',
+    );
+    await tester.pump();
+    await tester.pump();
+    final map = tester.widget<RotatorMap>(find.byType(RotatorMap));
+    expect(map.azimuth, 225);
+    expect(map.beamWidth, 90, reason: 'the pane is left at its default of $rotatorBeamWidthDefault');
+    cat.dispose();
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump();
   });
 }

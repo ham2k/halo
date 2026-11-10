@@ -87,7 +87,7 @@ extension SharedDashboardPanels<T extends StatefulWidget> on DockHost<T> {
           panelId: id,
           services: dockServices,
           operationLocation: operationLocation,
-          dx: _callInfoLocation(callInfo),
+          dx: callInfoLocation(callInfo),
           onTitle: (title) => onPanelTitle(id, title),
         )
       else if (PanelDefinition.descriptorIdOf(id) == remoteScreenPanelId)
@@ -438,7 +438,7 @@ extension SharedDashboardPanels<T extends StatefulWidget> on DockHost<T> {
 }
 
 /// Where the station in the call field is, as well as its lookup can say.
-GridLocation? _callInfoLocation(CallInfoData? info) => switch (info?.guess) {
+GridLocation? callInfoLocation(CallInfoData? info) => switch (info?.guess) {
   final guess? => locationForQsoInfo(
     exact: locationFromGuess(guess),
     grid: asQsonString(guess['grid']),

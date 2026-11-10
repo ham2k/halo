@@ -2444,8 +2444,6 @@
       "switchCommandRefused": "スイッチが「${command}」を拒否しました（エラー ${code}）",
       "switchBusyTransmitting": "そのポートは送信中です。アンテナは変更されませんでした",
       "switchNoAntenna": "なし",
-      "switchAntennaFor": "ポート${port}のアンテナ",
-      "switchAntennaForDescription": "スイッチのこのポートに接続されているアンテナ。",
       "switchLayoutSides": "アンテナ${antennas}本、無線機${radios}台",
       "switchLayoutSidesOneRadio": "アンテナ${antennas}本、無線機1台",
       "switchLayoutSidesOneAntenna": "アンテナ1本、無線機${radios}台",

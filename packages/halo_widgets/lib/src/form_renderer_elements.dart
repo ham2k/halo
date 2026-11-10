@@ -106,8 +106,10 @@ mixin _Elements on State<FormRenderer> {
   Widget _buildMarkdown(Map<String, dynamic> el, ThemeData theme) {
     final text = el['text'] as String? ?? '';
     final devModeColor = _devModeColor(el);
-    // The dev-mode tint recolors the paragraph text only.
-    final style = devModeColor == null ? null : (MarkdownStyleSheet base) => base.copyWith(p: base.p?.copyWith(color: devModeColor));
+    // The dev-mode tint, or a `tone` ([_toneColor]), recolors the paragraph
+    // text only.
+    final color = devModeColor ?? _toneColor(el, theme);
+    final style = color == null ? null : (MarkdownStyleSheet base) => base.copyWith(p: base.p?.copyWith(color: color));
     if (el['collapsible'] == true) {
       return _CollapsibleMarkdown(
         title: el['title'] as String? ?? '',
@@ -366,11 +368,27 @@ mixin _Elements on State<FormRenderer> {
   /// An action's bare button, with no inset of its own. `disabled: true`
   /// greys it, for an action that does not apply right now but is still
   /// where the operator will look for it.
+  ///
+  /// `style: 'plain'` is a borderless button with its `icon` before the
+  /// label, the icon colored by `tone` ([_toneColor]) — the station rows'
+  /// connection toggle given words. `busy: true` puts their spinner in the
+  /// icon's place, where a tap could only queue a second change behind the
+  /// first.
   Widget _actionButton(Map<String, dynamic> el) {
     final actionKey = el['key'] as String? ?? '';
     final method = el['method'] as String? ?? '';
     final isRunning = _runningActions.contains(actionKey);
     final devModeColor = _devModeColor(el);
+    if (el['style'] == 'plain') {
+      final busy = isRunning || el['busy'] == true;
+      return TextButton.icon(
+        onPressed: widget.onAction == null || busy || el['disabled'] == true ? null : () => _runAction(actionKey, method),
+        icon: busy
+            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+            : Icon(resolveIconName(el['icon'] as String? ?? 'cog-outline'), color: devModeColor ?? _toneColor(el, Theme.of(context))),
+        label: Text(el['label'] as String? ?? '', style: devModeColor == null ? null : TextStyle(color: devModeColor)),
+      );
+    }
     return OutlinedButton(
       style: devModeColor == null
           ? null

@@ -2444,8 +2444,6 @@
       "switchCommandRefused": "Der Schalter hat „$command“ abgelehnt (Fehler $code)",
       "switchBusyTransmitting": "Dieser Port sendet — Antenne nicht geändert",
       "switchNoAntenna": "Keine",
-      "switchAntennaFor": "Antenne an Port $port",
-      "switchAntennaForDescription": "Welche deiner Antennen an diesem Port des Schalters angeschlossen ist.",
       "switchLayoutSides": "$antennas Antennen, $radios Funkgeräte",
       "switchLayoutSidesOneRadio": "$antennas Antennen, 1 Funkgerät",
       "switchLayoutSidesOneAntenna": "1 Antenne, $radios Funkgeräte",

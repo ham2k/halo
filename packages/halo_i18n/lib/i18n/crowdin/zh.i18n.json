@@ -2444,8 +2444,6 @@
       "switchCommandRefused": "开关拒绝了“$command”（错误 $code）",
       "switchBusyTransmitting": "该端口正在发射——未更换天线",
       "switchNoAntenna": "无",
-      "switchAntennaFor": "端口 $port 上的天线",
-      "switchAntennaForDescription": "您的哪副天线连接到开关的这个端口。",
       "switchLayoutSides": "$antennas 副天线，$radios 台电台",
       "switchLayoutSidesOneRadio": "$antennas 副天线，1 台电台",
       "switchLayoutSidesOneAntenna": "1 副天线，$radios 台电台",

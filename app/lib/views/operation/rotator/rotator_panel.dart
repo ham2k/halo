@@ -244,7 +244,8 @@ class _RotatorPanelState extends State<RotatorPanel> {
               azimuth: state.rotator == null ? null : state.rotator!.azimuth % 360,
               target: state.rotatorTarget?.azimuth,
               elevation: state.rotator?.elevation,
-              beamWidth: _beamWidth,
+              // The antenna's own, where the equipment knows it.
+              beamWidth: state.rotator?.beamWidth ?? _beamWidth,
               palette: _palette,
               grayline: _grayline,
               live: live,

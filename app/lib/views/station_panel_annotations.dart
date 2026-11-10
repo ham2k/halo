@@ -135,7 +135,7 @@ extension _EditorAnnotations on StationPanel {
         if (element['key'] == switchLayoutConfigKey) element,
     ];
     return [
-      {'type': 'header', 'style': 'category', 'title': st.switchWiringHeader},
+      {'type': 'header', 'style': 'category', 'title': st.switchWiringHeader, 'subtitle': st.switchWiringDescription},
       ...layout,
       ..._switchAntennaLinks(context, type, node),
     ];
@@ -215,17 +215,33 @@ extension _EditorAnnotations on StationPanel {
         if (_cat.typeFor(candidate)?.category == kCategoryAntenna) candidate,
     ];
 
+    // A row per port: the operator's name for it, then the antenna on it.
+    // The box is labelled with the port as the switch names it, which is what
+    // is printed on the box or typed into its own setup.
     return [
       for (final port in _routableAntennas(ports))
         {
-          'type': 'field',
-          'fieldType': 'select',
-          'key': switchAntennaNodeConfigKey(port.key),
-          'label': st.switchAntennaFor(port: _switchPortName(port)),
-          'description': st.switchAntennaForDescription,
-          'options': [
-            {'value': '', 'label': st.switchNoAntenna},
-            for (final antenna in antennas) {'value': antenna.uuid, 'label': _displayName(antenna)},
+          'type': 'row',
+          'elements': [
+            {
+              'type': 'field',
+              'fieldType': 'text',
+              'key': switchPortNameConfigKey(port.key),
+              'label': _switchPortName(port),
+              'placeholder': st.switchPortNamePlaceholder,
+              'flex': 1,
+            },
+            {
+              'type': 'field',
+              'fieldType': 'select',
+              'key': switchAntennaNodeConfigKey(port.key),
+              'label': st.switchPortAntenna,
+              'flex': 1,
+              'options': [
+                {'value': '', 'label': st.switchNoAntenna},
+                for (final antenna in antennas) {'value': antenna.uuid, 'label': _displayName(antenna)},
+              ],
+            },
           ],
         },
     ];
@@ -270,6 +286,73 @@ extension _EditorAnnotations on StationPanel {
     ];
   }
 
+  /// The last row of Connection, for saved equipment: Connect or
+  /// Disconnect, and beside it what the connection says — why it failed,
+  /// that it is getting there, or what the equipment reports once it is up.
+  ///
+  /// Connect reaches the equipment as SAVED, not as edited in the form, as
+  /// the station row's plug does. Here as well as on that row: Connect
+  /// pressed in this pane fails where the row's own message is out of sight.
+  Map<String, dynamic> _connectionRow(BuildContext context, EquipmentNode node) {
+    final st = context.t.settings.station;
+    final state = _cat.stateFor(node.uuid);
+    final connected = state.status == EquipmentStatus.connected;
+    // Green for a connection that is up and well, red for one that failed or
+    // has a problem, as the station rows color them.
+    final healthy = connected && !state.stale && state.problem == null;
+    final troubled = state.status == EquipmentStatus.error || (connected && (state.stale || state.problem != null));
+    return {
+      'type': 'row',
+      'elements': [
+        {
+          'type': 'action',
+          'style': 'plain',
+          'key': connected ? _disconnectAction : _connectAction,
+          'label': connected ? st.disconnect : st.connect,
+          // The plug the station row draws, and in its colors.
+          'icon': connected ? 'power-plug' : 'power-plug-off',
+          if (connected) 'tone': 'connected',
+          'flex': 0,
+          'busy': state.status == EquipmentStatus.connecting || state.status == EquipmentStatus.disconnecting,
+        },
+        {'type': 'markdown', 'text': _connectionStatus(context, node, state), if (healthy) 'tone': 'connected' else if (troubled) 'tone': 'error'},
+      ],
+    };
+  }
+
+  String _connectionStatus(BuildContext context, EquipmentNode node, EquipmentState state) {
+    final st = context.t.settings.station;
+    return switch (state.status) {
+      EquipmentStatus.connecting => st.statusConnecting,
+      EquipmentStatus.disconnecting => st.statusDisconnecting,
+      EquipmentStatus.error => state.error ?? st.statusError,
+      EquipmentStatus.disconnected => st.statusDisconnected,
+      EquipmentStatus.connected when state.stale => st.statusStale,
+      EquipmentStatus.connected => state.problem ?? _liveSummary(context, node, state) ?? st.statusConnected,
+    };
+  }
+
+  /// What the equipment itself has said, in a line: a radio's mode and
+  /// frequency, where a rotator points, what a switch routes, how many
+  /// devices a server carries. Null before it has said any of it.
+  String? _liveSummary(BuildContext context, EquipmentNode node, EquipmentState state) {
+    final st = context.t.settings.station;
+    final vfo = state.vfo;
+    if (vfo.freqKHz != null || vfo.mode != null) return [?vfo.mode, if (vfo.freqKHz case final khz?) fmtFreq(khz)].join('  ');
+    if (state.rotator case final position?) return _rotatorReading(st, position, elevation: rotatorHasElevation(node.config), short: false);
+    if (state.switchPorts.isNotEmpty) {
+      return [
+        for (final port in state.switchPorts)
+          if (state.switchAntennas.where((antenna) => antenna.key == port.selectedAntennaKey).firstOrNull case final antenna?)
+            st.connectionRouted(port: port.label, antenna: _switchAntennaLabel(node, antenna)),
+      ].join(', ');
+    }
+    if (state.channels.isNotEmpty && _cat.typeFor(node)?.category == kCategoryStationController) {
+      return st.connectionDevices(count: state.channels.length);
+    }
+    return null;
+  }
+
   /// The Current State section for a saved rotator: where it points, a
   /// heading to turn it to, and Connect or Disconnect in the band.
   ///
@@ -310,24 +393,10 @@ extension _EditorAnnotations on StationPanel {
             : st.rotatorCurrentStateHeader(
                 position: _rotatorReading(st, position, elevation: elevation, short: short),
               ),
-        'action': {
-          'type': 'action',
-          'key': connected ? _rotatorDisconnectAction : _rotatorConnectAction,
-          'label': connected ? st.disconnect : st.connect,
-          'icon': connected ? 'power-plug' : 'power-plug-off',
-          if (connected) 'tone': 'connected',
-          'busy': state.status == EquipmentStatus.connecting || state.status == EquipmentStatus.disconnecting,
-        },
       },
-      // The driver's problem is the one thing that says why no heading comes:
-      // a controller refusing every poll answers, so nothing else is wrong.
-      if (connected && state.problem != null)
-        {'type': 'markdown', 'text': state.problem!}
-      else if (live && position == null)
-        {'type': 'markdown', 'text': st.rotatorNoReading},
-      // Here as well as on the station row: Connect pressed in this pane
-      // fails where the row's own message is out of sight.
-      if (!connected && state.error != null) {'type': 'markdown', 'text': state.error!},
+      // Why no heading comes is the driver's problem, which the status beside
+      // Connect says; with none, the controller simply has not answered yet.
+      if (live && position == null && state.problem == null) {'type': 'markdown', 'text': st.rotatorNoReading},
       {
         'type': 'row',
         'elements': [
@@ -362,11 +431,11 @@ extension _EditorAnnotations on StationPanel {
   /// must not stop them saving a renamed rotator.
   FormActionResult? _runRotatorAction(BuildContext context, EquipmentNode? node, String actionKey, Map<String, dynamic> values) {
     if (node == null || !_rotatorActions.contains(actionKey)) return null;
-    if (actionKey == _rotatorConnectAction) {
+    if (actionKey == _connectAction) {
       unawaited(_cat.connect(node.uuid));
       return const FormActionResult();
     }
-    if (actionKey == _rotatorDisconnectAction) {
+    if (actionKey == _disconnectAction) {
       unawaited(_cat.disconnect(node.uuid));
       return const FormActionResult();
     }
@@ -405,42 +474,45 @@ const _rotatorTargetAzimuthKey = 'rotatorTargetAzimuth';
 const _rotatorTargetElevationKey = 'rotatorTargetElevation';
 const _rotatorTurnAction = 'rotatorTurn';
 const _rotatorStopAction = 'rotatorStop';
-const _rotatorConnectAction = 'rotatorConnect';
-const _rotatorDisconnectAction = 'rotatorDisconnect';
-const _rotatorActions = {_rotatorTurnAction, _rotatorStopAction, _rotatorConnectAction, _rotatorDisconnectAction};
+const _connectAction = 'equipmentConnect';
+const _disconnectAction = 'equipmentDisconnect';
+const _rotatorActions = {_rotatorTurnAction, _rotatorStopAction, _connectAction, _disconnectAction};
 
-/// How often an open rotator editor rereads the heading.
-const _rotatorReadoutRefresh = Duration(seconds: 1);
+/// How often an open editor for saved equipment rereads its state — the
+/// connection's status beside Connect, and a rotator's heading.
+const _stateReadoutRefresh = Duration(seconds: 1);
 
 /// [elements] with each address beside the setting that completes it, on
-/// one row, the second the narrower: a network pairing's host and the
-/// number field after it (its port, under whichever key the transport
-/// keeps it), and a serial pairing's port and speed. A rotator's azimuth
-/// and elevation offsets share a row too, half each, as do each axis's
-/// limits. The row takes the first field's `visibleWhen`, so it hides with
-/// the pairing it belongs to; a member keeps its own, so an elevation
-/// offset still hides beside its azimuth one.
-List<Map<String, dynamic>> _addressRows(List<Map<String, dynamic>> elements) {
-  bool pairs(Map<String, dynamic> first, Map<String, dynamic> next) => switch (first['key']) {
-    'host' => next['fieldType'] == 'number',
-    'port' => next['key'] == 'baudRate',
-    rotatorAzimuthOffsetConfigKey => next['key'] == rotatorElevationOffsetConfigKey,
-    rotatorAzimuthMinConfigKey => next['key'] == rotatorAzimuthMaxConfigKey,
-    rotatorElevationMinConfigKey => next['key'] == rotatorElevationMaxConfigKey,
-    _ => false,
+/// one row, for every equipment editor: a network pairing's host and the
+/// number field after it (its port, under whichever key the transport keeps
+/// it), two to one, and a login's user and password, half each. A
+/// [rotator] pairs more: its serial port and speed, its azimuth and
+/// elevation offsets, and each axis's limits. The row takes the first
+/// field's `visibleWhen`, so it hides with the pairing it belongs to; a
+/// member keeps its own, so an elevation offset still hides beside its
+/// azimuth one.
+List<Map<String, dynamic>> _addressRows(List<Map<String, dynamic>> elements, {required bool rotator}) {
+  ({int first, int next})? pairs(Map<String, dynamic> first, Map<String, dynamic> next) => switch (first['key']) {
+    'host' when next['fieldType'] == 'number' => (first: 2, next: 1),
+    'username' || 'user' when next['key'] == 'password' => (first: 1, next: 1),
+    'port' when rotator && next['key'] == 'baudRate' => (first: 7, next: 3),
+    rotatorAzimuthOffsetConfigKey when rotator && next['key'] == rotatorElevationOffsetConfigKey => (first: 1, next: 1),
+    rotatorAzimuthMinConfigKey when rotator && next['key'] == rotatorAzimuthMaxConfigKey => (first: 1, next: 1),
+    rotatorElevationMinConfigKey when rotator && next['key'] == rotatorElevationMaxConfigKey => (first: 1, next: 1),
+    _ => null,
   };
-  bool even(Map<String, dynamic> first) => first['key'] != 'host' && first['key'] != 'port';
   final paired = <Map<String, dynamic>>[];
   for (var index = 0; index < elements.length; index++) {
     final element = elements[index];
     final next = index + 1 < elements.length ? elements[index + 1] : null;
-    if (next != null && pairs(element, next)) {
+    final flex = next == null ? null : pairs(element, next);
+    if (next != null && flex != null) {
       paired.add({
         'type': 'row',
         if (element['visibleWhen'] != null) 'visibleWhen': element['visibleWhen'],
         'elements': [
-          {...element, 'flex': even(element) ? 1 : 7},
-          {...next, 'flex': even(element) ? 1 : 3},
+          {...element, 'flex': flex.first},
+          {...next, 'flex': flex.next},
         ],
       });
       index++;

@@ -2444,8 +2444,6 @@
       "switchCommandRefused": "El conmutador rechazó \"$command\" (error $code)",
       "switchBusyTransmitting": "Ese puerto está transmitiendo — la antena no se cambió",
       "switchNoAntenna": "Ninguna",
-      "switchAntennaFor": "Antena en el puerto $port",
-      "switchAntennaForDescription": "Cuál de tus antenas está conectada a este puerto del conmutador.",
       "switchLayoutSides": "$antennas antenas, $radios radios",
       "switchLayoutSidesOneRadio": "$antennas antenas, 1 radio",
       "switchLayoutSidesOneAntenna": "1 antena, $radios radios",

@@ -2913,8 +2913,6 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String switchCommandRefused({required Object command, required Object code}) => '开关拒绝了“${command}”（错误 ${code}）';
 	@override String get switchBusyTransmitting => '该端口正在发射——未更换天线';
 	@override String get switchNoAntenna => '无';
-	@override String switchAntennaFor({required Object port}) => '端口 ${port} 上的天线';
-	@override String get switchAntennaForDescription => '您的哪副天线连接到开关的这个端口。';
 	@override String switchLayoutSides({required Object antennas, required Object radios}) => '${antennas} 副天线，${radios} 台电台';
 	@override String switchLayoutSidesOneRadio({required Object antennas}) => '${antennas} 副天线，1 台电台';
 	@override String switchLayoutSidesOneAntenna({required Object radios}) => '1 副天线，${radios} 台电台';
@@ -6562,8 +6560,6 @@ extension on TranslationsZh {
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => '开关拒绝了“${command}”（错误 ${code}）',
 			'settings.station.switchBusyTransmitting' => '该端口正在发射——未更换天线',
 			'settings.station.switchNoAntenna' => '无',
-			'settings.station.switchAntennaFor' => ({required Object port}) => '端口 ${port} 上的天线',
-			'settings.station.switchAntennaForDescription' => '您的哪副天线连接到开关的这个端口。',
 			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => '${antennas} 副天线，${radios} 台电台',
 			'settings.station.switchLayoutSidesOneRadio' => ({required Object antennas}) => '${antennas} 副天线，1 台电台',
 			'settings.station.switchLayoutSidesOneAntenna' => ({required Object radios}) => '1 副天线，${radios} 台电台',
@@ -7031,10 +7027,10 @@ extension on TranslationsZh {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} 不是 JSON 文件，因此不是 QSON 文件',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} 不包含 QSON 操作',
 			'qsonImport.busy' => '已有导入正在进行。请等待其完成后再开始新的导入。',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.title' => '从 ADIF 导入 QSO',
 			'adifImport.reading' => ({required Object filename}) => '正在读取 ${filename}…',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '此文件中有 ${count} 个 QSO', other: '此文件中有 ${formatted} 个 QSO', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个已在您的日志中', other: '${formatted} 个已在您的日志中', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '将导入 ${count} 个', other: '将导入 ${formatted} 个', ), 
