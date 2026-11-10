@@ -8,13 +8,13 @@ import '../transport.dart';
 import 'udp_transport_config.dart';
 
 class UdpTransport extends EquipmentTransport with UdpTransportConfig {
-  const UdpTransport({required this.portConfigKey, required this.replyPortOffset});
+  const UdpTransport({required this.portConfigKey, this.replyPortOffset});
 
   @override
   final String portConfigKey;
 
   @override
-  final int replyPortOffset;
+  final int? replyPortOffset;
 
   static const transportKey = 'udp';
 

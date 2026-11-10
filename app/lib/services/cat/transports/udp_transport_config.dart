@@ -16,8 +16,10 @@ mixin UdpTransportConfig implements EquipmentTransport {
   String get portConfigKey;
 
   /// How far above the destination port the replies arrive — the port this
-  /// transport listens on.
-  int get replyPortOffset;
+  /// transport listens on. Null for a device that answers whatever port a
+  /// command came from: then the system picks one, and two such devices
+  /// never contend for a port the way two at a fixed offset would.
+  int? get replyPortOffset;
 
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
@@ -31,7 +33,7 @@ mixin UdpTransportConfig implements EquipmentTransport {
     if (key == portConfigKey) {
       // The reply port has to be a port too.
       final port = udpPort({...config, portConfigKey: value});
-      return (port < 1 || port + replyPortOffset > 65535) ? t.settings.station.portInvalid : null;
+      return (port < 1 || port + (replyPortOffset ?? 0) > 65535) ? t.settings.station.portInvalid : null;
     }
     return null;
   }
@@ -40,7 +42,10 @@ mixin UdpTransportConfig implements EquipmentTransport {
   Map<String, dynamic> targetFor(Map<String, dynamic> config) => {
     'host': trimmedHost(config),
     'port': udpPort(config),
-    'replyPort': udpPort(config) + replyPortOffset,
+    'replyPort': switch (replyPortOffset) {
+      final offset? => udpPort(config) + offset,
+      null => 0,
+    },
   };
 
   @override

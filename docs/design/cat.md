@@ -3565,6 +3565,48 @@ network.
   correction set here as well would apply twice. The node carries the axes
   and the poll interval only, and `rotateTo` returns what it was asked.
 
+### BuddiHex mast rotator
+
+`buddihex_codec.dart` and `buddihex_driver.dart`, over
+`transports/udp_transport*.dart`. A WiFi rotator built from an open design
+for the MastWerks mast of Buddipole's BuddiHex antenna: an ESP8266
+controller, a compass on the mast and a motor on its crank. From the
+controller's firmware ([rotatorControllerESP8266](https://github.com/mdannhardt/rotatorControllerESP8266),
+MIT, 3.0.1), not from a capture: no BuddiHex rotator has been on the bench.
+
+- **PstRotator's commands, its own query.** The controller takes
+  PstRotator's `<AZIMUTH>` turn and `<STOP>` as they are, and answers
+  `<PST>AZ?` too, so a PstRotator node already turns one. This node polls
+  the firmware's own `GET_BEARING` instead, because its answer also says
+  when the mast is stuck (`:Stuck`: the compass not five degrees on in
+  five seconds, and the motor stopped) and when the compass has failed
+  (`-1:Error!`, `-2`, `-3`, and a heading of `0`, which is what a read gives
+  when the compass was not ready — its headings run 1 to 360). Both are
+  problems, not a dropped connection: a reconnect would not move the mast
+  or mend the compass, and the controller still answers. Stuck stands until
+  a turn more than five degrees away; a smaller one is a timed nudge that
+  leaves the flag set, and the problem says so.
+- **A turn is refused while the compass is faulted.** The controller drops
+  every turn then, so the session's `rotateTo` answers null and sends
+  nothing, and no target is set that no reading could arrive at.
+- **Polled every two seconds.** Each answer holds the controller's loop for
+  a quarter of a second while it reads the compass (its wait-for-ready loop
+  always runs to its end), time its own arrival check waits behind.
+- **Answers come back to whichever port asked.** Unlike PstRotator, which
+  answers a fixed port after its own, the controller replies to the
+  sender's port, so this node's UDP transport has no reply offset and binds
+  a port the system picks (`replyPortOffset: null`). Two BuddiHex rotators
+  then never contend for one reply port.
+- **Prefilled for where it is first found.** Until it is given the
+  shack's WiFi, the controller makes a network of its own (`ESP-` and the
+  last six hex digits of its MAC), on which it is 192.168.4.1; port 4210
+  is fixed in the firmware.
+- **No offsets and no limits**, for PstRotator's reason: the controller
+  corrects the compass by its own declination calibration ("Calibrate
+  North" on its web page) and picks its own way round the mast's cable. It
+  holds that calibration only until it is switched off, which its
+  troubleshooting notes say. Azimuth only.
+
 ### Hamlib rotctld
 
 `rotctld_codec.dart` and `rotctld_driver.dart`, over the TCP transport (4533

@@ -343,6 +343,7 @@ void main() {
       'gs232a-tcp',
       'pstrotator-udp',
       'rotctld-tcp',
+      'buddihex-udp',
       'gh-everyware-tcp',
       'gh-everyware-rotor',
       'gh-everyware-switch',

@@ -838,6 +838,7 @@ class CatService extends ChangeNotifier
     if (rotationHeldByTransmit(uuid)) return null;
     try {
       final target = session.rotateTo(azimuth: azimuth, elevation: elevation);
+      if (target == null) return null;
       runtime.rotatorStillReadings = 0;
       _setState(uuid, stateFor(uuid).copyWith(rotatorTarget: target));
       return target;

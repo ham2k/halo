@@ -261,7 +261,11 @@ abstract class RotatorSession implements EquipmentSession {
   /// heading it is turning to, which the node's limits can make another:
   /// that is the target there is any arriving at. Its elevation is null when
   /// no elevation was sent.
-  RotatorPosition rotateTo({required num azimuth, num? elevation});
+  ///
+  /// Null when the rotator cannot turn now and nothing was sent — a
+  /// controller whose compass has failed drops every turn, and a target set
+  /// for one would wait for an arrival no reading can bring.
+  RotatorPosition? rotateTo({required num azimuth, num? elevation});
 
   /// Stops every axis, wherever it has got to.
   void stopRotation();

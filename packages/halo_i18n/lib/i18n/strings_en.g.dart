@@ -7350,6 +7350,24 @@ class Translations$settings$station$en {
 	/// en: 'The controller refused a command. Check that it is set to GS-232 mode.'
 	String get rotatorRefused => 'The controller refused a command. Check that it is set to GS-232 mode.';
 
+	/// en: 'The mast stopped turning short of where it was last sent. Check for something in its way, then turn it more than 5° from where it is to clear this.'
+	String get buddihexStuck => 'The mast stopped turning short of where it was last sent. Check for something in its way, then turn it more than 5° from where it is to clear this.';
+
+	/// en: 'The rotator's controller cannot find its compass. Check the compass's wiring to the controller board.'
+	String get buddihexCompassMissing => 'The rotator\'s controller cannot find its compass. Check the compass\'s wiring to the controller board.';
+
+	/// en: 'The rotator's compass is not ready yet. Power the controller off and on if this does not clear.'
+	String get buddihexCompassNotReady => 'The rotator\'s compass is not ready yet. Power the controller off and on if this does not clear.';
+
+	/// en: 'The rotator's compass failed its calibration check when the controller started. Power the controller off and on to check it again.'
+	String get buddihexCompassCalibration => 'The rotator\'s compass failed its calibration check when the controller started. Power the controller off and on to check it again.';
+
+	/// en: 'The rotator's controller reports a fault with its compass.'
+	String get buddihexFault => 'The rotator\'s controller reports a fault with its compass.';
+
+	/// en: 'The BuddiHex rotator's controller answers over WiFi, on UDP port 4210: - **On its own WiFi network**, the one it makes until it is set up (named ESP- and six letters and digits), its address is 192.168.4.1. Join that network on this device first. - **On your WiFi**, once you have entered it on the controller's web page, use the address your router gave it: its list of devices names the controller ESP- and the same six letters and digits. - **Calibrate its heading after every power-up**: point the antenna at true north, then press Calibrate North on the controller's web page. It forgets the calibration when it is switched off, and reports the compass's magnetic heading until then. - **On a Mac, iPhone or iPad**, Ham2K Logger needs Local Network access (Settings → Privacy & Security → Local Network).'
+	String get buddihexTroubleshooting => 'The BuddiHex rotator\'s controller answers over WiFi, on UDP port 4210:\n\n- **On its own WiFi network**, the one it makes until it is set up (named ESP- and six letters and digits), its address is 192.168.4.1. Join that network on this device first.\n- **On your WiFi**, once you have entered it on the controller\'s web page, use the address your router gave it: its list of devices names the controller ESP- and the same six letters and digits.\n- **Calibrate its heading after every power-up**: point the antenna at true north, then press Calibrate North on the controller\'s web page. It forgets the calibration when it is switched off, and reports the compass\'s magnetic heading until then.\n- **On a Mac, iPhone or iPad**, Ham2K Logger needs Local Network access (Settings → Privacy & Security → Local Network).';
+
 	/// en: 'rotctld refused the command (Hamlib error ${code}).'
 	String rotctldRefused({required Object code}) => 'rotctld refused the command (Hamlib error ${code}).';
 
@@ -10586,6 +10604,9 @@ class Translations$settings$station$models$en {
 	/// en: 'PstRotator (UDP Control)'
 	String get pstRotator => 'PstRotator (UDP Control)';
 
+	/// en: 'BuddiHex Mast Rotator (MastWerks)'
+	String get buddihex => 'BuddiHex Mast Rotator (MastWerks)';
+
 	/// en: 'Hamlib rotctld'
 	String get rotctld => 'Hamlib rotctld';
 
@@ -13157,6 +13178,7 @@ extension on Translations {
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
 			'settings.station.models.gs232a' => 'Yaesu GS-232A Rotator Interface',
 			'settings.station.models.pstRotator' => 'PstRotator (UDP Control)',
+			'settings.station.models.buddihex' => 'BuddiHex Mast Rotator (MastWerks)',
 			'settings.station.models.rotctld' => 'Hamlib rotctld',
 			'settings.station.models.everywareServer' => 'Green Heron Everyware server',
 			'settings.station.models.everywareRotor' => 'Green Heron Everyware rotator',
@@ -13185,9 +13207,9 @@ extension on Translations {
 			'settings.station.transports.everywareServer' => 'Through its Everyware server',
 			'settings.station.troubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **CAT RTS off at the radio, or Hold RTS high on.** With **CAT RTS** on (FT-891 menu **05-08**), the radio stays silent while RTS is low — it may answer once as the port opens, then nothing. Picking the radio\'s own USB port turns on **Hold RTS high** under Advanced Settings. On a Digirig, SignaLink or most home-brew cables RTS is PTT, and holding it high keys your transmitter: turn CAT RTS off at the radio instead.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
-			'settings.station.yaesuBinaryTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.yaesuBinaryTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.yaesuBinaryTroubleshooting' => 'This radio speaks Yaesu\'s older five-byte CAT, and it does not respond at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB; it needs a CT-62 or an equivalent adapter. A plain audio or data cable won\'t work for CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). With a mismatch, the radio sends nothing back, and never an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying. An older interface powered from DTR is the exception: turn on **Hold DTR high** under Advanced Settings for that one.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.tenTecTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.tenTecEagleTroubleshooting' => '- **The USB-B port on the back is the CAT link.** The radio shows up as a USB serial port; on Windows it needs Ten-Tec\'s USB to UART driver, which appears in Device Manager as "USB to UART (COMx)".\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open, and so does Ten-Tec\'s firmware updater.\n- **Setting the filter width from the app takes it away from the BW knob** until the radio is switched off and on again. That is how the radio works.\n\nThis driver was written from Ten-Tec\'s programmer\'s reference guide. If it half-works, that is worth reporting, with the firmware version from the radio\'s menu.',
@@ -13499,6 +13521,12 @@ extension on Translations {
 			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'How often to ask the rotator where it points. Leave blank for ${fallback} ms.',
 			'settings.station.rotatorAxesRequired' => 'Choose which axes the rotator turns',
 			'settings.station.rotatorRefused' => 'The controller refused a command. Check that it is set to GS-232 mode.',
+			'settings.station.buddihexStuck' => 'The mast stopped turning short of where it was last sent. Check for something in its way, then turn it more than 5° from where it is to clear this.',
+			'settings.station.buddihexCompassMissing' => 'The rotator\'s controller cannot find its compass. Check the compass\'s wiring to the controller board.',
+			'settings.station.buddihexCompassNotReady' => 'The rotator\'s compass is not ready yet. Power the controller off and on if this does not clear.',
+			'settings.station.buddihexCompassCalibration' => 'The rotator\'s compass failed its calibration check when the controller started. Power the controller off and on to check it again.',
+			'settings.station.buddihexFault' => 'The rotator\'s controller reports a fault with its compass.',
+			'settings.station.buddihexTroubleshooting' => 'The BuddiHex rotator\'s controller answers over WiFi, on UDP port 4210:\n\n- **On its own WiFi network**, the one it makes until it is set up (named ESP- and six letters and digits), its address is 192.168.4.1. Join that network on this device first.\n- **On your WiFi**, once you have entered it on the controller\'s web page, use the address your router gave it: its list of devices names the controller ESP- and the same six letters and digits.\n- **Calibrate its heading after every power-up**: point the antenna at true north, then press Calibrate North on the controller\'s web page. It forgets the calibration when it is switched off, and reports the compass\'s magnetic heading until then.\n- **On a Mac, iPhone or iPad**, Ham2K Logger needs Local Network access (Settings → Privacy & Security → Local Network).',
 			'settings.station.rotctldRefused' => ({required Object code}) => 'rotctld refused the command (Hamlib error ${code}).',
 			'settings.station.rotctldReadFailed' => ({required Object code}) => 'rotctld could not read where the rotator points (Hamlib error ${code}).',
 			'settings.station.rotctldPastLimits' => ({required Object code}) => 'rotctld refused that heading as past the rotator\'s limits (Hamlib error ${code}). Check the limits rotctld was started with.',
@@ -13693,6 +13721,8 @@ extension on Translations {
 			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
 			'commands.goUnknown' => ({required Object to}) => 'Don\'t know how to go to \'${to}\'',
 			'commands.goBlocked' => 'Close the open dialog first',
+			_ => null,
+		} ?? switch (path) {
 			'commands.operationAlreadyStarted' => 'This operation already has a start marker',
 			'commands.couldNotOpenLocation' => 'Added the break, but could not open the location screen',
 			'commands.noTestOperations' => 'No Test Operations to purge',
@@ -13700,8 +13730,6 @@ extension on Translations {
 			'commands.syncAllUnavailable' => 'SYNCALL needs to show a confirmation dialog, which isn\'t available here',
 			'commands.testOperationsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} Test Operation', other: 'Purged ${count} Test Operations', ), 
 			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again',
-			_ => null,
-		} ?? switch (path) {
 			'commands.testContactsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} test contact with no operation', other: 'Purged ${count} test contacts with no operation', ), 
 			'commands.purgeTestsContactsFailed' => 'Purged the Test Operations, but the test contacts with no operation failed; try PURGETESTS again',
 			'commands.purgeTestsNothingToDo' => 'Nothing was purged',

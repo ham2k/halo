@@ -587,6 +587,34 @@ void main() {
     }
   });
 
+  // A BuddiHex controller drops every turn while its compass reads nothing.
+  // A target set for one anyway waits for an arrival no reading brings, and
+  // the map shows a turn in progress until Stop.
+  test('a turn the rotator refuses sends nothing and sets no target', () async {
+    final controller = await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final heard = <String>[];
+    controller.listen((event) {
+      if (event != RawSocketEvent.read) return;
+      final datagram = controller.receive();
+      if (datagram == null) return;
+      final text = ascii.decode(datagram.data);
+      heard.add(text);
+      if (text == 'GET_BEARING') controller.send(ascii.encode('GET_BEARING:-1:Error!'), datagram.address, datagram.port);
+    });
+    try {
+      final node = await cat.addNode(typeKey: 'buddihex-udp', name: 'Mast', config: {'host': '127.0.0.1', 'udpPort': controller.port});
+      await cat.connect(node.uuid);
+      await _settleUntil(() => cat.stateFor(node.uuid).problem != null);
+
+      expect(cat.rotateTo(node.uuid, azimuth: 90), isNull);
+      expect(cat.stateFor(node.uuid).rotatorTarget, isNull);
+      expect(heard.where((m) => m.contains('<AZIMUTH>')), isEmpty);
+      await cat.disconnect(node.uuid);
+    } finally {
+      controller.close();
+    }
+  });
+
   // A GS-232 says nothing when it is stopped at its own front panel, or when
   // the mast meets a stop short of the node's limits: without this the map
   // shows a turn in progress until someone presses Stop in the app. Too

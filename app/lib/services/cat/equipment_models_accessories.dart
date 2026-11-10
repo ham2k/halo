@@ -8,6 +8,8 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 import 'drivers/antenna_driver.dart';
 import 'drivers/antenna_genius_driver.dart';
+import 'drivers/buddihex_codec.dart' show buddihexAccessPointHost, buddihexPort;
+import 'drivers/buddihex_driver.dart';
 import 'drivers/gs232_driver.dart';
 import 'drivers/pstrotator_driver.dart';
 import 'drivers/rotctld_driver.dart';
@@ -30,6 +32,7 @@ const _gs232aSerialKey = 'gs232a-serial';
 const _gs232aTcpKey = 'gs232a-tcp';
 const _pstRotatorUdpKey = 'pstrotator-udp';
 const _rotctldTcpKey = 'rotctld-tcp';
+const _buddihexUdpKey = 'buddihex-udp';
 
 /// A 4O3A Antenna Genius, over the TCP protocol its Genius series shares.
 ///
@@ -150,6 +153,37 @@ const pstRotatorModel = EquipmentModel(
 );
 
 String _pstRotatorName() => t.settings.station.models.pstRotator;
+
+/// The BuddiHex mast rotator: a WiFi controller on the MastWerks mast of
+/// Buddipole's BuddiHex antenna, built from its project's open design. No
+/// manufacturer: it is a build, not a product, like the rigctld bridge.
+///
+/// Prefilled with the address the controller has on the network it makes
+/// for itself, which is where an operator first finds it, and its port. It
+/// answers whichever port a command came from, so this node listens on one
+/// the system picks.
+const buddihexModel = EquipmentModel(
+  key: 'buddihex',
+  category: kCategoryRotator,
+  name: _buddihexName,
+  variants: [
+    EquipmentVariant(
+      key: _buddihexUdpKey,
+      driver: BuddihexDriver(),
+      transport: UdpTransport(portConfigKey: 'udpPort'),
+      defaultConfig: {'host': buddihexAccessPointHost, 'udpPort': buddihexPort, rotatorAxesConfigKey: rotatorAxesAzimuth},
+      notes: _buddihexNotes,
+    ),
+  ],
+);
+
+String _buddihexName() => t.settings.station.models.buddihex;
+
+/// The controller answers nothing until this device is on its network or
+/// it is on this device's, and its heading is magnetic until calibrated.
+List<Map<String, dynamic>> _buddihexNotes() => [
+  {'type': 'markdown', 'collapsible': true, 'title': t.settings.station.troubleshootingNotes, 'text': t.settings.station.buddihexTroubleshooting},
+];
 
 /// A Hamlib `rotctld` daemon: any rotator Hamlib has a backend for, and
 /// PstRotator while its Gpredict tracker is selected. No manufacturer, like
