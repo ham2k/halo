@@ -43,7 +43,7 @@ answer has every field empty while there is none. Omitted, the logging radio.
   tune set through the app shows there from the moment it is accepted,
   ahead of the radio's report of it.
 - `meters`: `signalDbm`, `powerOut`, `swr`, `alc`, `supplyVolts` and
-  `compression` (dB, API 22), each only while its driver has a fresh
+  `compression` (dB, API 23), each only while its driver has a fresh
   reading. `signalDbm` is receive power in whole dBm, refreshed a few times
   a second, expiring two seconds after the last reading. A scene that only draws meters reads them as radio values
   instead, at the radio's rate. The answer never substitutes the app's

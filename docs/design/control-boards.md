@@ -36,7 +36,7 @@ code through the SDK.
 
 | Piece | Owner | Why there |
 | --- | --- | --- |
-| Grids, cells, multi-source live values, new bindings | Host (Dart), scene API 22 and 23 | They are layout and painting. Reflow at native speed with no bridge call is the whole point |
+| Grids, cells, multi-source live values, new bindings | Host (Dart), scene API 23 | They are layout and painting. Reflow at native speed with no bridge call is the whole point |
 | Definition → scene compiler, widget library, Liquid, declarative actions | Core extension `control-board` (TypeScript), compiler also exported by the SDK | Liquid already lives in the extension runtime. Widgets as code emitting scene parts ship without a host release. Extensions get boards through the same compiler |
 | Board scripts (the JS subset) | Isolated context, §6 | Operator-written code must not see the extension's own globals |
 | Per-placement parameter form | Host, API 23 | A board's parameters differ per placement, and a descriptor's `form` is fixed |

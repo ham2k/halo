@@ -78,7 +78,8 @@ import yazl from "yazl"
 /// `host.updateDraft` with its `requiresDraftWrite` grant; 23 adds a scene's
 /// `rotatorMap` control, antenna switches and rotators (`host.listEquipment`
 /// and the rest, with `host.setEquipmentConnection`), `host.updateSetting`,
-/// and `host.layouts` with its `requiresLayoutControl` grant.
+/// `host.layouts` with its `requiresLayoutControl` grant, and a scene's
+/// `cells` and `grid`, named `sources`, `clipX`/`clipY` and peak `hold`.
 export const H2KEXT_API_VERSION = 23
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`

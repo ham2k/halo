@@ -3864,7 +3864,7 @@ export interface PanelRadioState {
   mode: string | null
   powerWatts: number | null
   transmitting: boolean | null
-  /** `compression` is extension API 22. */
+  /** `compression` is extension API 23. */
   meters: Partial<Record<"signalDbm" | "powerOut" | "swr" | "alc" | "supplyVolts" | "compression", number>>
   canTune: boolean
   /** The model's rated output ceiling, where the app knows it (extension API 7). */
@@ -4059,7 +4059,7 @@ export interface StationEquipment {
 }
 
 /// What `host.setAntenna`, `setRotator` and `stopRotator` answer. Extension
-/// API 22.
+/// API 23.
 export interface StationEquipmentResult {
   /** Sent to the device; confirmation comes from its reported state. */
   accepted: boolean

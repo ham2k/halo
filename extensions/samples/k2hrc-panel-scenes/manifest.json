@@ -7,7 +7,7 @@
   "category": "dashboard",
   "icon": "radio-tower",
   "accentColor": "#4C6EF5",
-  "api": 22,
+  "api": 23,
   "keywords": ["svg", "panel", "sample", "weather", "radio"],
   "hooks": ["panel"],
   "sharedDependencies": {

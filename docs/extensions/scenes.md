@@ -50,10 +50,10 @@ at install rather than showing the panel as an unknown kind.
 | `layers` | Painted in order, each over the ones before: `svg` artwork, `text`, or an `icon`. At most 512 (128 before API 12), and 1,048,576 characters of artwork and text in all. A layer's `svg` is self-contained vector artwork, no `<image>`, `<script>` or `<foreignObject>`, no entity declarations, at most 16,384 elements nested at most 32 deep |
 | `controls` | At most 256 (64 before API 12). Drawn or native; below |
 | `layout` | Optional. Where rect-less native controls, cells and the artwork go; omitted, the artwork fills the pane |
-| `cells` | Optional, `[{ id, width, height }]` (API 22): pieces drawn at their own size, below. At most 256. Each needs a `layout` to place it |
+| `cells` | Optional, `[{ id, width, height }]` (API 23): pieces drawn at their own size, below. At most 256. Each needs a `layout` to place it |
 | `scroll` | Optional, `{ axis?, value, event? }` (API 12): a scene longer than its pane along `axis` (`y` by default), scrolled natively by wheel, trackpad and drag (a drag begun on a button included) with no call to the extension. It fills the pane across and runs on past it. The position in scene units is written to the scene value `value`; a render that changes that value moves the view, one that leaves it alone leaves the operator's scroll alone. `event` is sent as a `commit`, the position as `value`, once a scroll comes to rest. Layers and controls with `fixed: true` stay put over the pane, in pane coordinates; a drag along the scroll on a slider or knob that scrolls with the content is the scroll's, so make one that must be dragged `fixed`. Not with `layout` |
 | `radio` | Optional, `{ node? }` (API 7): the app feeds that radio's live readings into the reserved `radio.*` values. `node` is an id from `listRadios`; omitted, the logging radio |
-| `sources` | Optional (API 22): radios, rotators and antenna switches fed live under names of the scene's own; [Named sources](#named-sources) |
+| `sources` | Optional (API 23): radios, rotators and antenna switches fed live under names of the scene's own; [Named sources](#named-sources) |
 
 Every rule here is checked when the scene arrives, and a scene that breaks
 one is refused whole rather than drawn in part: the pane says the panel
@@ -74,11 +74,11 @@ that order before the ramp, and a
 meter needle, a chart marker or a callout follows a reading with no bridge
 call.
 
-`clipX` and `clipY` (API 22) show a share of the layer, 0 to 1, growing from
+`clipX` and `clipY` (API 23) show a share of the layer, 0 to 1, growing from
 its `pivot` as a scale does but keeping the artwork's shape: a bar of LED
 segments drawn whole lights segment by segment where a scale would squash
 it, and with `scale` and `truncate` before the ramp it steps a segment at a
-time, counting from the ramp's bottom with an `offset` of its own. A binding's `hold` (API 22), `{ ms, fallPerSecond? }`, makes it a peak
+time, counting from the ramp's bottom with an `offset` of its own. A binding's `hold` (API 23), `{ ms, fallPerSecond? }`, makes it a peak
 meter: the highest reading stands for `ms` after the reading drops, then
 falls toward it at `fallPerSecond` in the bound value's own units (by
 default the whole input range a second, and never slower than the whole
@@ -104,7 +104,7 @@ scales text once. A text layer also takes `prefix`, `suffix`, `decimals` and
 **Icons** (API 12) are `{ name, color? }`, a Material Design Icons or `fa-`
 name drawn in the layer's rect.
 
-**Cells** (API 22) are pieces of the scene drawn at their own size in
+**Cells** (API 23) are pieces of the scene drawn at their own size in
 logical pixels, never scaled with the pane: a meter 144 wide is 144 wide in
 any pane, and the layout moves it rather than shrinking it. A cell is
 declared in `cells` with its `width` and `height`, and placed by a
@@ -148,7 +148,7 @@ may also take:
   drawn kinds; a native control omits all four to be placed by `layout`, and
   with a rect takes its width and its own height, up to the rect's, so give a
   field a rect tall enough for it.
-- `cell` (API 22): the [cell](#layers-and-bindings) it is drawn in, its
+- `cell` (API 23): the [cell](#layers-and-bindings) it is drawn in, its
   rect in that cell's coordinates.
 - `after`: with a rect, the layer it paints directly after, in the same
   cell or none. Otherwise a control paints above every layer.
@@ -199,7 +199,7 @@ drawn over a knob do not stop the scroll; anything else in the way (a native
 control, a `blocksPointer` layer, another slider or knob) keeps the scroll
 from it. `invertDrag` (API 12) moves a knob the other way to a drag, as
 content under a finger does, while its scroll is unchanged. `invertScroll`
-(API 22) turns a slider's or knob's scroll around: down and left raise it.
+(API 23) turns a slider's or knob's scroll around: down and left raise it.
 
 **The `zoom` strip** is drawn by nothing: it claims a drag that begins on it
 along a scrolling scene's axis. Away from the pane's middle zooms in and
@@ -226,9 +226,9 @@ and the cells:
 | --- | --- |
 | `{ row: [...] }`, `{ column: [...] }` | `mainAxisAlignment` (`start`, `center`, `end`, `spaceBetween`, `spaceAround`, `spaceEvenly`), `crossAxisAlignment` (`start`, `center`, `end`, `stretch`), `spacing` |
 | `{ wrap: [...] }` | `spacing`, `runSpacing`, the same alignments but no `stretch` |
-| `{ grid: [...] }` | Slots, below (API 22) |
+| `{ grid: [...] }` | Slots, below (API 23) |
 | `{ control: "id" }` | A native control without a rect. Each appears exactly once |
-| `{ cell: "id" }` | A cell, at its own size (API 22). Each appears exactly once |
+| `{ cell: "id" }` | A cell, at its own size (API 23). Each appears exactly once |
 | `{ scene: true }` | The artwork, scaled to fit. At most once; a layout without it shows no artwork, and a scene drawn entirely in cells needs none |
 | `{ spacer: n }` | Flexible empty space |
 
@@ -239,11 +239,11 @@ text field or dropdown given no width is 200 wide; a row's children that do
 not fit overflow, so use `flex` or `wrap`. A `flex` only shares space its row
 or column has: in a row that is itself an unflexed child of a row there is
 none, and its children lay out at their own size. The layout is at most 12
-deep and 512 nodes (8 and 128 before API 22).
+deep and 512 nodes (8 and 128 before API 23).
 
 ### Grids
 
-A grid (API 22) puts its children in slots, row by row in the order written,
+A grid (API 23) puts its children in slots, row by row in the order written,
 each at the first place it fits from where the one before it went, so what
 comes later never goes back into a hole left earlier. A narrower pane moves
 children onto more rows; nothing is scaled.
@@ -942,7 +942,7 @@ reserved: a scene may not declare them, and nothing may set them.
 | `radio.signalDbm` | Receive signal, dBm |
 | `radio.powerOut` | RF out, watts |
 | `radio.swr`, `radio.alc`, `radio.supplyVolts` | The transmit meters |
-| `radio.compression` | The speech processor's compression, dB, while transmitting. API 22 |
+| `radio.compression` | The speech processor's compression, dB, while transmitting. API 23 |
 | `radio.transmitting` | 1 or 0, the radio's own report |
 | `radio.swrAverage` | SWR averaged over the transmission under way, else the last one; only readings taken with RF out count |
 | `radio.secondsSinceTransmit` | 0 while transmitting, then counting up; very large when there has been none |
@@ -972,7 +972,7 @@ a transmission, so a hold or a fade bound to it ends on time.
 
 ## Named sources
 
-A scene's `sources` (API 22) are radios, rotators and antenna switches the
+A scene's `sources` (API 23) are radios, rotators and antenna switches the
 app feeds live, each under a name of the scene's choosing, as `radio` feeds
 the logging radio under `radio.`: a board with a meter for each of two
 radios reads `main.signalDbm` and `sub.signalDbm`, and one showing a

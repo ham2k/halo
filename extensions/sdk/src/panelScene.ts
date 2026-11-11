@@ -19,7 +19,7 @@ export interface PanelScene {
   /**
    * Fixed-size pieces the layout places, each drawn at its own size in logical pixels and never
    * scaled: a layer or control naming one has its rect in the cell's coordinates, 0,0 at its top
-   * left. Each is placed by exactly one `{ cell: id }` in `layout`. At most 256. Extension API 22.
+   * left. Each is placed by exactly one `{ cell: id }` in `layout`. At most 256. Extension API 23.
    */
   cells?: PanelSceneCell[]
   /**
@@ -38,7 +38,7 @@ export interface PanelScene {
    * (`{ antennaSwitch: id }`) `connected`, and each port's `<port>.auto` (1 or 0) and, in `strings`,
    * `<port>.antenna` and `<port>.antennaName`, by the port's `key` in `listEquipment()`, never its label. A name an identifier,
    * not `radio`; at most 16. Reserved like the `radio.` names; needs `requiresRadioRead`. A reading
-   * the device has not given is missing, as a radio's is. Extension API 22.
+   * the device has not given is missing, as a radio's is. Extension API 23.
    */
   sources?: Record<string, PanelSceneSource>
   /**
@@ -60,7 +60,7 @@ export type PanelSceneRadioValue =
   | "radio.swr"
   | "radio.alc"
   | "radio.supplyVolts"
-  /** The speech processor's compression, dB, while transmitting. Extension API 22. */
+  /** The speech processor's compression, dB, while transmitting. Extension API 23. */
   | "radio.compression"
   | "radio.transmitting"
   /** The SWR averaged over the transmission under way, or else the last one. Extension API 7. */
@@ -82,10 +82,10 @@ export type PanelSceneRadioValue =
   /** 1 while the radio is connected and answering, else 0. Extension API 13. */
   | "radio.connected"
 
-/** A named live source of a scene: see `PanelScene.sources`. Extension API 22. */
+/** A named live source of a scene: see `PanelScene.sources`. Extension API 23. */
 export type PanelSceneSource = { radio: string | null } | { rotator: string } | { antennaSwitch: string }
 
-/** What a rotator source gives, under its name, as numbers. Extension API 22. */
+/** What a rotator source gives, under its name, as numbers. Extension API 23. */
 export type PanelSceneRotatorValue =
   /** Where it points, in degrees from true north. */
   | "azimuth"
@@ -148,7 +148,7 @@ export interface SceneBinding {
    * A layer's binding only: a peak meter's hold. The highest reading stands for `ms`, then falls
    * toward the live one at `fallPerSecond`, in the bound value's own units (by default the whole
    * input range a second, never slower than the range in ten minutes), with no render. Needs a positive
-   * `scale` and no `modulo`; not on a `blocksPointer` layer's opacity. Extension API 22.
+   * `scale` and no `modulo`; not on a `blocksPointer` layer's opacity. Extension API 23.
    */
   hold?: { ms: number; fallPerSecond?: number }
 }
@@ -173,7 +173,7 @@ export interface PanelSceneLayer {
   blocksPointer?: boolean
   /** In a scene with `scroll`: drawn over the pane where it is, in pane coordinates, not scrolled. Extension API 12. */
   fixed?: boolean
-  /** The cell it is drawn in, its rect in that cell's coordinates; omitted, the artwork. Not with `fixed`. Extension API 22. */
+  /** The cell it is drawn in, its rect in that cell's coordinates; omitted, the artwork. Not with `fixed`. Extension API 23. */
   cell?: string
   /**
    * While a `zoom` strip is dragged, scaled along the scroll about the pane's middle, rather than
@@ -217,7 +217,7 @@ export interface PanelSceneLayer {
    * The share of the layer shown across or down, 0 to 1, growing from `pivot` as a scale does but
    * keeping the artwork's shape: a bar of LED segments lights segment by segment. With `scale` and
    * `truncate` before the ramp, it steps a segment at a time. Its `output` and `samples` are shares
-   * from 0 to 1; not on a `blocksPointer` layer. Extension API 22.
+   * from 0 to 1; not on a `blocksPointer` layer. Extension API 23.
    */
   clipX?: SceneBinding
   clipY?: SceneBinding
@@ -285,7 +285,7 @@ export type PanelSceneSpectrumNumber = number | string
  * `#AARRGGBB` with transparency. Defaults follow the app's theme.
  */
 export interface PanelSceneSpectrum {
-  /** A radio's id from `listRadios`, or the name of the scene's radio source (API 22). Omitted, the designated radio. */
+  /** A radio's id from `listRadios`, or the name of the scene's radio source (API 23). Omitted, the designated radio. */
   radio?: string
   /** Default `both`. `pan` is `spectrum`'s name before extension API 17. */
   display?: "both" | "spectrum" | "pan" | "waterfall"
@@ -1090,7 +1090,7 @@ export interface PanelSceneControl extends PanelSceneSpectrum, PanelSceneRotator
   fixed?: boolean
   /**
    * The cell it is drawn in, its rect in that cell's coordinates; needs a rect, and an `after`
-   * names a layer in the same cell. Not with `fixed`. Extension API 22.
+   * names a layer in the same cell. Not with `fixed`. Extension API 23.
    */
   cell?: string
   /**
@@ -1141,7 +1141,7 @@ export interface PanelSceneControl extends PanelSceneSpectrum, PanelSceneRotator
    * by dragging, rather than a dial turned. Scrolling is unchanged. Extension API 12.
    */
   invertDrag?: boolean
-  /** A slider or knob only: a scroll moves the value the other way, down and left raising it. Extension API 22. */
+  /** A slider or knob only: a scroll moves the value the other way, down and left raising it. Extension API 23. */
   invertScroll?: boolean
   /**
    * A slider or knob only: it also takes the scrolls that land on drawn buttons over it — labels
@@ -1234,7 +1234,7 @@ export interface PanelSceneEventResult {
   config?: Record<string, JSONValue>
 }
 
-/** A fixed-size piece of a scene, in logical pixels; see `PanelScene.cells`. Extension API 22. */
+/** A fixed-size piece of a scene, in logical pixels; see `PanelScene.cells`. Extension API 23. */
 export interface PanelSceneCell {
   id: string
   width: number
@@ -1246,7 +1246,7 @@ export type PanelColorRole = keyof PanelEnvironment["colors"]
 
 /**
  * A grid's box, drawn by the app around its slots. Colors are a `PanelColorRole` or `#RRGGBB` /
- * `#AARRGGBB`. Extension API 22.
+ * `#AARRGGBB`. Extension API 23.
  */
 export interface PanelSceneGridStyle {
   background?: PanelColorRole | string
@@ -1259,12 +1259,12 @@ export interface PanelSceneGridStyle {
 /**
  * Flutter's Row, Column and Wrap, with Flexible, Spacer and SizedBox as fields, and a grid.
  * Sizes are logical pixels, like the render environment's. At most 12 deep and 512 nodes (8 and
- * 128 before extension API 22).
+ * 128 before extension API 23).
  *
  * - `{row: [...]}` / `{column: [...]}` / `{wrap: [...]}` lay out their children.
- * - `{grid: [...]}` puts its children in slots, row by row in order; see `unit`. Extension API 22.
+ * - `{grid: [...]}` puts its children in slots, row by row in order; see `unit`. Extension API 23.
  * - `{control: "id"}` places a native control that has no rect. Each appears exactly once.
- * - `{cell: "id"}` places a cell at its own size. Each appears exactly once. Extension API 22.
+ * - `{cell: "id"}` places a cell at its own size. Each appears exactly once. Extension API 23.
  * - `{scene: true}` places the artwork, scaled to fit. At most once.
  * - `{spacer: flex}` takes a share of the free space.
  *
@@ -1282,22 +1282,22 @@ export type PanelSceneLayoutNode = (
 ) & {
   /**
    * A grid's slot, `[width, height]`. The outermost grid needs one; a grid within a grid takes
-   * its parent's unless it names its own. Extension API 22.
+   * its parent's unless it names its own. Extension API 23.
    */
   unit?: [number, number]
-  /** A grid's space between slots, across and down, or one number for both; inherited like `unit`. Extension API 22. */
+  /** A grid's space between slots, across and down, or one number for both; inherited like `unit`. Extension API 23. */
   gap?: number | [number, number]
   /**
    * A grid's width in slots; past the room it is given, it scrolls sideways on its own. Omitted,
-   * as many as fit, wrapping onto new rows. Extension API 22.
+   * as many as fit, wrapping onto new rows. Extension API 23.
    */
   columns?: number
-  /** A grid's box, drawn by the app. Extension API 22. */
+  /** A grid's box, drawn by the app. Extension API 23. */
   style?: PanelSceneGridStyle
   /**
    * A grid's direct child only, never a grid: the slots it takes, `[across, down]`. Omitted, a cell
    * takes the slots its size covers and anything else one. A grid within a grid has no span: one
-   * with `columns` takes the slots its content needs, and one that wraps a whole row. Extension API 22.
+   * with `columns` takes the slots its content needs, and one that wraps a whole row. Extension API 23.
    */
   span?: [number, number]
   /** Only on a row or column's direct child: share the free space, like Expanded (`tight`, the default) or Flexible (`loose`). */
