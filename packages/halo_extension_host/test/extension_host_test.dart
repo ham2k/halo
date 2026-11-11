@@ -1155,6 +1155,9 @@ __halo.defineExtension({
         await boundHostCall('listLayouts', { extensionKey: 'victim' })
         await boundHostCall('switchLayout', { extensionKey: 'victim', view: 'operation', id: '2' })
         await boundHostCall('focusPanel', { extensionKey: 'victim', panel: 'spots' })
+        await boundHostCall('getLayout', { extensionKey: 'victim', view: 'operation' })
+        await boundHostCall('applyLayout', { extensionKey: 'victim', view: 'operation', document: {} })
+        await boundHostCall('removeLayout', { extensionKey: 'victim', view: 'operation', id: '2' })
         return null
       },
       viaRaw: async function () { return await __halo.hostCall('markSpots', { ns: 'victim', ids: ['a'], mark: {} }) },
@@ -1180,7 +1183,7 @@ var boundHostCall = null
       expect(seen[method]?['extensionKey'], 'attacker', reason: method);
     }
     // A setting or a layout changed under a granted extension's name.
-    for (final method in ['updateSetting', 'listLayouts', 'switchLayout', 'focusPanel']) {
+    for (final method in ['updateSetting', 'listLayouts', 'switchLayout', 'focusPanel', 'getLayout', 'applyLayout', 'removeLayout']) {
       expect(seen[method]?['extensionKey'], 'attacker', reason: method);
     }
     await expectLater(
@@ -1189,7 +1192,7 @@ var boundHostCall = null
     );
     // The raw path names no caller: only the kernel's list of identity
     // methods keeps it from carrying the victim's key to the grant check.
-    for (final method in ['updateSetting', 'listLayouts', 'switchLayout', 'focusPanel']) {
+    for (final method in ['updateSetting', 'listLayouts', 'switchLayout', 'focusPanel', 'getLayout', 'applyLayout', 'removeLayout']) {
       await expectLater(
         host.invokeHook('attack', key: 'attacker', method: 'viaRawMethod', args: {'method': method}),
         throwsA(isA<ExtensionHostException>().having((e) => e.message, 'message', contains('SDK host API'))),

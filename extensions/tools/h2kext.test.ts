@@ -242,8 +242,8 @@ test("a bundle that changes the draft must declare the api that lets it", () => 
 
 test("a bundle that controls layouts must declare the api that lets it", () => {
   const arranger = { ...validManifest, requiresLayoutControl: true }
-  assert.match(validateManifest({ ...arranger, api: 21 }).join(), /'requiresLayoutControl' needs 'api' 22/)
-  assert.equal(validateManifest({ ...arranger, api: 22 }).length, 0)
+  assert.match(validateManifest({ ...arranger, api: 22 }).join(), /'requiresLayoutControl' needs 'api' 23/)
+  assert.equal(validateManifest({ ...arranger, api: 23 }).length, 0)
 })
 
 test("a bundle registering an assistant must declare the api that calls it", () => {

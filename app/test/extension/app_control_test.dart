@@ -52,17 +52,39 @@ class _Group extends SettingsGroup {
 class _Layouts implements LayoutControl {
   ({String? reason, String? name}) switched = (reason: null, name: 'Contest');
   String? focused;
+  LayoutWrite applied = (reason: null, message: null, id: '3', name: 'Sprint', skipped: const <String>[]);
+  Object? failure;
+  final owners = <String?>[];
 
   @override
-  List<Map<String, dynamic>> list() => [
-    {'view': 'operation'},
-  ];
+  List<Map<String, dynamic>> list(String? owner) {
+    owners.add(owner);
+    return [
+      {'view': 'operation'},
+    ];
+  }
 
   @override
   ({String? reason, String? name}) switchTo(String view, String id) => switched;
 
   @override
   String? focus(String view, String panel) => focused;
+
+  @override
+  Future<({String? reason, Map<String, dynamic>? document})> read(String view, String? id) async => (reason: null, document: {'ham2k-layout': 1});
+
+  @override
+  Future<LayoutWrite> apply(String view, Object? document, {required String mode, String? id, String? name, String? description, required String owner}) async {
+    owners.add(owner);
+    if (failure case final failure?) throw failure;
+    return applied;
+  }
+
+  @override
+  Future<({String? reason, String? name})> remove(String view, String id, {required String owner}) async {
+    owners.add(owner);
+    return (reason: null, name: 'Sprint');
+  }
 }
 
 ExtensionInfo _info(String key, {bool settings = false, bool layouts = false, int? api, List<String> hooks = const []}) => ExtensionInfo(
@@ -115,7 +137,7 @@ void main() {
       _info('plain'),
       _info('settingsOnly', settings: true),
       _info('layoutsOnly', layouts: true),
-      _info('older', settings: true, api: 21),
+      _info('older', settings: true, api: 22),
     ];
     String nameOf(String? key) => 'Coach $key';
 
@@ -214,6 +236,57 @@ void main() {
       });
       expect(await calls.handle('focusPanel', {'extensionKey': 'granted', 'panel': 'spots'}, available, nameOf: nameOf), {'accepted': true});
       expect(said('granted'), isNull);
+    });
+
+    test('a layout added, changed or removed is named; a refusal is not', () async {
+      Future<dynamic> call(String method, Map<String, dynamic> params) =>
+          calls.handle(method, {'extensionKey': 'granted', 'view': 'operation', ...params}, available, nameOf: nameOf);
+
+      expect(await call('applyLayout', {'document': {}}), {'accepted': true, 'id': '3'});
+      expect(said('granted'), 'Coach granted added the Sprint layout');
+      expect(await call('applyLayout', {'document': {}, 'as': 'replace', 'id': '3'}), {'accepted': true, 'id': '3'});
+      expect(said('granted'), 'Coach granted changed the Sprint layout');
+      expect(await call('removeLayout', {'id': '3'}), {'accepted': true});
+      expect(said('granted'), 'Coach granted removed the Sprint layout');
+
+      statusBar.clear('extension:granted:changed');
+      layouts.applied = (reason: 'notOwn', message: null, id: null, name: null, skipped: const <String>[]);
+      expect(await call('applyLayout', {'document': {}, 'as': 'replace', 'id': '1'}), {'accepted': false, 'reason': 'notOwn'});
+      expect(said('granted'), isNull);
+      expect(await call('getLayout', {}), {
+        'accepted': true,
+        'document': {'ham2k-layout': 1},
+      });
+    });
+
+    test('a change that fails on the way is named with the extension, and still fails for it', () async {
+      // Refused, nothing happened; failed, part of it may have — a layout's
+      // panes written, or a setting stored but not announced — with nothing
+      // on screen saying where it came from.
+      layouts.failure = StateError('disk full');
+      await expectLater(
+        calls.handle('applyLayout', {'extensionKey': 'granted', 'view': 'operation', 'document': <String, dynamic>{}}, available, nameOf: nameOf),
+        throwsA(isA<StateError>()),
+      );
+      final notice = statusBar.activeNotices.singleWhere((notice) => notice.key == 'extension:granted:failed');
+      expect(notice.title, 'Coach granted could not change the layouts');
+      expect(notice.text, contains('disk full'));
+      expect(said('granted'), isNull, reason: 'nothing was changed to name');
+
+      calls.settings = (key, value, callerKey) async => throw StateError('keychain locked');
+      await expectLater(
+        calls.handle('updateSetting', {'extensionKey': 'granted', 'key': 'theme', 'value': 'dark'}, available, nameOf: nameOf),
+        throwsA(isA<StateError>()),
+      );
+      expect(statusBar.activeNotices.singleWhere((notice) => notice.key == 'extension:granted:failed').title, 'Coach granted could not change a setting');
+    });
+
+    test('a sub-extension owns layouts as its bundle', () async {
+      // A layout made under `granted-coach` is the bundle's: another of its
+      // sub-extensions may change it, and nothing outside the bundle may.
+      await calls.handle('listLayouts', {'extensionKey': 'granted-coach'}, available, nameOf: nameOf);
+      await calls.handle('applyLayout', {'extensionKey': 'granted-coach', 'view': 'operation', 'document': {}}, available, nameOf: nameOf);
+      expect(layouts.owners, ['granted', 'granted']);
     });
 
     test('a call missing what it names is invalid, not a crash', () async {

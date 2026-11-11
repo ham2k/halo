@@ -216,7 +216,7 @@ class _Translations$extensionsPanel$qrp extends Translations$extensionsPanel$en 
 	@override String get canCommandCluster => 'the dx cluster, logged in as you, to send it any command in your name';
 	@override String get canSetUserAgent => 'identify itself to servers under its own name';
 	@override String get canChangeSettings => 'your settings, to change any of them, through its commands or on its own; through its commands, developer mode and experiments too';
-	@override String get canControlLayouts => 'your layouts, to switch between them and bring a panel to the front';
+	@override String get canControlLayouts => 'your layouts, to switch between them, bring a panel to the front, and add layouts of its own';
 	@override String get canChangeDraft => 'the contact you are logging, to change any of its fields, the call included, as you type';
 	@override String get noCapabilities => 'it asks for nothing outside the app.';
 	@override String get sandboxNote => 'extensions run sandboxed: no access to your files, and no network beyond what is listed here.';
@@ -1192,6 +1192,11 @@ class _Translations$extensionService$qrp extends Translations$extensionService$e
 	@override String commandDeveloperOnly({required Object name}) => '${name} can’t run that: it’s one of the app’s own developer commands';
 	@override String changedSetting({required Object name, required Object setting, required Object value}) => '${name} set ${setting} to ${value}';
 	@override String switchedLayout({required Object name, required Object layout}) => '${name} switched to the ${layout} layout';
+	@override String addedLayout({required Object name, required Object layout}) => '${name} added the ${layout} layout';
+	@override String changedLayout({required Object name, required Object layout}) => '${name} changed the ${layout} layout';
+	@override String removedLayout({required Object name, required Object layout}) => '${name} removed the ${layout} layout';
+	@override String settingChangeFailed({required Object name}) => '${name} could not change a setting';
+	@override String layoutChangeFailed({required Object name}) => '${name} could not change the layouts';
 	@override String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
 	@override String get reportUnavailable => 'reports can\'t be sent right now';
 	@override String get stashUnavailable => 'ham2k’s file stash can’t be reached right now';
@@ -5131,7 +5136,7 @@ extension on TranslationsQrp {
 			'extensionsPanel.canCommandCluster' => 'the dx cluster, logged in as you, to send it any command in your name',
 			'extensionsPanel.canSetUserAgent' => 'identify itself to servers under its own name',
 			'extensionsPanel.canChangeSettings' => 'your settings, to change any of them, through its commands or on its own; through its commands, developer mode and experiments too',
-			'extensionsPanel.canControlLayouts' => 'your layouts, to switch between them and bring a panel to the front',
+			'extensionsPanel.canControlLayouts' => 'your layouts, to switch between them, bring a panel to the front, and add layouts of its own',
 			'extensionsPanel.canChangeDraft' => 'the contact you are logging, to change any of its fields, the call included, as you type',
 			'extensionsPanel.noCapabilities' => 'it asks for nothing outside the app.',
 			'extensionsPanel.sandboxNote' => 'extensions run sandboxed: no access to your files, and no network beyond what is listed here.',
@@ -7898,6 +7903,11 @@ extension on TranslationsQrp {
 			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} can’t run that: it’s one of the app’s own developer commands',
 			'extensionService.changedSetting' => ({required Object name, required Object setting, required Object value}) => '${name} set ${setting} to ${value}',
 			'extensionService.switchedLayout' => ({required Object name, required Object layout}) => '${name} switched to the ${layout} layout',
+			'extensionService.addedLayout' => ({required Object name, required Object layout}) => '${name} added the ${layout} layout',
+			'extensionService.changedLayout' => ({required Object name, required Object layout}) => '${name} changed the ${layout} layout',
+			'extensionService.removedLayout' => ({required Object name, required Object layout}) => '${name} removed the ${layout} layout',
+			'extensionService.settingChangeFailed' => ({required Object name}) => '${name} could not change a setting',
+			'extensionService.layoutChangeFailed' => ({required Object name}) => '${name} could not change the layouts',
 			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => 'reports can\'t be sent right now',
 			'extensionService.stashUnavailable' => 'ham2k’s file stash can’t be reached right now',

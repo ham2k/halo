@@ -365,7 +365,7 @@ class ExtensionInfo with ExtensionSearchable {
   /// Whether this extension may change the app's own settings (the
   /// manifest's `requiresSettingsWrite`): from its `command` hooks, the
   /// `updateSetting`, `updateSettings` and `toggleExperiment` actions; and on
-  /// its own, unasked, `host.updateSetting`, from extension API 22. Off by
+  /// its own, unasked, `host.updateSetting`, from extension API 23. Off by
   /// default; a command or a call from an extension without it is refused.
   final bool requiresSettingsWrite;
 

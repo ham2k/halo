@@ -75,9 +75,10 @@ import yazl from "yazl"
 /// band scope's `window`, shown over a blank picture while no sweep comes,
 /// and its `centerHz`, its annotations' `baseline`, `stretch`, `more` and
 /// `badge` among others (docs/extensions/packaging.md lists them), and
-/// `host.updateDraft` with its `requiresDraftWrite` grant, `host.updateSetting`,
-/// and `host.layouts` with its `requiresLayoutControl` grant; 23 adds a scene's
-/// `rotatorMap` control and `host.setEquipmentConnection`.
+/// `host.updateDraft` with its `requiresDraftWrite` grant; 23 adds a scene's
+/// `rotatorMap` control, antenna switches and rotators (`host.listEquipment`
+/// and the rest, with `host.setEquipmentConnection`), `host.updateSetting`,
+/// and `host.layouts` with its `requiresLayoutControl` grant.
 export const H2KEXT_API_VERSION = 23
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
@@ -102,7 +103,7 @@ export const DRAFT_WRITE_API_VERSION = 22
 
 /// The first API with `host.layouts`, refused under an older one for the same
 /// reason.
-export const LAYOUT_CONTROL_API_VERSION = 22
+export const LAYOUT_CONTROL_API_VERSION = 23
 
 /// The first API with the DX cluster calls. A manifest declaring a
 /// `requiresCluster*` grant or a `cluster` hook under an older one is

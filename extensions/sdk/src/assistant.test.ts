@@ -68,3 +68,65 @@ test("an assistant lists what it watches for and answers through the FYI line", 
     "a rate back up takes the line down",
   )
 })
+
+test("the coach's own settings change the app once per operation, and leave the operator's switch alone", async () => {
+  // Switching back on every call would undo the operator switching away a
+  // minute later; making a layout on every call would fill their list.
+  const calls: string[] = []
+  let active = "1"
+  let open = false
+  const layouts = [{ id: "1", name: "Default" }] as { id: string; name: string; mine?: true }[]
+  const ext = await loadExtension(
+    async () => {
+      defineExtension({
+        key: "k2hrc-coach",
+        name: "Rate Coach",
+        version: "1.1.0",
+        onActivation({ registerHook }) {
+          registerHook("assistant", { hook: RateCoach })
+        },
+      })
+      return {}
+    },
+    {
+      hostCalls: {
+        fyiPost: () => {},
+        fyiClear: () => {},
+        updateSetting: (params) => {
+          calls.push(`set ${params.key}=${params.value}`)
+          return { accepted: true }
+        },
+        listLayouts: () => [{ view: "operation", active, layouts, open, editing: false }],
+        applyLayout: (params) => {
+          calls.push(`apply ${(params.document as { name: string }).name}`)
+          layouts.push({ id: "2", name: "Rate Coach", mine: true })
+          return { accepted: true, id: "2" }
+        },
+        switchLayout: (params) => {
+          calls.push(`switch ${params.id}`)
+          active = String(params.id)
+          return { accepted: true }
+        },
+      },
+      ctx: { getQsos: async () => [] },
+    },
+  )
+  const observe = (reasons: string[]) =>
+    ext.runHook("assistant", "observe", {
+      assistantKey: "rate",
+      operation: { uuid: "op-2" },
+      qsoCount: 0,
+      config: { windowMinutes: 10, atLeast: 5, keepAwake: true, ownLayout: true },
+      reasons,
+      clock: { nowMillis: now, realNowMillis: now },
+    })
+
+  await observe(["open"])
+  assert.deepEqual(calls, ["set keepDeviceAwake=true"], "the view is not open yet: no layout until it is")
+  open = true
+  await observe(["tick:60"])
+  assert.deepEqual(calls, ["set keepDeviceAwake=true", "set keepDeviceAwake=true", "apply Rate Coach", "switch 2"])
+  active = "1"
+  await observe(["tick:60"])
+  assert.equal(calls.length, 4, "the operator switched back, and stays switched")
+})

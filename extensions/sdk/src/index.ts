@@ -46,6 +46,8 @@ import type {
   UpdateSettingResult,
   ViewLayoutList,
   LayoutControlResult,
+  LayoutDocument,
+  LayoutApplyResult,
   ClusterPostSpotRequest,
   ClusterReply,
   SuggestedQso,
@@ -386,19 +388,19 @@ export const host = {
   async stopRadioTransmit(args: PanelRadioTarget): Promise<PanelRadioResult> {
     return (await hostCallFn()("stopRadioTransmit", { ...args })) as PanelRadioResult
   },
-  /** The station's antenna switches and rotators. `requiresRadioRead`; extension API 22. */
+  /** The station's antenna switches and rotators. `requiresRadioRead`; extension API 23. */
   async listEquipment(): Promise<StationEquipment[]> {
     return (await hostCallFn()("listEquipment", {})) as StationEquipment[]
   },
-  /** Routes a switch's `port` to its `antenna`, by the switch's own keys. `requiresRadioWrite`; extension API 22. */
+  /** Routes a switch's `port` to its `antenna`, by the switch's own keys. `requiresRadioWrite`; extension API 23. */
   async setAntenna(args: { id: string; port: string; antenna: string }): Promise<StationEquipmentResult> {
     return (await hostCallFn()("setAntenna", { ...args })) as StationEquipmentResult
   },
-  /** Turns a rotator, in true degrees; the device's limits may turn it elsewhere, which `state.target` says. `requiresRadioWrite`; extension API 22. */
+  /** Turns a rotator, in true degrees; the device's limits may turn it elsewhere, which `state.target` says. `requiresRadioWrite`; extension API 23. */
   async setRotator(args: { id: string; azimuth: number; elevation?: number }): Promise<StationEquipmentResult> {
     return (await hostCallFn()("setRotator", { ...args })) as StationEquipmentResult
   },
-  /** Stops a rotator where it is. Never paced. `requiresRadioWrite`; extension API 22. */
+  /** Stops a rotator where it is. Never paced. `requiresRadioWrite`; extension API 23. */
   async stopRotator(args: { id: string }): Promise<StationEquipmentResult> {
     return (await hostCallFn()("stopRotator", { ...args })) as StationEquipmentResult
   },
@@ -538,7 +540,7 @@ export const host = {
   /// Sets the setting `key` names — the key `searchSettings` answers with —
   /// to `value`, on the extension's own initiative: `true`/`false` for a
   /// switch, an option's value for a choice, a number, or text. The operator
-  /// is told on the status bar. Needs `requiresSettingsWrite`. Extension API 22.
+  /// is told on the status bar. Needs `requiresSettingsWrite`. Extension API 23.
   async updateSetting(args: { key: string; value: JSONValue }): Promise<UpdateSettingResult> {
     return (await hostCallFn()("updateSetting", { ...args })) as UpdateSettingResult
   },
@@ -718,8 +720,8 @@ export const host = {
   },
 
   /// The layouts the app's views draw: which one each draws, switching it,
-  /// and bringing a panel to the front. Needs `requiresLayoutControl`.
-  /// Extension API 22.
+  /// bringing a panel to the front, and the extension's own layouts. Needs
+  /// `requiresLayoutControl`. Extension API 23.
   layouts: {
     /// Every view the operator arranges, with its layouts.
     async list(): Promise<ViewLayoutList[]> {
@@ -734,6 +736,30 @@ export const host = {
     /// unless given) whose arrangement holds it.
     async focus(args: { panel: string; view?: ViewLayoutList["view"] }): Promise<LayoutControlResult> {
       return (await hostCallFn()("focusPanel", { ...args })) as LayoutControlResult
+    },
+    /// `view`'s layout `id` — the one it draws when left out — as a layout
+    /// document, secrets left out. Needs a view of that kind open.
+    async get(args: { view: ViewLayoutList["view"]; id?: string }): Promise<LayoutControlResult & { document?: LayoutDocument }> {
+      return (await hostCallFn()("getLayout", { ...args })) as LayoutControlResult & { document?: LayoutDocument }
+    },
+    /// Writes `document` as a new layout of yours (`as: "new"`, the default:
+    /// listed, not drawn; `switch` draws it), or in place of (`"replace"`) or
+    /// added to (`"add"`) your layout `id`. Only the layouts you made are
+    /// yours, until the operator saves an edit to one or renames it. Needs a
+    /// view of that kind open. The operator is told on the status bar.
+    async apply(args: {
+      view: ViewLayoutList["view"]
+      document: LayoutDocument
+      as?: "new" | "replace" | "add"
+      id?: string
+      name?: string
+      description?: string
+    }): Promise<LayoutApplyResult> {
+      return (await hostCallFn()("applyLayout", { ...args })) as LayoutApplyResult
+    },
+    /// Deletes your layout `id`. The operator is told on the status bar.
+    async remove(args: { view: ViewLayoutList["view"]; id: string }): Promise<LayoutControlResult> {
+      return (await hostCallFn()("removeLayout", { ...args })) as LayoutControlResult
     },
   },
 

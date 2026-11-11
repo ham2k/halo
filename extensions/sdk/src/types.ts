@@ -2919,7 +2919,7 @@ export interface ExtensionManifest {
   /// Declares this extension may change the app's own settings: from its
   /// `command` hooks, the `updateSetting`, `updateSettings` and
   /// `toggleExperiment` actions, which set any catalogued setting, developer
-  /// mode and the experiments; and on its own, `host.updateSetting` (API 22).
+  /// mode and the experiments; and on its own, `host.updateSetting` (API 23).
   /// Off by default; the host refuses either from an extension that does not
   /// set this. Shown to the operator at install.
   requiresSettingsWrite?: boolean
@@ -2927,9 +2927,9 @@ export interface ExtensionManifest {
   /// with `host.updateDraft`: any field, the call included, while the
   /// operator types. Shown to the operator at install. Extension API 22.
   requiresDraftWrite?: boolean
-  /// Declares this extension may switch the layouts the app's views draw
-  /// and bring a panel to the front, with `host.layouts`. Shown to the
-  /// operator at install. Extension API 22.
+  /// Declares this extension may switch the layouts the app's views draw,
+  /// bring a panel to the front, and read layouts and write its own, with
+  /// `host.layouts`. Shown to the operator at install. Extension API 23.
   requiresLayoutControl?: boolean
   /// Experiment keys (app/experiments.yaml) gating this extension: unless
   /// EVERY listed experiment is enabled, the extension is hidden from the
@@ -3987,7 +3987,7 @@ export interface PanelRadioRawResult extends PanelRadioResult {
   reply?: { text: string; bytes: number[] }
 }
 /// An antenna switch or a rotator the operator has set up, as
-/// `host.listEquipment` answers. Extension API 22; needs `requiresRadioRead`.
+/// `host.listEquipment` answers. Extension API 23; needs `requiresRadioRead`.
 export interface StationEquipment {
   /** The device's id, what `setAntenna`, `setRotator` and `stopRotator` name. */
   id: string
@@ -4029,7 +4029,7 @@ export interface StationEquipmentResult {
   state: StationEquipment | null
 }
 
-/// What `host.updateSetting` answers. Extension API 22.
+/// What `host.updateSetting` answers. Extension API 23.
 export interface UpdateSettingResult {
   /** Written; the operator is told on the status bar which extension set what. */
   accepted: boolean
@@ -4046,13 +4046,13 @@ export interface UpdateSettingResult {
   message?: string
 }
 
-/// A view the operator arranges, as `host.layouts.list` answers it. Extension API 22.
+/// A view the operator arranges, as `host.layouts.list` answers it. Extension API 23.
 export interface ViewLayoutList {
   view: "operation" | "logs" | "chase" | "home"
   /** The id of the layout the view draws. */
   active: string
-  /** Every layout the view keeps, in the operator's order, by the names the operator sees. */
-  layouts: { id: string; name: string; description?: string }[]
+  /** Every layout the view keeps, in the operator's order, by the names the operator sees; `mine` on those the caller made and may change. */
+  layouts: { id: string; name: string; description?: string; mine?: true }[]
   /** Whether a view of this kind is open now. */
   open: boolean
   /** Whether the operator is editing its layout; every change is refused meanwhile. */
@@ -4061,17 +4061,62 @@ export interface ViewLayoutList {
   panels?: string[]
 }
 
-/// What `host.layouts.switch` and `focus` answer. Extension API 22.
+/// What `host.layouts.switch`, `focus`, `get`, `apply` and `remove` answer. Extension API 23.
 export interface LayoutControlResult {
   accepted: boolean
   /**
-   * `invalid`: no such view, or no such layout in it.
+   * `invalid`: no such view, or no such layout in it; or, from `apply`, a document that is not a
+   * layout, with `message` saying why.
    * `unavailable`: this device does not offer named layouts, so the operator could not switch back;
-   * or no view of that kind is open and its list of layouts has lost their names.
+   * or, from `switch`, no view of that kind is open and its list of layouts has lost their names.
    * `editing`: the operator is editing that view's layout.
    * `missing`: no open view of that kind holds the panel.
+   * `closed`: `get`, `apply` and `remove` need a view of that kind open.
+   * `notOwn`: the layout is the operator's, or another extension's.
+   * `empty`: the document places nothing this view can hold; `skipped` names what it left out.
    */
-  reason?: "invalid" | "unavailable" | "editing" | "missing"
+  reason?: "invalid" | "unavailable" | "editing" | "missing" | "closed" | "notOwn" | "empty"
+  message?: string
+}
+
+/// A layout as a document: what a layout file holds, as an object — the
+/// `ham2k-layout` version, `view`, `name`, `description`, the `extensions`
+/// whose panels it places, and an arrangement under `wide`, `narrow` or both
+/// (docs/extensions/host.md § host.layouts). Extension API 23.
+export interface LayoutDocument {
+  "ham2k-layout": number
+  view?: string
+  name?: string
+  description?: string
+  extensions?: { key: string; name?: string }[]
+  wide?: LayoutArrangement
+  narrow?: LayoutArrangement
+}
+
+/// One class of a layout: the view's own `options` and its tree.
+export interface LayoutArrangement {
+  options?: Record<string, JSONValue>
+  root: LayoutNode
+}
+
+/// A split into `children` with their relative `weights`, or a set of `tabs`.
+export type LayoutNode = { split: "horizontal" | "vertical"; weights?: number[]; children: LayoutNode[] } | { tabs: LayoutTab[] }
+
+/// A tab: a `panel` by its id (`instance: true` for one of several), with its
+/// pane `options` and its panel's `settings`; or a `container` of its own.
+export interface LayoutTab {
+  panel?: string
+  instance?: boolean
+  container?: LayoutNode
+  options?: Record<string, JSONValue>
+  settings?: Record<string, JSONValue>
+}
+
+/// What `host.layouts.apply` answers: the layout written, by `id`, and the
+/// panels the view cannot hold, left out. Extension API 23.
+export interface LayoutApplyResult extends LayoutControlResult {
+  id?: string
+  skipped?: string[]
 }
 
 export interface PanelRadioResult {

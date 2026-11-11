@@ -113,7 +113,7 @@ costs a bridge call each time it fires.
 | `lookup` | when the panel is shown a callsign that **has** a lookup answer, including opening a QSO whose record already carries one; never when a lookup starts, fails or times out |
 | `qso` | as the draft contact changes, debounced to one wake per pause in typing |
 | `radio` | when any radio's dial moves: frequency, mode, passband, transmit state, PTT or connection, or a logging set's `opStyle` (API 19); never for a meter. Extension API 13; needs `requiresRadioRead` |
-| `equipment` | in an operation, when an antenna switch routes a port to another antenna or its antennas or a port's `auto` or `band` change, a switch or rotator connects or drops, or a rotator is told to turn, arrives or stops; never for each heading a turning rotator reports ([Radio control](radio.md#antenna-switches-and-rotators)). Extension API 22; needs `requiresRadioRead` |
+| `equipment` | in an operation, when an antenna switch routes a port to another antenna or its antennas or a port's `auto` or `band` change, a switch or rotator connects or drops, or a rotator is told to turn, arrives or stops; never for each heading a turning rotator reports ([Radio control](radio.md#antenna-switches-and-rotators)). Extension API 23; needs `requiresRadioRead` |
 | `tick:<seconds>` | on wall-clock boundaries, one second at the fastest; a smaller value is not a trigger and is dropped |
 
 - The app keeps **at least 750 ms of idle** between one render finishing

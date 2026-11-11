@@ -169,7 +169,7 @@ re-enters the runtime while your hook awaits it, which is safe; so does
 
 ### `host.updateSetting({ key, value })`
 
-Extension API 22, `requiresSettingsWrite`. Changes a setting on your own
+Extension API 23, `requiresSettingsWrite`. Changes a setting on your own
 initiative, with nothing typed: an assistant turning on the RST fields as a
 contest starts. `key` is the one `searchSettings` answers with, and only a
 setting Settings shows right now has one. `value` is what the setting
@@ -184,7 +184,8 @@ an account, a secret), one that restarts the extensions when it changes, or
 another extension's assistant or its settings, which only the operator
 turns on;
 `rejected` when the setting refused the value or could not store it, with a
-`message` saying so.
+`message` saying so. A change that fails on the way instead rejects the
+call, and the operator is shown a notice naming your extension.
 Like `searchSettings`, it re-enters the runtime while you await it.
 
 ### `host.secret(name)`
@@ -287,14 +288,17 @@ place of the draft.
 
 ### `host.layouts`
 
-Extension API 22, `requiresLayoutControl`. The layouts the operator's views
+Extension API 23, `requiresLayoutControl`. The layouts the operator's views
 draw: Operation, Logs, Chase and Home each keep a list, and draw one of them.
 
 | Call | Does |
 | --- | --- |
-| `list()` | Every view: its `view` name, the `active` layout's id, its `layouts` (`id`, `name` as the operator sees it, `description`), whether one is `open` now and whether the operator is `editing` its layout; while one is open, the `panels` its arrangement holds |
+| `list()` | Every view: its `view` name, the `active` layout's id, its `layouts` (`id`, `name` as the operator sees it, `description`, and `mine` on those you made), whether one is `open` now and whether the operator is `editing` its layout; while one is open, the `panels` its arrangement holds |
 | `switch({ view, id })` | Draws `id` in every open view of that kind, and in the next one opened. The operator is told on the status bar |
 | `focus({ panel, view? })` | Brings `panel`'s tab to the front wherever an open `view` (`operation` unless given) holds it, as a tapped spot brings up the log. Nothing is said: what comes to the front is the change |
+| `get({ view, id? })` | Layout `id`, the one drawn when left out, as a layout document in `document`. Secrets are left out of its panels' settings |
+| `apply({ view, document, as?, id?, name?, description? })` | Writes `document` as a new layout of yours (`as: "new"`, the default), or in place of (`"replace"`) or added to (`"add"`) your layout `id`. Answers the new layout's `id`, and the panels the view cannot hold as `skipped`. The operator is told on the status bar |
+| `remove({ view, id })` | Deletes your layout `id`, and whatever its panes held. The operator is told on the status bar |
 
 `switch` and `focus` answer `{ accepted }`, and a refusal carries a
 `reason`: `invalid` for a view or layout id there is no such thing as;
@@ -305,6 +309,40 @@ that does not offer named layouts, where the operator would have no way to
 switch back, or while no view of that kind is open and its list of layouts
 has lost their names, which the operator is told when they next open one.
 Switching to the layout already drawn is accepted and says nothing.
+
+**A layout document** is a layout file as an object: the
+`"ham2k-layout": 1` version, the `view` it came from, its `name`,
+`description` and the `extensions` whose panels it places, and an
+arrangement under `wide`, `narrow` or both. An arrangement is the view's
+`options` and a `root`: a `split` (`horizontal` or `vertical`) with its
+`children` and their `weights`, or a set of `tabs`. A tab names a `panel` by
+its id, with `instance: true` for one placed once of several, its pane
+`options` and its panel's `settings`; or holds a `container` of its own.
+`get` answers one, and a file the operator exported reads the same way.
+
+**You change only the layouts you made.** `apply` with `as: "new"` makes
+one: it joins the view's list and is not drawn until you `switch` to it.
+`replace` and `add` write into it at once, and a view drawing it redraws;
+`replace` puts each class the document has in its own place, and a document
+of one class into the class on screen. `add` puts the document's panes in a
+new column at the right. None of it reaches an edit the operator has open.
+A layout stops being yours once the operator saves an edit to it or renames
+it, and a copy they make of it is theirs: their work is never overwritten.
+Each panel instance you place gets an id of its own with its settings; a
+panel placed once keeps the settings it shares with every layout showing
+it. A pinned pane, the log on a phone, is put back when the document leaves
+it out.
+
+`get`, `apply` and `remove` need a view of that kind open, and refuse
+`closed` otherwise. They also refuse `editing` and `invalid` as above, and
+`apply` and `remove` refuse `unavailable` on a device that does not offer
+named layouts. `apply` answers `invalid` with a `message` for a document
+that is not a layout, and `empty` when it places nothing the view can hold.
+`notOwn` is a layout that is the operator's, or another extension's. The last
+layout a view has is never removed: `remove` refuses it `invalid`. A
+`switch`, `apply` or `remove` that fails on the way, rather than being
+refused, rejects the call, and the operator is shown a notice naming your
+extension.
 
 ## Reading the app
 
@@ -351,8 +389,8 @@ documents them.
 | `host.setRadioSpectrum({ id, selection?, mode?, spanHz?, refLevelDb?, speed? })` | `requiresRadioWrite` | 6 |
 | `host.sendRadioCw`, `host.playRadioVoice`, `host.setRadioPtt`, `host.stopRadioTransmit` | `requiresRadioWrite` | 7 |
 | `host.sendRadioRaw({ id, selection?, text \| bytes, replyMs?, until? })` | `requiresRadioRaw` | 11 |
-| `host.listEquipment()`: the antenna switches and rotators | `requiresRadioRead` | 22 |
-| `host.setAntenna({ id, port, antenna })`, `host.setRotator({ id, azimuth, elevation? })`, `host.stopRotator({ id })` | `requiresRadioWrite` | 22 |
+| `host.listEquipment()`: the antenna switches and rotators | `requiresRadioRead` | 23 |
+| `host.setAntenna({ id, port, antenna })`, `host.setRotator({ id, azimuth, elevation? })`, `host.stopRotator({ id })` | `requiresRadioWrite` | 23 |
 | `host.setEquipmentConnection({ id, connected })` | `requiresRadioWrite` | 23 |
 
 ## The DX cluster

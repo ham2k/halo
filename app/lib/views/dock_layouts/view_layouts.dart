@@ -20,9 +20,18 @@ class ViewLayout {
   /// `NamedLayouts.layoutDescription`.
   final String? description;
 
-  const ViewLayout({required this.id, this.name, this.description});
+  /// The extension that made it, by bundle key, while it is that
+  /// extension's to change or delete (docs/extensions/host.md §
+  /// host.layouts). Null for the operator's own, which is what one becomes
+  /// once they save an edit to it or rename it.
+  final String? madeBy;
 
-  Map<String, dynamic> toJson() => {'id': id, 'name': ?name, 'description': ?description};
+  const ViewLayout({required this.id, this.name, this.description, this.madeBy});
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': ?name, 'description': ?description, 'madeBy': ?madeBy};
+
+  /// This layout as the operator's own.
+  ViewLayout get takenOver => ViewLayout(id: id, name: name, description: description);
 
   static ViewLayout? fromJson(Object? json) {
     if (json is! Map) return null;
@@ -30,10 +39,12 @@ class ViewLayout {
     if (id is! String || id.isEmpty) return null;
     final name = json['name'];
     final description = json['description'];
+    final madeBy = json['madeBy'];
     return ViewLayout(
       id: id,
       name: name is String && name.isNotEmpty ? name : null,
       description: description is String && description.isNotEmpty ? description : null,
+      madeBy: madeBy is String && madeBy.isNotEmpty ? madeBy : null,
     );
   }
 }
@@ -133,6 +144,7 @@ class ViewLayouts {
 
   ViewLayouts copyWith({String? active, List<ViewLayout>? layouts}) => ViewLayouts(active: active ?? this.active, layouts: layouts ?? this.layouts);
 
+  /// [id] renamed and described by the operator, which makes it theirs.
   ViewLayouts edited(String id, {required String name, String? description}) => copyWith(
     layouts: [for (final layout in layouts) layout.id == id ? ViewLayout(id: id, name: name, description: description) : layout],
   );

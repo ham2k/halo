@@ -21,11 +21,11 @@ class YamlTooLargeException implements Exception {
 
 /// How many values a document may hold once its aliases are expanded — far
 /// past any file the app writes, far short of what stalls the app.
-const _maxNodes = 100000;
+const maxLayoutValues = 100000;
 
 /// How deep a document's brackets may nest — far past any file the app
 /// writes.
-const _maxDepth = 200;
+const maxLayoutDepth = 200;
 
 /// [text] as plain maps, lists and scalars. Throws [YamlException] for text
 /// that is not YAML, and [YamlTooLargeException] for a document over the
@@ -36,19 +36,19 @@ const _maxDepth = 200;
 /// to catch around everything it does with the document, which recurses as
 /// deep.
 Object? loadPlainYaml(String text) {
-  if (_nestsTooDeep(text)) throw const YamlTooLargeException('nested more than $_maxDepth deep');
+  if (_nestsTooDeep(text)) throw const YamlTooLargeException('nested more than $maxLayoutDepth deep');
   return _plainJson(loadYaml(text), _NodeBudget());
 }
 
 class _NodeBudget {
-  var _left = _maxNodes;
+  var _left = maxLayoutValues;
 
   void spend() {
-    if (--_left < 0) throw const YamlTooLargeException('more than $_maxNodes values');
+    if (--_left < 0) throw const YamlTooLargeException('more than $maxLayoutValues values');
   }
 }
 
-/// Whether [text]'s `[` and `{` nest deeper than [_maxDepth], checked before
+/// Whether [text]'s `[` and `{` nest deeper than [maxLayoutDepth], checked before
 /// the parser sees it: its time grows with the square of the depth, and a
 /// line of a hundred thousand brackets holds the app for seconds. Counted
 /// with no regard for quoting, so an upper bound — the writer nests by
@@ -57,7 +57,7 @@ bool _nestsTooDeep(String text) {
   var depth = 0;
   for (final unit in text.codeUnits) {
     if (unit == 0x5B || unit == 0x7B) {
-      if (++depth > _maxDepth) return true;
+      if (++depth > maxLayoutDepth) return true;
     } else if ((unit == 0x5D || unit == 0x7D) && depth > 0) {
       depth--;
     }

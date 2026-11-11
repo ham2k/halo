@@ -66,7 +66,7 @@ void main() {
   testWidgets('the list says which views are open, what they draw and what they hold', (tester) async {
     final services = await servicesWith();
     await pumpOperation(tester, services);
-    final views = {for (final view in DockLayoutControl(services).list()) view['view']: view};
+    final views = {for (final view in DockLayoutControl(services).list(null)) view['view']: view};
 
     expect(views['operation'], {
       'view': 'operation',
@@ -135,7 +135,7 @@ void main() {
     expect(control.focus('operation', 'info'), 'editing');
     expect(host.viewLayouts.active, ViewLayouts.defaultId);
     expect(inFront(host), isNot(contains('info')));
-    expect(control.list().firstWhere((view) => view['view'] == 'operation')['editing'], isTrue);
+    expect(control.list(null).firstWhere((view) => view['view'] == 'operation')['editing'], isTrue);
     host.revertLayout();
     await unmount(tester);
   });
@@ -152,7 +152,7 @@ void main() {
     final control = DockLayoutControl(services);
 
     expect(control.switchTo('operation', '2'), (reason: null, name: 'Contest'));
-    expect(control.list().firstWhere((view) => view['view'] == 'operation')['panels'], isNotEmpty);
+    expect(control.list(null).firstWhere((view) => view['view'] == 'operation')['panels'], isNotEmpty);
     final contestPanels = host.dockSpec!.collectModules();
     expect(control.focus('operation', contestPanels.last), isNull);
     await tester.pumpAndSettle();

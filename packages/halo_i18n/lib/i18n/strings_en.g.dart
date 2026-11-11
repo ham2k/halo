@@ -397,8 +397,8 @@ class Translations$extensionsPanel$en {
 	/// en: 'Your settings, to change any of them, through its commands or on its own; through its commands, developer mode and experiments too'
 	String get canChangeSettings => 'Your settings, to change any of them, through its commands or on its own; through its commands, developer mode and experiments too';
 
-	/// en: 'Your layouts, to switch between them and bring a panel to the front'
-	String get canControlLayouts => 'Your layouts, to switch between them and bring a panel to the front';
+	/// en: 'Your layouts, to switch between them, bring a panel to the front, and add layouts of its own'
+	String get canControlLayouts => 'Your layouts, to switch between them, bring a panel to the front, and add layouts of its own';
 
 	/// en: 'The contact you are logging, to change any of its fields, the call included, as you type'
 	String get canChangeDraft => 'The contact you are logging, to change any of its fields, the call included, as you type';
@@ -2681,6 +2681,21 @@ class Translations$extensionService$en {
 
 	/// en: '${name} switched to the ${layout} layout'
 	String switchedLayout({required Object name, required Object layout}) => '${name} switched to the ${layout} layout';
+
+	/// en: '${name} added the ${layout} layout'
+	String addedLayout({required Object name, required Object layout}) => '${name} added the ${layout} layout';
+
+	/// en: '${name} changed the ${layout} layout'
+	String changedLayout({required Object name, required Object layout}) => '${name} changed the ${layout} layout';
+
+	/// en: '${name} removed the ${layout} layout'
+	String removedLayout({required Object name, required Object layout}) => '${name} removed the ${layout} layout';
+
+	/// en: '${name} could not change a setting'
+	String settingChangeFailed({required Object name}) => '${name} could not change a setting';
+
+	/// en: '${name} could not change the layouts'
+	String layoutChangeFailed({required Object name}) => '${name} could not change the layouts';
 
 	/// en: '${describe} · ${extension}'
 	String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
@@ -11291,7 +11306,7 @@ extension on Translations {
 			'extensionsPanel.canCommandCluster' => 'The DX cluster, logged in as you, to send it any command in your name',
 			'extensionsPanel.canSetUserAgent' => 'Identify itself to servers under its own name',
 			'extensionsPanel.canChangeSettings' => 'Your settings, to change any of them, through its commands or on its own; through its commands, developer mode and experiments too',
-			'extensionsPanel.canControlLayouts' => 'Your layouts, to switch between them and bring a panel to the front',
+			'extensionsPanel.canControlLayouts' => 'Your layouts, to switch between them, bring a panel to the front, and add layouts of its own',
 			'extensionsPanel.canChangeDraft' => 'The contact you are logging, to change any of its fields, the call included, as you type',
 			'extensionsPanel.noCapabilities' => 'It asks for nothing outside the app.',
 			'extensionsPanel.sandboxNote' => 'Extensions run sandboxed: no access to your files, and no network beyond what is listed here.',
@@ -14058,6 +14073,11 @@ extension on Translations {
 			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} can’t run that: it’s one of the app’s own developer commands',
 			'extensionService.changedSetting' => ({required Object name, required Object setting, required Object value}) => '${name} set ${setting} to ${value}',
 			'extensionService.switchedLayout' => ({required Object name, required Object layout}) => '${name} switched to the ${layout} layout',
+			'extensionService.addedLayout' => ({required Object name, required Object layout}) => '${name} added the ${layout} layout',
+			'extensionService.changedLayout' => ({required Object name, required Object layout}) => '${name} changed the ${layout} layout',
+			'extensionService.removedLayout' => ({required Object name, required Object layout}) => '${name} removed the ${layout} layout',
+			'extensionService.settingChangeFailed' => ({required Object name}) => '${name} could not change a setting',
+			'extensionService.layoutChangeFailed' => ({required Object name}) => '${name} could not change the layouts',
 			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => 'Reports can\'t be sent right now',
 			'extensionService.stashUnavailable' => 'Ham2K’s File Stash can’t be reached right now',

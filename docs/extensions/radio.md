@@ -14,11 +14,11 @@ to the operator at install:
 
 - **`requiresRadioRead`** allows `host.listRadios()` and `host.readRadio()`,
   a scene's `spectrum` control and `radio` values, and a panel's `radio`
-  trigger; from API 22, `host.listEquipment()` and the `equipment` trigger.
+  trigger; from API 23, `host.listEquipment()` and the `equipment` trigger.
 - **`requiresRadioWrite`** allows `host.setRadio()`,
   `host.setRadioConnection()` and `host.setRadioSpectrum()`, and
   transmitting with `host.sendRadioCw()`, `host.playRadioVoice()`,
-  `host.setRadioPtt()` and `host.stopRadioTransmit()`; from API 22,
+  `host.setRadioPtt()` and `host.stopRadioTransmit()`; from API 23,
   `host.setAntenna()`, `host.setRotator()` and `host.stopRotator()`.
   Implies read, since a command answers with the radio's state.
 - **`requiresRadioRaw`** (extension API 11) also allows
@@ -267,7 +267,7 @@ is queued for later.
 
 ## Antenna switches and rotators
 
-Extension API 22. `host.listEquipment()` answers every antenna switch and
+Extension API 23. `host.listEquipment()` answers every antenna switch and
 rotator the operator has set up, connected or not:
 
 ```ts

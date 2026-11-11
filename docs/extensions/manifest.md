@@ -218,15 +218,15 @@ refused at the call where it is missing. Declare the least you need.
 | Field | Allows | Implies | API |
 | --- | --- | --- | --- |
 | `requiresLocation` | `host.getLocation()`, the device's own position | | |
-| `requiresRadioRead` | `host.listRadios()`, `host.readRadio()`, a scene's `spectrum` control and `radio` values, a panel's `radio` trigger; `host.listEquipment()` and the `equipment` trigger (API 22); a scene's `rotatorMap` control (API 23) | | |
-| `requiresRadioWrite` | `host.setRadio()`, `host.setRadioConnection()`, `host.setRadioSpectrum()`, and transmitting: `host.sendRadioCw()`, `host.playRadioVoice()`, `host.setRadioPtt()`, `host.stopRadioTransmit()`; `host.suggestQso()` (API 12); a `command` hook's `setPower` and `swapRadios` actions; `host.setAntenna()`, `host.setRotator()` and `host.stopRotator()` (API 22); `host.setEquipmentConnection()` and a rotator map turning the rotator (API 23) | read | 7 |
+| `requiresRadioRead` | `host.listRadios()`, `host.readRadio()`, a scene's `spectrum` control and `radio` values, a panel's `radio` trigger; `host.listEquipment()` and the `equipment` trigger, and a scene's `rotatorMap` control (API 23) | | |
+| `requiresRadioWrite` | `host.setRadio()`, `host.setRadioConnection()`, `host.setRadioSpectrum()`, and transmitting: `host.sendRadioCw()`, `host.playRadioVoice()`, `host.setRadioPtt()`, `host.stopRadioTransmit()`; `host.suggestQso()` (API 12); a `command` hook's `setPower` and `swapRadios` actions; `host.setAntenna()`, `host.setRotator()`, `host.stopRotator()`, `host.setEquipmentConnection()` and a rotator map turning the rotator (API 23) | read | 7 |
 | `requiresRadioRaw` | `host.sendRadioRaw()`: any command in the radio's own protocol, unchecked; the install screen says so in those words | write | 11 |
 | `requiresClusterRead` | `host.clusterStatus()`, `host.clusterLines()`, `host.clusterSubscribe()` and the `cluster` hook's `onLines` | | 10 |
 | `requiresClusterSpot` | `host.clusterPostSpot()`: spots in the operator's name | cluster read | 10 |
 | `requiresClusterCommand` | `host.clusterSend()`: any command in the operator's name | cluster spot | 10 |
-| `requiresSettingsWrite` | A `command` hook's `updateSetting`, `updateSettings`, `toggleExperiment`, `setEnterSends`, `setOpStyle`, `setKeyerSpeed` and `showKeyer` actions; `host.updateSetting()` (API 22): any setting Settings shows, unasked | | |
+| `requiresSettingsWrite` | A `command` hook's `updateSetting`, `updateSettings`, `toggleExperiment`, `setEnterSends`, `setOpStyle`, `setKeyerSpeed` and `showKeyer` actions; `host.updateSetting()` (API 23): any setting Settings shows, unasked | | |
 | `requiresDraftWrite` | `host.updateDraft()`: any field of the QSO the operator is composing, the call included; `freq`, `band` and `mode` also need `requiresRadioWrite` | | 22 |
-| `requiresLayoutControl` | `host.layouts`: switching the layout a view draws and bringing a panel to the front | | 22 |
+| `requiresLayoutControl` | `host.layouts`: switching the layout a view draws, bringing a panel to the front; reading layouts and writing the extension's own | | 23 |
 
 A capability belongs to the bundle that declared it and to the
 sub-extensions that bundle defines under its own key. A separately installed

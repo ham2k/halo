@@ -8,6 +8,7 @@ import { host } from "@ham2k/extension-sdk"
 import type { HookContext, ObserveArgs, AssistantDescriptor, AssistantHook } from "@ham2k/extension-sdk"
 
 import { rateAdvice } from "./rate.ts"
+import { setUpOperation } from "./setup.ts"
 
 export const RateCoach: AssistantHook = {
   async getAssistants(_args: Record<string, never>, _ctx: HookContext): Promise<AssistantDescriptor[]> {
@@ -23,12 +24,15 @@ export const RateCoach: AssistantHook = {
         form: [
           { type: "field", fieldType: "number", key: "windowMinutes", label: "Window, in minutes", value: 10 },
           { type: "field", fieldType: "number", key: "atLeast", label: "QSOs expected in that window", value: 5 },
+          { type: "field", fieldType: "checkbox", key: "keepAwake", label: "Keep the screen awake while operating", value: false },
+          { type: "field", fieldType: "checkbox", key: "ownLayout", label: "Switch to the coach's layout: the log beside a UTC clock", value: false },
         ],
       },
     ]
   },
 
   async observe({ operation, config, clock }: ObserveArgs, ctx: HookContext): Promise<void> {
+    await setUpOperation(String(operation.uuid), config)
     const qsos = (await ctx.getQsos?.(String(operation.uuid))) ?? []
     const advice = rateAdvice(
       qsos.map((q) => Number(q.startAtMillis)),

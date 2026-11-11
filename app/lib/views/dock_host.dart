@@ -28,7 +28,7 @@ import '../services/cat/equipment.dart';
 import 'operation/panel_scene/cat_rotator_source.dart';
 import 'operation/panel_scene/cat_spectrum_source.dart';
 import '../services/error_reporting_service.dart';
-import '../services/extensions/app_control_host_calls.dart' show LayoutControl;
+import '../services/extensions/app_control_host_calls.dart' show LayoutControl, LayoutWrite;
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../services/status_bar_service.dart';
@@ -546,6 +546,16 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     // one added to the wide would otherwise both be handed `#1`, and the save
     // would store two arrangements pointing at one config.
     yield* _inactive.spec?.collectModules() ?? const <String>[];
+    // So does an edit open in another view, which an extension writing this
+    // one's layouts does not wait for: a panel offered in both would be handed
+    // an id that edit's draft holds, and its settings with it.
+    for (final other in _mountedHosts) {
+      if (other == this || !other.mounted || !other.layoutEditing) continue;
+      for (final klass in other._dockClasses.values) {
+        yield* klass.spec?.collectModules() ?? const <String>[];
+        yield* klass.pendingForgets;
+      }
+    }
   }
 
   /// Writes [_recoveredDefaultSpec] and lets ordinary writes resume — the
@@ -947,6 +957,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
       unawaited(_queuePanelSettings(entry.key, entry.value));
     }
     _pendingSettingWrites.clear();
+    _takeOverLayout(viewLayouts.active);
     setState(() {
       layoutEditing = false;
       for (final klass in _dockClasses.values) {

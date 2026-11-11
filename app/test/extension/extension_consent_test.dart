@@ -206,7 +206,7 @@ void main() {
   // A layout switched under the operator is named on the status bar as it
   // happens; this line is where they agreed to it.
   testWidgets('a claim to control layouts is named', (tester) async {
-    await show(tester, await inspect(withManifest((m) => {...m, 'domains': <String>[], 'api': 22, 'requiresLayoutControl': true})));
+    await show(tester, await inspect(withManifest((m) => {...m, 'domains': <String>[], 'api': 23, 'requiresLayoutControl': true})));
 
     expect(find.text(t.extensionsPanel.noCapabilities), findsNothing);
     expect(find.text(t.extensionsPanel.canControlLayouts), findsOneWidget);

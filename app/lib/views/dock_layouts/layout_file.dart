@@ -384,6 +384,32 @@ class LayoutFile {
     } on YamlException catch (e) {
       throw LayoutFileException(LayoutFileProblem.notYaml, e.message, line: e.span == null ? null : e.span!.start.line + 1);
     }
+    return fromDocument(document);
+  }
+
+  /// [document] already decoded — a file's YAML, or the object an extension
+  /// hands `host.layouts.apply` — read by the same rules, and held to a
+  /// file's caps on nesting and size: the tree is built by recursion, which
+  /// one nested a thousand deep would run out of stack. Throws
+  /// [LayoutFileException] as [parse] does.
+  static LayoutFile fromDocument(Object? document) {
+    // Counted without recursion, and given up on past either cap.
+    final pending = <(Object?, int)>[(document, 1)];
+    var values = 0;
+    while (pending.isNotEmpty) {
+      final (node, level) = pending.removeLast();
+      if (++values > maxLayoutValues) throw const LayoutFileException(LayoutFileProblem.tooLarge, 'too many values');
+      final children = switch (node) {
+        Map<dynamic, dynamic> map => map.values,
+        List<dynamic> list => list,
+        _ => null,
+      };
+      if (children == null) continue;
+      if (level > maxLayoutDepth) throw const LayoutFileException(LayoutFileProblem.tooLarge, 'nested too deeply to read');
+      for (final child in children) {
+        pending.add((child, level + 1));
+      }
+    }
     if (document is! Map) throw const LayoutFileException(LayoutFileProblem.notLayoutFile, 'the document is not a map');
     final version = document[layoutFileMarker];
     if (version is! int) throw const LayoutFileException(LayoutFileProblem.notLayoutFile, 'no "$layoutFileMarker" version');

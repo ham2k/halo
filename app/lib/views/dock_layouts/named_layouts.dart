@@ -375,12 +375,14 @@ extension NamedLayouts<T extends StatefulWidget> on DockHost<T> {
       );
       if (arrangement != null) arrangements[entry.key] = arrangement;
     }
-    if (arrangements.isEmpty) return null;
+    // Deleted while its panels' settings were read.
+    final layout = viewLayouts[layoutId];
+    if (arrangements.isEmpty || layout == null) return null;
     final locale = LocaleSettings.currentLocale.languageCode;
     return LayoutFile(
       view: dockView,
-      name: layoutName(viewLayouts[layoutId]!),
-      description: viewLayouts[layoutId]!.description,
+      name: layoutName(layout),
+      description: layout.description,
       extensions: [for (final key in extensionKeys) LayoutFileExtension(key: key, name: dockServices.extensions.extensionInfo(key)?.nameFor(locale))],
       arrangements: arrangements,
     );
@@ -476,7 +478,9 @@ extension NamedLayouts<T extends StatefulWidget> on DockHost<T> {
   /// Nothing is made when nothing in the file is placed: a new layout of
   /// only the view's defaults is one the operator would have to delete.
   ///
-  /// A new layout is written, then drawn. From the editor the edit ends only
+  /// A new layout is written, then drawn — unless [draw] is false, when it
+  /// only joins the list, [madeBy] the extension it belongs to, and [onMade]
+  /// is told its id. From the editor the edit ends only
   /// once the new layout is written — saved or discarded as [saveDraft]
   /// says — and carries on in it. One that fails partway is taken out again,
   /// with the instance settings it wrote, and the edit is left as it was:
@@ -501,6 +505,9 @@ extension NamedLayouts<T extends StatefulWidget> on DockHost<T> {
     String? description,
     bool replaceSharedSettings = false,
     bool saveDraft = false,
+    String? madeBy,
+    bool draw = true,
+    void Function(String id)? onMade,
   }) async {
     final skipped = <String>[];
     final restored = <String>{};
@@ -562,10 +569,11 @@ extension NamedLayouts<T extends StatefulWidget> on DockHost<T> {
             viewLayouts.copyWith(
               layouts: [
                 ...viewLayouts.layouts,
-                ViewLayout(id: id, name: name, description: description),
+                ViewLayout(id: id, name: name, description: description, madeBy: madeBy),
               ],
             ),
           );
+          onMade?.call(id);
         } catch (e, stack) {
           // [_writeInstanceSettings] takes out its own on failure.
           if (instancesWritten) await _forgetEach(instanceWrites.keys);
@@ -576,7 +584,7 @@ extension NamedLayouts<T extends StatefulWidget> on DockHost<T> {
           });
           Error.throwWithStackTrace(e, stack);
         }
-        if (mounted) await leaveEditFor(() async => switchLayout(id), save: saveDraft);
+        if (mounted && draw) await leaveEditFor(() async => switchLayout(id), save: saveDraft);
         // After the edit ends: a Save writes the settings it queued, and the
         // file's are the operator's later word.
         for (final entry in sharedWrites.entries) {

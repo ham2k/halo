@@ -216,7 +216,7 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 	@override String get canCommandCluster => 'THE DX CLUSTER, LOGGED IN AS YOU, TO SEND IT ANY COMMAND IN YOUR NAME';
 	@override String get canSetUserAgent => 'IDENTIFY ITSELF TO SERVERS UNDER ITS OWN NAME';
 	@override String get canChangeSettings => 'YOUR SETTINGS, TO CHANGE ANY OF THEM, THROUGH ITS COMMANDS OR ON ITS OWN; THROUGH ITS COMMANDS, DEVELOPER MODE AND EXPERIMENTS TOO';
-	@override String get canControlLayouts => 'YOUR LAYOUTS, TO SWITCH BETWEEN THEM AND BRING A PANEL TO THE FRONT';
+	@override String get canControlLayouts => 'YOUR LAYOUTS, TO SWITCH BETWEEN THEM, BRING A PANEL TO THE FRONT, AND ADD LAYOUTS OF ITS OWN';
 	@override String get canChangeDraft => 'THE CONTACT YOU ARE LOGGING, TO CHANGE ANY OF ITS FIELDS, THE CALL INCLUDED, AS YOU TYPE';
 	@override String get noCapabilities => 'IT ASKS FOR NOTHING OUTSIDE THE APP.';
 	@override String get sandboxNote => 'EXTENSIONS RUN SANDBOXED: NO ACCESS TO YOUR FILES, AND NO NETWORK BEYOND WHAT IS LISTED HERE.';
@@ -1192,6 +1192,11 @@ class _Translations$extensionService$qro extends Translations$extensionService$e
 	@override String commandDeveloperOnly({required Object name}) => '${name} CAN’T RUN THAT: IT’S ONE OF THE APP’S OWN DEVELOPER COMMANDS';
 	@override String changedSetting({required Object name, required Object setting, required Object value}) => '${name} SET ${setting} TO ${value}';
 	@override String switchedLayout({required Object name, required Object layout}) => '${name} SWITCHED TO THE ${layout} LAYOUT';
+	@override String addedLayout({required Object name, required Object layout}) => '${name} ADDED THE ${layout} LAYOUT';
+	@override String changedLayout({required Object name, required Object layout}) => '${name} CHANGED THE ${layout} LAYOUT';
+	@override String removedLayout({required Object name, required Object layout}) => '${name} REMOVED THE ${layout} LAYOUT';
+	@override String settingChangeFailed({required Object name}) => '${name} COULD NOT CHANGE A SETTING';
+	@override String layoutChangeFailed({required Object name}) => '${name} COULD NOT CHANGE THE LAYOUTS';
 	@override String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
 	@override String get reportUnavailable => 'REPORTS CAN\'T BE SENT RIGHT NOW';
 	@override String get stashUnavailable => 'HAM2K’S FILE STASH CAN’T BE REACHED RIGHT NOW';
@@ -5131,7 +5136,7 @@ extension on TranslationsQro {
 			'extensionsPanel.canCommandCluster' => 'THE DX CLUSTER, LOGGED IN AS YOU, TO SEND IT ANY COMMAND IN YOUR NAME',
 			'extensionsPanel.canSetUserAgent' => 'IDENTIFY ITSELF TO SERVERS UNDER ITS OWN NAME',
 			'extensionsPanel.canChangeSettings' => 'YOUR SETTINGS, TO CHANGE ANY OF THEM, THROUGH ITS COMMANDS OR ON ITS OWN; THROUGH ITS COMMANDS, DEVELOPER MODE AND EXPERIMENTS TOO',
-			'extensionsPanel.canControlLayouts' => 'YOUR LAYOUTS, TO SWITCH BETWEEN THEM AND BRING A PANEL TO THE FRONT',
+			'extensionsPanel.canControlLayouts' => 'YOUR LAYOUTS, TO SWITCH BETWEEN THEM, BRING A PANEL TO THE FRONT, AND ADD LAYOUTS OF ITS OWN',
 			'extensionsPanel.canChangeDraft' => 'THE CONTACT YOU ARE LOGGING, TO CHANGE ANY OF ITS FIELDS, THE CALL INCLUDED, AS YOU TYPE',
 			'extensionsPanel.noCapabilities' => 'IT ASKS FOR NOTHING OUTSIDE THE APP.',
 			'extensionsPanel.sandboxNote' => 'EXTENSIONS RUN SANDBOXED: NO ACCESS TO YOUR FILES, AND NO NETWORK BEYOND WHAT IS LISTED HERE.',
@@ -7898,6 +7903,11 @@ extension on TranslationsQro {
 			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} CAN’T RUN THAT: IT’S ONE OF THE APP’S OWN DEVELOPER COMMANDS',
 			'extensionService.changedSetting' => ({required Object name, required Object setting, required Object value}) => '${name} SET ${setting} TO ${value}',
 			'extensionService.switchedLayout' => ({required Object name, required Object layout}) => '${name} SWITCHED TO THE ${layout} LAYOUT',
+			'extensionService.addedLayout' => ({required Object name, required Object layout}) => '${name} ADDED THE ${layout} LAYOUT',
+			'extensionService.changedLayout' => ({required Object name, required Object layout}) => '${name} CHANGED THE ${layout} LAYOUT',
+			'extensionService.removedLayout' => ({required Object name, required Object layout}) => '${name} REMOVED THE ${layout} LAYOUT',
+			'extensionService.settingChangeFailed' => ({required Object name}) => '${name} COULD NOT CHANGE A SETTING',
+			'extensionService.layoutChangeFailed' => ({required Object name}) => '${name} COULD NOT CHANGE THE LAYOUTS',
 			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => 'REPORTS CAN\'T BE SENT RIGHT NOW',
 			'extensionService.stashUnavailable' => 'HAM2K’S FILE STASH CAN’T BE REACHED RIGHT NOW',
