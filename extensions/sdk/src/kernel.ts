@@ -54,6 +54,7 @@ import { isValidAccountKvKey, isValidHookKey, tier1FormDefinition, settingsPanel
 import { installAppClock } from "./appClock.ts"
 import type { ComposableHookCategory, HookCategoryName } from "./hookCategories.ts"
 import { hasPrefix, requireComposable, requireHookMethodName } from "./composable.ts"
+import { freezeRealm } from "./freezeRealm.ts"
 import { createTimerQueue, removeAmbientTimers } from "./timerQueue.ts"
 import { createLogCopies, deepFreeze, FROZEN_QSOS_API, type LogChanges } from "./logCopy.ts"
 
@@ -1847,12 +1848,9 @@ function aliasPoloFor(api: number | null): void {
 // Every bundle shares this realm. A writable `__halo`, or a kernel whose
 // members can be reassigned, lets one bundle wrap another's traffic — host
 // results, credentials included — and so does a rewritten or replaced
-// `JSON`, which every message crosses. Both are frozen, one level deep, and
-// neither name can be rebound: the shared libraries' exports stay as they
-// ship. What stays open is the rest of the realm's
-// intrinsics (`Promise.prototype`, `Map.prototype`, …), which a bundle can
-// still rewrite and watch the kernel through; closing that takes a context
-// per extension, not a freeze.
+// `JSON`, which every message crosses. Neither name can be rebound, and
+// `freezeRealm` at the end of this file freezes them through, with the rest
+// of the realm's built-ins.
 Object.freeze(JSON)
 Object.defineProperty(globalThis, "JSON", { value: JSON, writable: false, configurable: false, enumerable: false })
 // What `JSON.stringify` asks every object it writes, the kernel's messages
@@ -1937,5 +1935,11 @@ kernel.defineExtension({
     })
   },
 })
+
+// Last, once everything above has put on the realm what it puts there — the
+// app clock's Date, the number-format polyfill, `console`, the frozen `JSON`
+// and the kernel's own globals — and before any bundle evaluates
+// (docs/design/js-engine.md, "Frozen realm").
+freezeRealm([kernel, olderKernel], [sharedModules.i18next, sharedModules["@ham2k/lib-country-files"]])
 
 log("kernel ready")

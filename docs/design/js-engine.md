@@ -330,6 +330,42 @@ degradation of `{{v, datetime}}` into a thrown error that fails the whole hook.
 The delay is the point: quickjs reports a rejection immediately and again when a
 handler attaches, so reporting eagerly logs every `Promise.reject(x).catch(f)`.
 
+### Frozen realm
+
+Every bundle is evaluated in the kernel's one realm, so a built-in a bundle
+could rewrite is one the kernel also calls: a `Map.prototype.get` rewritten to
+watch the kernel's pending host calls hands a bundle every other extension's
+answers, credentials included, and a stack hook (`Error.prepareStackTrace`,
+which quickjs-ng supports and hands each frame's function) hands it the
+kernel's own functions. So the last thing `kernel.ts` does, after installing
+everything it installs on the realm (the app clock's `Date`, the number-format
+patch, `console`), is `freezeRealm` (`extensions/sdk/src/freezeRealm.ts`):
+
+- every standard built-in and the ones no global names (generator, async and
+  iterator prototypes, `%TypedArray%`) is frozen through, and its global name
+  can no longer be rebound;
+- `Error.prepareStackTrace` is a dead property: quickjs-ng defines it as an
+  accessor, which freezing alone would leave settable;
+- the shared libraries are frozen through, reading their export getters, except
+  `i18next` and `@ham2k/lib-country-files`, which change their own state as
+  they run (one logger every instance re-initialises; country data every
+  bundle's SDK annotates at load) and are frozen one level deep;
+- the properties ordinary code assigns on its own objects while a frozen
+  prototype holds the same name (`this.name` in an `Error` subclass, an
+  object's own `toString`, `constructor` in compiled class helpers, and every
+  method of a shared library's prototypes) become accessors whose setter gives
+  the object a property of its own. Without this, the frozen prototype makes
+  those assignments throw.
+
+`Date.now` is the app clock on the real constructor rather than a Proxy `get`
+trap: once the constructor is frozen, a trap answering anything but the
+target's own value breaks the Proxy's invariants.
+
+Extensions may not patch built-ins (no polyfills); a bundle that tries fails
+its own evaluation. A hook that never returns is still only caught by the
+Dart-side timeout. Both are accepted, against the memory and per-call cost of
+a context per bundle.
+
 ---
 
 ## 7. Platform integration

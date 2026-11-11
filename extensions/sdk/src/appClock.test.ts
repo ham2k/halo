@@ -11,21 +11,26 @@
 import { describe, it, beforeEach, afterEach } from "node:test"
 import assert from "node:assert/strict"
 
+import { runInNewContext } from "node:vm"
+
 import { installAppClock } from "./appClock.ts"
 import type { AppClockHandle } from "./appClock.ts"
 
 const HOUR = 60 * 60 * 1000
 
 describe("installAppClock", () => {
-  // Installed onto a stand-in global rather than the real one, so a failing
-  // assertion can't leave the test runner itself on a travelled clock.
+  // Installed onto a stand-in global holding another realm's Date, as the
+  // engine's is replaced in place: the test runner's own clock stays real, and
+  // `RealDate` below is the true time to measure against.
   let global: Record<string, unknown>
   let clock: AppClockHandle
   let RealDate: DateConstructor
+  let SandboxDate: DateConstructor
 
   beforeEach(() => {
     RealDate = Date
-    global = { Date }
+    SandboxDate = runInNewContext("Date") as DateConstructor
+    global = { Date: SandboxDate }
     clock = installAppClock(global)
   })
 
@@ -36,6 +41,17 @@ describe("installAppClock", () => {
   /// The replaced constructor, typed loosely — the point is that it behaves like
   /// `Date` to code that has no idea it was replaced.
   const D = () => global.Date as DateConstructor
+
+  it("keeps the kernel's real time when Date.now is replaced", () => {
+    // Every bundle shares the realm: a kernel reading real time through the
+    // Date it hands out would run its timers and budgets on a bundle's clock.
+    D().now = () => 0
+    assert.ok(Math.abs(clock.realNow() - RealDate.now()) < 1000)
+  })
+
+  it("answers Date.now with one function", () => {
+    assert.equal(D().now, D().now)
+  })
 
   it("reads real time until the host says otherwise", () => {
     assert.ok(Math.abs(D().now() - RealDate.now()) < 1000)
@@ -109,8 +125,8 @@ describe("installAppClock", () => {
 
     it("keeps instanceof and the prototype chain", () => {
       const d = new (D())()
-      assert.ok(d instanceof RealDate, "instanceof Date must still hold")
-      assert.equal(D().prototype, RealDate.prototype)
+      assert.ok(d instanceof SandboxDate, "instanceof Date must still hold")
+      assert.equal(D().prototype, SandboxDate.prototype)
       assert.equal(typeof d.toISOString(), "string")
     })
 

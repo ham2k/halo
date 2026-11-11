@@ -190,6 +190,86 @@ defined = true
     expect(await _probe(host), {'refused': true});
   });
 
+  group('the frozen realm', () {
+    test("a bundle cannot watch another extension's host-call answers through Map.prototype.get", () async {
+      // The kernel keeps every pending host call in a Map and finds it again
+      // with `get` when the answer comes: a `get` a bundle rewrote would hand
+      // it the victim's resolver, and with it the victim's credentials.
+      final host = await _start([
+        _victim,
+        _attacker('''
+          if (!globalThis.watching) {
+            globalThis.watching = true
+            globalThis.overheard = []
+            try {
+              const get = Map.prototype.get
+              Map.prototype.get = function (k) {
+                const v = get.call(this, k)
+                if (v && typeof v.resolve === 'function') {
+                  const resolve = v.resolve
+                  v.resolve = function (x) { globalThis.overheard.push(x); return resolve(x) }
+                }
+                return v
+              }
+            } catch (e) {}
+          }
+          return globalThis.overheard.slice()
+        '''),
+      ]);
+      await _probe(host);
+      expect(await _probe(host, key: 'victim'), 'victim-kv');
+      expect(await _probe(host), isNot(contains('victim-kv')));
+    });
+
+    test('a bundle cannot reach the kernel through a stack hook', () async {
+      // QuickJS hands Error.prepareStackTrace each frame's function: the
+      // kernel's own dispatcher among them, for any error thrown under it.
+      final host = await _start([
+        _attacker('''
+          let frames = 0
+          try { Error.prepareStackTrace = (e, sites) => { frames = sites.length; return '' } } catch (e) {}
+          try { null.x } catch (e) { void e.stack }
+          return { hook: typeof Error.prepareStackTrace, frames: frames }
+        '''),
+      ]);
+      expect(await _probe(host), {'hook': 'undefined', 'frames': 0});
+    });
+
+    test('a bundle cannot change the shared library data other extensions read', () async {
+      // Every bundle is handed the same library objects: an entity renamed in
+      // the DXCC table is renamed for every extension that looks it up.
+      final host = await _start([
+        _attacker('''
+          const entity = __halo.sharedModules['@ham2k/lib-dxcc-data'].DXCC_BY_CODE[291]
+          const before = entity.name
+          try { entity.name = 'PWNED' } catch (e) {}
+          return { before: before, after: __halo.sharedModules['@ham2k/lib-dxcc-data'].DXCC_BY_CODE[291].name }
+        '''),
+      ]);
+      final answer = await _probe(host) as Map;
+      expect(answer['after'], answer['before']);
+    });
+
+    test('ordinary code that assigns over an inherited name still runs', () async {
+      // A frozen prototype makes an assignment to a name it holds throw: the
+      // Error subclass setting `this.name`, an object given its own toString,
+      // a compiled class helper setting `constructor`.
+      final host = await _start([
+        _attacker('''
+          class AppError extends Error { constructor(m) { super(m); this.name = 'AppError' } }
+          const o = {}
+          o.toString = () => 'mine'
+          function Base() {}
+          function Derived() { this.constructor = Derived }
+          Derived.prototype = Object.create(Base.prototype)
+          new Derived()
+          return { name: new AppError('x').name, own: String(o), now: typeof Date.now() }
+        '''),
+      ]);
+      expect(await _probe(host), {'name': 'AppError', 'own': 'mine', 'now': 'number'});
+    });
+  });
+
   group('hostCallParams', () {
     test('identity comes from the envelope, whatever the params say', () {
       final params = hostCallParams({

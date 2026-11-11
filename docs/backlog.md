@@ -142,13 +142,16 @@ git history at `docs/reviews/2026-07-14-architecture-review.md`, removed
 from the tree 2026-07-15). Three items were deferred by design and are
 tracked only here:
 
-- **Hard extension isolation.** The shipped containment is soft and
-  single-realm — a hostile bundle can rewrite the realm's shared intrinsics
-  (`Promise.prototype`, `Map.prototype`, …) and watch the kernel through
-  them — and there is no true execution-time interrupt on any platform
-  (a `while(true)` hook is caught by the Dart-side timeout + host restart,
-  not pre-empted). Both need DESIGN.md §3's direct-FFI QuickJS binding.
-  Prerequisite for the third-party/OTA extension channel.
+- **Hard extension isolation.** Bundles share one realm, whose built-ins and
+  shared libraries are frozen before any bundle loads
+  ([js-engine.md](design/js-engine.md), "Frozen realm"); a context per bundle
+  is decided against, for its memory and per-call cost. What stays open: the
+  bundles share `globalThis`; `i18next` and `@ham2k/lib-country-files` are
+  frozen one level deep, since both change their own state as they run; and
+  nothing interrupts a hook mid-run (a `while(true)` hook is caught by the
+  Dart-side timeout and a host restart), which is accepted. Revisit if a
+  shared library starts handling another extension's credentials, or if one
+  extension's busy hook starts costing others enough to matter.
 - **SDK contract versioning and a discriminated `Hook` union.** No
   `minCatalog`-style negotiation exists for the OTA channel, and the `Hook`
   type's `| Record<string, unknown>` arm erases misspelled-method errors.

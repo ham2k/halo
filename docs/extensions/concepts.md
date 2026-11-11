@@ -28,6 +28,12 @@ own, inside a Worker. Either way:
 - Each bundle carries **its own copy of the SDK**. The libraries the app
   shares (`@ham2k/lib-*`, `i18next`, `liquidjs`) live once, in the kernel, and
   a bundle that declares them reaches that one copy.
+- **The built-ins are frozen.** `Object`, `Array`, `Map`, `Promise`, `Date`,
+  `Error` and the rest, and the shared libraries, are frozen before any
+  extension loads: every extension shares them, so none may change them. A
+  polyfill or a patched prototype throws, and fails the extension that tried.
+  Giving your own objects a property a built-in has (`this.name` in an `Error`
+  subclass, an object's own `toString`) still works, and so does subclassing.
 
 ## From file to running code
 

@@ -123,8 +123,9 @@ in plain functions you can test with the project's own runner.
 ## What the sandbox is
 
 No Node, no DOM, no `fetch`, no `window`, no filesystem, no `Intl` on native
-builds. One ES2020 engine evaluating one script. Everything in and out of a
-hook is JSON. Reach the outside world through `host`:
+builds. One ES2020 engine evaluating one script, with its built-ins and the
+shared libraries frozen: no polyfills, no patched prototypes. Everything in and
+out of a hook is JSON. Reach the outside world through `host`:
 
 ```ts
 import { host } from "@ham2k/extension-sdk"

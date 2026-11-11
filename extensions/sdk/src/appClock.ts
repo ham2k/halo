@@ -45,7 +45,11 @@ export interface AppClockHandle {
 /// for the kernel's real-time needs. Call ONCE, before any bundle evaluates.
 export function installAppClock(global: Record<string, unknown> = globalThis as unknown as Record<string, unknown>): AppClockHandle {
   const RealDate = global.Date as DateConstructor
-  const realNow = () => RealDate.now()
+  // The engine's own clock, taken before `Date.now` is replaced below. Every
+  // bundle shares this realm, and the kernel's timers and budgets read real
+  // time through this one function.
+  const engineNow = RealDate.now
+  const realNow = (): number => engineNow.call(RealDate)
 
   // Zero means "not travelling": the anchors are only ever set by the host, and
   // the epoch is not a plausible anchor.
@@ -58,8 +62,12 @@ export function installAppClock(global: Record<string, unknown> = globalThis as 
     return Math.round(anchorVirtual + (realNow() - anchorReal) * speed)
   }
 
-  // Hoisted so `Date.now` is one stable function, not a new closure per access.
+  // `Date.now` itself, on the real constructor: one stable function, so
+  // `Date.now === Date.now`, and the property the Proxy below reads is the one
+  // it answers with. A `get` trap answering something else would break the
+  // moment the constructor is frozen (docs/design/js-engine.md, "Frozen realm").
   const appNowStatic = (): number => appNow()
+  Object.defineProperty(RealDate, "now", { value: appNowStatic, writable: true, enumerable: false, configurable: true })
 
   // A Proxy around the real constructor, NOT an ES class extending it. A class
   // would be the obvious shape and is subtly wrong: `Date()` without `new` is
@@ -85,13 +93,6 @@ export function installAppClock(global: Record<string, unknown> = globalThis as 
     // string", so it follows the app clock the same way construction does.
     apply() {
       return new RealDate(appNow()).toString()
-    },
-
-    get(target, prop, receiver) {
-      // One function, not a fresh closure per access: `Date.now === Date.now`
-      // is false otherwise, which breaks anything caching or comparing it.
-      if (prop === "now") return appNowStatic
-      return Reflect.get(target, prop, receiver)
     },
   })
 
