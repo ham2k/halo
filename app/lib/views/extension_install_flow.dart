@@ -56,6 +56,7 @@ Future<String?> installExtensionFromFile(
   BuildContext context, {
   required InstalledExtensions store,
   required Future<void> Function(InspectedBundle) commit,
+  required Future<String?> Function(InspectedBundle) replacedSource,
   bool Function(String key)? isBusy,
 }) async {
   final XFile? file;
@@ -68,7 +69,7 @@ Future<String?> installExtensionFromFile(
   }
   if (file == null) return null;
   if (!context.mounted) return null;
-  return installExtensionFromBytes(context, store: store, commit: commit, read: file.readAsBytes, isBusy: isBusy);
+  return installExtensionFromBytes(context, store: store, commit: commit, replacedSource: replacedSource, read: file.readAsBytes, isBusy: isBusy);
 }
 
 /// The one install path, whatever the bundle arrived as — picked, dropped, or
@@ -78,7 +79,9 @@ Future<String?> installExtensionFromFile(
 /// [from] names where the bundle came from when that is not the operator's own
 /// filesystem — a host, for a link. Shown on the consent screen, because
 /// "which file did I just agree to" is a question a link cannot otherwise
-/// answer.
+/// answer. [link] is the address itself, for a bundle with no catalog
+/// listing: who it was published by ([linkPublisherOf]) is what a later
+/// update is compared with.
 ///
 /// [provenance] is the catalog listing the bytes must match; the store
 /// re-checks the hash before opening them, and the record is what the
@@ -90,7 +93,13 @@ Future<String?> installExtensionFromBytes(
   required InstalledExtensions store,
   required Future<void> Function(InspectedBundle) commit,
   required Future<List<int>> Function() read,
+
+  /// Where the installed copy this bundle replaces came from, when that is
+  /// somewhere else (`ExtensionService.replacedSource`): the operator is then
+  /// asked whether it may use that copy's saved logins.
+  required Future<String?> Function(InspectedBundle) replacedSource,
   String? from,
+  Uri? link,
   BundleProvenance? provenance,
   CatalogChannel? releaseChannel,
 
@@ -114,7 +123,7 @@ Future<String?> installExtensionFromBytes(
 }) async {
   final InspectedBundle bundle;
   try {
-    bundle = await store.inspect(await read(), provenance: provenance);
+    bundle = await store.inspect(await read(), provenance: provenance, linkPublisher: link == null ? null : linkPublisherOf(link));
   } catch (e, stack) {
     // A BundleException is a sentence about this file and nothing more needs
     // saying. Anything else is a defect — a picker handing back a file that
@@ -152,7 +161,25 @@ Future<String?> installExtensionFromBytes(
   // which costs more than it buys. Except for an update asking for more than
   // the operator granted the version it replaces: nothing on that list says
   // so, and a grant like `requiresRadioRaw` keys the transmitter.
-  if (askConsent || await _asksMore(store, bundle)) {
+  //
+  // Nor for one from somewhere other than the installed copy: whether it may
+  // use that copy's saved logins is the operator's to answer, which nothing
+  // on that list asks.
+  //
+  // Not knowing is not "the same": the install stops rather than take the
+  // answer that hands the saved logins over.
+  final String? installedSource;
+  try {
+    installedSource = await replacedSource(bundle);
+  } catch (e, stack) {
+    ErrorReportingService.report(e, stack, context: 'extension-install:source', told: true);
+    beforeRefusal?.call();
+    if (context.mounted) await showInstallRefusal(context, context.t.extensionsPanel.installSourceUnknown(name: bundle.name));
+    return null;
+  }
+  if (!context.mounted) return null;
+  var committing = bundle;
+  if (askConsent || installedSource != null || await _asksMore(store, bundle)) {
     final replacing = await _isInstalled(store, bundle);
     if (!context.mounted) return null;
     if (!await showConsentDialog(
@@ -165,6 +192,17 @@ Future<String?> installExtensionFromBytes(
     )) {
       return null;
     }
+    if (installedSource != null) {
+      if (!context.mounted) return null;
+      switch (await showSecretsQuestion(context, bundle: bundle, installedSource: installedSource)) {
+        case null:
+          return null;
+        case true:
+          committing = bundle.keepingSecrets();
+        case false:
+          break;
+      }
+    }
     // Asked again: another install of this key can have started while the
     // operator was reading.
     if (isBusy?.call(bundle.key) ?? false) {
@@ -174,7 +212,13 @@ Future<String?> installExtensionFromBytes(
   }
 
   try {
-    await commit(bundle);
+    await commit(committing);
+  } on SecretsNotRemoved catch (e, stack) {
+    // Nothing was written: the installed copy still runs, so this is not the
+    // incomplete install below.
+    ErrorReportingService.report(e, stack, context: 'extension-install:secrets', told: true);
+    if (context.mounted) await showInstallRefusal(context, context.t.extensionsPanel.secretsNotRemoved(name: bundle.name));
+    return null;
   } catch (e, stack) {
     // The install replaces the extension's directory before writing the new
     // one, so a failure here can leave a previously working extension gone.
@@ -276,6 +320,7 @@ Future<String?> installFromCatalog(
       releaseChannel: release.channel,
       screenshots: screenshots,
       commit: commitThroughInstaller(services, replacing: replacing),
+      replacedSource: services.extensions.replacedSource,
       askConsent: askConsent,
       beforeRefusal: () => installer.clearProgress(release.key),
     ),
@@ -416,6 +461,33 @@ Future<void> showInstallRefusal(BuildContext context, String message) => showHal
     cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
   ),
 );
+
+/// Asks whether [bundle], replacing an installed copy that came from
+/// [installedSource] ([installSource]), may use the logins and passwords
+/// saved for that copy. True to let it, false to remove them, null to stop
+/// the install: a dismissal is neither answer.
+Future<bool?> showSecretsQuestion(BuildContext context, {required InspectedBundle bundle, required String installedSource}) => showHaloDialog<bool>(
+  context: context,
+  builder: (context) {
+    final t = context.t.extensionsPanel;
+    return HaloDialog(
+      title: Text(t.secretsTitle(name: bundle.name)),
+      content: Text(t.secretsQuestion(name: bundle.name, source: _sourceName(bundle.source), installedSource: _sourceName(installedSource))),
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(t.secretsRemove)),
+        FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.secretsAllow)),
+      ],
+    );
+  },
+);
+
+/// How an [installSource] reads to the operator: a host as itself.
+String _sourceName(String source) => switch (source) {
+  'ham2k' => t.extensionsPanel.sourceHam2k,
+  'file' => t.extensionsPanel.sourceFile,
+  _ => source.substring(source.indexOf(':') + 1),
+};
 
 /// Shows what [bundle] will be able to reach, and returns whether the operator
 /// agreed to it.

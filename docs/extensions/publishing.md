@@ -133,7 +133,13 @@ never installs unasked. An install records the channel it came from as the
 **track** the extension follows: an extension installed from `unstable` is
 offered `unstable` releases from then on, and the operator can put it back
 on stable from its details. Installing a bundle whose key is already
-installed updates it in place, keeping everything it stored.
+installed updates it in place, keeping everything it stored. When it comes
+from somewhere other than the installed copy (the catalog, a file, or a
+link in another folder), the operator is asked whether it may use the saved
+logins and secret settings, and they are removed unless they allow it. Keep
+your links in one folder, such as the release assets of one GitHub
+repository, and your updates are not asked about. A tester who installs
+your file over the catalog's copy is asked.
 
 **Links.** A web page can hand the app a bundle to install:
 

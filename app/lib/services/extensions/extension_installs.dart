@@ -147,7 +147,7 @@ mixin _ExtensionInstalls {
   Future<void> forgetMissingExtension(String key) async {
     await settings?.forgetExtension(key);
     await _leaveShippedSwitchedOff(key);
-    await forgetExtensionKeychainItems(_secureStorage, key, deleteOne: (name) async => _deleteAccountItem(name, await _accountKeychainOptions(key)));
+    await _forgetSecrets(key);
   }
 
   /// Installs the `.h2kext` bundles the app ships, and answers whether
@@ -187,6 +187,16 @@ mixin _ExtensionInstalls {
     final store = _requireInstalledStore();
     // Asked BEFORE the write: afterwards the key is always there.
     final fresh = !await store.isInstalled(bundle.key);
+    // Gone before the new code is written, so it never runs with them — and
+    // nothing is written while one may be left: the operator refused it
+    // them, and only the old copy can say what they are where the keychain
+    // will not list.
+    if (!bundle.keepsSecrets && await replacedSource(bundle) != null) {
+      final declared = await _declaredSecretNames(bundle.key);
+      // Refused before anything is removed when nothing can say what there is.
+      if (declared == null && !await keychainLists(_secureStorage)) throw SecretsNotRemoved(bundle.name);
+      if (!await _forgetKeychainItems(bundle.key, declared: declared, declaredIsEverything: declared != null)) throw SecretsNotRemoved(bundle.name);
+    }
     // Only on a FRESH install of catalog bytes: an update has its own state
     // already, and a file install of a `ham2k-` key never reaches here.
     // A replacement carries whether or not it is fresh: the old extension is
@@ -284,6 +294,12 @@ mixin _ExtensionInstalls {
       records[bundle.key] = provenance.followingAtLeast(BundleProvenance.fromJson(records[bundle.key])).toJson();
       await currentSettings.setExtensionInstalledFrom(records);
     }
+    final linkPublishers = {...currentSettings.extensionLinkPublishers};
+    final linkPublisher = bundle.linkPublisher;
+    if (linkPublisher == null ? linkPublishers.remove(bundle.key) != null : linkPublishers[bundle.key] != linkPublisher) {
+      if (linkPublisher != null) linkPublishers[bundle.key] = linkPublisher;
+      await currentSettings.setExtensionLinkPublishers(linkPublishers);
+    }
     await liftInstallRecordsForNewVersion(currentSettings, bundle.key, bundle.version);
     final intended = currentSettings.extensionsInstalled;
     if (intended[bundle.key] != bundle.name) await currentSettings.setExtensionsInstalled({...intended, bundle.key: bundle.name});
@@ -324,9 +340,146 @@ mixin _ExtensionInstalls {
   Future<void> _forgetUninstalled(String key) async {
     await settings?.forgetExtension(key);
     await _leaveShippedSwitchedOff(key);
-    await forgetExtensionKeychainItems(_secureStorage, key, deleteOne: (name) async => _deleteAccountItem(name, await _accountKeychainOptions(key)));
+    await _forgetSecrets(key);
     statusBar?.clearNamespace(key);
     fyi?.clearExtension(key);
+  }
+
+  /// Removes [key]'s keychain items, and those of the retired built-in it
+  /// took over from (`ham2k-qrz`'s `qrz`): left behind, a later install of
+  /// [key] from the catalog would carry them back. The built-in's are tried
+  /// whatever the boot sweep recorded.
+  Future<void> _forgetSecrets(String key) async {
+    await _forgetKeychainItems(key);
+    if (predecessorBuiltInKey(key) case final builtIn?) {
+      if (await _forgetKeychainItems(builtIn)) await _recordRetiredSecretsForgotten({builtIn});
+    }
+  }
+
+  /// [forgetExtensionKeychainItems] for [key], with the secret names the app
+  /// recorded writing and any [declared] by the extension itself; answers
+  /// whether every item is known to be gone.
+  Future<bool> _forgetKeychainItems(String key, {Set<String>? declared, bool declaredIsEverything = true}) async {
+    final complete = await forgetExtensionKeychainItems(
+      _secureStorage,
+      key,
+      deleteOne: (name) async => _deleteAccountItem(name, await _accountKeychainOptions(_accountKvKeyOf(name))),
+      named: {...?declared, ...?settings?.extensionSecretNames},
+      namedIsEverything: declaredIsEverything,
+    );
+    if (complete) await settings?.forgetExtensionSecretNames((name) => isExtensionKeychainItemOf(name, key));
+    return complete;
+  }
+
+  /// The account an `account_creds_…`/`account_session_…` item belongs to,
+  /// whose options it was written with.
+  String _accountKvKeyOf(String name) => name.replaceFirst(RegExp(r'^account_(creds|session)_'), '');
+
+  Future<String?> _readAccountItem(String name) async {
+    final o = await _accountKeychainOptions(_accountKvKeyOf(name));
+    return _secureStorage.read(key: name, mOptions: o.mOptions, iOptions: o.iOptions);
+  }
+
+  Future<void> _recordRetiredSecretsForgotten(Set<String> builtIns) async {
+    final currentSettings = settings;
+    if (currentSettings == null) return;
+    final forgotten = currentSettings.extensionRetiredSecretsForgotten;
+    if (!forgotten.containsAll(builtIns)) await currentSettings.setExtensionRetiredSecretsForgotten({...forgotten, ...builtIns});
+  }
+
+  /// Removes the keychain items still stored under a retired built-in's key
+  /// once nothing is left to carry them to ([twinsStillWanted]): the
+  /// operator had it switched off, it has no twin, or its twin was installed
+  /// — and then only once the twin is seen to hold a copy of every one, so a
+  /// carry that failed, or a login the operator has since removed from the
+  /// twin, leaves them where they are. A built-in is recorded only once its
+  /// items are known to be gone, and tried again next launch otherwise. Its
+  /// plain settings stay.
+  Future<void> forgetRetiredSecrets() async {
+    final currentSettings = settings;
+    if (currentSettings == null) return;
+    final installed = {
+      for (final info in availableExtensions)
+        if (info.isInstalled) info.key,
+    };
+    final wanted = twinsStillWanted(currentSettings, availableExtensions).toSet();
+    final forgotten = currentSettings.extensionRetiredSecretsForgotten;
+    final done = <String>{};
+    for (final builtIn in kRetiredBuiltIns.keys) {
+      final twin = twinOf(builtIn);
+      if (forgotten.contains(builtIn) || wanted.contains(twin)) continue;
+      if (installed.contains(twin) && !await keychainItemsCopied(_secureStorage, from: builtIn, to: twin, readOne: _readAccountItem)) continue;
+      if (await _forgetKeychainItems(builtIn)) done.add(builtIn);
+    }
+    if (done.isNotEmpty) await _recordRetiredSecretsForgotten(done);
+  }
+
+  /// Where the installed copy [bundle] would replace came from
+  /// ([installSource]), when that is not where [bundle] comes from — the
+  /// catalog's copy replaced by a link's, a link's by a file's — and null
+  /// otherwise. Such a bundle installs without the keychain items the
+  /// installed copy stored unless the operator lets it keep them
+  /// ([InspectedBundle.keepingSecrets]): nothing ties two bundles claiming
+  /// one key to the same publisher but where they came from, and a stored
+  /// login is the operator's trust in the extension they installed, not in
+  /// the key.
+  ///
+  /// A copy the store has lost but the operator still has installed
+  /// ([missingExtensions]) counts: its records and its secrets are all
+  /// still there.
+  Future<String?> replacedSource(InspectedBundle bundle) async {
+    final currentSettings = settings;
+    final store = _installed;
+    if (currentSettings == null || store == null) return null;
+    if (!currentSettings.extensionsInstalled.containsKey(bundle.key) && !await store.isInstalled(bundle.key)) return null;
+    final installed = installSource(
+      provenance: BundleProvenance.fromJson(currentSettings.extensionInstalledFrom[bundle.key]),
+      linkPublisher: currentSettings.extensionLinkPublishers[bundle.key],
+    );
+    return installed == bundle.source ? null : installed;
+  }
+
+  /// The keychain items [key]'s running copy declares: its settings panels'
+  /// secret fields and its accounts. Null when it cannot be asked — not
+  /// loaded, or a call failed — which on a keychain that cannot be listed
+  /// leaves nothing to say what it holds.
+  Future<Set<String>?> _declaredSecretNames(String key) async {
+    final host = this.host;
+    if (host == null || !_loadedExtensionKeys.contains(key)) return null;
+    bool owns(Object? hookKey) => hookKey is String && (hookKey == key || hookKey.startsWith('${key}_'));
+    try {
+      final names = <String>{};
+      for (final entry in await host.invokeAll(Hooks.settingsPanelGetPanels, timeout: const Duration(seconds: 2))) {
+        if (!owns(entry['key'])) continue;
+        if (entry['ok'] != true) return null;
+        final panels = entry['value'] is List ? entry['value'] as List : [entry['value']];
+        for (final panel in panels.whereType<Map<Object?, Object?>>()) {
+          final panelKey = panel['panelKey'];
+          if (panelKey is! String) continue;
+          final definition = await host.invoke(
+            Hooks.settingsPanelGetDefinition,
+            key: entry['key'] as String,
+            args: {'panelKey': panelKey},
+            timeout: const Duration(seconds: 5),
+          );
+          if (definition is! Map) return null;
+          for (final element in (definition['elements'] as List? ?? const []).whereType<Map<Object?, Object?>>()) {
+            if (element['type'] == 'field' && element['fieldType'] == 'secret' && element['key'] is String) {
+              names.add('settingsPanel_secret_${panelKey}_${element['key']}');
+            }
+          }
+        }
+      }
+      for (final entry in await host.invokeAll(Hooks.accountGetDefinition, timeout: const Duration(seconds: 2))) {
+        if (!owns(entry['key'])) continue;
+        if (entry['ok'] != true) return null;
+        if (entry['value'] case {'kvKey': final String kvKey}) names.addAll(['account_creds_$kvKey', 'account_session_$kvKey']);
+      }
+      return names;
+    } catch (e, stack) {
+      ErrorReportingService.report(e, stack, context: 'extension-install:declared-secrets');
+      return null;
+    }
   }
 
   /// Records [key] switched off when it is a bundle the app pre-loads or a

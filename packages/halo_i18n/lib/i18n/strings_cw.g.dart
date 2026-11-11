@@ -237,6 +237,14 @@ class _Translations$extensionsPanel$cw extends Translations$extensionsPanel$en {
 	@override String installIncomplete({required Object name}) => '·· —· ··· — ·— ·—·· ·—·· ·· —· ——· / ${name} / —·· ·· —·· / —· ——— — / ··—· ·· —· ·· ··· ···· ·—·—·— / ·· — / —— ·— —·—— / —· · · —·· / ·· —· ··· — ·— ·—·· ·—·· ·· —· ——· / ·— ——· ·— ·· —· ·—·—·—';
 	@override String uninstallFailed({required Object name}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—· · —— ——— ···— · / ${name}';
 	@override String installedFrom({required Object source}) => '—·· ——— ·—— —· ·—·· ——— ·— —·· · —·· / ··—· ·—· ——— —— / ${source}';
+	@override String secretsTitle({required Object name}) => '··· ·— ···— · —·· / ·—·· ——— ——· ·· —· ··· / ··—· ——— ·—· / ${name}';
+	@override String secretsQuestion({required Object name, required Object source, required Object installedSource}) => '—·—— ——— ··— ·————· ·—· · / ·· —· ··· — ·— ·—·· ·—·· ·· —· ——· / ${name} / ··—· ·—· ——— —— / ${source} ——··—— / —··· ··— — / — ···· · / ···— · ·—· ··· ·· ——— —· / —·—— ——— ··— / ···· ·— ···— · / —·—· ·— —— · / ··—· ·—· ——— —— / ${installedSource} ·—·—·— / —·· ——— / —·—— ——— ··— / ·—— ·— —· — / — ——— / ——· ·· ···— · / ·· — / ·— —·—· —·—· · ··· ··· / — ——— / — ···· · / ·—·· ——— ——· ·· —· ··· / ·— —· —·· / ·——· ·— ··· ··· ·—— ——— ·—· —·· ··· / —·—— ——— ··— / ··· ·— ···— · —·· / ··—· ——— ·—· / — ···· ·— — / ···— · ·—· ··· ·· ——— —· ··——··';
+	@override String get secretsAllow => '·— ·—·· ·—·· ——— ·——';
+	@override String get secretsRemove => '·—· · —— ——— ···— · / — ···· · ——';
+	@override String get sourceHam2k => '— ···· · / ···· ·— —— ··——— —·— / —·—· ·— — ·— ·—·· ——— ——·';
+	@override String get sourceFile => '·— / ··—· ·· ·—·· ·';
+	@override String secretsNotRemoved({required Object name}) => '— ···· · / ··· ·— ···— · —·· / ·—·· ——— ——· ·· —· ··· / ··—· ——— ·—· / ${name} / —·—· ——— ··— ·—·· —·· / —· ——— — / ·— ·—·· ·—·· / —··· · / ·—· · —— ——— ···— · —·· ——··—— / ··· ——— / ·· — / ·—— ·— ··· / —· ——— — / ·· —· ··· — ·— ·—·· ·—·· · —·· ·—·—·— / — ···· · / ···— · ·—· ··· ·· ——— —· / —·—— ——— ··— / ···· ·— ···— · / ·· ··· / ··— —· —·—· ···· ·— —· ——· · —·· ·—·—·—';
+	@override String installSourceUnknown({required Object name}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / — · ·—·· ·—·· / ·—— ···· · ·—· · / — ···· · / ·· —· ··· — ·— ·—·· ·—·· · —·· / ${name} / —·—· ·— —— · / ··—· ·—· ——— —— ——··—— / ··· ——— / ·· — / ·—— ·— ··· / —· ——— — / ··— ·——· —·· ·— — · —·· ·—·—·—';
 	@override String downloadFailed({required Object source, required Object status}) => '${source} / ·—· · — ··— ·—· —· · —·· / ${status} / ··—· ——— ·—· / — ···· ·— — / · —··— — · —· ··· ·· ——— —· ·—·—·—';
 	@override String get downloadTooLarge => '— ···· ·— — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ·· ··· / ··—· ·— ·—· / — ——— ——— / ·—·· ·— ·—· ——· · / — ——— / —··· · / ·— —· / · —··— — · —· ··· ·· ——— —· ·—·—·—';
 	@override String get downloadNotSecure => '— ···· ·— — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ·—· · —·· ·· ·—· · —·—· — · —·· / ··· ——— —— · ·—— ···· · ·—· · / ·· —· ··· · —·—· ··— ·—· · ·—·—·—';
@@ -5174,6 +5182,14 @@ extension on TranslationsCw {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => '·· —· ··· — ·— ·—·· ·—·· ·· —· ——· / ${name} / —·· ·· —·· / —· ——— — / ··—· ·· —· ·· ··· ···· ·—·—·— / ·· — / —— ·— —·—— / —· · · —·· / ·· —· ··· — ·— ·—·· ·—·· ·· —· ——· / ·— ——· ·— ·· —· ·—·—·—',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—· · —— ——— ···— · / ${name}',
 			'extensionsPanel.installedFrom' => ({required Object source}) => '—·· ——— ·—— —· ·—·· ——— ·— —·· · —·· / ··—· ·—· ——— —— / ${source}',
+			'extensionsPanel.secretsTitle' => ({required Object name}) => '··· ·— ···— · —·· / ·—·· ——— ——· ·· —· ··· / ··—· ——— ·—· / ${name}',
+			'extensionsPanel.secretsQuestion' => ({required Object name, required Object source, required Object installedSource}) => '—·—— ——— ··— ·————· ·—· · / ·· —· ··· — ·— ·—·· ·—·· ·· —· ——· / ${name} / ··—· ·—· ——— —— / ${source} ——··—— / —··· ··— — / — ···· · / ···— · ·—· ··· ·· ——— —· / —·—— ——— ··— / ···· ·— ···— · / —·—· ·— —— · / ··—· ·—· ——— —— / ${installedSource} ·—·—·— / —·· ——— / —·—— ——— ··— / ·—— ·— —· — / — ——— / ——· ·· ···— · / ·· — / ·— —·—· —·—· · ··· ··· / — ——— / — ···· · / ·—·· ——— ——· ·· —· ··· / ·— —· —·· / ·——· ·— ··· ··· ·—— ——— ·—· —·· ··· / —·—— ——— ··— / ··· ·— ···— · —·· / ··—· ——— ·—· / — ···· ·— — / ···— · ·—· ··· ·· ——— —· ··——··',
+			'extensionsPanel.secretsAllow' => '·— ·—·· ·—·· ——— ·——',
+			'extensionsPanel.secretsRemove' => '·—· · —— ——— ···— · / — ···· · ——',
+			'extensionsPanel.sourceHam2k' => '— ···· · / ···· ·— —— ··——— —·— / —·—· ·— — ·— ·—·· ——— ——·',
+			'extensionsPanel.sourceFile' => '·— / ··—· ·· ·—·· ·',
+			'extensionsPanel.secretsNotRemoved' => ({required Object name}) => '— ···· · / ··· ·— ···— · —·· / ·—·· ——— ——· ·· —· ··· / ··—· ——— ·—· / ${name} / —·—· ——— ··— ·—·· —·· / —· ——— — / ·— ·—·· ·—·· / —··· · / ·—· · —— ——— ···— · —·· ——··—— / ··· ——— / ·· — / ·—— ·— ··· / —· ——— — / ·· —· ··· — ·— ·—·· ·—·· · —·· ·—·—·— / — ···· · / ···— · ·—· ··· ·· ——— —· / —·—— ——— ··— / ···· ·— ···— · / ·· ··· / ··— —· —·—· ···· ·— —· ——· · —·· ·—·—·—',
+			'extensionsPanel.installSourceUnknown' => ({required Object name}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / — · ·—·· ·—·· / ·—— ···· · ·—· · / — ···· · / ·· —· ··· — ·— ·—·· ·—·· · —·· / ${name} / —·—· ·— —— · / ··—· ·—· ——— —— ——··—— / ··· ——— / ·· — / ·—— ·— ··· / —· ——— — / ··— ·——· —·· ·— — · —·· ·—·—·—',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} / ·—· · — ··— ·—· —· · —·· / ${status} / ··—· ——— ·—· / — ···· ·— — / · —··— — · —· ··· ·· ——— —· ·—·—·—',
 			'extensionsPanel.downloadTooLarge' => '— ···· ·— — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ·· ··· / ··—· ·— ·—· / — ——— ——— / ·—·· ·— ·—· ——· · / — ——— / —··· · / ·— —· / · —··— — · —· ··· ·· ——— —· ·—·—·—',
 			'extensionsPanel.downloadNotSecure' => '— ···· ·— — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ·—· · —·· ·· ·—· · —·—· — · —·· / ··· ——— —— · ·—— ···· · ·—· · / ·· —· ··· · —·—· ··— ·—· · ·—·—·—',
@@ -5568,6 +5584,8 @@ extension on TranslationsCw {
 			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => '—— ·— —·· · / ··—· ——— ·—· / — ···· · / ${view} / ···— ·· · ·—— ———··· / ·——· ·— —· · ·—·· ··· / ——— —· ·—·· —·—— / — ···· ·— — / ···— ·· · ·—— / ···· ·— ··· / ·— ·—· · / ·—·· · ··—· — / ——— ··— — ·—·—·—',
 			'operation.layout.layouts.viewHome' => '···· ——— —— ·',
 			'operation.layout.layouts.viewOperation' => '——— ·——· · ·—· ·— — ·· ——— —·',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.viewLogs' => '·—·· ——— ——· ···',
 			'operation.layout.layouts.viewChase' => '—·—· ···· ·— ··· ·· —· ——·',
 			'operation.layout.layouts.importAsNew' => '·— ··· / ·— / —· · ·—— / ·—·· ·— —·—— ——— ··— —',
@@ -5576,8 +5594,6 @@ extension on TranslationsCw {
 			'operation.layout.layouts.importAddHint' => '— ···· · / ·——· ·— —· · ·—·· ··· / ·— ·—· ·—· ·· ···— · / ·· —· / ·— / —· · ·—— / —·—· ——— ·—·· ··— —— —· / ——— —· / — ···· · / ·—· ·· ——· ···· — ·—·—·—',
 			'operation.layout.layouts.importPick' => '·——· ·— —· · ·—·· ··· / — ——— / ·· —— ·——· ——— ·—· —',
 			'operation.layout.layouts.importReplaceSettings' => '·—· · ·——· ·—·· ·— —·—· · / — ···· · / ··· · — — ·· —· ——· ··· / ——— ··—· / ·——· ·— —· · ·—·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / ··· · — / ··— ·——· / ···· · ·—· ·',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.layouts.importAction' => '·· —— ·——· ——— ·—· —',
 			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} / ·· ··· —· ·————· — / ·— / ·—·· ·— —·—— ——— ··— — / — ···· ·· ··· / ·— ·——· ·——· / —·—· ·— —· / ·—· · ·— —·· ———··· / ${problem}',
 			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => '— ···· · / — · —··— — / ·· ··· —· ’ — / ···— ·— ·—·· ·· —·· / —·—— ·— —— ·—·· / —·——· ·—·· ·· —· · / ${line} —·——·—',
@@ -6082,6 +6098,8 @@ extension on TranslationsCw {
 			'loggingControls.theirCall' => '— ···· · ·· ·—· / —·—· ·— ·—·· ·—··',
 			'loggingControls.noteField' => '—· ——— — ·',
 			'loggingControls.todoField' => '— ——— —·· ———',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.sent' => '··· · —· —',
 			'loggingControls.rcvd' => '·—· —·—· ···— —··',
 			'loggingControls.more' => '—— ——— ·—· ·',
@@ -6090,8 +6108,6 @@ extension on TranslationsCw {
 			'loggingControls.restore' => '·—· · ··· — ——— ·—· ·',
 			'loggingControls.wipe' => '·—— ·· ·——· ·',
 			'loggingControls.undo' => '··— —· —·· ———',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.pendingDeleteTapWarning' => '— ·— ·——· / — ···· · / — ·—· ·— ··· ···· —·—· ·— —· / ——— —· · / —— ——— ·—· · / — ·· —— · / — ——— / —·· · ·—·· · — · / — ···· ·· ··· / ——·— ··· ———',
 			'loggingControls.pendingDeleteClickWarning' => '—·—· ·—·· ·· —·—· —·— / — ···· · / — ·—· ·— ··· ···· —·—· ·— —· / ——— —· · / —— ——— ·—· · / — ·· —— · / — ——— / —·· · ·—·· · — · / — ···· ·· ··· / ——·— ··· ———',
 			'loggingControls.deletedQsoWarning' => '—·· · ·—·· · — · —·· / ——·— ··· ———',
@@ -6596,6 +6612,8 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.problemSourceRefused' => '— ···· · / ·—· ·— —·· ·· ——— / ·—— ——— ··— ·—·· —·· / —· ——— — / ··· ·—— ·· — —·—· ···· / ·· — ··· / — ·—· ·— —· ··· —— ·· — / ·— ··— —·· ·· ——— / — ——— / — ···· · / ·— ·——· ·——· ——··—— / ··· ——— / — ···· · / —— · ··· ··· ·— ——· · / ··· — ——— ·——· ·——· · —·· ·—·—·— / ··· · — / — ···· · / ·—· ·— —·· ·· ——— / — ——— / — ·—· ·— —· ··· —— ·· — / — ···· · / ·— ·——· ·——· ·————· ··· / ·— ··— —·· ·· ——— ·—·—·—',
 			'settings.radio.voiceMessages.problemCannotKey' => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / —·—· ·— —· ·————· — / —··· · / —·— · —·—— · —·· / ——— ···— · ·—· / —·—· ·— — ——··—— / ··· ——— / — ···· · / —·—· ——— —— ·——· ··— — · ·—· / —·—· ·— —· ·————· — / ·——· ·—·· ·— —·—— / —— · ··· ··· ·— ——· · ··· / ·· —· — ——— / ·· — ·—·—·—',
 			'settings.radio.voiceMessages.problemUnplayable' => '— ···· ·— — / —— · ··· ··· ·— ——· · ·————· ··· / ··—· ·· ·—·· · / ·· ··· —· ·————· — / ·— / ··· ——— ··— —· —·· / ··—· ·· ·—·· · / — ···· · / ·— ·——· ·——· / —·—· ·— —· / ·——· ·—·· ·— —·—— ·—·—·— / ··— ··· · / ·— / ·—— ·— ···— ——··—— / ··—· ·—·· ·— —·—· / ——— ·—· / —— ·——· ···—— / ··—· ·· ·—·· · ——··—— / ——— ·—· / ·—· · —·—· ——— ·—· —·· / ·· — / ·— ——· ·— ·· —· ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.problemRecordingFailed' => '— ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / ·—— ·— ··· / —·—· ··— — / ··· ···· ——— ·—· — ——··—— / ··· ——— / — ···· · / —— · ··· ··· ·— ——· · / ·—— ·— ··· / ·—·· · ··—· — / ·— ··· / ·· — / ·—— ·— ··· ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·· · ···— ·· —·—· · / ·· ··· / ··· — ·· ·—·· ·—·· / —·—· ——— —· —· · —·—· — · —·· / ·— —· —·· / — ···· ·— — / — ···· · ·—· · / ·· ··· / ·—· ——— ——— —— / ——— —· / — ···· · / —·· ·· ··· —·— ·—·—·—',
 			'settings.radio.voiceMessages.problemFileFailed' => '— ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·—· ——— ··— ·—·· —·· —· ·————· — / —··· · / ··· ·— ···— · —·· / ·· —· / — ···· · / —— · ··· ··· ·— ——· · ·————· ··· / ·——· ·—·· ·— —·—· · ——··—— / ··· ——— / — ···· · / —— · ··· ··· ·— ——· · / ·—— ·— ··· / ·—·· · ··—· — / ·— ··· / ·· — / ·—— ·— ··· ·—·—·—',
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => '— ···· ·— — / —— · ··· ··· ·— ——· · / —· · · —·· ··· / ·—— ——— ·—· —·· ··· / —·—— ——— ··— / ···· ·— ···— · —· ·————· — / ·—· · —·—· ——— ·—· —·· · —·· ———··· / ${words} ·—·—·—',
@@ -6604,8 +6622,6 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.problemNothingSaid' => '— ···· ·— — / —— · ··· ··· ·— ——· · / ··· ·— —·—— ··· / —· ——— — ···· ·· —· ——· / ··—· ——— ·—· / — ···· ·· ··· / —·—· ——— —· — ·— —·—· — ·—·—·—',
 			'settings.radio.voiceMessages.templateField' => '··· ·— —·—— / ·—— ·· — ···· / —— —·—— / ·—— ——— ·—· —·· ···',
 			'settings.radio.voiceMessages.templateHelp' => '·—·· · ·— ···— · / · —— ·——· — —·—— / — ——— / ·——· ·—·· ·— —·—— / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· ·—·—·— / ——— — ···· · ·—· ·—— ·· ··· · / — ···· · / —— · ··· ··· ·— ——· · / ·· ··· / ··· ·— ·· —·· / ·—— ·· — ···· / — ···· · / ·—— ——— ·—· —·· ··· / —·—— ——— ··— / ·—· · —·—· ——— ·—· —·· · —·· ——··—— / ··—· ·· ·—·· ·—·· · —·· / ·· —· / ··—· ——— ·—· / · ·— —·—· ···· / —·—· ——— —· — ·— —·—· — ——··—— / ··— ··· ·· —· ——· / — ···· · ··· · / ···— ·— ·—·· ··— · ··· ———···',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.help' => '···· · ·—·· ·——·',
 			'settings.radio.voiceMessages.helpTitle' => '··· ·— —·—— ·· —· ——· / —— · ··· ··· ·— ——· · ··· / ·—— ·· — ···· / —·—— ——— ··— ·—· / ·—— ——— ·—· —·· ···',
 			'settings.radio.voiceMessages.helpFullExample' => '·— / ·—— ···· ——— ·—·· · / —— · ··· ··· ·— ——· · ———···',
@@ -7110,6 +7126,8 @@ extension on TranslationsCw {
 			'settings.station.models.placeholderRadio' => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ·— —·· ·· ———',
 			'settings.station.models.placeholderRadioNodeName' => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ·— —·· ·· ———',
 			'settings.station.models.simulatedRotator' => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ——— — ·— — ——— ·—·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.simulatedSwitch' => '··· ·· —— ··— ·—·· ·— — · —·· / ·— —· — · —· —· ·— / ··· ·—— ·· — —·—· ····',
 			'settings.station.models.antennaGenius' => '····— ——— ···—— ·— / ·— —· — · —· —· ·— / ——· · —· ·· ··— ···',
 			'settings.station.models.sierraCoax' => '··· ·· · ·—· ·—· ·— / ·—· ·— —·· ·· ——— / —·—· —··— —····— ·———— / —·—· ——— ·— —··— / ··· ·—— ·· — —·—· ····',
@@ -7118,8 +7136,6 @@ extension on TranslationsCw {
 			'settings.station.models.buddihex' => '—··· ··— —·· —·· ·· ···· · —··— / —— ·— ··· — / ·—· ——— — ·— — ——— ·—· / —·——· —— ·— ··· — ·—— · ·—· —·— ··· —·——·—',
 			'settings.station.models.rotctld' => '···· ·— —— ·—·· ·· —··· / ·—· ——— — —·—· — ·—·· —··',
 			'settings.station.models.everywareServer' => '——· ·—· · · —· / ···· · ·—· ——— —· / · ···— · ·—· —·—— ·—— ·— ·—· · / ··· · ·—· ···— · ·—·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.everywareRotor' => '——· ·—· · · —· / ···· · ·—· ——— —· / · ···— · ·—· —·—— ·—— ·— ·—· · / ·—· ——— — ·— — ——— ·—·',
 			'settings.station.models.everywareSwitch' => '——· ·—· · · —· / ···· · ·—· ——— —· / · ···— · ·—· —·—— ·—— ·— ·—· · / ··· ·—— ·· — —·—· ····',
 			'settings.station.models.everywareDirectional' => '——· ·—· · · —· / ···· · ·—· ——— —· / · ···— · ·—· —·—— ·—— ·— ·—· · / —·· ·· ·—· · —·—· — ·· ——— —· ·— ·—·· / ··· ·—— ·· — —·—· ····',
@@ -7624,6 +7640,8 @@ extension on TranslationsCw {
 			'settings.panels.station' => '··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —·',
 			'settings.panels.stationDescription' => '—·—· ·— — / —·—· ——— —· — ·—· ——— ·—·· / ·— —· —·· / —— ——— ·—· · / ——— ·——· — ·· ——— —· ···',
 			'settings.panels.peers' => '·——· · · ·—· / —·· · ···— ·· —·—· · ···',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.peersDescription' => '—·—· ——— —· —· · —·—· — / — ——— / ——— — ···· · ·—· / —·· · ···— ·· —·—· · ··· / —· · ·— ·—· —··· —·——',
 			'settings.showMoreSettings' => '··· ···· ——— ·—— / —— ——— ·—· · / ··· · — — ·· —· ——· ···',
 			'settings.gridPrecision' => '——· ·—· ·· —·· / ·——· ·—· · —·—· ·· ··· ·· ——— —·',
@@ -7632,8 +7650,6 @@ extension on TranslationsCw {
 			'settings.gridPrecisionDescription.six' => '—···· / —·· ·· ——· ·· — ···',
 			'settings.gridPrecisionDescription.eight' => '———·· / —·· ·· ——· ·· — ···',
 			'commands.enableSyncFirst' => '· —· ·— —··· ·—·· · / ··· —·—— —· —·—· / ·· —· / ··· · — — ·· —· ——· ··· / ··—· ·· ·—· ··· — ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'commands.fullResyncStarted' => '··—· ··— ·—·· ·—·· / ·—· · ··· —·—— —· —·—· / ··· — ·— ·—· — · —·· / — / ·—·· ——— —·—· ·— ·—·· / —·· ·— — ·— / ·—— ·— ··· / —··· ·— —·—· —·— · —·· / ··— ·——· / ··—· ·· ·—· ··· — ·—·—·—',
 			'commands.noDataFilesMatched' => ({required Object target}) => '—· ——— / —·· ·— — ·— / ··—· ·· ·—·· · ··· / —— ·— — —·—· ···· · —·· / ·—··—· ${target} ·—··—· ·—·—·—',
 			'commands.reloadFailed' => ({required Object error}) => '·—· · ·—·· ——— ·— —·· / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
@@ -8138,6 +8154,8 @@ extension on TranslationsCw {
 			'templateEditor.attributes' => '·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·— — — ·—· ·· —··· ··— — · ···',
 			'templateEditor.filters' => '··—· ·· ·—·· — · ·—· ···',
 			'templateEditor.flowControl' => '··—· ·—·· ——— ·—— / —·—· ——— —· — ·—· ——— ·—··',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.unavailable' => '·——· ·—· · ···— ·· · ·—— / ·· ··· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ··— —· — ·· ·—·· / · —··— — · —· ··· ·· ——— —· ··· / ·— ·—· · / ·—· · ·— —·· —·—— ·—·—·—',
 			'templateEditor.empty' => '—·——· · —— ·——· — —·—— / ——— ··— — ·——· ··— — —·——·—',
 			'fileOpen.dropHint' => '—·· ·—· ——— ·——· / —·—— ——— ··— ·—· / ··—· ·· ·—·· · / ···· · ·—· ·',
@@ -8146,8 +8164,6 @@ extension on TranslationsCw {
 			'fileOpen.cannotOpenDetail' => '·—— · / —·· ——— —· ’ — / ·—· · —·—· ——— ——· —· ·· ——·· · / — ···· · / —·—· ——— —· — · —· — ··· / ——— ··—· / — ···· ·· ··· / ··—· ·· ·—·· ·',
 			'fileOpen.installExtension' => '·· —· ··· — ·— ·—·· ·—·· / — ···· · / · —··— — · —· ··· ·· ——— —·',
 			'fileOpen.importKeyboardShortcuts' => '·· —— ·——· ——— ·—· — / ·— ··· / ·— / —·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — / ··· · —',
-			_ => null,
-		} ?? switch (path) {
 			'fileOpen.importCwMessages' => '·· —— ·——· ——— ·—· — / ·— ··· / ·— / —·—· ·—— / —— · ··· ··· ·— ——· · / ··· · —',
 			'fileOpen.importVoiceMessages' => '·· —— ·——· ——— ·—· — / ·— ··· / ·— / ···— ——— ·· —·—· · / —— · ··· ··· ·— ——· · / ··· · —',
 			'fileOpen.importIntoLogs' => '·· —— ·——· ——— ·—· — / ·· —· — ——— / ·—·· ——— ——· ···',

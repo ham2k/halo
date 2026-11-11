@@ -386,7 +386,9 @@ void openInstallExtension(HaLoServices services, Uri source, {int attemptsLeft =
       store: store,
       read: local ? () => File(source.toFilePath()).readAsBytes() : () => services.catalog.downloadBundle(source),
       from: local ? null : source.host,
+      link: local ? null : source,
       commit: commitThroughInstaller(services),
+      replacedSource: services.extensions.replacedSource,
       isBusy: services.extensionInstaller.isActive,
     ).then((name) => _installedFromLink(services, name)),
   );

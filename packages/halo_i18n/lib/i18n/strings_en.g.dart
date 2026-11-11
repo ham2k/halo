@@ -460,6 +460,30 @@ class Translations$extensionsPanel$en {
 	/// en: 'Downloaded from ${source}'
 	String installedFrom({required Object source}) => 'Downloaded from ${source}';
 
+	/// en: 'Saved logins for ${name}'
+	String secretsTitle({required Object name}) => 'Saved logins for ${name}';
+
+	/// en: 'You're installing ${name} from ${source}, but the version you have came from ${installedSource}. Do you want to give it access to the logins and passwords you saved for that version?'
+	String secretsQuestion({required Object name, required Object source, required Object installedSource}) => 'You\'re installing ${name} from ${source}, but the version you have came from ${installedSource}. Do you want to give it access to the logins and passwords you saved for that version?';
+
+	/// en: 'Allow'
+	String get secretsAllow => 'Allow';
+
+	/// en: 'Remove them'
+	String get secretsRemove => 'Remove them';
+
+	/// en: 'the Ham2K catalog'
+	String get sourceHam2k => 'the Ham2K catalog';
+
+	/// en: 'a file'
+	String get sourceFile => 'a file';
+
+	/// en: 'The saved logins for ${name} could not all be removed, so it was not installed. The version you have is unchanged.'
+	String secretsNotRemoved({required Object name}) => 'The saved logins for ${name} could not all be removed, so it was not installed. The version you have is unchanged.';
+
+	/// en: 'Could not tell where the installed ${name} came from, so it was not updated.'
+	String installSourceUnknown({required Object name}) => 'Could not tell where the installed ${name} came from, so it was not updated.';
+
 	/// en: '${source} returned ${status} for that extension.'
 	String downloadFailed({required Object source, required Object status}) => '${source} returned ${status} for that extension.';
 
@@ -11378,6 +11402,14 @@ extension on Translations {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => 'Installing ${name} did not finish. It may need installing again.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'Could not remove ${name}',
 			'extensionsPanel.installedFrom' => ({required Object source}) => 'Downloaded from ${source}',
+			'extensionsPanel.secretsTitle' => ({required Object name}) => 'Saved logins for ${name}',
+			'extensionsPanel.secretsQuestion' => ({required Object name, required Object source, required Object installedSource}) => 'You\'re installing ${name} from ${source}, but the version you have came from ${installedSource}. Do you want to give it access to the logins and passwords you saved for that version?',
+			'extensionsPanel.secretsAllow' => 'Allow',
+			'extensionsPanel.secretsRemove' => 'Remove them',
+			'extensionsPanel.sourceHam2k' => 'the Ham2K catalog',
+			'extensionsPanel.sourceFile' => 'a file',
+			'extensionsPanel.secretsNotRemoved' => ({required Object name}) => 'The saved logins for ${name} could not all be removed, so it was not installed. The version you have is unchanged.',
+			'extensionsPanel.installSourceUnknown' => ({required Object name}) => 'Could not tell where the installed ${name} came from, so it was not updated.',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} returned ${status} for that extension.',
 			'extensionsPanel.downloadTooLarge' => 'That download is far too large to be an extension.',
 			'extensionsPanel.downloadNotSecure' => 'That download redirected somewhere insecure.',
@@ -11772,6 +11804,8 @@ extension on Translations {
 			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'Made for the ${view} view: panels only that view has are left out.',
 			'operation.layout.layouts.viewHome' => 'Home',
 			'operation.layout.layouts.viewOperation' => 'Operation',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.viewLogs' => 'Logs',
 			'operation.layout.layouts.viewChase' => 'Chasing',
 			'operation.layout.layouts.importAsNew' => 'As a new layout',
@@ -11780,8 +11814,6 @@ extension on Translations {
 			'operation.layout.layouts.importAddHint' => 'The panels arrive in a new column on the right.',
 			'operation.layout.layouts.importPick' => 'Panels to import',
 			'operation.layout.layouts.importReplaceSettings' => 'Replace the settings of panels already set up here',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.layouts.importAction' => 'Import',
 			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} isn\'t a layout this app can read: ${problem}',
 			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => 'the text isn’t valid YAML (line ${line})',
@@ -12286,6 +12318,8 @@ extension on Translations {
 			'loggingControls.theirCall' => 'Their call',
 			'loggingControls.noteField' => 'Note',
 			'loggingControls.todoField' => 'Todo',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.sent' => 'Sent',
 			'loggingControls.rcvd' => 'Rcvd',
 			'loggingControls.more' => 'More',
@@ -12294,8 +12328,6 @@ extension on Translations {
 			'loggingControls.restore' => 'Restore',
 			'loggingControls.wipe' => 'Wipe',
 			'loggingControls.undo' => 'Undo',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.pendingDeleteTapWarning' => 'Tap the trashcan one more time to delete this QSO',
 			'loggingControls.pendingDeleteClickWarning' => 'Click the trashcan one more time to delete this QSO',
 			'loggingControls.deletedQsoWarning' => 'Deleted QSO',
@@ -12800,6 +12832,8 @@ extension on Translations {
 			'settings.radio.voiceMessages.problemSourceRefused' => 'The radio would not switch its transmit audio to the app, so the message stopped. Set the radio to transmit the app\'s audio.',
 			'settings.radio.voiceMessages.problemCannotKey' => 'This radio can\'t be keyed over CAT, so the computer can\'t play messages into it.',
 			'settings.radio.voiceMessages.problemUnplayable' => 'That message\'s file isn\'t a sound file the app can play. Use a WAV, FLAC or MP3 file, or record it again.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'The recording was cut short, so the message was left as it was. Check that the recording device is still connected and that there is room on the disk.',
 			'settings.radio.voiceMessages.problemFileFailed' => 'The recording couldn\'t be saved in the message\'s place, so the message was left as it was.',
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'That message needs words you haven\'t recorded: ${words}.',
@@ -12808,8 +12842,6 @@ extension on Translations {
 			'settings.radio.voiceMessages.problemNothingSaid' => 'That message says nothing for this contact.',
 			'settings.radio.voiceMessages.templateField' => 'Say with my words',
 			'settings.radio.voiceMessages.templateHelp' => 'Leave empty to play the recording. Otherwise the message is said with the words you recorded, filled in for each contact, using these values:',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.help' => 'Help',
 			'settings.radio.voiceMessages.helpTitle' => 'Saying Messages with Your Words',
 			'settings.radio.voiceMessages.helpFullExample' => 'A whole message:',
@@ -13314,6 +13346,8 @@ extension on Translations {
 			'settings.station.models.placeholderRadio' => 'Simulated Radio',
 			'settings.station.models.placeholderRadioNodeName' => 'Simulated Radio',
 			'settings.station.models.simulatedRotator' => 'Simulated Rotator',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.simulatedSwitch' => 'Simulated Antenna Switch',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
@@ -13322,8 +13356,6 @@ extension on Translations {
 			'settings.station.models.buddihex' => 'BuddiHex Mast Rotator (MastWerks)',
 			'settings.station.models.rotctld' => 'Hamlib rotctld',
 			'settings.station.models.everywareServer' => 'Green Heron Everyware server',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.everywareRotor' => 'Green Heron Everyware rotator',
 			'settings.station.models.everywareSwitch' => 'Green Heron Everyware switch',
 			'settings.station.models.everywareDirectional' => 'Green Heron Everyware directional switch',
@@ -13828,6 +13860,8 @@ extension on Translations {
 			'settings.panels.station' => 'Station Configuration',
 			'settings.panels.stationDescription' => 'CAT control and more options',
 			'settings.panels.peers' => 'Peer Devices',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.peersDescription' => 'Connect to other devices nearby',
 			'settings.showMoreSettings' => 'Show more settings',
 			'settings.gridPrecision' => 'Grid Precision',
@@ -13836,8 +13870,6 @@ extension on Translations {
 			'settings.gridPrecisionDescription.six' => '6 digits',
 			'settings.gridPrecisionDescription.eight' => '8 digits',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
-			_ => null,
-		} ?? switch (path) {
 			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'Reload failed: ${error}',
@@ -14342,6 +14374,8 @@ extension on Translations {
 			'templateEditor.attributes' => 'Available Attributes',
 			'templateEditor.filters' => 'Filters',
 			'templateEditor.flowControl' => 'Flow Control',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.unavailable' => 'Preview is unavailable until extensions are ready.',
 			'templateEditor.empty' => '(empty output)',
 			'fileOpen.dropHint' => 'Drop your file here',
@@ -14350,8 +14384,6 @@ extension on Translations {
 			'fileOpen.cannotOpenDetail' => 'We don’t recognize the contents of this file',
 			'fileOpen.installExtension' => 'Install the extension',
 			'fileOpen.importKeyboardShortcuts' => 'Import as a keyboard shortcut set',
-			_ => null,
-		} ?? switch (path) {
 			'fileOpen.importCwMessages' => 'Import as a CW message set',
 			'fileOpen.importVoiceMessages' => 'Import as a voice message set',
 			'fileOpen.importIntoLogs' => 'Import into Logs',

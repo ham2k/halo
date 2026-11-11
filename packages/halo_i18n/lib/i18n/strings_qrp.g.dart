@@ -237,6 +237,14 @@ class _Translations$extensionsPanel$qrp extends Translations$extensionsPanel$en 
 	@override String installIncomplete({required Object name}) => 'installing ${name} did not finish. it may need installing again.';
 	@override String uninstallFailed({required Object name}) => 'could not remove ${name}';
 	@override String installedFrom({required Object source}) => 'downloaded from ${source}';
+	@override String secretsTitle({required Object name}) => 'saved logins for ${name}';
+	@override String secretsQuestion({required Object name, required Object source, required Object installedSource}) => 'you\'re installing ${name} from ${source}, but the version you have came from ${installedSource}. do you want to give it access to the logins and passwords you saved for that version?';
+	@override String get secretsAllow => 'allow';
+	@override String get secretsRemove => 'remove them';
+	@override String get sourceHam2k => 'the ham2k catalog';
+	@override String get sourceFile => 'a file';
+	@override String secretsNotRemoved({required Object name}) => 'the saved logins for ${name} could not all be removed, so it was not installed. the version you have is unchanged.';
+	@override String installSourceUnknown({required Object name}) => 'could not tell where the installed ${name} came from, so it was not updated.';
 	@override String downloadFailed({required Object source, required Object status}) => '${source} returned ${status} for that extension.';
 	@override String get downloadTooLarge => 'that download is far too large to be an extension.';
 	@override String get downloadNotSecure => 'that download redirected somewhere insecure.';
@@ -5174,6 +5182,14 @@ extension on TranslationsQrp {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => 'installing ${name} did not finish. it may need installing again.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'could not remove ${name}',
 			'extensionsPanel.installedFrom' => ({required Object source}) => 'downloaded from ${source}',
+			'extensionsPanel.secretsTitle' => ({required Object name}) => 'saved logins for ${name}',
+			'extensionsPanel.secretsQuestion' => ({required Object name, required Object source, required Object installedSource}) => 'you\'re installing ${name} from ${source}, but the version you have came from ${installedSource}. do you want to give it access to the logins and passwords you saved for that version?',
+			'extensionsPanel.secretsAllow' => 'allow',
+			'extensionsPanel.secretsRemove' => 'remove them',
+			'extensionsPanel.sourceHam2k' => 'the ham2k catalog',
+			'extensionsPanel.sourceFile' => 'a file',
+			'extensionsPanel.secretsNotRemoved' => ({required Object name}) => 'the saved logins for ${name} could not all be removed, so it was not installed. the version you have is unchanged.',
+			'extensionsPanel.installSourceUnknown' => ({required Object name}) => 'could not tell where the installed ${name} came from, so it was not updated.',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} returned ${status} for that extension.',
 			'extensionsPanel.downloadTooLarge' => 'that download is far too large to be an extension.',
 			'extensionsPanel.downloadNotSecure' => 'that download redirected somewhere insecure.',
@@ -5568,6 +5584,8 @@ extension on TranslationsQrp {
 			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'made for the ${view} view: panels only that view has are left out.',
 			'operation.layout.layouts.viewHome' => 'home',
 			'operation.layout.layouts.viewOperation' => 'operation',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.viewLogs' => 'logs',
 			'operation.layout.layouts.viewChase' => 'chasing',
 			'operation.layout.layouts.importAsNew' => 'as a new layout',
@@ -5576,8 +5594,6 @@ extension on TranslationsQrp {
 			'operation.layout.layouts.importAddHint' => 'the panels arrive in a new column on the right.',
 			'operation.layout.layouts.importPick' => 'panels to import',
 			'operation.layout.layouts.importReplaceSettings' => 'replace the settings of panels already set up here',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.layouts.importAction' => 'import',
 			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} isn\'t a layout this app can read: ${problem}',
 			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => 'the text isn’t valid yaml (line ${line})',
@@ -6082,6 +6098,8 @@ extension on TranslationsQrp {
 			'loggingControls.theirCall' => 'their call',
 			'loggingControls.noteField' => 'note',
 			'loggingControls.todoField' => 'todo',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.sent' => 'sent',
 			'loggingControls.rcvd' => 'rcvd',
 			'loggingControls.more' => 'more',
@@ -6090,8 +6108,6 @@ extension on TranslationsQrp {
 			'loggingControls.restore' => 'restore',
 			'loggingControls.wipe' => 'wipe',
 			'loggingControls.undo' => 'undo',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.pendingDeleteTapWarning' => 'tap the trashcan one more time to delete this qso',
 			'loggingControls.pendingDeleteClickWarning' => 'click the trashcan one more time to delete this qso',
 			'loggingControls.deletedQsoWarning' => 'deleted qso',
@@ -6596,6 +6612,8 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.problemSourceRefused' => 'the radio would not switch its transmit audio to the app, so the message stopped. set the radio to transmit the app\'s audio.',
 			'settings.radio.voiceMessages.problemCannotKey' => 'this radio can\'t be keyed over cat, so the computer can\'t play messages into it.',
 			'settings.radio.voiceMessages.problemUnplayable' => 'that message\'s file isn\'t a sound file the app can play. use a wav, flac or mp3 file, or record it again.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'the recording was cut short, so the message was left as it was. check that the recording device is still connected and that there is room on the disk.',
 			'settings.radio.voiceMessages.problemFileFailed' => 'the recording couldn\'t be saved in the message\'s place, so the message was left as it was.',
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'that message needs words you haven\'t recorded: ${words}.',
@@ -6604,8 +6622,6 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.problemNothingSaid' => 'that message says nothing for this contact.',
 			'settings.radio.voiceMessages.templateField' => 'say with my words',
 			'settings.radio.voiceMessages.templateHelp' => 'leave empty to play the recording. otherwise the message is said with the words you recorded, filled in for each contact, using these values:',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.help' => 'help',
 			'settings.radio.voiceMessages.helpTitle' => 'saying messages with your words',
 			'settings.radio.voiceMessages.helpFullExample' => 'a whole message:',
@@ -7110,6 +7126,8 @@ extension on TranslationsQrp {
 			'settings.station.models.placeholderRadio' => 'simulated radio',
 			'settings.station.models.placeholderRadioNodeName' => 'simulated radio',
 			'settings.station.models.simulatedRotator' => 'simulated rotator',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.simulatedSwitch' => 'simulated antenna switch',
 			'settings.station.models.antennaGenius' => '4o3a antenna genius',
 			'settings.station.models.sierraCoax' => 'sierra radio cx-1 coax switch',
@@ -7118,8 +7136,6 @@ extension on TranslationsQrp {
 			'settings.station.models.buddihex' => 'buddihex mast rotator (mastwerks)',
 			'settings.station.models.rotctld' => 'hamlib rotctld',
 			'settings.station.models.everywareServer' => 'green heron everyware server',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.everywareRotor' => 'green heron everyware rotator',
 			'settings.station.models.everywareSwitch' => 'green heron everyware switch',
 			'settings.station.models.everywareDirectional' => 'green heron everyware directional switch',
@@ -7624,6 +7640,8 @@ extension on TranslationsQrp {
 			'settings.panels.station' => 'station configuration',
 			'settings.panels.stationDescription' => 'cat control and more options',
 			'settings.panels.peers' => 'peer devices',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.peersDescription' => 'connect to other devices nearby',
 			'settings.showMoreSettings' => 'show more settings',
 			'settings.gridPrecision' => 'grid precision',
@@ -7632,8 +7650,6 @@ extension on TranslationsQrp {
 			'settings.gridPrecisionDescription.six' => '6 digits',
 			'settings.gridPrecisionDescription.eight' => '8 digits',
 			'commands.enableSyncFirst' => 'enable sync in settings first.',
-			_ => null,
-		} ?? switch (path) {
 			'commands.fullResyncStarted' => 'full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'no data files matched "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'reload failed: ${error}',
@@ -8138,6 +8154,8 @@ extension on TranslationsQrp {
 			'templateEditor.attributes' => 'available attributes',
 			'templateEditor.filters' => 'filters',
 			'templateEditor.flowControl' => 'flow control',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.unavailable' => 'preview is unavailable until extensions are ready.',
 			'templateEditor.empty' => '(empty output)',
 			'fileOpen.dropHint' => 'drop your file here',
@@ -8146,8 +8164,6 @@ extension on TranslationsQrp {
 			'fileOpen.cannotOpenDetail' => 'we don’t recognize the contents of this file',
 			'fileOpen.installExtension' => 'install the extension',
 			'fileOpen.importKeyboardShortcuts' => 'import as a keyboard shortcut set',
-			_ => null,
-		} ?? switch (path) {
 			'fileOpen.importCwMessages' => 'import as a cw message set',
 			'fileOpen.importVoiceMessages' => 'import as a voice message set',
 			'fileOpen.importIntoLogs' => 'import into logs',

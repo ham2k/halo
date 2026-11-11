@@ -311,7 +311,13 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
       debugPrint('[extensions] install pressed before the installed store was ready');
       return;
     }
-    final name = await installExtensionFromFile(context, store: store, commit: commitThroughInstaller(services), isBusy: services.extensionInstaller.isActive);
+    final name = await installExtensionFromFile(
+      context,
+      store: store,
+      commit: commitThroughInstaller(services),
+      replacedSource: services.extensions.replacedSource,
+      isBusy: services.extensionInstaller.isActive,
+    );
     if (name == null) return; // cancelled, or refused with its own dialog
     services.track('extension_installed', {});
   }
@@ -1244,6 +1250,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
       store: store,
       read: file.readAsBytes,
       commit: commitThroughInstaller(services),
+      replacedSource: services.extensions.replacedSource,
       isBusy: services.extensionInstaller.isActive,
     );
     if (name == null) return;

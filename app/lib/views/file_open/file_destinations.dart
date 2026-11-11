@@ -115,6 +115,7 @@ Future<void> _installExtension(BuildContext context, HaLoServices services, XFil
     store: store,
     read: file.readAsBytes,
     commit: commitThroughInstaller(services),
+    replacedSource: services.extensions.replacedSource,
     isBusy: services.extensionInstaller.isActive,
   );
   if (name != null) services.track('extension_installed', {});

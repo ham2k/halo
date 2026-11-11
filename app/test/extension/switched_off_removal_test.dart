@@ -84,6 +84,9 @@ void main() {
 
   setUp(() async {
     root = Directory.systemTemp.createTempSync('switched-off-removal');
+    // The catch-up also clears retired built-ins' keychain items: without a
+    // keychain, each one is a report the counts below would read as theirs.
+    useInMemoryKeychain();
     clock = File('test/fixtures/ki2d-my-clock.h2kext').readAsBytesSync();
     SharedPreferences.setMockInitialValues(const {});
     settings = SettingsService(await SharedPreferences.getInstance());

@@ -2063,7 +2063,15 @@ void main() {
         ..settings = settings
         ..debugInstalledStore = store;
       await tester.runAsync(() async {
-        await extensions.installBundle(await store.inspect(asOldClock()));
+        // From the catalog: a replacement is offered only for a copy it
+        // delivered.
+        final old = asOldClock();
+        await extensions.installBundle(
+          await store.inspect(
+            old,
+            provenance: BundleProvenance(host: kCatalogHost, sha256: sha256Hex(old), version: '1.2.3'),
+          ),
+        );
         await settings.setSettingValue('extension_ki2d-old-clock', 'format', '24h');
       });
       extensions.debugSetAvailableExtensions(const [

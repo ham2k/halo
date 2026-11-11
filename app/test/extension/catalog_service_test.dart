@@ -1119,8 +1119,19 @@ void main() {
         'entry': _entry(key: (entryKey ?? to) as String, name: 'Ham2K LLOTA', version: '2.0.0'),
       };
 
+      /// Replacing carries the installed copy's saved logins to the new key,
+      /// so it is offered only for a copy the catalog delivered.
+      Future<CatalogUpdateCheck> fromCatalog(Future<http.Response> Function(http.Request) handler) => checker(
+        handler,
+        prefs: {
+          'extensionInstalledFrom': jsonEncode({
+            'k2hrc-llota': {'host': kCatalogHost, 'sha256': 'a' * 64, 'version': '1.0.0'},
+          }),
+        },
+      );
+
       test('is offered for an installed key, named in a notice of its own, and never in Update all', () async {
-        final check = await checker(
+        final check = await fromCatalog(
           (_) async => answer(
             redirects: [
               redirect(),
@@ -1144,7 +1155,7 @@ void main() {
         // The catalog keeps answering the old key's updates for apps that
         // cannot read `redirects`. Taken here too, Update all would move the
         // operator forward on the extension the Replace row moves them off.
-        final check = await checker(
+        final check = await fromCatalog(
           (_) async => answer(
             updates: [_entry(version: '1.1.0')],
             redirects: [redirect()],
@@ -1159,7 +1170,7 @@ void main() {
       test('whose release is not the key it names is dropped', () async {
         // Replace installs the entry: one naming another key would install
         // something other than what the notice said.
-        final check = await checker((_) async => answer(redirects: [redirect(entryKey: 'someone-else')]));
+        final check = await fromCatalog((_) async => answer(redirects: [redirect(entryKey: 'someone-else')]));
         await check.check();
         expect(check.pendingRedirects, isEmpty);
         expect(notices(CatalogUpdateCheck.redirectNoticeKey('k2hrc-llota')), isEmpty);
@@ -1167,7 +1178,7 @@ void main() {
 
       test('is over once taken, and once the catalog stops offering it', () async {
         var offered = true;
-        final check = await checker((_) async => answer(redirects: [if (offered) redirect()]));
+        final check = await fromCatalog((_) async => answer(redirects: [if (offered) redirect()]));
         await check.check();
         check.noteReplaced('k2hrc-llota');
         expect(check.pendingRedirects, isEmpty);
@@ -1182,9 +1193,19 @@ void main() {
       });
 
       test('the check the panel runs on opening does not raise the notice', () async {
-        final check = await checker((_) async => answer(redirects: [redirect()]));
+        final check = await fromCatalog((_) async => answer(redirects: [redirect()]));
         await check.check(announce: false);
         expect(check.pendingRedirects.keys, ['k2hrc-llota']);
+        expect(notices(CatalogUpdateCheck.redirectNoticeKey('k2hrc-llota')), isEmpty);
+      });
+
+      test('is not offered for a copy from a link or a file', () async {
+        // Another publisher's copy under the key: the catalog vouches for
+        // what it delivered, and Replace would hand this one's saved logins
+        // to the catalog's extension.
+        final check = await checker((_) async => answer(redirects: [redirect()]));
+        await check.check();
+        expect(check.pendingRedirects, isEmpty);
         expect(notices(CatalogUpdateCheck.redirectNoticeKey('k2hrc-llota')), isEmpty);
       });
     });

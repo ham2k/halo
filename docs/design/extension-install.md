@@ -124,6 +124,19 @@ never serve it or has not published it yet, and only the app knows which. A
 built-in retired from the catalog on purpose joins that list in the same
 change.
 
+**The built-ins' keychain items.** A twin's first install copies its
+built-in's keychain items rather than moving them, so an install that fails
+after the copy finds them again. Once nothing is left to carry them to (no
+twin is still to be fetched for it, `twinsStillWanted`), the last step of
+the catch-up removes them: for an installed twin, only once the twin is
+seen to hold its own copy of each, so a carry that failed, or a login the
+operator removed from the twin, leaves the built-in's where they are. Each
+key is recorded once its items are known to be gone
+(`extensionRetiredSecretsForgotten`), and tried again next launch
+otherwise; nothing writes a retired key again. An uninstall of a twin
+removes its built-in's too, whatever the record says, so a later install of
+it carries nothing back. Their plain settings stay.
+
 **A twin that will not run.** A bundle the engine will not evaluate takes
 the whole runtime with it, so the catch-up puts that one aside (the boot
 names the bundle it died on) and restarts once more, the notice naming it
@@ -166,6 +179,34 @@ notice whose text already named every extension it takes, none at all. It
 is a confirmation of a job the operator started, never a way to start one
 (`install_consent_scope_test` holds it to the one function that shows that
 confirmation first).
+
+**An update from somewhere else asks about saved logins.** Nothing ties two
+bundles claiming one key to one publisher except where each came from, so
+an update's source is compared with the installed copy's: Ham2K (the
+catalog, or a pre-load of its bundle), another catalog, a link's publisher
+(`extensionLinkPublishers`), or a file. A link's publisher is the folder
+its bundle sits in (`linkPublisherOf`): host, port and path without the
+file name, so two publishers sharing a host differ. A GitHub release's
+folder is its tag, a new one every version, so there it is the repository;
+a link on the catalog's own host is Ham2K. When they differ, the consent screen is
+shown even for *Update all*, and after it the operator is asked, naming both
+sources, whether the update may use the installed copy's keychain items
+(account credentials and settings-panel secrets). Allowed, they stay;
+otherwise they are removed before the new code is written; dismissed, the
+install stops. Plain settings and the switch stay either way. Where the
+keychain cannot be listed (the macOS file keychain), the names come from
+the installed copy, which is still running and is asked what its settings
+panels and accounts declare, and from the record of every settings-panel
+secret the app has written (`extensionSecretNames`); when the copy cannot
+be asked, or a removal fails, nothing is installed and the operator is told
+so. An uninstall there has no running copy to ask, and removes only the
+account pair and the secrets the record names: settings-panel secrets saved
+before the record existed are left behind on macOS, a limit accepted rather
+than worked around. A copy the store has lost but the operator still has installed is
+compared by its record. A fresh install is compared with nothing: what a
+removal kept for the key is the operator's to have back. An install from
+before the link host was recorded reads as a file, so its next update from
+a link asks once.
 
 Screenshots are loaded only from the catalog's own host; a listing naming
 any other is shown without them.
@@ -261,7 +302,10 @@ extension the app is not loading.
 The catalog can say that one key has been replaced by another, and only its
 root account can say so. The update check carries the replacement as a
 release of the new key on the track the old one follows, while there is one
-this app can install; the listing then leaves the old key out. The catalog
+this app can install; the listing then leaves the old key out. A
+replacement is offered only for a copy the catalog delivered: replacing
+carries the copy's saved logins onto the new key, and one from a link or a
+file is another publisher's, whatever its key. The catalog
 still answers the old key's own updates, for an app that predates
 replacements, and the app takes none of them while the replacement is
 pending. The app only ever **offers** it: a notice naming both, and a row

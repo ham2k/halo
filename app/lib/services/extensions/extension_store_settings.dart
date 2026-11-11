@@ -142,6 +142,18 @@ mixin ExtensionStoreSettings on ChangeNotifier {
     notifyListeners();
   }
 
+  /// The retired built-ins whose keychain items have been removed
+  /// (`ExtensionService.forgetRetiredSecrets`). Nothing writes a retired key
+  /// again, so each is removed once: on macOS, which cannot list the
+  /// keychain, every attempt is a round of blind deletes.
+  static const _extensionRetiredSecretsForgottenKey = 'extensionRetiredSecretsForgotten';
+
+  Set<String> get extensionRetiredSecretsForgotten => {...?prefs.getStringList(_extensionRetiredSecretsForgottenKey)};
+
+  Future<void> setExtensionRetiredSecretsForgotten(Set<String> keys) async {
+    await prefs.setStringList(_extensionRetiredSecretsForgottenKey, keys.toList()..sort());
+  }
+
   /// The installed extensions that would not evaluate, and the version of
   /// each that failed ({key: version}).
   ///
@@ -196,6 +208,43 @@ mixin ExtensionStoreSettings on ChangeNotifier {
             if (f.key is String && f.value is String) f.key as String: f.value as String,
         },
   };
+
+  /// The name of every settings-panel secret the app has written to the
+  /// keychain. A keychain that cannot be listed (the macOS file keychain)
+  /// says nothing of what is in it, and this is how removing an extension's
+  /// secrets finds the ones its panels hold (`forgetExtensionKeychainItems`).
+  static const _extensionSecretNamesKey = 'extensionSecretNames';
+
+  Set<String> get extensionSecretNames => {...?prefs.getStringList(_extensionSecretNamesKey)};
+
+  Future<void> recordExtensionSecretName(String name) async {
+    final names = extensionSecretNames;
+    if (names.add(name)) await prefs.setStringList(_extensionSecretNamesKey, names.toList()..sort());
+  }
+
+  Future<void> forgetExtensionSecretNames(bool Function(String name) which) async {
+    final names = extensionSecretNames;
+    final kept = names.where((name) => !which(name)).toSet();
+    if (kept.length != names.length) await prefs.setStringList(_extensionSecretNamesKey, kept.toList()..sort());
+  }
+
+  /// Who each extension installed from a link was published by
+  /// ({key: publisher}, `linkPublisherOf`).
+  /// With [extensionInstalledFrom], what says where the installed copy came
+  /// from — a key in neither came from a file. An update from anywhere else
+  /// gets its keychain items only if the operator says so
+  /// (`ExtensionService.replacedSource`).
+  static const _extensionLinkPublishersKey = 'extensionLinkPublishers';
+
+  Map<String, String> get extensionLinkPublishers => {
+    for (final e in jsonMapPref(_extensionLinkPublishersKey).entries)
+      if (e.value is String) e.key: e.value as String,
+  };
+
+  Future<void> setExtensionLinkPublishers(Map<String, String> publishers) async {
+    await prefs.setString(_extensionLinkPublishersKey, jsonEncode(publishers));
+    notifyListeners();
+  }
 
   Future<void> setExtensionInstalledFrom(Map<String, Map<String, String>> installedFrom) async {
     await prefs.setString(_extensionInstalledFromKey, jsonEncode(installedFrom));
@@ -348,6 +397,10 @@ mixin ExtensionStoreSettings on ChangeNotifier {
     final installedFrom = extensionInstalledFrom;
     if (dropped(installedFrom)) {
       await prefs.setString(_extensionInstalledFromKey, jsonEncode(installedFrom));
+    }
+    final linkPublishers = extensionLinkPublishers;
+    if (dropped(linkPublishers)) {
+      await prefs.setString(_extensionLinkPublishersKey, jsonEncode(linkPublishers));
     }
     // Otherwise the next launch reads it as missing and offers it back.
     final installed = extensionsInstalled;

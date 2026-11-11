@@ -238,13 +238,16 @@ mixin _ExtensionAccounts {
   /// Best-effort keychain delete. Deleting an item that doesn't exist is
   /// fine everywhere except macOS 26, which reports it as
   /// errSecMissingEntitlement (-34018) instead of "not found" — so delete
-  /// failures are logged, never thrown. Answers whether the delete went
-  /// through, for a caller whose cached copy must not claim more than that.
+  /// failures are logged, never thrown. Answers whether the item is gone,
+  /// for a caller whose cached copy must not claim more than that, and for
+  /// one that removes credentials and must not record it done when it is
+  /// not: an item that was never there counts as gone.
   Future<bool> _deleteAccountItem(String key, ({MacOsOptions mOptions, IOSOptions iOptions}) o) async {
     try {
       await _secureStorage.delete(key: key, mOptions: o.mOptions, iOptions: o.iOptions);
       return true;
     } catch (e) {
+      if (isKeychainItemMissing(e)) return true;
       debugPrint('[extensions] keychain delete $key failed (ignored): $e');
       return false;
     }

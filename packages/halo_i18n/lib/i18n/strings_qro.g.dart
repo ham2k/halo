@@ -237,6 +237,14 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 	@override String installIncomplete({required Object name}) => 'INSTALLING ${name} DID NOT FINISH. IT MAY NEED INSTALLING AGAIN.';
 	@override String uninstallFailed({required Object name}) => 'COULD NOT REMOVE ${name}';
 	@override String installedFrom({required Object source}) => 'DOWNLOADED FROM ${source}';
+	@override String secretsTitle({required Object name}) => 'SAVED LOGINS FOR ${name}';
+	@override String secretsQuestion({required Object name, required Object source, required Object installedSource}) => 'YOU\'RE INSTALLING ${name} FROM ${source}, BUT THE VERSION YOU HAVE CAME FROM ${installedSource}. DO YOU WANT TO GIVE IT ACCESS TO THE LOGINS AND PASSWORDS YOU SAVED FOR THAT VERSION?';
+	@override String get secretsAllow => 'ALLOW';
+	@override String get secretsRemove => 'REMOVE THEM';
+	@override String get sourceHam2k => 'THE HAM2K CATALOG';
+	@override String get sourceFile => 'A FILE';
+	@override String secretsNotRemoved({required Object name}) => 'THE SAVED LOGINS FOR ${name} COULD NOT ALL BE REMOVED, SO IT WAS NOT INSTALLED. THE VERSION YOU HAVE IS UNCHANGED.';
+	@override String installSourceUnknown({required Object name}) => 'COULD NOT TELL WHERE THE INSTALLED ${name} CAME FROM, SO IT WAS NOT UPDATED.';
 	@override String downloadFailed({required Object source, required Object status}) => '${source} RETURNED ${status} FOR THAT EXTENSION.';
 	@override String get downloadTooLarge => 'THAT DOWNLOAD IS FAR TOO LARGE TO BE AN EXTENSION.';
 	@override String get downloadNotSecure => 'THAT DOWNLOAD REDIRECTED SOMEWHERE INSECURE.';
@@ -5174,6 +5182,14 @@ extension on TranslationsQro {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => 'INSTALLING ${name} DID NOT FINISH. IT MAY NEED INSTALLING AGAIN.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'COULD NOT REMOVE ${name}',
 			'extensionsPanel.installedFrom' => ({required Object source}) => 'DOWNLOADED FROM ${source}',
+			'extensionsPanel.secretsTitle' => ({required Object name}) => 'SAVED LOGINS FOR ${name}',
+			'extensionsPanel.secretsQuestion' => ({required Object name, required Object source, required Object installedSource}) => 'YOU\'RE INSTALLING ${name} FROM ${source}, BUT THE VERSION YOU HAVE CAME FROM ${installedSource}. DO YOU WANT TO GIVE IT ACCESS TO THE LOGINS AND PASSWORDS YOU SAVED FOR THAT VERSION?',
+			'extensionsPanel.secretsAllow' => 'ALLOW',
+			'extensionsPanel.secretsRemove' => 'REMOVE THEM',
+			'extensionsPanel.sourceHam2k' => 'THE HAM2K CATALOG',
+			'extensionsPanel.sourceFile' => 'A FILE',
+			'extensionsPanel.secretsNotRemoved' => ({required Object name}) => 'THE SAVED LOGINS FOR ${name} COULD NOT ALL BE REMOVED, SO IT WAS NOT INSTALLED. THE VERSION YOU HAVE IS UNCHANGED.',
+			'extensionsPanel.installSourceUnknown' => ({required Object name}) => 'COULD NOT TELL WHERE THE INSTALLED ${name} CAME FROM, SO IT WAS NOT UPDATED.',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} RETURNED ${status} FOR THAT EXTENSION.',
 			'extensionsPanel.downloadTooLarge' => 'THAT DOWNLOAD IS FAR TOO LARGE TO BE AN EXTENSION.',
 			'extensionsPanel.downloadNotSecure' => 'THAT DOWNLOAD REDIRECTED SOMEWHERE INSECURE.',
@@ -5568,6 +5584,8 @@ extension on TranslationsQro {
 			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'MADE FOR THE ${view} VIEW: PANELS ONLY THAT VIEW HAS ARE LEFT OUT.',
 			'operation.layout.layouts.viewHome' => 'HOME',
 			'operation.layout.layouts.viewOperation' => 'OPERATION',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.viewLogs' => 'LOGS',
 			'operation.layout.layouts.viewChase' => 'CHASING',
 			'operation.layout.layouts.importAsNew' => 'AS A NEW LAYOUT',
@@ -5576,8 +5594,6 @@ extension on TranslationsQro {
 			'operation.layout.layouts.importAddHint' => 'THE PANELS ARRIVE IN A NEW COLUMN ON THE RIGHT.',
 			'operation.layout.layouts.importPick' => 'PANELS TO IMPORT',
 			'operation.layout.layouts.importReplaceSettings' => 'REPLACE THE SETTINGS OF PANELS ALREADY SET UP HERE',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.layouts.importAction' => 'IMPORT',
 			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} ISN\'T A LAYOUT THIS APP CAN READ: ${problem}',
 			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => 'THE TEXT ISN’T VALID YAML (LINE ${line})',
@@ -6082,6 +6098,8 @@ extension on TranslationsQro {
 			'loggingControls.theirCall' => 'THEIR CALL',
 			'loggingControls.noteField' => 'NOTE',
 			'loggingControls.todoField' => 'TODO',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.sent' => 'SENT',
 			'loggingControls.rcvd' => 'RCVD',
 			'loggingControls.more' => 'MORE',
@@ -6090,8 +6108,6 @@ extension on TranslationsQro {
 			'loggingControls.restore' => 'RESTORE',
 			'loggingControls.wipe' => 'WIPE',
 			'loggingControls.undo' => 'UNDO',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.pendingDeleteTapWarning' => 'TAP THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
 			'loggingControls.pendingDeleteClickWarning' => 'CLICK THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
 			'loggingControls.deletedQsoWarning' => 'DELETED QSO',
@@ -6596,6 +6612,8 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.problemSourceRefused' => 'THE RADIO WOULD NOT SWITCH ITS TRANSMIT AUDIO TO THE APP, SO THE MESSAGE STOPPED. SET THE RADIO TO TRANSMIT THE APP\'S AUDIO.',
 			'settings.radio.voiceMessages.problemCannotKey' => 'THIS RADIO CAN\'T BE KEYED OVER CAT, SO THE COMPUTER CAN\'T PLAY MESSAGES INTO IT.',
 			'settings.radio.voiceMessages.problemUnplayable' => 'THAT MESSAGE\'S FILE ISN\'T A SOUND FILE THE APP CAN PLAY. USE A WAV, FLAC OR MP3 FILE, OR RECORD IT AGAIN.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'THE RECORDING WAS CUT SHORT, SO THE MESSAGE WAS LEFT AS IT WAS. CHECK THAT THE RECORDING DEVICE IS STILL CONNECTED AND THAT THERE IS ROOM ON THE DISK.',
 			'settings.radio.voiceMessages.problemFileFailed' => 'THE RECORDING COULDN\'T BE SAVED IN THE MESSAGE\'S PLACE, SO THE MESSAGE WAS LEFT AS IT WAS.',
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'THAT MESSAGE NEEDS WORDS YOU HAVEN\'T RECORDED: ${words}.',
@@ -6604,8 +6622,6 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.problemNothingSaid' => 'THAT MESSAGE SAYS NOTHING FOR THIS CONTACT.',
 			'settings.radio.voiceMessages.templateField' => 'SAY WITH MY WORDS',
 			'settings.radio.voiceMessages.templateHelp' => 'LEAVE EMPTY TO PLAY THE RECORDING. OTHERWISE THE MESSAGE IS SAID WITH THE WORDS YOU RECORDED, FILLED IN FOR EACH CONTACT, USING THESE VALUES:',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.help' => 'HELP',
 			'settings.radio.voiceMessages.helpTitle' => 'SAYING MESSAGES WITH YOUR WORDS',
 			'settings.radio.voiceMessages.helpFullExample' => 'A WHOLE MESSAGE:',
@@ -7110,6 +7126,8 @@ extension on TranslationsQro {
 			'settings.station.models.placeholderRadio' => 'SIMULATED RADIO',
 			'settings.station.models.placeholderRadioNodeName' => 'SIMULATED RADIO',
 			'settings.station.models.simulatedRotator' => 'SIMULATED ROTATOR',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.simulatedSwitch' => 'SIMULATED ANTENNA SWITCH',
 			'settings.station.models.antennaGenius' => '4O3A ANTENNA GENIUS',
 			'settings.station.models.sierraCoax' => 'SIERRA RADIO CX-1 COAX SWITCH',
@@ -7118,8 +7136,6 @@ extension on TranslationsQro {
 			'settings.station.models.buddihex' => 'BUDDIHEX MAST ROTATOR (MASTWERKS)',
 			'settings.station.models.rotctld' => 'HAMLIB ROTCTLD',
 			'settings.station.models.everywareServer' => 'GREEN HERON EVERYWARE SERVER',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.everywareRotor' => 'GREEN HERON EVERYWARE ROTATOR',
 			'settings.station.models.everywareSwitch' => 'GREEN HERON EVERYWARE SWITCH',
 			'settings.station.models.everywareDirectional' => 'GREEN HERON EVERYWARE DIRECTIONAL SWITCH',
@@ -7624,6 +7640,8 @@ extension on TranslationsQro {
 			'settings.panels.station' => 'STATION CONFIGURATION',
 			'settings.panels.stationDescription' => 'CAT CONTROL AND MORE OPTIONS',
 			'settings.panels.peers' => 'PEER DEVICES',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.peersDescription' => 'CONNECT TO OTHER DEVICES NEARBY',
 			'settings.showMoreSettings' => 'SHOW MORE SETTINGS',
 			'settings.gridPrecision' => 'GRID PRECISION',
@@ -7632,8 +7650,6 @@ extension on TranslationsQro {
 			'settings.gridPrecisionDescription.six' => '6 DIGITS',
 			'settings.gridPrecisionDescription.eight' => '8 DIGITS',
 			'commands.enableSyncFirst' => 'ENABLE SYNC IN SETTINGS FIRST.',
-			_ => null,
-		} ?? switch (path) {
 			'commands.fullResyncStarted' => 'FULL RESYNC STARTED — LOCAL DATA WAS BACKED UP FIRST.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'NO DATA FILES MATCHED "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'RELOAD FAILED: ${error}',
@@ -8138,6 +8154,8 @@ extension on TranslationsQro {
 			'templateEditor.attributes' => 'AVAILABLE ATTRIBUTES',
 			'templateEditor.filters' => 'FILTERS',
 			'templateEditor.flowControl' => 'FLOW CONTROL',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.unavailable' => 'PREVIEW IS UNAVAILABLE UNTIL EXTENSIONS ARE READY.',
 			'templateEditor.empty' => '(EMPTY OUTPUT)',
 			'fileOpen.dropHint' => 'DROP YOUR FILE HERE',
@@ -8146,8 +8164,6 @@ extension on TranslationsQro {
 			'fileOpen.cannotOpenDetail' => 'WE DON’T RECOGNIZE THE CONTENTS OF THIS FILE',
 			'fileOpen.installExtension' => 'INSTALL THE EXTENSION',
 			'fileOpen.importKeyboardShortcuts' => 'IMPORT AS A KEYBOARD SHORTCUT SET',
-			_ => null,
-		} ?? switch (path) {
 			'fileOpen.importCwMessages' => 'IMPORT AS A CW MESSAGE SET',
 			'fileOpen.importVoiceMessages' => 'IMPORT AS A VOICE MESSAGE SET',
 			'fileOpen.importIntoLogs' => 'IMPORT INTO LOGS',

@@ -476,7 +476,9 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource, PanelC
   Future<void> _writeSettingsValue({required String panelKey, required String fieldKey, required dynamic value, required bool isSecret}) async {
     final encoded = jsonEncode(value);
     if (isSecret) {
-      await _secureStorage.write(key: _settingsSecretStorageKey(panelKey, fieldKey), value: encoded);
+      final name = _settingsSecretStorageKey(panelKey, fieldKey);
+      await _secureStorage.write(key: name, value: encoded);
+      await settings?.recordExtensionSecretName(name);
       return;
     }
     await settings?.prefs.setString(_settingsPrefsKey(panelKey, fieldKey), encoded);

@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/services/extensions/extension_force_disable.dart' show ExtensionForceDisable;
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/extensions/bundle_storage_io.dart';
+import 'package:ham2k_logger/services/extensions/extension_keychain.dart' show debugResetKeychainEnumeration;
 import 'package:ham2k_logger/services/extensions/installed_extensions.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
@@ -52,7 +54,46 @@ void main() {
     return ZipEncoder().encode(out);
   }
 
-  Future<(ExtensionService, SettingsService, InstalledExtensions)> setup(Map<String, Object> prefs) async {
+  /// A keychain that holds and deletes items but answers a listing with
+  /// [listing] — errSecParam (-50) is the macOS file keychain, which never
+  /// lists; errSecInteractionNotAllowed (-25308) a locked one, which lists
+  /// once [unlocked]. Set before [setup], whose own keychain then stands
+  /// aside.
+  ({Map<String, String> items, void Function() unlock}) awkwardKeychain({int listing = -50}) {
+    final items = <String, String>{};
+    var locked = true;
+    const channel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      final args = call.arguments as Map;
+      switch (call.method) {
+        case 'readAll':
+          if (locked) throw PlatformException(code: 'keychain', details: listing);
+          return Map<String, String>.of(items);
+        case 'read':
+          return items[args['key']];
+        case 'write':
+          items[args['key'] as String] = args['value'] as String;
+          return null;
+        case 'delete':
+          if (locked && listing == -25308) throw PlatformException(code: 'keychain', details: listing);
+          items.remove(args['key']);
+          return null;
+        default:
+          throw UnsupportedError('test keychain: ${call.method}');
+      }
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(channel, null);
+      debugResetKeychainEnumeration();
+    });
+    return (items: items, unlock: () => locked = false);
+  }
+
+  Future<(ExtensionService, SettingsService, InstalledExtensions)> setup(Map<String, Object> prefs, {Map<String, Object?> stubs = const {}}) async {
+    // An update from another source removes the installed copy's keychain
+    // items, and refuses to install when it cannot.
+    useInMemoryKeychain();
     SharedPreferences.setMockInitialValues({for (final e in prefs.entries) e.key: jsonEncode(e.value)});
     final settings = SettingsService(await SharedPreferences.getInstance());
     final store = InstalledExtensions(
@@ -61,7 +102,7 @@ void main() {
       storage: FileBundleStorage(root: root),
       reservedPrefixAllowed: (key) => BundleProvenance.fromJson(settings.extensionInstalledFrom[key])?.isReservedPrefixAllowed ?? false,
     );
-    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost(stubs))
       ..settings = settings
       ..debugInstalledStore = store
       ..debugSetAvailableExtensions(const []);
@@ -422,6 +463,284 @@ void main() {
       final (extensions, settings, store) = await setup(refused);
       await extensions.installBundle(await store.inspect(fixture));
       expect(settings.extensionRefused.keys, ['ki2d-my-clock']);
+    });
+  });
+
+  group("a link's publisher", () {
+    // What an update from a link is compared with. Too coarse, and two
+    // publishers sharing a host inherit each other's saved logins; too fine,
+    // and every new version of one publisher's extension asks again.
+    test('is the folder the bundle sits in', () {
+      expect(linkPublisherOf(Uri.parse('https://K2ABC.example/ham/clock-1.2.h2kext?x=1#y')), 'k2abc.example/ham');
+      expect(linkPublisherOf(Uri.parse('https://k2abc.example/clock.h2kext')), 'k2abc.example');
+      expect(linkPublisherOf(Uri.parse('https://k2abc.example:8443/ham/clock.h2kext')), 'k2abc.example:8443/ham');
+      expect(
+        linkPublisherOf(Uri.parse('https://pages.example/k2abc/clock.h2kext')),
+        isNot(linkPublisherOf(Uri.parse('https://pages.example/w1xyz/clock.h2kext'))),
+      );
+    });
+
+    test("is a GitHub release's repository, whatever its tag", () {
+      expect(linkPublisherOf(Uri.parse('https://github.com/K2ABC/Clock/releases/download/v1.2.3/clock.h2kext')), 'github.com/k2abc/clock');
+      expect(linkPublisherOf(Uri.parse('https://github.com/k2abc/clock/releases/latest/download/clock.h2kext')), 'github.com/k2abc/clock');
+      expect(linkPublisherOf(Uri.parse('https://github.com/w1xyz/clock/releases/download/v1.2.3/clock.h2kext')), isNot('github.com/k2abc/clock'));
+    });
+
+    test("is Ham2K's anywhere on the catalog's host", () {
+      final publisher = linkPublisherOf(Uri.parse('https://$kCatalogHost/bundles/ki2d-my-clock/1.2.3/ki2d-my-clock.h2kext'));
+      expect(installSource(linkPublisher: publisher), 'ham2k');
+    });
+  });
+
+  group("an update's keychain items", () {
+    // The trap: nothing ties two bundles claiming one key to one publisher,
+    // so a link or a file reusing an installed extension's key would run with
+    // the login the operator gave the extension they installed. Each test
+    // stores a secret, installs over it, and reads what is left.
+    const keychain = FlutterSecureStorage();
+    const secret = 'settingsPanel_secret_ki2d-my-clock_password';
+    const login = 'account_creds_ki2d-my-clock';
+
+    Future<void> storeSecrets() async {
+      await keychain.write(key: secret, value: jsonEncode('hunter2'));
+      await keychain.write(key: login, value: jsonEncode({'username': 'n0dev'}));
+    }
+
+    Future<bool> secretsKept() async => await keychain.read(key: secret) != null && await keychain.read(key: login) != null;
+
+    test('stay with an update from where the installed copy came from', () async {
+      useInMemoryKeychain();
+      final (extensions, _, store) = await setup({});
+      await extensions.installBundle(await fromCatalog(store, fixture, '1.2.3'));
+      await storeSecrets();
+      final newer = rebuilt((m) => {...m, 'version': '1.3.0'});
+      expect(await extensions.replacedSource(await fromCatalog(store, newer, '1.3.0')), isNull);
+      await extensions.installBundle(await fromCatalog(store, newer, '1.3.0'));
+      expect(await secretsKept(), isTrue, reason: 'a catalog update of a catalog install is the same extension');
+
+      final linked = await store.inspect(fixture, linkPublisher: 'k2abc.example');
+      await extensions.installBundle(linked);
+      await storeSecrets();
+      await extensions.installBundle(await store.inspect(newer, linkPublisher: 'k2abc.example'));
+      expect(await secretsKept(), isTrue, reason: 'two links from one host');
+    });
+
+    test('are left behind by an update from anywhere else, unless the operator lets it keep them', () async {
+      useInMemoryKeychain();
+      final (extensions, settings, store) = await setup({});
+      await extensions.installBundle(await fromCatalog(store, fixture, '1.2.3'));
+      await storeSecrets();
+      final takeover = rebuilt((m) => {...m, 'version': '9.0.0'});
+      final linked = await store.inspect(takeover, linkPublisher: 'attacker.example');
+      expect(await extensions.replacedSource(linked), 'ham2k');
+      await extensions.installBundle(linked);
+      expect(await keychain.read(key: secret), isNull);
+      expect(await keychain.read(key: login), isNull);
+      expect(settings.extensionLinkPublishers, {'ki2d-my-clock': 'attacker.example'});
+
+      await storeSecrets();
+      await extensions.installBundle(await store.inspect(takeover, linkPublisher: 'elsewhere.example'));
+      expect(await secretsKept(), isFalse, reason: "another host's link is another source");
+
+      await storeSecrets();
+      await extensions.installBundle(await store.inspect(takeover));
+      expect(await secretsKept(), isFalse, reason: "a file is not the link's host");
+      expect(settings.extensionLinkPublishers, isEmpty);
+
+      await storeSecrets();
+      await extensions.installBundle((await store.inspect(takeover, linkPublisher: 'k2abc.example')).keepingSecrets());
+      expect(await secretsKept(), isTrue, reason: 'the operator let it use them');
+    });
+
+    test('of a fresh install are not compared with anything', () async {
+      // Settings and credentials a removal kept are the operator's to have
+      // back (removeKeepingSettings), whatever the install that returns it.
+      useInMemoryKeychain();
+      final (extensions, _, store) = await setup({});
+      await storeSecrets();
+      final linked = await store.inspect(fixture, linkPublisher: 'k2abc.example');
+      expect(await extensions.replacedSource(linked), isNull);
+      await extensions.installBundle(linked);
+      expect(await secretsKept(), isTrue);
+    });
+
+    group('on a keychain that will not list', () {
+      // The macOS file keychain: only names known some other way can be
+      // removed, and an update the operator refused them is not installed
+      // while one may be left for it to read.
+      const apiKey = 'settingsPanel_secret_ki2d-my-clock_apiKey';
+      const login = 'account_creds_ki2d-my-clock_hamqth';
+      final declares = <String, Object?>{
+        'settingsPanel:*:getPanels': [
+          {
+            'key': 'ki2d-my-clock',
+            'ok': true,
+            'value': {'panelKey': 'ki2d-my-clock', 'hookKey': 'ki2d-my-clock'},
+          },
+        ],
+        'settingsPanel:ki2d-my-clock:getDefinition': {
+          'elements': [
+            {'type': 'field', 'fieldType': 'secret', 'key': 'apiKey'},
+            {'type': 'field', 'fieldType': 'text', 'key': 'endpoint'},
+          ],
+        },
+        'account:*:getDefinition': [
+          {
+            'key': 'ki2d-my-clock',
+            'ok': true,
+            'value': {'kvKey': 'ki2d-my-clock_hamqth'},
+          },
+        ],
+      };
+
+      test('removes what the installed copy declares', () async {
+        final keychain = awkwardKeychain();
+        final (extensions, _, store) = await setup({}, stubs: declares);
+        await extensions.installBundle(await fromCatalog(store, fixture, '1.2.3'));
+        keychain.items.addAll({apiKey: '"k"', login: '"n0dev"'});
+        (extensions as ExtensionServiceWithFakeHost).debugLoadedExtensionKeys = {'ki2d-my-clock'};
+        await extensions.installBundle(await store.inspect(rebuilt((m) => {...m, 'version': '9.0.0'}), linkPublisher: 'k2abc.example'));
+        expect(keychain.items, isEmpty);
+      });
+
+      test('refuses the install, removing nothing, when the installed copy cannot say', () async {
+        final keychain = awkwardKeychain();
+        final (extensions, settings, store) = await setup({});
+        await extensions.installBundle(await fromCatalog(store, fixture, '1.2.3'));
+        // The account pair is the one name that can always be built: removed
+        // before the refusal, the version still installed would be logged out.
+        keychain.items.addAll({apiKey: '"k"', login: '"n0dev"', 'account_creds_ki2d-my-clock': '"n0dev"'});
+        final takeover = await store.inspect(rebuilt((m) => {...m, 'version': '9.0.0'}), linkPublisher: 'k2abc.example');
+        await expectLater(extensions.installBundle(takeover), throwsA(isA<SecretsNotRemoved>()));
+        expect(
+          keychain.items.keys,
+          unorderedEquals([apiKey, login, 'account_creds_ki2d-my-clock']),
+          reason: 'the version installed still runs, with its logins',
+        );
+        expect(settings.extensionInstalledFrom['ki2d-my-clock']?['version'], '1.2.3');
+      });
+
+      test('removes what the app recorded writing, whatever the extension says', () async {
+        final keychain = awkwardKeychain();
+        final (extensions, settings, store) = await setup(
+          {},
+          stubs: {
+            ...declares,
+            'settingsPanel:ki2d-my-clock:getDefinition': {'elements': <Object>[]},
+          },
+        );
+        await extensions.installBundle(await fromCatalog(store, fixture, '1.2.3'));
+        keychain.items[apiKey] = '"k"';
+        await settings.recordExtensionSecretName(apiKey);
+        (extensions as ExtensionServiceWithFakeHost).debugLoadedExtensionKeys = {'ki2d-my-clock'};
+        await extensions.installBundle(await store.inspect(rebuilt((m) => {...m, 'version': '9.0.0'}), linkPublisher: 'k2abc.example'));
+        expect(keychain.items, isEmpty);
+        expect(settings.extensionSecretNames, isEmpty);
+      });
+    });
+
+    test('of a copy the store lost are compared with its record', () async {
+      // The bundle is gone, but its record, its logins and the operator's
+      // intent are not: a link reusing the key is still another source.
+      useInMemoryKeychain();
+      final (extensions, settings, store) = await setup({});
+      await extensions.installBundle(await fromCatalog(store, fixture, '1.2.3'));
+      await store.uninstall('ki2d-my-clock');
+      expect(settings.extensionsInstalled.keys, ['ki2d-my-clock']);
+      expect(await extensions.replacedSource(await store.inspect(fixture, linkPublisher: 'k2abc.example')), 'ham2k');
+    });
+  });
+
+  group("a retired built-in's keychain items", () {
+    const keychain = FlutterSecureStorage();
+    List<int> twin(String key) => rebuilt((m) => {...m, 'key': key, 'name': key});
+
+    test("go when its twin is uninstalled, and the next install of the twin carries nothing back", () async {
+      useInMemoryKeychain();
+      final (extensions, _, store) = await setup({});
+      await keychain.write(key: 'account_creds_qrz', value: jsonEncode({'username': 'n0dev'}));
+      final bytes = twin('ham2k-qrz');
+      await extensions.installBundle(await fromCatalog(store, bytes, '1.2.3'));
+      expect(await keychain.read(key: 'account_creds_ham2k-qrz'), isNotNull, reason: 'the twin takes over the login');
+
+      await extensions.uninstallExtension('ham2k-qrz');
+      expect(await keychain.read(key: 'account_creds_ham2k-qrz'), isNull);
+      expect(await keychain.read(key: 'account_creds_qrz'), isNull, reason: "left behind, the built-in's copy is what a reinstall carries back");
+
+      await extensions.installBundle(await fromCatalog(store, bytes, '1.2.3'));
+      expect(await keychain.read(key: 'account_creds_ham2k-qrz'), isNull);
+    });
+
+    test('go once nothing is left to carry them to, and stay for a twin still to be fetched', () async {
+      useInMemoryKeychain();
+      final (extensions, settings, store) = await setup({
+        'extensionOverrides': {'sota': false},
+      });
+      for (final key in ['sota', 'pota', 'wca', 'qp']) {
+        await keychain.write(key: 'account_creds_$key', value: jsonEncode({'username': 'n0dev'}));
+      }
+      // `pota` was on and its twin is still to come; `wca` was on too, and
+      // its twin is installed; `sota` was switched off; `qp` has no twin.
+      await settings.setExtensionOverrides({'sota': false, 'wca': true});
+      await extensions.installBundle(await fromCatalog(store, twin('ham2k-wca'), '1.2.3'));
+      await extensions.reloadAvailableExtensions();
+
+      await extensions.forgetRetiredSecrets();
+      expect(await keychain.read(key: 'account_creds_pota'), isNotNull, reason: 'the twin the catch-up fetches carries it');
+      expect(await keychain.read(key: 'account_creds_wca'), isNull);
+      expect(await keychain.read(key: 'account_creds_sota'), isNull);
+      expect(await keychain.read(key: 'account_creds_qp'), isNull);
+      expect(await keychain.read(key: 'account_creds_ham2k-wca'), isNotNull, reason: "the twin's own copy stays");
+      expect(settings.extensionRetiredSecretsForgotten, containsAll(['wca', 'sota', 'qp']));
+      expect(settings.extensionRetiredSecretsForgotten, isNot(contains('pota')));
+    });
+
+    test('are kept while the twin no longer holds its copy, and go once it does', () async {
+      // A carry that failed, or a login the operator has since removed from
+      // the twin: the built-in's copy is all there is, and goes only once
+      // the twin is seen to hold its own.
+      useInMemoryKeychain();
+      final (extensions, settings, store) = await setup({});
+      await keychain.write(key: 'account_creds_wca', value: jsonEncode({'username': 'n0dev'}));
+      await settings.setExtensionOverrides({'wca': true});
+      await extensions.installBundle(await fromCatalog(store, twin('ham2k-wca'), '1.2.3'));
+      await extensions.reloadAvailableExtensions();
+      await keychain.delete(key: 'account_creds_ham2k-wca');
+      await extensions.forgetRetiredSecrets();
+      expect(await keychain.read(key: 'account_creds_wca'), isNotNull);
+      expect(settings.extensionRetiredSecretsForgotten, isNot(contains('wca')));
+    });
+
+    test('go once its twin was delivered, even after the operator removed it', () async {
+      // Nothing fetches a twin the pre-load already delivered: kept for it,
+      // they would wait forever, and the next install of the twin from the
+      // catalog would carry them back.
+      useInMemoryKeychain();
+      final (extensions, settings, _) = await setup({
+        'extensionPreloaded': {'ham2k-pota': '1.0.0'},
+      });
+      await keychain.write(key: 'account_creds_pota', value: jsonEncode({'username': 'n0dev'}));
+      await extensions.forgetRetiredSecrets();
+      expect(await keychain.read(key: 'account_creds_pota'), isNull);
+      expect(settings.extensionRetiredSecretsForgotten, contains('pota'));
+    });
+
+    test('are tried again next launch when the keychain would not let them go', () async {
+      // Recorded gone when they were not, a key is never tried again, and a
+      // later install of its twin carries them back.
+      final locked = awkwardKeychain(listing: -25308);
+      final (extensions, settings, _) = await setup({
+        'extensionOverrides': {'sota': false},
+      });
+      locked.items['account_creds_sota'] = '"n0dev"';
+      await extensions.forgetRetiredSecrets();
+      expect(locked.items, contains('account_creds_sota'));
+      expect(settings.extensionRetiredSecretsForgotten, isNot(contains('sota')));
+
+      locked.unlock();
+      await extensions.forgetRetiredSecrets();
+      expect(locked.items, isNot(contains('account_creds_sota')));
+      expect(settings.extensionRetiredSecretsForgotten, contains('sota'));
     });
   });
 }

@@ -424,8 +424,9 @@ void main() {
     // and `requiresRadioRaw` keys the transmitter.
     late InstalledExtensions store;
     late int commits;
+    late List<InspectedBundle> committed;
 
-    Future<void> update(WidgetTester tester, List<int> bytes) async {
+    Future<void> update(WidgetTester tester, List<int> bytes, {String? installedSource, Uri? link}) async {
       await tester.pumpWidget(
         TranslationProvider(
           child: MaterialApp(
@@ -433,7 +434,19 @@ void main() {
             home: Builder(
               builder: (context) => Scaffold(
                 body: ElevatedButton(
-                  onPressed: () => installExtensionFromBytes(context, store: store, read: () async => bytes, commit: (_) async => commits++, askConsent: false),
+                  onPressed: () => installExtensionFromBytes(
+                    context,
+                    store: store,
+                    replacedSource: (_) async => installedSource,
+                    read: () async => bytes,
+                    from: link?.host,
+                    link: link,
+                    commit: (bundle) async {
+                      commits++;
+                      committed.add(bundle);
+                    },
+                    askConsent: false,
+                  ),
                   child: const Text('open'),
                 ),
               ),
@@ -448,6 +461,7 @@ void main() {
     setUp(() {
       store = InstalledExtensions(builtInKeys: () => const {}, hostSharedModules: const {'i18next': '23.11.5'}, storage: MemoryBundleStorage());
       commits = 0;
+      committed = [];
     });
 
     testWidgets('takes an update asking for nothing new without asking', (tester) async {
@@ -455,6 +469,61 @@ void main() {
       await update(tester, fixture);
       expect(find.widgetWithText(FilledButton, t.extensionsPanel.updateAction), findsNothing);
       expect(commits, 1);
+    });
+
+    testWidgets("records who a link's bundle was published by", (tester) async {
+      // Dropped on the way, every link would read as a file, and a link from
+      // one publisher over a link from another would update in place, saved
+      // logins and all.
+      await update(tester, fixture, link: Uri.parse('https://k2abc.example/extensions/clock.h2kext'));
+      await tester.tap(find.widgetWithText(FilledButton, t.extensionsPanel.installAction));
+      await tester.pumpAndSettle();
+      expect(committed.single.source, 'link:k2abc.example/extensions');
+    });
+
+    group('from somewhere other than the installed copy', () {
+      // Nothing ties two bundles claiming one key to one publisher but where
+      // each came from. Taken silently, the new copy runs with the login the
+      // operator gave the copy they installed; dropped silently, they are
+      // logged out with nothing to say why. So the operator is asked, after
+      // the consent screen, Update all included.
+      Future<void> agree(WidgetTester tester) async {
+        await store.install(await store.inspect(fixture));
+        await update(tester, fixture, installedSource: 'ham2k');
+        expect(commits, 0, reason: 'nothing installed before the operator agrees');
+        await tester.tap(find.widgetWithText(FilledButton, t.extensionsPanel.updateAction));
+        await tester.pumpAndSettle();
+        expect(
+          find.text(
+            t.extensionsPanel.secretsQuestion(name: 'KI2D My Clock', source: t.extensionsPanel.sourceFile, installedSource: t.extensionsPanel.sourceHam2k),
+          ),
+          findsOneWidget,
+        );
+        expect(commits, 0, reason: 'nor before it answers');
+      }
+
+      testWidgets('allowed, keeps the saved logins', (tester) async {
+        await agree(tester);
+        await tester.tap(find.widgetWithText(FilledButton, t.extensionsPanel.secretsAllow));
+        await tester.pumpAndSettle();
+        expect(committed.single.keepsSecrets, isTrue);
+      });
+
+      testWidgets('refused, installs without them', (tester) async {
+        await agree(tester);
+        await tester.tap(find.text(t.extensionsPanel.secretsRemove));
+        await tester.pumpAndSettle();
+        expect(committed.single.keepsSecrets, isFalse);
+      });
+
+      testWidgets('cancelled, installs nothing', (tester) async {
+        // A dismissal is neither answer: read as either, it decides for the
+        // operator what they declined to decide.
+        await agree(tester);
+        await tester.tap(find.text(t.common.cancel));
+        await tester.pumpAndSettle();
+        expect(commits, 0);
+      });
     });
 
     testWidgets('asks before an update that adds a grant, naming it', (tester) async {
@@ -485,8 +554,14 @@ void main() {
           home: Builder(
             builder: (context) => Scaffold(
               body: ElevatedButton(
-                onPressed: () =>
-                    installExtensionFromBytes(context, store: store, read: () async => fixture, commit: (_) async => commits++, isBusy: (_) => true),
+                onPressed: () => installExtensionFromBytes(
+                  context,
+                  store: store,
+                  replacedSource: (_) async => null,
+                  read: () async => fixture,
+                  commit: (_) async => commits++,
+                  isBusy: (_) => true,
+                ),
                 child: const Text('open'),
               ),
             ),
@@ -526,7 +601,7 @@ void main() {
           home: Builder(
             builder: (context) => Scaffold(
               body: ElevatedButton(
-                onPressed: () => installExtensionFromFile(context, store: store, commit: (_) async => commits++),
+                onPressed: () => installExtensionFromFile(context, store: store, replacedSource: (_) async => null, commit: (_) async => commits++),
                 child: const Text('open'),
               ),
             ),

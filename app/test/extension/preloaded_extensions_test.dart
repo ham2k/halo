@@ -570,7 +570,14 @@ void main() {
 
     test('and the uninstall removes that same pair rather than nothing', () async {
       final deleted = <String>[];
-      await forgetExtensionKeychainItems(const FlutterSecureStorage(), 'ham2k-sota', deleteOne: (name) async => deleted.add(name));
+      await forgetExtensionKeychainItems(
+        const FlutterSecureStorage(),
+        'ham2k-sota',
+        deleteOne: (name) async {
+          deleted.add(name);
+          return true;
+        },
+      );
       expect(deleted, ['account_creds_ham2k-sota', 'account_session_ham2k-sota']);
     });
   });

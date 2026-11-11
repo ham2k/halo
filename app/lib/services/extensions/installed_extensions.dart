@@ -234,6 +234,44 @@ class BundleException implements Exception {
   String toString() => message;
 }
 
+/// An install refused because the keychain items the operator chose to
+/// remove could not all be removed: installed anyway, the new code would run
+/// with the logins it was refused.
+class SecretsNotRemoved implements Exception {
+  const SecretsNotRemoved(this.name);
+
+  /// The extension's name, as the operator knows it.
+  final String name;
+
+  @override
+  String toString() => 'the saved logins for $name could not all be removed';
+}
+
+/// Where an install's bytes came from, which an update is compared by: Ham2K
+/// (the catalog, or the app shipping the catalog's own bundle), another
+/// catalog, a link's publisher ([linkPublisherOf]), or a file.
+String installSource({BundleProvenance? provenance, String? linkPublisher}) => switch ((provenance, linkPublisher)) {
+  (final BundleProvenance p, _) when p.isReservedPrefixAllowed => 'ham2k',
+  (final BundleProvenance p, _) => 'catalog:${p.host}',
+  (null, kCatalogHost) => 'ham2k',
+  (null, final String publisher) => 'link:$publisher',
+  _ => 'file',
+};
+
+/// Who a bundle fetched from [url] stands for: the folder it sits in, as
+/// host, port and path, so two publishers sharing a host are two sources. A
+/// GitHub release's folder is its tag, a new one for every version, so there
+/// it is the repository; anything on the Ham2K catalog's host is the
+/// catalog's.
+String linkPublisherOf(Uri url) {
+  final host = url.host.toLowerCase();
+  if (host == kCatalogHost) return kCatalogHost;
+  final segments = url.pathSegments.where((segment) => segment.isNotEmpty).toList();
+  if (host == 'github.com' && segments.length >= 4 && segments[2] == 'releases') return 'github.com/${segments[0]}/${segments[1]}'.toLowerCase();
+  final folder = segments.isEmpty ? const <String>[] : segments.sublist(0, segments.length - 1);
+  return [if (url.hasPort) '$host:${url.port}' else host, ...folder].join('/');
+}
+
 /// A `.h2kext` that has been read and checked but not yet written anywhere.
 ///
 /// Carries what the operator is about to be asked to approve — the identity,
@@ -246,7 +284,24 @@ class InspectedBundle {
   /// a catalog listing; what the install records, or clears, for the key.
   final BundleProvenance? provenance;
 
-  InspectedBundle({required this.manifest, required this.archive, this.provenance});
+  /// Who the link these bytes were fetched from stands for
+  /// ([linkPublisherOf]), for bytes with no catalog listing to match.
+  final String? linkPublisher;
+
+  /// Whether the operator let this bundle use the keychain items of the
+  /// installed copy it replaces from another source
+  /// (`ExtensionService.replacedSource`).
+  final bool keepsSecrets;
+
+  InspectedBundle({required this.manifest, required this.archive, this.provenance, this.linkPublisher, this.keepsSecrets = false});
+
+  /// This bundle, with the operator's leave to use the installed copy's
+  /// keychain items.
+  InspectedBundle keepingSecrets() =>
+      InspectedBundle(manifest: manifest, archive: archive, provenance: provenance, linkPublisher: linkPublisher, keepsSecrets: true);
+
+  /// Where these bytes came from ([installSource]).
+  String get source => installSource(provenance: provenance, linkPublisher: linkPublisher);
 
   String get key => manifest['key'] as String;
   String get name => (manifest['name'] as String?) ?? key;
@@ -369,7 +424,7 @@ class InstalledExtensions {
   /// waiver it buys hinges on the bytes in hand and never on a caller's word.
   ///
   /// Throws [BundleException]; writes nothing.
-  Future<InspectedBundle> inspect(List<int> bytes, {BundleProvenance? provenance}) async {
+  Future<InspectedBundle> inspect(List<int> bytes, {BundleProvenance? provenance, String? linkPublisher}) async {
     if (provenance != null && sha256Hex(bytes) != provenance.sha256.toLowerCase()) {
       throw BundleException(BundleRejection.hashMismatch, 'That download is not the extension the catalog described, so it was not opened.');
     }
@@ -422,7 +477,7 @@ class InstalledExtensions {
         'That download calls itself version ${manifest['version']}, not the ${provenance.version} the catalog listed.',
       );
     }
-    return InspectedBundle(manifest: manifest, archive: archive, provenance: provenance);
+    return InspectedBundle(manifest: manifest, archive: archive, provenance: provenance, linkPublisher: provenance == null ? linkPublisher : null);
   }
 
   /// The key checks alone, for a caller that knows the key before it has the

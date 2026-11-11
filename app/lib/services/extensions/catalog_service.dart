@@ -897,9 +897,15 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
       await settings.setCatalogUpdateCheckedAt(_realNow());
       final installed = {for (final info in candidates) info.key: info.version};
       final previous = _redirects;
+      // Only for a copy this catalog delivered. Replacing carries the
+      // installed copy's saved logins onto the new key, which is this
+      // catalog's to vouch for only when the copy was its own; one from a
+      // link or a file is another publisher's, whatever its key.
       _redirects = {
         for (final redirect in result.redirects)
-          if (installed.containsKey(redirect.from)) redirect.from: redirect,
+          if (installed.containsKey(redirect.from) &&
+              (BundleProvenance.fromJson(settings.extensionInstalledFrom[redirect.from])?.isTrackOf(catalog.host) ?? false))
+            redirect.from: redirect,
       };
       // Newer only. The catalog also answers with a LOWER release as the
       // replacement for an installed version the channel cannot see (SPEC

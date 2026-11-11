@@ -227,6 +227,15 @@ Future<bool> catchUpOnCatalogExtensions(ExtensionService service, {bool removeSw
     if (swept.complete) await settings.setExtensionsSwitchedOffRemoved(true);
     final newlyRefused = !mapEquals(refusedBefore, settings.extensionRefused);
     if (moving || dead || newlyRefused) _announce(service, settings, moved: moving, dead: dead);
+    // Last, and on its own: after the pre-load and the adoption have carried
+    // what they carry, and never holding up the restart that loads them.
+    if (answered) {
+      try {
+        await service.forgetRetiredSecrets();
+      } catch (e, stack) {
+        ErrorReportingService.report(e, stack, context: 'extensions:retired-secrets');
+      }
+    }
   } catch (e, stack) {
     ErrorReportingService.report(e, stack, context: 'extensions:preload');
   } finally {

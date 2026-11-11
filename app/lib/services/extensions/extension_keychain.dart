@@ -124,6 +124,11 @@ Future<Map<String, String>?> _readAllOrNull(FlutterSecureStorage storage, {requi
   }
 }
 
+/// Whether [error] is the keychain saying the item is not there: macOS 26
+/// answers a delete of a missing item with errSecMissingEntitlement (-34018)
+/// rather than errSecItemNotFound (-25300).
+bool isKeychainItemMissing(Object error) => error is PlatformException && (error.details == -34018 || error.details == -25300);
+
 /// What macOS answers a `readAll` against the file keychain (ErrorPolicy's
 /// `keychain-cannot-enumerate` rule reads the same value).
 const _errSecParam = -50;
@@ -154,26 +159,49 @@ String? _renamed(String storedKey, {required String from, required String to}) {
   return index < 0 ? null : _exactFor(to)[index];
 }
 
+/// Whether the keychain item [storedKey] is one extension [key] owns.
+bool isExtensionKeychainItemOf(String storedKey, String key) =>
+    _prefixesFor(key).any(storedKey.startsWith) || _exactFor(key).contains(storedKey) || _isDockedSecretOf(storedKey, key);
+
 /// Removes every keychain item [key] owned — its settings-panel secrets, its
-/// docked panels' secrets and its account credentials.
+/// docked panels' secrets and its account credentials — and answers whether
+/// every one is known to be gone.
 ///
 /// A reinstall inheriting these is the resurrection `forgetPanelConfig`
 /// exists to prevent, and the uninstall dialog says they are removed.
-/// [deleteOne] is how an item is removed when the keychain cannot be
-/// enumerated, with the options its writer used — the same fallback, and the
-/// same limit, as the copy above.
-Future<void> forgetExtensionKeychainItems(FlutterSecureStorage storage, String key, {required Future<void> Function(String name) deleteOne}) async {
+/// [deleteOne] removes an account item with the options its writer used,
+/// and answers whether it is gone: an item written with one set of keychain
+/// options is not found by a delete issued with another. The account pair is
+/// named outright as well as listed, since a listing need not include items
+/// stored under other options.
+///
+/// [named] adds names known some other way — what the extension declares,
+/// what the app recorded writing — for a keychain that will not list; only
+/// those [key] owns are removed.
+///
+/// False when the keychain would not list for a reason that may pass (a
+/// locked keychain), or when a delete failed: the caller tries again rather
+/// than recording it done. Where the platform cannot list at all (the macOS
+/// file keychain), only [named] and the account pair are removed: true once
+/// those are gone when [namedIsEverything], and false otherwise, since
+/// nothing then says what else is there.
+Future<bool> forgetExtensionKeychainItems(
+  FlutterSecureStorage storage,
+  String key, {
+  required Future<bool> Function(String name) deleteOne,
+  Iterable<String> named = const [],
+  bool namedIsEverything = true,
+}) async {
   final stored = await _readAllOrNull(storage, context: 'extension-uninstall:secrets');
-  final names = stored == null
-      ? _exactFor(key)
-      : stored.keys.where((k) => _prefixesFor(key).any(k.startsWith) || _exactFor(key).contains(k) || _isDockedSecretOf(k, key)).toList();
+  var complete = stored != null || (_enumerationRefused && namedIsEverything);
+  final names = {
+    ..._exactFor(key),
+    ...[...?stored?.keys, ...named].where((k) => isExtensionKeychainItemOf(k, key)),
+  };
   for (final name in names) {
     try {
-      // Through the caller where enumeration failed, because an item written
-      // with one set of keychain options is not found by a delete issued with
-      // another — and this path exists precisely where the two differ.
-      if (stored == null) {
-        await deleteOne(name);
+      if (_isAccountItem(name)) {
+        if (!await deleteOne(name)) complete = false;
       } else {
         await storage.delete(key: name);
       }
@@ -181,7 +209,43 @@ Future<void> forgetExtensionKeychainItems(FlutterSecureStorage storage, String k
       // Reported, not swallowed: credentials outliving the extension that
       // owned them is the thing this exists to prevent, so failing at it
       // silently is the one outcome worth knowing about.
+      complete = false;
       ErrorReportingService.report(e, stack, context: 'extension-uninstall:secrets');
     }
   }
+  return complete;
+}
+
+/// Whether the keychain will list what it holds — without which only names
+/// known some other way can be removed.
+Future<bool> keychainLists(FlutterSecureStorage storage) async => await _readAllOrNull(storage, context: 'extension-install:secrets') != null;
+
+/// Whether every keychain item [from] owns has its copy under [to]
+/// ([copyExtensionKeychainItems]) — what makes [from]'s safe to remove. A
+/// copy that failed, or a login the operator has since removed from [to],
+/// both answer false, and [from]'s stay. [readOne] reads an account item
+/// with the options its writer used.
+Future<bool> keychainItemsCopied(
+  FlutterSecureStorage storage, {
+  required String from,
+  required String to,
+  required Future<String?> Function(String name) readOne,
+}) async {
+  final stored = await _readAllOrNull(storage, context: 'extensions:retired-secrets');
+  if (stored == null && !_enumerationRefused) return false;
+  final names = {..._exactFor(from), ...?stored?.keys.where((k) => isExtensionKeychainItemOf(k, from))};
+  for (final name in names) {
+    final copy = _renamed(name, from: from, to: to);
+    if (copy == null) continue;
+    try {
+      final held = _isAccountItem(name) ? await readOne(name) != null : stored!.containsKey(name);
+      if (!held) continue;
+      final copied = _isAccountItem(copy) ? await readOne(copy) != null : stored!.containsKey(copy);
+      if (!copied) return false;
+    } catch (e, stack) {
+      ErrorReportingService.report(e, stack, context: 'extensions:retired-secrets');
+      return false;
+    }
+  }
+  return true;
 }
