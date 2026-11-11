@@ -8,20 +8,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/src/logging_controls_info_frame.dart';
 import 'package:halo_widgets/src/spacing.dart';
+import 'package:halo_widgets/src/ui_scale.dart';
 
 const _footerKey = ValueKey('footer');
 const _buttonKey = ValueKey('button');
 
-Widget _host({String signature = 'stats', double diameter = 44, bool leftieMode = false, bool withFooter = false, bool entryRowAbove = false}) => MaterialApp(
-  home: Scaffold(
-    body: LoggingInfoFrame(
-      buttonDiameter: diameter,
-      leftieMode: leftieMode,
-      signature: signature,
-      footer: withFooter ? const _Footer(key: _footerKey) : null,
-      actionButton: SizedBox(key: _buttonKey, width: diameter, height: diameter),
-      entryRowAbove: entryRowAbove,
-      child: const Text('content'),
+Widget _host({
+  String signature = 'stats',
+  double diameter = 44,
+  bool leftieMode = false,
+  bool withFooter = false,
+  bool entryRowAbove = false,
+  double? contentHeight,
+  double uiScale = 1,
+}) => MaterialApp(
+  home: UiScale(
+    scale: uiScale,
+    child: Scaffold(
+      // Unbounded below, as the panel's column has it: the frame is as tall
+      // as it makes itself.
+      body: Column(
+        children: [
+          LoggingInfoFrame(
+            buttonDiameter: diameter,
+            leftieMode: leftieMode,
+            signature: signature,
+            footer: withFooter ? const _Footer(key: _footerKey) : null,
+            actionButton: SizedBox(key: _buttonKey, width: diameter, height: diameter),
+            entryRowAbove: entryRowAbove,
+            child: contentHeight == null ? const Text('content') : SizedBox(height: contentHeight),
+          ),
+        ],
+      ),
     ),
   ),
 );
@@ -103,6 +121,96 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.state(find.byKey(_footerKey)), same(before));
     expect(find.byKey(_footerKey), findsOneWidget, reason: 'not one per fading copy');
+  });
+
+  group('shrinking late', () {
+    double frameHeight(WidgetTester tester) => tester.getSize(find.byType(LoggingInfoFrame)).height;
+
+    /// A frame a vsync on: a release step shows whole in the frame after
+    /// its own, once its microsecond has passed.
+    Future<void> nextFrame(WidgetTester tester) => tester.pump(const Duration(milliseconds: 16));
+
+    /// Pumps past the content's own 120 ms resize.
+    Future<void> resize(WidgetTester tester, double contentHeight, {double uiScale = 1, bool withFooter = false}) async {
+      await tester.pumpWidget(_host(contentHeight: contentHeight, uiScale: uiScale, withFooter: withFooter));
+      await nextFrame(tester);
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    testWidgets('grows at once, holds its height five seconds after shrinking, then comes down a device pixel at a time over ten', (tester) async {
+      // Under a UI scale, as every phone is: a logical pixel is not a whole
+      // number of device pixels, and a step of 1/dpr would land between them.
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      const scale = 1.1;
+      await resize(tester, 100, uiScale: scale);
+      await resize(tester, 120, uiScale: scale);
+      expect(frameHeight(tester), 120, reason: 'growing is never held back');
+      final grid = PixelGrid.of(tester.element(find.byType(LoggingInfoFrame))).devicePixelsPerLogical;
+      expect(grid, closeTo(2.2, 1e-9));
+
+      await resize(tester, 100, uiScale: scale);
+      // The trap: the frame following its content down at once, which moves
+      // everything it pushed aside each time an FYI message or a call's
+      // details come and go.
+      await tester.pump(const Duration(milliseconds: 4700));
+      expect(frameHeight(tester), 120, reason: 'held five seconds');
+
+      // 20 px at 2.2 device px each is 44 steps, one every 227 ms.
+      await tester.pump(const Duration(milliseconds: 600));
+      await nextFrame(tester);
+      final releasing = frameHeight(tester);
+      expect(releasing, lessThan(120));
+      final devicePixels = releasing * grid;
+      expect(devicePixels, closeTo(devicePixels.roundToDouble(), 1e-6), reason: 'on a device pixel');
+      await tester.pump(const Duration(milliseconds: 100));
+      await nextFrame(tester);
+      expect(frameHeight(tester), releasing, reason: 'a step per pixel, not a frame-paced animation');
+      await tester.pump(const Duration(seconds: 5));
+      await nextFrame(tester);
+      expect(frameHeight(tester), allOf(greaterThan(100), lessThan(releasing)), reason: 'over ten seconds, not at once');
+      await tester.pump(const Duration(seconds: 5));
+      await nextFrame(tester);
+      await nextFrame(tester);
+      expect(frameHeight(tester), 100);
+    });
+
+    testWidgets('the footer stays at the fields\' edge while the frame holds and releases, the room opening above it', (tester) async {
+      await resize(tester, 100, withFooter: true);
+      await resize(tester, 60, withFooter: true);
+      // The trap: the held room under the footer, which lifts an FYI message
+      // off the fields by what the content lost and lets it creep back down.
+      expect(frameHeight(tester), 110, reason: 'held');
+      expect(tester.getBottomLeft(find.byKey(_footerKey)).dy, tester.getBottomLeft(find.byType(LoggingInfoFrame)).dy);
+      await tester.pump(const Duration(seconds: 10));
+      await nextFrame(tester);
+      expect(frameHeight(tester), allOf(greaterThan(70), lessThan(110)), reason: 'releasing');
+      expect(tester.getBottomLeft(find.byKey(_footerKey)).dy, tester.getBottomLeft(find.byType(LoggingInfoFrame)).dy);
+      await tester.pump(const Duration(seconds: 10));
+      await nextFrame(tester);
+      await nextFrame(tester);
+      expect(frameHeight(tester), 70);
+    });
+
+    testWidgets('a change while held starts the hold over; growing past it ends it', (tester) async {
+      await resize(tester, 120);
+      await resize(tester, 80);
+      await tester.pump(const Duration(seconds: 4));
+      await resize(tester, 90);
+      // The trap: the first hold's timer still running, which releases the
+      // frame a second after content that should have bought five more.
+      await tester.pump(const Duration(seconds: 4));
+      expect(frameHeight(tester), 120);
+
+      await tester.pump(const Duration(seconds: 3));
+      await nextFrame(tester);
+      expect(frameHeight(tester), lessThan(120), reason: 'releasing');
+      await resize(tester, 130);
+      expect(frameHeight(tester), 130);
+      await resize(tester, 130);
+      await tester.pump(const Duration(seconds: 20));
+      expect(frameHeight(tester), 130, reason: 'nothing left to release');
+    });
   });
 
   testWidgets('the action button takes the diameter it is given, and a null callback disables it', (tester) async {

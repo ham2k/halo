@@ -133,9 +133,23 @@ away from the fields: up into the QSO list when the panel sits below the log,
 down into it when the panel sits above it (the Chasing view). The panel is
 anchored at the fields' edge and the list gives up the height, so a pill
 arriving or leaving mid-typing never shifts a field under the operator's
-hands (`logging_controls_info_growth_test.dart`). At the bottom of the
-area, under whatever it shows and outside its cross-fade, sits the FYI
-area (next section).
+hands (`logging_controls_info_growth_test.dart`).
+
+**It grows at once and shrinks late.** Growing away from the fields moves
+whatever is on the far side — the controls above it, or the list — and a
+frame that followed its content straight back would move them again with
+every FYI message, every call's details, that came and went. So when the
+content gets shorter the frame keeps its height for five seconds — the
+content at the top, the FYI area still at the bottom against the fields,
+the spare room between them — then comes down to the content's height
+over ten, in whole device pixels at the UI scale (`PixelGrid`): one a step,
+or a few for a tall drop, never more than twenty steps a second, each step
+drawn whole rather than animated. Any change in the content's height while
+it holds starts the five seconds over; growing past it ends the hold
+(`LoggingInfoFrame`, `logging_info_frame_test.dart`).
+
+At the bottom of the area, under whatever it shows and outside its
+cross-fade, sits the FYI area (next section).
 
 ## The FYI area
 

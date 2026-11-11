@@ -7,10 +7,16 @@
 // decides WHAT the area shows and WHICH action the button is; this widget
 // only decides where they go and how they get there.
 
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'semantic_id.dart';
 import 'spacing.dart';
+import 'ui_scale.dart';
 
 /// The information area's frame. See the file comment.
 ///
@@ -18,7 +24,9 @@ import 'spacing.dart';
 /// one-line info area can't leave the button overflowing upward into the
 /// secondary control chips above, but free to grow as tall as the call-info
 /// lines and their wrapped pills need. It grows away from the entry row,
-/// which never moves (docs/design/logging-fields.md, "The three parts").
+/// which never moves (docs/design/logging-fields.md, "The three parts"), and
+/// it grows at once but shrinks late: what it pushed aside stays put for
+/// five seconds after the area gets shorter, then follows over ten.
 class LoggingInfoFrame extends StatefulWidget {
   const LoggingInfoFrame({
     super.key,
@@ -75,6 +83,17 @@ class LoggingInfoFrame extends StatefulWidget {
   State<LoggingInfoFrame> createState() => _LoggingInfoFrameState();
 }
 
+/// How long the frame keeps its height after its content gets shorter, and
+/// how long it then takes to come down: the controls around it stay put
+/// while the content comes and goes — an FYI message, a call's details —
+/// and drift back rather than jump once it has settled.
+const _holdFor = Duration(seconds: 5);
+const _releaseOver = Duration(seconds: 10);
+
+/// The release's shortest step: a tall shrink comes down several device
+/// pixels a step rather than stepping at the frame rate.
+const _stepAtLeast = Duration(milliseconds: 50);
+
 class _LoggingInfoFrameState extends State<LoggingInfoFrame> {
   /// A monotonic generation, bumped whenever [LoggingInfoFrame.signature]
   /// changes, which keys the AnimatedSwitcher below. A content-derived key
@@ -84,6 +103,70 @@ class _LoggingInfoFrameState extends State<LoggingInfoFrame> {
   /// alone, so the content updates in place.
   int _generation = 0;
 
+  /// The most the frame may keep of the height it had: unbounded while it
+  /// holds, then lowered a device pixel at a time while it releases.
+  double _ceiling = double.infinity;
+
+  /// Device pixels per logical pixel here, the UI scale included
+  /// (ui-scaling.md): what a release step is a whole number of.
+  double _grid = 1;
+
+  /// The hold, and then the release.
+  Timer? _timer;
+
+  /// The content's own height as last laid out: a change to it while held
+  /// starts the hold over, a step of the release does not.
+  double? _natural;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  /// After every layout that moved either height.
+  void _laidOut(double natural, double shown) {
+    if (!mounted) return;
+    final changed = natural != _natural;
+    _natural = natural;
+    if (shown <= natural) {
+      // Not holding: done releasing, or grown past the hold.
+      _timer?.cancel();
+      _timer = null;
+      if (_ceiling != double.infinity) setState(() => _ceiling = double.infinity);
+      return;
+    }
+    if (!changed) return;
+    _timer?.cancel();
+    if (_ceiling != double.infinity) setState(() => _ceiling = double.infinity);
+    _timer = Timer(_holdFor, () => _release(from: shown, to: natural));
+  }
+
+  /// Steps the ceiling from [from] down to [to] in whole device pixels,
+  /// one a step and never a step under [_stepAtLeast], spread over
+  /// [_releaseOver]: a redraw per step, not per frame. Steps counted from
+  /// the timer's ticks, so a throttled timer (a background tab) catches up
+  /// rather than stretching the release.
+  void _release({required double from, required double to}) {
+    final grid = _grid;
+    final top = (from * grid).floor();
+    final pixels = top - (to * grid).ceil();
+    if (pixels <= 0) {
+      setState(() => _ceiling = to);
+      return;
+    }
+    final steps = math.min(pixels, _releaseOver.inMicroseconds ~/ _stepAtLeast.inMicroseconds);
+    _timer = Timer.periodic(_releaseOver ~/ steps, (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final step = math.min(timer.tick, steps);
+      if (step == steps) timer.cancel();
+      setState(() => _ceiling = step == steps ? to : (top - (pixels * step / steps).round()) / grid);
+    });
+  }
+
   @override
   void didUpdateWidget(LoggingInfoFrame oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -92,6 +175,7 @@ class _LoggingInfoFrameState extends State<LoggingInfoFrame> {
 
   @override
   Widget build(BuildContext context) {
+    _grid = PixelGrid.of(context).devicePixelsPerLogical;
     final reserve = widget.actionWidth ?? widget.buttonDiameter;
     return Stack(
       clipBehavior: Clip.none,
@@ -110,31 +194,43 @@ class _LoggingInfoFrameState extends State<LoggingInfoFrame> {
                 child: Padding(
                   padding: widget.leftieMode ? EdgeInsets.only(left: reserve + Space.md) : EdgeInsets.only(right: reserve + Space.md),
                   // Top-aligned, with the height animating as the content
-                  // grows/shrinks and content swaps cross-fading. AnimatedSize
-                  // drives the height; AnimatedSwitcher fades between distinct
-                  // states, keyed by the generation.
+                  // grows and content swaps cross-fading. AnimatedSize
+                  // drives the growth; the hold keeps the height as the
+                  // content shrinks and steps it down while it releases,
+                  // each step whole in the frame after its own: a
+                  // microsecond, not zero, which completes the size's
+                  // controller inside layout and re-dirties the box
+                  // mid-layout. In that frame the column is already a step
+                  // shorter than the box, so the box holds it against the
+                  // fields' edge, where the footer is. AnimatedSwitcher fades
+                  // between distinct states, keyed by the generation.
                   child: AnimatedSize(
-                    duration: const Duration(milliseconds: 120),
+                    duration: _ceiling.isFinite ? const Duration(microseconds: 1) : const Duration(milliseconds: 120),
                     curve: Curves.easeOut,
-                    alignment: Alignment.topLeft,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      // The footer at the bottom of the room the area
-                      // reserves, the slack between it and the content: it
-                      // rises out of the fields' edge into that slack, not
-                      // down from under the content. With the entry row
-                      // above, it stays under the content, nearer the row.
-                      mainAxisAlignment: widget.entryRowAbove ? MainAxisAlignment.start : MainAxisAlignment.spaceBetween,
-                      children: [
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 120),
-                          layoutBuilder: (currentChild, previousChildren) =>
-                              Stack(alignment: Alignment.topLeft, children: [...previousChildren, ?currentChild]),
-                          child: KeyedSubtree(key: ValueKey(_generation), child: widget.child),
-                        ),
-                        ?widget.footer,
-                      ],
+                    alignment: _ceiling.isFinite && !widget.entryRowAbove ? Alignment.bottomLeft : Alignment.topLeft,
+                    child: _HeightHold(
+                      ceiling: _ceiling,
+                      onLayout: _laidOut,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
+                        // The footer at the bottom of the room the area
+                        // reserves or holds, the slack between it and the
+                        // content: it rises out of the fields' edge into that
+                        // slack, not down from under the content. With the
+                        // entry row above, it stays under the content, nearer
+                        // the row.
+                        mainAxisAlignment: widget.entryRowAbove ? MainAxisAlignment.start : MainAxisAlignment.spaceBetween,
+                        children: [
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 120),
+                            layoutBuilder: (currentChild, previousChildren) =>
+                                Stack(alignment: Alignment.topLeft, children: [...previousChildren, ?currentChild]),
+                            child: KeyedSubtree(key: ValueKey(_generation), child: widget.child),
+                          ),
+                          ?widget.footer,
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -193,5 +289,64 @@ class LoggingActionButton extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Never shorter than its child, nor shorter than it was itself unless
+/// [ceiling] says so: the larger of the child's height and the least of its
+/// own last height and [ceiling]. A child shorter than that is laid out
+/// again at least that tall, so the child's own alignment says where the
+/// held room goes — the frame's column puts it between the content and the
+/// footer, which stays at the fields' edge. At least, never exactly: a
+/// tight height makes the child a relayout boundary, and a change inside it
+/// would never reach the hold.
+class _HeightHold extends SingleChildRenderObjectWidget {
+  const _HeightHold({required this.ceiling, required this.onLayout, required super.child});
+
+  final double ceiling;
+
+  /// The child's height and the height shown, after a layout that changed
+  /// either — in the frame's post-frame phase, when state may change.
+  final void Function(double natural, double shown) onLayout;
+
+  @override
+  _RenderHeightHold createRenderObject(BuildContext context) => _RenderHeightHold(ceiling, onLayout);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderHeightHold renderObject) => renderObject
+    ..ceiling = ceiling
+    ..onLayout = onLayout;
+}
+
+class _RenderHeightHold extends RenderProxyBox {
+  _RenderHeightHold(this._ceiling, this.onLayout);
+
+  double _ceiling;
+  set ceiling(double value) {
+    if (value == _ceiling) return;
+    _ceiling = value;
+    markNeedsLayout();
+  }
+
+  void Function(double natural, double shown) onLayout;
+
+  double? _shown;
+  double? _reportedNatural;
+  double? _reportedShown;
+
+  @override
+  void performLayout() {
+    final child = this.child!;
+    child.layout(constraints, parentUsesSize: true);
+    final natural = child.size.height;
+    final held = math.min(_shown ?? natural, _ceiling);
+    final shown = _shown = constraints.constrainHeight(math.max(natural, held));
+    if (shown > natural) child.layout(constraints.copyWith(minHeight: shown), parentUsesSize: true);
+    size = constraints.constrain(Size(child.size.width, shown));
+    if (natural != _reportedNatural || shown != _reportedShown) {
+      _reportedNatural = natural;
+      _reportedShown = shown;
+      SchedulerBinding.instance.addPostFrameCallback((_) => onLayout(natural, shown));
+    }
   }
 }
