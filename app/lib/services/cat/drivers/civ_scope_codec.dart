@@ -124,8 +124,9 @@ List<int> buildScopeRefFrame({required int to, required int from, double? refDb}
   return _frame(to, from, [civScopeRef, _main, pair(0), pair(2), refDb < 0 ? 0x01 : 0x00]);
 }
 
-/// Reads the selected preset; HaLo never selects one.
-List<int> buildScopeEdgeNumberFrame({required int to, required int from}) => _frame(to, from, [civScopeEdgeNumber, _main]);
+/// Reads the selected preset, or with [edge] selects one — HaLo only ever the
+/// one already selected, after writing its edges.
+List<int> buildScopeEdgeNumberFrame({required int to, required int from, int? edge}) => _frame(to, from, [civScopeEdgeNumber, _main, ?edge]);
 
 /// Sets preset [edge] (1–4) of band range [range] — its number in the
 /// model's table ([civScopeEdgeRanges]), counted from 1 — to [lowHz]..[highHz].

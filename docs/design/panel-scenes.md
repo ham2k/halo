@@ -509,7 +509,7 @@ published panels name them; what API 17 added has the new names only.
   (`autoSpan`), as the radio's next span where the panel may command it
   (visible on the radio's own screen, hence the permission), and no further
   elsewhere. Within the sweep a zoom crops while it moves; where it ends
-  with the sweep's points more than 5 pixels apart, a radio whose span the
+  with the sweep's points more than 3 pixels apart, a radio whose span the
   panel commands goes to the narrowest that covers the window where it sits
   and the widest window any other display of it shows, since a few hundred
   points cropped to a narrow window draw a handful of them. Closer than

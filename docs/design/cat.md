@@ -4252,8 +4252,13 @@ WiFi:
     Scroll-F scrolls edges that leave the dial out back over it, nowhere near
     the window they were placed for (observed on an IC-705), so a window
     panned past the dial gets what of it edges about the dial can cover, the
-    rest drawn as filler. Edges the radio shows already are not written
-    again. A refused edge write is not reported, nor asked again:
+    rest drawn as filler. Each write is followed by selecting the same
+    preset (`27 16 00 <n>`): the IC-705's current firmware stores edges
+    written to the preset on screen without redrawing it until it is selected
+    (observed: ACKed, the sweep unmoved), where the firmware before it drew
+    them at once. A refusal of that selection is not the takeover's. Edges the radio
+    shows already are not written again. A refused edge write is not
+    reported, nor asked again:
     a radio sold for narrower bands refuses at their ends, and its own scroll
     still keeps the dial in view. A pan or zoom is said done only once edges
     went to the radio (`spanSetsEdges` in its capabilities marks a span as

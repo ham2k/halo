@@ -721,7 +721,7 @@ a scope, the control says why instead. Placed like a native control, it takes:
     Zooming past the sweep asks for a wider scope: the app's own where the
     radio's `spectrum` says `autoSpan`, the radio's next span where the panel
     may command it, and no further elsewhere unless `maxWidthHz` says. Where
-    a zoom ends with the sweep's points more than 5 pixels apart, a
+    a zoom ends with the sweep's points more than 3 pixels apart, a
     radio span the panel commands goes to the narrowest that covers the
     window and every other display of that scope; one showing the whole
     sweep keeps it from narrowing. A double click on the axis puts the window back, about the

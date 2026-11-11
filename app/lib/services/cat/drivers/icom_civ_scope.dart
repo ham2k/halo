@@ -51,6 +51,11 @@ const _autoRefToleranceDb = 3.0;
 /// asked again. Real time, like the reference's.
 const _takeOverRetryMillis = 2000;
 
+/// How long a scope the display wants may go without a sweep before the next
+/// idle poll asks for them again — so a silence is noticed one poll interval
+/// after this at the latest. Real time: a silence is a duration.
+const _sweepSilenceMillis = 3000;
+
 /// The narrowest a preset's edges are placed: the narrowest span's width.
 const _narrowestEdgesHz = 5000;
 
@@ -74,6 +79,13 @@ mixin _CivScope implements SpectrumSession {
   /// The radio's scope was off when the display asked for it, so it goes off
   /// again with the display — the operator's own screen is not ours to keep.
   bool _scopeTurnedOn = false;
+
+  /// When the last sweep data arrived, or the display asked for sweeps, in
+  /// real millis; and whether the scope is being asked for them again after a
+  /// silence ([_reviveSilentScope]), which turns it on even where it was the
+  /// app that turned it on before.
+  int _sweepHeardMillis = 0;
+  bool _scopeReviving = false;
 
   final _scopeAssembler = CivScopeAssembler();
 
@@ -164,6 +176,7 @@ mixin _CivScope implements SpectrumSession {
   void startSpectrum() {
     if (_scopeWanted || spectrumUnavailable != null) return;
     _scopeWanted = true;
+    _sweepHeardMillis = realNowMillis();
     // Whether the screen shows the scope decides what [stopSpectrum] leaves
     // behind; the answer turns it on if it is off.
     _send(buildScopeOnOffFrame(to: radioAddress, from: controllerAddress));
@@ -179,6 +192,7 @@ mixin _CivScope implements SpectrumSession {
     _send(buildScopeOutputFrame(to: radioAddress, from: controllerAddress, on: false));
     if (_scopeTurnedOn) _send(buildScopeOnOffFrame(to: radioAddress, from: controllerAddress, on: false));
     _scopeTurnedOn = false;
+    _scopeReviving = false;
     // Forgotten with the display, so the next one hears them again.
     _scopeSettings = const SpectrumSettings();
     _scopeProblem = null;
@@ -187,6 +201,28 @@ mixin _CivScope implements SpectrumSession {
     _scopeMode = _scopeModeBefore = _scopeTakenOverAt = _scopeEdgeNumber = null;
     _refusedEdges = null;
     _takeOverRefused = false;
+  }
+
+  /// On the idle poll: a scope the display wants that has sent no sweep for
+  /// [_sweepSilenceMillis] is asked for them again — its on/off read, whose
+  /// answer turns it on if it is off, and its output on either way. A read,
+  /// so a radio that answers nothing never has a backlog of them queued
+  /// behind the polls. Without this, a radio
+  /// that stops streaming mid-session leaves the waterfall frozen until the
+  /// operator reconnects. Said on the console each time, with the scope's
+  /// state, since what stops the stream is not known.
+  void _reviveSilentScope() {
+    if (!_scopeWanted || spectrumUnavailable != null) return;
+    final now = realNowMillis(), silent = now - _sweepHeardMillis;
+    if (silent < _sweepSilenceMillis) return;
+    debugPrint(
+      '[cat] CI-V scope: no sweep for ${(silent / 1000).toStringAsFixed(1)}s, asking for them again '
+      '(mode $_scopeMode, turned on $_scopeTurnedOn, settings $_scopeSettings, problem $_scopeProblem)',
+    );
+    // Once per silence: the next ask waits as long again.
+    _sweepHeardMillis = now;
+    _scopeReviving = true;
+    _poll(buildScopeOnOffFrame(to: radioAddress, from: controllerAddress));
   }
 
   /// A mode is not taken: the scope's is the app's to keep, or the radio's.
@@ -289,6 +325,10 @@ mixin _CivScope implements SpectrumSession {
     final frame = buildScopeEdgesFrame(to: radioAddress, from: controllerAddress, range: index + 1, edge: edge, lowHz: placed, highHz: placed + width);
     if (listEquals(frame, _refusedEdges)) return false;
     _send(frame);
+    // The preset selected again: an IC-705 on current firmware stores edges written to the preset on
+    // screen without redrawing it, and only a selection shows them. Older firmware draws them either
+    // way, and selecting the preset already selected changes nothing there.
+    _send(buildScopeEdgeNumberFrame(to: radioAddress, from: controllerAddress, edge: edge));
     // A new width moves the noise in each point — a tenth the width, a tenth the noise — so the
     // reading starts over, and REF is read again, cheaply, in case the radio keeps one per span.
     if ((_scopeSettings.lowHz, _scopeSettings.highHz) case (final low?, final high?) when high - low != width) {
@@ -309,6 +349,9 @@ mixin _CivScope implements SpectrumSession {
       _refusedEdges = frame;
       return;
     }
+    // The preset selected again after edges (a set, longer than the read): a radio that draws edges
+    // at once may refuse it, and loses nothing by it — said, it would flicker on every pan.
+    if (frame != null && frame.length > 8 && frame[5] == civScopeEdgeNumber) return;
     // The takeover's own: the switch to Scroll-F (a set, longer than a read) or the preset's read.
     if (frame != null && frame.length > 5 && ((frame[5] == civScopeMode && frame.length > 8) || frame[5] == civScopeEdgeNumber)) {
       _takeOverRefused = true;
@@ -382,6 +425,9 @@ mixin _CivScope implements SpectrumSession {
     switch (data[0]) {
       case civScopeWaveform:
         if (!_scopeWanted) return;
+        _sweepHeardMillis = realNowMillis();
+        // Streaming again: an on/off broadcast from here is the operator's, not the answer to a revive.
+        _scopeReviving = false;
         // There the sweep header's frequencies are six bytes too, and the
         // assembler reads five: every field after the first lands a byte off
         // and the sweep would draw as noise across the wrong range.
@@ -422,12 +468,25 @@ mixin _CivScope implements SpectrumSession {
           ),
         );
       case civScopeOnOff:
-        if (parseScopeFlag(data) == false && _scopeWanted && !_scopeTurnedOn) {
+        final reviving = _scopeReviving;
+        _scopeReviving = false;
+        if (reviving) {
+          final reads = switch (parseScopeFlag(data)) {
+            true => 'on',
+            false => 'off',
+            null => 'unreadably',
+          };
+          debugPrint('[cat] CI-V scope: it reads $reads');
+        }
+        if (parseScopeFlag(data) == false && _scopeWanted && (!_scopeTurnedOn || reviving)) {
           _scopeTurnedOn = true;
           _send(buildScopeOnOffFrame(to: radioAddress, from: controllerAddress, on: true));
           // The output again, after the scope: whether turning the scope on
           // resets it has not been pinned down, and asking twice costs one
           // exchange.
+          _send(buildScopeOutputFrame(to: radioAddress, from: controllerAddress, on: true));
+        } else if (reviving && _scopeWanted) {
+          // On and silent: its output is what stopped.
           _send(buildScopeOutputFrame(to: radioAddress, from: controllerAddress, on: true));
         }
       case civScopeMode:

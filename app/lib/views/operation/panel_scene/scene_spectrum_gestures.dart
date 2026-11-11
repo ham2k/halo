@@ -15,7 +15,7 @@ part of 'scene_spectrum.dart';
 /// may be where a zoom ends before the radio's span is narrowed: closer,
 /// the span is left alone, since each change jolts the radio's own screen
 /// and restretches the waterfall.
-const _zoomPixelsPerPoint = 10.0, _fitPixelsPerPoint = 5.0;
+const _zoomPixelsPerPoint = 10.0, _fitPixelsPerPoint = 3.0;
 
 /// Where a drag, a pinch or a trackpad gesture took hold: whether it zooms,
 /// where along the frequency axis (in the spectrum's own frame), and the

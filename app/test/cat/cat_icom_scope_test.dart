@@ -183,6 +183,61 @@ void main() {
       expect(sink.frames.single.noiseDb, isNotNull);
     });
 
+    test('a scope that goes quiet is asked for sweeps again on the idle poll, and turned back on even where the app turned it on', () {
+      followFakeClock();
+      fakeAsync((async) {
+        make({civScopeConfigKey: true});
+        // Off when the display opens: the app turns it on.
+        sink.answers = {
+          civScopeOnOff: [civScopeOnOff, 0x00],
+        };
+        sink.radio = session.handleData;
+        session.startUpdates();
+        session.startSpectrum();
+        List<List<int>> scope(int sub) => [
+          for (final f in sink.sent)
+            if (f[4] == civScopeCommand && f[5] == sub) f.sublist(5, f.length - 1),
+        ];
+        expect(scope(civScopeOnOff), [
+          [civScopeOnOff],
+          [civScopeOnOff, 0x01],
+        ]);
+        // Streaming, the scope is left alone however long it runs.
+        sink.sent.clear();
+        for (var i = 0; i < 120; i++) {
+          session.handleData(Uint8List.fromList([0xFE, 0xFE, us, ic705, 0x27, ..._capturedSweep, 0xFD]));
+          async.elapse(const Duration(milliseconds: 100));
+        }
+        expect(scope(civScopeOnOff), isEmpty);
+        expect(scope(civScopeOutput), isEmpty);
+        // The sweeps stop, the radio's scope gone off: asked again, and turned on again, though it
+        // was the app that turned it on — that is what a display still open wants.
+        async.elapse(const Duration(seconds: 6));
+        expect(scope(civScopeOnOff), [
+          [civScopeOnOff],
+          [civScopeOnOff, 0x01],
+        ]);
+        // Its output with it, once the scope is on, as when the display opened.
+        expect(scope(civScopeOutput), [
+          [civScopeOutput, 0x01],
+        ]);
+        // On, and still silent: its output is what stopped, and goes back on.
+        sink.answers = {
+          civScopeOnOff: [civScopeOnOff, 0x01],
+        };
+        sink.sent.clear();
+        async.elapse(const Duration(seconds: 5));
+        expect(scope(civScopeOnOff), [
+          [civScopeOnOff],
+        ]);
+        expect(scope(civScopeOutput), [
+          [civScopeOutput, 0x01],
+        ]);
+        session.stopSpectrum();
+        session.teardown();
+      });
+    });
+
     test('a sweep never answers a scope read, so it cannot free the wire for a burst', () {
       make({civScopeConfigKey: true});
       session.startSpectrum();
@@ -557,12 +612,15 @@ void main() {
         const edges = [civScopeEdges, 0x16, 0x02, 0x00, 0x50, 0x92, 0x43, 0x01, 0x00, 0x50, 0x12, 0x44, 0x01];
         expect(sets(), [
           edges,
+          // Selected again: current IC-705 firmware stores edges for the preset on screen and draws
+          // them only once it is selected.
+          [civScopeEdgeNumber, 0x00, 0x02],
           [civScopeMode, 0x00, civScopeModeScrollF],
         ], reason: 'switched before its preset holds the window shown, Scroll-F would show wherever the preset was left');
 
         sweep(civScopeModeScrollF, 143925000, 144125000);
         sweep(civScopeModeScrollF, 143925000, 144125000);
-        expect(sets(), hasLength(2), reason: 'in Scroll-F there is nothing more to set');
+        expect(sets(), hasLength(3), reason: 'in Scroll-F there is nothing more to set');
 
         // Later the operator presses CENT on the radio: put back, but not on every sweep while the
         // switch is on its way to them.
@@ -655,6 +713,7 @@ void main() {
         sink.radio = null;
         sweep(civScopeModeCenter, 144025000, 100000);
         session.handleData(Uint8List.fromList([0xFE, 0xFE, us, ic705, 0xFB, 0xFD]));
+        session.handleData(Uint8List.fromList([0xFE, 0xFE, us, ic705, 0xFB, 0xFD]));
         expect(sink.sent.last.sublist(4, sink.sent.last.length - 1), [civScopeCommand, civScopeMode, 0x00, civScopeModeScrollF]);
         session.handleData(Uint8List.fromList([0xFE, 0xFE, us, ic705, 0xFA, 0xFD]));
         expect(sink.problems, isNot(contains(t.settings.station.spectrumScopeRefused)));
@@ -663,6 +722,30 @@ void main() {
         async.elapse(const Duration(seconds: 5));
         sweep(civScopeModeCenter, 144025000, 100000);
         expect(sets(civScopeMode), hasLength(modeSets));
+      });
+    });
+
+    test('a radio that refuses the preset selected again after its edges is still taken over', () {
+      followFakeClock();
+      fakeAsync((async) {
+        make({});
+        session.startSpectrum();
+        tuneTo(144025000);
+        // Answered by hand: the edges taken, the preset's selection refused, Scroll-F taken.
+        sink.radio = null;
+        sweep(civScopeModeCenter, 144025000, 100000);
+        session.handleData(Uint8List.fromList([0xFE, 0xFE, us, ic705, 0xFB, 0xFD]));
+        expect(sink.sent.last.sublist(4, sink.sent.last.length - 1), [civScopeCommand, civScopeEdgeNumber, 0x00, 0x02]);
+        session.handleData(Uint8List.fromList([0xFE, 0xFE, us, ic705, 0xFA, 0xFD]));
+        expect(sink.problems, isNot(contains(t.settings.station.spectrumScopeRefused)), reason: 'said, it would flicker on every pan');
+        session.handleData(Uint8List.fromList([0xFE, 0xFE, us, ic705, 0xFB, 0xFD]));
+        sink.radio = session.handleData;
+        // The operator presses CENT later: taken back to Scroll-F, as any radio would be. Read as the
+        // takeover's own refusal, it would be left centred for the rest of the session.
+        final modeSets = sets(civScopeMode).length;
+        async.elapse(const Duration(seconds: 5));
+        sweep(civScopeModeCenter, 144025000, 100000);
+        expect(sets(civScopeMode), hasLength(modeSets + 1));
       });
     });
 

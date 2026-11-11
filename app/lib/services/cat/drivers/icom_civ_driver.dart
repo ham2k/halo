@@ -1426,7 +1426,10 @@ class IcomCivSession
     // when it opens (CatService.refreshKeyerSpeed) rather than the poll
     // carrying a question the radio almost never has a new answer to.
     _send(buildReadKeyerSpeedFrame(to: radioAddress, from: controllerAddress));
-    _pollTimer ??= Timer.periodic(_pollInterval, (_) => _requestFrequencyAndMode());
+    _pollTimer ??= Timer.periodic(_pollInterval, (_) {
+      _requestFrequencyAndMode();
+      _reviveSilentScope();
+    });
     _telemetry.start();
     _lanMod?.settle();
   }
