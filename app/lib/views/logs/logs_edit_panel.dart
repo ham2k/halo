@@ -46,6 +46,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
   late final TextEditingController _name;
   late final TextEditingController _grid;
   late final TextEditingController _state;
+  late final TextEditingController _ourGrid;
   late final TextEditingController _notes;
 
   /// What each field was seeded with, to tell an edit from a field merely
@@ -62,6 +63,11 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
   late final Stream<Operation?>? _operationStream = widget.qso.operationUuid.isEmpty
       ? null
       : widget.services.operations.watchOperation(widget.qso.operationUuid);
+
+  /// The locator the QSO falls back to while it records none of its own —
+  /// its operation's, as the segment it falls in states it — shown as the
+  /// Our Grid field's hint. Null for a QSO in no operation.
+  late final Future<String?> _ourGridHint = _loadOurGridHint();
   bool _saving = false;
 
   /// Set while Delete has been tapped but not yet saved — mirrors
@@ -100,11 +106,30 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
     _name = TextEditingController(text: qso.theirName ?? '');
     _grid = TextEditingController(text: _theirGridText(qso));
     _state = TextEditingController(text: qso.theirState ?? '');
+    _ourGrid = TextEditingController(text: qso.ourDisplayGrid ?? '');
     _notes = TextEditingController(text: qso.notes ?? '');
     _seeds = {for (final controller in _controllers) controller: controller.text};
   }
 
-  List<TextEditingController> get _controllers => [_call, _date, _time, _freqOrBand, _mode, _sentRst, _rcvdRst, _name, _grid, _state, _notes];
+  List<TextEditingController> get _controllers => [_call, _date, _time, _freqOrBand, _mode, _sentRst, _rcvdRst, _name, _grid, _state, _ourGrid, _notes];
+
+  /// Reported here because the [FutureBuilder] showing it keeps an error to
+  /// itself: a failed read would otherwise look exactly like an operation
+  /// with no location. No notice — the operator asked for an edit, not this.
+  Future<String?> _loadOurGridHint() async {
+    final uuid = widget.qso.operationUuid;
+    if (uuid.isEmpty) return null;
+    try {
+      final operation = await widget.services.operations.get(uuid);
+      if (operation == null) return null;
+      final events = await widget.services.qsos.eventsForOperation(uuid);
+      final segmented = SegmentedOperation.from(operation: operation.data, qsos: events);
+      return Operation(uuid: '', data: segmented.effectiveAt(widget.qso.startAtMillis)).displayGrid;
+    } catch (e, stack) {
+      ErrorReportingService.report(e, stack, context: 'logsQsoEdit:ourGridHint');
+      return null;
+    }
+  }
 
   bool _touched(TextEditingController controller) => controller.text != _seeds[controller];
 
@@ -215,6 +240,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
         their['lon'] = center?.longitude;
         their['locSource'] = null;
       }
+      if (ourGridOverrides(_ourGrid.text, _seeds[_ourGrid]!) case final place?) our.addAll(place);
       final startAtMillis = _parsedStartAtMillis() ?? qso.startAtMillis;
       final freqOrBand = _freqOrBand.text.trim();
       // Same parsing the main logging fields use — [parseFreq] accepts kHz or
@@ -420,7 +446,17 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
                 maxLines: 3,
               ),
               const SizedBox(height: Space.md),
-              Align(alignment: AlignmentDirectional.centerStart, child: _operationButton(context, theme)),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  FutureBuilder<String?>(
+                    future: _ourGridHint,
+                    builder: (context, snapshot) => _field(t.qsoEditForm.ourGrid, _ourGrid, width: 100, hint: snapshot.data),
+                  ),
+                  const SizedBox(width: Space.md),
+                  Flexible(child: _operationButton(context, theme)),
+                ],
+              ),
             ],
           ),
         ),
@@ -428,15 +464,21 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
     );
   }
 
-  Widget _field(String label, TextEditingController controller, {required double width, FocusNode? focusNode}) => SizedBox(
+  Widget _field(String label, TextEditingController controller, {required double width, FocusNode? focusNode, String? hint}) => SizedBox(
     width: width,
-    child: _textField(label, controller, focusNode: focusNode),
+    child: _textField(label, controller, focusNode: focusNode, hint: hint),
   );
 
-  Widget _textField(String label, TextEditingController controller, {FocusNode? focusNode}) =>
+  Widget _textField(String label, TextEditingController controller, {FocusNode? focusNode, String? hint}) =>
       // Read-only mid-write: what is typed then isn't in the write, and the
       // editor closes when it lands.
-      TextField(controller: controller, focusNode: focusNode, enabled: !_pendingDelete, readOnly: _saving, decoration: _fieldDecoration(context, label));
+      TextField(
+        controller: controller,
+        focusNode: focusNode,
+        enabled: !_pendingDelete,
+        readOnly: _saving,
+        decoration: _fieldDecoration(context, label, hint: hint),
+      );
 
   /// The operation the QSO belongs to, as the button that opens it — in a
   /// log that spans every operation, where it leads is worth saying. A QSO
@@ -496,8 +538,24 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
   /// paints its fields on `colorScheme.surface` regardless of the panel's
   /// own tinted background) — this panel's own background is the selection
   /// tint, same reasoning applies.
-  InputDecoration _fieldDecoration(BuildContext context, String label) =>
-      InputDecoration(labelText: label, isDense: true, filled: true, fillColor: Theme.of(context).colorScheme.surface, border: const OutlineInputBorder());
+  ///
+  /// A [hint] is dimmed by hand: nothing themed dims a hand-built
+  /// decoration's hint, and at full strength it reads as a stored value.
+  InputDecoration _fieldDecoration(BuildContext context, String label, {String? hint}) {
+    final theme = Theme.of(context);
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      hintStyle: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.38)),
+      // Without this a hint shows only once the field has focus: the label
+      // sits where the hint would.
+      floatingLabelBehavior: hint == null ? null : FloatingLabelBehavior.always,
+      isDense: true,
+      filled: true,
+      fillColor: theme.colorScheme.surface,
+      border: const OutlineInputBorder(),
+    );
+  }
 
   /// Same circular, `secondary`-filled button `LoggingControls` shows while
   /// editing (there it's a `tertiary`→`secondary` theme remap; here the

@@ -704,6 +704,7 @@ class _Translations$qsoEditForm$qro extends Translations$qsoEditForm$en {
 	@override String get title => 'EDIT QSO';
 	@override String get operatorCall => 'OPERATOR';
 	@override String get position => 'POSITION';
+	@override String get ourGrid => 'OUR GRID';
 	@override String get theirName => 'NAME';
 	@override String get theirGrid => 'GRID';
 	@override String get theirState => 'STATE';
@@ -6213,6 +6214,7 @@ extension on TranslationsQro {
 			'qsoEditForm.title' => 'EDIT QSO',
 			'qsoEditForm.operatorCall' => 'OPERATOR',
 			'qsoEditForm.position' => 'POSITION',
+			'qsoEditForm.ourGrid' => 'OUR GRID',
 			'qsoEditForm.theirName' => 'NAME',
 			'qsoEditForm.theirGrid' => 'GRID',
 			'qsoEditForm.theirState' => 'STATE',
@@ -6602,9 +6604,9 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.problemNothingSaid' => 'THAT MESSAGE SAYS NOTHING FOR THIS CONTACT.',
 			'settings.radio.voiceMessages.templateField' => 'SAY WITH MY WORDS',
 			'settings.radio.voiceMessages.templateHelp' => 'LEAVE EMPTY TO PLAY THE RECORDING. OTHERWISE THE MESSAGE IS SAID WITH THE WORDS YOU RECORDED, FILLED IN FOR EACH CONTACT, USING THESE VALUES:',
-			'settings.radio.voiceMessages.help' => 'HELP',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.help' => 'HELP',
 			'settings.radio.voiceMessages.helpTitle' => 'SAYING MESSAGES WITH YOUR WORDS',
 			'settings.radio.voiceMessages.helpFullExample' => 'A WHOLE MESSAGE:',
 			'settings.radio.voiceMessages.helpExample' => 'THEIR CALL, THEIR REPORT, AND YOUR RECORDING OF “QSL?”',
@@ -7116,9 +7118,9 @@ extension on TranslationsQro {
 			'settings.station.models.buddihex' => 'BUDDIHEX MAST ROTATOR (MASTWERKS)',
 			'settings.station.models.rotctld' => 'HAMLIB ROTCTLD',
 			'settings.station.models.everywareServer' => 'GREEN HERON EVERYWARE SERVER',
-			'settings.station.models.everywareRotor' => 'GREEN HERON EVERYWARE ROTATOR',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.everywareRotor' => 'GREEN HERON EVERYWARE ROTATOR',
 			'settings.station.models.everywareSwitch' => 'GREEN HERON EVERYWARE SWITCH',
 			'settings.station.models.everywareDirectional' => 'GREEN HERON EVERYWARE DIRECTIONAL SWITCH',
 			'settings.station.models.otrsp' => 'SO2R SWITCHER (OTRSP)',
@@ -7630,9 +7632,9 @@ extension on TranslationsQro {
 			'settings.gridPrecisionDescription.six' => '6 DIGITS',
 			'settings.gridPrecisionDescription.eight' => '8 DIGITS',
 			'commands.enableSyncFirst' => 'ENABLE SYNC IN SETTINGS FIRST.',
-			'commands.fullResyncStarted' => 'FULL RESYNC STARTED — LOCAL DATA WAS BACKED UP FIRST.',
 			_ => null,
 		} ?? switch (path) {
+			'commands.fullResyncStarted' => 'FULL RESYNC STARTED — LOCAL DATA WAS BACKED UP FIRST.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'NO DATA FILES MATCHED "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'RELOAD FAILED: ${error}',
 			'commands.reloadingAll' => 'RELOADING ALL DATA FILES…',
@@ -8144,9 +8146,9 @@ extension on TranslationsQro {
 			'fileOpen.cannotOpenDetail' => 'WE DON’T RECOGNIZE THE CONTENTS OF THIS FILE',
 			'fileOpen.installExtension' => 'INSTALL THE EXTENSION',
 			'fileOpen.importKeyboardShortcuts' => 'IMPORT AS A KEYBOARD SHORTCUT SET',
-			'fileOpen.importCwMessages' => 'IMPORT AS A CW MESSAGE SET',
 			_ => null,
 		} ?? switch (path) {
+			'fileOpen.importCwMessages' => 'IMPORT AS A CW MESSAGE SET',
 			'fileOpen.importVoiceMessages' => 'IMPORT AS A VOICE MESSAGE SET',
 			'fileOpen.importIntoLogs' => 'IMPORT INTO LOGS',
 			'fileOpen.importInto' => ({required Object name}) => 'IMPORT INTO ${name}',

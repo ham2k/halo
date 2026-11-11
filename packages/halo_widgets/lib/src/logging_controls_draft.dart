@@ -81,9 +81,10 @@ class QsoDraft extends ChangeNotifier with PanelModel {
   final Map<String, dynamic> extra = {};
 
   /// Fields of the contact's `our` block the full-edit pane overrides — who
-  /// was at the key, and which position logged it. Kept apart from [extra],
-  /// which carries only TOP-LEVEL keys: these two live inside `our`, beside
-  /// the station call the controls own.
+  /// was at the key, which position logged it, and where the station was
+  /// (`grid` with its `lat`/`lon`). Kept apart from [extra], which carries
+  /// only TOP-LEVEL keys: these live inside `our`, beside the station call
+  /// the controls own.
   ///
   /// An override is written only when the pane's field was actually edited,
   /// so a contact left alone still takes the stamp the save path applies
@@ -256,11 +257,12 @@ class QsoDraft extends ChangeNotifier with PanelModel {
         config.refs.hasRefs ||
         config.exchange.hasTypedValues ||
         extra.isNotEmpty ||
-        ourExtra.isNotEmpty ||
         // A VALUE, not merely a key: a draft restored after a field was cleared
         // in the More pane carries that field's null in the snapshot, and
         // counting those would leave a visibly empty row guarding itself
-        // against a wipe and asking before a spot overwrites it.
+        // against a wipe and asking before a spot overwrites it. An emptied
+        // Operator is the empty string, which does count: it overrides the stamp.
+        ourExtra.values.any((value) => value != null) ||
         theirExtra.values.any((value) => value != null) ||
         config.gridController.text.trim().isNotEmpty ||
         config.stateController.text.trim().isNotEmpty;
@@ -466,6 +468,9 @@ class QsoDraft extends ChangeNotifier with PanelModel {
       // `normalizeQsoQson` has already given each one the type its table
       // names. A null is kept as a null — that is a coordinate the pane
       // deliberately cleared, and dropping it would let the old one return.
+      for (final key in const ['grid', 'gridSource', 'lat', 'lon']) {
+        if (our.containsKey(key)) ourExtra[key] = our[key];
+      }
       for (final key in theirPaneKeys) {
         if (their.containsKey(key)) theirExtra[key] = their[key];
       }

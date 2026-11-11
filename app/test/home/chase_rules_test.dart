@@ -144,6 +144,20 @@ void main() {
       expect(our.containsKey('lon'), isFalse);
     });
 
+    // The Edit QSO pane's Our grid, typed for this one contact: stamped over,
+    // the pane would accept a square the logged contact never carries.
+    test("a new contact's own place stands, and a cleared one takes the stamp", () {
+      final typed = qsoWithChaseLocation({
+        'our': {'call': 'KI2D', 'grid': 'FN20aa', 'gridSource': null, 'lat': 40.02, 'lon': -73.98},
+      }, location);
+      expect(typed['our'], {'call': 'KI2D', 'grid': 'FN20aa', 'gridSource': null, 'lat': 40.02, 'lon': -73.98, 'state': 'CT', 'county': 'Hartford'});
+
+      final cleared = qsoWithChaseLocation({
+        'our': {'call': 'KI2D', 'grid': null, 'gridSource': null, 'lat': null, 'lon': null},
+      }, location);
+      expect(cleared['our'], {'call': 'KI2D', ...location});
+    });
+
     test('with no chasing location a contact is left as it is', () {
       final qso = {
         'our': {'call': 'KI2D'},

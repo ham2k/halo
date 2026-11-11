@@ -1064,6 +1064,61 @@ void main() {
       await _unmount(tester);
     });
 
+    testWidgets("Our grid hints the operation's and, typed, gives the QSO a place of its own", (tester) async {
+      final h = await _harness();
+      final created = await h.services.operations.create(stationCall: 'K1ABC');
+      final operation = Operation(uuid: created.uuid, data: {...created.data, 'grid': 'FN31pr'});
+      await h.services.operations.saveData(operation);
+      final qso = await _log(h.services, operation, 'W1AW', _utc(20, 10));
+      await _pumpLogs(tester, h);
+
+      await _tapRow(tester, 'W1AW');
+      await settleFrames(tester, frames: 6);
+      final field = tester.widget<TextField>(_field('Our grid'));
+      expect(field.controller!.text, isEmpty, reason: 'a QSO recording no place shows none, or saving would stamp one');
+      expect(field.decoration!.hintText, 'FN31pr', reason: 'the place the QSO falls back to');
+
+      await tester.enterText(_field('Our grid'), 'fn20aa');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await settleFrames(tester, frames: 6);
+
+      final our = (await _stored(tester, h.services, qso)).data['our'] as Map;
+      final center = locationForStatedGrid('FN20aa')!;
+      expect(our['grid'], 'FN20aa');
+      // Left behind, any old pair would outrank the typed grid
+      // (docs/design/locations.md).
+      expect((our['lat'], our['lon']), (center.latitude, center.longitude));
+      await _unmount(tester);
+    });
+
+    testWidgets('Our grid emptied hands the QSO back to its operation, and untouched writes nothing', (tester) async {
+      final h = await _harness();
+      final operation = await h.services.operations.create(stationCall: 'K1ABC');
+      final placed = await h.services.qsos.add(operation.uuid, {
+        'our': {'call': 'K1ABC', 'grid': 'FN20aa', 'lat': 40.02, 'lon': -73.95},
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'CW',
+        'startAtMillis': _utc(20, 10),
+      });
+      await _pumpLogs(tester, h);
+
+      await _tapRow(tester, 'W1AW');
+      // An edit elsewhere must not move the place: the field shows the
+      // coordinate's square, and written back it would drop the coordinate.
+      await tester.enterText(_field('Name'), 'Hiram');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await settleFrames(tester, frames: 6);
+      expect((await _stored(tester, h.services, placed)).ourExactLocation, GridLocation(40.02, -73.95));
+
+      await _tapRow(tester, 'W1AW');
+      await tester.enterText(_field('Our grid'), '');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await settleFrames(tester, frames: 6);
+      expect((await _stored(tester, h.services, placed)).ourLocation, isNull);
+      await _unmount(tester);
+    });
+
     // An incomplete call is never looked up, so nothing would ever replace the
     // guess left over from the call it was — and the list and every export
     // would go on naming W1AW's operator for `W1A?`.

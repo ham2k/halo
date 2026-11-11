@@ -85,6 +85,18 @@ be showing a lookup's guess, and only a well-formed locator or an emptied
 field: anything else changes nothing, rather than storing a square that names
 no place and erasing the pair beside it.
 
+Both editors also carry an Our Grid field, for a contact made somewhere other
+than where its operation says, and both write it through `ourGridOverrides`
+(`qso_edit_pane.dart`) on the same terms: only when edited, only a
+well-formed locator or an emptied field, and always with `our.lat`/`our.lon`
+in the same write. Emptying it nulls all three, which is how a contact says it
+records no place of its own: its operation's location (the segment's, after a
+`break`) answers for it again, and that location is the field's hint. A
+contact in no operation — a Chasing one — has nothing to fall back to, so
+emptying its Our grid leaves it unlocated. The Chasing view's stamp
+(`qsoWithChaseLocation`) leaves a new contact that states its own grid
+alone, so an Our grid typed there stands.
+
 What replaces it, where the writer has nothing better, is the square's own
 center — `locationForStatedGrid`. It is a true statement (the station is
 inside the square) and it says nothing the grid did not, so every reader that

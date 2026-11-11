@@ -1357,6 +1357,7 @@
     "title": "edit qso",
     "operatorCall": "operator",
     "position": "position",
+    "ourGrid": "our grid",
     "theirName": "name",
     "theirGrid": "grid",
     "theirState": "state",

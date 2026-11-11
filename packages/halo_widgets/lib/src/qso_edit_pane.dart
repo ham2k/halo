@@ -117,6 +117,25 @@ String panePosition(Object? typed) {
   return parsed == null || parsed <= 0 ? '' : parsed.toString();
 }
 
+/// The `our` keys a typed Our Grid writes, or null where it writes nothing.
+///
+/// Nothing for a field left as it was shown ([before]) — compared normalized,
+/// since the uppercase formatter rewrites the whole field — or for text that
+/// is no locator: stored, "FN3" names no square. A locator replaces the
+/// contact's coordinate with the square's own center in the same write
+/// (docs/design/locations.md), and an emptied field clears all three, which
+/// hands the contact back to its operation's location: a null is what the
+/// readers and the export's segment stamp both take as "the contact records
+/// no place of its own". `gridSource` goes either way, or it would go on
+/// naming where a replaced place came from.
+Map<String, Object?>? ourGridOverrides(Object? typed, String before) {
+  final grid = (typed as String? ?? '').trim();
+  if (normalizeGrid(grid) == normalizeGrid(before.trim())) return null;
+  if (grid.isNotEmpty && !isWellFormedGrid(grid)) return null;
+  final center = locationForStatedGrid(grid);
+  return {'grid': grid.isEmpty ? null : normalizeGrid(grid), 'gridSource': null, 'lat': center?.latitude, 'lon': center?.longitude};
+}
+
 /// The country-file entity prefixes whose stations have a county and an ARRL
 /// section. The same three the scorer uses (`extensions/core/scoring`'s
 /// `US_ENTITIES`) — Alaska is `KL`, not `KL7`, and Hawaii and Alaska are their
@@ -174,8 +193,11 @@ String? _numericGuess(Map<String, dynamic>? guess, String key) {
 /// [composing] means a new contact rather than one already in the log — see
 /// the operator field. [rstPaneKeyOrder] is the panel's own resolved
 /// Sent/Rcvd order; [powerShown] whether power is part of this entry at all.
+/// [ourGridHint] is the locator the contact falls back to when it records
+/// none of its own: its operation's, as the segment it falls in states it.
 Map<String, dynamic> buildQsoEditFormDefinition({
   required String defaultOperatorCall,
+  required String? ourGridHint,
   required String defaultPosition,
   required bool showPositionField,
   required Map<String, dynamic>? their,
@@ -298,6 +320,11 @@ Map<String, dynamic> buildQsoEditFormDefinition({
           'label': tt.position,
           'placeholder': composing && defaultPosition.isNotEmpty ? defaultPosition : null,
         },
+      // Where we were for this contact, when it was not where the operation
+      // says. Empty unless the contact records a place of its own: the hint
+      // is the operation's, which is what every reader takes for a contact
+      // that records none.
+      {'type': 'field', 'key': 'ourGrid', 'fieldType': 'text', 'label': tt.ourGrid, 'uppercase': true, 'placeholder': ourGridHint},
 
       {'type': 'header', 'title': tt.sectionNotes},
       // Capitalized, not uppercased — a note is prose. The Notes control in

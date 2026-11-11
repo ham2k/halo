@@ -306,7 +306,8 @@ class Qso {
   /// Our own grid at the time of this QSO, when captured — QSON allows the
   /// station to move mid-operation (e.g. a location change across a break),
   /// so consumers like the Map tab prefer this over `Operation.grid` when
-  /// present. Nothing in HaLo writes it yet; imports/sync may carry it.
+  /// present. The operator states it in either QSO editor's Our Grid field;
+  /// imports and sync carry it too.
   String? get ourGrid => asQsonString(_our['grid']);
 
   /// Our exact position at the time of this QSO, when captured — the same

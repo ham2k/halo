@@ -243,6 +243,14 @@ extension _ControlStrip on _LoggingControlsState {
     final ourBeforePane = {...?asQsonMap(widget.session.editingQso?.data['our']), ..._draft.ourExtra};
     final operatorBeforePane = (asQsonString(ourBeforePane['operatorCall']) ?? '').trim();
     final positionBeforePane = (asQsonString(ourBeforePane['multiIdentifier']) ?? '').trim();
+    // At the operator's Grid Precision, like every grid field: a contact
+    // carrying MY_LAT/MY_LON shows the square that coordinate names.
+    final ourGridBeforePane = gridForDisplay(lat: ourBeforePane['lat'], lon: ourBeforePane['lon'], grid: asQsonString(ourBeforePane['grid'])) ?? '';
+    // A contact made before a `break` falls back to the location its segment
+    // stated, not the operation's latest — which is a rover's whole log. A
+    // new contact with a typed time is placed by that time, as its save is.
+    final at = _time.effectiveStartAtMillis;
+    final ourGridHint = Operation(uuid: '', data: at == null ? _segmented.current : _segmented.effectiveAt(at)).displayGrid;
     // The same displayed-vs-edited distinction once more, for every `their`
     // field the pane owns outright: a value merely shown must not be recorded
     // as an override, or a contact opened and saved would take its lookup's
@@ -256,6 +264,7 @@ extension _ControlStrip on _LoggingControlsState {
       gridBeforePane: gridBeforePane,
       formDefinition: buildQsoEditFormDefinition(
         defaultOperatorCall: widget.prefs.defaultOperatorCall,
+        ourGridHint: ourGridHint,
         defaultPosition: widget.prefs.defaultPosition,
         showPositionField: widget.prefs.showPositionField,
         their: asQsonMap(widget.session.editingQso?.data['their']),
@@ -286,6 +295,7 @@ extension _ControlStrip on _LoggingControlsState {
         'notes': (_draft.extra['notes'] as String?) ?? '',
         'operatorCall': operatorBeforePane,
         if (widget.prefs.showPositionField) 'multiIdentifier': positionBeforePane,
+        'ourGrid': ourGridBeforePane,
         ...theirValuesBeforePane,
         // Shown, never taken: `theirEntity` is `disabled`, and the save
         // handler below reads nothing back out of it.
@@ -380,6 +390,7 @@ extension _ControlStrip on _LoggingControlsState {
           final position = panePosition(result['multiIdentifier']);
           if (position != positionBeforePane) _draft.ourExtra['multiIdentifier'] = position;
         }
+        _draft.ourExtra.addAll(ourGridOverrides(result['ourGrid'], ourGridBeforePane) ?? const {});
 
         _time.seedFields();
       });

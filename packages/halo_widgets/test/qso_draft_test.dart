@@ -189,6 +189,16 @@ void main() {
       again.draft.populate(() => again.draft.applyData(data, restoringDraft: true));
       expect(again.draft.theirNameOverride, 'Hiram');
       expect(again.draft.ourExtra, {'operatorCall': 'N0DEV'}, reason: "a draft's override survives the trip");
+
+      // An Our grid typed in the pane: lost on the trip, the contact would
+      // be logged at the operation's place after all.
+      h.draft.ourExtra.addAll({'grid': 'FN20aa', 'gridSource': null, 'lat': 40.02, 'lon': -73.98});
+      final placed = _Harness();
+      addTearDown(placed.dispose);
+      placed.draft.populate(() => placed.draft.applyData(h.draft.toData(), restoringDraft: true));
+      expect(placed.draft.toData()['our'], containsPair('grid', 'FN20aa'));
+      expect(placed.draft.toData()['our'], containsPair('lat', 40.02));
+      expect(placed.draft.toData()['our'], containsPair('lon', -73.98));
       expect(again.draft.theirExtra['city'], 'Newington');
       expect(again.draft.theirExtra.containsKey('county'), isTrue, reason: 'dropping the null would let the old value return');
       expect(again.draft.theirExtra['county'], isNull);
@@ -412,6 +422,12 @@ void main() {
       expect(h.draft.hasComposedValues, isFalse);
       h.draft.theirExtra['city'] = 'Newington';
       expect(h.draft.hasComposedValues, isTrue);
+      h.draft.clear();
+      // An Our grid typed and then emptied in the pane leaves its nulls.
+      h.draft.ourExtra.addAll({'grid': null, 'gridSource': null, 'lat': null, 'lon': null});
+      expect(h.draft.hasComposedValues, isFalse);
+      h.draft.ourExtra['operatorCall'] = '';
+      expect(h.draft.hasComposedValues, isTrue, reason: 'an emptied Operator overrides the stamp, so it is something to keep');
       h.draft.clear();
       expect(h.draft.hasComposedValues, isFalse);
 

@@ -1604,6 +1604,9 @@ class Translations$qsoEditForm$en {
 	/// en: 'Position'
 	String get position => 'Position';
 
+	/// en: 'Our grid'
+	String get ourGrid => 'Our grid';
+
 	/// en: 'Name'
 	String get theirName => 'Name';
 
@@ -12415,6 +12418,7 @@ extension on Translations {
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.operatorCall' => 'Operator',
 			'qsoEditForm.position' => 'Position',
+			'qsoEditForm.ourGrid' => 'Our grid',
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
 			'qsoEditForm.theirState' => 'State',
@@ -12804,9 +12808,9 @@ extension on Translations {
 			'settings.radio.voiceMessages.problemNothingSaid' => 'That message says nothing for this contact.',
 			'settings.radio.voiceMessages.templateField' => 'Say with my words',
 			'settings.radio.voiceMessages.templateHelp' => 'Leave empty to play the recording. Otherwise the message is said with the words you recorded, filled in for each contact, using these values:',
-			'settings.radio.voiceMessages.help' => 'Help',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.help' => 'Help',
 			'settings.radio.voiceMessages.helpTitle' => 'Saying Messages with Your Words',
 			'settings.radio.voiceMessages.helpFullExample' => 'A whole message:',
 			'settings.radio.voiceMessages.helpExample' => 'Their call, their report, and your recording of “QSL?”',
@@ -13318,9 +13322,9 @@ extension on Translations {
 			'settings.station.models.buddihex' => 'BuddiHex Mast Rotator (MastWerks)',
 			'settings.station.models.rotctld' => 'Hamlib rotctld',
 			'settings.station.models.everywareServer' => 'Green Heron Everyware server',
-			'settings.station.models.everywareRotor' => 'Green Heron Everyware rotator',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.everywareRotor' => 'Green Heron Everyware rotator',
 			'settings.station.models.everywareSwitch' => 'Green Heron Everyware switch',
 			'settings.station.models.everywareDirectional' => 'Green Heron Everyware directional switch',
 			'settings.station.models.otrsp' => 'SO2R Switcher (OTRSP)',
@@ -13832,9 +13836,9 @@ extension on Translations {
 			'settings.gridPrecisionDescription.six' => '6 digits',
 			'settings.gridPrecisionDescription.eight' => '8 digits',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
-			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
 			_ => null,
 		} ?? switch (path) {
+			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'Reload failed: ${error}',
 			'commands.reloadingAll' => 'Reloading all data files…',
@@ -14346,9 +14350,9 @@ extension on Translations {
 			'fileOpen.cannotOpenDetail' => 'We don’t recognize the contents of this file',
 			'fileOpen.installExtension' => 'Install the extension',
 			'fileOpen.importKeyboardShortcuts' => 'Import as a keyboard shortcut set',
-			'fileOpen.importCwMessages' => 'Import as a CW message set',
 			_ => null,
 		} ?? switch (path) {
+			'fileOpen.importCwMessages' => 'Import as a CW message set',
 			'fileOpen.importVoiceMessages' => 'Import as a voice message set',
 			'fileOpen.importIntoLogs' => 'Import into Logs',
 			'fileOpen.importInto' => ({required Object name}) => 'Import into ${name}',

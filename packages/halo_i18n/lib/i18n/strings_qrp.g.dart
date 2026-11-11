@@ -704,6 +704,7 @@ class _Translations$qsoEditForm$qrp extends Translations$qsoEditForm$en {
 	@override String get title => 'edit qso';
 	@override String get operatorCall => 'operator';
 	@override String get position => 'position';
+	@override String get ourGrid => 'our grid';
 	@override String get theirName => 'name';
 	@override String get theirGrid => 'grid';
 	@override String get theirState => 'state';
@@ -6213,6 +6214,7 @@ extension on TranslationsQrp {
 			'qsoEditForm.title' => 'edit qso',
 			'qsoEditForm.operatorCall' => 'operator',
 			'qsoEditForm.position' => 'position',
+			'qsoEditForm.ourGrid' => 'our grid',
 			'qsoEditForm.theirName' => 'name',
 			'qsoEditForm.theirGrid' => 'grid',
 			'qsoEditForm.theirState' => 'state',
@@ -6602,9 +6604,9 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.problemNothingSaid' => 'that message says nothing for this contact.',
 			'settings.radio.voiceMessages.templateField' => 'say with my words',
 			'settings.radio.voiceMessages.templateHelp' => 'leave empty to play the recording. otherwise the message is said with the words you recorded, filled in for each contact, using these values:',
-			'settings.radio.voiceMessages.help' => 'help',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.help' => 'help',
 			'settings.radio.voiceMessages.helpTitle' => 'saying messages with your words',
 			'settings.radio.voiceMessages.helpFullExample' => 'a whole message:',
 			'settings.radio.voiceMessages.helpExample' => 'their call, their report, and your recording of “qsl?”',
@@ -7116,9 +7118,9 @@ extension on TranslationsQrp {
 			'settings.station.models.buddihex' => 'buddihex mast rotator (mastwerks)',
 			'settings.station.models.rotctld' => 'hamlib rotctld',
 			'settings.station.models.everywareServer' => 'green heron everyware server',
-			'settings.station.models.everywareRotor' => 'green heron everyware rotator',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.everywareRotor' => 'green heron everyware rotator',
 			'settings.station.models.everywareSwitch' => 'green heron everyware switch',
 			'settings.station.models.everywareDirectional' => 'green heron everyware directional switch',
 			'settings.station.models.otrsp' => 'so2r switcher (otrsp)',
@@ -7630,9 +7632,9 @@ extension on TranslationsQrp {
 			'settings.gridPrecisionDescription.six' => '6 digits',
 			'settings.gridPrecisionDescription.eight' => '8 digits',
 			'commands.enableSyncFirst' => 'enable sync in settings first.',
-			'commands.fullResyncStarted' => 'full resync started — local data was backed up first.',
 			_ => null,
 		} ?? switch (path) {
+			'commands.fullResyncStarted' => 'full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'no data files matched "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'reload failed: ${error}',
 			'commands.reloadingAll' => 'reloading all data files…',
@@ -8144,9 +8146,9 @@ extension on TranslationsQrp {
 			'fileOpen.cannotOpenDetail' => 'we don’t recognize the contents of this file',
 			'fileOpen.installExtension' => 'install the extension',
 			'fileOpen.importKeyboardShortcuts' => 'import as a keyboard shortcut set',
-			'fileOpen.importCwMessages' => 'import as a cw message set',
 			_ => null,
 		} ?? switch (path) {
+			'fileOpen.importCwMessages' => 'import as a cw message set',
 			'fileOpen.importVoiceMessages' => 'import as a voice message set',
 			'fileOpen.importIntoLogs' => 'import into logs',
 			'fileOpen.importInto' => ({required Object name}) => 'import into ${name}',

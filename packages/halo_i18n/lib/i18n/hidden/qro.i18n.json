@@ -1357,6 +1357,7 @@
     "title": "EDIT QSO",
     "operatorCall": "OPERATOR",
     "position": "POSITION",
+    "ourGrid": "OUR GRID",
     "theirName": "NAME",
     "theirGrid": "GRID",
     "theirState": "STATE",

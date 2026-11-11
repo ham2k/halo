@@ -122,7 +122,9 @@ const _chaseLocationKeys = [..._chaseLocationPlaceKeys, 'state', 'county'];
 /// inherit one from.
 ///
 /// Only a NEW contact, the rule [qsoWithOperator] keeps: re-saving an edit
-/// to an earlier one must not move it to wherever the operator is now. And
+/// to an earlier one must not move it to wherever the operator is now. Nor
+/// over a grid the contact already states — the Edit QSO pane's Our grid,
+/// typed for this one contact, which always brings its own pair. And
 /// the place is written whole or not at all — a grid stamped beside a
 /// coordinate it did not come with is outranked by that coordinate
 /// everywhere it is read.
@@ -133,7 +135,7 @@ Map<String, dynamic> qsoWithChaseLocation(Map<String, dynamic> qso, Map<String, 
   final hasPlace = present('grid') || (present('lat') && present('lon'));
   if (!hasPlace && !present('state') && !present('county')) return qso;
   final our = {...?asQsonMap(qso['our'])};
-  if (hasPlace) {
+  if (hasPlace && our['grid'] == null) {
     for (final key in _chaseLocationPlaceKeys) {
       present(key) ? our[key] = location[key] : our.remove(key);
     }

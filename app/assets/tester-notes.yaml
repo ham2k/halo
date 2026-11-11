@@ -13,6 +13,7 @@
     - "Icom bandscope auto-adjust moved under the current radio's More details"
     - "Local spots are now off by default (Settings → Spotting)"
     - "New Serial over TCP connection for a radio behind a network serial bridge (Other…)"
+    - "New Our grid field in Edit QSO and the Logs editor"
     - "New meters for Kenwood TS-480, TS-590SG and TS-2000; S-meter on TX-500"
     - "Added Kenwood TS-2000 and TS-480HX to the radio list"
     - "New COMP meter on the Radio panel for Yaesu radios"

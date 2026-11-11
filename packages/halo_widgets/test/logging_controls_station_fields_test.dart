@@ -287,4 +287,151 @@ void main() {
       expect(their['lon'], -72.72);
     });
   });
+
+  group("the More pane's Our grid", () {
+    Future<void> openPane(WidgetTester tester) async {
+      await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
+      await tester.pumpAndSettle();
+    }
+
+    Finder ourGrid() => find.widgetWithText(TextField, 'Our grid');
+
+    Future<void> placeOperation(WidgetTester tester, String grid) async {
+      operation = Operation(uuid: operation.uuid, data: {...operation.data, 'grid': grid});
+      await tester.runAsync(() => operations.saveData(operation));
+    }
+
+    Future<Map> savedOur(WidgetTester tester, bool Function(Map our) until) async {
+      final logged = await waitForQsosWhere(tester, 'the edit to land', (logged) => until(logged.single.data['our'] as Map));
+      return logged.single.data['our'] as Map;
+    }
+
+    testWidgets("hints the operation's grid and, typed, gives the contact a place of its own", (tester) async {
+      await placeOperation(tester, 'FN31pr');
+      final existing = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'our': {'call': 'KI2D'},
+          'band': '20m',
+          'mode': 'SSB',
+        }),
+      ))!;
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: existing)));
+      await tester.pump();
+      await openPane(tester);
+
+      final field = tester.widget<TextField>(ourGrid());
+      expect(field.controller!.text, isEmpty, reason: 'a contact recording no place shows none, or saving would stamp one');
+      expect(field.decoration!.hintText, 'FN31pr', reason: 'the place the contact falls back to');
+
+      await tester.enterText(ourGrid(), 'fn20aa');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(FilledButton));
+
+      final our = await savedOur(tester, (our) => our['grid'] != null);
+      final center = locationForStatedGrid('FN20aa')!;
+      expect(our['grid'], 'FN20aa');
+      // A grid without its pair would be outranked by any coordinate the
+      // contact carried, and readers that measure would have nothing.
+      expect((our['lat'], our['lon']), (center.latitude, center.longitude));
+    });
+
+    testWidgets('emptied, the contact follows its operation again', (tester) async {
+      await placeOperation(tester, 'FN31pr');
+      final existing = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'our': {'call': 'KI2D', 'grid': 'FN20aa', 'lat': 40.02, 'lon': -73.95},
+          'band': '20m',
+          'mode': 'SSB',
+        }),
+      ))!;
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: existing)));
+      await tester.pump();
+      await openPane(tester);
+      expect(tester.widget<TextField>(ourGrid()).controller!.text, isNotEmpty);
+
+      await tester.enterText(ourGrid(), '');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(FilledButton));
+
+      final our = await savedOur(tester, (our) => our['lat'] == null);
+      // Only the grid cleared, the old pair would go on placing the contact.
+      expect((our['grid'], our['lat'], our['lon']), (null, null, null));
+      final saved = (await tester.runAsync(() => qsos.get(existing.uuid)))!;
+      expect(saved.ourLocation, isNull, reason: 'the operation answers for a contact with no place of its own');
+    });
+
+    testWidgets('opened and saved untouched, a contact gains no place', (tester) async {
+      // The hint is the operation's location: taken as a value, every
+      // contact merely opened would be pinned there, and stop following a
+      // later correction to the operation.
+      await placeOperation(tester, 'FN31pr');
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await startContact(tester, 'W1AW');
+      await openPane(tester);
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final our = (await waitForQsos(tester, 1)).single.data['our'] as Map;
+      expect(our.containsKey('grid'), isFalse);
+      expect(our.containsKey('lat'), isFalse);
+    });
+
+    testWidgets('a malformed grid changes nothing', (tester) async {
+      final existing = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'our': {'call': 'KI2D', 'grid': 'FN20aa', 'lat': 40.02, 'lon': -73.95},
+          'band': '20m',
+          'mode': 'SSB',
+        }),
+      ))!;
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: existing)));
+      await tester.pump();
+      await openPane(tester);
+      await tester.enterText(ourGrid(), 'FN3');
+      await tester.enterText(find.widgetWithText(TextField, 'Rcvd').last, '57');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(FilledButton));
+
+      final logged = await waitForQsosWhere(tester, 'the edit to land', (logged) => (logged.single.data['their'] as Map)['sent'] == '57');
+      // Stored, "FN3" names no square, and the pair written with it would
+      // erase the coordinate the contact had.
+      expect(logged.single.data['our'], containsPair('grid', 'FN20aa'));
+      expect(logged.single.data['our'], containsPair('lat', 40.02));
+    });
+
+    testWidgets("a contact made before a break hints its segment's grid, not the operation's latest", (tester) async {
+      // A rover's whole log: each break moves the station, and a contact
+      // from the first stop falls back to where that stop was.
+      await placeOperation(tester, 'FN31pr');
+      final rows = (await tester.runAsync(() async {
+        await qsos.addEvent(operation.uuid, kind: 'start', atMillis: 500, operation: {'grid': 'FN20aa'});
+        final early = await qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'our': {'call': 'KI2D'},
+          'band': '20m',
+          'startAtMillis': 1000,
+        });
+        await qsos.addEvent(operation.uuid, kind: 'break', atMillis: 2000, operation: {'grid': 'FN42aa'});
+        return (early, await qsos.forOperation(operation.uuid));
+      }))!;
+      await tester.pumpWidget(
+        host(
+          log: LogHooks(operation: operation, qsosRepository: qsos, qsos: rows.$2),
+          session: LoggingSession(editingQso: rows.$1),
+        ),
+      );
+      await tester.pump();
+      await openPane(tester);
+
+      expect(tester.widget<TextField>(ourGrid()).decoration!.hintText, 'FN20aa');
+    });
+  });
 }

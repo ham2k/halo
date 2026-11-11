@@ -704,6 +704,7 @@ class _Translations$qsoEditForm$cw extends Translations$qsoEditForm$en {
 	@override String get title => '· —·· ·· — / ——·— ··· ———';
 	@override String get operatorCall => '——— ·——· · ·—· ·— — ——— ·—·';
 	@override String get position => '·——· ——— ··· ·· — ·· ——— —·';
+	@override String get ourGrid => '——— ··— ·—· / ——· ·—· ·· —··';
 	@override String get theirName => '—· ·— —— ·';
 	@override String get theirGrid => '——· ·—· ·· —··';
 	@override String get theirState => '··· — ·— — ·';
@@ -6213,6 +6214,7 @@ extension on TranslationsCw {
 			'qsoEditForm.title' => '· —·· ·· — / ——·— ··· ———',
 			'qsoEditForm.operatorCall' => '——— ·——· · ·—· ·— — ——— ·—·',
 			'qsoEditForm.position' => '·——· ——— ··· ·· — ·· ——— —·',
+			'qsoEditForm.ourGrid' => '——— ··— ·—· / ——· ·—· ·· —··',
 			'qsoEditForm.theirName' => '—· ·— —— ·',
 			'qsoEditForm.theirGrid' => '——· ·—· ·· —··',
 			'qsoEditForm.theirState' => '··· — ·— — ·',
@@ -6602,9 +6604,9 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.problemNothingSaid' => '— ···· ·— — / —— · ··· ··· ·— ——· · / ··· ·— —·—— ··· / —· ——— — ···· ·· —· ——· / ··—· ——— ·—· / — ···· ·· ··· / —·—· ——— —· — ·— —·—· — ·—·—·—',
 			'settings.radio.voiceMessages.templateField' => '··· ·— —·—— / ·—— ·· — ···· / —— —·—— / ·—— ——— ·—· —·· ···',
 			'settings.radio.voiceMessages.templateHelp' => '·—·· · ·— ···— · / · —— ·——· — —·—— / — ——— / ·——· ·—·· ·— —·—— / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· ·—·—·— / ——— — ···· · ·—· ·—— ·· ··· · / — ···· · / —— · ··· ··· ·— ——· · / ·· ··· / ··· ·— ·· —·· / ·—— ·· — ···· / — ···· · / ·—— ——— ·—· —·· ··· / —·—— ——— ··— / ·—· · —·—· ——— ·—· —·· · —·· ——··—— / ··—· ·· ·—·· ·—·· · —·· / ·· —· / ··—· ——— ·—· / · ·— —·—· ···· / —·—· ——— —· — ·— —·—· — ——··—— / ··— ··· ·· —· ——· / — ···· · ··· · / ···— ·— ·—·· ··— · ··· ———···',
-			'settings.radio.voiceMessages.help' => '···· · ·—·· ·——·',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.help' => '···· · ·—·· ·——·',
 			'settings.radio.voiceMessages.helpTitle' => '··· ·— —·—— ·· —· ——· / —— · ··· ··· ·— ——· · ··· / ·—— ·· — ···· / —·—— ——— ··— ·—· / ·—— ——— ·—· —·· ···',
 			'settings.radio.voiceMessages.helpFullExample' => '·— / ·—— ···· ——— ·—·· · / —— · ··· ··· ·— ——· · ———···',
 			'settings.radio.voiceMessages.helpExample' => '— ···· · ·· ·—· / —·—· ·— ·—·· ·—·· ——··—— / — ···· · ·· ·—· / ·—· · ·——· ——— ·—· — ——··—— / ·— —· —·· / —·—— ——— ··— ·—· / ·—· · —·—· ——— ·—· —·· ·· —· ——· / ——— ··—· / “ ——·— ··· ·—·· ··——·· ”',
@@ -7116,9 +7118,9 @@ extension on TranslationsCw {
 			'settings.station.models.buddihex' => '—··· ··— —·· —·· ·· ···· · —··— / —— ·— ··· — / ·—· ——— — ·— — ——— ·—· / —·——· —— ·— ··· — ·—— · ·—· —·— ··· —·——·—',
 			'settings.station.models.rotctld' => '···· ·— —— ·—·· ·· —··· / ·—· ——— — —·—· — ·—·· —··',
 			'settings.station.models.everywareServer' => '——· ·—· · · —· / ···· · ·—· ——— —· / · ···— · ·—· —·—— ·—— ·— ·—· · / ··· · ·—· ···— · ·—·',
-			'settings.station.models.everywareRotor' => '——· ·—· · · —· / ···· · ·—· ——— —· / · ···— · ·—· —·—— ·—— ·— ·—· · / ·—· ——— — ·— — ——— ·—·',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.everywareRotor' => '——· ·—· · · —· / ···· · ·—· ——— —· / · ···— · ·—· —·—— ·—— ·— ·—· · / ·—· ——— — ·— — ——— ·—·',
 			'settings.station.models.everywareSwitch' => '——· ·—· · · —· / ···· · ·—· ——— —· / · ···— · ·—· —·—— ·—— ·— ·—· · / ··· ·—— ·· — —·—· ····',
 			'settings.station.models.everywareDirectional' => '——· ·—· · · —· / ···· · ·—· ——— —· / · ···— · ·—· —·—— ·—— ·— ·—· · / —·· ·· ·—· · —·—· — ·· ——— —· ·— ·—·· / ··· ·—— ·· — —·—· ····',
 			'settings.station.models.otrsp' => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—· / —·——· ——— — ·—· ··· ·——· —·——·—',
@@ -7630,9 +7632,9 @@ extension on TranslationsCw {
 			'settings.gridPrecisionDescription.six' => '—···· / —·· ·· ——· ·· — ···',
 			'settings.gridPrecisionDescription.eight' => '———·· / —·· ·· ——· ·· — ···',
 			'commands.enableSyncFirst' => '· —· ·— —··· ·—·· · / ··· —·—— —· —·—· / ·· —· / ··· · — — ·· —· ——· ··· / ··—· ·· ·—· ··· — ·—·—·—',
-			'commands.fullResyncStarted' => '··—· ··— ·—·· ·—·· / ·—· · ··· —·—— —· —·—· / ··· — ·— ·—· — · —·· / — / ·—·· ——— —·—· ·— ·—·· / —·· ·— — ·— / ·—— ·— ··· / —··· ·— —·—· —·— · —·· / ··— ·——· / ··—· ·· ·—· ··· — ·—·—·—',
 			_ => null,
 		} ?? switch (path) {
+			'commands.fullResyncStarted' => '··—· ··— ·—·· ·—·· / ·—· · ··· —·—— —· —·—· / ··· — ·— ·—· — · —·· / — / ·—·· ——— —·—· ·— ·—·· / —·· ·— — ·— / ·—— ·— ··· / —··· ·— —·—· —·— · —·· / ··— ·——· / ··—· ·· ·—· ··· — ·—·—·—',
 			'commands.noDataFilesMatched' => ({required Object target}) => '—· ——— / —·· ·— — ·— / ··—· ·· ·—·· · ··· / —— ·— — —·—· ···· · —·· / ·—··—· ${target} ·—··—· ·—·—·—',
 			'commands.reloadFailed' => ({required Object error}) => '·—· · ·—·· ——— ·— —·· / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
 			'commands.reloadingAll' => '·—· · ·—·· ——— ·— —·· ·· —· ——· / ·— ·—·· ·—·· / —·· ·— — ·— / ··—· ·· ·—·· · ··· …',
@@ -8144,9 +8146,9 @@ extension on TranslationsCw {
 			'fileOpen.cannotOpenDetail' => '·—— · / —·· ——— —· ’ — / ·—· · —·—· ——— ——· —· ·· ——·· · / — ···· · / —·—· ——— —· — · —· — ··· / ——— ··—· / — ···· ·· ··· / ··—· ·· ·—·· ·',
 			'fileOpen.installExtension' => '·· —· ··· — ·— ·—·· ·—·· / — ···· · / · —··— — · —· ··· ·· ——— —·',
 			'fileOpen.importKeyboardShortcuts' => '·· —— ·——· ——— ·—· — / ·— ··· / ·— / —·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — / ··· · —',
-			'fileOpen.importCwMessages' => '·· —— ·——· ——— ·—· — / ·— ··· / ·— / —·—· ·—— / —— · ··· ··· ·— ——· · / ··· · —',
 			_ => null,
 		} ?? switch (path) {
+			'fileOpen.importCwMessages' => '·· —— ·——· ——— ·—· — / ·— ··· / ·— / —·—· ·—— / —— · ··· ··· ·— ——· · / ··· · —',
 			'fileOpen.importVoiceMessages' => '·· —— ·——· ——— ·—· — / ·— ··· / ·— / ···— ——— ·· —·—· · / —— · ··· ··· ·— ——· · / ··· · —',
 			'fileOpen.importIntoLogs' => '·· —— ·——· ——— ·—· — / ·· —· — ——— / ·—·· ——— ——· ···',
 			'fileOpen.importInto' => ({required Object name}) => '·· —— ·——· ——— ·—· — / ·· —· — ——— / ${name}',
