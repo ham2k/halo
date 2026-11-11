@@ -99,9 +99,6 @@ declare function sendMessage(channel: string, message: string): void
 // identity). The kernel evaluates before every bundle, so it captures the
 // function into module scope and removes the global: from here on, the only
 // way onto the wire is through kernel APIs, which enforce identity.
-// (This is soft, single-realm containment — a hostile bundle can still
-// tamper with the realm's shared intrinsics. Hard isolation needs
-// per-extension realms; see DESIGN.md §3's manifest/review story.)
 const rawSendMessage: typeof sendMessage = typeof sendMessage === "function" ? sendMessage : (globalThis as Record<string, any>).sendMessage
 try {
   delete (globalThis as Record<string, unknown>).sendMessage
@@ -142,8 +139,16 @@ if (!removeAmbientTimers()) log("ERROR the engine's own timers could not be remo
 // two on different clocks, a wake fires on fake time and finds nothing due.
 let stampedNow: number | null = null
 
+// The engine's monotonic clock, taken before any bundle evaluates: every
+// extension's timer deadlines and budgets are measured on it, and one read
+// through the global at each call would be measured on whatever a bundle put
+// there.
+// `realNow` where the engine has no `performance`, as in the build's own
+// evaluation of this file.
+const monotonicNow = typeof performance === "undefined" ? realNow : performance.now.bind(performance)
+
 const timerQueue = createTimerQueue({
-  realNow: () => stampedNow ?? performance.now(),
+  realNow: () => stampedNow ?? monotonicNow(),
   wake: (delayMillis) => post({ type: "timerWake", delayMillis }),
   log,
   describeError,

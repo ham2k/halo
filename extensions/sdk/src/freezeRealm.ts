@@ -12,8 +12,10 @@
 // redirect, what the kernel does for every other extension. Freezing them all,
 // and the shared libraries every bundle is handed, closes that.
 
-/// The standard globals: frozen, and their names pinned so none can be
-/// replaced on the global either. One that this engine lacks is skipped.
+/// The globals every bundle shares: the standard built-ins, the engine's own
+/// (`queueMicrotask`, `performance`…) and the kernel's `console`. Frozen, and
+/// their names pinned so none can be replaced on the global either. One this
+/// engine lacks is skipped.
 const INTRINSIC_GLOBALS = [
   "Object",
   "Function",
@@ -73,23 +75,41 @@ const INTRINSIC_GLOBALS = [
   "escape",
   "unescape",
   "eval",
+  "queueMicrotask",
+  "atob",
+  "btoa",
+  "performance",
+  "console",
+  "DisposableStack",
+  "AsyncDisposableStack",
+  "SuppressedError",
 ]
 
-/// Built-ins no global names, reached through what produces them.
+/// Built-ins no global names, reached through what produces them. One this
+/// engine lacks (the iterator helpers are recent) is skipped.
 function hiddenIntrinsics(): unknown[] {
-  return [
-    Object.getPrototypeOf(function* () {}),
-    Object.getPrototypeOf(async function () {}),
-    Object.getPrototypeOf(async function* () {}),
-    Object.getPrototypeOf((function* () {})()),
-    Object.getPrototypeOf((async function* () {})()),
-    Object.getPrototypeOf([][Symbol.iterator]()),
-    Object.getPrototypeOf(new Map()[Symbol.iterator]()),
-    Object.getPrototypeOf(new Set()[Symbol.iterator]()),
-    Object.getPrototypeOf(""[Symbol.iterator]()),
-    Object.getPrototypeOf(/x/[Symbol.matchAll]("x")),
-    Object.getPrototypeOf(Uint8Array),
-  ]
+  const found: unknown[] = []
+  const add = (make: () => unknown) => {
+    try {
+      found.push(Object.getPrototypeOf(make()))
+    } catch (e) {
+      // Not in this engine.
+    }
+  }
+  add(() => function* () {})
+  add(() => async function () {})
+  add(() => async function* () {})
+  add(() => (function* () {})())
+  add(() => (async function* () {})())
+  add(() => [][Symbol.iterator]())
+  add(() => new Map()[Symbol.iterator]())
+  add(() => new Set()[Symbol.iterator]())
+  add(() => ""[Symbol.iterator]())
+  add(() => /x/[Symbol.matchAll]("x"))
+  add(() => Uint8Array)
+  add(() => ([][Symbol.iterator]() as unknown as { map(f: (x: unknown) => unknown): unknown }).map((x) => x))
+  add(() => (globalThis as unknown as { Iterator: { from(o: object): unknown } }).Iterator.from({ next: () => ({ done: true, value: undefined }) }))
+  return found
 }
 
 /// Turns [prop], a data property of the frozen [proto], into an accessor
@@ -99,6 +119,10 @@ function hiddenIntrinsics(): unknown[] {
 /// an object inherits as non-writable fails, so `this.name = "MyError"` in an
 /// Error subclass, or `obj.toString = …`, stops working once Error.prototype or
 /// Object.prototype is frozen. The prototype's own value still cannot change.
+/// Every read of the property then costs a getter call, so only names code is
+/// known to assign are tamed, never a hot method like `push` or `call`, and
+/// never `constructor` on Array or Promise, which the web engine watches to
+/// keep `map`, `then` and `await` fast.
 function tameOverride(proto: object, prop: PropertyKey): void {
   const desc = Object.getOwnPropertyDescriptor(proto, prop)
   if (!desc || !("value" in desc) || !desc.configurable) return
@@ -116,47 +140,14 @@ function tameOverride(proto: object, prop: PropertyKey): void {
   })
 }
 
-/// The properties code commonly assigns on its own objects while the same name
-/// sits on a built-in prototype.
 function tameIntrinsicOverrides(): void {
-  for (const prop of ["constructor", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString", "toString", "valueOf"]) {
-    tameOverride(Object.prototype, prop)
-  }
-  for (const prop of ["constructor", "toString", "push"]) tameOverride(Array.prototype, prop)
-  for (const prop of ["constructor", "bind", "apply", "call", "toString"]) tameOverride(Function.prototype, prop)
-  for (const name of ["Error", "AggregateError", "EvalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError", "URIError"]) {
+  for (const prop of ["constructor", "toString", "valueOf", "toLocaleString"]) tameOverride(Object.prototype, prop)
+  tameOverride(Array.prototype, "toString")
+  tameOverride(Function.prototype, "toString")
+  for (const name of ["Error", "AggregateError", "EvalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError", "URIError", "SuppressedError"]) {
     const ctor = (globalThis as Record<string, unknown>)[name] as { prototype?: object } | undefined
     if (!ctor?.prototype) continue
     for (const prop of ["constructor", "message", "name", "toString"]) tameOverride(ctor.prototype, prop)
-  }
-  for (const ctor of [Promise, Map, Set, WeakMap, WeakSet, RegExp, Date, Number, String, Boolean, Symbol]) {
-    tameOverride(ctor.prototype, "constructor")
-  }
-}
-
-/// Every own method of every prototype reachable from [root] made assignable on
-/// instances, as tameOverride does for the built-ins: a library that copies
-/// its prototype's methods onto each instance by assignment (i18next binds
-/// every member that way) would otherwise throw once its prototype is frozen.
-function tameLibraryPrototypes(root: unknown, seen: Set<unknown>): void {
-  const stack: unknown[] = [root]
-  while (stack.length > 0) {
-    const value = stack.pop()
-    if ((typeof value !== "object" && typeof value !== "function") || value === null || seen.has(value)) continue
-    seen.add(value)
-    const ctor = Object.getOwnPropertyDescriptor(value, "constructor")?.value
-    const isPrototype = typeof ctor === "function" && ctor.prototype === value
-    for (const key of Reflect.ownKeys(value)) {
-      const desc = Object.getOwnPropertyDescriptor(value, key)
-      if (!desc) continue
-      if ("value" in desc) {
-        if (isPrototype && typeof desc.value === "function") tameOverride(value, key)
-        stack.push(desc.value)
-      } else {
-        stack.push(desc.get, desc.set, readGetter(value, key, desc))
-      }
-    }
-    stack.push(Object.getPrototypeOf(value))
   }
 }
 
@@ -173,23 +164,56 @@ function readGetter(target: object, key: PropertyKey, desc: PropertyDescriptor):
 }
 
 /// Freezes [root] and everything reachable from it: own properties, accessors
-/// and prototypes, and with [readGetters], what each getter answers (a
-/// library's, never a built-in's, some of which throw on their prototype).
-function harden(root: unknown, seen: Set<unknown>, readGetters = false): void {
+/// and prototypes.
+///
+/// With [library], what each getter answers is walked too, except on a
+/// prototype (a getter there is an instance's, and could cache onto the
+/// prototype what belongs to an instance), and each prototype's
+/// `constructor` is tamed (tameOverride): compiled class helpers assign it on
+/// every instance.
+///
+/// A typed array or DataView cannot be frozen while it holds anything, and a
+/// Map's or Set's entries are not properties: those stay writable.
+function harden(root: unknown, seen: Set<unknown>, library = false): void {
   const stack: unknown[] = [root]
   while (stack.length > 0) {
     const value = stack.pop()
     if ((typeof value !== "object" && typeof value !== "function") || value === null || seen.has(value)) continue
     seen.add(value)
+    if (ArrayBuffer.isView(value)) continue
+    const ctor = Object.getOwnPropertyDescriptor(value, "constructor")?.value
+    const isPrototype = typeof ctor === "function" && ctor.prototype === value
+    if (library && isPrototype) tameOverride(value, "constructor")
     Object.freeze(value)
     for (const key of Reflect.ownKeys(value)) {
       const desc = Object.getOwnPropertyDescriptor(value, key)
       if (!desc) continue
       if ("value" in desc) stack.push(desc.value)
-      else stack.push(desc.get, desc.set, readGetters ? readGetter(value, key, desc) : undefined)
+      else stack.push(desc.get, desc.set, library && !isPrototype ? readGetter(value, key, desc) : undefined)
     }
     stack.push(Object.getPrototypeOf(value))
   }
+}
+
+/// Replaces quickjs-ng's accessor [prop] on Error, which freezing alone leaves
+/// settable, with one that takes only [accept]able values.
+function guardErrorAccessor(prop: string, accept: (value: unknown) => boolean): void {
+  const desc = Object.getOwnPropertyDescriptor(Error, prop)
+  if (!desc) return
+  if (!desc.get || !desc.set) {
+    Object.defineProperty(Error, prop, { value: desc.value, writable: false, enumerable: false, configurable: false })
+    return
+  }
+  const get = desc.get
+  const set = desc.set
+  Object.defineProperty(Error, prop, {
+    get: () => get.call(Error),
+    set: (value: unknown) => {
+      if (accept(value)) set.call(Error, value)
+    },
+    enumerable: false,
+    configurable: false,
+  })
 }
 
 /// Freezes the realm: every built-in and its global name, and everything
@@ -204,11 +228,12 @@ export function freezeRealm(shared: unknown[], shallow: unknown[] = []): void {
 
   // A stack hook is called with the frames of every error thrown in the realm,
   // the kernel's included, and QuickJS hands it each frame's function: a bundle
-  // that set one would be given the kernel's own. Replaced by a property that
-  // holds nothing and can be set by no one.
-  if (Object.getOwnPropertyDescriptor(Error, "prepareStackTrace")) {
-    Object.defineProperty(Error, "prepareStackTrace", { value: undefined, writable: false, enumerable: false, configurable: false })
-  }
+  // that set one would be given the kernel's own. It takes nothing.
+  guardErrorAccessor("prepareStackTrace", () => false)
+  // Read as a number for every error the realm builds: an object with its own
+  // `valueOf` here would run a bundle's code inside everyone's. It takes only
+  // numbers, which libraries do set.
+  guardErrorAccessor("stackTraceLimit", (value) => typeof value === "number")
 
   tameIntrinsicOverrides()
   const seen = new Set<unknown>()
@@ -224,10 +249,6 @@ export function freezeRealm(shared: unknown[], shallow: unknown[] = []): void {
     Object.freeze(value)
     seen.add(value)
   }
-
-  // The libraries after the built-ins, which their walk then passes over: a
-  // built-in method turned into an accessor would cost every call to it.
-  const tamed = new Set<unknown>(seen)
-  for (const root of shared) tameLibraryPrototypes(root, tamed)
+  // The libraries after the built-ins, which their walk then passes over.
   for (const root of shared) harden(root, seen, true)
 }

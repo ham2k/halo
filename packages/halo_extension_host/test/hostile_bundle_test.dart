@@ -218,7 +218,55 @@ defined = true
       ]);
       await _probe(host);
       expect(await _probe(host, key: 'victim'), 'victim-kv');
-      expect(await _probe(host), isNot(contains('victim-kv')));
+      expect(await _probe(host), isEmpty);
+    });
+
+    test("a bundle cannot replace the clock every extension's timers run on", () async {
+      // The kernel measures every extension's timer deadlines and budgets on
+      // the engine's monotonic clock: one a bundle replaced would let it run
+      // past its own budget, or charge another extension's timers for time
+      // they never took.
+      final host = await _start([
+        _attacker('''
+          try { globalThis.performance = { now: () => 0 } } catch (e) {}
+          try { performance.now = () => 0 } catch (e) {}
+          const a = performance.now()
+          for (let i = 0; i < 200000; i++) {}
+          return performance.now() > a
+        '''),
+      ]);
+      expect(await _probe(host), isTrue);
+    });
+
+    test("a bundle's code never runs inside another's error", () async {
+      // QuickJS reads Error.stackTraceLimit as a number for every error the
+      // realm builds, the kernel's and every extension's: an object there
+      // runs its valueOf inside each of them.
+      final host = await _start([
+        _attacker('''
+          let ran = 0
+          try { Error.stackTraceLimit = { valueOf() { ran++; return 10 } } } catch (e) {}
+          void new Error('anyone').stack
+          Error.stackTraceLimit = 5
+          return { ran: ran, limit: Error.stackTraceLimit }
+        '''),
+      ]);
+      expect(await _probe(host), {'ran': 0, 'limit': 5});
+    });
+
+    test("a bundle cannot read what other extensions write to the console", () async {
+      // One console serves every bundle: a wrapped log hears what any other
+      // extension logs, tokens included.
+      final host = await _start([
+        _attacker('''
+          const heard = []
+          try { console.log = (...a) => { heard.push(a.join(' ')) } } catch (e) {}
+          try { globalThis.console = { log: (...a) => { heard.push(a.join(' ')) } } } catch (e) {}
+          console.log('token')
+          return heard
+        '''),
+      ]);
+      expect(await _probe(host), isEmpty);
     });
 
     test('a bundle cannot reach the kernel through a stack hook', () async {

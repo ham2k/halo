@@ -341,21 +341,33 @@ kernel's own functions. So the last thing `kernel.ts` does, after installing
 everything it installs on the realm (the app clock's `Date`, the number-format
 patch, `console`), is `freezeRealm` (`extensions/sdk/src/freezeRealm.ts`):
 
-- every standard built-in and the ones no global names (generator, async and
-  iterator prototypes, `%TypedArray%`) is frozen through, and its global name
-  can no longer be rebound;
-- `Error.prepareStackTrace` is a dead property: quickjs-ng defines it as an
-  accessor, which freezing alone would leave settable;
+- every standard built-in and the ones no global names (generator, async,
+  iterator and iterator-helper prototypes, `%TypedArray%`) is frozen through,
+  with the engine's own globals (`queueMicrotask`, `performance`, `atob`…) and
+  the kernel's `console`, and none of their names can be rebound;
+- quickjs-ng defines `Error.prepareStackTrace` and `Error.stackTraceLimit` as
+  accessors, which freezing alone leaves settable: the stack hook takes
+  nothing, and the limit only a number, since an object there has its
+  `valueOf` run inside every error the realm builds;
+- the kernel reads the monotonic clock every extension's timers are measured
+  on through `performance.now` captured at load, never through the global;
 - the shared libraries are frozen through, reading their export getters, except
   `i18next` and `@ham2k/lib-country-files`, which change their own state as
   they run (one logger every instance re-initialises; country data every
   bundle's SDK annotates at load) and are frozen one level deep;
 - the properties ordinary code assigns on its own objects while a frozen
-  prototype holds the same name (`this.name` in an `Error` subclass, an
-  object's own `toString`, `constructor` in compiled class helpers, and every
-  method of a shared library's prototypes) become accessors whose setter gives
-  the object a property of its own. Without this, the frozen prototype makes
-  those assignments throw.
+  prototype holds the same name (`this.name` and `message` in an `Error`
+  subclass, an object's own `toString` or `valueOf`, `constructor` on a shared
+  library's prototypes, which compiled class helpers assign on every instance)
+  become accessors whose setter gives the object a property of its own.
+  Without this, the frozen prototype makes those assignments throw. Every read
+  of such a property costs a getter call, so the list stays to names code is
+  known to assign: never a hot method (`push`, `call`), and never
+  `constructor` on Array or Promise, which V8 watches to keep `map`, `then`
+  and `await` fast;
+- a typed array or DataView holding data cannot be frozen, and a Map's or
+  Set's entries are not properties: a shared library exporting one leaves it
+  writable, and is a library to freeze another way.
 
 `Date.now` is the app clock on the real constructor rather than a Proxy `get`
 trap: once the constructor is frozen, a trap answering anything but the

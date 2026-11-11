@@ -104,6 +104,7 @@ function busyLabel(msg) {
 // stops during a system sleep, so as an anchor it would drift behind and
 // every later span would land in the past and be dropped.
 const realDateNow = Date.now.bind(Date);
+const monotonicNow = performance.now.bind(performance);
 const spanCloser = new MessageChannel();
 const closeSpan = spanCloser.port2.postMessage.bind(spanCloser.port2, null);
 let spanStart = null;
@@ -117,7 +118,7 @@ function pong() {
   post({ kind: 'polo', message: { type: 'pong' } });
 }
 spanCloser.port1.onmessage = function () {
-  const length = performance.now() - spanStartMono;
+  const length = monotonicNow() - spanStartMono;
   if (length > 0) {
     post({ kind: 'busy', start: Math.round(spanStart * 1000), end: Math.round((spanStart + length) * 1000), label: spanLabel });
   }
@@ -138,7 +139,7 @@ function onPortMessage(e) {
   const opens = spanStart === null;
   if (opens) {
     spanStart = realDateNow();
-    spanStartMono = performance.now();
+    spanStartMono = monotonicNow();
     spanLabel = 'message';
   }
   try {
