@@ -97,8 +97,9 @@ expected soon.
 methods are `sync`, `getAccountData`, `linkClient` and
 `linkClientWithEmail`, and the rest (`setAccountEmail`,
 `resendAccountEmail`, `findLinkRequest`, `findLinkRequestByClient`,
-`approveLinkRequest`, `moveToNewClient`, `submitReport`, `uploadStashFile`,
-`listStashFiles`, `emailStashLink`) are optional. The conventions every
+`approveLinkRequest`, `moveToNewClient`, `createSubscription`,
+`submitReport`, `uploadStashFile`, `listStashFiles`, `emailStashLink`) are
+optional. The conventions every
 method follows:
 
 - **A rejection is data, not a throw**: `{ error, error_status }`. Every one
@@ -123,6 +124,9 @@ method follows:
   client under the `key` it is given, approves it onto the current account
   as the current client, and only then becomes the new client. A failure
   leaves the device as it was.
+- **`createSubscription`** hands the server a store purchase, named by its
+  `channel_reference`, to attach to the account. The server checks it with
+  the store itself, so the transport never asserts a plan.
 - **`uploadStashFile`** takes one file and the `groupUuid` of its batch,
   minted by the app since the sandbox has no uuid source, and is called once
   per file, since a call's timeout does not stop a hook and a whole batch in

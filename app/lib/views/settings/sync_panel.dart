@@ -12,6 +12,8 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/halo_services.dart';
+import '../../services/purchase_flows.dart';
+import '../../services/purchase_service.dart';
 import '../../services/push_service.dart';
 import '../../tools/sync_account_identity.dart';
 import '../confirm_device_dialog.dart';
@@ -64,11 +66,14 @@ class _SyncPanelState extends State<SyncPanel> {
       _refreshSyncAccount();
       _startWatchingAccount();
     }
+    widget.services.purchases.entitlements.addListener(_entitlementsChanged);
+    unawaited(_identifyPurchaser());
   }
 
   @override
   void dispose() {
     widget.services.accountPushChannelChanges.removeListener(_onAccountChannelChanged);
+    widget.services.purchases.entitlements.removeListener(_entitlementsChanged);
     _stopWatchingAccount();
     super.dispose();
   }
@@ -79,6 +84,44 @@ class _SyncPanelState extends State<SyncPanel> {
   /// panel's own fetch sets it, but any sync round can clear it.
   void _onAccountChannelChanged() {
     if (_accountPollTimer != null && _realtimeLive != _pollingWithRealtime) _startWatchingAccount();
+  }
+
+  /// Whether purchases are bound to this account — the Subscription rows
+  /// stay hidden until then, since a purchase with no account behind it
+  /// could not reach the sync server.
+  bool _purchaserIdentified = false;
+
+  Future<void> _identifyPurchaser() async {
+    final identified = await identifyPurchaser(widget.services);
+    if (!mounted) return;
+    setState(() => _purchaserIdentified = identified);
+    // Entitlements loaded before the panel opened — the supporter row in
+    // Settings identifies first — never change again on their own, so a
+    // purchase the account doesn't reflect yet would wait forever.
+    if (identified) unawaited(_attachSyncPurchase());
+  }
+
+  /// A sync purchase finished outside this panel — in a browser, on another
+  /// device, or one whose hand-off failed earlier — reaches the server here.
+  void _entitlementsChanged() => unawaited(_attachSyncPurchase());
+
+  Future<void> _attachSyncPurchase() async {
+    final result = await attachSyncPurchase(widget.services);
+    if (!mounted || result == null) return;
+    if (result['error'] != null) _notify(t.settings.syncPanel.subscriptionRefused(error: '${result['error']}'));
+    unawaited(_refreshSyncAccount(quiet: true));
+  }
+
+  Future<void> _subscribe() async {
+    final result = await presentPaywall(widget.services, offering: syncOffering);
+    if (!mounted) return;
+    if (result == PurchaseResult.pending) _notify(t.settings.syncPanel.purchasePending);
+    if (result == PurchaseResult.unavailable) _notify(t.settings.syncPanel.purchaseUnavailable);
+    if (result == PurchaseResult.purchased) unawaited(_refreshSyncAccount());
+  }
+
+  Future<void> _manageSubscription() async {
+    if (!await widget.services.purchases.manageSubscriptions()) _notify(t.settings.syncPanel.manageUnavailable);
   }
 
   void _startWatchingAccount() {
@@ -560,6 +603,28 @@ class _SyncPanelState extends State<SyncPanel> {
                     );
                   },
                 ),
+              if (widget.services.purchases.isAvailable && _purchaserIdentified) ...[
+                SectionHeader(context.t.settings.syncPanel.subscription),
+                // What this device last heard until the fetch lands, or for
+                // good when the server can't be reached: offering Subscribe
+                // to a subscribed account opens a second checkout.
+                if (syncAccountSubscribed(_syncAccount ?? widget.services.settings.syncState['accountData']))
+                  ListTile(
+                    leading: Icon(MdiIcons.starCircle),
+                    title: Text(context.t.settings.syncPanel.subscribed),
+                    subtitle: Text(context.t.settings.syncPanel.subscribedDescription),
+                    onTap: _manageSubscription,
+                    mouseCursor: SystemMouseCursors.click,
+                  )
+                else
+                  ListTile(
+                    leading: Icon(MdiIcons.starCircleOutline),
+                    title: Text(context.t.settings.syncPanel.subscribe),
+                    subtitle: Text(context.t.settings.syncPanel.subscribeDescription),
+                    onTap: _subscribe,
+                    mouseCursor: SystemMouseCursors.click,
+                  ),
+              ],
             ],
           ],
         );

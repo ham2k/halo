@@ -97,6 +97,13 @@ mixin _ExtensionSyncCalls {
 
   Future<Map<String, dynamic>?> syncResendAccountEmail() => _syncTransportCall(Hooks.syncTransportResendAccountEmail, const {});
 
+  /// Attaches a store purchase, named by [channelReference], to this
+  /// device's sync account; the server verifies it with the store before
+  /// the plan changes. Same result shape as [syncSetAccountEmail] — a
+  /// purchase already attached to another account is an `error` result.
+  Future<Map<String, dynamic>?> syncCreateSubscription(String channelReference) =>
+      _syncTransportCall(Hooks.syncTransportCreateSubscription, {'channel_reference': channelReference});
+
   /// Finds the pending link request a challenge code refers to — the
   /// confirming side of the flow [syncLinkClient] starts on the other
   /// device. Returns the server's `{'permissions': [...]}`; an expired or

@@ -2554,6 +2554,13 @@ export interface SyncTransportHook {
   /// Optional, so transports predating this contract keep compiling.
   setAccountEmail?(args: { email: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
   resendAccountEmail?(args: Record<string, never>, ctx: HookContext): Promise<Record<string, JSONValue>>
+  /// Attaches a store purchase to this device's account, named by
+  /// `channel_reference` (`rc:<entitlement>:<appUserId>` for RevenueCat).
+  /// The server verifies it with the store before any plan changes, so a
+  /// transport only passes the reference along. Rejections (the purchase
+  /// belongs to another account) are `{ error, error_status }` data.
+  /// Optional, so transports predating this contract keep compiling.
+  createSubscription?(args: { channel_reference: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
   /// The confirming side of linking, where [linkClient] is the requesting
   /// side: find the pending request a challenge code or a `link_client` deep
   /// link refers to, then grant it. `challenge_token` is required to approve

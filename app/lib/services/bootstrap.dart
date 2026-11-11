@@ -38,6 +38,7 @@ import 'extensions/extension_service.dart';
 import 'flags_service.dart' show fetchFlagsDefaultsBeforeStart;
 import 'unclean_quit.dart';
 import 'metrics_service.dart';
+import 'purchase_flows.dart';
 import 'purchase_service.dart';
 import 'settings_service.dart';
 import 'status_bar_service.dart';
@@ -287,6 +288,7 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   // The FYI area's SWR message, for whichever radio connects below or later.
   services.swrWatch.start();
   services.styleWatch.start();
+  watchSyncPurchases(services);
 
   // Reconnect the designated radio (docs/design/cat.md). Not awaited: the
   // radio may be off, and boot must not wait on a socket timeout.

@@ -149,6 +149,7 @@ abstract final class Hooks {
   static const syncTransportLinkClientWithEmail = HookRef(HookCategories.syncTransport, 'linkClientWithEmail');
   static const syncTransportSetAccountEmail = HookRef(HookCategories.syncTransport, 'setAccountEmail');
   static const syncTransportResendAccountEmail = HookRef(HookCategories.syncTransport, 'resendAccountEmail');
+  static const syncTransportCreateSubscription = HookRef(HookCategories.syncTransport, 'createSubscription');
   static const syncTransportFindLinkRequest = HookRef(HookCategories.syncTransport, 'findLinkRequest');
   static const syncTransportFindLinkRequestByClient = HookRef(HookCategories.syncTransport, 'findLinkRequestByClient');
   static const syncTransportApproveLinkRequest = HookRef(HookCategories.syncTransport, 'approveLinkRequest');

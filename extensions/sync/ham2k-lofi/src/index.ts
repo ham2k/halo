@@ -51,6 +51,7 @@ defineExtension({
         linkClientWithEmail,
         setAccountEmail,
         resendAccountEmail,
+        createSubscription,
         findLinkRequest,
         findLinkRequestByClient,
         approveLinkRequest,
@@ -633,6 +634,15 @@ async function setAccountEmail({ email }: { email: string }, _ctx: HookContext):
 /// or was never made) — data, not a failure.
 async function resendAccountEmail(_args: Record<string, never>, _ctx: HookContext): Promise<Record<string, JSONValue>> {
   return asData(async () => request("POST", `v1/accounts/${await currentAccountUuid()}/resend_email`))
+}
+
+/// Hands the server a store purchase to attach to this device's account.
+/// The server verifies `channel_reference` with the store channel itself
+/// before the account's plan changes, so the client never asserts a plan —
+/// it only names the purchase. A purchase already attached to another
+/// account comes back as a 406 rejection, which is data for the operator.
+async function createSubscription({ channel_reference }: { channel_reference: string }, _ctx: HookContext): Promise<Record<string, JSONValue>> {
+  return asData(async () => request("POST", `v1/accounts/${await currentAccountUuid()}/subscriptions`, { subscription: { channel_reference } }))
 }
 
 /// The confirming side of linking: finds the pending request matching a

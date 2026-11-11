@@ -2038,7 +2038,22 @@
       "screenStopSharing": "Stop sharing ${name}"
     },
     "developerMode": "Developer Mode",
+    "supporter": {
+      "isSupporter": "${call} is a Supporter of Ham2K",
+      "couldBeSupporter": "${call} could be a Supporter of Ham2K",
+      "contribute": "Contribute",
+      "badge": "${year} Supporter badge"
+    },
     "syncPanel": {
+      "subscription": "Subscription",
+      "subscribe": "Subscribe",
+      "subscribeDescription": "The free plan syncs your last 7 days between two devices at limited speed. A subscription syncs all your operations across all your devices at full speed.",
+      "subscribed": "Subscribed",
+      "subscribedDescription": "Thank you for subscribing! Everything syncs at full speed between all your devices. Tap to manage.",
+      "purchasePending": "Finish the purchase in your browser. It will show up here once it's done.",
+      "subscriptionRefused": "The sync server did not accept the subscription: ${error}",
+      "purchaseUnavailable": "Purchases go to your sync account, and it couldn't be reached. Try again once you're online.",
+      "manageUnavailable": "Your subscription's management page can't be opened right now. One bought on a phone is managed in that phone's app store.",
       "configuration": "Sync Configuration",
       "enableTitle": "Sync with Ham2K Log Filer",
       "enabledDescription": "Backing up and syncing your log across devices",

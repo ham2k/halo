@@ -102,3 +102,18 @@ String? _field(Map<dynamic, dynamic>? account, String key) {
 
   return (operations: read('operations', 'active'), qsos: read('qsos', 'contacts'));
 }
+
+/// The current account's uuid from a `getAccountData` payload, or null when
+/// the payload names no account.
+String? syncAccountUuid(Object? accountData) {
+  final current = accountData is Map ? accountData['current_account'] : null;
+  return _field(current is Map ? current : null, 'uuid');
+}
+
+/// Whether the account is on a plan backed by a subscription row. The
+/// server reports the free plan as a subscription with no `id` — it is never
+/// persisted — so the id, not the presence of `subscription`, is the test.
+bool syncAccountSubscribed(Object? accountData) {
+  final subscription = accountData is Map ? accountData['subscription'] : null;
+  return subscription is Map && subscription['id'] != null;
+}

@@ -832,6 +832,7 @@ class _Translations$settings$qrp extends Translations$settings$en {
 	@override late final _Translations$settings$sync$qrp sync = _Translations$settings$sync$qrp._(_root);
 	@override late final _Translations$settings$peers$qrp peers = _Translations$settings$peers$qrp._(_root);
 	@override String get developerMode => 'developer mode';
+	@override late final _Translations$settings$supporter$qrp supporter = _Translations$settings$supporter$qrp._(_root);
 	@override late final _Translations$settings$syncPanel$qrp syncPanel = _Translations$settings$syncPanel$qrp._(_root);
 	@override late final _Translations$settings$accounts$qrp accounts = _Translations$settings$accounts$qrp._(_root);
 	@override late final _Translations$settings$station$qrp station = _Translations$settings$station$qrp._(_root);
@@ -2706,6 +2707,19 @@ class _Translations$settings$peers$qrp extends Translations$settings$peers$en {
 	@override String screenStopSharing({required Object name}) => 'stop sharing ${name}';
 }
 
+// Path: settings.supporter
+class _Translations$settings$supporter$qrp extends Translations$settings$supporter$en {
+	_Translations$settings$supporter$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String isSupporter({required Object call}) => '${call} is a supporter of ham2k';
+	@override String couldBeSupporter({required Object call}) => '${call} could be a supporter of ham2k';
+	@override String get contribute => 'contribute';
+	@override String badge({required Object year}) => '${year} supporter badge';
+}
+
 // Path: settings.syncPanel
 class _Translations$settings$syncPanel$qrp extends Translations$settings$syncPanel$en {
 	_Translations$settings$syncPanel$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
@@ -2713,6 +2727,15 @@ class _Translations$settings$syncPanel$qrp extends Translations$settings$syncPan
 	final TranslationsQrp _root; // ignore: unused_field
 
 	// Translations
+	@override String get subscription => 'subscription';
+	@override String get subscribe => 'subscribe';
+	@override String get subscribeDescription => 'the free plan syncs your last 7 days between two devices at limited speed. a subscription syncs all your operations across all your devices at full speed.';
+	@override String get subscribed => 'subscribed';
+	@override String get subscribedDescription => 'thank you for subscribing! everything syncs at full speed between all your devices. tap to manage.';
+	@override String get purchasePending => 'finish the purchase in your browser. it will show up here once it\'s done.';
+	@override String subscriptionRefused({required Object error}) => 'the sync server did not accept the subscription: ${error}';
+	@override String get purchaseUnavailable => 'purchases go to your sync account, and it couldn\'t be reached. try again once you\'re online.';
+	@override String get manageUnavailable => 'your subscription\'s management page can\'t be opened right now. one bought on a phone is managed in that phone\'s app store.';
 	@override String get configuration => 'sync configuration';
 	@override String get enableTitle => 'sync with ham2k log filer';
 	@override String get enabledDescription => 'backing up and syncing your log across devices';
@@ -6717,6 +6740,19 @@ extension on TranslationsQrp {
 			'settings.peers.screenSharedToNobody' => 'not being shown',
 			'settings.peers.screenStopSharing' => ({required Object name}) => 'stop sharing ${name}',
 			'settings.developerMode' => 'developer mode',
+			'settings.supporter.isSupporter' => ({required Object call}) => '${call} is a supporter of ham2k',
+			'settings.supporter.couldBeSupporter' => ({required Object call}) => '${call} could be a supporter of ham2k',
+			'settings.supporter.contribute' => 'contribute',
+			'settings.supporter.badge' => ({required Object year}) => '${year} supporter badge',
+			'settings.syncPanel.subscription' => 'subscription',
+			'settings.syncPanel.subscribe' => 'subscribe',
+			'settings.syncPanel.subscribeDescription' => 'the free plan syncs your last 7 days between two devices at limited speed. a subscription syncs all your operations across all your devices at full speed.',
+			'settings.syncPanel.subscribed' => 'subscribed',
+			'settings.syncPanel.subscribedDescription' => 'thank you for subscribing! everything syncs at full speed between all your devices. tap to manage.',
+			'settings.syncPanel.purchasePending' => 'finish the purchase in your browser. it will show up here once it\'s done.',
+			'settings.syncPanel.subscriptionRefused' => ({required Object error}) => 'the sync server did not accept the subscription: ${error}',
+			'settings.syncPanel.purchaseUnavailable' => 'purchases go to your sync account, and it couldn\'t be reached. try again once you\'re online.',
+			'settings.syncPanel.manageUnavailable' => 'your subscription\'s management page can\'t be opened right now. one bought on a phone is managed in that phone\'s app store.',
 			'settings.syncPanel.configuration' => 'sync configuration',
 			'settings.syncPanel.enableTitle' => 'sync with ham2k log filer',
 			'settings.syncPanel.enabledDescription' => 'backing up and syncing your log across devices',
@@ -7060,6 +7096,8 @@ extension on TranslationsQrp {
 			'settings.station.models.airspy' => 'airspy r2 / mini',
 			'settings.station.models.airspyHf' => 'airspy hf+',
 			'settings.station.models.spyServer' => 'spyserver (any receiver)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.transports.network' => 'network/wifi',
 			'settings.station.transports.tci' => 'tci',
 			'settings.station.transports.secureNetwork' => 'secure network/wifi',
@@ -7073,8 +7111,6 @@ extension on TranslationsQrp {
 			'settings.station.transports.everywareServer' => 'through its everyware server',
 			'settings.station.troubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **cat rts off at the radio, or hold rts high on.** with **cat rts** on (ft-891 menu **05-08**), the radio stays silent while rts is low — it may answer once as the port opens, then nothing. picking the radio\'s own usb port turns on **hold rts high** under advanced settings. on a digirig, signalink or most home-brew cables rts is ptt, and holding it high keys your transmitter: turn cat rts off at the radio instead.\n- **speed must match** the radio\'s cat rate (menu **05-06**). with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.yaesuBinaryTroubleshooting' => 'this radio speaks yaesu\'s older five-byte cat, and it does not respond at all when something is off. almost always one of:\n\n- **the cable must convert levels.** the cat jack on the back is not rs-232 and not usb; it needs a ct-62 or an equivalent adapter. a plain audio or data cable won\'t work for cat.\n- **speed must match** the radio\'s cat rate menu (**#14** on an ft-817, **#19** on an ft-857 or ft-897). with a mismatch, the radio sends nothing back, and never an error.\n- **never let anything raise rts or dtr on this port.** on most cables for these radios those lines are ptt and keying. an older interface powered from dtr is the exception: turn on **hold dtr high** under advanced settings for that one.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n\nthis driver was written from yaesu\'s published cat chart and has not been run against one of these radios. if it half-works, that is worth reporting.',
 			'settings.station.tenTecTroubleshootingTitle' => 'if the radio connects but shows no frequency',
@@ -7574,6 +7610,8 @@ extension on TranslationsQrp {
 			'commands.extensionCheckUnderWay' => 'already checking the extension catalog — try again in a moment',
 			'commands.extensionsUpToDate' => 'extensions are up to date',
 			'commands.extensionsReplaced' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'an installed extension has been replaced — see its notice', other: '${count} installed extensions have been replaced — see their notices', ), 
+			_ => null,
+		} ?? switch (path) {
 			'commands.extensionUpdatesFound' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} extension update found', other: '${count} extension updates found', ), 
 			'commands.unknownExperiment' => ({required Object token}) => 'unknown experiment "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
@@ -7587,8 +7625,6 @@ extension on TranslationsQrp {
 			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
 			'commands.goUnknown' => ({required Object to}) => 'don\'t know how to go to \'${to}\'',
 			'commands.goBlocked' => 'close the open dialog first',
-			_ => null,
-		} ?? switch (path) {
 			'commands.operationAlreadyStarted' => 'this operation already has a start marker',
 			'commands.couldNotOpenLocation' => 'added the break, but could not open the location screen',
 			'commands.noTestOperations' => 'no test operations to purge',

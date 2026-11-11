@@ -9,12 +9,15 @@
 //   link   — open a URL (`args.url` / `args.link` / `args.href`)
 //   dialog — show a modal with `dialogTitle` / `dialogText` (markdown) and
 //            nested `dialogActions`
+//   donate — present the supporter paywall, where the build can take
+//            purchases ([donate])
 //   (any)  — if the args carry a URL, open it
 //
-// app-polo's `donate` / `subscribe` / `navigate` actions target flows HaLo
-// doesn't have yet (no in-app subscription screen, different navigation), so
-// those buttons still render and dismiss the notice but otherwise no-op —
-// logged, not silently swallowed. Wire real handling here as those flows land.
+// app-polo's `subscribe` / `navigate` actions target flows HaLo doesn't have
+// yet (different navigation), so those buttons still render and dismiss the
+// notice but otherwise no-op — logged, not silently swallowed. So does
+// `donate` in a build with no purchases. Wire real handling here as those
+// flows land.
 
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -23,9 +26,14 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../config/navigation.dart';
 import '../services/link_opener.dart';
 
-void handleNoticeAction(String noticeKey, Map<String, dynamic> action) {
+void handleNoticeAction(String noticeKey, Map<String, dynamic> action, {void Function()? donate}) {
   final type = action['action'] as String?;
   final args = action['args'];
+
+  if (type == 'donate' && donate != null) {
+    donate();
+    return;
+  }
 
   final url = _urlFrom(args);
   if (type == 'link' || (url != null && type != 'dialog')) {
@@ -36,7 +44,7 @@ void handleNoticeAction(String noticeKey, Map<String, dynamic> action) {
   }
 
   if (type == 'dialog' && args is Map) {
-    _showNoticeDialog(args.cast<String, dynamic>());
+    _showNoticeDialog(args.cast<String, dynamic>(), donate: donate);
     return;
   }
 
@@ -55,7 +63,7 @@ String? _urlFrom(dynamic args) {
   return null;
 }
 
-void _showNoticeDialog(Map<String, dynamic> args) {
+void _showNoticeDialog(Map<String, dynamic> args, {void Function()? donate}) {
   final context = navigatorKey.currentContext;
   if (context == null) return;
 
@@ -75,7 +83,7 @@ void _showNoticeDialog(Map<String, dynamic> args) {
           TextButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
-              handleNoticeAction('dialog', action);
+              handleNoticeAction('dialog', action, donate: donate);
             },
             child: Text((action['label'] as String?) ?? 'OK'),
           ),

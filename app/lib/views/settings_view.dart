@@ -39,6 +39,7 @@ import 'settings/profiles_panel.dart';
 import 'settings/keyboard_shortcuts_panel.dart';
 import 'settings/settings_category.dart';
 import 'settings/settings_pane_width.dart';
+import 'settings/supporter_row.dart';
 import 'settings/sync_panel.dart';
 
 /// A sidebar entry: `key` identifies it (a fixed core key, or an
@@ -482,51 +483,54 @@ class _SettingsViewState extends State<SettingsView> {
       top: false,
       left: false,
       right: false,
-      child: ListView.builder(
-        itemCount: panels.length,
-        itemBuilder: (context, index) {
-          final panel = panels[index];
-          final isSelected = isWide && selectedKey == panel.key;
+      child: SupporterFooter(
+        services: widget.services,
+        child: ListView.builder(
+          itemCount: panels.length,
+          itemBuilder: (context, index) {
+            final panel = panels[index];
+            final isSelected = isWide && selectedKey == panel.key;
 
-          // A panel with a monoDetail (the operator callsign) shows it in a
-          // monospace face after the title, e.g. "Callsign: KI2D". Titles are
-          // bold, matching the app's other list rows.
-          final mono = panel.monoDetail;
-          const titleStyle = TextStyle(fontWeight: FontWeight.bold);
-          final Widget titleWidget = (mono != null && mono.isNotEmpty)
-              ? Text.rich(
-                  TextSpan(
-                    text: '${panel.title}: ',
-                    children: [
-                      TextSpan(
-                        text: mono,
-                        style: const TextStyle(fontFamily: 'RobotoMono'),
-                      ),
-                    ],
-                  ),
-                  style: titleStyle,
-                )
-              : Text(panel.title, style: titleStyle);
+            // A panel with a monoDetail (the operator callsign) shows it in a
+            // monospace face after the title, e.g. "Callsign: KI2D". Titles are
+            // bold, matching the app's other list rows.
+            final mono = panel.monoDetail;
+            const titleStyle = TextStyle(fontWeight: FontWeight.bold);
+            final Widget titleWidget = (mono != null && mono.isNotEmpty)
+                ? Text.rich(
+                    TextSpan(
+                      text: '${panel.title}: ',
+                      children: [
+                        TextSpan(
+                          text: mono,
+                          style: const TextStyle(fontFamily: 'RobotoMono'),
+                        ),
+                      ],
+                    ),
+                    style: titleStyle,
+                  )
+                : Text(panel.title, style: titleStyle);
 
-          return ListTile(
-            selected: isSelected,
-            // Material's default selected color is colorScheme.primary — a fill
-            // color here (the AppBar/FAB teal), not tuned for reading directly
-            // on this sidebar's surface; only 2.67:1 in dark mode.
-            selectedColor: HaLoColors.of(context).onSurfaceAccent,
-            // The section band's own hue, at half strength against the
-            // sidebar's surface: the selected row and the section it opens read
-            // as one family, but the band still marks a heading and this only
-            // marks a row. Derived rather than a fixed tint, so it follows the
-            // theme instead of disappearing in dark mode.
-            selectedTileColor: Color.lerp(Theme.of(context).colorScheme.surface, haloDialogBandColorAt(context), 0.5),
-            leading: Icon(panel.icon),
-            title: titleWidget,
-            subtitle: panel.description == null ? null : Text(panel.description!),
-            onTap: () => _openPanel(panel.key),
-            mouseCursor: SystemMouseCursors.click,
-          );
-        },
+            return ListTile(
+              selected: isSelected,
+              // Material's default selected color is colorScheme.primary — a fill
+              // color here (the AppBar/FAB teal), not tuned for reading directly
+              // on this sidebar's surface; only 2.67:1 in dark mode.
+              selectedColor: HaLoColors.of(context).onSurfaceAccent,
+              // The section band's own hue, at half strength against the
+              // sidebar's surface: the selected row and the section it opens read
+              // as one family, but the band still marks a heading and this only
+              // marks a row. Derived rather than a fixed tint, so it follows the
+              // theme instead of disappearing in dark mode.
+              selectedTileColor: Color.lerp(Theme.of(context).colorScheme.surface, haloDialogBandColorAt(context), 0.5),
+              leading: Icon(panel.icon),
+              title: titleWidget,
+              subtitle: panel.description == null ? null : Text(panel.description!),
+              onTap: () => _openPanel(panel.key),
+              mouseCursor: SystemMouseCursors.click,
+            );
+          },
+        ),
       ),
     );
   }

@@ -2038,7 +2038,22 @@
       "screenStopSharing": "STOP SHARING ${name}"
     },
     "developerMode": "DEVELOPER MODE",
+    "supporter": {
+      "isSupporter": "${call} IS A SUPPORTER OF HAM2K",
+      "couldBeSupporter": "${call} COULD BE A SUPPORTER OF HAM2K",
+      "contribute": "CONTRIBUTE",
+      "badge": "${year} SUPPORTER BADGE"
+    },
     "syncPanel": {
+      "subscription": "SUBSCRIPTION",
+      "subscribe": "SUBSCRIBE",
+      "subscribeDescription": "THE FREE PLAN SYNCS YOUR LAST 7 DAYS BETWEEN TWO DEVICES AT LIMITED SPEED. A SUBSCRIPTION SYNCS ALL YOUR OPERATIONS ACROSS ALL YOUR DEVICES AT FULL SPEED.",
+      "subscribed": "SUBSCRIBED",
+      "subscribedDescription": "THANK YOU FOR SUBSCRIBING! EVERYTHING SYNCS AT FULL SPEED BETWEEN ALL YOUR DEVICES. TAP TO MANAGE.",
+      "purchasePending": "FINISH THE PURCHASE IN YOUR BROWSER. IT WILL SHOW UP HERE ONCE IT'S DONE.",
+      "subscriptionRefused": "THE SYNC SERVER DID NOT ACCEPT THE SUBSCRIPTION: ${error}",
+      "purchaseUnavailable": "PURCHASES GO TO YOUR SYNC ACCOUNT, AND IT COULDN'T BE REACHED. TRY AGAIN ONCE YOU'RE ONLINE.",
+      "manageUnavailable": "YOUR SUBSCRIPTION'S MANAGEMENT PAGE CAN'T BE OPENED RIGHT NOW. ONE BOUGHT ON A PHONE IS MANAGED IN THAT PHONE'S APP STORE.",
       "configuration": "SYNC CONFIGURATION",
       "enableTitle": "SYNC WITH HAM2K LOG FILER",
       "enabledDescription": "BACKING UP AND SYNCING YOUR LOG ACROSS DEVICES",

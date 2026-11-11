@@ -34,7 +34,6 @@ import '../views/settings_view.dart';
 import '../views/cw_messages_dialog.dart';
 import '../views/voice_messages_dialog.dart';
 import '../views/settings/keyboard_shortcuts_panel.dart' show editKeyCommand, keyCommandTitle;
-import '../views/notice_actions.dart';
 import '../views/extension_install_flow.dart' show updateAllFromCatalog;
 import '../config/experiments.dart';
 import '../config/secrets.dart';
@@ -117,6 +116,7 @@ import 'staleness_service.dart';
 import 'update_service.dart';
 import 'data_file_manager.dart';
 import 'flags_service.dart';
+import 'purchase_flows.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
 import '../config/navigation.dart';
@@ -693,7 +693,7 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity {
           final guess = result?['guess'];
           return guess is Map ? guess.cast<String, dynamic>() : null;
         },
-        onNoticeAction: handleNoticeAction,
+        onNoticeAction: noticeActionHandler(this),
         prefs: settings.prefs,
         onTrack: track,
         staleness: staleness,
@@ -758,7 +758,7 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity {
     navigatorKey: navigatorKey,
     prefs: settings.prefs,
     updates: updates,
-    onNoticeAction: handleNoticeAction,
+    onNoticeAction: noticeActionHandler(this),
   );
 
   /// Named option vocabularies for `options: "$name"` settings

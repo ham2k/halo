@@ -832,6 +832,7 @@ class _Translations$settings$qro extends Translations$settings$en {
 	@override late final _Translations$settings$sync$qro sync = _Translations$settings$sync$qro._(_root);
 	@override late final _Translations$settings$peers$qro peers = _Translations$settings$peers$qro._(_root);
 	@override String get developerMode => 'DEVELOPER MODE';
+	@override late final _Translations$settings$supporter$qro supporter = _Translations$settings$supporter$qro._(_root);
 	@override late final _Translations$settings$syncPanel$qro syncPanel = _Translations$settings$syncPanel$qro._(_root);
 	@override late final _Translations$settings$accounts$qro accounts = _Translations$settings$accounts$qro._(_root);
 	@override late final _Translations$settings$station$qro station = _Translations$settings$station$qro._(_root);
@@ -2706,6 +2707,19 @@ class _Translations$settings$peers$qro extends Translations$settings$peers$en {
 	@override String screenStopSharing({required Object name}) => 'STOP SHARING ${name}';
 }
 
+// Path: settings.supporter
+class _Translations$settings$supporter$qro extends Translations$settings$supporter$en {
+	_Translations$settings$supporter$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String isSupporter({required Object call}) => '${call} IS A SUPPORTER OF HAM2K';
+	@override String couldBeSupporter({required Object call}) => '${call} COULD BE A SUPPORTER OF HAM2K';
+	@override String get contribute => 'CONTRIBUTE';
+	@override String badge({required Object year}) => '${year} SUPPORTER BADGE';
+}
+
 // Path: settings.syncPanel
 class _Translations$settings$syncPanel$qro extends Translations$settings$syncPanel$en {
 	_Translations$settings$syncPanel$qro._(TranslationsQro root) : this._root = root, super.internal(root);
@@ -2713,6 +2727,15 @@ class _Translations$settings$syncPanel$qro extends Translations$settings$syncPan
 	final TranslationsQro _root; // ignore: unused_field
 
 	// Translations
+	@override String get subscription => 'SUBSCRIPTION';
+	@override String get subscribe => 'SUBSCRIBE';
+	@override String get subscribeDescription => 'THE FREE PLAN SYNCS YOUR LAST 7 DAYS BETWEEN TWO DEVICES AT LIMITED SPEED. A SUBSCRIPTION SYNCS ALL YOUR OPERATIONS ACROSS ALL YOUR DEVICES AT FULL SPEED.';
+	@override String get subscribed => 'SUBSCRIBED';
+	@override String get subscribedDescription => 'THANK YOU FOR SUBSCRIBING! EVERYTHING SYNCS AT FULL SPEED BETWEEN ALL YOUR DEVICES. TAP TO MANAGE.';
+	@override String get purchasePending => 'FINISH THE PURCHASE IN YOUR BROWSER. IT WILL SHOW UP HERE ONCE IT\'S DONE.';
+	@override String subscriptionRefused({required Object error}) => 'THE SYNC SERVER DID NOT ACCEPT THE SUBSCRIPTION: ${error}';
+	@override String get purchaseUnavailable => 'PURCHASES GO TO YOUR SYNC ACCOUNT, AND IT COULDN\'T BE REACHED. TRY AGAIN ONCE YOU\'RE ONLINE.';
+	@override String get manageUnavailable => 'YOUR SUBSCRIPTION\'S MANAGEMENT PAGE CAN\'T BE OPENED RIGHT NOW. ONE BOUGHT ON A PHONE IS MANAGED IN THAT PHONE\'S APP STORE.';
 	@override String get configuration => 'SYNC CONFIGURATION';
 	@override String get enableTitle => 'SYNC WITH HAM2K LOG FILER';
 	@override String get enabledDescription => 'BACKING UP AND SYNCING YOUR LOG ACROSS DEVICES';
@@ -6717,6 +6740,19 @@ extension on TranslationsQro {
 			'settings.peers.screenSharedToNobody' => 'NOT BEING SHOWN',
 			'settings.peers.screenStopSharing' => ({required Object name}) => 'STOP SHARING ${name}',
 			'settings.developerMode' => 'DEVELOPER MODE',
+			'settings.supporter.isSupporter' => ({required Object call}) => '${call} IS A SUPPORTER OF HAM2K',
+			'settings.supporter.couldBeSupporter' => ({required Object call}) => '${call} COULD BE A SUPPORTER OF HAM2K',
+			'settings.supporter.contribute' => 'CONTRIBUTE',
+			'settings.supporter.badge' => ({required Object year}) => '${year} SUPPORTER BADGE',
+			'settings.syncPanel.subscription' => 'SUBSCRIPTION',
+			'settings.syncPanel.subscribe' => 'SUBSCRIBE',
+			'settings.syncPanel.subscribeDescription' => 'THE FREE PLAN SYNCS YOUR LAST 7 DAYS BETWEEN TWO DEVICES AT LIMITED SPEED. A SUBSCRIPTION SYNCS ALL YOUR OPERATIONS ACROSS ALL YOUR DEVICES AT FULL SPEED.',
+			'settings.syncPanel.subscribed' => 'SUBSCRIBED',
+			'settings.syncPanel.subscribedDescription' => 'THANK YOU FOR SUBSCRIBING! EVERYTHING SYNCS AT FULL SPEED BETWEEN ALL YOUR DEVICES. TAP TO MANAGE.',
+			'settings.syncPanel.purchasePending' => 'FINISH THE PURCHASE IN YOUR BROWSER. IT WILL SHOW UP HERE ONCE IT\'S DONE.',
+			'settings.syncPanel.subscriptionRefused' => ({required Object error}) => 'THE SYNC SERVER DID NOT ACCEPT THE SUBSCRIPTION: ${error}',
+			'settings.syncPanel.purchaseUnavailable' => 'PURCHASES GO TO YOUR SYNC ACCOUNT, AND IT COULDN\'T BE REACHED. TRY AGAIN ONCE YOU\'RE ONLINE.',
+			'settings.syncPanel.manageUnavailable' => 'YOUR SUBSCRIPTION\'S MANAGEMENT PAGE CAN\'T BE OPENED RIGHT NOW. ONE BOUGHT ON A PHONE IS MANAGED IN THAT PHONE\'S APP STORE.',
 			'settings.syncPanel.configuration' => 'SYNC CONFIGURATION',
 			'settings.syncPanel.enableTitle' => 'SYNC WITH HAM2K LOG FILER',
 			'settings.syncPanel.enabledDescription' => 'BACKING UP AND SYNCING YOUR LOG ACROSS DEVICES',
@@ -7060,6 +7096,8 @@ extension on TranslationsQro {
 			'settings.station.models.airspy' => 'AIRSPY R2 / MINI',
 			'settings.station.models.airspyHf' => 'AIRSPY HF+',
 			'settings.station.models.spyServer' => 'SPYSERVER (ANY RECEIVER)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.transports.network' => 'NETWORK/WIFI',
 			'settings.station.transports.tci' => 'TCI',
 			'settings.station.transports.secureNetwork' => 'SECURE NETWORK/WIFI',
@@ -7073,8 +7111,6 @@ extension on TranslationsQro {
 			'settings.station.transports.everywareServer' => 'THROUGH ITS EVERYWARE SERVER',
 			'settings.station.troubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
 			'settings.station.ft891Troubleshooting' => 'THE RADIO IS RECEIVING COMMANDS BUT NOT RESPONDING. ALMOST ALWAYS ONE OF:\n\n- **CAT RTS OFF AT THE RADIO, OR HOLD RTS HIGH ON.** WITH **CAT RTS** ON (FT-891 MENU **05-08**), THE RADIO STAYS SILENT WHILE RTS IS LOW — IT MAY ANSWER ONCE AS THE PORT OPENS, THEN NOTHING. PICKING THE RADIO\'S OWN USB PORT TURNS ON **HOLD RTS HIGH** UNDER ADVANCED SETTINGS. ON A DIGIRIG, SIGNALINK OR MOST HOME-BREW CABLES RTS IS PTT, AND HOLDING IT HIGH KEYS YOUR TRANSMITTER: TURN CAT RTS OFF AT THE RADIO INSTEAD.\n- **SPEED MUST MATCH** THE RADIO\'S CAT RATE (MENU **05-06**). WITH A MISMATCH, THE RADIO SENDS BACK GARBAGE OR NOTHING, AND NEVER AN ERROR.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
 			'settings.station.yaesuBinaryTroubleshooting' => 'THIS RADIO SPEAKS YAESU\'S OLDER FIVE-BYTE CAT, AND IT DOES NOT RESPOND AT ALL WHEN SOMETHING IS OFF. ALMOST ALWAYS ONE OF:\n\n- **THE CABLE MUST CONVERT LEVELS.** THE CAT JACK ON THE BACK IS NOT RS-232 AND NOT USB; IT NEEDS A CT-62 OR AN EQUIVALENT ADAPTER. A PLAIN AUDIO OR DATA CABLE WON\'T WORK FOR CAT.\n- **SPEED MUST MATCH** THE RADIO\'S CAT RATE MENU (**#14** ON AN FT-817, **#19** ON AN FT-857 OR FT-897). WITH A MISMATCH, THE RADIO SENDS NOTHING BACK, AND NEVER AN ERROR.\n- **NEVER LET ANYTHING RAISE RTS OR DTR ON THIS PORT.** ON MOST CABLES FOR THESE RADIOS THOSE LINES ARE PTT AND KEYING. AN OLDER INTERFACE POWERED FROM DTR IS THE EXCEPTION: TURN ON **HOLD DTR HIGH** UNDER ADVANCED SETTINGS FOR THAT ONE.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n\nTHIS DRIVER WAS WRITTEN FROM YAESU\'S PUBLISHED CAT CHART AND HAS NOT BEEN RUN AGAINST ONE OF THESE RADIOS. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.tenTecTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
@@ -7574,6 +7610,8 @@ extension on TranslationsQro {
 			'commands.extensionCheckUnderWay' => 'ALREADY CHECKING THE EXTENSION CATALOG — TRY AGAIN IN A MOMENT',
 			'commands.extensionsUpToDate' => 'EXTENSIONS ARE UP TO DATE',
 			'commands.extensionsReplaced' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'AN INSTALLED EXTENSION HAS BEEN REPLACED — SEE ITS NOTICE', other: '${count} INSTALLED EXTENSIONS HAVE BEEN REPLACED — SEE THEIR NOTICES', ), 
+			_ => null,
+		} ?? switch (path) {
 			'commands.extensionUpdatesFound' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} EXTENSION UPDATE FOUND', other: '${count} EXTENSION UPDATES FOUND', ), 
 			'commands.unknownExperiment' => ({required Object token}) => 'UNKNOWN EXPERIMENT "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} ENABLED',
@@ -7587,8 +7625,6 @@ extension on TranslationsQro {
 			'commands.goUnavailable' => ({required Object place}) => '${place} ISN\'T TURNED ON IN THIS APP',
 			'commands.goUnknown' => ({required Object to}) => 'DON\'T KNOW HOW TO GO TO \'${to}\'',
 			'commands.goBlocked' => 'CLOSE THE OPEN DIALOG FIRST',
-			_ => null,
-		} ?? switch (path) {
 			'commands.operationAlreadyStarted' => 'THIS OPERATION ALREADY HAS A START MARKER',
 			'commands.couldNotOpenLocation' => 'ADDED THE BREAK, BUT COULD NOT OPEN THE LOCATION SCREEN',
 			'commands.noTestOperations' => 'NO TEST OPERATIONS TO PURGE',

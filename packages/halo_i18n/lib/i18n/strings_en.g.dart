@@ -1864,6 +1864,7 @@ class Translations$settings$en {
 	/// en: 'Developer Mode'
 	String get developerMode => 'Developer Mode';
 
+	late final Translations$settings$supporter$en supporter = Translations$settings$supporter$en.internal(_root);
 	late final Translations$settings$syncPanel$en syncPanel = Translations$settings$syncPanel$en.internal(_root);
 	late final Translations$settings$accounts$en accounts = Translations$settings$accounts$en.internal(_root);
 	late final Translations$settings$station$en station = Translations$settings$station$en.internal(_root);
@@ -5832,6 +5833,27 @@ class Translations$settings$peers$en {
 	String screenStopSharing({required Object name}) => 'Stop sharing ${name}';
 }
 
+// Path: settings.supporter
+class Translations$settings$supporter$en {
+	Translations$settings$supporter$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '${call} is a Supporter of Ham2K'
+	String isSupporter({required Object call}) => '${call} is a Supporter of Ham2K';
+
+	/// en: '${call} could be a Supporter of Ham2K'
+	String couldBeSupporter({required Object call}) => '${call} could be a Supporter of Ham2K';
+
+	/// en: 'Contribute'
+	String get contribute => 'Contribute';
+
+	/// en: '${year} Supporter badge'
+	String badge({required Object year}) => '${year} Supporter badge';
+}
+
 // Path: settings.syncPanel
 class Translations$settings$syncPanel$en {
 	Translations$settings$syncPanel$en.internal(this._root);
@@ -5839,6 +5861,33 @@ class Translations$settings$syncPanel$en {
 	final Translations _root; // ignore: unused_field
 
 	// Translations
+
+	/// en: 'Subscription'
+	String get subscription => 'Subscription';
+
+	/// en: 'Subscribe'
+	String get subscribe => 'Subscribe';
+
+	/// en: 'The free plan syncs your last 7 days between two devices at limited speed. A subscription syncs all your operations across all your devices at full speed.'
+	String get subscribeDescription => 'The free plan syncs your last 7 days between two devices at limited speed. A subscription syncs all your operations across all your devices at full speed.';
+
+	/// en: 'Subscribed'
+	String get subscribed => 'Subscribed';
+
+	/// en: 'Thank you for subscribing! Everything syncs at full speed between all your devices. Tap to manage.'
+	String get subscribedDescription => 'Thank you for subscribing! Everything syncs at full speed between all your devices. Tap to manage.';
+
+	/// en: 'Finish the purchase in your browser. It will show up here once it's done.'
+	String get purchasePending => 'Finish the purchase in your browser. It will show up here once it\'s done.';
+
+	/// en: 'The sync server did not accept the subscription: ${error}'
+	String subscriptionRefused({required Object error}) => 'The sync server did not accept the subscription: ${error}';
+
+	/// en: 'Purchases go to your sync account, and it couldn't be reached. Try again once you're online.'
+	String get purchaseUnavailable => 'Purchases go to your sync account, and it couldn\'t be reached. Try again once you\'re online.';
+
+	/// en: 'Your subscription's management page can't be opened right now. One bought on a phone is managed in that phone's app store.'
+	String get manageUnavailable => 'Your subscription\'s management page can\'t be opened right now. One bought on a phone is managed in that phone\'s app store.';
 
 	/// en: 'Sync Configuration'
 	String get configuration => 'Sync Configuration';
@@ -12851,6 +12900,19 @@ extension on Translations {
 			'settings.peers.screenSharedToNobody' => 'Not being shown',
 			'settings.peers.screenStopSharing' => ({required Object name}) => 'Stop sharing ${name}',
 			'settings.developerMode' => 'Developer Mode',
+			'settings.supporter.isSupporter' => ({required Object call}) => '${call} is a Supporter of Ham2K',
+			'settings.supporter.couldBeSupporter' => ({required Object call}) => '${call} could be a Supporter of Ham2K',
+			'settings.supporter.contribute' => 'Contribute',
+			'settings.supporter.badge' => ({required Object year}) => '${year} Supporter badge',
+			'settings.syncPanel.subscription' => 'Subscription',
+			'settings.syncPanel.subscribe' => 'Subscribe',
+			'settings.syncPanel.subscribeDescription' => 'The free plan syncs your last 7 days between two devices at limited speed. A subscription syncs all your operations across all your devices at full speed.',
+			'settings.syncPanel.subscribed' => 'Subscribed',
+			'settings.syncPanel.subscribedDescription' => 'Thank you for subscribing! Everything syncs at full speed between all your devices. Tap to manage.',
+			'settings.syncPanel.purchasePending' => 'Finish the purchase in your browser. It will show up here once it\'s done.',
+			'settings.syncPanel.subscriptionRefused' => ({required Object error}) => 'The sync server did not accept the subscription: ${error}',
+			'settings.syncPanel.purchaseUnavailable' => 'Purchases go to your sync account, and it couldn\'t be reached. Try again once you\'re online.',
+			'settings.syncPanel.manageUnavailable' => 'Your subscription\'s management page can\'t be opened right now. One bought on a phone is managed in that phone\'s app store.',
 			'settings.syncPanel.configuration' => 'Sync Configuration',
 			'settings.syncPanel.enableTitle' => 'Sync with Ham2K Log Filer',
 			'settings.syncPanel.enabledDescription' => 'Backing up and syncing your log across devices',
@@ -13194,6 +13256,8 @@ extension on Translations {
 			'settings.station.models.airspy' => 'Airspy R2 / Mini',
 			'settings.station.models.airspyHf' => 'Airspy HF+',
 			'settings.station.models.spyServer' => 'SpyServer (any receiver)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.transports.network' => 'Network/WiFi',
 			'settings.station.transports.tci' => 'TCI',
 			'settings.station.transports.secureNetwork' => 'Secure Network/WiFi',
@@ -13207,8 +13271,6 @@ extension on Translations {
 			'settings.station.transports.everywareServer' => 'Through its Everyware server',
 			'settings.station.troubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **CAT RTS off at the radio, or Hold RTS high on.** With **CAT RTS** on (FT-891 menu **05-08**), the radio stays silent while RTS is low — it may answer once as the port opens, then nothing. Picking the radio\'s own USB port turns on **Hold RTS high** under Advanced Settings. On a Digirig, SignaLink or most home-brew cables RTS is PTT, and holding it high keys your transmitter: turn CAT RTS off at the radio instead.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.yaesuBinaryTroubleshooting' => 'This radio speaks Yaesu\'s older five-byte CAT, and it does not respond at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB; it needs a CT-62 or an equivalent adapter. A plain audio or data cable won\'t work for CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). With a mismatch, the radio sends nothing back, and never an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying. An older interface powered from DTR is the exception: turn on **Hold DTR high** under Advanced Settings for that one.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.tenTecTroubleshootingTitle' => 'If the radio connects but shows no frequency',
@@ -13708,6 +13770,8 @@ extension on Translations {
 			'commands.extensionCheckUnderWay' => 'Already checking the extension catalog — try again in a moment',
 			'commands.extensionsUpToDate' => 'Extensions are up to date',
 			'commands.extensionsReplaced' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'An installed extension has been replaced — see its notice', other: '${count} installed extensions have been replaced — see their notices', ), 
+			_ => null,
+		} ?? switch (path) {
 			'commands.extensionUpdatesFound' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension update found', other: '${count} extension updates found', ), 
 			'commands.unknownExperiment' => ({required Object token}) => 'Unknown experiment "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
@@ -13721,8 +13785,6 @@ extension on Translations {
 			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
 			'commands.goUnknown' => ({required Object to}) => 'Don\'t know how to go to \'${to}\'',
 			'commands.goBlocked' => 'Close the open dialog first',
-			_ => null,
-		} ?? switch (path) {
 			'commands.operationAlreadyStarted' => 'This operation already has a start marker',
 			'commands.couldNotOpenLocation' => 'Added the break, but could not open the location screen',
 			'commands.noTestOperations' => 'No Test Operations to purge',
