@@ -10,8 +10,8 @@
     - "New file opening: ADIF, QSON, layouts, shortcut and message sets, from Files or by drop"
     - "New Station Owner Callsign in Operation Details, for guest operators"
     - "Improved Station settings: connect buttons and live readings on inventory radios"
+    - "Improved Band Scope waterfall: brighter, with its own reference level setting"
     - "Icom bandscope auto-adjust moved under the current radio's More details"
-    - "Local spots are now off by default (Settings → Spotting)"
     - "New Serial over TCP connection for a radio behind a network serial bridge (Other…)"
     - "New Our grid field in Edit QSO and the Logs editor"
     - "New meters for Kenwood TS-480, TS-590SG and TS-2000; S-meter on TX-500"
@@ -20,7 +20,6 @@
     - "New rotators under Other Equipment: rotctld, PstRotator, GS-232, Green Heron"
     - "New Rotator panel: turn your antenna with a click on a world map"
     - "Added the BuddiHex mast rotator (MastWerks) under Other Equipment"
-    - "Improved Band Scope waterfall: brighter, with its own reference level setting"
 
 "192":
   changes:
