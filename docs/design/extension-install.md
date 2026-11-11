@@ -19,17 +19,22 @@ operator has switched on into the ordinary store, after which they are
 ordinary installed extensions: the same rows, the same update check, the
 same Update and uninstall.
 
-Which ones ship is staged. Today it is the catalog twin of every extension
-the app used to build in, so an install moving off them has every one to
-hand with no network, plus `ham2k-dxcc`, on for everyone as the core `dxcc`
-chasing program was, and `ham2k-rotator`, the Rotator panel, which the app
-once drew natively; a saved arrangement holding that native panel is moved
-onto the extension's at boot (`moveNativeRotatorPanels`).
-Once installs still on a build with the built-ins are few enough, it shrinks
-to the ten a new install needs (`ham2k-pota`, `ham2k-sota`, `ham2k-wwff`,
-`ham2k-dxcc`, `ham2k-rotator` and the five lookups), the rest fetched from
-the catalog when switched on. The app's tests rely on only those ten, the
-core and the never-shipped samples.
+What ships is what a new install needs before it has reached the catalog:
+the activities onboarding offers (`ham2k-pota`, `ham2k-sota`, `ham2k-wwff`),
+which it installs without waiting on the catalog, and `ham2k-custom`; every
+lookup that answers from the network or the log (`ham2k-lookup`, `ham2k-qrz`,
+`ham2k-call-history`, `ham2k-call-notes`, `ham2k-spot-history`); the awards
+`ham2k-dxcc` and `ham2k-was`; and `ham2k-rotator`, the Rotator panel, which
+the app once drew natively; a saved arrangement holding that native panel is
+moved onto the extension's at boot (`moveNativeRotatorPanels`).
+
+No contest ships: each runs for a weekend, and the operator gets the one they
+are about to work from the catalog when they switch it on. Nor does anything
+that should start switched off and has no built-in to inherit that from: a
+pre-load is installed switched on, so `ham2k-cluster-spots` and the offline
+callsign lists, which download and keep hundreds of megabytes, come from the
+catalog when the operator asks for them. An install moving off the built-ins
+fetches any other twin it had switched on from the catalog the same way.
 
 **Pre-loads are kept current.** `node scripts/preloaded-extensions.mjs check`
 compares them with what the catalog serves, byte for byte and at the app's

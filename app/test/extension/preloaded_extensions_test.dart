@@ -70,24 +70,32 @@ void main() {
       }
     });
 
-    test('every retired built-in with a twin has it shipped', () {
-      // An install that ran the built-ins moves onto their twins at its first
-      // boot without them, offline or not. A twin that is not shipped has to
-      // come from the catalog, and until it does the extension the operator
-      // used is simply gone. Shrinking this to the long-term eight is a
-      // deliberate later step (docs/design/extension-install.md).
+    test('what a new install reaches for before the catalog is shipped', () {
+      // Onboarding installs the activities it offers without waiting on the
+      // catalog; one not shipped is picked and then simply absent. A boot
+      // moves a saved native Rotator panel onto its extension, and the
+      // lookups answer from the first contact logged.
       expect(
         {for (final entry in index) entry.key},
-        {
-          for (final builtIn in kRetiredBuiltIns.keys)
-            if (!kBuiltInsWithoutTwin.contains(builtIn)) twinOf(builtIn),
+        containsAll({
+          for (final activity in ['pota', 'sota', 'wwff']) twinOf(activity),
+          for (final lookup in ['qrz', 'call-notes', 'spot-history', 'call-history']) twinOf(lookup),
           'ham2k-lookup',
-          // In place of the core `dxcc` chasing program.
           'ham2k-dxcc',
-          // In place of the Rotator panel the app drew natively.
           'ham2k-rotator',
-        },
+        }),
       );
+    });
+
+    test('no contest ships', () {
+      // A pre-load installs switched on and is kept current with every
+      // release, for an event that runs one weekend; the operator gets the
+      // one they are about to work from the catalog when they switch it on.
+      for (final entry in index) {
+        final archive = ZipDecoder().decodeBytes(File('${dir.path}/${entry.file}').readAsBytesSync());
+        final manifest = jsonDecode(utf8.decode(archive.findFile('manifest.json')!.content as List<int>));
+        expect(manifest['category'], isNot('contest'), reason: entry.file);
+      }
     });
   });
 

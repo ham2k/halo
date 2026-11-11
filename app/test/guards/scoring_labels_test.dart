@@ -38,7 +38,7 @@ Set<String> _emittedKeys() {
   }
   final keys = <String>{};
 
-  // Three forms, because the shipped scorers genuinely use all three:
+  // Three forms, because the scorers genuinely use all three:
   //   `alerts: ['x']` / `alerts = ['x', 'y']`   — the contest scorers
   //   `notices.push('x')`                       — iaru-hf, naqp
   //   `alerts.add('x')`                         — core/scoring, which builds
@@ -74,11 +74,13 @@ void main() {
   testWidgets('every scoring key a shipped scorer emits has a localized label', (tester) async {
     final emitted = _emittedKeys();
     // A guard on the scan itself: if the regexes stop matching, the test would
-    // pass vacuously and the rule would go unenforced again.
+    // pass vacuously and the rule would go unenforced again. One key per form
+    // that what ships still uses: a pre-load's `alerts = [...]`, a sample's
+    // `alerts: [...]`, the core scorer's `notices.add(...)`.
     expect(emitted, contains('duplicate'));
-    expect(emitted, contains('newMult'));
-    expect(emitted, contains('invalidExchange'));
-    expect(emitted.length, greaterThanOrEqualTo(8), reason: 'the scan found suspiciously few keys');
+    expect(emitted, contains('invalidBand'));
+    expect(emitted, contains('newBand'));
+    expect(emitted.length, greaterThanOrEqualTo(5), reason: 'the scan found suspiciously few keys');
 
     late BuildContext ctx;
     await tester.pumpWidget(

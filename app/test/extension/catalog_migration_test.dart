@@ -220,8 +220,8 @@ void main() {
 
     test('installs only the twins of the built-ins the operator had on', () async {
       // Through the real pre-load, over the bundles the app ships. Installed
-      // whatever their switch, every twin lands — thirty-odd extensions, most
-      // switched off, for an install that ran a handful.
+      // whatever their switch, every shipped twin lands, most of them switched
+      // off, for an install that ran a handful.
       final settings = await _settings();
       await settings.setExtensionOverrides({'sota': true, 'pota': false});
       final root = Directory.systemTemp.createTempSync('moving-install');
@@ -239,19 +239,22 @@ void main() {
 
       await withErrorHooks(() async => catchUpOnCatalogExtensions(extensions));
 
+      final shipped = {for (final entry in parsePreloadIndex(jsonDecode(File('assets/preloaded-extensions/index.json').readAsStringSync()))) entry.key};
       expect(
         {
           for (final info in extensions.availableExtensions)
             if (info.isInstalled) info.key,
         },
         {
-          for (final MapEntry(key: builtIn, value: on) in kRetiredBuiltIns.entries)
-            if (builtIn != 'pota' && (on || builtIn == 'sota')) twinOf(builtIn),
-          'ham2k-lookup',
-          // In place of the core `dxcc`, which no operator could switch off.
-          'ham2k-dxcc',
-          // In place of the native Rotator panel, which every install had.
-          'ham2k-rotator',
+          for (final key in shipped)
+            if (switch (predecessorBuiltInKey(key)) {
+              // No built-in to inherit a switch from, so on: `ham2k-lookup`,
+              // `ham2k-dxcc` in place of the core `dxcc`, `ham2k-rotator` in
+              // place of the native panel, and the others a new install starts with.
+              null => true,
+              final builtIn => builtIn != 'pota' && (kRetiredBuiltIns[builtIn]! || builtIn == 'sota'),
+            })
+              key,
         },
       );
       expect(settings.extensionsMigrated, isTrue);
