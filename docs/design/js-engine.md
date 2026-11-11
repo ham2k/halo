@@ -1,6 +1,6 @@
 # JS Engine Binding — direct QuickJS-NG via `dart:ffi`
 
-> Status: as-built · Last updated: 2026-08-07
+> Status: as-built · Last updated: 2026-11-11
 
 DESIGN.md §3 specifies the extension runtime's engine as **QuickJS (QuickJS-NG)
 via dart:ffi**, bound directly for control over interrupts, memory limits and
@@ -377,6 +377,44 @@ Extensions may not patch built-ins (no polyfills); a bundle that tries fails
 its own evaluation. A hook that never returns is still only caught by the
 Dart-side timeout. Both are accepted, against the memory and per-call cost of
 a context per bundle.
+
+### The web sandbox
+
+On web the bundles run in the browser's engine, in a Worker
+(`engine_runtime_web.dart`), and a worker has its creator's origin and
+Content-Security-Policy. The app's page connects to every host the app talks
+to and owns all of its storage, so a worker it created would hand a bundle
+`fetch`, `WebSocket` and the `halo-extensions` IndexedDB store, around every
+`domains` grant and able to rewrite any installed bundle. The page cannot
+take those away without taking them from the app.
+
+So the worker is created by a hidden `sandbox="allow-scripts"` iframe, whose
+`srcdoc` document carries a policy of its own (`default-src 'none'`, scripts
+only by `eval` and `blob:`), and inherits both from it:
+
+- **an opaque origin**, which owns no IndexedDB, cache or file system, the
+  app's included;
+- **a policy that refuses every request**: `fetch`, `WebSocket`,
+  `EventSource`, `import()` of a URL, `importScripts`, a `FontFace` source.
+
+The bootstrap also deletes those names, from the global and the prototypes
+it inherits them through, and before evaluating the kernel it checks the
+sandbox: the worker's origin is `null`, and a `data:` fetch, which never
+leaves the browser, is refused. If either fails, nothing evaluates and the
+runtime reports `extension sandbox unavailable`; a browser that cannot build
+the sandbox runs no extensions rather than unsandboxed ones. The host's
+traffic still travels on a MessagePort the host hands the worker through the
+iframe; the iframe keeps only a second port, for the worker's error events.
+Before the worker is ready, one fails the load. After, it is an exception
+nothing caught, such as a bundle's callback that throws: it goes to the
+extension log and the worker carries on, as the native engine does past a
+job that throws.
+
+The iframe's document also inherits whatever policy the app's page carries,
+on top of its own. A page policy added later has to allow the iframe's inline
+script (`'unsafe-inline'` or its hash), `'unsafe-eval'` and `worker-src
+blob:`: without them the iframe's script never runs, nothing reports, and the
+runtime fails only at its 30-second load timeout.
 
 ---
 

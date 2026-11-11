@@ -9,23 +9,34 @@
 // static asset paths) and speaks the same 'polo' protocol as kernel.ts,
 // just over a private MessagePort instead of the native `sendMessage` global.
 //
-// The bootstrap script below loads bundle sources via indirect `eval` and
-// the worker itself is constructed from a `blob:` URL. A Content-Security-
-// Policy hardened for production will need `script-src 'unsafe-eval'` and
-// `worker-src blob:` (or equivalent) for extensions to keep working — there
-// is no CSP configured yet (see app/web/index.html), so this is dormant
-// until one gets added.
+// The worker runs inside a hidden sandboxed iframe, never on the app's own
+// page (docs/design/js-engine.md, "The web sandbox"). A worker shares its
+// creator's origin and Content-Security-Policy, and the app's page has every
+// network permission and all of the app's storage: a bundle there could
+// call `fetch` or open a WebSocket to a host its manifest never named, or
+// rewrite the installed extensions in IndexedDB. The iframe has an opaque
+// origin, which owns no storage, and a policy of its own that refuses every
+// request, so the worker it creates inherits both.
+//
+// The iframe's document also inherits any policy the app's page carries. A
+// page policy has to allow the iframe's inline script, `'unsafe-eval'` and
+// `worker-src blob:`, or no extension loads.
 
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 
+import 'package:meta/meta.dart';
 import 'package:web/web.dart' as web;
 
 import 'engine_runtime.dart';
 
 /// See the counterpart in engine_runtime_io.dart.
 const bool runningOnWeb = true;
+
+/// The worker's bootstrap, for the test that runs it outside the sandbox.
+@visibleForTesting
+String get webWorkerBootstrap => _bootstrapJs;
 
 const _bootstrapJs = r'''
 // All of it inside one function: a bundle is evaluated with indirect eval, in
@@ -56,6 +67,26 @@ const dataOf = Function.prototype.call.bind(Object.getOwnPropertyDescriptor(Mess
 // the kernel's host-only entries, which no bundle can.
 let token = null;
 let kernel = null;
+// The sandbox's check, taken before the names below leave the global.
+const probeFetch = self.fetch.bind(self);
+// What reaches the network or storage without the host: the iframe's policy
+// and opaque origin already refuse them, and taking the names away too means
+// a browser that lets one through still hands a bundle nothing to call.
+for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'WebSocketStream', 'WebTransport', 'EventSource', 'importScripts',
+    'indexedDB', 'caches', 'FontFace', 'fonts', 'Worker', 'SharedWorker', 'BroadcastChannel']) {
+  // Some live on the global scope's prototypes rather than the global.
+  for (let o = self; o !== null; o = Object.getPrototypeOf(o)) Reflect.deleteProperty(o, name);
+}
+// Settles only if this worker is in the sandbox the host built it in: an
+// opaque origin, and a policy under which even a `data:` fetch, which never
+// leaves the browser, is refused. Anywhere else no bundle evaluates.
+function checkSandbox() {
+  if (self.origin !== 'null') return Promise.reject(new Error('the extension worker is not in an opaque origin'));
+  return probeFetch('data:,').then(
+    function () { throw new Error('the extension worker can make requests'); },
+    function () {},
+  );
+}
 function bridge(entry, a, b, c, d, e) {
   return kernel.bridge(token, entry, a, b, c, d, e);
 }
@@ -163,6 +194,11 @@ function onLoad(e) {
   port.onmessage = onPortMessage;
   const msg = JSON.parse(e.data);
   token = msg.token;
+  checkSandbox().then(function () { loadAll(msg); }, function (err) {
+    post({ kind: 'initError', error: 'extension sandbox unavailable: ' + err.message });
+  });
+}
+function loadAll(msg) {
   try {
     (0, eval)(msg.kernelSource);
     kernel = self.__halo;
@@ -239,12 +275,40 @@ function handleMessage(msg) {
 })();
 ''';
 
+/// What the sandbox's iframe may do: run its own inline script, eval in the
+/// worker, and build that worker from a `blob:` URL. Every request — fetch,
+/// WebSocket, `import()` of a URL, a font, an image — falls under
+/// `default-src 'none'`.
+const _sandboxPolicy = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; worker-src blob:";
+
+/// The sandbox's iframe document. It waits for the host's one message, builds
+/// the worker from the bootstrap it carries, hands the worker the load
+/// message and the host's port, and from then on only reports the worker's
+/// errors, on a port of their own. The worker's URL has to be made here: a
+/// worker's script must share its creator's origin, and this one's is opaque.
+const _sandboxDocument = """<!doctype html><meta http-equiv="Content-Security-Policy" content="$_sandboxPolicy"><script>
+'use strict';
+addEventListener('message', function start(e) {
+  // Only the host's message: anything else posted to this window first would
+  // otherwise be taken for it, and the host's would find no one listening.
+  if (e.source !== parent || e.ports.length !== 2 || !e.data || typeof e.data.bootstrap !== 'string') return;
+  removeEventListener('message', start);
+  const errors = e.ports[1];
+  try {
+    const worker = new Worker(URL.createObjectURL(new Blob([e.data.bootstrap], { type: 'text/javascript' })));
+    worker.onerror = function (ev) { errors.postMessage('extension worker error: ' + ((ev && ev.message) || 'no message')); };
+    worker.postMessage(e.data.load, [e.ports[0]]);
+  } catch (err) {
+    errors.postMessage('extension sandbox unavailable: ' + err);
+  }
+});
+</script>""";
+
 class _WebWorkerEngineRuntime implements EngineRuntime {
-  web.Worker? _worker;
+  web.HTMLIFrameElement? _sandbox;
   web.MessagePort? _port;
-  String? _blobUrl;
+  web.MessagePort? _errors;
   void Function(Map<String, dynamic>)? _onMessage;
-  void Function(String)? _onFatalError;
   void Function(int startMicros, int endMicros, String label)? _onBusySpan;
 
   @override
@@ -257,7 +321,8 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
 
   @override
   void onFatalError(void Function(String message) callback) {
-    _onFatalError = callback;
+    // A worker's error event is never its death (see load); a worker that
+    // stops answering leaves each call to its own timeout.
   }
 
   @override
@@ -267,17 +332,13 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
 
   @override
   Future<void> load(String kernelSource, List<ExtensionBundle> bundles, {ClockTravelState clock = const ClockTravelState.real()}) async {
-    final blob = web.Blob([_bootstrapJs.toJS].toJS, web.BlobPropertyBag(type: 'application/javascript'));
-    final url = web.URL.createObjectURL(blob);
-    _blobUrl = url;
-    final worker = web.Worker(url.toJS);
-    _worker = worker;
-
     // Everything after the load travels on this channel's port, which only
     // the bootstrap's closure holds: the worker's own channel is open to
     // every bundle in it, both ways (see the bootstrap).
     final channel = web.MessageChannel();
     _port = channel.port1;
+    final errors = web.MessageChannel();
+    _errors = errors.port1;
     final ready = Completer<void>();
     web.EventStreamProviders.messageEvent.forTarget(channel.port1).listen((event) {
       final data = (event.data as JSString).toDart;
@@ -297,34 +358,60 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
     // A port listened to through addEventListener delivers nothing until
     // started; `onmessage` would start it implicitly.
     channel.port1.start();
-    web.EventStreamProviders.errorEvent.forTarget(worker).listen((event) {
+    web.EventStreamProviders.messageEvent.forTarget(errors.port1).listen((event) {
+      final what = (event.data as JSString).toDart;
       if (!ready.isCompleted) {
-        ready.completeError(ExtensionHostException('worker failed to load'));
+        ready.completeError(ExtensionHostException(what));
       } else {
-        // A crash after we've already loaded — nothing else will ever tell
-        // Dart this worker died, so every hook call still waiting on a
-        // 'result' message would otherwise hang until its own timeout.
-        _onFatalError?.call('extension worker crashed');
+        // Once loaded, this is an exception nothing caught — a bundle's
+        // callback that throws — and the worker carries on, as the native
+        // engine does past a job that throws. Fatal here, one bundle's bug
+        // would stop every extension.
+        _onMessage?.call({'type': 'log', 'message': what});
       }
     });
+    errors.port1.start();
 
-    worker.postMessage(
-      jsonEncode({
-        'kind': 'load',
-        'token': newBridgeToken(),
-        'kernelSource': kernelSource,
-        'bundles': [
-          for (final b in bundles) {'key': b.key, 'source': b.source, 'api': b.api},
-        ],
-        'declaredKeys': declaredBundleKeys(bundles),
-        // Applied by the bootstrap between the kernel and the bundles, so the
-        // sandbox's Date is already on the app's clock when they evaluate.
-        if (!clock.isReal) 'clock': {'anchorRealMillis': clock.anchorRealMillis, 'anchorVirtualMillis': clock.anchorVirtualMillis, 'speed': clock.speed},
-      }).toJS,
-      [channel.port2].toJS,
+    final load = jsonEncode({
+      'kind': 'load',
+      'token': newBridgeToken(),
+      'kernelSource': kernelSource,
+      'bundles': [
+        for (final b in bundles) {'key': b.key, 'source': b.source, 'api': b.api},
+      ],
+      'declaredKeys': declaredBundleKeys(bundles),
+      // Applied by the bootstrap between the kernel and the bundles, so the
+      // sandbox's Date is already on the app's clock when they evaluate.
+      if (!clock.isReal) 'clock': {'anchorRealMillis': clock.anchorRealMillis, 'anchorVirtualMillis': clock.anchorVirtualMillis, 'speed': clock.speed},
+    });
+    // No `allow-same-origin`: that is what makes the iframe's origin opaque.
+    final sandbox = web.HTMLIFrameElement()
+      ..setAttribute('sandbox', 'allow-scripts')
+      ..setAttribute('aria-hidden', 'true')
+      ..setAttribute('srcdoc', _sandboxDocument);
+    sandbox.style.display = 'none';
+    _sandbox = sandbox;
+    // Posted once the iframe's script is listening, which its load event
+    // follows. '*' is the only target an opaque origin answers to; the
+    // message goes to this iframe's window and no other.
+    unawaited(
+      web.EventStreamProviders.loadEvent
+          .forTarget(sandbox)
+          .first
+          .then((_) {
+            final window = sandbox.contentWindow;
+            if (window == null) throw ExtensionHostException('extension sandbox unavailable: the iframe has no window');
+            window.postMessage({'bootstrap': _bootstrapJs, 'load': load}.jsify(), '*'.toJS, [channel.port2, errors.port2].toJS);
+          })
+          .catchError((Object error, StackTrace stack) {
+            if (!ready.isCompleted) ready.completeError(error, stack);
+          }),
     );
-    // On failure, _HostCore.init disposes us before rethrowing.
-    await ready.future.timeout(const Duration(seconds: 30));
+    (web.document.body ?? web.document.documentElement!).append(sandbox);
+    // On failure, _HostCore.init disposes us before rethrowing. An iframe
+    // whose script never runs (a page policy that blocks it) reports nothing,
+    // so the timeout is what names it.
+    await ready.future.timeout(const Duration(seconds: 30), onTimeout: () => throw ExtensionHostException('extension sandbox did not start within 30s'));
   }
 
   @override
@@ -399,9 +486,9 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
   @override
   void dispose() {
     _port?.close();
-    _worker?.terminate();
-    final url = _blobUrl;
-    if (url != null) web.URL.revokeObjectURL(url);
+    _errors?.close();
+    // Takes the iframe's document down, and the worker with it.
+    _sandbox?.remove();
   }
 }
 
