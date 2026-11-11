@@ -96,6 +96,25 @@ abstract class SerialPortProblem implements CatUnreachable {
   String? get usbId;
 }
 
+/// A bridge that accepted the connection and closed it within the settle
+/// window a Serial over TCP connect waits through: most bridges take one
+/// client per port and hang up on any other, so a silent hang-up usually
+/// means something else — a logger, WSJT-X, rigctld at the station — has the
+/// radio's port. [said] is the bridge's own reason when it gave one
+/// (ser2net's "Port already in use", or its failure to open the device), one
+/// printable line, and outranks that guess. [how] is the transport's account
+/// of the close ([ExplainsClose]): a clean close and a reset by something in
+/// the path read alike on the row, and only this tells them apart.
+class SerialTcpBridgeClosed implements CatUnreachable {
+  final String? said;
+  final String? how;
+
+  const SerialTcpBridgeClosed(this.said, {this.how});
+
+  @override
+  String toString() => ['The bridge closed the connection at once', if (how != null) ' ($how)', if (said != null) ': $said'].join();
+}
+
 /// A failed connect, tagged with the equipment type it was aimed at.
 ///
 /// [CatService] wraps every throw out of [EquipmentTransport.connect] in this

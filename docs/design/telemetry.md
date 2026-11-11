@@ -137,7 +137,8 @@ name is capped at 60 characters before it leaves the device.
 `reason` is a bounded classification — `unknown_type`, `invalid_config`,
 `timeout`, `network`, `other`, and for a serial port the transport's own
 `serial:missing`, `serial:busy`, `serial:denied`, `serial:lines` (RTS/DTR
-read back wrong, so the port was refused) or `serial:other` — derived from
+read back wrong, so the port was refused), `serial:unsupported` or `serial:other`, and
+`bridge_closed` for a Serial over TCP bridge that hung up at once — derived from
 *where* the failure happened, never the exception's text. `'$e'` is what the operator reads and it
 routinely carries the host or port that failed.
 

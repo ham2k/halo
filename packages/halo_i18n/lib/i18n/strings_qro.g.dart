@@ -2862,7 +2862,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get nameDescription => 'WHAT YOU CALL IT — "LEFT RADIO". OPTIONAL.';
 	@override String get transport => 'CONNECTION';
 	@override String get transportOther => 'OTHER…';
-	@override String get serialTcpNotes => 'A NETWORK SERIAL BRIDGE (SER2NET, A SERIAL DEVICE SERVER, SOCAT) HANDS THE RADIO\'S SERIAL PORT TO A TCP SOCKET, AND THE APP TALKS TO THE RADIO THROUGH IT AS THROUGH A CABLE. ENTER THE BRIDGE\'S ADDRESS AND PORT, NOT THE RADIO\'S.\n\n- **RAW MODE ONLY.** A BRIDGE IN TELNET OR RFC 2217 MODE ADDS ITS OWN BYTES TO THE STREAM, WHICH THE RADIO READS AS GARBAGE. IN SER2NET, MAKE THE CONNECTION\'S ACCEPTER PLAIN `tcp`, WITH NO `telnet`.\n- **THE BRIDGE SETS THE SPEED**, AND IT MUST MATCH THE RADIO\'S CAT RATE, AS WITH A CABLE. SET SPEED UNDER ADVANCED SETTINGS TO THE SAME, SO THE APP PACES ITSELF FOR THAT WIRE. A LINE THE RADIO NEEDS HELD, SUCH AS RTS ON A KENWOOD, IS THE BRIDGE\'S TO HOLD TOO.\n- **ONE CLIENT AT A TIME.** MOST BRIDGES TAKE ONE CONNECTION PER PORT AND CLOSE ANY OTHER AT ONCE. IF THE CONNECTION OPENS AND DROPS STRAIGHT AWAY, SOMETHING ELSE HAS THE PORT: A LOGGER, WSJT-X OR RIGCTLD AT THE STATION.\n- **THE APP WAITS HALF A SECOND AFTER CONNECTING** BEFORE IT SENDS ANYTHING, WHILE THE BRIDGE OPENS THE RADIO\'S PORT: A BRIDGE DROPS WHAT ARRIVES BEFORE THEN.';
+	@override String get serialTcpNotes => 'A NETWORK SERIAL BRIDGE (SER2NET, A SERIAL DEVICE SERVER, SOCAT) HANDS THE RADIO\'S SERIAL PORT TO A TCP SOCKET, AND THE APP TALKS TO THE RADIO THROUGH IT AS THROUGH A CABLE. ENTER THE BRIDGE\'S ADDRESS AND PORT, NOT THE RADIO\'S.\n\n- **RAW MODE ONLY.** A BRIDGE IN TELNET OR RFC 2217 MODE ADDS ITS OWN BYTES TO THE STREAM, WHICH THE RADIO READS AS GARBAGE. IN SER2NET, MAKE THE CONNECTION\'S ACCEPTER PLAIN `tcp`, WITH NO `telnet`.\n- **THE BRIDGE SETS THE SPEED**, AND IT MUST MATCH THE RADIO\'S CAT RATE, AS WITH A CABLE. SET SPEED UNDER ADVANCED SETTINGS TO THE SAME, SO THE APP PACES ITSELF FOR THAT WIRE. A LINE THE RADIO NEEDS HELD, SUCH AS RTS ON A KENWOOD, IS THE BRIDGE\'S TO HOLD TOO.\n- **ONE CLIENT AT A TIME.** MOST BRIDGES TAKE ONE CONNECTION PER PORT AND HANG UP ON ANY OTHER AT ONCE. THE CONNECTION THEN FAILS WITH THE BRIDGE\'S REASON, OR, WHEN IT GIVES NONE, SAYS THAT SOMETHING ELSE MAY HAVE THE PORT, SUCH AS A LOGGER, WSJT-X OR RIGCTLD AT THE STATION.\n- **THE APP WAITS HALF A SECOND AFTER CONNECTING** BEFORE IT SENDS ANYTHING, WHILE THE BRIDGE OPENS THE RADIO\'S PORT: A BRIDGE DROPS WHAT ARRIVES BEFORE THEN.';
 	@override String get serialTcpBaudRateDescription => 'THE SPEED THE BRIDGE RUNS THE RADIO\'S SERIAL PORT AT: THE RADIO\'S CAT RATE. THE BRIDGE\'S OWN SETTING IS WHAT SETS IT; THIS TELLS THE APP HOW FAST THAT WIRE IS.';
 	@override String get moreBand => 'MORE';
 	@override String get host => 'ADDRESS';
@@ -3023,6 +3023,8 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get radioPass => 'RADIO PASSWORD';
 	@override String get radioLoginDescription => 'THE RADIO\'S NETWORK → REMOTE LOGIN, NOT YOUR WIFI PASSWORD.';
 	@override String get radioUserRequired => 'THE RADIO\'S REMOTE-CONTROL USERNAME IS REQUIRED';
+	@override String get connectFailedBridgeClosed => 'THE BRIDGE HUNG UP AT ONCE. ANOTHER PROGRAM AT THE STATION MAY HAVE THE RADIO\'S PORT: A LOGGER, WSJT-X OR RIGCTLD.';
+	@override String connectFailedBridgeSaid({required Object said}) => 'THE BRIDGE HUNG UP AT ONCE, SAYING “${said}”.';
 	@override String get connectFailedBusy => 'DEVICE IS IN USE';
 	@override String get connectFailedDenied => 'ACCESS DENIED';
 	@override String get connectFailedDevice => 'DEVICE NOT FOUND';
@@ -6866,7 +6868,7 @@ extension on TranslationsQro {
 			'settings.station.nameDescription' => 'WHAT YOU CALL IT — "LEFT RADIO". OPTIONAL.',
 			'settings.station.transport' => 'CONNECTION',
 			'settings.station.transportOther' => 'OTHER…',
-			'settings.station.serialTcpNotes' => 'A NETWORK SERIAL BRIDGE (SER2NET, A SERIAL DEVICE SERVER, SOCAT) HANDS THE RADIO\'S SERIAL PORT TO A TCP SOCKET, AND THE APP TALKS TO THE RADIO THROUGH IT AS THROUGH A CABLE. ENTER THE BRIDGE\'S ADDRESS AND PORT, NOT THE RADIO\'S.\n\n- **RAW MODE ONLY.** A BRIDGE IN TELNET OR RFC 2217 MODE ADDS ITS OWN BYTES TO THE STREAM, WHICH THE RADIO READS AS GARBAGE. IN SER2NET, MAKE THE CONNECTION\'S ACCEPTER PLAIN `tcp`, WITH NO `telnet`.\n- **THE BRIDGE SETS THE SPEED**, AND IT MUST MATCH THE RADIO\'S CAT RATE, AS WITH A CABLE. SET SPEED UNDER ADVANCED SETTINGS TO THE SAME, SO THE APP PACES ITSELF FOR THAT WIRE. A LINE THE RADIO NEEDS HELD, SUCH AS RTS ON A KENWOOD, IS THE BRIDGE\'S TO HOLD TOO.\n- **ONE CLIENT AT A TIME.** MOST BRIDGES TAKE ONE CONNECTION PER PORT AND CLOSE ANY OTHER AT ONCE. IF THE CONNECTION OPENS AND DROPS STRAIGHT AWAY, SOMETHING ELSE HAS THE PORT: A LOGGER, WSJT-X OR RIGCTLD AT THE STATION.\n- **THE APP WAITS HALF A SECOND AFTER CONNECTING** BEFORE IT SENDS ANYTHING, WHILE THE BRIDGE OPENS THE RADIO\'S PORT: A BRIDGE DROPS WHAT ARRIVES BEFORE THEN.',
+			'settings.station.serialTcpNotes' => 'A NETWORK SERIAL BRIDGE (SER2NET, A SERIAL DEVICE SERVER, SOCAT) HANDS THE RADIO\'S SERIAL PORT TO A TCP SOCKET, AND THE APP TALKS TO THE RADIO THROUGH IT AS THROUGH A CABLE. ENTER THE BRIDGE\'S ADDRESS AND PORT, NOT THE RADIO\'S.\n\n- **RAW MODE ONLY.** A BRIDGE IN TELNET OR RFC 2217 MODE ADDS ITS OWN BYTES TO THE STREAM, WHICH THE RADIO READS AS GARBAGE. IN SER2NET, MAKE THE CONNECTION\'S ACCEPTER PLAIN `tcp`, WITH NO `telnet`.\n- **THE BRIDGE SETS THE SPEED**, AND IT MUST MATCH THE RADIO\'S CAT RATE, AS WITH A CABLE. SET SPEED UNDER ADVANCED SETTINGS TO THE SAME, SO THE APP PACES ITSELF FOR THAT WIRE. A LINE THE RADIO NEEDS HELD, SUCH AS RTS ON A KENWOOD, IS THE BRIDGE\'S TO HOLD TOO.\n- **ONE CLIENT AT A TIME.** MOST BRIDGES TAKE ONE CONNECTION PER PORT AND HANG UP ON ANY OTHER AT ONCE. THE CONNECTION THEN FAILS WITH THE BRIDGE\'S REASON, OR, WHEN IT GIVES NONE, SAYS THAT SOMETHING ELSE MAY HAVE THE PORT, SUCH AS A LOGGER, WSJT-X OR RIGCTLD AT THE STATION.\n- **THE APP WAITS HALF A SECOND AFTER CONNECTING** BEFORE IT SENDS ANYTHING, WHILE THE BRIDGE OPENS THE RADIO\'S PORT: A BRIDGE DROPS WHAT ARRIVES BEFORE THEN.',
 			'settings.station.serialTcpBaudRateDescription' => 'THE SPEED THE BRIDGE RUNS THE RADIO\'S SERIAL PORT AT: THE RADIO\'S CAT RATE. THE BRIDGE\'S OWN SETTING IS WHAT SETS IT; THIS TELLS THE APP HOW FAST THAT WIRE IS.',
 			'settings.station.moreBand' => 'MORE',
 			'settings.station.host' => 'ADDRESS',
@@ -7027,6 +7029,8 @@ extension on TranslationsQro {
 			'settings.station.radioPass' => 'RADIO PASSWORD',
 			'settings.station.radioLoginDescription' => 'THE RADIO\'S NETWORK → REMOTE LOGIN, NOT YOUR WIFI PASSWORD.',
 			'settings.station.radioUserRequired' => 'THE RADIO\'S REMOTE-CONTROL USERNAME IS REQUIRED',
+			'settings.station.connectFailedBridgeClosed' => 'THE BRIDGE HUNG UP AT ONCE. ANOTHER PROGRAM AT THE STATION MAY HAVE THE RADIO\'S PORT: A LOGGER, WSJT-X OR RIGCTLD.',
+			'settings.station.connectFailedBridgeSaid' => ({required Object said}) => 'THE BRIDGE HUNG UP AT ONCE, SAYING “${said}”.',
 			'settings.station.connectFailedBusy' => 'DEVICE IS IN USE',
 			'settings.station.connectFailedDenied' => 'ACCESS DENIED',
 			'settings.station.connectFailedDevice' => 'DEVICE NOT FOUND',
@@ -7113,10 +7117,10 @@ extension on TranslationsQro {
 			'settings.station.models.rotctld' => 'HAMLIB ROTCTLD',
 			'settings.station.models.everywareServer' => 'GREEN HERON EVERYWARE SERVER',
 			'settings.station.models.everywareRotor' => 'GREEN HERON EVERYWARE ROTATOR',
-			'settings.station.models.everywareSwitch' => 'GREEN HERON EVERYWARE SWITCH',
-			'settings.station.models.everywareDirectional' => 'GREEN HERON EVERYWARE DIRECTIONAL SWITCH',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.everywareSwitch' => 'GREEN HERON EVERYWARE SWITCH',
+			'settings.station.models.everywareDirectional' => 'GREEN HERON EVERYWARE DIRECTIONAL SWITCH',
 			'settings.station.models.otrsp' => 'SO2R SWITCHER (OTRSP)',
 			'settings.station.models.rigSelectPro' => 'DX ENGINEERING RIGSELECT PRO',
 			'settings.station.models.ycccSo2r' => 'YCCC SO2R BOX',
@@ -7627,10 +7631,10 @@ extension on TranslationsQro {
 			'settings.gridPrecisionDescription.eight' => '8 DIGITS',
 			'commands.enableSyncFirst' => 'ENABLE SYNC IN SETTINGS FIRST.',
 			'commands.fullResyncStarted' => 'FULL RESYNC STARTED — LOCAL DATA WAS BACKED UP FIRST.',
-			'commands.noDataFilesMatched' => ({required Object target}) => 'NO DATA FILES MATCHED "${target}".',
-			'commands.reloadFailed' => ({required Object error}) => 'RELOAD FAILED: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'commands.noDataFilesMatched' => ({required Object target}) => 'NO DATA FILES MATCHED "${target}".',
+			'commands.reloadFailed' => ({required Object error}) => 'RELOAD FAILED: ${error}',
 			'commands.reloadingAll' => 'RELOADING ALL DATA FILES…',
 			'commands.reloadingTarget' => ({required Object target}) => 'RELOADING ${target} DATA FILES…',
 			'commands.updatingAllDataFiles' => 'CHECKING EVERY DATA FILE FOR UPDATES…',
@@ -8141,10 +8145,10 @@ extension on TranslationsQro {
 			'fileOpen.installExtension' => 'INSTALL THE EXTENSION',
 			'fileOpen.importKeyboardShortcuts' => 'IMPORT AS A KEYBOARD SHORTCUT SET',
 			'fileOpen.importCwMessages' => 'IMPORT AS A CW MESSAGE SET',
-			'fileOpen.importVoiceMessages' => 'IMPORT AS A VOICE MESSAGE SET',
-			'fileOpen.importIntoLogs' => 'IMPORT INTO LOGS',
 			_ => null,
 		} ?? switch (path) {
+			'fileOpen.importVoiceMessages' => 'IMPORT AS A VOICE MESSAGE SET',
+			'fileOpen.importIntoLogs' => 'IMPORT INTO LOGS',
 			'fileOpen.importInto' => ({required Object name}) => 'IMPORT INTO ${name}',
 			'fileOpen.importAsOperation' => 'IMPORT AS A NEW OPERATION',
 			'fileOpen.importLayoutInto' => ({required Object view}) => 'IMPORT AS A ${view} LAYOUT',

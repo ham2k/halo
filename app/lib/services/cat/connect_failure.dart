@@ -25,6 +25,7 @@ String connectFailureReason(Object error) {
   // classification is carried from the throw site, which is the only place
   // that knows whether the port was absent, held or refused.
   if (error is SerialPortProblem) return 'serial:${error.failure.name}';
+  if (error is SerialTcpBridgeClosed) return 'bridge_closed';
   return 'other';
 }
 
@@ -60,6 +61,9 @@ String friendlyConnectError(String reason, Object error) {
       return t.settings.station.connectFailedLines;
     case 'serial:unsupported':
       return t.settings.station.connectFailedUnsupported;
+    case 'bridge_closed' when error is SerialTcpBridgeClosed:
+      final said = error.said;
+      return said == null ? t.settings.station.connectFailedBridgeClosed : t.settings.station.connectFailedBridgeSaid(said: said);
     default:
       // 'serial:other' included: a cause the transport could not place
       // keeps its own words rather than being translated into a guess.
@@ -72,9 +76,10 @@ String friendlyConnectError(String reason, Object error) {
 /// open failure names the port, and the port carries the adapter's serial
 /// number. The OS's own words are kept: they are what tell a network that is
 /// gone ("Network is unreachable") from a radio that refused. So are the
-/// adapter's USB ids ([connectFailureUsbId]).
+/// adapter's USB ids ([connectFailureUsbId]), and how a Serial over TCP
+/// bridge's connection closed: a clean hang-up or a reset in the path.
 String connectFailedNote(String reason, Object error) {
-  final os = osErrorDetail(error);
+  final os = osErrorDetail(error) ?? (error is SerialTcpBridgeClosed ? error.how : null);
   final usb = connectFailureUsbId(error);
   return 'connect failed: $reason (${error.runtimeType}${os == null ? '' : ': $os'})${usb == null ? '' : ' usb $usb'}';
 }

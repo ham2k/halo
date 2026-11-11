@@ -9,6 +9,7 @@
 // docs/design/cat.md § Serial over TCP.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:halo_i18n/halo_i18n.dart';
 
@@ -35,6 +36,20 @@ const serialTcpPortConfigKey = 'serialTcpPort';
 /// than a bridge takes to open a local port; the radio's replies arrive
 /// after it, never during.
 const serialTcpSettle = Duration(milliseconds: 500);
+
+/// Why a bridge hung up, as it said so: the last line it sent with anything
+/// readable on it — a banner sent on every connect comes first, the reason
+/// last — printable ASCII only, cut short. Null when it sent nothing
+/// readable.
+String? _bridgeWords(List<int> bytes) {
+  final lines = latin1
+      .decode(bytes)
+      .split(RegExp(r'[\r\n]+'))
+      .map((line) => line.replaceAll(RegExp(r'[^\x20-\x7E]+'), ' ').replaceAll(RegExp(' +'), ' ').trim());
+  final text = lines.lastWhere((line) => line.isNotEmpty, orElse: () => '');
+  if (text.isEmpty) return null;
+  return text.length <= 80 ? text : '${text.substring(0, 79)}…';
+}
 
 class SerialTcpTransport extends TcpTransport {
   const SerialTcpTransport() : super(portConfigKey: serialTcpPortConfigKey);
@@ -68,10 +83,31 @@ class SerialTcpTransport extends TcpTransport {
   @override
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async {
     final connection = await super.connect(target, cancel: cancel);
-    await Future.any([Future<void>.delayed(serialTcpSettle), cancel.whenCancelled]);
+    final hungUp = await Future.any<bool>([
+      Future<bool>.delayed(serialTcpSettle, () => false),
+      cancel.whenCancelled.then((_) => false),
+      connection.closed.then((_) => true),
+    ]);
     if (cancel.isCancelled) {
       await connection.close();
       throw const CatCancelledException();
+    }
+    if (hungUp) {
+      // Nothing has read the connection yet, so what the bridge sent before
+      // closing is still buffered behind its end. The fold relies on [data]
+      // ending when [closed] completes, as the TCP connection's does; a
+      // connection whose data outlived its close would hang here. Closed
+      // after reading: the bridge's end is gone, but ours stays open until
+      // destroyed.
+      final sent = await connection.data.fold<List<int>>([], (all, chunk) => all..addAll(chunk));
+      await connection.close();
+      throw SerialTcpBridgeClosed(
+        _bridgeWords(sent),
+        how: switch (connection) {
+          ExplainsClose(:final closeReason) => closeReason,
+          _ => null,
+        },
+      );
     }
     return connection;
   }

@@ -10,6 +10,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/drivers/kenwood_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
@@ -69,6 +70,32 @@ class _FakeBridgedK3 {
   int get port => _server.port;
 
   Future<void> stop() => _server.close();
+}
+
+/// A bridge that accepts, says [words] if given, as ser2net does, and hangs
+/// up [after] the accept: at once when another program holds its radio port.
+class _HangUpBridge {
+  final ServerSocket server;
+
+  /// Completes when the app's end of the connection is closed too.
+  final clientClosed = Completer<void>();
+
+  _HangUpBridge._(this.server, {String? words, required Duration after}) {
+    server.listen((socket) {
+      socket.listen(
+        (_) {},
+        onError: (Object _) {},
+        onDone: () {
+          if (!clientClosed.isCompleted) clientClosed.complete();
+        },
+      );
+      if (words != null) socket.write(words);
+      unawaited(Future<void>.delayed(after).then((_) => socket.close()).then((_) {}, onError: (Object _) {}));
+    });
+  }
+
+  static Future<_HangUpBridge> start({String? words, Duration after = Duration.zero}) async =>
+      _HangUpBridge._(await ServerSocket.bind(InternetAddress.loopbackIPv4, 0), words: words, after: after);
 }
 
 Future<void> _settleUntil(bool Function() done, {int tries = 500}) async {
@@ -163,6 +190,81 @@ void main() {
       for (final command in k3.commands.sublist(1, k3.commands.length - 1)) {
         expect(command, matches(RegExp(r'^[A-Z]{2}[$]?;$')), reason: 'a read, not a write');
       }
+    });
+  });
+
+  group('a bridge another program holds', () {
+    late CatService cat;
+    late _HangUpBridge bridge;
+    late List<(String, Map<String, Object?>)> tracked;
+    final seen = <EquipmentStatus>[];
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      tracked = [];
+      cat = CatService(SettingsService(await SharedPreferences.getInstance()), onTrack: (event, [props = const {}]) => tracked.add((event, props)));
+      seen.clear();
+    });
+
+    tearDown(() async {
+      cat.dispose();
+      await bridge.server.close();
+    });
+
+    Future<EquipmentState> connectThrough(_HangUpBridge through) async {
+      bridge = through;
+      final node = await cat.addNode(
+        typeKey: 'elecraft-generic-serial-tcp',
+        name: 'Remote K3',
+        config: {'host': through.server.address.address, serialTcpPortConfigKey: through.server.port, serialTcpLinkBaudKey: 38400},
+      );
+      cat.addListener(() => seen.add(cat.stateFor(node.uuid).status));
+      await cat.connect(node.uuid);
+      return cat.stateFor(node.uuid);
+    }
+
+    Iterable<Object?> failureReasons() => tracked.where((e) => e.$1 == 'radio_connect_failed').map((e) => e.$2['reason']);
+
+    test("fails the connect with the bridge's own words, never showing it connected, and lets go of the socket", () async {
+      // The traps: a hang-up that reads as Connected and then a bare
+      // Disconnected, sending the operator to check a cable that is fine;
+      // the bridge's reason, the one thing naming the cause, dropped or
+      // buried behind the banner it sends every client; and
+      // the app's end left half-open, one more for every retry while the
+      // port stays busy.
+      final state = await connectThrough(await _HangUpBridge.start(words: 'Welcome to the station bridge\r\nPort already in use\r\n'));
+      expect(state.status, EquipmentStatus.error);
+      expect(state.error, t.settings.station.connectFailedBridgeSaid(said: 'Port already in use'));
+      expect(seen, isNot(contains(EquipmentStatus.connected)));
+      expect(failureReasons(), ['bridge_closed']);
+      expect(state.errorDetail, contains('the other end closed the connection'), reason: 'a clean hang-up, told apart from a reset in the path');
+      await bridge.clientClosed.future.timeout(const Duration(seconds: 2));
+    });
+
+    test('says the bridge hung up when it says nothing itself', () async {
+      final state = await connectThrough(await _HangUpBridge.start());
+      expect(state.status, EquipmentStatus.error);
+      expect(state.error, t.settings.station.connectFailedBridgeClosed);
+      expect(seen, isNot(contains(EquipmentStatus.connected)));
+      expect(failureReasons(), ['bridge_closed']);
+    });
+
+    test("quotes only what an operator can read of the bridge's line, cut to fit the row", () async {
+      // The trap: a bridge relaying the radio's binary CAT, or a runaway
+      // line, before it hangs up, landing control bytes and a wall of text
+      // on the equipment row.
+      final state = await connectThrough(await _HangUpBridge.start(words: 'busy\x07\x00 port ${'x' * 100}\r\n'));
+      expect(state.error, t.settings.station.connectFailedBridgeSaid(said: '${'busy port ${'x' * 100}'.substring(0, 79)}…'));
+    });
+
+    test('takes a close after the settle window as an ordinary drop', () async {
+      // The trap: a radio that answered and then went away, filed as a busy
+      // port and sending the operator after a program that is not there.
+      final state = await connectThrough(await _HangUpBridge.start(after: serialTcpSettle * 2));
+      expect(state.status, EquipmentStatus.connected);
+      await _settleUntil(() => seen.contains(EquipmentStatus.disconnected));
+      expect(cat.stateFor(cat.nodes.single.uuid).error, isNull);
+      expect(failureReasons(), isEmpty);
     });
   });
 }

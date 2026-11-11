@@ -866,8 +866,14 @@ with the derived pairings behind Other rather than beside a radio's own network 
   followed only at poll rate, and a K4 rejects every `IF` reply. A K3 behind ser2net at a remote
   station answered `FA`, `MD`, `IF` and `PC` in raw mode, 60–160 ms apart over the internet, and
   lost the first command after a connect; the app followed it on this pairing.
-- **Most bridges take one client per port** and close any other at once. Such a connection reads
-  as connected and then dropped, with no reason given — the same as on every TCP pairing.
+- **Most bridges take one client per port** and hang up on any other at once, some saying why first
+  (ser2net's "Port already in use"). A hang-up inside the settle window fails the connect
+  (`SerialTcpBridgeClosed`, reason `bridge_closed`) and never shows the radio connected. The row
+  quotes the last line the bridge sent, which is its reason, ahead of any banner; a bridge that said
+  nothing gets the likely cause instead, another program holding the radio's port. The guess never
+  follows a quote: ser2net also hangs up when it cannot open the device, and says so. A
+  close after the window is an ordinary drop. A network radio's own TCP pairing has no settle window
+  and no such check: it is not delayed for a case a bridge creates.
 
 ## Platforms
 

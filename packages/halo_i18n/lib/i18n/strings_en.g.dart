@@ -6213,8 +6213,8 @@ class Translations$settings$station$en {
 	/// en: 'Other…'
 	String get transportOther => 'Other…';
 
-	/// en: 'A network serial bridge (ser2net, a serial device server, socat) hands the radio's serial port to a TCP socket, and the app talks to the radio through it as through a cable. Enter the bridge's address and port, not the radio's. - **Raw mode only.** A bridge in telnet or RFC 2217 mode adds its own bytes to the stream, which the radio reads as garbage. In ser2net, make the connection's accepter plain `tcp`, with no `telnet`. - **The bridge sets the speed**, and it must match the radio's CAT rate, as with a cable. Set Speed under Advanced Settings to the same, so the app paces itself for that wire. A line the radio needs held, such as RTS on a Kenwood, is the bridge's to hold too. - **One client at a time.** Most bridges take one connection per port and close any other at once. If the connection opens and drops straight away, something else has the port: a logger, WSJT-X or rigctld at the station. - **The app waits half a second after connecting** before it sends anything, while the bridge opens the radio's port: a bridge drops what arrives before then.'
-	String get serialTcpNotes => 'A network serial bridge (ser2net, a serial device server, socat) hands the radio\'s serial port to a TCP socket, and the app talks to the radio through it as through a cable. Enter the bridge\'s address and port, not the radio\'s.\n\n- **Raw mode only.** A bridge in telnet or RFC 2217 mode adds its own bytes to the stream, which the radio reads as garbage. In ser2net, make the connection\'s accepter plain `tcp`, with no `telnet`.\n- **The bridge sets the speed**, and it must match the radio\'s CAT rate, as with a cable. Set Speed under Advanced Settings to the same, so the app paces itself for that wire. A line the radio needs held, such as RTS on a Kenwood, is the bridge\'s to hold too.\n- **One client at a time.** Most bridges take one connection per port and close any other at once. If the connection opens and drops straight away, something else has the port: a logger, WSJT-X or rigctld at the station.\n- **The app waits half a second after connecting** before it sends anything, while the bridge opens the radio\'s port: a bridge drops what arrives before then.';
+	/// en: 'A network serial bridge (ser2net, a serial device server, socat) hands the radio's serial port to a TCP socket, and the app talks to the radio through it as through a cable. Enter the bridge's address and port, not the radio's. - **Raw mode only.** A bridge in telnet or RFC 2217 mode adds its own bytes to the stream, which the radio reads as garbage. In ser2net, make the connection's accepter plain `tcp`, with no `telnet`. - **The bridge sets the speed**, and it must match the radio's CAT rate, as with a cable. Set Speed under Advanced Settings to the same, so the app paces itself for that wire. A line the radio needs held, such as RTS on a Kenwood, is the bridge's to hold too. - **One client at a time.** Most bridges take one connection per port and hang up on any other at once. The connection then fails with the bridge's reason, or, when it gives none, says that something else may have the port, such as a logger, WSJT-X or rigctld at the station. - **The app waits half a second after connecting** before it sends anything, while the bridge opens the radio's port: a bridge drops what arrives before then.'
+	String get serialTcpNotes => 'A network serial bridge (ser2net, a serial device server, socat) hands the radio\'s serial port to a TCP socket, and the app talks to the radio through it as through a cable. Enter the bridge\'s address and port, not the radio\'s.\n\n- **Raw mode only.** A bridge in telnet or RFC 2217 mode adds its own bytes to the stream, which the radio reads as garbage. In ser2net, make the connection\'s accepter plain `tcp`, with no `telnet`.\n- **The bridge sets the speed**, and it must match the radio\'s CAT rate, as with a cable. Set Speed under Advanced Settings to the same, so the app paces itself for that wire. A line the radio needs held, such as RTS on a Kenwood, is the bridge\'s to hold too.\n- **One client at a time.** Most bridges take one connection per port and hang up on any other at once. The connection then fails with the bridge\'s reason, or, when it gives none, says that something else may have the port, such as a logger, WSJT-X or rigctld at the station.\n- **The app waits half a second after connecting** before it sends anything, while the bridge opens the radio\'s port: a bridge drops what arrives before then.';
 
 	/// en: 'The speed the bridge runs the radio's serial port at: the radio's CAT rate. The bridge's own setting is what sets it; this tells the app how fast that wire is.'
 	String get serialTcpBaudRateDescription => 'The speed the bridge runs the radio\'s serial port at: the radio\'s CAT rate. The bridge\'s own setting is what sets it; this tells the app how fast that wire is.';
@@ -6695,6 +6695,12 @@ class Translations$settings$station$en {
 
 	/// en: 'The radio's remote-control username is required'
 	String get radioUserRequired => 'The radio\'s remote-control username is required';
+
+	/// en: 'The bridge hung up at once. Another program at the station may have the radio's port: a logger, WSJT-X or rigctld.'
+	String get connectFailedBridgeClosed => 'The bridge hung up at once. Another program at the station may have the radio\'s port: a logger, WSJT-X or rigctld.';
+
+	/// en: 'The bridge hung up at once, saying “${said}”.'
+	String connectFailedBridgeSaid({required Object said}) => 'The bridge hung up at once, saying “${said}”.';
 
 	/// en: 'Device is in use'
 	String get connectFailedBusy => 'Device is in use';
@@ -13064,7 +13070,7 @@ extension on Translations {
 			'settings.station.nameDescription' => 'What you call it — "Left Radio". Optional.',
 			'settings.station.transport' => 'Connection',
 			'settings.station.transportOther' => 'Other…',
-			'settings.station.serialTcpNotes' => 'A network serial bridge (ser2net, a serial device server, socat) hands the radio\'s serial port to a TCP socket, and the app talks to the radio through it as through a cable. Enter the bridge\'s address and port, not the radio\'s.\n\n- **Raw mode only.** A bridge in telnet or RFC 2217 mode adds its own bytes to the stream, which the radio reads as garbage. In ser2net, make the connection\'s accepter plain `tcp`, with no `telnet`.\n- **The bridge sets the speed**, and it must match the radio\'s CAT rate, as with a cable. Set Speed under Advanced Settings to the same, so the app paces itself for that wire. A line the radio needs held, such as RTS on a Kenwood, is the bridge\'s to hold too.\n- **One client at a time.** Most bridges take one connection per port and close any other at once. If the connection opens and drops straight away, something else has the port: a logger, WSJT-X or rigctld at the station.\n- **The app waits half a second after connecting** before it sends anything, while the bridge opens the radio\'s port: a bridge drops what arrives before then.',
+			'settings.station.serialTcpNotes' => 'A network serial bridge (ser2net, a serial device server, socat) hands the radio\'s serial port to a TCP socket, and the app talks to the radio through it as through a cable. Enter the bridge\'s address and port, not the radio\'s.\n\n- **Raw mode only.** A bridge in telnet or RFC 2217 mode adds its own bytes to the stream, which the radio reads as garbage. In ser2net, make the connection\'s accepter plain `tcp`, with no `telnet`.\n- **The bridge sets the speed**, and it must match the radio\'s CAT rate, as with a cable. Set Speed under Advanced Settings to the same, so the app paces itself for that wire. A line the radio needs held, such as RTS on a Kenwood, is the bridge\'s to hold too.\n- **One client at a time.** Most bridges take one connection per port and hang up on any other at once. The connection then fails with the bridge\'s reason, or, when it gives none, says that something else may have the port, such as a logger, WSJT-X or rigctld at the station.\n- **The app waits half a second after connecting** before it sends anything, while the bridge opens the radio\'s port: a bridge drops what arrives before then.',
 			'settings.station.serialTcpBaudRateDescription' => 'The speed the bridge runs the radio\'s serial port at: the radio\'s CAT rate. The bridge\'s own setting is what sets it; this tells the app how fast that wire is.',
 			'settings.station.moreBand' => 'More',
 			'settings.station.host' => 'Address',
@@ -13225,6 +13231,8 @@ extension on Translations {
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s Network → Remote login, not your WiFi password.',
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
+			'settings.station.connectFailedBridgeClosed' => 'The bridge hung up at once. Another program at the station may have the radio\'s port: a logger, WSJT-X or rigctld.',
+			'settings.station.connectFailedBridgeSaid' => ({required Object said}) => 'The bridge hung up at once, saying “${said}”.',
 			'settings.station.connectFailedBusy' => 'Device is in use',
 			'settings.station.connectFailedDenied' => 'Access denied',
 			'settings.station.connectFailedDevice' => 'Device not found',
@@ -13311,10 +13319,10 @@ extension on Translations {
 			'settings.station.models.rotctld' => 'Hamlib rotctld',
 			'settings.station.models.everywareServer' => 'Green Heron Everyware server',
 			'settings.station.models.everywareRotor' => 'Green Heron Everyware rotator',
-			'settings.station.models.everywareSwitch' => 'Green Heron Everyware switch',
-			'settings.station.models.everywareDirectional' => 'Green Heron Everyware directional switch',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.everywareSwitch' => 'Green Heron Everyware switch',
+			'settings.station.models.everywareDirectional' => 'Green Heron Everyware directional switch',
 			'settings.station.models.otrsp' => 'SO2R Switcher (OTRSP)',
 			'settings.station.models.rigSelectPro' => 'DX Engineering RigSelect Pro',
 			'settings.station.models.ycccSo2r' => 'YCCC SO2R Box',
@@ -13825,10 +13833,10 @@ extension on Translations {
 			'settings.gridPrecisionDescription.eight' => '8 digits',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
 			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
-			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
-			'commands.reloadFailed' => ({required Object error}) => 'Reload failed: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
+			'commands.reloadFailed' => ({required Object error}) => 'Reload failed: ${error}',
 			'commands.reloadingAll' => 'Reloading all data files…',
 			'commands.reloadingTarget' => ({required Object target}) => 'Reloading ${target} data files…',
 			'commands.updatingAllDataFiles' => 'Checking every data file for updates…',
@@ -14339,10 +14347,10 @@ extension on Translations {
 			'fileOpen.installExtension' => 'Install the extension',
 			'fileOpen.importKeyboardShortcuts' => 'Import as a keyboard shortcut set',
 			'fileOpen.importCwMessages' => 'Import as a CW message set',
-			'fileOpen.importVoiceMessages' => 'Import as a voice message set',
-			'fileOpen.importIntoLogs' => 'Import into Logs',
 			_ => null,
 		} ?? switch (path) {
+			'fileOpen.importVoiceMessages' => 'Import as a voice message set',
+			'fileOpen.importIntoLogs' => 'Import into Logs',
 			'fileOpen.importInto' => ({required Object name}) => 'Import into ${name}',
 			'fileOpen.importAsOperation' => 'Import as a new operation',
 			'fileOpen.importLayoutInto' => ({required Object view}) => 'Import as a ${view} layout',
