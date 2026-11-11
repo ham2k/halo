@@ -3172,6 +3172,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get softwareIntermediaries => 'SOFTWARE INTERMEDIARIES';
 	@override String get otherBrands => 'OTHER BRANDS';
 	@override String get otherEquipment => 'OTHER EQUIPMENT (ANTENNAS, KEYS, ETC)';
+	@override String get developmentTools => 'DEVELOPMENT TOOLS';
 	@override String get newAntenna => 'NEW ANTENNA';
 	@override String get newKey => 'NEW KEY';
 	@override String get newKeyer => 'WINKEYER (K1EL OR COMPATIBLE)';
@@ -3192,15 +3193,15 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get placeholderDropAfter => 'DROP AFTER (SECONDS)';
 	@override String get placeholderDropAfterDescription => 'CLOSE THE CONNECTION ON ITS OWN, TO EXERCISE THE RECONNECT PATH. BLANK OR 0 NEVER DROPS.';
 	@override String get placeholderFailConnect => 'ALWAYS FAIL TO CONNECT';
-	@override String get placeholderConnectFailure => 'THE PLACEHOLDER RADIO WAS TOLD TO REFUSE THIS CONNECTION';
+	@override String get placeholderConnectFailure => 'THIS EQUIPMENT WAS TOLD TO REFUSE THE CONNECTION';
 	@override String get placeholderFreq => 'FREQUENCY (KHZ)';
-	@override String get placeholderFreqDescription => 'WHERE THE PLACEHOLDER RADIO STARTS. IT REPORTS BACK WHATEVER THE APP TUNES IT TO AFTERWARDS.';
+	@override String get placeholderFreqDescription => 'WHERE THIS RADIO STARTS. IT REPORTS BACK WHATEVER THE APP TUNES IT TO AFTERWARDS.';
 	@override String get placeholderMode => 'MODE';
-	@override String get placeholderModeDescription => 'THE MODE THE PLACEHOLDER RADIO STARTS ON, E.G. USB, CW, FT8.';
+	@override String get placeholderModeDescription => 'THE MODE THIS RADIO STARTS ON, E.G. USB, CW, FT8.';
 	@override String get placeholderPower => 'POWER (WATTS)';
 	@override String get placeholderPurpose => 'USE THIS RADIO TO KEEP TRACK OF WHICH RIG YOU\'RE USING FOR LOGGING PURPOSES';
 	@override String get placeholderReplyDelay => 'REPLY DELAY (MS)';
-	@override String get placeholderReplyDelayDescription => 'HOW LONG THE PLACEHOLDER RADIO TAKES TO REPORT A CHANGE BACK. BLANK OR 0 REPLIES AT ONCE.';
+	@override String get placeholderReplyDelayDescription => 'HOW LONG THIS RADIO TAKES TO REPORT A CHANGE BACK. BLANK OR 0 REPLIES AT ONCE.';
 	@override String get cwKeyerField => 'CAT CW KEYER';
 	@override String get cwKeyerFieldDescription => 'WHETHER THIS RADIO KEYS CW FROM TEXT OVER CAT. OFF FOR A RIG THE APP DOES NOT KNOW.';
 	@override String get voiceMemories => 'VOICE MEMORIES';
@@ -3237,6 +3238,9 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get placeholderWholeNumberInvalid => 'MUST BE A WHOLE NUMBER, 0 OR MORE';
 	@override String get placeholderFreqInvalid => 'MUST BE A FREQUENCY IN KHZ, GREATER THAN ZERO';
 	@override String get placeholderModeInvalid => 'MUST BE A MODE NAME, E.G. USB, CW, FT8';
+	@override String get simulatedSwitchAntennas => 'ANTENNAS';
+	@override String get simulatedSwitchRadios => 'RADIO PORTS';
+	@override String simulatedSwitchCountInvalid({required Object min, required Object max}) => 'A WHOLE NUMBER, ${min} TO ${max}';
 	@override String get switchLayout => 'LAYOUT';
 	@override String get switchLayoutDescription => 'WHICH SIDE OF THE SWITCH YOUR RADIOS ARE PLUGGED INTO.';
 	@override String get switchLayoutRequired => 'CHOOSE HOW THE SWITCH IS WIRED';
@@ -4791,8 +4795,10 @@ class _Translations$settings$station$models$qro extends Translations$settings$st
 	@override String get key => 'CW KEY';
 	@override String get midiController => 'MIDI CONTROLLER';
 	@override String get winkeyer => 'WINKEYER';
-	@override String get placeholderRadio => 'GENERIC RADIO (PLACEHOLDER)';
-	@override String get placeholderRadioNodeName => 'MY RADIO';
+	@override String get placeholderRadio => 'SIMULATED RADIO';
+	@override String get placeholderRadioNodeName => 'SIMULATED RADIO';
+	@override String get simulatedRotator => 'SIMULATED ROTATOR';
+	@override String get simulatedSwitch => 'SIMULATED ANTENNA SWITCH';
 	@override String get antennaGenius => '4O3A ANTENNA GENIUS';
 	@override String get sierraCoax => 'SIERRA RADIO CX-1 COAX SWITCH';
 	@override String get gs232a => 'YAESU GS-232A ROTATOR INTERFACE';
@@ -7095,8 +7101,10 @@ extension on TranslationsQro {
 			'settings.station.models.key' => 'CW KEY',
 			'settings.station.models.midiController' => 'MIDI CONTROLLER',
 			'settings.station.models.winkeyer' => 'WINKEYER',
-			'settings.station.models.placeholderRadio' => 'GENERIC RADIO (PLACEHOLDER)',
-			'settings.station.models.placeholderRadioNodeName' => 'MY RADIO',
+			'settings.station.models.placeholderRadio' => 'SIMULATED RADIO',
+			'settings.station.models.placeholderRadioNodeName' => 'SIMULATED RADIO',
+			'settings.station.models.simulatedRotator' => 'SIMULATED ROTATOR',
+			'settings.station.models.simulatedSwitch' => 'SIMULATED ANTENNA SWITCH',
 			'settings.station.models.antennaGenius' => '4O3A ANTENNA GENIUS',
 			'settings.station.models.sierraCoax' => 'SIERRA RADIO CX-1 COAX SWITCH',
 			'settings.station.models.gs232a' => 'YAESU GS-232A ROTATOR INTERFACE',
@@ -7107,10 +7115,10 @@ extension on TranslationsQro {
 			'settings.station.models.everywareRotor' => 'GREEN HERON EVERYWARE ROTATOR',
 			'settings.station.models.everywareSwitch' => 'GREEN HERON EVERYWARE SWITCH',
 			'settings.station.models.everywareDirectional' => 'GREEN HERON EVERYWARE DIRECTIONAL SWITCH',
-			'settings.station.models.otrsp' => 'SO2R SWITCHER (OTRSP)',
-			'settings.station.models.rigSelectPro' => 'DX ENGINEERING RIGSELECT PRO',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.otrsp' => 'SO2R SWITCHER (OTRSP)',
+			'settings.station.models.rigSelectPro' => 'DX ENGINEERING RIGSELECT PRO',
 			'settings.station.models.ycccSo2r' => 'YCCC SO2R BOX',
 			'settings.station.models.so2rduino' => 'SO2RDUINO',
 			'settings.station.models.rtlSdr' => 'RTL-SDR',
@@ -7271,6 +7279,7 @@ extension on TranslationsQro {
 			'settings.station.softwareIntermediaries' => 'SOFTWARE INTERMEDIARIES',
 			'settings.station.otherBrands' => 'OTHER BRANDS',
 			'settings.station.otherEquipment' => 'OTHER EQUIPMENT (ANTENNAS, KEYS, ETC)',
+			'settings.station.developmentTools' => 'DEVELOPMENT TOOLS',
 			'settings.station.newAntenna' => 'NEW ANTENNA',
 			'settings.station.newKey' => 'NEW KEY',
 			'settings.station.newKeyer' => 'WINKEYER (K1EL OR COMPATIBLE)',
@@ -7357,15 +7366,15 @@ extension on TranslationsQro {
 			'settings.station.placeholderDropAfter' => 'DROP AFTER (SECONDS)',
 			'settings.station.placeholderDropAfterDescription' => 'CLOSE THE CONNECTION ON ITS OWN, TO EXERCISE THE RECONNECT PATH. BLANK OR 0 NEVER DROPS.',
 			'settings.station.placeholderFailConnect' => 'ALWAYS FAIL TO CONNECT',
-			'settings.station.placeholderConnectFailure' => 'THE PLACEHOLDER RADIO WAS TOLD TO REFUSE THIS CONNECTION',
+			'settings.station.placeholderConnectFailure' => 'THIS EQUIPMENT WAS TOLD TO REFUSE THE CONNECTION',
 			'settings.station.placeholderFreq' => 'FREQUENCY (KHZ)',
-			'settings.station.placeholderFreqDescription' => 'WHERE THE PLACEHOLDER RADIO STARTS. IT REPORTS BACK WHATEVER THE APP TUNES IT TO AFTERWARDS.',
+			'settings.station.placeholderFreqDescription' => 'WHERE THIS RADIO STARTS. IT REPORTS BACK WHATEVER THE APP TUNES IT TO AFTERWARDS.',
 			'settings.station.placeholderMode' => 'MODE',
-			'settings.station.placeholderModeDescription' => 'THE MODE THE PLACEHOLDER RADIO STARTS ON, E.G. USB, CW, FT8.',
+			'settings.station.placeholderModeDescription' => 'THE MODE THIS RADIO STARTS ON, E.G. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'POWER (WATTS)',
 			'settings.station.placeholderPurpose' => 'USE THIS RADIO TO KEEP TRACK OF WHICH RIG YOU\'RE USING FOR LOGGING PURPOSES',
 			'settings.station.placeholderReplyDelay' => 'REPLY DELAY (MS)',
-			'settings.station.placeholderReplyDelayDescription' => 'HOW LONG THE PLACEHOLDER RADIO TAKES TO REPORT A CHANGE BACK. BLANK OR 0 REPLIES AT ONCE.',
+			'settings.station.placeholderReplyDelayDescription' => 'HOW LONG THIS RADIO TAKES TO REPORT A CHANGE BACK. BLANK OR 0 REPLIES AT ONCE.',
 			'settings.station.cwKeyerField' => 'CAT CW KEYER',
 			'settings.station.cwKeyerFieldDescription' => 'WHETHER THIS RADIO KEYS CW FROM TEXT OVER CAT. OFF FOR A RIG THE APP DOES NOT KNOW.',
 			'settings.station.voiceMemories' => 'VOICE MEMORIES',
@@ -7402,6 +7411,9 @@ extension on TranslationsQro {
 			'settings.station.placeholderWholeNumberInvalid' => 'MUST BE A WHOLE NUMBER, 0 OR MORE',
 			'settings.station.placeholderFreqInvalid' => 'MUST BE A FREQUENCY IN KHZ, GREATER THAN ZERO',
 			'settings.station.placeholderModeInvalid' => 'MUST BE A MODE NAME, E.G. USB, CW, FT8',
+			'settings.station.simulatedSwitchAntennas' => 'ANTENNAS',
+			'settings.station.simulatedSwitchRadios' => 'RADIO PORTS',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'A WHOLE NUMBER, ${min} TO ${max}',
 			'settings.station.switchLayout' => 'LAYOUT',
 			'settings.station.switchLayoutDescription' => 'WHICH SIDE OF THE SWITCH YOUR RADIOS ARE PLUGGED INTO.',
 			'settings.station.switchLayoutRequired' => 'CHOOSE HOW THE SWITCH IS WIRED',
@@ -7617,14 +7629,14 @@ extension on TranslationsQro {
 			'commands.fullResyncStarted' => 'FULL RESYNC STARTED — LOCAL DATA WAS BACKED UP FIRST.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'NO DATA FILES MATCHED "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'RELOAD FAILED: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'commands.reloadingAll' => 'RELOADING ALL DATA FILES…',
 			'commands.reloadingTarget' => ({required Object target}) => 'RELOADING ${target} DATA FILES…',
 			'commands.updatingAllDataFiles' => 'CHECKING EVERY DATA FILE FOR UPDATES…',
 			'commands.updatingDataFiles' => ({required Object names}) => 'CHECKING ${names} FOR UPDATES…',
 			'commands.updateDataFilesFailed' => ({required Object error}) => 'UPDATE FAILED: ${error}',
 			'commands.appUpdatesNotChecked' => 'THIS BUILD DOESN’T CHECK FOR UPDATES',
-			_ => null,
-		} ?? switch (path) {
 			'commands.appUpToDate' => 'THE APP IS UP TO DATE',
 			'commands.appUpdateCheckFailed' => 'COULDN’T CHECK FOR APP UPDATES',
 			'commands.appUpdateNotOpened' => 'AN UPDATE IS AVAILABLE, BUT ITS STORE PAGE DIDN’T OPEN',
@@ -8131,6 +8143,8 @@ extension on TranslationsQro {
 			'fileOpen.importCwMessages' => 'IMPORT AS A CW MESSAGE SET',
 			'fileOpen.importVoiceMessages' => 'IMPORT AS A VOICE MESSAGE SET',
 			'fileOpen.importIntoLogs' => 'IMPORT INTO LOGS',
+			_ => null,
+		} ?? switch (path) {
 			'fileOpen.importInto' => ({required Object name}) => 'IMPORT INTO ${name}',
 			'fileOpen.importAsOperation' => 'IMPORT AS A NEW OPERATION',
 			'fileOpen.importLayoutInto' => ({required Object view}) => 'IMPORT AS A ${view} LAYOUT',

@@ -2847,6 +2847,7 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get softwareIntermediaries => '中継ソフトウェア';
 	@override String get otherBrands => 'その他のブランド';
 	@override String get otherEquipment => 'その他の機器（アンテナ、キーなど）';
+	@override String get developmentTools => '開発ツール';
 	@override String get newAntenna => '新しいアンテナ';
 	@override String get newKey => '新しいキー';
 	@override String get newKeyer => 'WinKeyer（K1ELまたは互換機）';
@@ -2865,15 +2866,15 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get placeholderDropAfter => '切断までの時間（秒）';
 	@override String get placeholderDropAfterDescription => '再接続の処理を試すため、接続を自動的に閉じます。空欄または0で切断しません。';
 	@override String get placeholderFailConnect => '常に接続に失敗する';
-	@override String get placeholderConnectFailure => 'プレースホルダー無線機はこの接続を拒否するよう設定されています';
+	@override String get placeholderConnectFailure => 'この機器は接続を拒否するよう設定されています';
 	@override String get placeholderFreq => '周波数（kHz）';
-	@override String get placeholderFreqDescription => 'プレースホルダー無線機の初期周波数。その後はアプリがチューニングした値を報告します。';
+	@override String get placeholderFreqDescription => 'この無線機の初期周波数。その後はアプリがチューニングした値を報告します。';
 	@override String get placeholderMode => 'モード';
-	@override String get placeholderModeDescription => 'プレースホルダー無線機の初期モード（例：USB、CW、FT8）。';
+	@override String get placeholderModeDescription => 'この無線機の初期モード（例：USB、CW、FT8）。';
 	@override String get placeholderPower => 'パワー（ワット）';
 	@override String get placeholderPurpose => 'ロギングのために、使用中のリグを記録するための無線機です';
 	@override String get placeholderReplyDelay => '応答遅延（ms）';
-	@override String get placeholderReplyDelayDescription => 'プレースホルダー無線機が変更を報告するまでの時間。空欄または0で即座に応答します。';
+	@override String get placeholderReplyDelayDescription => 'この無線機が変更を報告するまでの時間。空欄または0で即座に応答します。';
 	@override String get cwKeyerField => 'CAT CWキーヤー';
 	@override String get cwKeyerFieldDescription => 'この無線機がCAT経由のテキストでCWをキーイングするかどうか。アプリが認識していないリグではオフ。';
 	@override String get voiceMemories => 'ボイスメモリー';
@@ -2906,6 +2907,9 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get placeholderWholeNumberInvalid => '0以上の整数を入力してください';
 	@override String get placeholderFreqInvalid => '0より大きいkHz単位の周波数を入力してください';
 	@override String get placeholderModeInvalid => 'モード名を入力してください（例：USB、CW、FT8）';
+	@override String get simulatedSwitchAntennas => 'アンテナ';
+	@override String get simulatedSwitchRadios => '無線機ポート';
+	@override String simulatedSwitchCountInvalid({required Object min, required Object max}) => '${min}〜${max}の整数';
 	@override String get switchLayout => 'レイアウト';
 	@override String get switchLayoutDescription => '無線機をスイッチのどちら側に接続しているか。';
 	@override String get switchLayoutRequired => 'スイッチの配線を選択してください';
@@ -4315,8 +4319,10 @@ class _Translations$settings$station$models$ja extends Translations$settings$sta
 	@override String get antenna => 'アンテナ';
 	@override String get key => 'CWキー';
 	@override String get winkeyer => 'WinKeyer';
-	@override String get placeholderRadio => '汎用無線機（プレースホルダー）';
-	@override String get placeholderRadioNodeName => 'マイ無線機';
+	@override String get placeholderRadio => 'シミュレーション無線機';
+	@override String get placeholderRadioNodeName => 'シミュレーション無線機';
+	@override String get simulatedRotator => 'シミュレーションローテーター';
+	@override String get simulatedSwitch => 'シミュレーションアンテナスイッチ';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 Coax Switch';
 	@override String get gs232a => 'Yaesu GS-232A ローテーターインターフェース';
@@ -6318,8 +6324,10 @@ extension on TranslationsJa {
 			'settings.station.models.antenna' => 'アンテナ',
 			'settings.station.models.key' => 'CWキー',
 			'settings.station.models.winkeyer' => 'WinKeyer',
-			'settings.station.models.placeholderRadio' => '汎用無線機（プレースホルダー）',
-			'settings.station.models.placeholderRadioNodeName' => 'マイ無線機',
+			'settings.station.models.placeholderRadio' => 'シミュレーション無線機',
+			'settings.station.models.placeholderRadioNodeName' => 'シミュレーション無線機',
+			'settings.station.models.simulatedRotator' => 'シミュレーションローテーター',
+			'settings.station.models.simulatedSwitch' => 'シミュレーションアンテナスイッチ',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
 			'settings.station.models.gs232a' => 'Yaesu GS-232A ローテーターインターフェース',
@@ -6463,6 +6471,7 @@ extension on TranslationsJa {
 			'settings.station.softwareIntermediaries' => '中継ソフトウェア',
 			'settings.station.otherBrands' => 'その他のブランド',
 			'settings.station.otherEquipment' => 'その他の機器（アンテナ、キーなど）',
+			'settings.station.developmentTools' => '開発ツール',
 			'settings.station.newAntenna' => '新しいアンテナ',
 			'settings.station.newKey' => '新しいキー',
 			'settings.station.newKeyer' => 'WinKeyer（K1ELまたは互換機）',
@@ -6481,15 +6490,15 @@ extension on TranslationsJa {
 			'settings.station.placeholderDropAfter' => '切断までの時間（秒）',
 			'settings.station.placeholderDropAfterDescription' => '再接続の処理を試すため、接続を自動的に閉じます。空欄または0で切断しません。',
 			'settings.station.placeholderFailConnect' => '常に接続に失敗する',
-			'settings.station.placeholderConnectFailure' => 'プレースホルダー無線機はこの接続を拒否するよう設定されています',
+			'settings.station.placeholderConnectFailure' => 'この機器は接続を拒否するよう設定されています',
 			'settings.station.placeholderFreq' => '周波数（kHz）',
-			'settings.station.placeholderFreqDescription' => 'プレースホルダー無線機の初期周波数。その後はアプリがチューニングした値を報告します。',
+			'settings.station.placeholderFreqDescription' => 'この無線機の初期周波数。その後はアプリがチューニングした値を報告します。',
 			'settings.station.placeholderMode' => 'モード',
-			'settings.station.placeholderModeDescription' => 'プレースホルダー無線機の初期モード（例：USB、CW、FT8）。',
+			'settings.station.placeholderModeDescription' => 'この無線機の初期モード（例：USB、CW、FT8）。',
 			'settings.station.placeholderPower' => 'パワー（ワット）',
 			'settings.station.placeholderPurpose' => 'ロギングのために、使用中のリグを記録するための無線機です',
 			'settings.station.placeholderReplyDelay' => '応答遅延（ms）',
-			'settings.station.placeholderReplyDelayDescription' => 'プレースホルダー無線機が変更を報告するまでの時間。空欄または0で即座に応答します。',
+			'settings.station.placeholderReplyDelayDescription' => 'この無線機が変更を報告するまでの時間。空欄または0で即座に応答します。',
 			'settings.station.cwKeyerField' => 'CAT CWキーヤー',
 			'settings.station.cwKeyerFieldDescription' => 'この無線機がCAT経由のテキストでCWをキーイングするかどうか。アプリが認識していないリグではオフ。',
 			'settings.station.voiceMemories' => 'ボイスメモリー',
@@ -6497,11 +6506,11 @@ extension on TranslationsJa {
 			'settings.station.voiceMemoriesInvalid' => '0以上の整数',
 			'settings.station.yaesuMeterCapture' => 'メーターの値を記録',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => '送信中に無線機の出力メーターと高SWRフラグを読み取り、生の値をログに出力します。Yaesuが公開していない目盛りを作成するためのもので、値はメーターとして表示されません。',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => '送信中に無線機のPO、SWR、ALCメーターを読み取り、生の値をログに出力します。Yaesuが公開していない目盛りを作成するためのもので、値はメーターとして表示されません。',
 			'settings.station.telemetryInterval' => 'メーター読み取り間隔（ms）',
 			'settings.station.telemetryIntervalDescription' => '送信中に無線機のメーターを読み取る頻度。空欄にすると、この接続で可能な最速（最大200 ms）になります。',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '${min}〜${max}のミリ秒単位の整数',
 			'settings.station.pollInterval' => 'アイドル時のポーリング間隔（ms）',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '周波数とモードが変化していない間に、無線機に問い合わせる頻度。空欄の場合は${fallback} msです。',
@@ -6524,6 +6533,9 @@ extension on TranslationsJa {
 			'settings.station.placeholderWholeNumberInvalid' => '0以上の整数を入力してください',
 			'settings.station.placeholderFreqInvalid' => '0より大きいkHz単位の周波数を入力してください',
 			'settings.station.placeholderModeInvalid' => 'モード名を入力してください（例：USB、CW、FT8）',
+			'settings.station.simulatedSwitchAntennas' => 'アンテナ',
+			'settings.station.simulatedSwitchRadios' => '無線機ポート',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => '${min}〜${max}の整数',
 			'settings.station.switchLayout' => 'レイアウト',
 			'settings.station.switchLayoutDescription' => '無線機をスイッチのどちら側に接続しているか。',
 			'settings.station.switchLayoutRequired' => 'スイッチの配線を選択してください',
@@ -7008,14 +7020,14 @@ extension on TranslationsJa {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件は確認が必要です', other: '${formatted}件は確認が必要です', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のコンタクトのリファレンスを復元できませんでした', other: '${formatted}件のコンタクトのリファレンスを復元できませんでした', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のコンタクトの${programs}リファレンスが不完全な可能性があります', other: '${formatted}件のコンタクトの${programs}リファレンスが不完全な可能性があります', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => '統合されたコンタクトでリファレンスが失われる可能性があります。どの種類が重ねられるかをアクティビティが示せませんでした。これを避けるには、キャンセルして再試行してください。',
 			'adifImport.nothingToImport' => 'このファイルにはインポートできるものがありません',
 			'adifImport.confirm' => 'インポート',
 			'adifImport.importing' => ({required Object filename}) => '${filename}をインポート中…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${filename}から${count}件のコンタクトをインポートしました', other: '${filename}から${formatted}件のコンタクトをインポートしました', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename}をインポートできませんでした：${error}',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename}はADIFファイルではないようです',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '警告：このADIFには${calls}のQSOが含まれていますが、続行すると${station}としてインポートされます。',
 			'adifImport.stationCallJoin' => 'と',

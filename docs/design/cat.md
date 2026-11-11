@@ -359,16 +359,25 @@ what the user configured; everything about a connection is rebuilt at runtime.
 3. **Loopback** — a real `ServerSocket` on 127.0.0.1 playing a scripted dialogue against
    `CatService`. This is the only tier that catches framing across chunk boundaries, cancellation,
    and the ordering races above.
-4. **Placeholder Radio** — a catalogue entry, not a test fixture: a transport with no I/O at all
-   and a driver that holds frequency, mode and power and reports every set straight back
-   (`placeholder_transport.dart`, `placeholder_radio_driver.dart`). Offered to every operator, in
-   every edition — its entry says what it is for — a rig to name on the log, controlling nothing. It
-   proves nothing about any driver — what it makes reachable is everything *above* one, on a build
-   where §Platforms leaves no other radio connectable: the Station panel, Smart VFO Snap, zero
-   beat, the radio1/radio2 assignment, power. Its knobs (connect delay, drop-after, refuse to
-   connect, reply delay) are there because the states worth checking by hand are the slow and
-   failing ones. A protocol emulator — real driver bytes parsed and answered — would live at the
-   transport and is a different thing; this is not it.
+4. **Development Tools** — catalogue entries, not test fixtures: the Add dialog's last shelf, drawn
+   in the developer-mode orange and offered only in developer mode (`developmentToolModelKeys`),
+   since an operator who picked one to log with would be logging a rig that does not exist. A node
+   already on one keeps connecting with developer mode off; only the offer is held back. Each is a
+   driver over the placeholder transport, which has no I/O at all (`placeholder_transport.dart`):
+   the **Simulated Radio** (`placeholder_radio_driver.dart`, stored as `placeholder-radio`, which
+   nodes already carry) holds frequency, mode and power and reports every set straight back — its
+   driver is also every real radio's "no connection yet" pairing, so its form's opening line speaks
+   to an operator naming a rig, not to a developer; the **Simulated Rotator**
+   (`simulated_rotator_driver.dart`) turns 6°/s the shorter way to wherever it is sent; the
+   **Simulated Antenna Switch** (`simulated_switch_driver.dart`) has as many antennas and radio
+   ports as its settings say, 8 × 2 unless told otherwise, and takes every selection at once. They
+   prove nothing about any driver — what they make reachable is everything *above* one, on a build
+   where §Platforms leaves no other equipment connectable: the Station panel, Smart VFO Snap, zero
+   beat, the radio1/radio2 assignment, power, the rotator map, the switch's ports. The transport's
+   knobs (connect delay, drop-after, refuse to connect) and the radio's reply delay are there
+   because the states worth checking by hand are the slow and failing ones. A protocol emulator —
+   real driver bytes parsed and answered — would live at the transport and is a different thing;
+   this is not it.
 
 None of that tests what a radio actually emits. Polo shipped **one** driver proven against real
 hardware and deleted the one it could not make reliable. What each driver has and has not met is

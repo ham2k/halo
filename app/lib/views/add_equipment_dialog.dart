@@ -54,6 +54,10 @@ class AddEquipmentDialog extends StatefulWidget {
   /// Whether "Other Equipment" offers a MIDI controller — behind `EXP MIDI`.
   final bool showMidi;
 
+  /// Whether the Development Tools shelf is offered — developer mode
+  /// ([developmentToolModelKeys]).
+  final bool showDevelopmentTools;
+
   final List<EquipmentType> Function(EquipmentModel model) supportedVariants;
 
   const AddEquipmentDialog({
@@ -65,6 +69,7 @@ class AddEquipmentDialog extends StatefulWidget {
     this.showSdr = false,
     this.showSo2rSwitch = false,
     this.showMidi = false,
+    this.showDevelopmentTools = false,
     required this.supportedVariants,
   });
 
@@ -254,10 +259,16 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
     final switches = <_AddRow>[];
     final rotators = <_AddRow>[];
     final so2rSwitches = <_AddRow>[];
+    final developmentTools = <_AddRow>[];
+    final devMode = HaLoColors.of(context).devMode;
     for (final model in widget.cat.registry.models) {
       if (model.hiddenFromCatalog) continue;
       final variants = widget.supportedVariants(model);
       if (variants.isEmpty) continue;
+      if (developmentToolModelKeys.contains(model.key)) {
+        if (widget.showDevelopmentTools) developmentTools.add(_AddRow.forModel(model, variants, color: devMode));
+        continue;
+      }
       final row = _AddRow.forModel(model, variants);
       // Antenna switches are station plumbing added once, not something an
       // operator browsing for their radio is looking for, so they sit with
@@ -326,6 +337,7 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
       if (catalogue[_softwareKey] case final rows? when rows.isNotEmpty) (key: _softwareKey, title: st.softwareIntermediaries, rows: rows),
       if (catalogue[_otherBrandsKey] case final rows? when rows.isNotEmpty) (key: _otherBrandsKey, title: st.otherBrands, rows: rows),
       if (other.isNotEmpty) (key: _otherEquipmentKey, title: st.otherEquipment, rows: other),
+      if (developmentTools.isNotEmpty) (key: _developmentToolsKey, title: st.developmentTools, rows: developmentTools),
     ];
   }
 
@@ -529,7 +541,7 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
     // two shelf styles one pane apart read as two different mechanisms.
     // [SectionHeader.titleStyle] carries the slab face and the accent; the
     // chevron takes its colour from the same place so the two cannot drift.
-    final titleStyle = SectionHeader.titleStyle(context);
+    final titleStyle = SectionHeader.titleStyle(context, color: group.key == _developmentToolsKey ? HaLoColors.of(context).devMode : null);
     final onHeaderColor = titleStyle.color ?? Theme.of(context).colorScheme.onSurface;
     return SliverCollapsibleSection(
       key: _shelfKey(group.key),
@@ -559,8 +571,8 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
           )
         else
           ListTile(
-            leading: Icon(row.icon),
-            title: Text(row.title),
+            leading: Icon(row.icon, color: row.color),
+            title: Text(row.title, style: TextStyle(color: row.color)),
             subtitle: row.subtitle == null ? null : Text(row.subtitle!),
             // The glyphs belong beside the radio's NAME, not halfway down
             // the row. Material 3 centres `leading`/`trailing` against the
@@ -597,6 +609,7 @@ const _discoveryKey = '<discovered>';
 const _softwareKey = '<software>';
 const _otherBrandsKey = '<other-brands>';
 const _otherEquipmentKey = '<other-equipment>';
+const _developmentToolsKey = '<development-tools>';
 
 /// One row the Add dialog can offer, wherever it came from — a catalogue
 /// radio under its brand, a switch, or the antenna and key that are added by
@@ -609,6 +622,9 @@ const _otherEquipmentKey = '<other-equipment>';
 class _AddRow {
   final String title;
   final IconData icon;
+
+  /// The developer-mode orange, on a development tool's row.
+  final Color? color;
 
   /// What tapping the row answers with — a model to configure, or a device
   /// that announced itself and needs nothing configured at all.
@@ -629,12 +645,21 @@ class _AddRow {
   /// Whether this row IS the spinner — see [_discoveredRows].
   final bool searching;
 
-  _AddRow({required this.title, required this.icon, required this.choice, this.variants = const [], this.subtitle, this.searching = false, String brand = ''})
-    : _haystack = [title, brand, for (final type in variants) type.transportLabel].join(' ').toLowerCase();
+  _AddRow({
+    required this.title,
+    required this.icon,
+    required this.choice,
+    this.variants = const [],
+    this.subtitle,
+    this.searching = false,
+    this.color,
+    String brand = '',
+  }) : _haystack = [title, brand, for (final type in variants) type.transportLabel].join(' ').toLowerCase();
 
-  factory _AddRow.forModel(EquipmentModel model, List<EquipmentType> variants) => _AddRow(
+  factory _AddRow.forModel(EquipmentModel model, List<EquipmentType> variants, {Color? color}) => _AddRow(
     title: model.name,
     icon: iconForCategory(model.category),
+    color: color,
     choice: AddChoice.model(model),
     // Without the derived placeholder: every radio offers it, so on a row
     // it would say nothing about how THIS radio plugs in.

@@ -201,6 +201,7 @@ class StationPanel extends StatelessWidget {
         showSdr: services.settings.experimentEnabled('fall') /* stored key, see experiments.yaml */,
         showSo2rSwitch: services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */,
         showMidi: services.settings.experimentEnabled('midi') /* stored key, see experiments.yaml */,
+        showDevelopmentTools: services.settings.developerMode,
         supportedVariants: _supportedVariants,
       ),
     );

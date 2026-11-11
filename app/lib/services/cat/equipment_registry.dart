@@ -657,6 +657,8 @@ const _defaultModels = [
   pstRotatorModel,
   rotctldModel,
   buddihexModel,
+  simulatedRotatorModel,
+  simulatedSwitchModel,
   ...so2rSwitchModels,
   antennaModel,
   keyModel,

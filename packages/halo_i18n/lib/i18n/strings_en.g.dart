@@ -7118,6 +7118,9 @@ class Translations$settings$station$en {
 	/// en: 'Other Equipment (Antennas, Keys, etc)'
 	String get otherEquipment => 'Other Equipment (Antennas, Keys, etc)';
 
+	/// en: 'Development Tools'
+	String get developmentTools => 'Development Tools';
+
 	/// en: 'New Antenna'
 	String get newAntenna => 'New Antenna';
 
@@ -7177,20 +7180,20 @@ class Translations$settings$station$en {
 	/// en: 'Always fail to connect'
 	String get placeholderFailConnect => 'Always fail to connect';
 
-	/// en: 'The placeholder radio was told to refuse this connection'
-	String get placeholderConnectFailure => 'The placeholder radio was told to refuse this connection';
+	/// en: 'This equipment was told to refuse the connection'
+	String get placeholderConnectFailure => 'This equipment was told to refuse the connection';
 
 	/// en: 'Frequency (kHz)'
 	String get placeholderFreq => 'Frequency (kHz)';
 
-	/// en: 'Where the placeholder radio starts. It reports back whatever the app tunes it to afterwards.'
-	String get placeholderFreqDescription => 'Where the placeholder radio starts. It reports back whatever the app tunes it to afterwards.';
+	/// en: 'Where this radio starts. It reports back whatever the app tunes it to afterwards.'
+	String get placeholderFreqDescription => 'Where this radio starts. It reports back whatever the app tunes it to afterwards.';
 
 	/// en: 'Mode'
 	String get placeholderMode => 'Mode';
 
-	/// en: 'The mode the placeholder radio starts on, e.g. USB, CW, FT8.'
-	String get placeholderModeDescription => 'The mode the placeholder radio starts on, e.g. USB, CW, FT8.';
+	/// en: 'The mode this radio starts on, e.g. USB, CW, FT8.'
+	String get placeholderModeDescription => 'The mode this radio starts on, e.g. USB, CW, FT8.';
 
 	/// en: 'Power (watts)'
 	String get placeholderPower => 'Power (watts)';
@@ -7201,8 +7204,8 @@ class Translations$settings$station$en {
 	/// en: 'Reply delay (ms)'
 	String get placeholderReplyDelay => 'Reply delay (ms)';
 
-	/// en: 'How long the placeholder radio takes to report a change back. Blank or 0 replies at once.'
-	String get placeholderReplyDelayDescription => 'How long the placeholder radio takes to report a change back. Blank or 0 replies at once.';
+	/// en: 'How long this radio takes to report a change back. Blank or 0 replies at once.'
+	String get placeholderReplyDelayDescription => 'How long this radio takes to report a change back. Blank or 0 replies at once.';
 
 	/// en: 'CAT CW keyer'
 	String get cwKeyerField => 'CAT CW keyer';
@@ -7311,6 +7314,15 @@ class Translations$settings$station$en {
 
 	/// en: 'Must be a mode name, e.g. USB, CW, FT8'
 	String get placeholderModeInvalid => 'Must be a mode name, e.g. USB, CW, FT8';
+
+	/// en: 'Antennas'
+	String get simulatedSwitchAntennas => 'Antennas';
+
+	/// en: 'Radio ports'
+	String get simulatedSwitchRadios => 'Radio ports';
+
+	/// en: 'A whole number, ${min} to ${max}'
+	String simulatedSwitchCountInvalid({required Object min, required Object max}) => 'A whole number, ${min} to ${max}';
 
 	/// en: 'Layout'
 	String get switchLayout => 'Layout';
@@ -10674,11 +10686,17 @@ class Translations$settings$station$models$en {
 	/// en: 'WinKeyer'
 	String get winkeyer => 'WinKeyer';
 
-	/// en: 'Generic Radio (Placeholder)'
-	String get placeholderRadio => 'Generic Radio (Placeholder)';
+	/// en: 'Simulated Radio'
+	String get placeholderRadio => 'Simulated Radio';
 
-	/// en: 'My Radio'
-	String get placeholderRadioNodeName => 'My Radio';
+	/// en: 'Simulated Radio'
+	String get placeholderRadioNodeName => 'Simulated Radio';
+
+	/// en: 'Simulated Rotator'
+	String get simulatedRotator => 'Simulated Rotator';
+
+	/// en: 'Simulated Antenna Switch'
+	String get simulatedSwitch => 'Simulated Antenna Switch';
 
 	/// en: '4O3A Antenna Genius'
 	String get antennaGenius => '4O3A Antenna Genius';
@@ -13281,8 +13299,10 @@ extension on Translations {
 			'settings.station.models.key' => 'CW Key',
 			'settings.station.models.midiController' => 'MIDI Controller',
 			'settings.station.models.winkeyer' => 'WinKeyer',
-			'settings.station.models.placeholderRadio' => 'Generic Radio (Placeholder)',
-			'settings.station.models.placeholderRadioNodeName' => 'My Radio',
+			'settings.station.models.placeholderRadio' => 'Simulated Radio',
+			'settings.station.models.placeholderRadioNodeName' => 'Simulated Radio',
+			'settings.station.models.simulatedRotator' => 'Simulated Rotator',
+			'settings.station.models.simulatedSwitch' => 'Simulated Antenna Switch',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
 			'settings.station.models.gs232a' => 'Yaesu GS-232A Rotator Interface',
@@ -13293,10 +13313,10 @@ extension on Translations {
 			'settings.station.models.everywareRotor' => 'Green Heron Everyware rotator',
 			'settings.station.models.everywareSwitch' => 'Green Heron Everyware switch',
 			'settings.station.models.everywareDirectional' => 'Green Heron Everyware directional switch',
-			'settings.station.models.otrsp' => 'SO2R Switcher (OTRSP)',
-			'settings.station.models.rigSelectPro' => 'DX Engineering RigSelect Pro',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.otrsp' => 'SO2R Switcher (OTRSP)',
+			'settings.station.models.rigSelectPro' => 'DX Engineering RigSelect Pro',
 			'settings.station.models.ycccSo2r' => 'YCCC SO2R Box',
 			'settings.station.models.so2rduino' => 'SO2Rduino',
 			'settings.station.models.rtlSdr' => 'RTL-SDR',
@@ -13457,6 +13477,7 @@ extension on Translations {
 			'settings.station.softwareIntermediaries' => 'Software Intermediaries',
 			'settings.station.otherBrands' => 'Other Brands',
 			'settings.station.otherEquipment' => 'Other Equipment (Antennas, Keys, etc)',
+			'settings.station.developmentTools' => 'Development Tools',
 			'settings.station.newAntenna' => 'New Antenna',
 			'settings.station.newKey' => 'New Key',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL or compatible)',
@@ -13543,15 +13564,15 @@ extension on Translations {
 			'settings.station.placeholderDropAfter' => 'Drop after (seconds)',
 			'settings.station.placeholderDropAfterDescription' => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.',
 			'settings.station.placeholderFailConnect' => 'Always fail to connect',
-			'settings.station.placeholderConnectFailure' => 'The placeholder radio was told to refuse this connection',
+			'settings.station.placeholderConnectFailure' => 'This equipment was told to refuse the connection',
 			'settings.station.placeholderFreq' => 'Frequency (kHz)',
-			'settings.station.placeholderFreqDescription' => 'Where the placeholder radio starts. It reports back whatever the app tunes it to afterwards.',
+			'settings.station.placeholderFreqDescription' => 'Where this radio starts. It reports back whatever the app tunes it to afterwards.',
 			'settings.station.placeholderMode' => 'Mode',
-			'settings.station.placeholderModeDescription' => 'The mode the placeholder radio starts on, e.g. USB, CW, FT8.',
+			'settings.station.placeholderModeDescription' => 'The mode this radio starts on, e.g. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Power (watts)',
 			'settings.station.placeholderPurpose' => 'Use this radio to keep track of which rig you\'re using for logging purposes',
 			'settings.station.placeholderReplyDelay' => 'Reply delay (ms)',
-			'settings.station.placeholderReplyDelayDescription' => 'How long the placeholder radio takes to report a change back. Blank or 0 replies at once.',
+			'settings.station.placeholderReplyDelayDescription' => 'How long this radio takes to report a change back. Blank or 0 replies at once.',
 			'settings.station.cwKeyerField' => 'CAT CW keyer',
 			'settings.station.cwKeyerFieldDescription' => 'Whether this radio keys CW from text over CAT. Off for a rig the app does not know.',
 			'settings.station.voiceMemories' => 'Voice memories',
@@ -13588,6 +13609,9 @@ extension on Translations {
 			'settings.station.placeholderWholeNumberInvalid' => 'Must be a whole number, 0 or more',
 			'settings.station.placeholderFreqInvalid' => 'Must be a frequency in kHz, greater than zero',
 			'settings.station.placeholderModeInvalid' => 'Must be a mode name, e.g. USB, CW, FT8',
+			'settings.station.simulatedSwitchAntennas' => 'Antennas',
+			'settings.station.simulatedSwitchRadios' => 'Radio ports',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'A whole number, ${min} to ${max}',
 			'settings.station.switchLayout' => 'Layout',
 			'settings.station.switchLayoutDescription' => 'Which side of the switch your radios are plugged into.',
 			'settings.station.switchLayoutRequired' => 'Choose how the switch is wired',
@@ -13803,14 +13827,14 @@ extension on Translations {
 			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'Reload failed: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'commands.reloadingAll' => 'Reloading all data files…',
 			'commands.reloadingTarget' => ({required Object target}) => 'Reloading ${target} data files…',
 			'commands.updatingAllDataFiles' => 'Checking every data file for updates…',
 			'commands.updatingDataFiles' => ({required Object names}) => 'Checking ${names} for updates…',
 			'commands.updateDataFilesFailed' => ({required Object error}) => 'Update failed: ${error}',
 			'commands.appUpdatesNotChecked' => 'This build doesn’t check for updates',
-			_ => null,
-		} ?? switch (path) {
 			'commands.appUpToDate' => 'The app is up to date',
 			'commands.appUpdateCheckFailed' => 'Couldn’t check for app updates',
 			'commands.appUpdateNotOpened' => 'An update is available, but its store page didn’t open',
@@ -14317,6 +14341,8 @@ extension on Translations {
 			'fileOpen.importCwMessages' => 'Import as a CW message set',
 			'fileOpen.importVoiceMessages' => 'Import as a voice message set',
 			'fileOpen.importIntoLogs' => 'Import into Logs',
+			_ => null,
+		} ?? switch (path) {
 			'fileOpen.importInto' => ({required Object name}) => 'Import into ${name}',
 			'fileOpen.importAsOperation' => 'Import as a new operation',
 			'fileOpen.importLayoutInto' => ({required Object view}) => 'Import as a ${view} layout',

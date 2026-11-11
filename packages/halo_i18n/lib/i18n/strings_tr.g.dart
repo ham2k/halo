@@ -2847,6 +2847,7 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get softwareIntermediaries => 'Aracı Yazılımlar';
 	@override String get otherBrands => 'Diğer Markalar';
 	@override String get otherEquipment => 'Diğer Ekipman (Antenler, Anahtarlar vb.)';
+	@override String get developmentTools => 'Geliştirme Araçları';
 	@override String get newAntenna => 'Yeni Anten';
 	@override String get newKey => 'Yeni Anahtar';
 	@override String get newKeyer => 'WinKeyer (K1EL veya uyumlu)';
@@ -2865,15 +2866,15 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get placeholderDropAfter => 'Şu süre sonra kes (saniye)';
 	@override String get placeholderDropAfterDescription => 'Yeniden bağlanma yolunu denemek için bağlantıyı kendiliğinden kapatır. Boş veya 0 hiç kesmez.';
 	@override String get placeholderFailConnect => 'Bağlantı her zaman başarısız olsun';
-	@override String get placeholderConnectFailure => 'Yer tutucu radyoya bu bağlantıyı reddetmesi söylendi';
+	@override String get placeholderConnectFailure => 'Bu ekipmana bağlantıyı reddetmesi söylendi';
 	@override String get placeholderFreq => 'Frekans (kHz)';
-	@override String get placeholderFreqDescription => 'Yer tutucu radyonun başladığı frekans. Ardından uygulama onu nereye ayarlarsa onu bildirir.';
+	@override String get placeholderFreqDescription => 'Bu radyonun başladığı frekans. Ardından uygulama onu nereye ayarlarsa onu bildirir.';
 	@override String get placeholderMode => 'Mod';
-	@override String get placeholderModeDescription => 'Yer tutucu radyonun başladığı mod, örn. USB, CW, FT8.';
+	@override String get placeholderModeDescription => 'Bu radyonun başladığı mod, örn. USB, CW, FT8.';
 	@override String get placeholderPower => 'Güç (watt)';
 	@override String get placeholderPurpose => 'Kayıt amacıyla hangi cihazı kullandığınızı takip etmek için bu radyoyu kullanın';
 	@override String get placeholderReplyDelay => 'Yanıt gecikmesi (ms)';
-	@override String get placeholderReplyDelayDescription => 'Yer tutucu radyonun bir değişikliği bildirmesinin ne kadar sürdüğü. Boş veya 0 hemen yanıtlar.';
+	@override String get placeholderReplyDelayDescription => 'Bu radyonun bir değişikliği bildirmesinin ne kadar sürdüğü. Boş veya 0 hemen yanıtlar.';
 	@override String get cwKeyerField => 'CAT CW keyer';
 	@override String get cwKeyerFieldDescription => 'Bu radyonun CAT üzerinden metinden CW gönderip göndermediği. Uygulamanın tanımadığı bir cihaz için kapalı.';
 	@override String get voiceMemories => 'Ses hafızaları';
@@ -2906,6 +2907,9 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get placeholderWholeNumberInvalid => '0 veya daha büyük bir tam sayı olmalı';
 	@override String get placeholderFreqInvalid => 'Sıfırdan büyük, kHz cinsinden bir frekans olmalı';
 	@override String get placeholderModeInvalid => 'Bir mod adı olmalı, örn. USB, CW, FT8';
+	@override String get simulatedSwitchAntennas => 'Antenler';
+	@override String get simulatedSwitchRadios => 'Radyo Portları';
+	@override String simulatedSwitchCountInvalid({required Object min, required Object max}) => 'Tam sayı, ${min} ile ${max} arası';
 	@override String get switchLayout => 'Düzen';
 	@override String get switchLayoutDescription => 'Radyolarınızın anahtarın hangi tarafına takılı olduğu.';
 	@override String get switchLayoutRequired => 'Anahtarın nasıl bağlandığını seçin';
@@ -4315,8 +4319,10 @@ class _Translations$settings$station$models$tr extends Translations$settings$sta
 	@override String get antenna => 'Anten';
 	@override String get key => 'CW Anahtarı';
 	@override String get winkeyer => 'WinKeyer';
-	@override String get placeholderRadio => 'Genel Radyo (Yer Tutucu)';
-	@override String get placeholderRadioNodeName => 'Radyom';
+	@override String get placeholderRadio => 'Simüle Radyo';
+	@override String get placeholderRadioNodeName => 'Simüle Radyo';
+	@override String get simulatedRotator => 'Simüle Rotor';
+	@override String get simulatedSwitch => 'Simüle Anten Anahtarı';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 Koaksiyel Anahtar';
 	@override String get gs232a => 'Yaesu GS-232A Rotor Arayüzü';
@@ -6318,8 +6324,10 @@ extension on TranslationsTr {
 			'settings.station.models.antenna' => 'Anten',
 			'settings.station.models.key' => 'CW Anahtarı',
 			'settings.station.models.winkeyer' => 'WinKeyer',
-			'settings.station.models.placeholderRadio' => 'Genel Radyo (Yer Tutucu)',
-			'settings.station.models.placeholderRadioNodeName' => 'Radyom',
+			'settings.station.models.placeholderRadio' => 'Simüle Radyo',
+			'settings.station.models.placeholderRadioNodeName' => 'Simüle Radyo',
+			'settings.station.models.simulatedRotator' => 'Simüle Rotor',
+			'settings.station.models.simulatedSwitch' => 'Simüle Anten Anahtarı',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Koaksiyel Anahtar',
 			'settings.station.models.gs232a' => 'Yaesu GS-232A Rotor Arayüzü',
@@ -6463,6 +6471,7 @@ extension on TranslationsTr {
 			'settings.station.softwareIntermediaries' => 'Aracı Yazılımlar',
 			'settings.station.otherBrands' => 'Diğer Markalar',
 			'settings.station.otherEquipment' => 'Diğer Ekipman (Antenler, Anahtarlar vb.)',
+			'settings.station.developmentTools' => 'Geliştirme Araçları',
 			'settings.station.newAntenna' => 'Yeni Anten',
 			'settings.station.newKey' => 'Yeni Anahtar',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL veya uyumlu)',
@@ -6481,15 +6490,15 @@ extension on TranslationsTr {
 			'settings.station.placeholderDropAfter' => 'Şu süre sonra kes (saniye)',
 			'settings.station.placeholderDropAfterDescription' => 'Yeniden bağlanma yolunu denemek için bağlantıyı kendiliğinden kapatır. Boş veya 0 hiç kesmez.',
 			'settings.station.placeholderFailConnect' => 'Bağlantı her zaman başarısız olsun',
-			'settings.station.placeholderConnectFailure' => 'Yer tutucu radyoya bu bağlantıyı reddetmesi söylendi',
+			'settings.station.placeholderConnectFailure' => 'Bu ekipmana bağlantıyı reddetmesi söylendi',
 			'settings.station.placeholderFreq' => 'Frekans (kHz)',
-			'settings.station.placeholderFreqDescription' => 'Yer tutucu radyonun başladığı frekans. Ardından uygulama onu nereye ayarlarsa onu bildirir.',
+			'settings.station.placeholderFreqDescription' => 'Bu radyonun başladığı frekans. Ardından uygulama onu nereye ayarlarsa onu bildirir.',
 			'settings.station.placeholderMode' => 'Mod',
-			'settings.station.placeholderModeDescription' => 'Yer tutucu radyonun başladığı mod, örn. USB, CW, FT8.',
+			'settings.station.placeholderModeDescription' => 'Bu radyonun başladığı mod, örn. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Güç (watt)',
 			'settings.station.placeholderPurpose' => 'Kayıt amacıyla hangi cihazı kullandığınızı takip etmek için bu radyoyu kullanın',
 			'settings.station.placeholderReplyDelay' => 'Yanıt gecikmesi (ms)',
-			'settings.station.placeholderReplyDelayDescription' => 'Yer tutucu radyonun bir değişikliği bildirmesinin ne kadar sürdüğü. Boş veya 0 hemen yanıtlar.',
+			'settings.station.placeholderReplyDelayDescription' => 'Bu radyonun bir değişikliği bildirmesinin ne kadar sürdüğü. Boş veya 0 hemen yanıtlar.',
 			'settings.station.cwKeyerField' => 'CAT CW keyer',
 			'settings.station.cwKeyerFieldDescription' => 'Bu radyonun CAT üzerinden metinden CW gönderip göndermediği. Uygulamanın tanımadığı bir cihaz için kapalı.',
 			'settings.station.voiceMemories' => 'Ses hafızaları',
@@ -6497,11 +6506,11 @@ extension on TranslationsTr {
 			'settings.station.voiceMemoriesInvalid' => '0 veya daha büyük bir tam sayı',
 			'settings.station.yaesuMeterCapture' => 'Ölçer değerlerini yakala',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Yayın sırasında radyonun çıkış gücü ölçerini ve yüksek SWR bayrağını okur, ham değerleri günlüğe yazar. Yaesu\'nun yayımlamadığı ölçeği oluşturmak içindir — değerler ölçer olarak gösterilmez.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Yayın sırasında radyonun PO, SWR ve ALC ölçerlerini okur, ham değerleri günlüğe yazar. Yaesu\'nun yayımlamadığı ölçeği oluşturmak içindir — değerler ölçer olarak gösterilmez.',
 			'settings.station.telemetryInterval' => 'Ölçer okuma aralığı (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Radyo yayındayken ölçerlerinin ne sıklıkla okunacağı. Bu bağlantının kaldırabileceği en hızlı değer için boş bırakın, en fazla 200 ms.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '${min} ile ${max} arasında tam sayı milisaniye',
 			'settings.station.pollInterval' => 'Boşta sorgulama aralığı (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Frekans ve mod değişmezken radyoya ne sıklıkla sorulacağı. ${fallback} ms için boş bırakın.',
@@ -6524,6 +6533,9 @@ extension on TranslationsTr {
 			'settings.station.placeholderWholeNumberInvalid' => '0 veya daha büyük bir tam sayı olmalı',
 			'settings.station.placeholderFreqInvalid' => 'Sıfırdan büyük, kHz cinsinden bir frekans olmalı',
 			'settings.station.placeholderModeInvalid' => 'Bir mod adı olmalı, örn. USB, CW, FT8',
+			'settings.station.simulatedSwitchAntennas' => 'Antenler',
+			'settings.station.simulatedSwitchRadios' => 'Radyo Portları',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'Tam sayı, ${min} ile ${max} arası',
 			'settings.station.switchLayout' => 'Düzen',
 			'settings.station.switchLayoutDescription' => 'Radyolarınızın anahtarın hangi tarafına takılı olduğu.',
 			'settings.station.switchLayoutRequired' => 'Anahtarın nasıl bağlandığını seçin',
@@ -7008,14 +7020,14 @@ extension on TranslationsTr {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} tanesinin daha yakından incelenmesi gerekiyor', other: '${formatted} tanesinin daha yakından incelenmesi gerekiyor', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} QSO için referanslar kurtarılamadı', other: '${formatted} QSO için referanslar kurtarılamadı', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} QSO için ${programs} referansları eksik olabilir', other: '${formatted} QSO için ${programs} referansları eksik olabilir', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Birleştirilen QSO\'lar bir referansı kaybedebilir — aktiviteler hangi türlerin üst üste eklenebildiğini bildiremedi. Bunu önlemek için iptal edip yeniden deneyin.',
 			'adifImport.nothingToImport' => 'Bu dosyada içe aktarılabilecek bir şey yok',
 			'adifImport.confirm' => 'İçe Aktar',
 			'adifImport.importing' => ({required Object filename}) => '${filename} içe aktarılıyor…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${filename} dosyasından ${count} QSO içe aktarıldı', other: '${filename} dosyasından ${formatted} QSO içe aktarıldı', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} içe aktarılamadı: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} bir ADIF dosyasına benzemiyor',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Uyarı: bu ADIF\'te ${calls} çağrılarına ait QSO\'lar var, ancak devam ederseniz ${station} olarak içe aktarılacaklar.',
 			'adifImport.stationCallJoin' => ' ve ',

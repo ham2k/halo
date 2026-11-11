@@ -2847,6 +2847,7 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get softwareIntermediaries => 'Tussenliggende software';
 	@override String get otherBrands => 'Andere merken';
 	@override String get otherEquipment => 'Andere apparatuur (antennes, seinsleutels, enz.)';
+	@override String get developmentTools => 'Ontwikkelaarstools';
 	@override String get newAntenna => 'Nieuwe antenne';
 	@override String get newKey => 'Nieuwe seinsleutel';
 	@override String get newKeyer => 'WinKeyer (K1EL of compatibel)';
@@ -2865,15 +2866,15 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get placeholderDropAfter => 'Verbreken na (seconden)';
 	@override String get placeholderDropAfterDescription => 'Verbreekt de verbinding vanzelf, om het opnieuw verbinden te testen. Leeg of 0 verbreekt nooit.';
 	@override String get placeholderFailConnect => 'Verbinden altijd laten mislukken';
-	@override String get placeholderConnectFailure => 'De tijdelijke radio is opgedragen deze verbinding te weigeren';
+	@override String get placeholderConnectFailure => 'Deze apparatuur is opgedragen de verbinding te weigeren';
 	@override String get placeholderFreq => 'Frequentie (kHz)';
-	@override String get placeholderFreqDescription => 'Waar de tijdelijke radio begint. Daarna meldt hij terug waarop de app hem ook afstemt.';
+	@override String get placeholderFreqDescription => 'Waar deze radio begint. Daarna meldt hij terug waarop de app hem ook afstemt.';
 	@override String get placeholderMode => 'Mode';
-	@override String get placeholderModeDescription => 'De mode waarmee de tijdelijke radio begint, bijv. USB, CW, FT8.';
+	@override String get placeholderModeDescription => 'De mode waarmee deze radio begint, bijv. USB, CW, FT8.';
 	@override String get placeholderPower => 'Vermogen (watt)';
 	@override String get placeholderPurpose => 'Gebruik deze radio om bij te houden welke rig je gebruikt, voor je logboek';
 	@override String get placeholderReplyDelay => 'Antwoordvertraging (ms)';
-	@override String get placeholderReplyDelayDescription => 'Hoe lang de tijdelijke radio erover doet om een wijziging terug te melden. Leeg of 0 meldt meteen.';
+	@override String get placeholderReplyDelayDescription => 'Hoe lang deze radio erover doet om een wijziging terug te melden. Leeg of 0 meldt meteen.';
 	@override String get cwKeyerField => 'CAT CW-keyer';
 	@override String get cwKeyerFieldDescription => 'Of deze radio CW keyt vanuit tekst via CAT. Uit voor een rig die de app niet kent.';
 	@override String get voiceMemories => 'Spraakgeheugens';
@@ -2906,6 +2907,9 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get placeholderWholeNumberInvalid => 'Moet een geheel getal zijn, 0 of meer';
 	@override String get placeholderFreqInvalid => 'Moet een frequentie in kHz zijn, groter dan nul';
 	@override String get placeholderModeInvalid => 'Moet een modenaam zijn, bijv. USB, CW, FT8';
+	@override String get simulatedSwitchAntennas => 'Antennes';
+	@override String get simulatedSwitchRadios => 'Radiopoorten';
+	@override String simulatedSwitchCountInvalid({required Object min, required Object max}) => 'Een geheel getal, ${min} tot ${max}';
 	@override String get switchLayout => 'Indeling';
 	@override String get switchLayoutDescription => 'Op welke kant van de schakelaar je radio\'s zijn aangesloten.';
 	@override String get switchLayoutRequired => 'Kies hoe de schakelaar is bedraad';
@@ -4315,8 +4319,10 @@ class _Translations$settings$station$models$nl extends Translations$settings$sta
 	@override String get antenna => 'Antenne';
 	@override String get key => 'CW-seinsleutel';
 	@override String get winkeyer => 'WinKeyer';
-	@override String get placeholderRadio => 'Algemene radio (tijdelijk)';
-	@override String get placeholderRadioNodeName => 'Mijn radio';
+	@override String get placeholderRadio => 'Gesimuleerde radio';
+	@override String get placeholderRadioNodeName => 'Gesimuleerde radio';
+	@override String get simulatedRotator => 'Gesimuleerde rotor';
+	@override String get simulatedSwitch => 'Gesimuleerde antenneschakelaar';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 Coax Switch';
 	@override String get gs232a => 'Yaesu GS-232A rotorinterface';
@@ -6318,8 +6324,10 @@ extension on TranslationsNl {
 			'settings.station.models.antenna' => 'Antenne',
 			'settings.station.models.key' => 'CW-seinsleutel',
 			'settings.station.models.winkeyer' => 'WinKeyer',
-			'settings.station.models.placeholderRadio' => 'Algemene radio (tijdelijk)',
-			'settings.station.models.placeholderRadioNodeName' => 'Mijn radio',
+			'settings.station.models.placeholderRadio' => 'Gesimuleerde radio',
+			'settings.station.models.placeholderRadioNodeName' => 'Gesimuleerde radio',
+			'settings.station.models.simulatedRotator' => 'Gesimuleerde rotor',
+			'settings.station.models.simulatedSwitch' => 'Gesimuleerde antenneschakelaar',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
 			'settings.station.models.gs232a' => 'Yaesu GS-232A rotorinterface',
@@ -6463,6 +6471,7 @@ extension on TranslationsNl {
 			'settings.station.softwareIntermediaries' => 'Tussenliggende software',
 			'settings.station.otherBrands' => 'Andere merken',
 			'settings.station.otherEquipment' => 'Andere apparatuur (antennes, seinsleutels, enz.)',
+			'settings.station.developmentTools' => 'Ontwikkelaarstools',
 			'settings.station.newAntenna' => 'Nieuwe antenne',
 			'settings.station.newKey' => 'Nieuwe seinsleutel',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL of compatibel)',
@@ -6481,15 +6490,15 @@ extension on TranslationsNl {
 			'settings.station.placeholderDropAfter' => 'Verbreken na (seconden)',
 			'settings.station.placeholderDropAfterDescription' => 'Verbreekt de verbinding vanzelf, om het opnieuw verbinden te testen. Leeg of 0 verbreekt nooit.',
 			'settings.station.placeholderFailConnect' => 'Verbinden altijd laten mislukken',
-			'settings.station.placeholderConnectFailure' => 'De tijdelijke radio is opgedragen deze verbinding te weigeren',
+			'settings.station.placeholderConnectFailure' => 'Deze apparatuur is opgedragen de verbinding te weigeren',
 			'settings.station.placeholderFreq' => 'Frequentie (kHz)',
-			'settings.station.placeholderFreqDescription' => 'Waar de tijdelijke radio begint. Daarna meldt hij terug waarop de app hem ook afstemt.',
+			'settings.station.placeholderFreqDescription' => 'Waar deze radio begint. Daarna meldt hij terug waarop de app hem ook afstemt.',
 			'settings.station.placeholderMode' => 'Mode',
-			'settings.station.placeholderModeDescription' => 'De mode waarmee de tijdelijke radio begint, bijv. USB, CW, FT8.',
+			'settings.station.placeholderModeDescription' => 'De mode waarmee deze radio begint, bijv. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Vermogen (watt)',
 			'settings.station.placeholderPurpose' => 'Gebruik deze radio om bij te houden welke rig je gebruikt, voor je logboek',
 			'settings.station.placeholderReplyDelay' => 'Antwoordvertraging (ms)',
-			'settings.station.placeholderReplyDelayDescription' => 'Hoe lang de tijdelijke radio erover doet om een wijziging terug te melden. Leeg of 0 meldt meteen.',
+			'settings.station.placeholderReplyDelayDescription' => 'Hoe lang deze radio erover doet om een wijziging terug te melden. Leeg of 0 meldt meteen.',
 			'settings.station.cwKeyerField' => 'CAT CW-keyer',
 			'settings.station.cwKeyerFieldDescription' => 'Of deze radio CW keyt vanuit tekst via CAT. Uit voor een rig die de app niet kent.',
 			'settings.station.voiceMemories' => 'Spraakgeheugens',
@@ -6497,11 +6506,11 @@ extension on TranslationsNl {
 			'settings.station.voiceMemoriesInvalid' => 'Een geheel getal, 0 of meer',
 			'settings.station.yaesuMeterCapture' => 'Meteruitlezingen vastleggen',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Leest tijdens het zenden de vermogensmeter en de hoge-SWR-vlag van de radio uit en schrijft de ruwe waarden naar het log. Bedoeld om de schaal op te bouwen die Yaesu niet publiceert — de waarden worden niet als meters getoond.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Leest tijdens het zenden de PO-, SWR- en ALC-meters van de radio uit en schrijft de ruwe waarden naar het log. Bedoeld om de schaal op te bouwen die Yaesu niet publiceert — de waarden worden niet als meters getoond.',
 			'settings.station.telemetryInterval' => 'Interval meteruitlezing (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Hoe vaak de meters van de radio tijdens het zenden worden uitgelezen. Laat leeg voor het snelste wat deze verbinding aankan, tot 200 ms.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Een geheel aantal milliseconden, ${min} tot ${max}',
 			'settings.station.pollInterval' => 'Pollinginterval in rust (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Hoe vaak de radio om frequentie en mode wordt gevraagd zolang geen van beide verandert. Laat leeg voor ${fallback} ms.',
@@ -6524,6 +6533,9 @@ extension on TranslationsNl {
 			'settings.station.placeholderWholeNumberInvalid' => 'Moet een geheel getal zijn, 0 of meer',
 			'settings.station.placeholderFreqInvalid' => 'Moet een frequentie in kHz zijn, groter dan nul',
 			'settings.station.placeholderModeInvalid' => 'Moet een modenaam zijn, bijv. USB, CW, FT8',
+			'settings.station.simulatedSwitchAntennas' => 'Antennes',
+			'settings.station.simulatedSwitchRadios' => 'Radiopoorten',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'Een geheel getal, ${min} tot ${max}',
 			'settings.station.switchLayout' => 'Indeling',
 			'settings.station.switchLayoutDescription' => 'Op welke kant van de schakelaar je radio\'s zijn aangesloten.',
 			'settings.station.switchLayoutRequired' => 'Kies hoe de schakelaar is bedraad',
@@ -7008,14 +7020,14 @@ extension on TranslationsNl {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} verdient een nadere blik', other: '${formatted} verdienen een nadere blik', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: 'Referenties konden niet worden achterhaald voor ${count} QSO', other: 'Referenties konden niet worden achterhaald voor ${formatted} QSO\'s', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${programs}-referenties zijn mogelijk onvolledig voor ${count} QSO', other: '${programs}-referenties zijn mogelijk onvolledig voor ${formatted} QSO\'s', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Samengevoegde QSO\'s kunnen een referentie verliezen — de activiteiten konden niet zeggen welke typen stapelen. Annuleer en probeer opnieuw om dit te voorkomen.',
 			'adifImport.nothingToImport' => 'Niets in dit bestand kan worden geïmporteerd',
 			'adifImport.confirm' => 'Importeren',
 			'adifImport.importing' => ({required Object filename}) => '${filename} importeren…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO geïmporteerd uit ${filename}', other: '${formatted} QSO\'s geïmporteerd uit ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Kon ${filename} niet importeren: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} lijkt geen ADIF-bestand',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Waarschuwing: deze ADIF bevat QSO\'s van ${calls}, maar ze worden geïmporteerd als ${station} als je doorgaat.',
 			'adifImport.stationCallJoin' => ' en ',

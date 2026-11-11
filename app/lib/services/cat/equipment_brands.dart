@@ -52,3 +52,13 @@ const expertElectronicsBrand = 'Expert Electronics';
 /// A bridge added later belongs here — nothing derives this list, and one
 /// left out lands under "Other Brands" with the radios.
 const softwareIntermediaryModelKeys = ['flrig', 'rigctld', 'hrd', 'n3fjp', 'dxlab-commander'];
+
+/// The models that are not equipment but a stand-in for it, for working on
+/// the app without any: a radio, a rotator and a switch that connect to
+/// nothing. Keyed by [EquipmentModel.key], for the intermediaries' reason.
+///
+/// Their own shelf, offered only in developer mode and drawn in its orange:
+/// an operator who picked one to log with would be logging a rig that does
+/// not exist. A node already on one keeps connecting with developer mode
+/// off — only the offer is held back.
+const developmentToolModelKeys = ['placeholder-radio', 'simulated-rotator', 'simulated-switch'];

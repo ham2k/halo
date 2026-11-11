@@ -344,6 +344,8 @@ void main() {
       'pstrotator-udp',
       'rotctld-tcp',
       'buddihex-udp',
+      'simulated-rotator',
+      'simulated-switch',
       'gh-everyware-tcp',
       'gh-everyware-rotor',
       'gh-everyware-switch',
@@ -1005,9 +1007,12 @@ void main() {
     // A TCI server sends every change to every client.
     // An Everyware server repeats every heading and switch position on its
     // own, and its devices hear only what it pushes.
+    // The simulators push as a real controller polled fast enough would look.
     const pushes = {
       'flexradio',
       'placeholder-radio',
+      'simulated-rotator',
+      'simulated-switch',
       'antenna-genius',
       'winkeyer',
       'rtl-tcp',

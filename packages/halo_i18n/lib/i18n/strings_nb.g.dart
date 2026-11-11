@@ -2847,6 +2847,7 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get softwareIntermediaries => 'Mellomliggende programvare';
 	@override String get otherBrands => 'Andre merker';
 	@override String get otherEquipment => 'Annet utstyr (antenner, nøkler osv.)';
+	@override String get developmentTools => 'Utviklerverktøy';
 	@override String get newAntenna => 'Ny antenne';
 	@override String get newKey => 'Ny nøkkel';
 	@override String get newKeyer => 'WinKeyer (K1EL eller kompatibel)';
@@ -2865,15 +2866,15 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get placeholderDropAfter => 'Bryt etter (sekunder)';
 	@override String get placeholderDropAfterDescription => 'Lukk tilkoblingen av seg selv, for å teste gjenoppkoblingen. Tomt eller 0 bryter aldri.';
 	@override String get placeholderFailConnect => 'Mislykkes alltid med å koble til';
-	@override String get placeholderConnectFailure => 'Plassholderradioen ble bedt om å avvise denne tilkoblingen';
+	@override String get placeholderConnectFailure => 'Dette utstyret ble bedt om å avvise tilkoblingen';
 	@override String get placeholderFreq => 'Frekvens (kHz)';
-	@override String get placeholderFreqDescription => 'Hvor plassholderradioen starter. Etterpå rapporterer den tilbake det appen stiller den inn på.';
+	@override String get placeholderFreqDescription => 'Hvor denne radioen starter. Etterpå rapporterer den tilbake det appen stiller den inn på.';
 	@override String get placeholderMode => 'Modus';
-	@override String get placeholderModeDescription => 'Modusen plassholderradioen starter på, f.eks. USB, CW, FT8.';
+	@override String get placeholderModeDescription => 'Modusen denne radioen starter på, f.eks. USB, CW, FT8.';
 	@override String get placeholderPower => 'Effekt (watt)';
 	@override String get placeholderPurpose => 'Bruk denne radioen til å holde rede på hvilken rigg du bruker, for loggformål';
 	@override String get placeholderReplyDelay => 'Svarforsinkelse (ms)';
-	@override String get placeholderReplyDelayDescription => 'Hvor lang tid plassholderradioen bruker på å rapportere en endring tilbake. Tomt eller 0 svarer umiddelbart.';
+	@override String get placeholderReplyDelayDescription => 'Hvor lang tid denne radioen bruker på å rapportere en endring tilbake. Tomt eller 0 svarer umiddelbart.';
 	@override String get cwKeyerField => 'CAT CW-keyer';
 	@override String get cwKeyerFieldDescription => 'Om denne radioen sender CW fra tekst over CAT. Av for en rigg appen ikke kjenner.';
 	@override String get voiceMemories => 'Taleminner';
@@ -2906,6 +2907,9 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get placeholderWholeNumberInvalid => 'Må være et heltall, 0 eller mer';
 	@override String get placeholderFreqInvalid => 'Må være en frekvens i kHz, større enn null';
 	@override String get placeholderModeInvalid => 'Må være et modusnavn, f.eks. USB, CW, FT8';
+	@override String get simulatedSwitchAntennas => 'Antenner';
+	@override String get simulatedSwitchRadios => 'Radioporter';
+	@override String simulatedSwitchCountInvalid({required Object min, required Object max}) => 'Et heltall, ${min} til ${max}';
 	@override String get switchLayout => 'Oppsett';
 	@override String get switchLayoutDescription => 'Hvilken side av bryteren radioene dine er koblet til.';
 	@override String get switchLayoutRequired => 'Velg hvordan bryteren er koblet';
@@ -4315,8 +4319,10 @@ class _Translations$settings$station$models$nb extends Translations$settings$sta
 	@override String get antenna => 'Antenne';
 	@override String get key => 'CW-nøkkel';
 	@override String get winkeyer => 'WinKeyer';
-	@override String get placeholderRadio => 'Generell radio (plassholder)';
-	@override String get placeholderRadioNodeName => 'Min radio';
+	@override String get placeholderRadio => 'Simulert radio';
+	@override String get placeholderRadioNodeName => 'Simulert radio';
+	@override String get simulatedRotator => 'Simulert rotor';
+	@override String get simulatedSwitch => 'Simulert antennebryter';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 koaksbryter';
 	@override String get gs232a => 'Yaesu GS-232A rotorgrensesnitt';
@@ -6318,8 +6324,10 @@ extension on TranslationsNb {
 			'settings.station.models.antenna' => 'Antenne',
 			'settings.station.models.key' => 'CW-nøkkel',
 			'settings.station.models.winkeyer' => 'WinKeyer',
-			'settings.station.models.placeholderRadio' => 'Generell radio (plassholder)',
-			'settings.station.models.placeholderRadioNodeName' => 'Min radio',
+			'settings.station.models.placeholderRadio' => 'Simulert radio',
+			'settings.station.models.placeholderRadioNodeName' => 'Simulert radio',
+			'settings.station.models.simulatedRotator' => 'Simulert rotor',
+			'settings.station.models.simulatedSwitch' => 'Simulert antennebryter',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 koaksbryter',
 			'settings.station.models.gs232a' => 'Yaesu GS-232A rotorgrensesnitt',
@@ -6463,6 +6471,7 @@ extension on TranslationsNb {
 			'settings.station.softwareIntermediaries' => 'Mellomliggende programvare',
 			'settings.station.otherBrands' => 'Andre merker',
 			'settings.station.otherEquipment' => 'Annet utstyr (antenner, nøkler osv.)',
+			'settings.station.developmentTools' => 'Utviklerverktøy',
 			'settings.station.newAntenna' => 'Ny antenne',
 			'settings.station.newKey' => 'Ny nøkkel',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL eller kompatibel)',
@@ -6481,15 +6490,15 @@ extension on TranslationsNb {
 			'settings.station.placeholderDropAfter' => 'Bryt etter (sekunder)',
 			'settings.station.placeholderDropAfterDescription' => 'Lukk tilkoblingen av seg selv, for å teste gjenoppkoblingen. Tomt eller 0 bryter aldri.',
 			'settings.station.placeholderFailConnect' => 'Mislykkes alltid med å koble til',
-			'settings.station.placeholderConnectFailure' => 'Plassholderradioen ble bedt om å avvise denne tilkoblingen',
+			'settings.station.placeholderConnectFailure' => 'Dette utstyret ble bedt om å avvise tilkoblingen',
 			'settings.station.placeholderFreq' => 'Frekvens (kHz)',
-			'settings.station.placeholderFreqDescription' => 'Hvor plassholderradioen starter. Etterpå rapporterer den tilbake det appen stiller den inn på.',
+			'settings.station.placeholderFreqDescription' => 'Hvor denne radioen starter. Etterpå rapporterer den tilbake det appen stiller den inn på.',
 			'settings.station.placeholderMode' => 'Modus',
-			'settings.station.placeholderModeDescription' => 'Modusen plassholderradioen starter på, f.eks. USB, CW, FT8.',
+			'settings.station.placeholderModeDescription' => 'Modusen denne radioen starter på, f.eks. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Effekt (watt)',
 			'settings.station.placeholderPurpose' => 'Bruk denne radioen til å holde rede på hvilken rigg du bruker, for loggformål',
 			'settings.station.placeholderReplyDelay' => 'Svarforsinkelse (ms)',
-			'settings.station.placeholderReplyDelayDescription' => 'Hvor lang tid plassholderradioen bruker på å rapportere en endring tilbake. Tomt eller 0 svarer umiddelbart.',
+			'settings.station.placeholderReplyDelayDescription' => 'Hvor lang tid denne radioen bruker på å rapportere en endring tilbake. Tomt eller 0 svarer umiddelbart.',
 			'settings.station.cwKeyerField' => 'CAT CW-keyer',
 			'settings.station.cwKeyerFieldDescription' => 'Om denne radioen sender CW fra tekst over CAT. Av for en rigg appen ikke kjenner.',
 			'settings.station.voiceMemories' => 'Taleminner',
@@ -6497,11 +6506,11 @@ extension on TranslationsNb {
 			'settings.station.voiceMemoriesInvalid' => 'Et heltall, 0 eller mer',
 			'settings.station.yaesuMeterCapture' => 'Registrer måleravlesninger',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Leser radioens måler for utgangseffekt og flagg for høy SWR under sending og skriver råverdiene til loggen. For å bygge skalaen Yaesu ikke publiserer — verdiene vises ikke som målere.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Leser radioens PO-, SWR- og ALC-målere under sending og skriver råverdiene til loggen. For å bygge skalaen Yaesu ikke publiserer — verdiene vises ikke som målere.',
 			'settings.station.telemetryInterval' => 'Intervall for måleravlesning (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Hvor ofte radioens målere leses mens den sender. La stå tomt for det raskeste denne tilkoblingen klarer, opptil 200 ms.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Et helt antall millisekunder, ${min} til ${max}',
 			'settings.station.pollInterval' => 'Spørreintervall i hvile (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Hvor ofte radioen spørres om frekvens og modus når ingen av dem endres. La stå tomt for ${fallback} ms.',
@@ -6524,6 +6533,9 @@ extension on TranslationsNb {
 			'settings.station.placeholderWholeNumberInvalid' => 'Må være et heltall, 0 eller mer',
 			'settings.station.placeholderFreqInvalid' => 'Må være en frekvens i kHz, større enn null',
 			'settings.station.placeholderModeInvalid' => 'Må være et modusnavn, f.eks. USB, CW, FT8',
+			'settings.station.simulatedSwitchAntennas' => 'Antenner',
+			'settings.station.simulatedSwitchRadios' => 'Radioporter',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'Et heltall, ${min} til ${max}',
 			'settings.station.switchLayout' => 'Oppsett',
 			'settings.station.switchLayoutDescription' => 'Hvilken side av bryteren radioene dine er koblet til.',
 			'settings.station.switchLayoutRequired' => 'Velg hvordan bryteren er koblet',
@@ -7008,14 +7020,14 @@ extension on TranslationsNb {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} bør sees nærmere på', other: '${formatted} bør sees nærmere på', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Referanser kunne ikke gjenopprettes for ${count} kontakt', other: 'Referanser kunne ikke gjenopprettes for ${formatted} kontakter', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${programs}-referanser kan være ufullstendige for ${count} kontakt', other: '${programs}-referanser kan være ufullstendige for ${formatted} kontakter', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Sammenslåtte kontakter kan miste en referanse — aktivitetene kunne ikke si hvilke typer som kan kombineres. Avbryt og prøv igjen for å unngå dette.',
 			'adifImport.nothingToImport' => 'Ingenting i denne filen kan importeres',
 			'adifImport.confirm' => 'Importer',
 			'adifImport.importing' => ({required Object filename}) => 'Importerer ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Importerte ${count} kontakt fra ${filename}', other: 'Importerte ${formatted} kontakter fra ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Kunne ikke importere ${filename}: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} ser ikke ut som en ADIF-fil',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Advarsel: denne ADIF-filen har QSOer fra ${calls}, men de blir importert som ${station} hvis du fortsetter.',
 			'adifImport.stationCallJoin' => ' og ',

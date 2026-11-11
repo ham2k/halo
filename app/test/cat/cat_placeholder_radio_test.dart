@@ -16,6 +16,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:halo_widgets/halo_widgets.dart' show HaLoColors;
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/station_panel.dart';
@@ -385,46 +386,60 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
     }
 
-    testWidgets('offers it alongside every real radio', (tester) async {
+    // An operator who picked it to log with would be logging a rig that does
+    // not exist, so it is a developer's tool and offered to nobody else.
+    testWidgets('offers it only in developer mode, with the other development tools', (tester) async {
       await openAddDialog(tester);
       // Narrowed to ONE match at a time rather than scrolled: the catalogue
       // is a lazy list only a few rows deep here, so a query matching
       // several entries pushes the last of them out of the built range and
       // the assertion fails for the fold rather than for the catalogue.
-      await tester.enterText(find.byType(TextField).first, 'placeholder');
+      await tester.enterText(find.byType(TextField).first, 'simulated radio');
       await tester.pump();
-      expect(find.text(t.settings.station.models.placeholderRadio), findsOneWidget);
+      expect(find.text(t.settings.station.models.placeholderRadio), findsNothing);
 
       // A dialog showing nothing at all would pass the line above only by
       // accident, so one real rig, reached the same way, anchors it.
       await tester.enterText(find.byType(TextField).first, 'rigctld');
       await tester.pump();
       expect(find.text(t.settings.station.models.rigctld), findsOneWidget);
+
+      Navigator.of(tester.element(find.byType(TextField).first)).pop();
+      await services.settings.setDeveloperMode(true);
+      await openAddDialog(tester);
+      for (final name in [t.settings.station.models.placeholderRadio, t.settings.station.models.simulatedRotator, t.settings.station.models.simulatedSwitch]) {
+        await tester.enterText(find.byType(TextField).first, name);
+        await tester.pump();
+        // In the developer-mode orange: a stand-in for equipment, marked as one.
+        // The row, not the search box that now holds the same words.
+        final row = find.descendant(of: find.byType(ListTile), matching: find.text(name));
+        expect(tester.widget<Text>(row).style?.color, HaLoColors.of(tester.element(row)).devMode, reason: name);
+      }
     });
 
     Future<void> pickPlaceholder(WidgetTester tester) async {
+      await services.settings.setDeveloperMode(true);
       await openAddDialog(tester);
-      await tester.enterText(find.byType(TextField).first, 'placeholder');
+      await tester.enterText(find.byType(TextField).first, 'simulated radio');
       await tester.pump();
       await tester.tap(find.text(t.settings.station.models.placeholderRadio));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
     }
 
-    testWidgets('a placeholder added without developer mode can connect', (tester) async {
+    testWidgets('one added from the dialog can connect', (tester) async {
       await pickPlaceholder(tester);
       await tester.tap(find.text(t.common.save));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       final node = services.cat.nodes.single;
-      // The trap: the form returns only the fields it rendered, and every
-      // number the placeholder validates is a developer-mode field — so a
-      // node saved from the form alone fails its own check at connect.
+      // The trap: the form returns only the fields it rendered, so a number
+      // the placeholder validates and no field prefilled fails its own check
+      // at connect.
       expect(registry.typeFor(node.typeKey)!.validate(node.config), isNull);
     });
 
     testWidgets('developer mode shows the simulator\'s knobs in the form', (tester) async {
-      await services.settings.setDeveloperMode(true);
       await pickPlaceholder(tester);
       expect(find.text(t.settings.station.placeholderPower), findsOneWidget);
     });

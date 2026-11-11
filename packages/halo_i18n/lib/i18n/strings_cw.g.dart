@@ -3172,6 +3172,7 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get softwareIntermediaries => '··· ——— ··—· — ·—— ·— ·—· · / ·· —· — · ·—· —— · —·· ·· ·— ·—· ·· · ···';
 	@override String get otherBrands => '——— — ···· · ·—· / —··· ·—· ·— —· —·· ···';
 	@override String get otherEquipment => '——— — ···· · ·—· / · ——·— ··— ·· ·——· —— · —· — / —·——· ·— —· — · —· —· ·— ··· ——··—— / —·— · —·—— ··· ——··—— / · — —·—· —·——·—';
+	@override String get developmentTools => '—·· · ···— · ·—·· ——— ·——· —— · —· — / — ——— ——— ·—·· ···';
 	@override String get newAntenna => '—· · ·—— / ·— —· — · —· —· ·—';
 	@override String get newKey => '—· · ·—— / —·— · —·——';
 	@override String get newKeyer => '·—— ·· —· —·— · —·—— · ·—· / —·——· —·— ·———— · ·—·· / ——— ·—· / —·—· ——— —— ·——· ·— — ·· —··· ·—·· · —·——·—';
@@ -3192,15 +3193,15 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get placeholderDropAfter => '—·· ·—· ——— ·——· / ·— ··—· — · ·—· / —·——· ··· · —·—· ——— —· —·· ··· —·——·—';
 	@override String get placeholderDropAfterDescription => '—·—· ·—·· ——— ··· · / — ···· · / —·—· ——— —· —· · —·—· — ·· ——— —· / ——— —· / ·· — ··· / ——— ·—— —· ——··—— / — ——— / · —··— · ·—· —·—· ·· ··· · / — ···· · / ·—· · —·—· ——— —· —· · —·—· — / ·——· ·— — ···· ·—·—·— / —··· ·—·· ·— —· —·— / ——— ·—· / ————— / —· · ···— · ·—· / —·· ·—· ——— ·——· ··· ·—·—·—';
 	@override String get placeholderFailConnect => '·— ·—·· ·—— ·— —·—— ··· / ··—· ·— ·· ·—·· / — ——— / —·—· ——— —· —· · —·—· —';
-	@override String get placeholderConnectFailure => '— ···· · / ·——· ·—·· ·— —·—· · ···· ——— ·—·· —·· · ·—· / ·—· ·— —·· ·· ——— / ·—— ·— ··· / — ——— ·—·· —·· / — ——— / ·—· · ··—· ··— ··· · / — ···· ·· ··· / —·—· ——— —· —· · —·—· — ·· ——— —·';
+	@override String get placeholderConnectFailure => '— ···· ·· ··· / · ——·— ··— ·· ·——· —— · —· — / ·—— ·— ··· / — ——— ·—·· —·· / — ——— / ·—· · ··—· ··— ··· · / — ···· · / —·—· ——— —· —· · —·—· — ·· ——— —·';
 	@override String get placeholderFreq => '··—· ·—· · ——·— ··— · —· —·—· —·—— / —·——· —·— ···· ——·· —·——·—';
-	@override String get placeholderFreqDescription => '·—— ···· · ·—· · / — ···· · / ·——· ·—·· ·— —·—· · ···· ——— ·—·· —·· · ·—· / ·—· ·— —·· ·· ——— / ··· — ·— ·—· — ··· ·—·—·— / ·· — / ·—· · ·——· ——— ·—· — ··· / —··· ·— —·—· —·— / ·—— ···· ·— — · ···— · ·—· / — ···· · / ·— ·——· ·——· / — ··— —· · ··· / ·· — / — ——— / ·— ··—· — · ·—· ·—— ·— ·—· —·· ··· ·—·—·—';
+	@override String get placeholderFreqDescription => '·—— ···· · ·—· · / — ···· ·· ··· / ·—· ·— —·· ·· ——— / ··· — ·— ·—· — ··· ·—·—·— / ·· — / ·—· · ·——· ——— ·—· — ··· / —··· ·— —·—· —·— / ·—— ···· ·— — · ···— · ·—· / — ···· · / ·— ·——· ·——· / — ··— —· · ··· / ·· — / — ——— / ·— ··—· — · ·—· ·—— ·— ·—· —·· ··· ·—·—·—';
 	@override String get placeholderMode => '—— ——— —·· ·';
-	@override String get placeholderModeDescription => '— ···· · / —— ——— —·· · / — ···· · / ·——· ·—·· ·— —·—· · ···· ——— ·—·· —·· · ·—· / ·—· ·— —·· ·· ——— / ··· — ·— ·—· — ··· / ——— —· ——··—— / · ·—·—·— ——· ·—·—·— / ··— ··· —··· ——··—— / —·—· ·—— ——··—— / ··—· — ———·· ·—·—·—';
+	@override String get placeholderModeDescription => '— ···· · / —— ——— —·· · / — ···· ·· ··· / ·—· ·— —·· ·· ——— / ··· — ·— ·—· — ··· / ——— —· ——··—— / · ·—·—·— ——· ·—·—·— / ··— ··· —··· ——··—— / —·—· ·—— ——··—— / ··—· — ———·· ·—·—·—';
 	@override String get placeholderPower => '·——· ——— ·—— · ·—· / —·——· ·—— ·— — — ··· —·——·—';
 	@override String get placeholderPurpose => '··— ··· · / — ···· ·· ··· / ·—· ·— —·· ·· ——— / — ——— / —·— · · ·——· / — ·—· ·— —·—· —·— / ——— ··—· / ·—— ···· ·· —·—· ···· / ·—· ·· ——· / —·—— ——— ··— ·————· ·—· · / ··— ··· ·· —· ——· / ··—· ——— ·—· / ·—·· ——— ——· ——· ·· —· ——· / ·——· ··— ·—· ·——· ——— ··· · ···';
 	@override String get placeholderReplyDelay => '·—· · ·——· ·—·· —·—— / —·· · ·—·· ·— —·—— / —·——· —— ··· —·——·—';
-	@override String get placeholderReplyDelayDescription => '···· ——— ·—— / ·—·· ——— —· ——· / — ···· · / ·——· ·—·· ·— —·—· · ···· ——— ·—·· —·· · ·—· / ·—· ·— —·· ·· ——— / — ·— —·— · ··· / — ——— / ·—· · ·——· ——— ·—· — / ·— / —·—· ···· ·— —· ——· · / —··· ·— —·—· —·— ·—·—·— / —··· ·—·· ·— —· —·— / ——— ·—· / ————— / ·—· · ·——· ·—·· ·· · ··· / ·— — / ——— —· —·—· · ·—·—·—';
+	@override String get placeholderReplyDelayDescription => '···· ——— ·—— / ·—·· ——— —· ——· / — ···· ·· ··· / ·—· ·— —·· ·· ——— / — ·— —·— · ··· / — ——— / ·—· · ·——· ——— ·—· — / ·— / —·—· ···· ·— —· ——· · / —··· ·— —·—· —·— ·—·—·— / —··· ·—·· ·— —· —·— / ——— ·—· / ————— / ·—· · ·——· ·—·· ·· · ··· / ·— — / ——— —· —·—· · ·—·—·—';
 	@override String get cwKeyerField => '—·—· ·— — / —·—· ·—— / —·— · —·—— · ·—·';
 	@override String get cwKeyerFieldDescription => '·—— ···· · — ···· · ·—· / — ···· ·· ··· / ·—· ·— —·· ·· ——— / —·— · —·—— ··· / —·—· ·—— / ··—· ·—· ——— —— / — · —··— — / ——— ···— · ·—· / —·—· ·— — ·—·—·— / ——— ··—· ··—· / ··—· ——— ·—· / ·— / ·—· ·· ——· / — ···· · / ·— ·——· ·——· / —·· ——— · ··· / —· ——— — / —·— —· ——— ·—— ·—·—·—';
 	@override String get voiceMemories => '···— ——— ·· —·—· · / —— · —— ——— ·—· ·· · ···';
@@ -3237,6 +3238,9 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get placeholderWholeNumberInvalid => '—— ··— ··· — / —··· · / ·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· ——··—— / ————— / ——— ·—· / —— ——— ·—· ·';
 	@override String get placeholderFreqInvalid => '—— ··— ··· — / —··· · / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·· —· / —·— ···· ——·· ——··—— / ——· ·—· · ·— — · ·—· / — ···· ·— —· / ——·· · ·—· ———';
 	@override String get placeholderModeInvalid => '—— ··— ··· — / —··· · / ·— / —— ——— —·· · / —· ·— —— · ——··—— / · ·—·—·— ——· ·—·—·— / ··— ··· —··· ——··—— / —·—· ·—— ——··—— / ··—· — ———··';
+	@override String get simulatedSwitchAntennas => '·— —· — · —· —· ·— ···';
+	@override String get simulatedSwitchRadios => '·—· ·— —·· ·· ——— / ·——· ——— ·—· — ···';
+	@override String simulatedSwitchCountInvalid({required Object min, required Object max}) => '·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· ——··—— / ${min} / — ——— / ${max}';
 	@override String get switchLayout => '·—·· ·— —·—— ——— ··— —';
 	@override String get switchLayoutDescription => '·—— ···· ·· —·—· ···· / ··· ·· —·· · / ——— ··—· / — ···· · / ··· ·—— ·· — —·—· ···· / —·—— ——— ··— ·—· / ·—· ·— —·· ·· ——— ··· / ·— ·—· · / ·——· ·—·· ··— ——· ——· · —·· / ·· —· — ——— ·—·—·—';
 	@override String get switchLayoutRequired => '—·—· ···· ——— ——— ··· · / ···· ——— ·—— / — ···· · / ··· ·—— ·· — —·—· ···· / ·· ··· / ·—— ·· ·—· · —··';
@@ -4791,8 +4795,10 @@ class _Translations$settings$station$models$cw extends Translations$settings$sta
 	@override String get key => '—·—· ·—— / —·— · —·——';
 	@override String get midiController => '—— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·';
 	@override String get winkeyer => '·—— ·· —· —·— · —·—— · ·—·';
-	@override String get placeholderRadio => '——· · —· · ·—· ·· —·—· / ·—· ·— —·· ·· ——— / —·——· ·——· ·—·· ·— —·—· · ···· ——— ·—·· —·· · ·—· —·——·—';
-	@override String get placeholderRadioNodeName => '—— —·—— / ·—· ·— —·· ·· ———';
+	@override String get placeholderRadio => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ·— —·· ·· ———';
+	@override String get placeholderRadioNodeName => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ·— —·· ·· ———';
+	@override String get simulatedRotator => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ——— — ·— — ——— ·—·';
+	@override String get simulatedSwitch => '··· ·· —— ··— ·—·· ·— — · —·· / ·— —· — · —· —· ·— / ··· ·—— ·· — —·—· ····';
 	@override String get antennaGenius => '····— ——— ···—— ·— / ·— —· — · —· —· ·— / ——· · —· ·· ··— ···';
 	@override String get sierraCoax => '··· ·· · ·—· ·—· ·— / ·—· ·— —·· ·· ——— / —·—· —··— —····— ·———— / —·—· ——— ·— —··— / ··· ·—— ·· — —·—· ····';
 	@override String get gs232a => '—·—— ·— · ··· ··— / ——· ··· —····— ··——— ···—— ··——— ·— / ·—· ——— — ·— — ——— ·—· / ·· —· — · ·—· ··—· ·— —·—· ·';
@@ -7095,8 +7101,10 @@ extension on TranslationsCw {
 			'settings.station.models.key' => '—·—· ·—— / —·— · —·——',
 			'settings.station.models.midiController' => '—— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·',
 			'settings.station.models.winkeyer' => '·—— ·· —· —·— · —·—— · ·—·',
-			'settings.station.models.placeholderRadio' => '——· · —· · ·—· ·· —·—· / ·—· ·— —·· ·· ——— / —·——· ·——· ·—·· ·— —·—· · ···· ——— ·—·· —·· · ·—· —·——·—',
-			'settings.station.models.placeholderRadioNodeName' => '—— —·—— / ·—· ·— —·· ·· ———',
+			'settings.station.models.placeholderRadio' => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ·— —·· ·· ———',
+			'settings.station.models.placeholderRadioNodeName' => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ·— —·· ·· ———',
+			'settings.station.models.simulatedRotator' => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ——— — ·— — ——— ·—·',
+			'settings.station.models.simulatedSwitch' => '··· ·· —— ··— ·—·· ·— — · —·· / ·— —· — · —· —· ·— / ··· ·—— ·· — —·—· ····',
 			'settings.station.models.antennaGenius' => '····— ——— ···—— ·— / ·— —· — · —· —· ·— / ——· · —· ·· ··— ···',
 			'settings.station.models.sierraCoax' => '··· ·· · ·—· ·—· ·— / ·—· ·— —·· ·· ——— / —·—· —··— —····— ·———— / —·—· ——— ·— —··— / ··· ·—— ·· — —·—· ····',
 			'settings.station.models.gs232a' => '—·—— ·— · ··· ··— / ——· ··· —····— ··——— ···—— ··——— ·— / ·—· ——— — ·— — ——— ·—· / ·· —· — · ·—· ··—· ·— —·—· ·',
@@ -7107,10 +7115,10 @@ extension on TranslationsCw {
 			'settings.station.models.everywareRotor' => '——· ·—· · · —· / ···· · ·—· ——— —· / · ···— · ·—· —·—— ·—— ·— ·—· · / ·—· ——— — ·— — ——— ·—·',
 			'settings.station.models.everywareSwitch' => '——· ·—· · · —· / ···· · ·—· ——— —· / · ···— · ·—· —·—— ·—— ·— ·—· · / ··· ·—— ·· — —·—· ····',
 			'settings.station.models.everywareDirectional' => '——· ·—· · · —· / ···· · ·—· ——— —· / · ···— · ·—· —·—— ·—— ·— ·—· · / —·· ·· ·—· · —·—· — ·· ——— —· ·— ·—·· / ··· ·—— ·· — —·—· ····',
-			'settings.station.models.otrsp' => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—· / —·——· ——— — ·—· ··· ·——· —·——·—',
-			'settings.station.models.rigSelectPro' => '—·· —··— / · —· ——· ·· —· · · ·—· ·· —· ——· / ·—· ·· ——· ··· · ·—·· · —·—· — / ·——· ·—· ———',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.otrsp' => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—· / —·——· ——— — ·—· ··· ·——· —·——·—',
+			'settings.station.models.rigSelectPro' => '—·· —··— / · —· ——· ·· —· · · ·—· ·· —· ——· / ·—· ·· ——· ··· · ·—·· · —·—· — / ·——· ·—· ———',
 			'settings.station.models.ycccSo2r' => '—·—— —·—· —·—· —·—· / ··· ——— ··——— ·—· / —··· ——— —··—',
 			'settings.station.models.so2rduino' => '··· ——— ··——— ·—· —·· ··— ·· —· ———',
 			'settings.station.models.rtlSdr' => '·—· — ·—·· —····— ··· —·· ·—·',
@@ -7271,6 +7279,7 @@ extension on TranslationsCw {
 			'settings.station.softwareIntermediaries' => '··· ——— ··—· — ·—— ·— ·—· · / ·· —· — · ·—· —— · —·· ·· ·— ·—· ·· · ···',
 			'settings.station.otherBrands' => '——— — ···· · ·—· / —··· ·—· ·— —· —·· ···',
 			'settings.station.otherEquipment' => '——— — ···· · ·—· / · ——·— ··— ·· ·——· —— · —· — / —·——· ·— —· — · —· —· ·— ··· ——··—— / —·— · —·—— ··· ——··—— / · — —·—· —·——·—',
+			'settings.station.developmentTools' => '—·· · ···— · ·—·· ——— ·——· —— · —· — / — ——— ——— ·—·· ···',
 			'settings.station.newAntenna' => '—· · ·—— / ·— —· — · —· —· ·—',
 			'settings.station.newKey' => '—· · ·—— / —·— · —·——',
 			'settings.station.newKeyer' => '·—— ·· —· —·— · —·—— · ·—· / —·——· —·— ·———— · ·—·· / ——— ·—· / —·—· ——— —— ·——· ·— — ·· —··· ·—·· · —·——·—',
@@ -7357,15 +7366,15 @@ extension on TranslationsCw {
 			'settings.station.placeholderDropAfter' => '—·· ·—· ——— ·——· / ·— ··—· — · ·—· / —·——· ··· · —·—· ——— —· —·· ··· —·——·—',
 			'settings.station.placeholderDropAfterDescription' => '—·—· ·—·· ——— ··· · / — ···· · / —·—· ——— —· —· · —·—· — ·· ——— —· / ——— —· / ·· — ··· / ——— ·—— —· ——··—— / — ——— / · —··— · ·—· —·—· ·· ··· · / — ···· · / ·—· · —·—· ——— —· —· · —·—· — / ·——· ·— — ···· ·—·—·— / —··· ·—·· ·— —· —·— / ——— ·—· / ————— / —· · ···— · ·—· / —·· ·—· ——— ·——· ··· ·—·—·—',
 			'settings.station.placeholderFailConnect' => '·— ·—·· ·—— ·— —·—— ··· / ··—· ·— ·· ·—·· / — ——— / —·—· ——— —· —· · —·—· —',
-			'settings.station.placeholderConnectFailure' => '— ···· · / ·——· ·—·· ·— —·—· · ···· ——— ·—·· —·· · ·—· / ·—· ·— —·· ·· ——— / ·—— ·— ··· / — ——— ·—·· —·· / — ——— / ·—· · ··—· ··— ··· · / — ···· ·· ··· / —·—· ——— —· —· · —·—· — ·· ——— —·',
+			'settings.station.placeholderConnectFailure' => '— ···· ·· ··· / · ——·— ··— ·· ·——· —— · —· — / ·—— ·— ··· / — ——— ·—·· —·· / — ——— / ·—· · ··—· ··— ··· · / — ···· · / —·—· ——— —· —· · —·—· — ·· ——— —·',
 			'settings.station.placeholderFreq' => '··—· ·—· · ——·— ··— · —· —·—· —·—— / —·——· —·— ···· ——·· —·——·—',
-			'settings.station.placeholderFreqDescription' => '·—— ···· · ·—· · / — ···· · / ·——· ·—·· ·— —·—· · ···· ——— ·—·· —·· · ·—· / ·—· ·— —·· ·· ——— / ··· — ·— ·—· — ··· ·—·—·— / ·· — / ·—· · ·——· ——— ·—· — ··· / —··· ·— —·—· —·— / ·—— ···· ·— — · ···— · ·—· / — ···· · / ·— ·——· ·——· / — ··— —· · ··· / ·· — / — ——— / ·— ··—· — · ·—· ·—— ·— ·—· —·· ··· ·—·—·—',
+			'settings.station.placeholderFreqDescription' => '·—— ···· · ·—· · / — ···· ·· ··· / ·—· ·— —·· ·· ——— / ··· — ·— ·—· — ··· ·—·—·— / ·· — / ·—· · ·——· ——— ·—· — ··· / —··· ·— —·—· —·— / ·—— ···· ·— — · ···— · ·—· / — ···· · / ·— ·——· ·——· / — ··— —· · ··· / ·· — / — ——— / ·— ··—· — · ·—· ·—— ·— ·—· —·· ··· ·—·—·—',
 			'settings.station.placeholderMode' => '—— ——— —·· ·',
-			'settings.station.placeholderModeDescription' => '— ···· · / —— ——— —·· · / — ···· · / ·——· ·—·· ·— —·—· · ···· ——— ·—·· —·· · ·—· / ·—· ·— —·· ·· ——— / ··· — ·— ·—· — ··· / ——— —· ——··—— / · ·—·—·— ——· ·—·—·— / ··— ··· —··· ——··—— / —·—· ·—— ——··—— / ··—· — ———·· ·—·—·—',
+			'settings.station.placeholderModeDescription' => '— ···· · / —— ——— —·· · / — ···· ·· ··· / ·—· ·— —·· ·· ——— / ··· — ·— ·—· — ··· / ——— —· ——··—— / · ·—·—·— ——· ·—·—·— / ··— ··· —··· ——··—— / —·—· ·—— ——··—— / ··—· — ———·· ·—·—·—',
 			'settings.station.placeholderPower' => '·——· ——— ·—— · ·—· / —·——· ·—— ·— — — ··· —·——·—',
 			'settings.station.placeholderPurpose' => '··— ··· · / — ···· ·· ··· / ·—· ·— —·· ·· ——— / — ——— / —·— · · ·——· / — ·—· ·— —·—· —·— / ——— ··—· / ·—— ···· ·· —·—· ···· / ·—· ·· ——· / —·—— ——— ··— ·————· ·—· · / ··— ··· ·· —· ——· / ··—· ——— ·—· / ·—·· ——— ——· ——· ·· —· ——· / ·——· ··— ·—· ·——· ——— ··· · ···',
 			'settings.station.placeholderReplyDelay' => '·—· · ·——· ·—·· —·—— / —·· · ·—·· ·— —·—— / —·——· —— ··· —·——·—',
-			'settings.station.placeholderReplyDelayDescription' => '···· ——— ·—— / ·—·· ——— —· ——· / — ···· · / ·——· ·—·· ·— —·—· · ···· ——— ·—·· —·· · ·—· / ·—· ·— —·· ·· ——— / — ·— —·— · ··· / — ——— / ·—· · ·——· ——— ·—· — / ·— / —·—· ···· ·— —· ——· · / —··· ·— —·—· —·— ·—·—·— / —··· ·—·· ·— —· —·— / ——— ·—· / ————— / ·—· · ·——· ·—·· ·· · ··· / ·— — / ——— —· —·—· · ·—·—·—',
+			'settings.station.placeholderReplyDelayDescription' => '···· ——— ·—— / ·—·· ——— —· ——· / — ···· ·· ··· / ·—· ·— —·· ·· ——— / — ·— —·— · ··· / — ——— / ·—· · ·——· ——— ·—· — / ·— / —·—· ···· ·— —· ——· · / —··· ·— —·—· —·— ·—·—·— / —··· ·—·· ·— —· —·— / ——— ·—· / ————— / ·—· · ·——· ·—·· ·· · ··· / ·— — / ——— —· —·—· · ·—·—·—',
 			'settings.station.cwKeyerField' => '—·—· ·— — / —·—· ·—— / —·— · —·—— · ·—·',
 			'settings.station.cwKeyerFieldDescription' => '·—— ···· · — ···· · ·—· / — ···· ·· ··· / ·—· ·— —·· ·· ——— / —·— · —·—— ··· / —·—· ·—— / ··—· ·—· ——— —— / — · —··— — / ——— ···— · ·—· / —·—· ·— — ·—·—·— / ——— ··—· ··—· / ··—· ——— ·—· / ·— / ·—· ·· ——· / — ···· · / ·— ·——· ·——· / —·· ——— · ··· / —· ——— — / —·— —· ——— ·—— ·—·—·—',
 			'settings.station.voiceMemories' => '···— ——— ·· —·—· · / —— · —— ——— ·—· ·· · ···',
@@ -7402,6 +7411,9 @@ extension on TranslationsCw {
 			'settings.station.placeholderWholeNumberInvalid' => '—— ··— ··· — / —··· · / ·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· ——··—— / ————— / ——— ·—· / —— ——— ·—· ·',
 			'settings.station.placeholderFreqInvalid' => '—— ··— ··· — / —··· · / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·· —· / —·— ···· ——·· ——··—— / ——· ·—· · ·— — · ·—· / — ···· ·— —· / ——·· · ·—· ———',
 			'settings.station.placeholderModeInvalid' => '—— ··— ··· — / —··· · / ·— / —— ——— —·· · / —· ·— —— · ——··—— / · ·—·—·— ——· ·—·—·— / ··— ··· —··· ——··—— / —·—· ·—— ——··—— / ··—· — ———··',
+			'settings.station.simulatedSwitchAntennas' => '·— —· — · —· —· ·— ···',
+			'settings.station.simulatedSwitchRadios' => '·—· ·— —·· ·· ——— / ·——· ——— ·—· — ···',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => '·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· ——··—— / ${min} / — ——— / ${max}',
 			'settings.station.switchLayout' => '·—·· ·— —·—— ——— ··— —',
 			'settings.station.switchLayoutDescription' => '·—— ···· ·· —·—· ···· / ··· ·· —·· · / ——— ··—· / — ···· · / ··· ·—— ·· — —·—· ···· / —·—— ——— ··— ·—· / ·—· ·— —·· ·· ——— ··· / ·— ·—· · / ·——· ·—·· ··— ——· ——· · —·· / ·· —· — ——— ·—·—·—',
 			'settings.station.switchLayoutRequired' => '—·—· ···· ——— ——— ··· · / ···· ——— ·—— / — ···· · / ··· ·—— ·· — —·—· ···· / ·· ··· / ·—— ·· ·—· · —··',
@@ -7617,14 +7629,14 @@ extension on TranslationsCw {
 			'commands.fullResyncStarted' => '··—· ··— ·—·· ·—·· / ·—· · ··· —·—— —· —·—· / ··· — ·— ·—· — · —·· / — / ·—·· ——— —·—· ·— ·—·· / —·· ·— — ·— / ·—— ·— ··· / —··· ·— —·—· —·— · —·· / ··— ·——· / ··—· ·· ·—· ··· — ·—·—·—',
 			'commands.noDataFilesMatched' => ({required Object target}) => '—· ——— / —·· ·— — ·— / ··—· ·· ·—·· · ··· / —— ·— — —·—· ···· · —·· / ·—··—· ${target} ·—··—· ·—·—·—',
 			'commands.reloadFailed' => ({required Object error}) => '·—· · ·—·· ——— ·— —·· / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'commands.reloadingAll' => '·—· · ·—·· ——— ·— —·· ·· —· ——· / ·— ·—·· ·—·· / —·· ·— — ·— / ··—· ·· ·—·· · ··· …',
 			'commands.reloadingTarget' => ({required Object target}) => '·—· · ·—·· ——— ·— —·· ·· —· ——· / ${target} / —·· ·— — ·— / ··—· ·· ·—·· · ··· …',
 			'commands.updatingAllDataFiles' => '—·—· ···· · —·—· —·— ·· —· ——· / · ···— · ·—· —·—— / —·· ·— — ·— / ··—· ·· ·—·· · / ··—· ——— ·—· / ··— ·——· —·· ·— — · ··· …',
 			'commands.updatingDataFiles' => ({required Object names}) => '—·—· ···· · —·—· —·— ·· —· ——· / ${names} / ··—· ——— ·—· / ··— ·——· —·· ·— — · ··· …',
 			'commands.updateDataFilesFailed' => ({required Object error}) => '··— ·——· —·· ·— — · / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
 			'commands.appUpdatesNotChecked' => '— ···· ·· ··· / —··· ··— ·· ·—·· —·· / —·· ——— · ··· —· ’ — / —·—· ···· · —·—· —·— / ··—· ——— ·—· / ··— ·——· —·· ·— — · ···',
-			_ => null,
-		} ?? switch (path) {
 			'commands.appUpToDate' => '— ···· · / ·— ·——· ·——· / ·· ··· / ··— ·——· / — ——— / —·· ·— — ·',
 			'commands.appUpdateCheckFailed' => '—·—· ——— ··— ·—·· —·· —· ’ — / —·—· ···· · —·—· —·— / ··—· ——— ·—· / ·— ·——· ·——· / ··— ·——· —·· ·— — · ···',
 			'commands.appUpdateNotOpened' => '·— —· / ··— ·——· —·· ·— — · / ·· ··· / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · ——··—— / —··· ··— — / ·· — ··· / ··· — ——— ·—· · / ·——· ·— ——· · / —·· ·· —·· —· ’ — / ——— ·——· · —·',
@@ -8131,6 +8143,8 @@ extension on TranslationsCw {
 			'fileOpen.importCwMessages' => '·· —— ·——· ——— ·—· — / ·— ··· / ·— / —·—· ·—— / —— · ··· ··· ·— ——· · / ··· · —',
 			'fileOpen.importVoiceMessages' => '·· —— ·——· ——— ·—· — / ·— ··· / ·— / ···— ——— ·· —·—· · / —— · ··· ··· ·— ——· · / ··· · —',
 			'fileOpen.importIntoLogs' => '·· —— ·——· ——— ·—· — / ·· —· — ——— / ·—·· ——— ——· ···',
+			_ => null,
+		} ?? switch (path) {
 			'fileOpen.importInto' => ({required Object name}) => '·· —— ·——· ——— ·—· — / ·· —· — ——— / ${name}',
 			'fileOpen.importAsOperation' => '·· —— ·——· ——— ·—· — / ·— ··· / ·— / —· · ·—— / ——— ·——· · ·—· ·— — ·· ——— —·',
 			'fileOpen.importLayoutInto' => ({required Object view}) => '·· —— ·——· ——— ·—· — / ·— ··· / ·— / ${view} / ·—·· ·— —·—— ——— ··— —',

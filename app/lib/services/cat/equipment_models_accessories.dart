@@ -18,9 +18,12 @@ import 'drivers/key_driver.dart';
 import 'drivers/midi_controller_driver.dart';
 import 'drivers/otrsp_driver.dart';
 import 'drivers/sierra_coax_driver.dart';
+import 'drivers/simulated_rotator_driver.dart';
+import 'drivers/simulated_switch_driver.dart';
 import 'equipment.dart';
 import 'equipment_registry.dart';
 import 'transports/none_transport.dart';
+import 'transports/placeholder_transport.dart';
 import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
 import 'transports/udp_transport.dart';
@@ -33,6 +36,49 @@ const _gs232aTcpKey = 'gs232a-tcp';
 const _pstRotatorUdpKey = 'pstrotator-udp';
 const _rotctldTcpKey = 'rotctld-tcp';
 const _buddihexUdpKey = 'buddihex-udp';
+
+/// The placeholder transport's knobs, prefilled: its validators reject a
+/// blank box (placeholder_transport.dart says why).
+const _placeholderLinkDefaults = <String, dynamic>{'placeholderConnectDelay': 0, 'placeholderDropAfter': 0};
+
+/// A rotator that isn't there — see simulated_rotator_driver.dart. A
+/// development tool, offered only in developer mode
+/// ([developmentToolModelKeys]).
+const simulatedRotatorModel = EquipmentModel(
+  key: 'simulated-rotator',
+  category: kCategoryRotator,
+  name: _simulatedRotatorName,
+  suggestedName: _simulatedRotatorName,
+  variants: [
+    EquipmentVariant(key: 'simulated-rotator', driver: SimulatedRotatorDriver(), transport: PlaceholderTransport(), defaultConfig: _placeholderLinkDefaults),
+  ],
+);
+
+String _simulatedRotatorName() => t.settings.station.models.simulatedRotator;
+
+/// An antenna switch that isn't there — see simulated_switch_driver.dart. A
+/// development tool, offered only in developer mode
+/// ([developmentToolModelKeys]).
+const simulatedSwitchModel = EquipmentModel(
+  key: 'simulated-switch',
+  category: kCategoryAntennaSwitch,
+  name: _simulatedSwitchName,
+  suggestedName: _simulatedSwitchName,
+  variants: [
+    EquipmentVariant(
+      key: 'simulated-switch',
+      driver: SimulatedSwitchDriver(),
+      transport: PlaceholderTransport(),
+      defaultConfig: {
+        ..._placeholderLinkDefaults,
+        simulatedSwitchAntennasConfigKey: simulatedSwitchDefaultAntennas,
+        simulatedSwitchRadiosConfigKey: simulatedSwitchDefaultRadios,
+      },
+    ),
+  ],
+);
+
+String _simulatedSwitchName() => t.settings.station.models.simulatedSwitch;
 
 /// A 4O3A Antenna Genius, over the TCP protocol its Genius series shares.
 ///

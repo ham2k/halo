@@ -2848,6 +2848,7 @@ class _Translations$settings$station$pt_BR extends Translations$settings$station
 	@override String get softwareIntermediaries => 'Softwares intermediários';
 	@override String get otherBrands => 'Outras marcas';
 	@override String get otherEquipment => 'Outros equipamentos (antenas, manipuladores etc.)';
+	@override String get developmentTools => 'Ferramentas de desenvolvimento';
 	@override String get newAntenna => 'Nova antena';
 	@override String get newKey => 'Novo manipulador';
 	@override String get newKeyer => 'WinKeyer (K1EL ou compatível)';
@@ -2866,15 +2867,15 @@ class _Translations$settings$station$pt_BR extends Translations$settings$station
 	@override String get placeholderDropAfter => 'Cair após (segundos)';
 	@override String get placeholderDropAfterDescription => 'Fecha a conexão sozinho, para testar a reconexão. Vazio ou 0 nunca cai.';
 	@override String get placeholderFailConnect => 'Sempre falhar ao conectar';
-	@override String get placeholderConnectFailure => 'O rádio provisório foi instruído a recusar esta conexão';
+	@override String get placeholderConnectFailure => 'Este equipamento foi instruído a recusar a conexão';
 	@override String get placeholderFreq => 'Frequência (kHz)';
-	@override String get placeholderFreqDescription => 'Onde o rádio provisório começa. Depois ele informa a frequência que o app sintonizar.';
+	@override String get placeholderFreqDescription => 'Onde este rádio começa. Depois ele informa a frequência que o app sintonizar.';
 	@override String get placeholderMode => 'Modo';
-	@override String get placeholderModeDescription => 'O modo em que o rádio provisório começa, por exemplo USB, CW, FT8.';
+	@override String get placeholderModeDescription => 'O modo em que este rádio começa, por exemplo USB, CW, FT8.';
 	@override String get placeholderPower => 'Potência (watts)';
 	@override String get placeholderPurpose => 'Use este rádio para registrar qual equipamento você está usando nos seus logs';
 	@override String get placeholderReplyDelay => 'Atraso de resposta (ms)';
-	@override String get placeholderReplyDelayDescription => 'Quanto tempo o rádio provisório leva para informar uma alteração. Vazio ou 0 responde na hora.';
+	@override String get placeholderReplyDelayDescription => 'Quanto tempo este rádio leva para informar uma alteração. Vazio ou 0 responde na hora.';
 	@override String get cwKeyerField => 'Manipulador CW via CAT';
 	@override String get cwKeyerFieldDescription => 'Se este rádio manipula CW a partir de texto via CAT. Desligado para um rádio que o app não conhece.';
 	@override String get voiceMemories => 'Memórias de voz';
@@ -2907,6 +2908,9 @@ class _Translations$settings$station$pt_BR extends Translations$settings$station
 	@override String get placeholderWholeNumberInvalid => 'Deve ser um número inteiro, 0 ou mais';
 	@override String get placeholderFreqInvalid => 'Deve ser uma frequência em kHz, maior que zero';
 	@override String get placeholderModeInvalid => 'Deve ser um nome de modo, por exemplo USB, CW, FT8';
+	@override String get simulatedSwitchAntennas => 'Antenas';
+	@override String get simulatedSwitchRadios => 'Portas de rádio';
+	@override String simulatedSwitchCountInvalid({required Object min, required Object max}) => 'Um número inteiro, de ${min} a ${max}';
 	@override String get switchLayout => 'Disposição';
 	@override String get switchLayoutDescription => 'Em qual lado da chave seus rádios estão conectados.';
 	@override String get switchLayoutRequired => 'Escolha como a chave está ligada';
@@ -4316,8 +4320,10 @@ class _Translations$settings$station$models$pt_BR extends Translations$settings$
 	@override String get antenna => 'Antena';
 	@override String get key => 'Manipulador de CW';
 	@override String get winkeyer => 'WinKeyer';
-	@override String get placeholderRadio => 'Rádio genérico (provisório)';
-	@override String get placeholderRadioNodeName => 'Meu rádio';
+	@override String get placeholderRadio => 'Rádio simulado';
+	@override String get placeholderRadioNodeName => 'Rádio simulado';
+	@override String get simulatedRotator => 'Rotor simulado';
+	@override String get simulatedSwitch => 'Chave de antenas simulada';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Chave coaxial Sierra Radio CX-1';
 	@override String get gs232a => 'Interface de rotor Yaesu GS-232A';
@@ -6319,8 +6325,10 @@ extension on TranslationsPtBr {
 			'settings.station.models.antenna' => 'Antena',
 			'settings.station.models.key' => 'Manipulador de CW',
 			'settings.station.models.winkeyer' => 'WinKeyer',
-			'settings.station.models.placeholderRadio' => 'Rádio genérico (provisório)',
-			'settings.station.models.placeholderRadioNodeName' => 'Meu rádio',
+			'settings.station.models.placeholderRadio' => 'Rádio simulado',
+			'settings.station.models.placeholderRadioNodeName' => 'Rádio simulado',
+			'settings.station.models.simulatedRotator' => 'Rotor simulado',
+			'settings.station.models.simulatedSwitch' => 'Chave de antenas simulada',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Chave coaxial Sierra Radio CX-1',
 			'settings.station.models.gs232a' => 'Interface de rotor Yaesu GS-232A',
@@ -6464,6 +6472,7 @@ extension on TranslationsPtBr {
 			'settings.station.softwareIntermediaries' => 'Softwares intermediários',
 			'settings.station.otherBrands' => 'Outras marcas',
 			'settings.station.otherEquipment' => 'Outros equipamentos (antenas, manipuladores etc.)',
+			'settings.station.developmentTools' => 'Ferramentas de desenvolvimento',
 			'settings.station.newAntenna' => 'Nova antena',
 			'settings.station.newKey' => 'Novo manipulador',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL ou compatível)',
@@ -6482,15 +6491,15 @@ extension on TranslationsPtBr {
 			'settings.station.placeholderDropAfter' => 'Cair após (segundos)',
 			'settings.station.placeholderDropAfterDescription' => 'Fecha a conexão sozinho, para testar a reconexão. Vazio ou 0 nunca cai.',
 			'settings.station.placeholderFailConnect' => 'Sempre falhar ao conectar',
-			'settings.station.placeholderConnectFailure' => 'O rádio provisório foi instruído a recusar esta conexão',
+			'settings.station.placeholderConnectFailure' => 'Este equipamento foi instruído a recusar a conexão',
 			'settings.station.placeholderFreq' => 'Frequência (kHz)',
-			'settings.station.placeholderFreqDescription' => 'Onde o rádio provisório começa. Depois ele informa a frequência que o app sintonizar.',
+			'settings.station.placeholderFreqDescription' => 'Onde este rádio começa. Depois ele informa a frequência que o app sintonizar.',
 			'settings.station.placeholderMode' => 'Modo',
-			'settings.station.placeholderModeDescription' => 'O modo em que o rádio provisório começa, por exemplo USB, CW, FT8.',
+			'settings.station.placeholderModeDescription' => 'O modo em que este rádio começa, por exemplo USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Potência (watts)',
 			'settings.station.placeholderPurpose' => 'Use este rádio para registrar qual equipamento você está usando nos seus logs',
 			'settings.station.placeholderReplyDelay' => 'Atraso de resposta (ms)',
-			'settings.station.placeholderReplyDelayDescription' => 'Quanto tempo o rádio provisório leva para informar uma alteração. Vazio ou 0 responde na hora.',
+			'settings.station.placeholderReplyDelayDescription' => 'Quanto tempo este rádio leva para informar uma alteração. Vazio ou 0 responde na hora.',
 			'settings.station.cwKeyerField' => 'Manipulador CW via CAT',
 			'settings.station.cwKeyerFieldDescription' => 'Se este rádio manipula CW a partir de texto via CAT. Desligado para um rádio que o app não conhece.',
 			'settings.station.voiceMemories' => 'Memórias de voz',
@@ -6498,11 +6507,11 @@ extension on TranslationsPtBr {
 			'settings.station.voiceMemoriesInvalid' => 'Um número inteiro, 0 ou mais',
 			'settings.station.yaesuMeterCapture' => 'Capturar leituras dos medidores',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Lê o medidor de potência de saída e o indicador de ROE alta do rádio durante a transmissão e grava os valores brutos no log. Serve para montar a escala que a Yaesu não publica — os valores não são mostrados como medidores.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Lê os medidores PO, SWR e ALC do rádio durante a transmissão e grava os valores brutos no log. Serve para montar a escala que a Yaesu não publica — os valores não são mostrados como medidores.',
 			'settings.station.telemetryInterval' => 'Intervalo de leitura dos medidores (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Com que frequência ler os medidores do rádio enquanto ele transmite. Deixe vazio para o mais rápido que esta conexão suporta, até 200 ms.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Um número inteiro de milissegundos, de ${min} a ${max}',
 			'settings.station.pollInterval' => 'Intervalo de consulta em repouso (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Com que frequência perguntar ao rádio a frequência e o modo enquanto nenhum dos dois muda. Deixe vazio para ${fallback} ms.',
@@ -6525,6 +6534,9 @@ extension on TranslationsPtBr {
 			'settings.station.placeholderWholeNumberInvalid' => 'Deve ser um número inteiro, 0 ou mais',
 			'settings.station.placeholderFreqInvalid' => 'Deve ser uma frequência em kHz, maior que zero',
 			'settings.station.placeholderModeInvalid' => 'Deve ser um nome de modo, por exemplo USB, CW, FT8',
+			'settings.station.simulatedSwitchAntennas' => 'Antenas',
+			'settings.station.simulatedSwitchRadios' => 'Portas de rádio',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'Um número inteiro, de ${min} a ${max}',
 			'settings.station.switchLayout' => 'Disposição',
 			'settings.station.switchLayoutDescription' => 'Em qual lado da chave seus rádios estão conectados.',
 			'settings.station.switchLayoutRequired' => 'Escolha como a chave está ligada',
@@ -7009,14 +7021,14 @@ extension on TranslationsPtBr {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} precisa de uma análise mais detalhada', other: '${formatted} precisam de uma análise mais detalhada', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: 'Não foi possível recuperar as referências de ${count} contato', other: 'Não foi possível recuperar as referências de ${formatted} contatos', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: 'As referências de ${programs} podem estar incompletas para ${count} contato', other: 'As referências de ${programs} podem estar incompletas para ${formatted} contatos', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Contatos combinados podem perder uma referência — as atividades não informaram quais tipos se acumulam. Cancele e tente novamente para evitar isso.',
 			'adifImport.nothingToImport' => 'Nada neste arquivo pode ser importado',
 			'adifImport.confirm' => 'Importar',
 			'adifImport.importing' => ({required Object filename}) => 'Importando ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} contato importado de ${filename}', other: '${formatted} contatos importados de ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Não foi possível importar ${filename}: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} não parece ser um arquivo ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Aviso: este ADIF tem QSOs de ${calls}, mas eles serão importados como ${station} se você continuar.',
 			'adifImport.stationCallJoin' => ' e ',

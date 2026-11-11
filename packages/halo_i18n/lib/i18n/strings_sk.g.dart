@@ -2847,6 +2847,7 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String get softwareIntermediaries => 'Softvéroví sprostredkovatelia';
 	@override String get otherBrands => 'Iné značky';
 	@override String get otherEquipment => 'Iné vybavenie (antény, kľúče atď.)';
+	@override String get developmentTools => 'Vývojárske nástroje';
 	@override String get newAntenna => 'Nová anténa';
 	@override String get newKey => 'Nový kľúč';
 	@override String get newKeyer => 'WinKeyer (K1EL alebo kompatibilný)';
@@ -2865,15 +2866,15 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String get placeholderDropAfter => 'Odpojiť po (sekundy)';
 	@override String get placeholderDropAfterDescription => 'Samo zatvorí pripojenie, aby sa vyskúšalo opätovné pripojenie. Prázdne alebo 0 sa nikdy neodpojí.';
 	@override String get placeholderFailConnect => 'Vždy zlyhať pri pripájaní';
-	@override String get placeholderConnectFailure => 'Zástupná rádiostanica má nastavené toto pripojenie odmietnuť';
+	@override String get placeholderConnectFailure => 'Toto zariadenie má nastavené pripojenie odmietnuť';
 	@override String get placeholderFreq => 'Frekvencia (kHz)';
-	@override String get placeholderFreqDescription => 'Kde zástupná rádiostanica začína. Potom hlási to, na čo ju aplikácia naladí.';
+	@override String get placeholderFreqDescription => 'Kde táto rádiostanica začína. Potom hlási to, na čo ju aplikácia naladí.';
 	@override String get placeholderMode => 'Mód';
-	@override String get placeholderModeDescription => 'Mód, na ktorom zástupná rádiostanica začína, napr. USB, CW, FT8.';
+	@override String get placeholderModeDescription => 'Mód, na ktorom táto rádiostanica začína, napr. USB, CW, FT8.';
 	@override String get placeholderPower => 'Výkon (watty)';
 	@override String get placeholderPurpose => 'Použite túto rádiostanicu, aby sa pri logovaní zaznamenávalo, ktorú rádiostanicu práve používate';
 	@override String get placeholderReplyDelay => 'Oneskorenie odpovede (ms)';
-	@override String get placeholderReplyDelayDescription => 'Ako dlho trvá zástupnej rádiostanici nahlásiť zmenu. Prázdne alebo 0 odpovie okamžite.';
+	@override String get placeholderReplyDelayDescription => 'Ako dlho trvá tejto rádiostanici nahlásiť zmenu. Prázdne alebo 0 odpovie okamžite.';
 	@override String get cwKeyerField => 'CAT CW kľúčovač';
 	@override String get cwKeyerFieldDescription => 'Či táto rádiostanica kľúčuje CW z textu cez CAT. Vypnuté pre rádiostanicu, ktorú aplikácia nepozná.';
 	@override String get voiceMemories => 'Hlasové pamäte';
@@ -2906,6 +2907,9 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String get placeholderWholeNumberInvalid => 'Musí byť celé číslo, 0 alebo viac';
 	@override String get placeholderFreqInvalid => 'Musí byť frekvencia v kHz, väčšia ako nula';
 	@override String get placeholderModeInvalid => 'Musí byť názov módu, napr. USB, CW, FT8';
+	@override String get simulatedSwitchAntennas => 'Antény';
+	@override String get simulatedSwitchRadios => 'Porty pre rádiostanice';
+	@override String simulatedSwitchCountInvalid({required Object min, required Object max}) => 'Celé číslo, ${min} až ${max}';
 	@override String get switchLayout => 'Rozloženie';
 	@override String get switchLayoutDescription => 'Na ktorú stranu prepínača sú pripojené vaše rádiostanice.';
 	@override String get switchLayoutRequired => 'Vyberte, ako je prepínač zapojený';
@@ -4315,8 +4319,10 @@ class _Translations$settings$station$models$sk extends Translations$settings$sta
 	@override String get antenna => 'Anténa';
 	@override String get key => 'CW kľúč';
 	@override String get winkeyer => 'WinKeyer';
-	@override String get placeholderRadio => 'Všeobecná rádiostanica (zástupná)';
-	@override String get placeholderRadioNodeName => 'Moja rádiostanica';
+	@override String get placeholderRadio => 'Simulovaná rádiostanica';
+	@override String get placeholderRadioNodeName => 'Simulovaná rádiostanica';
+	@override String get simulatedRotator => 'Simulovaný rotátor';
+	@override String get simulatedSwitch => 'Simulovaný anténny prepínač';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 Coax Switch';
 	@override String get gs232a => 'Rozhranie rotátora Yaesu GS-232A';
@@ -6318,8 +6324,10 @@ extension on TranslationsSk {
 			'settings.station.models.antenna' => 'Anténa',
 			'settings.station.models.key' => 'CW kľúč',
 			'settings.station.models.winkeyer' => 'WinKeyer',
-			'settings.station.models.placeholderRadio' => 'Všeobecná rádiostanica (zástupná)',
-			'settings.station.models.placeholderRadioNodeName' => 'Moja rádiostanica',
+			'settings.station.models.placeholderRadio' => 'Simulovaná rádiostanica',
+			'settings.station.models.placeholderRadioNodeName' => 'Simulovaná rádiostanica',
+			'settings.station.models.simulatedRotator' => 'Simulovaný rotátor',
+			'settings.station.models.simulatedSwitch' => 'Simulovaný anténny prepínač',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
 			'settings.station.models.gs232a' => 'Rozhranie rotátora Yaesu GS-232A',
@@ -6463,6 +6471,7 @@ extension on TranslationsSk {
 			'settings.station.softwareIntermediaries' => 'Softvéroví sprostredkovatelia',
 			'settings.station.otherBrands' => 'Iné značky',
 			'settings.station.otherEquipment' => 'Iné vybavenie (antény, kľúče atď.)',
+			'settings.station.developmentTools' => 'Vývojárske nástroje',
 			'settings.station.newAntenna' => 'Nová anténa',
 			'settings.station.newKey' => 'Nový kľúč',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL alebo kompatibilný)',
@@ -6481,15 +6490,15 @@ extension on TranslationsSk {
 			'settings.station.placeholderDropAfter' => 'Odpojiť po (sekundy)',
 			'settings.station.placeholderDropAfterDescription' => 'Samo zatvorí pripojenie, aby sa vyskúšalo opätovné pripojenie. Prázdne alebo 0 sa nikdy neodpojí.',
 			'settings.station.placeholderFailConnect' => 'Vždy zlyhať pri pripájaní',
-			'settings.station.placeholderConnectFailure' => 'Zástupná rádiostanica má nastavené toto pripojenie odmietnuť',
+			'settings.station.placeholderConnectFailure' => 'Toto zariadenie má nastavené pripojenie odmietnuť',
 			'settings.station.placeholderFreq' => 'Frekvencia (kHz)',
-			'settings.station.placeholderFreqDescription' => 'Kde zástupná rádiostanica začína. Potom hlási to, na čo ju aplikácia naladí.',
+			'settings.station.placeholderFreqDescription' => 'Kde táto rádiostanica začína. Potom hlási to, na čo ju aplikácia naladí.',
 			'settings.station.placeholderMode' => 'Mód',
-			'settings.station.placeholderModeDescription' => 'Mód, na ktorom zástupná rádiostanica začína, napr. USB, CW, FT8.',
+			'settings.station.placeholderModeDescription' => 'Mód, na ktorom táto rádiostanica začína, napr. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Výkon (watty)',
 			'settings.station.placeholderPurpose' => 'Použite túto rádiostanicu, aby sa pri logovaní zaznamenávalo, ktorú rádiostanicu práve používate',
 			'settings.station.placeholderReplyDelay' => 'Oneskorenie odpovede (ms)',
-			'settings.station.placeholderReplyDelayDescription' => 'Ako dlho trvá zástupnej rádiostanici nahlásiť zmenu. Prázdne alebo 0 odpovie okamžite.',
+			'settings.station.placeholderReplyDelayDescription' => 'Ako dlho trvá tejto rádiostanici nahlásiť zmenu. Prázdne alebo 0 odpovie okamžite.',
 			'settings.station.cwKeyerField' => 'CAT CW kľúčovač',
 			'settings.station.cwKeyerFieldDescription' => 'Či táto rádiostanica kľúčuje CW z textu cez CAT. Vypnuté pre rádiostanicu, ktorú aplikácia nepozná.',
 			'settings.station.voiceMemories' => 'Hlasové pamäte',
@@ -6497,11 +6506,11 @@ extension on TranslationsSk {
 			'settings.station.voiceMemoriesInvalid' => 'Celé číslo, 0 alebo viac',
 			'settings.station.yaesuMeterCapture' => 'Zaznamenávať hodnoty meračov',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Počas vysielania číta merač výstupného výkonu a príznak vysokého SWR rádiostanice a vypisuje surové hodnoty do logu. Slúži na zostavenie stupnice, ktorú Yaesu nezverejňuje — hodnoty sa nezobrazujú ako merače.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Počas vysielania číta merače PO, SWR a ALC rádiostanice a vypisuje surové hodnoty do logu. Slúži na zostavenie stupnice, ktorú Yaesu nezverejňuje — hodnoty sa nezobrazujú ako merače.',
 			'settings.station.telemetryInterval' => 'Interval čítania meračov (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Ako často čítať merače rádiostanice počas vysielania. Nechajte prázdne pre najrýchlejšie, čo toto pripojenie zvládne, až do 200 ms.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Celý počet milisekúnd, ${min} až ${max}',
 			'settings.station.pollInterval' => 'Interval dopytovania v nečinnosti (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Ako často sa pýtať rádiostanice na frekvenciu a mód, keď sa nemenia. Nechajte prázdne pre ${fallback} ms.',
@@ -6524,6 +6533,9 @@ extension on TranslationsSk {
 			'settings.station.placeholderWholeNumberInvalid' => 'Musí byť celé číslo, 0 alebo viac',
 			'settings.station.placeholderFreqInvalid' => 'Musí byť frekvencia v kHz, väčšia ako nula',
 			'settings.station.placeholderModeInvalid' => 'Musí byť názov módu, napr. USB, CW, FT8',
+			'settings.station.simulatedSwitchAntennas' => 'Antény',
+			'settings.station.simulatedSwitchRadios' => 'Porty pre rádiostanice',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'Celé číslo, ${min} až ${max}',
 			'settings.station.switchLayout' => 'Rozloženie',
 			'settings.station.switchLayoutDescription' => 'Na ktorú stranu prepínača sú pripojené vaše rádiostanice.',
 			'settings.station.switchLayoutRequired' => 'Vyberte, ako je prepínač zapojený',
@@ -7008,14 +7020,14 @@ extension on TranslationsSk {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} si vyžaduje bližšiu kontrolu', other: '${formatted} si vyžaduje bližšiu kontrolu', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Referencie sa nepodarilo obnoviť pre ${count} spojenie', other: 'Referencie sa nepodarilo obnoviť pre ${formatted} spojení', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Referencie ${programs} môžu byť neúplné pre ${count} spojenie', other: 'Referencie ${programs} môžu byť neúplné pre ${formatted} spojení', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Zlúčené spojenia môžu prísť o referenciu — aktivity nedokázali určiť, ktoré typy sa dajú kombinovať. Ak tomu chcete predísť, zrušte to a skúste znova.',
 			'adifImport.nothingToImport' => 'Z tohto súboru sa nedá nič importovať',
 			'adifImport.confirm' => 'Importovať',
 			'adifImport.importing' => ({required Object filename}) => 'Importuje sa ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Importované ${count} spojenie z ${filename}', other: 'Importovaných ${formatted} spojení z ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} sa nepodarilo importovať: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} nevyzerá ako súbor ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Upozornenie: tento ADIF obsahuje QSO od ${calls}, ale ak budete pokračovať, importujú sa ako ${station}.',
 			'adifImport.stationCallJoin' => ' a ',

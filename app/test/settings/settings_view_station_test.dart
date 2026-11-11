@@ -1029,6 +1029,7 @@ void main() {
     );
     await services.settings.setTrackStationInfo(true);
     await services.settings.setStationInfoTrackedFields({'rig', 'power', 'antenna', 'key'});
+    await services.settings.setDeveloperMode(true);
     addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
     await tester.pumpWidget(
       TranslationProvider(
@@ -1058,8 +1059,8 @@ void main() {
     await settle();
     await tapVisible(find.text('Station Configuration'));
     await tapVisible(find.widgetWithText(FilledButton, 'Add').last);
-    await tapVisible(find.text('Other Brands'));
-    await tapVisible(find.text('Generic Radio (Placeholder)').last);
+    await tapVisible(find.text('Development Tools'));
+    await tapVisible(find.text('Simulated Radio').last);
 
     final field = find.widgetWithText(TextField, 'Name').last;
     final focus = tester.widget<TextField>(field).focusNode!;

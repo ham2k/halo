@@ -2847,6 +2847,7 @@ class _Translations$settings$station$ko extends Translations$settings$station$en
 	@override String get softwareIntermediaries => '중계 소프트웨어';
 	@override String get otherBrands => '기타 브랜드';
 	@override String get otherEquipment => '기타 장비 (안테나, 키 등)';
+	@override String get developmentTools => '개발 도구';
 	@override String get newAntenna => '새 안테나';
 	@override String get newKey => '새 키';
 	@override String get newKeyer => 'WinKeyer (K1EL 또는 호환)';
@@ -2865,15 +2866,15 @@ class _Translations$settings$station$ko extends Translations$settings$station$en
 	@override String get placeholderDropAfter => '연결 끊기 (초)';
 	@override String get placeholderDropAfterDescription => '재연결 경로를 시험하기 위해 스스로 연결을 끊습니다. 비워 두거나 0이면 끊지 않습니다.';
 	@override String get placeholderFailConnect => '항상 연결 실패';
-	@override String get placeholderConnectFailure => '임시 무전기가 이 연결을 거부하도록 설정되었습니다';
+	@override String get placeholderConnectFailure => '이 장비가 연결을 거부하도록 설정되었습니다';
 	@override String get placeholderFreq => '주파수 (kHz)';
-	@override String get placeholderFreqDescription => '임시 무전기의 시작 주파수. 이후에는 앱이 튜닝한 값을 그대로 보고합니다.';
+	@override String get placeholderFreqDescription => '이 무전기의 시작 주파수. 이후에는 앱이 튜닝한 값을 그대로 보고합니다.';
 	@override String get placeholderMode => '모드';
-	@override String get placeholderModeDescription => '임시 무전기의 시작 모드. 예: USB, CW, FT8.';
+	@override String get placeholderModeDescription => '이 무전기의 시작 모드. 예: USB, CW, FT8.';
 	@override String get placeholderPower => '출력 (와트)';
 	@override String get placeholderPurpose => '로깅을 위해 어떤 장비를 사용 중인지 기록하는 데 이 무전기를 사용하세요';
 	@override String get placeholderReplyDelay => '응답 지연 (ms)';
-	@override String get placeholderReplyDelayDescription => '임시 무전기가 변경 사항을 보고하는 데 걸리는 시간. 비워 두거나 0이면 즉시 응답합니다.';
+	@override String get placeholderReplyDelayDescription => '이 무전기가 변경 사항을 보고하는 데 걸리는 시간. 비워 두거나 0이면 즉시 응답합니다.';
 	@override String get cwKeyerField => 'CAT CW 키어';
 	@override String get cwKeyerFieldDescription => '이 무전기가 CAT으로 텍스트를 받아 CW를 키잉하는지 여부. 앱이 모르는 무전기는 끄세요.';
 	@override String get voiceMemories => '보이스 메모리';
@@ -2906,6 +2907,9 @@ class _Translations$settings$station$ko extends Translations$settings$station$en
 	@override String get placeholderWholeNumberInvalid => '0 이상의 정수여야 합니다';
 	@override String get placeholderFreqInvalid => '0보다 큰 kHz 단위 주파수여야 합니다';
 	@override String get placeholderModeInvalid => '모드 이름이어야 합니다. 예: USB, CW, FT8';
+	@override String get simulatedSwitchAntennas => '안테나';
+	@override String get simulatedSwitchRadios => '무전기 포트';
+	@override String simulatedSwitchCountInvalid({required Object min, required Object max}) => '${min}에서 ${max} 사이의 정수';
 	@override String get switchLayout => '레이아웃';
 	@override String get switchLayoutDescription => '무전기가 스위치의 어느 쪽에 연결되어 있는지.';
 	@override String get switchLayoutRequired => '스위치 배선 방식을 선택하세요';
@@ -4315,8 +4319,10 @@ class _Translations$settings$station$models$ko extends Translations$settings$sta
 	@override String get antenna => '안테나';
 	@override String get key => 'CW 키';
 	@override String get winkeyer => 'WinKeyer';
-	@override String get placeholderRadio => '범용 무전기 (임시)';
-	@override String get placeholderRadioNodeName => '내 무전기';
+	@override String get placeholderRadio => '시뮬레이션 무전기';
+	@override String get placeholderRadioNodeName => '시뮬레이션 무전기';
+	@override String get simulatedRotator => '시뮬레이션 로테이터';
+	@override String get simulatedSwitch => '시뮬레이션 안테나 스위치';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 동축 스위치';
 	@override String get gs232a => 'Yaesu GS-232A 로테이터 인터페이스';
@@ -6318,8 +6324,10 @@ extension on TranslationsKo {
 			'settings.station.models.antenna' => '안테나',
 			'settings.station.models.key' => 'CW 키',
 			'settings.station.models.winkeyer' => 'WinKeyer',
-			'settings.station.models.placeholderRadio' => '범용 무전기 (임시)',
-			'settings.station.models.placeholderRadioNodeName' => '내 무전기',
+			'settings.station.models.placeholderRadio' => '시뮬레이션 무전기',
+			'settings.station.models.placeholderRadioNodeName' => '시뮬레이션 무전기',
+			'settings.station.models.simulatedRotator' => '시뮬레이션 로테이터',
+			'settings.station.models.simulatedSwitch' => '시뮬레이션 안테나 스위치',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 동축 스위치',
 			'settings.station.models.gs232a' => 'Yaesu GS-232A 로테이터 인터페이스',
@@ -6463,6 +6471,7 @@ extension on TranslationsKo {
 			'settings.station.softwareIntermediaries' => '중계 소프트웨어',
 			'settings.station.otherBrands' => '기타 브랜드',
 			'settings.station.otherEquipment' => '기타 장비 (안테나, 키 등)',
+			'settings.station.developmentTools' => '개발 도구',
 			'settings.station.newAntenna' => '새 안테나',
 			'settings.station.newKey' => '새 키',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL 또는 호환)',
@@ -6481,15 +6490,15 @@ extension on TranslationsKo {
 			'settings.station.placeholderDropAfter' => '연결 끊기 (초)',
 			'settings.station.placeholderDropAfterDescription' => '재연결 경로를 시험하기 위해 스스로 연결을 끊습니다. 비워 두거나 0이면 끊지 않습니다.',
 			'settings.station.placeholderFailConnect' => '항상 연결 실패',
-			'settings.station.placeholderConnectFailure' => '임시 무전기가 이 연결을 거부하도록 설정되었습니다',
+			'settings.station.placeholderConnectFailure' => '이 장비가 연결을 거부하도록 설정되었습니다',
 			'settings.station.placeholderFreq' => '주파수 (kHz)',
-			'settings.station.placeholderFreqDescription' => '임시 무전기의 시작 주파수. 이후에는 앱이 튜닝한 값을 그대로 보고합니다.',
+			'settings.station.placeholderFreqDescription' => '이 무전기의 시작 주파수. 이후에는 앱이 튜닝한 값을 그대로 보고합니다.',
 			'settings.station.placeholderMode' => '모드',
-			'settings.station.placeholderModeDescription' => '임시 무전기의 시작 모드. 예: USB, CW, FT8.',
+			'settings.station.placeholderModeDescription' => '이 무전기의 시작 모드. 예: USB, CW, FT8.',
 			'settings.station.placeholderPower' => '출력 (와트)',
 			'settings.station.placeholderPurpose' => '로깅을 위해 어떤 장비를 사용 중인지 기록하는 데 이 무전기를 사용하세요',
 			'settings.station.placeholderReplyDelay' => '응답 지연 (ms)',
-			'settings.station.placeholderReplyDelayDescription' => '임시 무전기가 변경 사항을 보고하는 데 걸리는 시간. 비워 두거나 0이면 즉시 응답합니다.',
+			'settings.station.placeholderReplyDelayDescription' => '이 무전기가 변경 사항을 보고하는 데 걸리는 시간. 비워 두거나 0이면 즉시 응답합니다.',
 			'settings.station.cwKeyerField' => 'CAT CW 키어',
 			'settings.station.cwKeyerFieldDescription' => '이 무전기가 CAT으로 텍스트를 받아 CW를 키잉하는지 여부. 앱이 모르는 무전기는 끄세요.',
 			'settings.station.voiceMemories' => '보이스 메모리',
@@ -6497,11 +6506,11 @@ extension on TranslationsKo {
 			'settings.station.voiceMemoriesInvalid' => '0 이상의 정수',
 			'settings.station.yaesuMeterCapture' => '미터 값 캡처',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => '송신 중 무전기의 출력 미터와 높은 SWR 플래그를 읽어 원시 값을 로그에 기록합니다. Yaesu가 공개하지 않은 눈금을 만들기 위한 것이며, 값은 미터로 표시되지 않습니다.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => '송신 중 무전기의 PO, SWR, ALC 미터를 읽어 원시 값을 로그에 기록합니다. Yaesu가 공개하지 않은 눈금을 만들기 위한 것이며, 값은 미터로 표시되지 않습니다.',
 			'settings.station.telemetryInterval' => '미터 읽기 간격 (ms)',
 			'settings.station.telemetryIntervalDescription' => '송신 중 무전기의 미터를 읽는 간격. 비워 두면 이 연결이 처리할 수 있는 가장 빠른 간격(최대 200 ms)을 사용합니다.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '${min}에서 ${max} 사이의 정수 밀리초',
 			'settings.station.pollInterval' => '유휴 폴링 간격 (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '주파수와 모드가 바뀌지 않는 동안 무전기에 이를 묻는 간격. 비워 두면 ${fallback} ms입니다.',
@@ -6524,6 +6533,9 @@ extension on TranslationsKo {
 			'settings.station.placeholderWholeNumberInvalid' => '0 이상의 정수여야 합니다',
 			'settings.station.placeholderFreqInvalid' => '0보다 큰 kHz 단위 주파수여야 합니다',
 			'settings.station.placeholderModeInvalid' => '모드 이름이어야 합니다. 예: USB, CW, FT8',
+			'settings.station.simulatedSwitchAntennas' => '안테나',
+			'settings.station.simulatedSwitchRadios' => '무전기 포트',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => '${min}에서 ${max} 사이의 정수',
 			'settings.station.switchLayout' => '레이아웃',
 			'settings.station.switchLayoutDescription' => '무전기가 스위치의 어느 쪽에 연결되어 있는지.',
 			'settings.station.switchLayoutRequired' => '스위치 배선 방식을 선택하세요',
@@ -7008,14 +7020,14 @@ extension on TranslationsKo {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count}개는 자세히 확인해야 합니다', other: '${formatted}개는 자세히 확인해야 합니다', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '교신 ${count}개의 레퍼런스를 복구할 수 없습니다', other: '교신 ${formatted}개의 레퍼런스를 복구할 수 없습니다', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '교신 ${count}개의 ${programs} 레퍼런스가 불완전할 수 있습니다', other: '교신 ${formatted}개의 ${programs} 레퍼런스가 불완전할 수 있습니다', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => '합쳐진 교신에서 레퍼런스가 빠질 수 있습니다. 활동이 어떤 유형을 함께 쓸 수 있는지 알려주지 못했습니다. 이를 피하려면 취소하고 다시 시도하세요.',
 			'adifImport.nothingToImport' => '이 파일에서 가져올 수 있는 것이 없습니다',
 			'adifImport.confirm' => '가져오기',
 			'adifImport.importing' => ({required Object filename}) => '${filename} 가져오는 중…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${filename}에서 교신 ${count}개를 가져왔습니다', other: '${filename}에서 교신 ${formatted}개를 가져왔습니다', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename}을(를) 가져올 수 없습니다: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename}은(는) ADIF 파일이 아닌 것 같습니다',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '경고: 이 ADIF에는 ${calls}의 QSO가 있지만, 계속하면 ${station}(으)로 가져옵니다.',
 			'adifImport.stationCallJoin' => ' 및 ',

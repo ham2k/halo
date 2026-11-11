@@ -3172,6 +3172,7 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get softwareIntermediaries => 'software intermediaries';
 	@override String get otherBrands => 'other brands';
 	@override String get otherEquipment => 'other equipment (antennas, keys, etc)';
+	@override String get developmentTools => 'development tools';
 	@override String get newAntenna => 'new antenna';
 	@override String get newKey => 'new key';
 	@override String get newKeyer => 'winkeyer (k1el or compatible)';
@@ -3192,15 +3193,15 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get placeholderDropAfter => 'drop after (seconds)';
 	@override String get placeholderDropAfterDescription => 'close the connection on its own, to exercise the reconnect path. blank or 0 never drops.';
 	@override String get placeholderFailConnect => 'always fail to connect';
-	@override String get placeholderConnectFailure => 'the placeholder radio was told to refuse this connection';
+	@override String get placeholderConnectFailure => 'this equipment was told to refuse the connection';
 	@override String get placeholderFreq => 'frequency (khz)';
-	@override String get placeholderFreqDescription => 'where the placeholder radio starts. it reports back whatever the app tunes it to afterwards.';
+	@override String get placeholderFreqDescription => 'where this radio starts. it reports back whatever the app tunes it to afterwards.';
 	@override String get placeholderMode => 'mode';
-	@override String get placeholderModeDescription => 'the mode the placeholder radio starts on, e.g. usb, cw, ft8.';
+	@override String get placeholderModeDescription => 'the mode this radio starts on, e.g. usb, cw, ft8.';
 	@override String get placeholderPower => 'power (watts)';
 	@override String get placeholderPurpose => 'use this radio to keep track of which rig you\'re using for logging purposes';
 	@override String get placeholderReplyDelay => 'reply delay (ms)';
-	@override String get placeholderReplyDelayDescription => 'how long the placeholder radio takes to report a change back. blank or 0 replies at once.';
+	@override String get placeholderReplyDelayDescription => 'how long this radio takes to report a change back. blank or 0 replies at once.';
 	@override String get cwKeyerField => 'cat cw keyer';
 	@override String get cwKeyerFieldDescription => 'whether this radio keys cw from text over cat. off for a rig the app does not know.';
 	@override String get voiceMemories => 'voice memories';
@@ -3237,6 +3238,9 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get placeholderWholeNumberInvalid => 'must be a whole number, 0 or more';
 	@override String get placeholderFreqInvalid => 'must be a frequency in khz, greater than zero';
 	@override String get placeholderModeInvalid => 'must be a mode name, e.g. usb, cw, ft8';
+	@override String get simulatedSwitchAntennas => 'antennas';
+	@override String get simulatedSwitchRadios => 'radio ports';
+	@override String simulatedSwitchCountInvalid({required Object min, required Object max}) => 'a whole number, ${min} to ${max}';
 	@override String get switchLayout => 'layout';
 	@override String get switchLayoutDescription => 'which side of the switch your radios are plugged into.';
 	@override String get switchLayoutRequired => 'choose how the switch is wired';
@@ -4791,8 +4795,10 @@ class _Translations$settings$station$models$qrp extends Translations$settings$st
 	@override String get key => 'cw key';
 	@override String get midiController => 'midi controller';
 	@override String get winkeyer => 'winkeyer';
-	@override String get placeholderRadio => 'generic radio (placeholder)';
-	@override String get placeholderRadioNodeName => 'my radio';
+	@override String get placeholderRadio => 'simulated radio';
+	@override String get placeholderRadioNodeName => 'simulated radio';
+	@override String get simulatedRotator => 'simulated rotator';
+	@override String get simulatedSwitch => 'simulated antenna switch';
 	@override String get antennaGenius => '4o3a antenna genius';
 	@override String get sierraCoax => 'sierra radio cx-1 coax switch';
 	@override String get gs232a => 'yaesu gs-232a rotator interface';
@@ -7095,8 +7101,10 @@ extension on TranslationsQrp {
 			'settings.station.models.key' => 'cw key',
 			'settings.station.models.midiController' => 'midi controller',
 			'settings.station.models.winkeyer' => 'winkeyer',
-			'settings.station.models.placeholderRadio' => 'generic radio (placeholder)',
-			'settings.station.models.placeholderRadioNodeName' => 'my radio',
+			'settings.station.models.placeholderRadio' => 'simulated radio',
+			'settings.station.models.placeholderRadioNodeName' => 'simulated radio',
+			'settings.station.models.simulatedRotator' => 'simulated rotator',
+			'settings.station.models.simulatedSwitch' => 'simulated antenna switch',
 			'settings.station.models.antennaGenius' => '4o3a antenna genius',
 			'settings.station.models.sierraCoax' => 'sierra radio cx-1 coax switch',
 			'settings.station.models.gs232a' => 'yaesu gs-232a rotator interface',
@@ -7107,10 +7115,10 @@ extension on TranslationsQrp {
 			'settings.station.models.everywareRotor' => 'green heron everyware rotator',
 			'settings.station.models.everywareSwitch' => 'green heron everyware switch',
 			'settings.station.models.everywareDirectional' => 'green heron everyware directional switch',
-			'settings.station.models.otrsp' => 'so2r switcher (otrsp)',
-			'settings.station.models.rigSelectPro' => 'dx engineering rigselect pro',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.otrsp' => 'so2r switcher (otrsp)',
+			'settings.station.models.rigSelectPro' => 'dx engineering rigselect pro',
 			'settings.station.models.ycccSo2r' => 'yccc so2r box',
 			'settings.station.models.so2rduino' => 'so2rduino',
 			'settings.station.models.rtlSdr' => 'rtl-sdr',
@@ -7271,6 +7279,7 @@ extension on TranslationsQrp {
 			'settings.station.softwareIntermediaries' => 'software intermediaries',
 			'settings.station.otherBrands' => 'other brands',
 			'settings.station.otherEquipment' => 'other equipment (antennas, keys, etc)',
+			'settings.station.developmentTools' => 'development tools',
 			'settings.station.newAntenna' => 'new antenna',
 			'settings.station.newKey' => 'new key',
 			'settings.station.newKeyer' => 'winkeyer (k1el or compatible)',
@@ -7357,15 +7366,15 @@ extension on TranslationsQrp {
 			'settings.station.placeholderDropAfter' => 'drop after (seconds)',
 			'settings.station.placeholderDropAfterDescription' => 'close the connection on its own, to exercise the reconnect path. blank or 0 never drops.',
 			'settings.station.placeholderFailConnect' => 'always fail to connect',
-			'settings.station.placeholderConnectFailure' => 'the placeholder radio was told to refuse this connection',
+			'settings.station.placeholderConnectFailure' => 'this equipment was told to refuse the connection',
 			'settings.station.placeholderFreq' => 'frequency (khz)',
-			'settings.station.placeholderFreqDescription' => 'where the placeholder radio starts. it reports back whatever the app tunes it to afterwards.',
+			'settings.station.placeholderFreqDescription' => 'where this radio starts. it reports back whatever the app tunes it to afterwards.',
 			'settings.station.placeholderMode' => 'mode',
-			'settings.station.placeholderModeDescription' => 'the mode the placeholder radio starts on, e.g. usb, cw, ft8.',
+			'settings.station.placeholderModeDescription' => 'the mode this radio starts on, e.g. usb, cw, ft8.',
 			'settings.station.placeholderPower' => 'power (watts)',
 			'settings.station.placeholderPurpose' => 'use this radio to keep track of which rig you\'re using for logging purposes',
 			'settings.station.placeholderReplyDelay' => 'reply delay (ms)',
-			'settings.station.placeholderReplyDelayDescription' => 'how long the placeholder radio takes to report a change back. blank or 0 replies at once.',
+			'settings.station.placeholderReplyDelayDescription' => 'how long this radio takes to report a change back. blank or 0 replies at once.',
 			'settings.station.cwKeyerField' => 'cat cw keyer',
 			'settings.station.cwKeyerFieldDescription' => 'whether this radio keys cw from text over cat. off for a rig the app does not know.',
 			'settings.station.voiceMemories' => 'voice memories',
@@ -7402,6 +7411,9 @@ extension on TranslationsQrp {
 			'settings.station.placeholderWholeNumberInvalid' => 'must be a whole number, 0 or more',
 			'settings.station.placeholderFreqInvalid' => 'must be a frequency in khz, greater than zero',
 			'settings.station.placeholderModeInvalid' => 'must be a mode name, e.g. usb, cw, ft8',
+			'settings.station.simulatedSwitchAntennas' => 'antennas',
+			'settings.station.simulatedSwitchRadios' => 'radio ports',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'a whole number, ${min} to ${max}',
 			'settings.station.switchLayout' => 'layout',
 			'settings.station.switchLayoutDescription' => 'which side of the switch your radios are plugged into.',
 			'settings.station.switchLayoutRequired' => 'choose how the switch is wired',
@@ -7617,14 +7629,14 @@ extension on TranslationsQrp {
 			'commands.fullResyncStarted' => 'full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'no data files matched "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'reload failed: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'commands.reloadingAll' => 'reloading all data files…',
 			'commands.reloadingTarget' => ({required Object target}) => 'reloading ${target} data files…',
 			'commands.updatingAllDataFiles' => 'checking every data file for updates…',
 			'commands.updatingDataFiles' => ({required Object names}) => 'checking ${names} for updates…',
 			'commands.updateDataFilesFailed' => ({required Object error}) => 'update failed: ${error}',
 			'commands.appUpdatesNotChecked' => 'this build doesn’t check for updates',
-			_ => null,
-		} ?? switch (path) {
 			'commands.appUpToDate' => 'the app is up to date',
 			'commands.appUpdateCheckFailed' => 'couldn’t check for app updates',
 			'commands.appUpdateNotOpened' => 'an update is available, but its store page didn’t open',
@@ -8131,6 +8143,8 @@ extension on TranslationsQrp {
 			'fileOpen.importCwMessages' => 'import as a cw message set',
 			'fileOpen.importVoiceMessages' => 'import as a voice message set',
 			'fileOpen.importIntoLogs' => 'import into logs',
+			_ => null,
+		} ?? switch (path) {
 			'fileOpen.importInto' => ({required Object name}) => 'import into ${name}',
 			'fileOpen.importAsOperation' => 'import as a new operation',
 			'fileOpen.importLayoutInto' => ({required Object view}) => 'import as a ${view} layout',

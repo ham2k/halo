@@ -288,10 +288,9 @@ List<Map<String, dynamic>> _guohetecSerialNotes() => [
 /// A radio that isn't there — see placeholder_radio_driver.dart and
 /// placeholder_transport.dart for what it is for and what it deliberately isn't.
 ///
-/// In the catalogue for every operator, in every edition. Its name says
-/// "(no control)" because that is the whole warning it needs: an operator
-/// who picks it gets a radio pill and a frequency to type into, and no rig
-/// is ever touched.
+/// The Simulated Radio: a development tool, offered only in developer mode
+/// ([developmentToolModelKeys]). Its key stays `placeholder-radio`: nodes
+/// are stored under it, and a new key would leave them unconnectable.
 const placeholderRadioModel = EquipmentModel(
   key: 'placeholder-radio',
   category: kCategoryTransceiver,

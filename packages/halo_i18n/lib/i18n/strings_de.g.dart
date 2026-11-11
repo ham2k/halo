@@ -2847,6 +2847,7 @@ class _Translations$settings$station$de extends Translations$settings$station$en
 	@override String get softwareIntermediaries => 'Software-Vermittler';
 	@override String get otherBrands => 'Andere Marken';
 	@override String get otherEquipment => 'Andere Geräte (Antennen, Tasten usw.)';
+	@override String get developmentTools => 'Entwicklerwerkzeuge';
 	@override String get newAntenna => 'Neue Antenne';
 	@override String get newKey => 'Neue Taste';
 	@override String get newKeyer => 'WinKeyer (K1EL oder kompatibel)';
@@ -2865,15 +2866,15 @@ class _Translations$settings$station$de extends Translations$settings$station$en
 	@override String get placeholderDropAfter => 'Trennen nach (Sekunden)';
 	@override String get placeholderDropAfterDescription => 'Die Verbindung von selbst schließen, um das Wiederverbinden zu testen. Leer oder 0 trennt nie.';
 	@override String get placeholderFailConnect => 'Verbindung immer fehlschlagen lassen';
-	@override String get placeholderConnectFailure => 'Das Platzhalter-Funkgerät wurde angewiesen, diese Verbindung abzulehnen';
+	@override String get placeholderConnectFailure => 'Dieses Gerät wurde angewiesen, die Verbindung abzulehnen';
 	@override String get placeholderFreq => 'Frequenz (kHz)';
-	@override String get placeholderFreqDescription => 'Wo das Platzhalter-Funkgerät startet. Danach meldet es zurück, worauf die App es abstimmt.';
+	@override String get placeholderFreqDescription => 'Wo dieses Funkgerät startet. Danach meldet es zurück, worauf die App es abstimmt.';
 	@override String get placeholderMode => 'Modus';
-	@override String get placeholderModeDescription => 'Der Modus, mit dem das Platzhalter-Funkgerät startet, z. B. USB, CW, FT8.';
+	@override String get placeholderModeDescription => 'Der Modus, mit dem dieses Funkgerät startet, z. B. USB, CW, FT8.';
 	@override String get placeholderPower => 'Leistung (Watt)';
 	@override String get placeholderPurpose => 'Verwende dieses Funkgerät, um für das Log festzuhalten, welches Gerät du benutzt';
 	@override String get placeholderReplyDelay => 'Antwortverzögerung (ms)';
-	@override String get placeholderReplyDelayDescription => 'Wie lange das Platzhalter-Funkgerät braucht, um eine Änderung zurückzumelden. Leer oder 0 antwortet sofort.';
+	@override String get placeholderReplyDelayDescription => 'Wie lange dieses Funkgerät braucht, um eine Änderung zurückzumelden. Leer oder 0 antwortet sofort.';
 	@override String get cwKeyerField => 'CAT-CW-Keyer';
 	@override String get cwKeyerFieldDescription => 'Ob dieses Funkgerät CW aus Text über CAT tastet. Aus bei einem Gerät, das die App nicht kennt.';
 	@override String get voiceMemories => 'Sprachspeicher';
@@ -2906,6 +2907,9 @@ class _Translations$settings$station$de extends Translations$settings$station$en
 	@override String get placeholderWholeNumberInvalid => 'Muss eine ganze Zahl sein, 0 oder mehr';
 	@override String get placeholderFreqInvalid => 'Muss eine Frequenz in kHz sein, größer als null';
 	@override String get placeholderModeInvalid => 'Muss ein Modusname sein, z. B. USB, CW, FT8';
+	@override String get simulatedSwitchAntennas => 'Antennen';
+	@override String get simulatedSwitchRadios => 'Funkgeräte-Ports';
+	@override String simulatedSwitchCountInvalid({required Object min, required Object max}) => 'Eine ganze Zahl, ${min} bis ${max}';
 	@override String get switchLayout => 'Belegung';
 	@override String get switchLayoutDescription => 'An welcher Seite des Schalters deine Funkgeräte angeschlossen sind.';
 	@override String get switchLayoutRequired => 'Wähle, wie der Schalter verkabelt ist';
@@ -4315,8 +4319,10 @@ class _Translations$settings$station$models$de extends Translations$settings$sta
 	@override String get antenna => 'Antenne';
 	@override String get key => 'CW-Taste';
 	@override String get winkeyer => 'WinKeyer';
-	@override String get placeholderRadio => 'Generisches Funkgerät (Platzhalter)';
-	@override String get placeholderRadioNodeName => 'Mein Funkgerät';
+	@override String get placeholderRadio => 'Simuliertes Funkgerät';
+	@override String get placeholderRadioNodeName => 'Simuliertes Funkgerät';
+	@override String get simulatedRotator => 'Simulierter Rotor';
+	@override String get simulatedSwitch => 'Simulierter Antennenschalter';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 Koaxschalter';
 	@override String get gs232a => 'Yaesu GS-232A Rotor-Interface';
@@ -6318,8 +6324,10 @@ extension on TranslationsDe {
 			'settings.station.models.antenna' => 'Antenne',
 			'settings.station.models.key' => 'CW-Taste',
 			'settings.station.models.winkeyer' => 'WinKeyer',
-			'settings.station.models.placeholderRadio' => 'Generisches Funkgerät (Platzhalter)',
-			'settings.station.models.placeholderRadioNodeName' => 'Mein Funkgerät',
+			'settings.station.models.placeholderRadio' => 'Simuliertes Funkgerät',
+			'settings.station.models.placeholderRadioNodeName' => 'Simuliertes Funkgerät',
+			'settings.station.models.simulatedRotator' => 'Simulierter Rotor',
+			'settings.station.models.simulatedSwitch' => 'Simulierter Antennenschalter',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Koaxschalter',
 			'settings.station.models.gs232a' => 'Yaesu GS-232A Rotor-Interface',
@@ -6463,6 +6471,7 @@ extension on TranslationsDe {
 			'settings.station.softwareIntermediaries' => 'Software-Vermittler',
 			'settings.station.otherBrands' => 'Andere Marken',
 			'settings.station.otherEquipment' => 'Andere Geräte (Antennen, Tasten usw.)',
+			'settings.station.developmentTools' => 'Entwicklerwerkzeuge',
 			'settings.station.newAntenna' => 'Neue Antenne',
 			'settings.station.newKey' => 'Neue Taste',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL oder kompatibel)',
@@ -6481,15 +6490,15 @@ extension on TranslationsDe {
 			'settings.station.placeholderDropAfter' => 'Trennen nach (Sekunden)',
 			'settings.station.placeholderDropAfterDescription' => 'Die Verbindung von selbst schließen, um das Wiederverbinden zu testen. Leer oder 0 trennt nie.',
 			'settings.station.placeholderFailConnect' => 'Verbindung immer fehlschlagen lassen',
-			'settings.station.placeholderConnectFailure' => 'Das Platzhalter-Funkgerät wurde angewiesen, diese Verbindung abzulehnen',
+			'settings.station.placeholderConnectFailure' => 'Dieses Gerät wurde angewiesen, die Verbindung abzulehnen',
 			'settings.station.placeholderFreq' => 'Frequenz (kHz)',
-			'settings.station.placeholderFreqDescription' => 'Wo das Platzhalter-Funkgerät startet. Danach meldet es zurück, worauf die App es abstimmt.',
+			'settings.station.placeholderFreqDescription' => 'Wo dieses Funkgerät startet. Danach meldet es zurück, worauf die App es abstimmt.',
 			'settings.station.placeholderMode' => 'Modus',
-			'settings.station.placeholderModeDescription' => 'Der Modus, mit dem das Platzhalter-Funkgerät startet, z. B. USB, CW, FT8.',
+			'settings.station.placeholderModeDescription' => 'Der Modus, mit dem dieses Funkgerät startet, z. B. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Leistung (Watt)',
 			'settings.station.placeholderPurpose' => 'Verwende dieses Funkgerät, um für das Log festzuhalten, welches Gerät du benutzt',
 			'settings.station.placeholderReplyDelay' => 'Antwortverzögerung (ms)',
-			'settings.station.placeholderReplyDelayDescription' => 'Wie lange das Platzhalter-Funkgerät braucht, um eine Änderung zurückzumelden. Leer oder 0 antwortet sofort.',
+			'settings.station.placeholderReplyDelayDescription' => 'Wie lange dieses Funkgerät braucht, um eine Änderung zurückzumelden. Leer oder 0 antwortet sofort.',
 			'settings.station.cwKeyerField' => 'CAT-CW-Keyer',
 			'settings.station.cwKeyerFieldDescription' => 'Ob dieses Funkgerät CW aus Text über CAT tastet. Aus bei einem Gerät, das die App nicht kennt.',
 			'settings.station.voiceMemories' => 'Sprachspeicher',
@@ -6497,11 +6506,11 @@ extension on TranslationsDe {
 			'settings.station.voiceMemoriesInvalid' => 'Eine ganze Zahl, 0 oder mehr',
 			'settings.station.yaesuMeterCapture' => 'Messwerte aufzeichnen',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Liest beim Senden das Ausgangsleistungs-Meter und das High-SWR-Flag des Funkgeräts und schreibt die Rohwerte ins Protokoll. Dient zum Erstellen der Skala, die Yaesu nicht veröffentlicht — die Werte werden nicht als Anzeigen dargestellt.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Liest beim Senden die PO-, SWR- und ALC-Meter des Funkgeräts und schreibt die Rohwerte ins Protokoll. Dient zum Erstellen der Skala, die Yaesu nicht veröffentlicht — die Werte werden nicht als Anzeigen dargestellt.',
 			'settings.station.telemetryInterval' => 'Intervall für Messwerte (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Wie oft die Meter des Funkgeräts beim Senden gelesen werden. Leer lassen für das Schnellste, was diese Verbindung schafft, bis 200 ms.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Eine ganze Zahl in Millisekunden, ${min} bis ${max}',
 			'settings.station.pollInterval' => 'Abfrageintervall im Leerlauf (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Wie oft das Funkgerät nach Frequenz und Modus gefragt wird, solange sich keines davon ändert. Leer lassen für ${fallback} ms.',
@@ -6524,6 +6533,9 @@ extension on TranslationsDe {
 			'settings.station.placeholderWholeNumberInvalid' => 'Muss eine ganze Zahl sein, 0 oder mehr',
 			'settings.station.placeholderFreqInvalid' => 'Muss eine Frequenz in kHz sein, größer als null',
 			'settings.station.placeholderModeInvalid' => 'Muss ein Modusname sein, z. B. USB, CW, FT8',
+			'settings.station.simulatedSwitchAntennas' => 'Antennen',
+			'settings.station.simulatedSwitchRadios' => 'Funkgeräte-Ports',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'Eine ganze Zahl, ${min} bis ${max}',
 			'settings.station.switchLayout' => 'Belegung',
 			'settings.station.switchLayoutDescription' => 'An welcher Seite des Schalters deine Funkgeräte angeschlossen sind.',
 			'settings.station.switchLayoutRequired' => 'Wähle, wie der Schalter verkabelt ist',
@@ -7008,14 +7020,14 @@ extension on TranslationsDe {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} sollte genauer geprüft werden', other: '${formatted} sollten genauer geprüft werden', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: 'Referenzen konnten für ${count} Kontakt nicht wiederhergestellt werden', other: 'Referenzen konnten für ${formatted} Kontakte nicht wiederhergestellt werden', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${programs}-Referenzen sind für ${count} Kontakt evtl. unvollständig', other: '${programs}-Referenzen sind für ${formatted} Kontakte evtl. unvollständig', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Zusammengeführte Kontakte können eine Referenz verlieren — die Aktivitäten konnten nicht sagen, welche Typen sich kombinieren lassen. Brich ab und versuche es erneut, um das zu vermeiden.',
 			'adifImport.nothingToImport' => 'Nichts in dieser Datei kann importiert werden',
 			'adifImport.confirm' => 'Importieren',
 			'adifImport.importing' => ({required Object filename}) => 'Importiere ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} Kontakt aus ${filename} importiert', other: '${formatted} Kontakte aus ${filename} importiert', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} konnte nicht importiert werden: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} sieht nicht wie eine ADIF-Datei aus',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Warnung: Diese ADIF enthält QSOs von ${calls}, sie werden aber als ${station} importiert, wenn du fortfährst.',
 			'adifImport.stationCallJoin' => ' und ',

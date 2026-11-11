@@ -2847,6 +2847,7 @@ class _Translations$settings$station$cs extends Translations$settings$station$en
 	@override String get softwareIntermediaries => 'Softwaroví prostředníci';
 	@override String get otherBrands => 'Jiné značky';
 	@override String get otherEquipment => 'Další vybavení (antény, klíče atd.)';
+	@override String get developmentTools => 'Vývojářské nástroje';
 	@override String get newAntenna => 'Nová anténa';
 	@override String get newKey => 'Nový klíč';
 	@override String get newKeyer => 'WinKeyer (K1EL nebo kompatibilní)';
@@ -2865,15 +2866,15 @@ class _Translations$settings$station$cs extends Translations$settings$station$en
 	@override String get placeholderDropAfter => 'Odpojit po (sekundách)';
 	@override String get placeholderDropAfterDescription => 'Samo ukončí spojení, aby se otestovalo opětovné připojení. Prázdné nebo 0 nikdy neodpojí.';
 	@override String get placeholderFailConnect => 'Vždy selhat při připojení';
-	@override String get placeholderConnectFailure => 'Zástupné rádio má nastaveno toto připojení odmítnout';
+	@override String get placeholderConnectFailure => 'Toto zařízení má nastaveno připojení odmítnout';
 	@override String get placeholderFreq => 'Frekvence (kHz)';
-	@override String get placeholderFreqDescription => 'Kde zástupné rádio začíná. Poté hlásí cokoli, na co ho aplikace naladí.';
+	@override String get placeholderFreqDescription => 'Kde toto rádio začíná. Poté hlásí cokoli, na co ho aplikace naladí.';
 	@override String get placeholderMode => 'Mód';
-	@override String get placeholderModeDescription => 'Mód, ve kterém zástupné rádio začíná, např. USB, CW, FT8.';
+	@override String get placeholderModeDescription => 'Mód, ve kterém toto rádio začíná, např. USB, CW, FT8.';
 	@override String get placeholderPower => 'Výkon (watty)';
 	@override String get placeholderPurpose => 'Toto rádio použijte k evidenci, který transceiver používáte, pro účely logování';
 	@override String get placeholderReplyDelay => 'Zpoždění odpovědi (ms)';
-	@override String get placeholderReplyDelayDescription => 'Jak dlouho zástupnému rádiu trvá nahlásit změnu. Prázdné nebo 0 odpoví ihned.';
+	@override String get placeholderReplyDelayDescription => 'Jak dlouho tomuto rádiu trvá nahlásit změnu. Prázdné nebo 0 odpoví ihned.';
 	@override String get cwKeyerField => 'CAT CW klíčovač';
 	@override String get cwKeyerFieldDescription => 'Zda toto rádio klíčuje CW z textu přes CAT. Vypnuto pro rádio, které aplikace nezná.';
 	@override String get voiceMemories => 'Hlasové paměti';
@@ -2906,6 +2907,9 @@ class _Translations$settings$station$cs extends Translations$settings$station$en
 	@override String get placeholderWholeNumberInvalid => 'Musí být celé číslo, 0 nebo více';
 	@override String get placeholderFreqInvalid => 'Musí být frekvence v kHz, větší než nula';
 	@override String get placeholderModeInvalid => 'Musí být název módu, např. USB, CW, FT8';
+	@override String get simulatedSwitchAntennas => 'Antény';
+	@override String get simulatedSwitchRadios => 'Porty pro rádia';
+	@override String simulatedSwitchCountInvalid({required Object min, required Object max}) => 'Celé číslo, ${min} až ${max}';
 	@override String get switchLayout => 'Rozložení';
 	@override String get switchLayoutDescription => 'Na kterou stranu přepínače jsou zapojena vaše rádia.';
 	@override String get switchLayoutRequired => 'Vyberte, jak je přepínač zapojen';
@@ -4315,8 +4319,10 @@ class _Translations$settings$station$models$cs extends Translations$settings$sta
 	@override String get antenna => 'Anténa';
 	@override String get key => 'CW klíč';
 	@override String get winkeyer => 'WinKeyer';
-	@override String get placeholderRadio => 'Obecné rádio (zástupné)';
-	@override String get placeholderRadioNodeName => 'Moje rádio';
+	@override String get placeholderRadio => 'Simulované rádio';
+	@override String get placeholderRadioNodeName => 'Simulované rádio';
+	@override String get simulatedRotator => 'Simulovaný rotátor';
+	@override String get simulatedSwitch => 'Simulovaný anténní přepínač';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 Coax Switch';
 	@override String get gs232a => 'Rozhraní rotátoru Yaesu GS-232A';
@@ -6318,8 +6324,10 @@ extension on TranslationsCs {
 			'settings.station.models.antenna' => 'Anténa',
 			'settings.station.models.key' => 'CW klíč',
 			'settings.station.models.winkeyer' => 'WinKeyer',
-			'settings.station.models.placeholderRadio' => 'Obecné rádio (zástupné)',
-			'settings.station.models.placeholderRadioNodeName' => 'Moje rádio',
+			'settings.station.models.placeholderRadio' => 'Simulované rádio',
+			'settings.station.models.placeholderRadioNodeName' => 'Simulované rádio',
+			'settings.station.models.simulatedRotator' => 'Simulovaný rotátor',
+			'settings.station.models.simulatedSwitch' => 'Simulovaný anténní přepínač',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
 			'settings.station.models.gs232a' => 'Rozhraní rotátoru Yaesu GS-232A',
@@ -6463,6 +6471,7 @@ extension on TranslationsCs {
 			'settings.station.softwareIntermediaries' => 'Softwaroví prostředníci',
 			'settings.station.otherBrands' => 'Jiné značky',
 			'settings.station.otherEquipment' => 'Další vybavení (antény, klíče atd.)',
+			'settings.station.developmentTools' => 'Vývojářské nástroje',
 			'settings.station.newAntenna' => 'Nová anténa',
 			'settings.station.newKey' => 'Nový klíč',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL nebo kompatibilní)',
@@ -6481,15 +6490,15 @@ extension on TranslationsCs {
 			'settings.station.placeholderDropAfter' => 'Odpojit po (sekundách)',
 			'settings.station.placeholderDropAfterDescription' => 'Samo ukončí spojení, aby se otestovalo opětovné připojení. Prázdné nebo 0 nikdy neodpojí.',
 			'settings.station.placeholderFailConnect' => 'Vždy selhat při připojení',
-			'settings.station.placeholderConnectFailure' => 'Zástupné rádio má nastaveno toto připojení odmítnout',
+			'settings.station.placeholderConnectFailure' => 'Toto zařízení má nastaveno připojení odmítnout',
 			'settings.station.placeholderFreq' => 'Frekvence (kHz)',
-			'settings.station.placeholderFreqDescription' => 'Kde zástupné rádio začíná. Poté hlásí cokoli, na co ho aplikace naladí.',
+			'settings.station.placeholderFreqDescription' => 'Kde toto rádio začíná. Poté hlásí cokoli, na co ho aplikace naladí.',
 			'settings.station.placeholderMode' => 'Mód',
-			'settings.station.placeholderModeDescription' => 'Mód, ve kterém zástupné rádio začíná, např. USB, CW, FT8.',
+			'settings.station.placeholderModeDescription' => 'Mód, ve kterém toto rádio začíná, např. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Výkon (watty)',
 			'settings.station.placeholderPurpose' => 'Toto rádio použijte k evidenci, který transceiver používáte, pro účely logování',
 			'settings.station.placeholderReplyDelay' => 'Zpoždění odpovědi (ms)',
-			'settings.station.placeholderReplyDelayDescription' => 'Jak dlouho zástupnému rádiu trvá nahlásit změnu. Prázdné nebo 0 odpoví ihned.',
+			'settings.station.placeholderReplyDelayDescription' => 'Jak dlouho tomuto rádiu trvá nahlásit změnu. Prázdné nebo 0 odpoví ihned.',
 			'settings.station.cwKeyerField' => 'CAT CW klíčovač',
 			'settings.station.cwKeyerFieldDescription' => 'Zda toto rádio klíčuje CW z textu přes CAT. Vypnuto pro rádio, které aplikace nezná.',
 			'settings.station.voiceMemories' => 'Hlasové paměti',
@@ -6497,11 +6506,11 @@ extension on TranslationsCs {
 			'settings.station.voiceMemoriesInvalid' => 'Celé číslo, 0 nebo více',
 			'settings.station.yaesuMeterCapture' => 'Zachytávat hodnoty měřidel',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Při vysílání čte měřidlo výstupního výkonu rádia a příznak vysokého PSV a zapisuje surové hodnoty do logu. Slouží k sestavení stupnice, kterou Yaesu nepublikuje — hodnoty se nezobrazují jako měřidla.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Při vysílání čte měřidla PO, SWR a ALC rádia a zapisuje surové hodnoty do logu. Slouží k sestavení stupnice, kterou Yaesu nepublikuje — hodnoty se nezobrazují jako měřidla.',
 			'settings.station.telemetryInterval' => 'Interval čtení měřidel (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Jak často číst měřidla rádia během vysílání. Ponechte prázdné pro nejrychlejší, co toto připojení zvládne, až 200 ms.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Celé číslo milisekund, ${min} až ${max}',
 			'settings.station.pollInterval' => 'Interval dotazování v klidu (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Jak často se ptát rádia na frekvenci a mód, když se ani jedno nemění. Ponechte prázdné pro ${fallback} ms.',
@@ -6524,6 +6533,9 @@ extension on TranslationsCs {
 			'settings.station.placeholderWholeNumberInvalid' => 'Musí být celé číslo, 0 nebo více',
 			'settings.station.placeholderFreqInvalid' => 'Musí být frekvence v kHz, větší než nula',
 			'settings.station.placeholderModeInvalid' => 'Musí být název módu, např. USB, CW, FT8',
+			'settings.station.simulatedSwitchAntennas' => 'Antény',
+			'settings.station.simulatedSwitchRadios' => 'Porty pro rádia',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'Celé číslo, ${min} až ${max}',
 			'settings.station.switchLayout' => 'Rozložení',
 			'settings.station.switchLayoutDescription' => 'Na kterou stranu přepínače jsou zapojena vaše rádia.',
 			'settings.station.switchLayoutRequired' => 'Vyberte, jak je přepínač zapojen',
@@ -7008,14 +7020,14 @@ extension on TranslationsCs {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} je třeba zkontrolovat', other: '${formatted} je třeba zkontrolovat', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Reference nelze obnovit u ${count} spojení', other: 'Reference nelze obnovit u ${formatted} spojení', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Reference ${programs} mohou být neúplné u ${count} spojení', other: 'Reference ${programs} mohou být neúplné u ${formatted} spojení', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Sloučená spojení mohou přijít o referenci — aktivity nedokázaly říct, které typy se kombinují. Abyste tomu předešli, zrušte a zkuste to znovu.',
 			'adifImport.nothingToImport' => 'Z tohoto souboru nelze nic importovat',
 			'adifImport.confirm' => 'Importovat',
 			'adifImport.importing' => ({required Object filename}) => 'Importování ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Importováno ${count} spojení z ${filename}', other: 'Importováno ${formatted} spojení z ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} nelze importovat: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} nevypadá jako soubor ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Upozornění: tento ADIF obsahuje QSO od ${calls}, ale pokud budete pokračovat, budou importována jako ${station}.',
 			'adifImport.stationCallJoin' => ' a ',

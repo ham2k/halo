@@ -2847,6 +2847,7 @@ class _Translations$settings$station$ro extends Translations$settings$station$en
 	@override String get softwareIntermediaries => 'Intermediari software';
 	@override String get otherBrands => 'Alte mărci';
 	@override String get otherEquipment => 'Alte echipamente (antene, manipulatoare etc.)';
+	@override String get developmentTools => 'Instrumente de dezvoltare';
 	@override String get newAntenna => 'Antenă nouă';
 	@override String get newKey => 'Manipulator nou';
 	@override String get newKeyer => 'WinKeyer (K1EL sau compatibil)';
@@ -2865,15 +2866,15 @@ class _Translations$settings$station$ro extends Translations$settings$station$en
 	@override String get placeholderDropAfter => 'Deconectare după (secunde)';
 	@override String get placeholderDropAfterDescription => 'Închide conexiunea singură, pentru a testa reconectarea. Gol sau 0 nu deconectează niciodată.';
 	@override String get placeholderFailConnect => 'Eșuează mereu la conectare';
-	@override String get placeholderConnectFailure => 'Stația substituent a fost instruită să refuze această conexiune';
+	@override String get placeholderConnectFailure => 'Acest echipament a fost instruit să refuze conexiunea';
 	@override String get placeholderFreq => 'Frecvență (kHz)';
-	@override String get placeholderFreqDescription => 'Unde pornește stația substituent. Ulterior raportează orice frecvență setează aplicația.';
+	@override String get placeholderFreqDescription => 'Unde pornește această stație. Ulterior raportează orice frecvență setează aplicația.';
 	@override String get placeholderMode => 'Mod';
-	@override String get placeholderModeDescription => 'Modul în care pornește stația substituent, de ex. USB, CW, FT8.';
+	@override String get placeholderModeDescription => 'Modul în care pornește această stație, de ex. USB, CW, FT8.';
 	@override String get placeholderPower => 'Putere (wați)';
 	@override String get placeholderPurpose => 'Folosiți această stație pentru a ține evidența aparatului folosit, în scopul înregistrării';
 	@override String get placeholderReplyDelay => 'Întârziere la răspuns (ms)';
-	@override String get placeholderReplyDelayDescription => 'Cât îi ia stației substituent să raporteze o schimbare. Gol sau 0 răspunde imediat.';
+	@override String get placeholderReplyDelayDescription => 'Cât îi ia acestei stații să raporteze o schimbare. Gol sau 0 răspunde imediat.';
 	@override String get cwKeyerField => 'Keyer CW prin CAT';
 	@override String get cwKeyerFieldDescription => 'Dacă această stație manipulează CW din text prin CAT. Dezactivat pentru o stație pe care aplicația nu o cunoaște.';
 	@override String get voiceMemories => 'Memorii vocale';
@@ -2906,6 +2907,9 @@ class _Translations$settings$station$ro extends Translations$settings$station$en
 	@override String get placeholderWholeNumberInvalid => 'Trebuie să fie un număr întreg, 0 sau mai mare';
 	@override String get placeholderFreqInvalid => 'Trebuie să fie o frecvență în kHz, mai mare decât zero';
 	@override String get placeholderModeInvalid => 'Trebuie să fie un nume de mod, de ex. USB, CW, FT8';
+	@override String get simulatedSwitchAntennas => 'Antene';
+	@override String get simulatedSwitchRadios => 'Porturi pentru stații';
+	@override String simulatedSwitchCountInvalid({required Object min, required Object max}) => 'Un număr întreg, de la ${min} la ${max}';
 	@override String get switchLayout => 'Configurație';
 	@override String get switchLayoutDescription => 'Pe ce parte a comutatorului sunt conectate stațiile radio.';
 	@override String get switchLayoutRequired => 'Alegeți cum este cablat comutatorul';
@@ -4315,8 +4319,10 @@ class _Translations$settings$station$models$ro extends Translations$settings$sta
 	@override String get antenna => 'Antenă';
 	@override String get key => 'Manipulator CW';
 	@override String get winkeyer => 'WinKeyer';
-	@override String get placeholderRadio => 'Stație radio generică (substituent)';
-	@override String get placeholderRadioNodeName => 'Stația mea';
+	@override String get placeholderRadio => 'Stație radio simulată';
+	@override String get placeholderRadioNodeName => 'Stație simulată';
+	@override String get simulatedRotator => 'Rotor simulat';
+	@override String get simulatedSwitch => 'Comutator de antene simulat';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 Coax Switch';
 	@override String get gs232a => 'Interfață de rotor Yaesu GS-232A';
@@ -6318,8 +6324,10 @@ extension on TranslationsRo {
 			'settings.station.models.antenna' => 'Antenă',
 			'settings.station.models.key' => 'Manipulator CW',
 			'settings.station.models.winkeyer' => 'WinKeyer',
-			'settings.station.models.placeholderRadio' => 'Stație radio generică (substituent)',
-			'settings.station.models.placeholderRadioNodeName' => 'Stația mea',
+			'settings.station.models.placeholderRadio' => 'Stație radio simulată',
+			'settings.station.models.placeholderRadioNodeName' => 'Stație simulată',
+			'settings.station.models.simulatedRotator' => 'Rotor simulat',
+			'settings.station.models.simulatedSwitch' => 'Comutator de antene simulat',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
 			'settings.station.models.gs232a' => 'Interfață de rotor Yaesu GS-232A',
@@ -6463,6 +6471,7 @@ extension on TranslationsRo {
 			'settings.station.softwareIntermediaries' => 'Intermediari software',
 			'settings.station.otherBrands' => 'Alte mărci',
 			'settings.station.otherEquipment' => 'Alte echipamente (antene, manipulatoare etc.)',
+			'settings.station.developmentTools' => 'Instrumente de dezvoltare',
 			'settings.station.newAntenna' => 'Antenă nouă',
 			'settings.station.newKey' => 'Manipulator nou',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL sau compatibil)',
@@ -6481,15 +6490,15 @@ extension on TranslationsRo {
 			'settings.station.placeholderDropAfter' => 'Deconectare după (secunde)',
 			'settings.station.placeholderDropAfterDescription' => 'Închide conexiunea singură, pentru a testa reconectarea. Gol sau 0 nu deconectează niciodată.',
 			'settings.station.placeholderFailConnect' => 'Eșuează mereu la conectare',
-			'settings.station.placeholderConnectFailure' => 'Stația substituent a fost instruită să refuze această conexiune',
+			'settings.station.placeholderConnectFailure' => 'Acest echipament a fost instruit să refuze conexiunea',
 			'settings.station.placeholderFreq' => 'Frecvență (kHz)',
-			'settings.station.placeholderFreqDescription' => 'Unde pornește stația substituent. Ulterior raportează orice frecvență setează aplicația.',
+			'settings.station.placeholderFreqDescription' => 'Unde pornește această stație. Ulterior raportează orice frecvență setează aplicația.',
 			'settings.station.placeholderMode' => 'Mod',
-			'settings.station.placeholderModeDescription' => 'Modul în care pornește stația substituent, de ex. USB, CW, FT8.',
+			'settings.station.placeholderModeDescription' => 'Modul în care pornește această stație, de ex. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Putere (wați)',
 			'settings.station.placeholderPurpose' => 'Folosiți această stație pentru a ține evidența aparatului folosit, în scopul înregistrării',
 			'settings.station.placeholderReplyDelay' => 'Întârziere la răspuns (ms)',
-			'settings.station.placeholderReplyDelayDescription' => 'Cât îi ia stației substituent să raporteze o schimbare. Gol sau 0 răspunde imediat.',
+			'settings.station.placeholderReplyDelayDescription' => 'Cât îi ia acestei stații să raporteze o schimbare. Gol sau 0 răspunde imediat.',
 			'settings.station.cwKeyerField' => 'Keyer CW prin CAT',
 			'settings.station.cwKeyerFieldDescription' => 'Dacă această stație manipulează CW din text prin CAT. Dezactivat pentru o stație pe care aplicația nu o cunoaște.',
 			'settings.station.voiceMemories' => 'Memorii vocale',
@@ -6497,11 +6506,11 @@ extension on TranslationsRo {
 			'settings.station.voiceMemoriesInvalid' => 'Un număr întreg, 0 sau mai mare',
 			'settings.station.yaesuMeterCapture' => 'Capturează citirile instrumentelor',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Citește instrumentul de putere de ieșire și indicatorul de SWR ridicat în timpul emisiei și scrie valorile brute în jurnalul de diagnostic. Pentru construirea scalei pe care Yaesu nu o publică — valorile nu sunt afișate ca instrumente.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Citește instrumentele PO, SWR și ALC ale stației în timpul emisiei și scrie valorile brute în jurnalul de diagnostic. Pentru construirea scalei pe care Yaesu nu o publică — valorile nu sunt afișate ca instrumente.',
 			'settings.station.telemetryInterval' => 'Interval de citire a instrumentelor (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Cât de des se citesc instrumentele stației în timpul emisiei. Lăsați gol pentru cea mai mare viteză suportată de conexiune, până la 200 ms.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Un număr întreg de milisecunde, de la ${min} la ${max}',
 			'settings.station.pollInterval' => 'Interval de interogare în repaus (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Cât de des se cer stației frecvența și modul cât timp niciunul nu se schimbă. Lăsați gol pentru ${fallback} ms.',
@@ -6524,6 +6533,9 @@ extension on TranslationsRo {
 			'settings.station.placeholderWholeNumberInvalid' => 'Trebuie să fie un număr întreg, 0 sau mai mare',
 			'settings.station.placeholderFreqInvalid' => 'Trebuie să fie o frecvență în kHz, mai mare decât zero',
 			'settings.station.placeholderModeInvalid' => 'Trebuie să fie un nume de mod, de ex. USB, CW, FT8',
+			'settings.station.simulatedSwitchAntennas' => 'Antene',
+			'settings.station.simulatedSwitchRadios' => 'Porturi pentru stații',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'Un număr întreg, de la ${min} la ${max}',
 			'settings.station.switchLayout' => 'Configurație',
 			'settings.station.switchLayoutDescription' => 'Pe ce parte a comutatorului sunt conectate stațiile radio.',
 			'settings.station.switchLayoutRequired' => 'Alegeți cum este cablat comutatorul',
@@ -7008,14 +7020,14 @@ extension on TranslationsRo {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} necesită o verificare atentă', other: '${formatted} necesită o verificare atentă', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Referințele nu au putut fi recuperate pentru ${count} contact', other: 'Referințele nu au putut fi recuperate pentru ${formatted} contacte', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Referințele ${programs} pot fi incomplete pentru ${count} contact', other: 'Referințele ${programs} pot fi incomplete pentru ${formatted} contacte', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Contactele combinate pot pierde o referință — activitățile nu au putut indica ce tipuri se cumulează. Anulați și reîncercați pentru a evita acest lucru.',
 			'adifImport.nothingToImport' => 'Nimic din acest fișier nu poate fi importat',
 			'adifImport.confirm' => 'Importă',
 			'adifImport.importing' => ({required Object filename}) => 'Se importă ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'S-a importat ${count} contact din ${filename}', other: 'S-au importat ${formatted} contacte din ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} nu a putut fi importat: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} nu pare a fi un fișier ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Atenție: acest ADIF are QSO-uri de la ${calls}, dar vor fi importate ca ${station} dacă continuați.',
 			'adifImport.stationCallJoin' => ' și ',

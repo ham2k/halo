@@ -2847,6 +2847,7 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get softwareIntermediaries => '中间软件';
 	@override String get otherBrands => '其他品牌';
 	@override String get otherEquipment => '其他设备（天线、电键等）';
+	@override String get developmentTools => '开发工具';
 	@override String get newAntenna => '新天线';
 	@override String get newKey => '新电键';
 	@override String get newKeyer => 'WinKeyer（K1EL 或兼容）';
@@ -2865,15 +2866,15 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get placeholderDropAfter => '多久后断开（秒）';
 	@override String get placeholderDropAfterDescription => '自行关闭连接，以测试重连流程。留空或 0 表示从不断开。';
 	@override String get placeholderFailConnect => '总是连接失败';
-	@override String get placeholderConnectFailure => '占位电台被设置为拒绝此连接';
+	@override String get placeholderConnectFailure => '此设备被设置为拒绝连接';
 	@override String get placeholderFreq => '频率（kHz）';
-	@override String get placeholderFreqDescription => '占位电台的起始频率。之后应用调谐到哪里，它就报告哪里。';
+	@override String get placeholderFreqDescription => '此电台的起始频率。之后应用调谐到哪里，它就报告哪里。';
 	@override String get placeholderMode => '模式';
-	@override String get placeholderModeDescription => '占位电台的起始模式，例如 USB、CW、FT8。';
+	@override String get placeholderModeDescription => '此电台的起始模式，例如 USB、CW、FT8。';
 	@override String get placeholderPower => '功率（瓦）';
 	@override String get placeholderPurpose => '用它来记下您正在使用哪台电台，以便记入日志';
 	@override String get placeholderReplyDelay => '回复延迟（ms）';
-	@override String get placeholderReplyDelayDescription => '占位电台报告变化所需的时间。留空或 0 表示立即回复。';
+	@override String get placeholderReplyDelayDescription => '此电台报告变化所需的时间。留空或 0 表示立即回复。';
 	@override String get cwKeyerField => 'CAT CW 键控器';
 	@override String get cwKeyerFieldDescription => '此电台是否通过 CAT 将文本键控为 CW。对于应用不认识的电台请关闭。';
 	@override String get voiceMemories => '语音存储';
@@ -2906,6 +2907,9 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get placeholderWholeNumberInvalid => '必须是整数，0 或更大';
 	@override String get placeholderFreqInvalid => '必须是以 kHz 为单位且大于零的频率';
 	@override String get placeholderModeInvalid => '必须是模式名称，例如 USB、CW、FT8';
+	@override String get simulatedSwitchAntennas => '天线';
+	@override String get simulatedSwitchRadios => '电台端口';
+	@override String simulatedSwitchCountInvalid({required Object min, required Object max}) => '整数，${min} 到 ${max}';
 	@override String get switchLayout => '布局';
 	@override String get switchLayoutDescription => '您的电台插在开关的哪一侧。';
 	@override String get switchLayoutRequired => '请选择开关的接线方式';
@@ -4315,8 +4319,10 @@ class _Translations$settings$station$models$zh extends Translations$settings$sta
 	@override String get antenna => '天线';
 	@override String get key => 'CW 电键';
 	@override String get winkeyer => 'WinKeyer';
-	@override String get placeholderRadio => '通用电台（占位）';
-	@override String get placeholderRadioNodeName => '我的电台';
+	@override String get placeholderRadio => '模拟电台';
+	@override String get placeholderRadioNodeName => '模拟电台';
+	@override String get simulatedRotator => '模拟旋转器';
+	@override String get simulatedSwitch => '模拟天线开关';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 同轴开关';
 	@override String get gs232a => 'Yaesu GS-232A 旋转器接口';
@@ -6318,8 +6324,10 @@ extension on TranslationsZh {
 			'settings.station.models.antenna' => '天线',
 			'settings.station.models.key' => 'CW 电键',
 			'settings.station.models.winkeyer' => 'WinKeyer',
-			'settings.station.models.placeholderRadio' => '通用电台（占位）',
-			'settings.station.models.placeholderRadioNodeName' => '我的电台',
+			'settings.station.models.placeholderRadio' => '模拟电台',
+			'settings.station.models.placeholderRadioNodeName' => '模拟电台',
+			'settings.station.models.simulatedRotator' => '模拟旋转器',
+			'settings.station.models.simulatedSwitch' => '模拟天线开关',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 同轴开关',
 			'settings.station.models.gs232a' => 'Yaesu GS-232A 旋转器接口',
@@ -6463,6 +6471,7 @@ extension on TranslationsZh {
 			'settings.station.softwareIntermediaries' => '中间软件',
 			'settings.station.otherBrands' => '其他品牌',
 			'settings.station.otherEquipment' => '其他设备（天线、电键等）',
+			'settings.station.developmentTools' => '开发工具',
 			'settings.station.newAntenna' => '新天线',
 			'settings.station.newKey' => '新电键',
 			'settings.station.newKeyer' => 'WinKeyer（K1EL 或兼容）',
@@ -6481,15 +6490,15 @@ extension on TranslationsZh {
 			'settings.station.placeholderDropAfter' => '多久后断开（秒）',
 			'settings.station.placeholderDropAfterDescription' => '自行关闭连接，以测试重连流程。留空或 0 表示从不断开。',
 			'settings.station.placeholderFailConnect' => '总是连接失败',
-			'settings.station.placeholderConnectFailure' => '占位电台被设置为拒绝此连接',
+			'settings.station.placeholderConnectFailure' => '此设备被设置为拒绝连接',
 			'settings.station.placeholderFreq' => '频率（kHz）',
-			'settings.station.placeholderFreqDescription' => '占位电台的起始频率。之后应用调谐到哪里，它就报告哪里。',
+			'settings.station.placeholderFreqDescription' => '此电台的起始频率。之后应用调谐到哪里，它就报告哪里。',
 			'settings.station.placeholderMode' => '模式',
-			'settings.station.placeholderModeDescription' => '占位电台的起始模式，例如 USB、CW、FT8。',
+			'settings.station.placeholderModeDescription' => '此电台的起始模式，例如 USB、CW、FT8。',
 			'settings.station.placeholderPower' => '功率（瓦）',
 			'settings.station.placeholderPurpose' => '用它来记下您正在使用哪台电台，以便记入日志',
 			'settings.station.placeholderReplyDelay' => '回复延迟（ms）',
-			'settings.station.placeholderReplyDelayDescription' => '占位电台报告变化所需的时间。留空或 0 表示立即回复。',
+			'settings.station.placeholderReplyDelayDescription' => '此电台报告变化所需的时间。留空或 0 表示立即回复。',
 			'settings.station.cwKeyerField' => 'CAT CW 键控器',
 			'settings.station.cwKeyerFieldDescription' => '此电台是否通过 CAT 将文本键控为 CW。对于应用不认识的电台请关闭。',
 			'settings.station.voiceMemories' => '语音存储',
@@ -6497,11 +6506,11 @@ extension on TranslationsZh {
 			'settings.station.voiceMemoriesInvalid' => '整数，0 或更大',
 			'settings.station.yaesuMeterCapture' => '捕获表头读数',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => '在发射时读取电台的输出功率表和 SWR 过高标志，并将原始值输出到日志。用于建立 Yaesu 未公布的刻度——这些值不会以表头形式显示。',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => '在发射时读取电台的 PO、SWR 和 ALC 表头，并将原始值输出到日志。用于建立 Yaesu 未公布的刻度——这些值不会以表头形式显示。',
 			'settings.station.telemetryInterval' => '表头读取间隔（ms）',
 			'settings.station.telemetryIntervalDescription' => '电台发射时多久读取一次表头。留空则使用此连接能承受的最快速度，上限 200 ms。',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '整数毫秒，${min} 到 ${max}',
 			'settings.station.pollInterval' => '空闲轮询间隔（ms）',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '在频率和模式都没有变化时，多久向电台查询一次频率和模式。留空则为 ${fallback} ms。',
@@ -6524,6 +6533,9 @@ extension on TranslationsZh {
 			'settings.station.placeholderWholeNumberInvalid' => '必须是整数，0 或更大',
 			'settings.station.placeholderFreqInvalid' => '必须是以 kHz 为单位且大于零的频率',
 			'settings.station.placeholderModeInvalid' => '必须是模式名称，例如 USB、CW、FT8',
+			'settings.station.simulatedSwitchAntennas' => '天线',
+			'settings.station.simulatedSwitchRadios' => '电台端口',
+			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => '整数，${min} 到 ${max}',
 			'settings.station.switchLayout' => '布局',
 			'settings.station.switchLayoutDescription' => '您的电台插在开关的哪一侧。',
 			'settings.station.switchLayoutRequired' => '请选择开关的接线方式',
@@ -7008,14 +7020,14 @@ extension on TranslationsZh {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个需要仔细检查', other: '${formatted} 个需要仔细检查', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个通联的参考无法恢复', other: '${formatted} 个通联的参考无法恢复', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个通联的 ${programs} 参考可能不完整', other: '${formatted} 个通联的 ${programs} 参考可能不完整', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => '合并的通联可能会丢失一个参考——活动无法说明哪些类型可以叠加。取消并重试可避免此问题。',
 			'adifImport.nothingToImport' => '此文件中没有可导入的内容',
 			'adifImport.confirm' => '导入',
 			'adifImport.importing' => ({required Object filename}) => '正在导入 ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已从 ${filename} 导入 ${count} 个通联', other: '已从 ${filename} 导入 ${formatted} 个通联', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '无法导入 ${filename}：${error}',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} 看起来不是 ADIF 文件',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '警告：此 ADIF 包含来自 ${calls} 的 QSO，但如果继续，它们将作为 ${station} 导入。',
 			'adifImport.stationCallJoin' => ' 和 ',
