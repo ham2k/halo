@@ -179,7 +179,8 @@ class _RotatorMapPainter extends CustomPainter {
   void _paintLayer(Canvas canvas, _Drawn d) {
     final layer = d.layer;
     double? n(SceneNumber? x) => x?.resolve(values);
-    final width = n(layer.width) ?? 1;
+    // Thicker once a rubber band is loaded: the operator can feel for the point a shot spins.
+    final width = (n(layer.width) ?? 1) + (d.loaded ? 1 : 0);
     Paint stroke(Color c) => Paint()
       ..style = PaintingStyle.stroke
       ..color = c
@@ -191,12 +192,14 @@ class _RotatorMapPainter extends CustomPainter {
       case SceneRotatorLayerKind.line:
         final (a, b) = (d.from!, d.to!);
         final color = d.color ?? rimColor;
-        final dir = (b - a).distance == 0 ? Offset.zero : (b - a) / (b - a).distance;
+        // Pulled as a rubber band, the head points along the half it is on.
+        final c = d.nock ?? a;
+        final dir = (b - c).distance == 0 ? Offset.zero : (b - c) / (b - c).distance;
         final head = layer.head;
         final end = head == null ? b : b - dir * head.length;
-        final line = Path()
-          ..moveTo(a.dx, a.dy)
-          ..lineTo(end.dx, end.dy);
+        final line = Path()..moveTo(a.dx, a.dy);
+        if (d.nock case final nock?) line.lineTo(nock.dx, nock.dy);
+        line.lineTo(end.dx, end.dy);
         final normal = Offset(-dir.dy, dir.dx);
         final tip = head == null
             ? null

@@ -4,7 +4,9 @@
 // A scene's `rotatorMap` control: the host draws the rotator on a map of the
 // world and places the scene's decorations on it by bearing and distance.
 
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart' show GridLocation;
 import 'package:halo_i18n/halo_i18n.dart';
@@ -49,7 +51,7 @@ class _Source extends ChangeNotifier implements SceneRotatorSource {
   GridLocation? get call => null;
 }
 
-Map<String, dynamic> _doc({Map<String, dynamic> map = const {}, Map<String, dynamic> values = const {}}) => {
+Map<String, dynamic> _doc({Map<String, dynamic> map = const {}, Map<String, dynamic> values = const {}, String readout = 'heading'}) => {
   'version': 1,
   'width': 300,
   'height': 20,
@@ -62,7 +64,7 @@ Map<String, dynamic> _doc({Map<String, dynamic> map = const {}, Map<String, dyna
       'y': 0,
       'width': 300,
       'height': 20,
-      'text': {'value': 'heading', 'decimals': 0},
+      'text': {'value': readout, 'decimals': 0},
     },
     {
       'id': 'status',
@@ -107,7 +109,7 @@ Map<String, dynamic> _line(String id, Map<String, dynamic> from, Map<String, dyn
   'color': '#FFFFFF',
 };
 
-Future<void> _show(WidgetTester tester, _Source source, {SceneEventHandler? onEvent, Map<String, dynamic> map = const {}}) async {
+Future<void> _show(WidgetTester tester, _Source source, {SceneEventHandler? onEvent, Map<String, dynamic> map = const {}, String readout = 'heading'}) async {
   await tester.pumpWidget(
     TranslationProvider(
       child: MaterialApp(
@@ -116,7 +118,7 @@ Future<void> _show(WidgetTester tester, _Source source, {SceneEventHandler? onEv
             width: 300,
             height: 320,
             child: PanelSceneView(
-              scene: PanelScene(_doc(map: map)),
+              scene: PanelScene(_doc(map: map, readout: readout)),
               onEvent: onEvent,
               rotator: source,
             ),
@@ -452,6 +454,92 @@ void main() {
       await tester.pump();
       expect(find.text('45'), findsOneWidget);
       expect(find.text('stale'), findsOneWidget);
+    });
+  });
+
+  // With Alt held the heading arrow is a rubber band: the rotator is turned
+  // only by a shot that lands, never while it is drawn or by one let go short.
+  group('the rubber band', () {
+    // Halfway out along the heading of 45°, and the way across it clockwise.
+    const grab = Offset(40, -40), clockwise = Offset(0.7071, 0.7071);
+
+    Future<void> pull(WidgetTester tester, double px) async {
+      final box = tester.getRect(find.byType(SceneRotatorView));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+      // A mouse, as Alt is held at a keyboard, moved a few pixels first: the
+      // drag begins where the pointer passes the slop, which must be on the line.
+      final gesture = await tester.startGesture(box.center + grab, kind: PointerDeviceKind.mouse);
+      await gesture.moveTo(box.center + grab + clockwise * 3);
+      await tester.pump(const Duration(milliseconds: 16));
+      for (var i = 1; i <= 10; i++) {
+        await gesture.moveTo(box.center + grab + clockwise * (px * i / 10));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await gesture.up();
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    }
+
+    Future<void> frames(WidgetTester tester, int ms) async {
+      for (var t = 0; t < ms; t += 16) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+    }
+
+    testWidgets('let go short of loaded, it twangs back and turns nothing', (tester) async {
+      final source = _Source()..canTurn = true;
+      await _show(tester, source);
+      await pull(tester, 20);
+      await frames(tester, 4000);
+      expect(source.turns, isEmpty);
+    });
+
+    // A shot that turned the rotator as it was let go would send the
+    // antenna off before the operator saw where it landed; one that spun the
+    // way it was pulled would be a drag, not a rubber band.
+    testWidgets('loaded, the target spins the other way from the pull and the rotator is turned once, where it lands', (tester) async {
+      final source = _Source()..canTurn = true;
+      await _show(
+        tester,
+        source,
+        readout: 'target',
+        map: const {
+          'stops': [0, 90, 180, 270],
+        },
+      );
+      await pull(tester, 100);
+      expect(source.turns, isEmpty);
+      await frames(tester, 64);
+      final target = double.parse((tester.widget<Text>(find.textContaining(RegExp(r'^\d+$')).first)).data!);
+      expect((45 - target) % 360, inExclusiveRange(0, 90), reason: 'pulled clockwise, it spins counterclockwise');
+      expect(source.turns, isEmpty, reason: 'nothing is sent while it spins');
+      await frames(tester, 4000);
+      expect(source.turns, hasLength(1));
+      expect([0.0, 90.0, 180.0, 270.0], contains(source.turns.single));
+    });
+
+    // A stop is the strongest "not there" there is; a shot landing after it
+    // would turn the antenna the operator just stopped.
+    testWidgets('the map\'s stop button drops the shot', (tester) async {
+      final source = _Source()..canTurn = true;
+      await _show(tester, source, map: const {'actions': true});
+      await pull(tester, 100);
+      await frames(tester, 200);
+      await tester.tap(find.byWidgetPredicate((w) => w is Icon && w.semanticLabel == t.settings.station.rotatorStop));
+      await frames(tester, 4000);
+      expect(source.turns, isEmpty);
+    });
+
+    // A turn the operator asks for while a shot spins is the one they meant;
+    // the shot landing after it would undo it.
+    testWidgets('a click while it spins drops the shot', (tester) async {
+      final source = _Source()..canTurn = true;
+      await _show(tester, source);
+      await pull(tester, 100);
+      await frames(tester, 200);
+      final box = tester.getRect(find.byType(SceneRotatorView));
+      await tester.tapAt(box.center + const Offset(0, 60));
+      await frames(tester, 4000);
+      expect(source.turns.single, closeTo(180, 0.5));
     });
   });
 }

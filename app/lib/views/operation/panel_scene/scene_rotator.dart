@@ -18,7 +18,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/scheduler.dart' show Ticker;
+import 'package:flutter/services.dart' show HardwareKeyboard, rootBundle;
 import 'package:flutter_svg/flutter_svg.dart' show PictureInfo, SvgStringLoader, vg;
 import 'package:halo_core/halo_core.dart' show GridLocation, nowUtc, realNowMillis;
 import 'package:halo_i18n/halo_i18n.dart';
@@ -33,6 +34,7 @@ import 'scene_model.dart';
 import 'scene_rotator_frame.dart';
 
 part 'scene_rotator_painter.dart';
+part 'scene_rotator_rubber_band.dart';
 
 /// What a rotator map knows of one rotator, in true degrees.
 @immutable
@@ -377,9 +379,9 @@ class SceneRotatorView extends StatefulWidget {
   State<SceneRotatorView> createState() => _SceneRotatorViewState();
 }
 
-enum _DragMode { none, pinch, pan, layer }
+enum _DragMode { none, pinch, pan, layer, band }
 
-class _SceneRotatorViewState extends State<SceneRotatorView> {
+class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerProviderStateMixin {
   SceneRotatorSpec get _spec => widget.control.rotatorMap!;
 
   WorldOutlines? _outlines;
@@ -411,6 +413,13 @@ class _SceneRotatorViewState extends State<SceneRotatorView> {
   Offset _dragFrom = Offset.zero;
   _Drawn? _dragging;
   double _dragStart = 0;
+
+  /// A line pulled as a rubber band, and its twang and spin a frame at a time.
+  _Band? _band;
+  Ticker? _spinner;
+
+  /// Redrawn as the band moves: an extension of this State may not call setState itself.
+  void _bandMoved() => setState(() {});
 
   final _pictures = <String, PictureInfo>{};
   final _loading = <String>{};
@@ -474,6 +483,7 @@ class _SceneRotatorViewState extends State<SceneRotatorView> {
     widget.source?.changes.removeListener(_onChange);
     WallClock.minutes.removeListener(_onMinute);
     _rasterLater?.cancel();
+    _spinner?.dispose();
     _image?.dispose();
     for (final art in _pictures.values) {
       art.picture.dispose();
@@ -659,9 +669,11 @@ class _SceneRotatorViewState extends State<SceneRotatorView> {
       }
     }
     if (_dragging case final drag? when _uuidFor(drag.layer.rotator) == uuid) target = drag.preview;
+    final spinning = _spinningTarget(uuid);
+    target = spinning ?? target;
     final azimuth = reading.azimuth;
     final turning = azimuth != null && target != null && rotatorHeadingGap(azimuth, target.round()) > rotatorArrivedWithin;
-    return _Rotator(uuid, reading, target: turning || _dragging != null ? target : null, turning: turning);
+    return _Rotator(uuid, reading, target: turning || _dragging != null || spinning != null ? target : null, turning: turning);
   }
 
   /// [bearing], or where the antenna can point that is nearest it.
@@ -703,6 +715,7 @@ class _SceneRotatorViewState extends State<SceneRotatorView> {
   void _onTapUp(TapUpDetails e) {
     final frame = _frame;
     if (frame == null || widget.disabled) return;
+    _dropBand();
     final p = e.localPosition;
     final hit = _hit(p, (d) => d.layer.aim || d.layer.event != null || d.layer.menu != null);
     if (hit != null) {
@@ -773,6 +786,11 @@ class _SceneRotatorViewState extends State<SceneRotatorView> {
         _mode = _DragMode.none;
         return;
       }
+      if (_drawsBand(grabbed)) {
+        _mode = _DragMode.band;
+        return _drawBand(grabbed, p);
+      }
+      _dropBand();
       _mode = _DragMode.layer;
       _dragStart = r.target ?? r.reading.azimuth?.toDouble() ?? 0;
       setState(() => _dragging = grabbed..preview = grabbed.layer.drag!.turn ? _stopped(frame.bearingOf(p)) : _dragStart);
@@ -800,6 +818,8 @@ class _SceneRotatorViewState extends State<SceneRotatorView> {
         final drag = _dragging!.layer.drag!;
         final d = p - _dragFrom;
         setState(() => _dragging!.preview = _stopped(drag.turn ? frame.bearingOf(p) : _dragStart + (drag.axis == 'x' ? d.dx : d.dy) * drag.degPerPx));
+      case _DragMode.band:
+        _pullBand(p);
     }
   }
 
@@ -811,6 +831,8 @@ class _SceneRotatorViewState extends State<SceneRotatorView> {
         final drag = _dragging!;
         setState(() => _dragging = null);
         if (drag.preview case final preview?) _turn(drag.layer.rotator, preview);
+      case _DragMode.band:
+        _looseBand();
       case _DragMode.pinch:
         widget.onGesture?.call('zoom', _zoomNow, null);
       case _DragMode.pan:
@@ -982,6 +1004,13 @@ class _SceneRotatorViewState extends State<SceneRotatorView> {
             ..from = a.at
             ..to = b.at
             ..bearing = b.bearing;
+          if (_band case final band? when band.layerId == layer.id && band.pull != 0) {
+            final length = (b.at - a.at).distance;
+            final dir = length == 0 ? Offset.zero : (b.at - a.at) / length;
+            d
+              ..nock = Offset.lerp(a.at, b.at, band.along)! + Offset(-dir.dy, dir.dx) * band.pull
+              ..loaded = band.swing == null && _bandLoaded(band, length);
+          }
         case SceneRotatorLayerKind.wedge:
           final a1 = angle(layer.az, layer.rotator), a2 = angle(layer.az2, layer.rotator);
           if (a1 == null || a2 == null) continue;
@@ -1143,7 +1172,13 @@ class _SceneRotatorViewState extends State<SceneRotatorView> {
                       if (r.reading.live && r.target != null)
                         IconButton(
                           icon: Icon(MdiIcons.stopCircleOutline, semanticLabel: context.t.settings.station.rotatorStop),
-                          onPressed: widget.disabled ? null : () => source.stop(r.uuid),
+                          onPressed: widget.disabled
+                              ? null
+                              : () {
+                                  // A shot still spinning would turn it again as it landed.
+                                  _dropBand();
+                                  source.stop(r.uuid);
+                                },
                         ),
                       StationConnectionToggle(
                         busy: r.reading.busy,
@@ -1211,6 +1246,11 @@ class _Drawn {
 
   /// While dragged: the bearing the drag would turn to.
   double? preview;
+
+  /// A line pulled as a rubber band: the point its two halves meet at, and
+  /// whether it is pulled far enough that letting go spins the target.
+  Offset? nock;
+  bool loaded = false;
 
   _Drawn(this.layer, {this.color, this.fill});
 

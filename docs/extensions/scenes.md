@@ -905,7 +905,11 @@ A decoration acts on a click with one of:
 the pointer points, or `{ axis: 'x' | 'y', degPerPx }`, moving the target
 by `degPerPx` degrees (1) for every pixel along that axis. The decoration
 shows where the drag will land as it moves; the rotator is told once, on
-release. A rotator not connected and answering is not dragged.
+release. A rotator not connected and answering is not dragged. A `line`
+dragged with Alt held is a rubber band instead: let go once it leans past
+30°, the target spins the other way a few turns and lands on a heading
+picked at random — one of `stops`, where the map has them — and the rotator
+is turned there as it lands, the way any other turn is.
 
 ### Gestures
 

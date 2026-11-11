@@ -699,6 +699,21 @@ the operator's zoom and pan kept per placement in the key-value store.
   and a pinch zoom; a drag anywhere else does nothing, so a pan meant for
   the view never turns the antenna. A drag of a decoration turns on
   release only: a rotator told every frame of a drag would chase it.
+- **With Alt held, a line that turns is a rubber band.** Taken hold of
+  with Alt down, a line decoration that turns — the heading arrow, by
+  default — is tied at its two ends and the pointer pulls it sideways into a
+  V, by the band scope's bow's angles (§ Spectrum): let go short of both
+  halves leaning 30° it twangs back straight and nothing turns; past 30° it
+  is loaded, a pixel thicker, and let go, the target spins away the other
+  way from the pull — 2 whole turns just loaded, 5 at the full 60°, then on
+  round to a heading picked at random among the scene's stops or anywhere —
+  slowing all the way over 1.9 to 3 s, and wobbles 5° past where it lands.
+  The rotator is told once, as it lands, not as it is let go: the operator
+  sees where the antenna is going before it goes. A click, another drag of
+  a decoration or the map's stop button while it spins drops the shot,
+  turning nothing: the turn the operator asks for is the one they meant.
+  Only the map's own: a turn sent from elsewhere while it spins — the
+  Station panel, an extension — is overtaken when it lands.
 - **A turn shows at once.** The target is drawn the moment it is sent and
   held for 2 seconds, long enough for a polled rotator's own report to
   catch up, so a click is never followed by a moment with nothing drawn.
