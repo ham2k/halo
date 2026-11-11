@@ -10,6 +10,8 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'retired_built_ins.dart';
+
 class ExtensionBundle {
   final String key;
   final String source;
@@ -37,6 +39,13 @@ String newBridgeToken() {
 /// [args] as JSON literals.
 String bridgeCall(String token, String entry, [List<Object?> args = const []]) =>
     '__halo.bridge(${jsonEncode(token)}, ${jsonEncode(entry)}${[for (final arg in args) ', ${jsonEncode(arg)}'].join()})';
+
+/// Every key the kernel must know before any bundle evaluates: those the
+/// [bundles] are loaded under, and the retired built-ins' names, kept for
+/// nobody. A bundle may define sub-extensions only under its own key, and
+/// never under a longer one of these: a key that is a bundle of its own, or a
+/// name whose stored credentials outlive the extension that held it.
+List<String> declaredBundleKeys(Iterable<ExtensionBundle> bundles) => [for (final b in bundles) b.key, ...kRetiredBuiltIns.keys];
 
 /// The kernel's `beginBundle` call for [bundle]: the host declares the key
 /// the bundle may define, and the API level it was built for.

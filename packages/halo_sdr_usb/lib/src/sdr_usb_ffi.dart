@@ -51,11 +51,17 @@ DynamicLibrary? _openLibrary() {
     // Not bundled — under `flutter test`.
   }
 
+  // Only an unshipped build looks for a host build: the candidates are
+  // relative to the working directory, which in a shipped app is wherever
+  // the launch happened.
+  if (_shippedBuild) return null;
   for (final candidate in _hostCandidates()) {
     if (File(candidate).existsSync()) return DynamicLibrary.open(candidate);
   }
   return null;
 }
+
+const _shippedBuild = bool.fromEnvironment('dart.vm.product') || bool.fromEnvironment('dart.vm.profile');
 
 List<String> _hostCandidates() {
   final ext = Platform.isMacOS ? 'dylib' : (Platform.isWindows ? 'dll' : 'so');

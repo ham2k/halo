@@ -53,7 +53,7 @@ import type {
 import { isValidAccountKvKey, isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels.ts"
 import { installAppClock } from "./appClock.ts"
 import type { ComposableHookCategory, HookCategoryName } from "./hookCategories.ts"
-import { requireComposable } from "./composable.ts"
+import { hasPrefix, requireComposable, requireHookMethodName } from "./composable.ts"
 import { createTimerQueue, removeAmbientTimers } from "./timerQueue.ts"
 import { createLogCopies, deepFreeze, FROZEN_QSOS_API, type LogChanges } from "./logCopy.ts"
 
@@ -219,8 +219,9 @@ function apiOf(extensionKey: string): number {
 // that bundle's call (host_budgets.dart), like the rest of what ctx does.
 const logCopies = createLogCopies({
   changes: async (operationUuid, cursor, extensionKey) =>
-    (await dispatchHostCall("getQsoChanges", { operationUuid, cursor, extensionKey })) as LogChanges | null,
-  whole: async (operationUuid, extensionKey) => (await dispatchHostCall("getQsos", { operationUuid, extensionKey })) as Record<string, unknown>[] | null,
+    (await dispatchHostCall("getQsoChanges", { operationUuid, cursor }, extensionKey ?? null)) as LogChanges | null,
+  whole: async (operationUuid, extensionKey) =>
+    (await dispatchHostCall("getQsos", { operationUuid }, extensionKey ?? null)) as Record<string, unknown>[] | null,
 })
 const pendingHostCalls = new Map<number, PendingHostCall>()
 let nextHostCallId = 1
@@ -247,8 +248,24 @@ let nextSocketId = 1
 let currentBundleKey: string | null = null
 let bundlesStarted = false
 
+// Every key the host is loading a bundle under, and every name it keeps for
+// nobody (a retired built-in's, whose stored credentials outlive it), set by
+// `declareBundles` before any bundle evaluates. A key belongs to the most
+// specific of these it falls under: `ham2k-custom` may not define
+// `ham2k-custom-text`, which is a bundle of its own.
+let declaredKeys: string[] = []
+
+function isUnder(extensionKey: string, bundleKey: string): boolean {
+  return extensionKey === bundleKey || hasPrefix(extensionKey, bundleKey + "-") || hasPrefix(extensionKey, bundleKey + "_")
+}
+
 function bundleMayDefine(bundleKey: string, extensionKey: string): boolean {
-  return extensionKey === bundleKey || extensionKey.startsWith(`${bundleKey}-`) || extensionKey.startsWith(`${bundleKey}_`)
+  if (!isUnder(extensionKey, bundleKey)) return false
+  for (let i = 0; i < declaredKeys.length; i++) {
+    const other = declaredKeys[i]
+    if (other.length > bundleKey.length && isUnder(extensionKey, other)) return false
+  }
+  return true
 }
 
 function post(message: Record<string, unknown>) {
@@ -455,7 +472,12 @@ function askedForEveryRef(category: HookCategoryName, record: HookRecord): boole
 // `extensionKey` params must be derived by the kernel from which extension
 // is calling — never supplied by extension code, or any bundle could read
 // any other's keychain credentials, KV state, or clear its status items.
-const IDENTITY_HOST_METHODS = new Set([
+//
+// A lookup on an object with no prototype, never `Set.prototype.has`: every
+// bundle can rewrite that, and a `has` answering false would send an identity
+// method out with nothing stamped on it.
+const IDENTITY_HOST_METHODS: Record<string, true> = Object.create(null)
+for (const method of [
   "fetch",
   "getLocation",
   "listRadios",
@@ -511,25 +533,67 @@ const IDENTITY_HOST_METHODS = new Set([
   "webSocketSend",
   "webSocketClose",
   "suggestQso",
-])
+]) {
+  IDENTITY_HOST_METHODS[method] = true
+}
 
 /// How many of each extension's `panel.onEvent` calls are running. `suggestQso` is stamped with
 /// whether its caller has one: filling the logging fields answers the operator using that
 /// extension's panel, and from anywhere else — a timer, a render, a hook of another kind — it
 /// would overwrite what they are typing with nothing on screen asking for it.
-const panelEventsRunning = new Map<string, number>()
+///
+/// An object with no prototype, never a Map: `Map.prototype.get` is every
+/// bundle's to rewrite, and the count decides `duringPanelEvent`, which the
+/// host trusts as part of the caller's identity.
+const panelEventsRunning: Record<string, number> = Object.create(null)
 
 /// Internal, trusted dispatch — everything on the wire goes through here.
-function dispatchHostCall(method: string, params: Record<string, unknown>): Promise<unknown> {
+///
+/// [caller], [ns], [kvKey] and [duringPanelEvent] are the caller's identity,
+/// and travel beside [params], never inside them: the params are the caller's
+/// own object, and whatever it holds — a `toJSON` that rewrites the whole
+/// object as it is written out included — must not decide who is calling. The
+/// host reads identity from this envelope alone.
+function dispatchHostCall(
+  method: string,
+  params: unknown,
+  caller: string | null,
+  ns: string | null = null,
+  kvKey: string | null = null,
+  duringPanelEvent: boolean | null = null,
+): Promise<unknown> {
   // An extension writing its own session must see it on its very next hook
   // call, not after the context cache's TTL (see getAccountContext).
-  if (method === "setAccountSession" && typeof params.ns === "string") {
-    cachedAccounts.delete(params.ns)
+  if (method === "setAccountSession" && ns !== null) {
+    cachedAccounts.delete(ns)
   }
   const callId = nextHostCallId++
   return new Promise((resolve, reject) => {
+    // Before the call is registered: params that cannot be written out
+    // (circular, a BigInt, a throwing getter) reject it here, leaving no
+    // pending entry behind.
+    const paramsJson = JSON.stringify(params === undefined ? {} : params)
     pendingHostCalls.set(callId, { resolve, reject })
-    post({ type: "hostCall", callId, method, params })
+    // Assembled by hand from values the kernel holds: no object of the
+    // caller's is written out around the identity.
+    rawSendMessage(
+      "polo",
+      '{"type":"hostCall","callId":' +
+        callId +
+        ',"method":' +
+        JSON.stringify(method) +
+        ',"caller":{"extensionKey":' +
+        JSON.stringify(caller) +
+        ',"ns":' +
+        JSON.stringify(ns) +
+        ',"kvKey":' +
+        JSON.stringify(kvKey) +
+        ',"duringPanelEvent":' +
+        JSON.stringify(duringPanelEvent) +
+        '},"params":' +
+        (typeof paramsJson === "string" ? paramsJson : "{}") +
+        "}",
+    )
   })
 }
 
@@ -545,7 +609,8 @@ const PUBLIC_CALLER = "__halo.hostCall"
 /// identity params the kernel injects itself. The rest go out as the
 /// surface's own, whatever `extensionKey` they claim.
 function hostCall(method: string, params: Record<string, unknown>): Promise<unknown> {
-  if (IDENTITY_HOST_METHODS.has(method)) {
+  if (typeof method !== "string") return Promise.reject(new Error("a host call names its method as a string"))
+  if (IDENTITY_HOST_METHODS[method] === true) {
     const refused = Promise.reject(new Error(`host call '${method}' needs the calling extension's identity and is only available through the SDK host API`))
     // A socket refused here never reaches the bound path that fails it, and
     // its reservation would stay open: the socket connecting forever, and the
@@ -561,7 +626,7 @@ function hostCall(method: string, params: Record<string, unknown>): Promise<unkn
       throw e
     })
   }
-  return dispatchHostCall(method, { ...params, extensionKey: PUBLIC_CALLER })
+  return dispatchHostCall(method, params, PUBLIC_CALLER)
 }
 
 /// The privileged host-call function handed to one extension at activation:
@@ -571,34 +636,34 @@ function boundHostCallFor(extensionKey: string) {
     // Every call names its caller, identity-bearing or not: the host budgets
     // what a bundle has awaiting an answer by it (halo_extension_host's
     // host_budgets.dart). Only the identity methods get `ns` and the rest.
-    if (!IDENTITY_HOST_METHODS.has(method)) return dispatchHostCall(method, { ...params, extensionKey })
-    const bound: Record<string, unknown> = { ...params, ns: extensionKey, extensionKey }
-    if (method === "suggestQso") bound.duringPanelEvent = (panelEventsRunning.get(extensionKey) ?? 0) > 0
-    if (method === "getAccount" || method === "setAccountSession") {
-      bound.kvKey = kernel.getAccountKvKey(extensionKey)
-    }
+    if (typeof method !== "string") return Promise.reject(new Error("a host call names its method as a string"))
+    if (IDENTITY_HOST_METHODS[method] !== true) return dispatchHostCall(method, params, extensionKey)
+    const duringPanelEvent = method === "suggestQso" ? (panelEventsRunning[extensionKey] ?? 0) > 0 : null
+    const kvKey = method === "getAccount" || method === "setAccountSession" ? kernel.getAccountKvKey(extensionKey) : null
     if (method === "webSocketOpen") {
       // Only an id registerSocket handed out and nobody has opened yet. Ids
       // are guessable: a second open naming one in use would take over its
       // listener, and one naming an id not yet handed out would take it from
       // whoever gets it next — leaving a socket no unload knows to close.
-      const socket = socketListeners.get(params.socketId as number)
+      // Read once, and sent as read: a getter could name one id to the check
+      // below and another on the wire.
+      const socketId = params?.socketId as number
+      const socket = socketListeners.get(socketId)
       if (!socket || socket.owner !== null) {
-        return Promise.reject(new Error(`webSocket: socket ${String(params.socketId)} is not reserved, or already in use`))
+        return Promise.reject(new Error(`webSocket: socket ${String(socketId)} is not reserved, or already in use`))
       }
       socket.owner = extensionKey
       // Refused before any connection existed, the host sends this socket
       // nothing: the events a browser gives a socket that failed to connect
       // come from here. Delivered by the kernel, since `socketEvent` is the
       // host's entry.
-      const socketId = params.socketId as number
-      return dispatchHostCall(method, bound).catch((e) => {
+      return dispatchHostCall(method, { ...params, socketId, toJSON: undefined }, extensionKey, extensionKey, kvKey, duringPanelEvent).catch((e) => {
         kernelEntries.socketEvent(socketId, JSON.stringify({ type: "error", message: e instanceof Error ? e.message : String(e) }))
         kernelEntries.socketEvent(socketId, JSON.stringify({ type: "close", code: 1006, reason: "", wasClean: false }))
         throw e
       })
     }
-    return dispatchHostCall(method, bound)
+    return dispatchHostCall(method, params, extensionKey, extensionKey, kvKey, duringPanelEvent)
   }
 }
 
@@ -732,7 +797,7 @@ function getSettingsContext(): Promise<unknown> {
   if (cachedSettings && realNow() - cachedSettings.at < CONTEXT_CACHE_TTL_MILLIS) return cachedSettings.value
   const value = (async () => {
     try {
-      return await dispatchHostCall("getSettings", {})
+      return await dispatchHostCall("getSettings", {}, null)
     } catch (e) {
       return undefined
     }
@@ -751,7 +816,7 @@ function getAccountContext(extensionKey: string): Promise<unknown> {
     try {
       // Trusted kernel path (this is the kernel deriving identity itself,
       // not extension code claiming one) — bypasses the public gate.
-      return (await dispatchHostCall("getAccount", { ns: extensionKey, kvKey, extensionKey })) as unknown
+      return (await dispatchHostCall("getAccount", {}, extensionKey, extensionKey, kvKey)) as unknown
     } catch (e) {
       return undefined
     }
@@ -823,8 +888,7 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     // changed on every call (logCopy.ts), so it is never staler than that.
     // Not identity-bearing (no ns/kvKey), but stamped with the caller all the
     // same: the host budgets a bundle's calls awaiting an answer by it.
-    getOperation: async (uuid: string) =>
-      ((await dispatchHostCall("getOperation", { uuid, extensionKey: record.extensionKey })) as Record<string, unknown> | null) ?? null,
+    getOperation: async (uuid: string) => ((await dispatchHostCall("getOperation", { uuid }, record.extensionKey)) as Record<string, unknown> | null) ?? null,
     // Null (unknown operation / no log access) passes through untouched —
     // it means something different from [] (see HookContext.getQsos).
     getQsos: (operationUuid: string) =>
@@ -836,37 +900,43 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     // so it is cheap enough for the per-keystroke lookup pipeline (see
     // HookContext.getSpotsForCall).
     getSpotsForCall: async (call: string, maxAgeMinutes?: number) =>
-      ((await dispatchHostCall("getSpotsForCall", { call, maxAgeMinutes, extensionKey: record.extensionKey })) as Spot[] | null) ?? [],
+      ((await dispatchHostCall("getSpotsForCall", { call, maxAgeMinutes }, record.extensionKey)) as Spot[] | null) ?? [],
     // The whole board, defaulting its operation to the one this hook was
     // handed so a panel's spots come back judged without asking — see
     // HookContext.getSpots. `annotate: false` asks for none, so none is sent.
     getSpots: async (options?: GetSpotsOptions) =>
-      ((await dispatchHostCall("getSpots", {
-        ...options,
-        operationUuid: options?.operationUuid ?? (options?.annotate === false ? undefined : operationUuidOf(args)),
-        extensionKey: record.extensionKey,
-      })) as BoardSpot[] | null) ?? [],
+      ((await dispatchHostCall(
+        "getSpots",
+        {
+          ...options,
+          operationUuid: options?.operationUuid ?? (options?.annotate === false ? undefined : operationUuidOf(args)),
+        },
+        record.extensionKey,
+      )) as BoardSpot[] | null) ?? [],
     // The band's annotations, for the station of the operation this hook was
     // handed unless told another — see HookContext.getBandAnnotations.
     getBandAnnotations: async (options: { band: string; station?: string }) =>
-      ((await dispatchHostCall("getBandAnnotations", {
-        band: options?.band,
-        station: options?.station ?? stationOf(args),
-        extensionKey: record.extensionKey,
-      })) as HeldBandAnnotation[] | null) ?? [],
+      ((await dispatchHostCall(
+        "getBandAnnotations",
+        {
+          band: options?.band,
+          station: options?.station ?? stationOf(args),
+        },
+        record.extensionKey,
+      )) as HeldBandAnnotation[] | null) ?? [],
     // Cross-operation log read, backing `call-history` — see
     // HookContext.getHistoryForCall.
     getHistoryForCall: async (call: string, options?: HistoryForCallOptions) =>
-      ((await dispatchHostCall("getHistoryForCall", { ...options, call, extensionKey: record.extensionKey })) as Record<string, unknown>[] | null) ?? [],
+      ((await dispatchHostCall("getHistoryForCall", { ...options, call }, record.extensionKey)) as Record<string, unknown>[] | null) ?? [],
   }
   if (record.category !== "panel" || method !== "onEvent") return await member.call(record.hook, args, ctx)
-  panelEventsRunning.set(record.extensionKey, (panelEventsRunning.get(record.extensionKey) ?? 0) + 1)
+  panelEventsRunning[record.extensionKey] = (panelEventsRunning[record.extensionKey] ?? 0) + 1
   try {
     return await member.call(record.hook, args, ctx)
   } finally {
-    const running = (panelEventsRunning.get(record.extensionKey) ?? 1) - 1
-    if (running > 0) panelEventsRunning.set(record.extensionKey, running)
-    else panelEventsRunning.delete(record.extensionKey)
+    const running = (panelEventsRunning[record.extensionKey] ?? 1) - 1
+    if (running > 0) panelEventsRunning[record.extensionKey] = running
+    else delete panelEventsRunning[record.extensionKey]
   }
 }
 
@@ -1015,7 +1085,7 @@ async function activateExtension(def: ExtensionDefinition): Promise<string | nul
         // rest of the extension's hook registrations.
         if (!isValidHookKey(category, def.key, resolvedKey)) {
           log(
-            `ERROR registerHook(${category}) in extension ${def.key}: key '${resolvedKey}' must equal '${def.key}' or be prefixed '${def.key}_' — hook not registered`,
+            `ERROR registerHook(${category}) in extension ${def.key}: key '${resolvedKey}' is not one this extension may register under (docs/extensions/settings.md, "Key namespacing") — hook not registered`,
           )
           return
         }
@@ -1087,21 +1157,42 @@ function activatePending(): Promise<Array<string | null>> {
 
 const kernelEntries = {
   defineExtension(def: ExtensionDefinition) {
+    // Read once, and kept in a copy the kernel owns: the bundle's own object
+    // could answer its own key to the checks below and another extension's to
+    // every later read — and the host call handed over at activation, which
+    // names its caller to the host, is bound to whatever `key` says then.
+    const key: unknown = def?.key
+    if (typeof key !== "string") {
+      log(`ERROR defineExtension with a key that is not a string — ignored`)
+      return
+    }
     if (bundlesStarted && currentBundleKey == null) {
-      log(`ERROR defineExtension('${def.key}') outside a bundle evaluation window — ignored`)
+      log(`ERROR defineExtension('${key}') outside a bundle evaluation window — ignored`)
       return
     }
-    if (currentBundleKey != null && !bundleMayDefine(currentBundleKey, def.key)) {
-      log(`ERROR bundle '${currentBundleKey}' tried to define extension '${def.key}' — keys must match the host manifest; ignored`)
+    if (currentBundleKey != null && !bundleMayDefine(currentBundleKey, key)) {
+      log(`ERROR bundle '${currentBundleKey}' tried to define extension '${key}' — keys must match the host manifest; ignored`)
       return
     }
-    if (extensions[def.key]) {
-      log(`ERROR duplicate extension key '${def.key}' — ignored`)
+    if (extensions[key]) {
+      log(`ERROR duplicate extension key '${key}' — ignored`)
       return
     }
-    extensions[def.key] = def
-    definingBundle[def.key] = currentBundleKey
+    extensions[key] = { ...def, key }
+    definingBundle[key] = currentBundleKey
     refOwnersChanged()
+  },
+
+  /// Host-only, before any bundle: every key a bundle is loaded under and
+  /// every name kept for nobody (see declaredKeys).
+  declareBundles(keys: unknown) {
+    const out: string[] = []
+    if (Array.isArray(keys)) {
+      for (let i = 0; i < keys.length; i++) {
+        if (typeof keys[i] === "string") out[out.length] = keys[i]
+      }
+    }
+    declaredKeys = out
   },
 
   /// Host-only bracketing of bundle evaluation — see the block comment on
@@ -1109,6 +1200,10 @@ const kernelEntries = {
   beginBundle(key: string, api?: number | null) {
     bundlesStarted = true
     currentBundleKey = key
+    // A bundle the dev loop serves after start was never declared.
+    let declared = false
+    for (let i = 0; i < declaredKeys.length; i++) declared = declared || declaredKeys[i] === key
+    if (!declared) declaredKeys[declaredKeys.length] = key
     bundleApi[key] = typeof api === "number" ? api : null
     aliasPoloFor(bundleApi[key])
   },
@@ -1454,6 +1549,7 @@ const kernelEntries = {
     forRefs: unknown[] | null = null,
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]> {
     requireComposable(category)
+    requireHookMethodName(method)
     const routing = forRefs ? extensionsRouting(forRefs) : null
     const records = hooksFor(category, key).filter(
       (r) => typeof r.hook[method] === "function" && (routing === null || routing.has(r.extensionKey) || askedForEveryRef(category, r)),
@@ -1482,6 +1578,7 @@ const kernelEntries = {
     online = true,
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]> {
     requireComposable(category)
+    requireHookMethodName(method)
     const records = hooksFor(category, null).filter((r) => typeof r.hook[method] === "function")
     let args = initialArgs
     const out: { key: string; ok: boolean; value?: unknown; error?: string }[] = []
@@ -1608,7 +1705,7 @@ const kernelEntries = {
 
   host: {
     showForm(form: FormDefinition, state: Record<string, any> = {}, extensionKey: string = "kernel"): Promise<Record<string, any> | null> {
-      return showFormAs(extensionKey, form, state, dispatchHostCall, true)
+      return showFormAs(extensionKey, form, state, (method, params) => dispatchHostCall(method, params, null), true)
     },
   },
 
@@ -1626,6 +1723,7 @@ const kernelEntries = {
 // with a token it hands over once, right after evaluating the kernel and
 // before any bundle runs, and `bridge` refuses every call without it.
 const HOST_ENTRIES = [
+  "declareBundles",
   "beginBundle",
   "endBundle",
   "activateAll",
@@ -1665,6 +1763,8 @@ function claimBridge(token: unknown): void {
 function bridge(token: unknown, entry: HostEntry, a?: any, b?: any, c?: any, d?: any, e?: any): unknown {
   if (bridgeToken === null || token !== bridgeToken) throw new Error(`${String(entry)} is the host's to call`)
   switch (entry) {
+    case "declareBundles":
+      return kernelEntries.declareBundles(a)
     case "beginBundle":
       return kernelEntries.beginBundle(a, b)
     case "endBundle":
@@ -1755,6 +1855,13 @@ function aliasPoloFor(api: number | null): void {
 // per extension, not a freeze.
 Object.freeze(JSON)
 Object.defineProperty(globalThis, "JSON", { value: JSON, writable: false, configurable: false, enumerable: false })
+// What `JSON.stringify` asks every object it writes, the kernel's messages
+// included: a `toJSON` a bundle put on these prototypes would rewrite any of
+// them — into a host call naming another extension, say. An object's own
+// `toJSON` still works.
+for (const prototype of [Object.prototype, Array.prototype]) {
+  Object.defineProperty(prototype, "toJSON", { value: undefined, writable: false, configurable: false, enumerable: false })
+}
 Object.freeze(olderKernel.host)
 Object.freeze(kernel.sharedModules)
 Object.freeze(kernel.sharedVersions)

@@ -903,6 +903,16 @@ bool _isDigit(String s) => s.codeUnitAt(0) >= 0x30 && s.codeUnitAt(0) <= 0x39;
 /// since super-mode grouping also treats the digital-voice modes as phone.
 const Set<String> superPhoneModes = {'SSB', 'USB', 'LSB', 'FM', 'AM', 'DIGITALVOICE', 'C4FM', 'DMR', 'DSTAR', 'FREEDV', 'M17'};
 
+/// Whether [mode] can be a mode's name: letters, digits and `-`, at most 16.
+///
+/// A mode reaches the radio drivers from deep links and paired devices, and
+/// several of them write it into a text protocol (`slice set 0 mode=…`,
+/// `<CHANGEMODE><VALUE>…</VALUE>`): a newline or a `<` in it would be a
+/// command of its own.
+bool isModeName(String mode) => _modeName.hasMatch(mode);
+
+final _modeName = RegExp(r'^[A-Za-z0-9][A-Za-z0-9-]{0,15}$');
+
 /// The "super mode" of [mode] — `'Phone'`, `'CW'`, or `'Digital'` — mirroring
 /// @ham2k/lib-operation-data's `superModeForMode` (which groups modes into
 /// CW / PHONE / DATA), or null for a null mode. Classifies main modes without

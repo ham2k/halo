@@ -162,3 +162,20 @@ class DataFileImportShrank implements Exception {
 /// the stale sweep, the step that deletes the rows an import did not restamp.
 DataFileImportShrank? dataFileImportShrinkage(String key, {required int imported, required int existing, bool forced = false}) =>
     imported < existing * minDataFileImportShare ? DataFileImportShrank(key, imported: imported, existing: existing, forced: forced) : null;
+
+final _dataFileKeyPattern = RegExp(r'^[a-z0-9][a-z0-9_-]{0,127}$');
+
+/// Whether [key] may name a data file registered by [extensionKey]: the
+/// extension's own key, or that key followed by `-` or `_` and more, in
+/// lowercase letters, digits, `-` and `_`.
+///
+/// Both hosts name the raw cache file after the key (`<key>.json`), so a key
+/// that is not this shape is a path: `../../x` writes, reads and deletes files
+/// outside the cache folder. And a key outside the extension's own namespace
+/// would read and replace another extension's cached data. A definition that
+/// fails this is dropped before any path is built from it.
+bool dataFileKeyOwnedBy(String? key, String? extensionKey) {
+  if (key == null || extensionKey == null || extensionKey.isEmpty) return false;
+  if (!_dataFileKeyPattern.hasMatch(key)) return false;
+  return key == extensionKey || key.startsWith('$extensionKey-') || key.startsWith('${extensionKey}_');
+}

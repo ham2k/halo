@@ -7,6 +7,7 @@
 // unit test suite instead of only being exercised through the JS
 // engine/bridge plumbing, which isn't easily unit-testable in isolation.
 
+import { hasPrefix } from "./composable.ts"
 import type { SettingsPanelDescriptor } from "./types.ts"
 
 export interface SettingsPanelEntry {
@@ -33,10 +34,32 @@ export interface SettingsPanelEntry {
 /// panels, account credentials), the registration key must equal the
 /// extension's own key or be prefixed `<extensionKey>_` — e.g. extension
 /// `pota` may use `pota` or `pota_spots`, never bare `spots` or camelCase
-/// `potaSpots`. Categories outside that rule always pass.
+/// `potaSpots`. A `dataFile` key also names the file its cache is kept in, so
+/// it may continue with `-` as well (`pota-all-parks`) and holds only
+/// lowercase letters, digits, `-` and `_`; the host drops any other.
+/// Categories outside these rules always pass.
+///
+/// Checked by hand, never with `startsWith` or a RegExp: both are intrinsics a
+/// bundle can rewrite to answer yes.
 export function isValidHookKey(category: string, extensionKey: string, resolvedKey: string): boolean {
+  if (category === "dataFile") {
+    return (
+      isPlainDataFileKey(resolvedKey) &&
+      (resolvedKey === extensionKey || hasPrefix(resolvedKey, extensionKey + "-") || hasPrefix(resolvedKey, extensionKey + "_"))
+    )
+  }
   if (category !== "settingsPanel" && category !== "account") return true
-  return resolvedKey === extensionKey || resolvedKey.startsWith(`${extensionKey}_`)
+  return resolvedKey === extensionKey || hasPrefix(resolvedKey, extensionKey + "_")
+}
+
+function isPlainDataFileKey(key: string): boolean {
+  if (typeof key !== "string" || key.length === 0 || key.length > 128) return false
+  for (let i = 0; i < key.length; i++) {
+    const c = key[i]
+    const alnum = (c >= "a" && c <= "z") || (c >= "0" && c <= "9")
+    if (!alnum && (i === 0 || (c !== "-" && c !== "_"))) return false
+  }
+  return true
 }
 
 /// `AccountHook.kvKey` falls under the same namespacing as a hook key

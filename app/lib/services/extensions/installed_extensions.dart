@@ -19,6 +19,7 @@ import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart' show sha256;
 import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:halo_core/halo_core.dart' show HookCategories;
+import 'package:halo_extension_host/halo_extension_host.dart' show kRetiredBuiltIns;
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 
@@ -43,6 +44,10 @@ const kExtensionApiVersion = 23;
 /// serves a `ham2k-` key to Ham2K's own publishers, and one the app shipped
 /// and pre-loaded.
 const kReservedKeyPrefix = 'ham2k-';
+
+/// The prefix's own stem, reserved with it: a bundle keyed `ham2k` may define
+/// `ham2k-…` sub-extensions, and would take any of Ham2K's own names.
+const kReservedBareKey = 'ham2k';
 
 /// The extension catalog's host — one of the two sources whose bundles may
 /// claim a `ham2k-` key. Baked into every install, exactly like the updates
@@ -446,7 +451,7 @@ class InstalledExtensions {
       if (total > kMaxUnpackedBytes) {
         throw BundleException(BundleRejection.tooLarge, 'That bundle is far larger unpacked than an extension should be.');
       }
-      if (safeJoin('/extensions/probe', file.name) == null) {
+      if (safeJoin('/extensions/probe', file.name) == null || !_isCanonicalEntryName(file.name)) {
         throw BundleException(BundleRejection.unsafeEntry, 'That bundle contains a file path it is not allowed to write.');
       }
       if (file.name != kManifestEntry && file.name != kBundleEntry && !file.name.startsWith(kAssetsPrefix)) {
@@ -454,6 +459,12 @@ class InstalledExtensions {
       }
     }
   }
+
+  /// A name that says, segment by segment, where it lands: `assets/../manifest.json`
+  /// stays inside the extension's directory and still starts with `assets/`,
+  /// but lands on the manifest the consent screen was shown.
+  static bool _isCanonicalEntryName(String name) =>
+      p.posix.normalize(name) == name && !name.split('/').any((segment) => segment.isEmpty || segment == '.' || segment == '..');
 
   /// The fields the consent screen shows, and the capabilities it describes.
   ///
@@ -521,7 +532,7 @@ class InstalledExtensions {
     if (key.isEmpty || !kSafeKeyPattern.hasMatch(key)) {
       throw BundleException(BundleRejection.invalidKey, 'That bundle has no usable extension key.');
     }
-    if (key.startsWith(kReservedKeyPrefix) && !reservedAllowed) {
+    if ((key.startsWith(kReservedKeyPrefix) || key == kReservedBareKey) && !reservedAllowed) {
       throw BundleException(
         BundleRejection.reservedKey,
         'That bundle claims the name "$key". Names beginning "ham2k-" are reserved for Ham2K\'s own extensions.',
@@ -529,6 +540,12 @@ class InstalledExtensions {
     }
     if (builtInKeys().contains(key)) {
       throw BundleException(BundleRejection.collidesWithBuiltIn, 'That bundle calls itself "$key", which is already an extension built into this app.');
+    }
+    // A retired built-in's settings and keychain credentials still sit under
+    // its old name until its catalog twin takes them over, and a bundle under
+    // that name would be handed them.
+    if (kRetiredBuiltIns.containsKey(key)) {
+      throw BundleException(BundleRejection.reservedKey, 'That bundle claims the name "$key", which belonged to an extension this app used to include.');
     }
   }
 

@@ -80,7 +80,21 @@ class FakeExtensionHost implements ExtensionHost {
     if (res is Exception) throw res;
     if (res is Function) res = res(args);
     if (res == null) return const [];
-    return (res as List).cast<Map<String, dynamic>>();
+    final entries = (res as List).cast<Map<String, dynamic>>();
+    if (category != HookCategories.dataFile || method != 'getDefinition') return entries;
+    // The kernel stamps every definition with the extension that registered
+    // it, and the host drops one whose key that extension may not use. A stub
+    // that names none is read as registered by the extension of its own key.
+    return [
+      for (final entry in entries)
+        if (entry['value'] case final Map<dynamic, dynamic> value when !value.containsKey('extensionKey'))
+          {
+            ...entry,
+            'value': {...value, 'extensionKey': value['key']},
+          }
+        else
+          entry,
+    ];
   }
 
   /// Every batch the service sent, so a test can count crossings. An empty

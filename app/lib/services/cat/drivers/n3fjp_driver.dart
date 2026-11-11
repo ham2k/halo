@@ -153,7 +153,7 @@ class N3fjpSession implements ReadBackSession, RawCommandSession {
   @override
   void setMode(String mode) {
     final name = n3fjpModeForRadioMode(mode.toUpperCase());
-    if (name.isNotEmpty) _send('<CHANGEMODE><VALUE>$name</VALUE>');
+    if (name.isNotEmpty && isModeName(name)) _send('<CHANGEMODE><VALUE>$name</VALUE>');
   }
 
   @override

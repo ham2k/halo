@@ -42,7 +42,7 @@ A manifest that uses most of what there is:
 
 | Field | | |
 | --- | --- | --- |
-| `key` | required | `<yourcallsign>-<name>`: lowercase letters, digits and hyphens, the callsign first. The namespace for everything the extension stores and the name the app shows when it says where something came from. `ham2k-` is reserved, and so are the bare keys of the app's own core extensions. |
+| `key` | required | `<yourcallsign>-<name>`: lowercase letters, digits and hyphens, the callsign first. The namespace for everything the extension stores and the name the app shows when it says where something came from. `ham2k` and `ham2k-` are reserved, and so are the bare keys of the app's own extensions, `pota` and `qrz` among them. |
 | `name` | required | What the Extensions panel and the catalog show. |
 | `shortName` | | The name where there is little room: a control's label, a locked switch naming the rules it follows. |
 | `version` | required | Semantic version. The catalog freezes a version's bytes the first time a reviewer approves it, so a fix is a new version. |
@@ -230,7 +230,9 @@ refused at the call where it is missing. Declare the least you need.
 
 A capability belongs to the bundle that declared it and to the
 sub-extensions that bundle defines under its own key. A separately installed
-bundle never inherits one through its name.
+bundle never inherits one through its name, and a bundle defines nothing
+under another loaded bundle's key: `w7abc-lakes` cannot define
+`w7abc-lakes-spots` while `w7abc-lakes-spots` is a bundle of its own.
 
 ## Settings placement
 

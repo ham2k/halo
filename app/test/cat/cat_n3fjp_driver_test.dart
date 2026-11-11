@@ -162,4 +162,17 @@ void main() {
       session.teardown();
     });
   });
+
+  test('a mode that is not a name is never sent', () {
+    // A mode reaches here from deep links and paired devices, and N3FJP reads
+    // every `<CMD>` in the stream: this one keys the transmitter.
+    fakeAsync((async) {
+      final sink = _FakeSink();
+      final session = N3fjpSession(sink)..startUpdates();
+      final before = sink.sent.length;
+      session.setMode('USB</VALUE></CMD><CMD><RIGTX>');
+      expect(sink.sent.skip(before).where((line) => line.contains('CHANGEMODE')), isEmpty);
+      session.teardown();
+    });
+  });
 }

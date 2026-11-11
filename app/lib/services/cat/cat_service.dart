@@ -772,7 +772,9 @@ class CatService extends ChangeNotifier
   void setRadio1Mode(String mode) {
     final runtime = _runtimes[_localRadio1];
     final session = runtime?.session;
-    if (session is! TransceiverSession) return;
+    // Every driver is handed only a mode's name: several write it into a text
+    // protocol, where anything else could be a command of its own.
+    if (session is! TransceiverSession || !isModeName(mode)) return;
     try {
       session.setMode(mode);
     } catch (e, st) {
@@ -1386,7 +1388,10 @@ class CatService extends ChangeNotifier
       // radio last reported: a radio that hasn't confirmed yet would
       // otherwise get the frequency re-sent every time the mode changed.
       final freqKHz = wanted.freqKHz;
-      final mode = wanted.mode;
+      final mode = switch (wanted.mode) {
+        final String mode when isModeName(mode) => mode,
+        _ => null,
+      };
       final freqChanged = freqKHz != null && freqKHz != previous?.freqKHz;
       final modeChanged = mode != null && mode != previous?.mode;
       // Measured against what was last sent, and any UNKNOWN counts as

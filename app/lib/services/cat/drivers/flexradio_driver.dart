@@ -979,8 +979,8 @@ class FlexRadioSession
   /// as DIGU — seen on RadioRoom (FLEX-6600, 4.2.20).
   @override
   void setMode(String mode) {
-    final flexMode = flexModesByAppMode[mode.toUpperCase()] ?? mode.toUpperCase();
-    final command = 'slice set $slice mode=$flexMode';
+    final flexMode = flexModesByAppMode[mode.toUpperCase()] ?? mode.toUpperCase(), command = 'slice set $slice mode=$flexMode';
+    if (!isModeName(flexMode)) return;
     _sendCommand(
       command,
       onReply: (code, _) {

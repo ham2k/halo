@@ -112,6 +112,24 @@ void main() {
       );
     });
 
+    test("the reserved prefix's own stem", () async {
+      // A bundle may define sub-extensions under its key, so one keyed `ham2k`
+      // could define `ham2k-lofi` and be handed what is stored under it.
+      await expectLater(
+        store().inspect(rebuilt((m) => {...m, 'key': 'ham2k'})),
+        throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.reservedKey)),
+      );
+    });
+
+    test("a retired built-in's name", () async {
+      // Its settings and keychain credentials stay under the old name until
+      // the catalog twin takes them over; a bundle by that name inherits them.
+      await expectLater(
+        store().inspect(rebuilt((m) => {...m, 'key': 'qrz'})),
+        throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.reservedKey)),
+      );
+    });
+
     test('the reserved prefix is waived for bytes the catalog vouched for, and for nothing else', () async {
       // The waiver hinges on the BYTES matching the listing's hash, not on a
       // caller's word: a provenance naming the catalog over the wrong hash is
@@ -295,6 +313,20 @@ void main() {
         store().inspect(rebuilt((m) => m, extraEntry: 'sneaky.sh')),
         throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.unsafeEntry)),
       );
+    });
+
+    test('an entry that only lands where its name says is allowed', () async {
+      // `assets/../manifest.json` stays inside the extension's directory and
+      // starts with `assets/`, so it passes both checks above — and the install
+      // writes it over the manifest the consent screen was built from, with
+      // whatever capabilities it likes.
+      for (final name in ['assets/../manifest.json', 'assets/./x.png', 'assets//x.png']) {
+        await expectLater(
+          store().inspect(rebuilt((m) => m, extraEntry: name)),
+          throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.unsafeEntry)),
+          reason: name,
+        );
+      }
     });
 
     test('safeJoin refuses every shape of escape, and allows the ordinary ones', () {

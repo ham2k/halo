@@ -105,9 +105,14 @@ class DataFileSync {
     for (final entry in entries) {
       if (entry['ok'] != true || entry['value'] is! Map) continue;
       final value = (entry['value'] as Map).cast<String, Object?>();
-      final key = value['key'] as String?;
-      if (key == null) continue;
-      defs.add(DataFileDef(key: key, extensionKey: entry['key'] as String? ?? key, raw: value));
+      final key = value['key'], extensionKey = value['extensionKey'];
+      // The key names the raw cache file ([rawCacheDir]/<key>.json), so one
+      // the extension may not use is dropped before any path is built.
+      if (key is! String || extensionKey is! String || !dataFileKeyOwnedBy(key, extensionKey)) {
+        if (verbose) stderr.writeln('[data-file] dropping definition "$key" from "$extensionKey": not a key that extension may use');
+        continue;
+      }
+      defs.add(DataFileDef(key: key, extensionKey: extensionKey, raw: value));
     }
     return defs;
   }

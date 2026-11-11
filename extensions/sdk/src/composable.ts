@@ -22,3 +22,33 @@ export function requireComposable(category: string): void {
   }
   throw new Error(`Hooks in the "${category}" category cannot be invoked from inside the runtime; only ${COMPOSABLE_CATEGORIES.join(", ")} can`)
 }
+
+// Every name an object inherits from Object.prototype, taken as the kernel
+// loads, before any bundle can add to it.
+const INHERITED_NAMES: Record<string, true> = Object.create(null)
+{
+  const names = Object.getOwnPropertyNames(Object.prototype)
+  for (let i = 0; i < names.length; i++) INHERITED_NAMES[names[i]] = true
+}
+
+/// Throws unless [method] can be a hook's own method: a string, and not a
+/// name every object has. `valueOf` answers with the hook object itself — the
+/// other extension's live hook, through which its account reaches the caller
+/// on that hook's next call — and the rest of Object.prototype is no hook's
+/// method either.
+export function requireHookMethodName(method: unknown): void {
+  if (typeof method !== "string" || INHERITED_NAMES[method] === true) {
+    throw new Error(`"${String(method)}" is not a hook method that can be invoked from inside the runtime`)
+  }
+}
+
+/// Whether [s] starts with [prefix], compared by index, never with
+/// `String.prototype.startsWith`: a bundle evaluated earlier can rewrite that
+/// to answer yes to any key.
+export function hasPrefix(s: string, prefix: string): boolean {
+  if (s.length < prefix.length) return false
+  for (let i = 0; i < prefix.length; i++) {
+    if (s[i] !== prefix[i]) return false
+  }
+  return true
+}

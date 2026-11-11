@@ -349,6 +349,53 @@ REF-002,Summit Two,45.56,-122.78
     });
   });
 
+  group('a data file key the extension may not use', () {
+    // The raw cache is `<key>.json` in the data files folder, and the key is
+    // whatever the extension registered. A key that is a path reads (and on
+    // sync, writes and deletes) any `.json` file the app can reach; another
+    // extension's key replays that extension's cached data into this one.
+    test('is never read from disk', () async {
+      final dir = await Directory.systemTemp.createTemp('halo-raw-');
+      addTearDown(() => dir.delete(recursive: true));
+      await File(p.join(dir.path, 'secret.json')).writeAsString('{"outside": true}');
+      final cacheDir = Directory(p.join(dir.path, kDataFilesDirName))..createSync();
+      await File(p.join(cacheDir.path, 'ham2k-pota-all-parks.json')).writeAsString('{"pota": true}');
+      await File(p.join(cacheDir.path, 'w7abc-lakes.json')).writeAsString('{"own": true}');
+      final loaded = <String, Object?>{};
+      Object? Function(Object?) record(String key) => (args) {
+        loaded[key] = args;
+        return null;
+      };
+      final host = FakeExtensionHost({
+        'dataFile:*:getDefinition': [
+          for (final key in ['../secret', 'ham2k-pota-all-parks', 'w7abc-lakes'])
+            {
+              'key': key,
+              'ok': true,
+              'value': {'key': key, 'extensionKey': 'w7abc', 'fetchType': 'raw'},
+            },
+        ],
+        'dataFile:../secret:onLoadRawData': record('../secret'),
+        'dataFile:ham2k-pota-all-parks:onLoadRawData': record('ham2k-pota-all-parks'),
+        'dataFile:w7abc-lakes:onLoadRawData': record('w7abc-lakes'),
+      });
+      final m = DataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs, isWeb: false, dataDirectory: () async => dir);
+
+      await m.loadRawDataFiles();
+
+      expect(loaded.keys, ['w7abc-lakes'], reason: "only the extension's own file replays into it");
+    });
+
+    test('names no cache file, even one an older build recorded', () {
+      // removeDataFile and the purge take a key from the ownership record,
+      // written before keys were checked.
+      final dir = p.join(Directory.systemTemp.path, 'halo', kDataFilesDirName);
+      expect(dataFileCacheFile(dir, 'w7abc-lakes')?.path, p.join(dir, 'w7abc-lakes.json'));
+      expect(dataFileCacheFile(dir, '../secret'), isNull);
+      expect(dataFileCacheFile(dir, 'a/b'), isNull);
+    });
+  });
+
   test('DataFileManager: a mapper that returns a non-list fails the file instead of emptying it', () async {
     // Regression guard for the worst shape of the old silent skip (APP-16).
     // A chunk whose response was not a List used to be passed over, so a
@@ -1104,11 +1151,11 @@ REF-002,Summit Two,45.56,-122.78
     };
 
     final host = FakeExtensionHost({
-      'dataFile:*:getDefinition': [definitionFor('custom-old')],
-      'dataFile:custom-old:mapCsvBatch': (args) => [
+      'dataFile:*:getDefinition': [definitionFor('call-notes-custom-old')],
+      'dataFile:call-notes-custom-old:mapCsvBatch': (args) => [
         for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
       ],
-      'dataFile:custom-new:mapCsvBatch': (args) => [
+      'dataFile:call-notes-custom-new:mapCsvBatch': (args) => [
         for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
       ],
     });
@@ -1116,19 +1163,19 @@ REF-002,Summit Two,45.56,-122.78
       ..mockDownloadBody = 'call,note\nKI2D,Test Note\n';
 
     await m.syncAllDataFiles();
-    expect(await lookups.getLookup('custom-old', 'KI2D'), isNotNull);
-    expect(prefs.getString('data_file_ownership'), contains('custom-old'));
-    expect(prefs.getInt('data_file_updated_custom-old'), isNotNull);
+    expect(await lookups.getLookup('call-notes-custom-old', 'KI2D'), isNotNull);
+    expect(prefs.getString('data_file_ownership'), contains('call-notes-custom-old'));
+    expect(prefs.getInt('data_file_updated_call-notes-custom-old'), isNotNull);
 
     // The user edited the custom file's URL — call-notes re-derives a new
     // identifier and no longer registers the old one, but is still enabled.
-    host.stubs['dataFile:*:getDefinition'] = [definitionFor('custom-new')];
+    host.stubs['dataFile:*:getDefinition'] = [definitionFor('call-notes-custom-new')];
     await m.syncAllDataFiles();
 
-    expect(prefs.getString('data_file_ownership'), isNot(contains('custom-old')), reason: 'the old key\'s ownership record must not linger forever');
-    expect(prefs.getInt('data_file_updated_custom-old'), isNull, reason: 'orphaned prefs cleaned up');
-    expect(await lookups.getLookup('custom-old', 'KI2D'), isNull, reason: 'orphaned lookup rows cleaned up');
-    expect(await lookups.getLookup('custom-new', 'KI2D'), isNotNull, reason: 'the new key registers and syncs normally');
+    expect(prefs.getString('data_file_ownership'), isNot(contains('call-notes-custom-old')), reason: 'the old key\'s ownership record must not linger forever');
+    expect(prefs.getInt('data_file_updated_call-notes-custom-old'), isNull, reason: 'orphaned prefs cleaned up');
+    expect(await lookups.getLookup('call-notes-custom-old', 'KI2D'), isNull, reason: 'orphaned lookup rows cleaned up');
+    expect(await lookups.getLookup('call-notes-custom-new', 'KI2D'), isNotNull, reason: 'the new key registers and syncs normally');
   });
 
   group('the orphan purge stands down on an untrustworthy snapshot', () {
@@ -1153,8 +1200,8 @@ REF-002,Summit Two,45.56,-122.78
 
     Future<(TestDataFileManager, FakeExtensionHost, MockExtensionService)> seeded() async {
       final host = FakeExtensionHost({
-        'dataFile:*:getDefinition': [definitionFor('custom-old')],
-        'dataFile:custom-old:mapCsvBatch': (args) => [
+        'dataFile:*:getDefinition': [definitionFor('call-notes-custom-old')],
+        'dataFile:call-notes-custom-old:mapCsvBatch': (args) => [
           for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
         ],
       });
@@ -1162,7 +1209,7 @@ REF-002,Summit Two,45.56,-122.78
       final m = TestDataFileManager(lookups: lookups, extensions: extensions, prefs: prefs, statusBar: StatusBarService(prefs))
         ..mockDownloadBody = 'call,note\nKI2D,Test Note\n';
       await m.syncAllDataFiles();
-      expect(prefs.getInt('data_file_updated_custom-old'), isNotNull);
+      expect(prefs.getInt('data_file_updated_call-notes-custom-old'), isNotNull);
       return (m, host, extensions);
     }
 
@@ -1173,23 +1220,23 @@ REF-002,Summit Two,45.56,-122.78
       // missing, and a record FAILED — the missing key could be the failed
       // one (a failed record carries no extensionKey to match it by).
       host.stubs['dataFile:*:getDefinition'] = [
-        definitionFor('custom-new'),
+        definitionFor('call-notes-custom-new'),
         {'key': 'broken', 'ok': false, 'error': 'url() threw'},
       ];
-      host.stubs['dataFile:custom-new:mapCsvBatch'] = (args) => [
+      host.stubs['dataFile:call-notes-custom-new:mapCsvBatch'] = (args) => [
         for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
       ];
       await m.syncAllDataFiles();
-      expect(prefs.getInt('data_file_updated_custom-old'), isNotNull, reason: 'a transient hook failure must never cost cached data');
-      expect(await lookups.getLookup('custom-old', 'KI2D'), isNotNull);
+      expect(prefs.getInt('data_file_updated_call-notes-custom-old'), isNotNull, reason: 'a transient hook failure must never cost cached data');
+      expect(await lookups.getLookup('call-notes-custom-old', 'KI2D'), isNotNull);
     });
 
     test('an activation-incomplete start vetoes the purge; the next clean pass purges', () async {
       final (m, host, extensions) = await seeded();
-      // The extension stays live via a sibling key; only custom-old is gone
+      // The extension stays live via a sibling key; only call-notes-custom-old is gone
       // from the snapshot — exactly the shape the purge exists for.
-      host.stubs['dataFile:*:getDefinition'] = [definitionFor('custom-new')];
-      host.stubs['dataFile:custom-new:mapCsvBatch'] = (args) => [
+      host.stubs['dataFile:*:getDefinition'] = [definitionFor('call-notes-custom-new')];
+      host.stubs['dataFile:call-notes-custom-new:mapCsvBatch'] = (args) => [
         for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
       ];
       // Boot proceeded past the bounded activation wait: registrations may
@@ -1197,13 +1244,13 @@ REF-002,Summit Two,45.56,-122.78
       // internal await), so a missing key proves nothing...
       extensions.activationIncompleteOverride = true;
       await m.syncAllDataFiles();
-      expect(prefs.getInt('data_file_updated_custom-old'), isNotNull, reason: 'a partial registration set must never cost cached data');
+      expect(prefs.getInt('data_file_updated_call-notes-custom-old'), isNotNull, reason: 'a partial registration set must never cost cached data');
 
       // ...but once activation settles, a clean pass purges normally — the
       // guard defers the cleanup, it does not disable it.
       extensions.activationIncompleteOverride = false;
       await m.syncAllDataFiles();
-      expect(prefs.getInt('data_file_updated_custom-old'), isNull, reason: 'the guard must not turn the purge into dead code');
+      expect(prefs.getInt('data_file_updated_call-notes-custom-old'), isNull, reason: 'the guard must not turn the purge into dead code');
     });
   });
 

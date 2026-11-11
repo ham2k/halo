@@ -559,7 +559,8 @@ class PeerChannels {
       // session already refused anything untrusted.
       final vfo = message.vfoOrNull;
       if (vfo != null) {
-        station?.tuneOfferedRadio(vfo.radioId, freqKHz: vfo.freqKHz, mode: vfo.mode);
+        final mode = vfo.mode;
+        station?.tuneOfferedRadio(vfo.radioId, freqKHz: vfo.freqKHz, mode: mode != null && isModeName(mode) ? mode : null);
       }
       return;
     }

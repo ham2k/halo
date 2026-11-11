@@ -134,7 +134,7 @@ void main() {
     expect(report['overheard'], 0);
     // Only the host's calls went through: loading the probe, and the one
     // invoke. The synthetic invoke (id 88) reached nothing.
-    expect(report['entries'], ['beginBundle', 'endBundle', 'activateAll', 'invokeHook']);
+    expect(report['entries'], ['declareBundles', 'beginBundle', 'endBundle', 'activateAll', 'invokeHook']);
     expect(messages.where((m) => m['type'] == 'hostCall'), isEmpty, reason: "a host call as another extension must never reach the host");
     expect(messages.where((m) => m['id'] == 88), isEmpty);
     expect(jsonEncode(report['forged']), contains('posted'), reason: 'the worker channel stays open; the host is what stops listening to it');

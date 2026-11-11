@@ -29,8 +29,14 @@ DynamicLibrary _openLibrary() {
     }
   }
 
-  for (final candidate in _hostCandidates()) {
-    if (File(candidate).existsSync()) return DynamicLibrary.open(candidate);
+  // Only an unshipped build (`flutter test`, `dart run`) looks for a host
+  // build: the candidates are relative to the working directory, and in a
+  // shipped app that is wherever the launch happened, so a library planted
+  // there would run inside the app.
+  if (!_shippedBuild) {
+    for (final candidate in _hostCandidates()) {
+      if (File(candidate).existsSync()) return DynamicLibrary.open(candidate);
+    }
   }
 
   if (Platform.isLinux) return DynamicLibrary.open('libhalo_audio.so');
@@ -43,6 +49,8 @@ DynamicLibrary _openLibrary() {
     '  ${_hostCandidates().join('\n  ')}',
   );
 }
+
+const _shippedBuild = bool.fromEnvironment('dart.vm.product') || bool.fromEnvironment('dart.vm.profile');
 
 List<String> _hostCandidates() {
   final ext = Platform.isMacOS ? 'dylib' : (Platform.isWindows ? 'dll' : 'so');

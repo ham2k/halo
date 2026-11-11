@@ -556,6 +556,14 @@ void main() {
 
     // SmartSDR has no DATA-USB: a raw pass-through is refused, and the slice
     // stays in whatever mode a band change left it in.
+    test('a mode that is not a name is never sent', () {
+      // Each command is one line of the radio's TCP API: a newline in the mode
+      // is a command of the sender's choosing.
+      session.setMode('USB\nC99|transmit set rfpower=100');
+      expect(sentAny('mode=USB'), isFalse);
+      expect(sentAny('rfpower=100'), isFalse);
+    });
+
     test("puts a data mode on SmartSDR's own name for it", () {
       session.setMode('DATA-USB');
       expect(sentAny('slice set 0 mode=DIGU'), isTrue);

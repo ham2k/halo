@@ -79,7 +79,8 @@ the extension's key and, if overridden, must equal it or be prefixed
 `w7abc-lakes_spots`, never bare `spots`. It applies to a panel's `key`, a
 descriptor's `key` (checked when `getPanels` answers, not only at
 registration) and an account's `kvKey`, and keeps every panel's storage
-under its owning extension.
+under its owning extension. A `dataFile` key may also continue with `-`
+(`w7abc-lakes-all`) and holds only lowercase letters, digits, `-` and `_`.
 
 ## Tier 1: `SimpleSettingsPanel`
 

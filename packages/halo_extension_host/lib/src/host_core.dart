@@ -8,6 +8,31 @@
 
 part of '../halo_extension_host.dart';
 
+/// The params a host call carries that say who is calling, set by the kernel.
+const kCallerIdentityParams = ['extensionKey', 'ns', 'kvKey', 'duringPanelEvent'];
+
+/// The params of the host call [msg], with the caller's identity
+/// ([kCallerIdentityParams]) taken from the kernel's envelope (`caller`) and
+/// never from the params themselves.
+///
+/// The params are the calling extension's own object: one that names another
+/// extension's `ns` or `kvKey` would read that extension's KV state and
+/// keychain credentials, and use its grants. Every host-call handler, here and
+/// in the app, reads identity from the params, so it is put there once, here.
+Map<String, dynamic> hostCallParams(Map<String, dynamic> msg) {
+  final raw = msg['params'];
+  final params = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+  for (final key in kCallerIdentityParams) {
+    params.remove(key);
+  }
+  if (msg['caller'] case final Map<dynamic, dynamic> caller) {
+    for (final key in kCallerIdentityParams) {
+      if (caller[key] case final Object value) params[key] = value;
+    }
+  }
+  return params;
+}
+
 class _HostIsolateInit {
   final SendPort mainPort;
   final String kernelSource;
@@ -497,7 +522,7 @@ class _HostCore {
         // opened them, holds no id that reaches them.
         _sockets.abandon(((msg['socketIds'] as List?) ?? const []).whereType<int>());
       case 'hostCall':
-        _handleHostCall((msg['callId'] as num).toInt(), msg['method'] as String, ((msg['params'] ?? const <String, dynamic>{}) as Map).cast<String, dynamic>());
+        _handleHostCall((msg['callId'] as num).toInt(), msg['method'] as String, hostCallParams(msg));
     }
   }
 

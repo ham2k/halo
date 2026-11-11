@@ -65,10 +65,10 @@ function post(payload) {
 // The kernel captures this and removes it from the global before any bundle
 // evaluates.
 self.sendMessage = function (channel, message) {
-  // `message` is already JSON (kernel.ts's post() calls JSON.stringify
-  // before handing it to us) — parse it back so the envelope below only
-  // stringifies it once instead of double-escaping the whole payload.
-  post({ kind: 'polo', message: JSON.parse(message) });
+  // `message` is already JSON, written by the kernel: passed on as it came,
+  // never parsed and written out again here, where what an object in this
+  // shared realm answers when written out would decide what the host reads.
+  portPost('{"kind":"polo","message":' + message + '}');
 };
 // What a busy span is charged to — the labels the native core uses, as far
 // as the worker can tell them apart (it never learns a host call's method).
@@ -170,6 +170,7 @@ function onLoad(e) {
     if (msg.clock) {
       bridge('setClockTravel', msg.clock.anchorRealMillis, msg.clock.anchorVirtualMillis, msg.clock.speed);
     }
+    bridge('declareBundles', msg.declaredKeys);
     for (const bundle of msg.bundles) {
       bridge('beginBundle', bundle.key, bundle.api);
       (0, eval)(bundle.source);
@@ -314,6 +315,7 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
         'bundles': [
           for (final b in bundles) {'key': b.key, 'source': b.source, 'api': b.api},
         ],
+        'declaredKeys': declaredBundleKeys(bundles),
         // Applied by the bootstrap between the kernel and the bundles, so the
         // sandbox's Date is already on the app's clock when they evaluate.
         if (!clock.isReal) 'clock': {'anchorRealMillis': clock.anchorRealMillis, 'anchorVirtualMillis': clock.anchorVirtualMillis, 'speed': clock.speed},

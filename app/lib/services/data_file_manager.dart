@@ -78,6 +78,16 @@ bool dataFileAnswersTo(Map<String, dynamic> def, List<String> words) {
 
 final _nonWordCharacters = RegExp(r'[^\p{L}\p{N}]+', unicode: true);
 
+/// The raw cache file for data file [key] inside [dataFilesDir], or null when
+/// [key] would name a file anywhere else. Keys reaching here passed
+/// [dataFileKeyOwnedBy] when they were defined, but a key can also come back
+/// from what an older build recorded, so every path is confined again here.
+File? dataFileCacheFile(String dataFilesDir, String key) {
+  final path = p.normalize(p.join(dataFilesDir, '$key.json'));
+  if (p.dirname(path) != p.normalize(dataFilesDir)) return null;
+  return File(path);
+}
+
 class DataFileManager {
   final LookupRepository lookups;
   final ExtensionService extensions;
@@ -264,13 +274,31 @@ class DataFileManager {
   /// entries are dropped rather than throwing, same as [syncAllDataFiles].
   Future<List<Map<String, dynamic>>> _fetchDefinitions() async => await _tryFetchDefinitions() ?? const [];
 
+  /// Every `dataFile` definition, less any whose key the defining extension
+  /// may not use ([dataFileKeyOwnedBy]): such a key would name a cache file
+  /// outside the data files folder, or another extension's.
+  Future<List<Map<String, dynamic>>> _ownedDefinitions(ExtensionHost host) async {
+    final entries = await host.invokeAll(Hooks.dataFileGetDefinition);
+    return [
+      for (final entry in entries)
+        if (entry['value'] is! Map || _ownsItsKey(entry['value'] as Map)) entry,
+    ];
+  }
+
+  bool _ownsItsKey(Map<dynamic, dynamic> value) {
+    final key = value['key'], extensionKey = value['extensionKey'];
+    if (dataFileKeyOwnedBy(key is String ? key : null, extensionKey is String ? extensionKey : null)) return true;
+    debugPrint('[data-file] dropping definition "$key" from "$extensionKey": not a key that extension may use');
+    return false;
+  }
+
   /// [_fetchDefinitions], but null when there is no runtime or the hook call fails, for a caller that must not read that as "no data files".
   Future<List<Map<String, dynamic>>?> _tryFetchDefinitions() async {
     final host = extensions.host;
     if (host == null) return null;
     final List<dynamic> entries;
     try {
-      entries = await host.invokeAll(Hooks.dataFileGetDefinition);
+      entries = await _ownedDefinitions(host);
     } catch (e, st) {
       debugPrint('[data-file] failed to fetch definitions: $e');
       ErrorReportingService.report(e, st, context: 'data-files:fetch-definitions');
@@ -651,7 +679,7 @@ class DataFileManager {
 
     final List<dynamic> entries;
     try {
-      entries = await host.invokeAll(Hooks.dataFileGetDefinition);
+      entries = await _ownedDefinitions(host);
     } catch (e, st) {
       debugPrint('[data-file] failed to fetch definitions: $e');
       ErrorReportingService.report(e, st, context: 'data-files:sync-all-fetch-definitions');
@@ -1038,7 +1066,8 @@ class DataFileManager {
       if (!await dataFilesDir.exists()) {
         await dataFilesDir.create(recursive: true);
       }
-      final cacheFile = File(p.join(dataFilesDir.path, '$key.json'));
+      final cacheFile = dataFileCacheFile(dataFilesDir.path, key);
+      if (cacheFile == null) throw ArgumentError.value(key, 'key', 'not a data file key');
       await cacheFile.writeAsString(jsonEncode(processedJson));
     }
 
@@ -1074,7 +1103,7 @@ class DataFileManager {
 
     final List<dynamic> entries;
     try {
-      entries = await host.invokeAll(Hooks.dataFileGetDefinition);
+      entries = await _ownedDefinitions(host);
     } catch (e, st) {
       // Not worth reporting when the runtime was simply replaced under us: the
       // generation listener runs this again against the new one.
@@ -1098,8 +1127,8 @@ class DataFileManager {
         final fetchType = def['fetchType'] as String;
 
         if (fetchType == 'raw') {
-          final cacheFile = File(p.join(dataFilesDir.path, '$key.json'));
-          if (await cacheFile.exists()) {
+          final cacheFile = dataFileCacheFile(dataFilesDir.path, key);
+          if (cacheFile != null && await cacheFile.exists()) {
             try {
               final content = await cacheFile.readAsString();
               final processedJson = jsonDecode(content);
@@ -1290,8 +1319,8 @@ class DataFileManager {
       // mustn't abort the purge.
       try {
         final dir = await dataDirectory();
-        final cacheFile = File(p.join(dir.path, kDataFilesDirName, '$key.json'));
-        if (await cacheFile.exists()) await cacheFile.delete();
+        final cacheFile = dataFileCacheFile(p.join(dir.path, kDataFilesDirName), key);
+        if (cacheFile != null && await cacheFile.exists()) await cacheFile.delete();
       } catch (e) {
         debugPrint('[data-file] could not delete cache file for $key: $e');
       }
@@ -1331,8 +1360,8 @@ class DataFileManager {
     // Delete raw cache files
     if (!kIsWeb) {
       final dir = await dataDirectory();
-      final cacheFile = File(p.join(dir.path, kDataFilesDirName, '$key.json'));
-      if (await cacheFile.exists()) {
+      final cacheFile = dataFileCacheFile(p.join(dir.path, kDataFilesDirName), key);
+      if (cacheFile != null && await cacheFile.exists()) {
         await cacheFile.delete();
       }
     }

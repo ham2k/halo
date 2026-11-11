@@ -194,4 +194,26 @@ void main() {
       expect(redactUrlForLog('not-a-url'), '(unparseable url)');
     });
   });
+  group('dataFileKeyOwnedBy', () {
+    test('the shapes real bundles register pass', () {
+      expect(dataFileKeyOwnedBy('ham2k-pota-all-parks', 'ham2k-pota'), isTrue);
+      expect(dataFileKeyOwnedBy('n1rwj-rbn_receivers', 'n1rwj-rbn'), isTrue);
+      expect(dataFileKeyOwnedBy('ham2k-call-notes-custom-example-com-1a2b', 'ham2k-call-notes'), isTrue);
+    });
+
+    test('a key that is a path is refused, whoever registers it', () {
+      // Both hosts name the cache file `<key>.json`: these write, read and
+      // delete files outside the cache folder.
+      for (final key in ['w7abc-../../prefs', 'w7abc_x/y', r'w7abc_x\y', 'w7abc-.']) {
+        expect(dataFileKeyOwnedBy(key, 'w7abc'), isFalse, reason: key);
+      }
+    });
+
+    test("another extension's key is refused", () {
+      // It would replace that extension's cached data with this one's.
+      expect(dataFileKeyOwnedBy('ham2k-pota-all-parks', 'w7abc'), isFalse);
+      expect(dataFileKeyOwnedBy('w7abcd', 'w7abc'), isFalse);
+      expect(dataFileKeyOwnedBy('w7abc', null), isFalse);
+    });
+  });
 }

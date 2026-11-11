@@ -128,6 +128,7 @@ class _IoEngineRuntime implements EngineRuntime {
     // Date, and every bundle (and the activateAll below) must already see the
     // app's clock through it.
     if (!clock.isReal) setClockTravel(clock.anchorRealMillis, clock.anchorVirtualMillis, clock.speed);
+    _evaluate(_bridge('declareBundles', [declaredBundleKeys(bundles)]), name: 'declareBundles');
     for (final bundle in bundles) {
       // The begin/end bracket is what makes extension identity
       // host-declared: the kernel only accepts defineExtension keys matching

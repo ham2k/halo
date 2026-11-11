@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:app_links/app_links.dart';
+import 'package:halo_core/halo_core.dart' show isModeName;
 
 /// Incoming `com.ham2k*://` deep links (registered per-platform: macOS/iOS
 /// Info.plist `CFBundleURLTypes`, Android manifest intent filters).
@@ -244,6 +245,6 @@ class DeepLinkService {
           null => null,
         };
     final mode = params['mode']?.trim().toUpperCase();
-    return (freqKHz: freqKHz, band: freqKHz != null ? null : params['band']?.trim(), mode: (mode == null || mode.isEmpty) ? null : mode);
+    return (freqKHz: freqKHz, band: freqKHz != null ? null : params['band']?.trim(), mode: (mode == null || !isModeName(mode)) ? null : mode);
   }
 }

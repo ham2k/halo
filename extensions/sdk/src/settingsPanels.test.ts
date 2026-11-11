@@ -31,6 +31,19 @@ test("isValidHookKey: categories outside the rule are always valid, any key", ()
   assert.equal(isValidHookKey("lookup", "pota", "anything"), true)
 })
 
+test("isValidHookKey: a dataFile key stays inside the extension's namespace and names no path", () => {
+  // The host names the cache file `<key>.json`: a `..` or `/` in the key is a
+  // path out of the data files folder, and a foreign key replaces another
+  // extension's cached data.
+  assert.equal(isValidHookKey("dataFile", "ham2k-pota", "ham2k-pota"), true)
+  assert.equal(isValidHookKey("dataFile", "ham2k-pota", "ham2k-pota-all-parks"), true)
+  assert.equal(isValidHookKey("dataFile", "n1rwj-rbn", "n1rwj-rbn_receivers"), true)
+  assert.equal(isValidHookKey("dataFile", "w7abc", "w7abc-../../prefs"), false)
+  assert.equal(isValidHookKey("dataFile", "w7abc", "w7abc_x/y"), false)
+  assert.equal(isValidHookKey("dataFile", "w7abc", "ham2k-pota-all-parks"), false)
+  assert.equal(isValidHookKey("dataFile", "w7abc", "w7abcd"), false)
+})
+
 test("tier1FormDefinition: builds a FormDefinition from the static hook object, no closures to strip", () => {
   const hook = {
     kind: "simple",

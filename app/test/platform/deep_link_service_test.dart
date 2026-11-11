@@ -13,6 +13,14 @@ void main() {
       expect(vfo?.band, isNull);
     });
 
+    test('drops a mode that is not a name', () {
+      // The mode is written into radio protocols that read a newline or a `<`
+      // as the start of another command.
+      final vfo = DeepLinkService.vfoRequest(Uri.parse('com.ham2k:///vfo?frequency=14250000&mode=USB%0AC1%7Cxmit%201'));
+      expect(vfo?.freqKHz, 14250);
+      expect(vfo?.mode, isNull);
+    });
+
     test('drops a band sent alongside a frequency', () {
       // The band must be DERIVED from the frequency, not read beside it: a
       // sender that fills both from stale state would otherwise tune 20m and
