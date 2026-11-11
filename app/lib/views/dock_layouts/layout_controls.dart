@@ -172,28 +172,75 @@ extension LayoutControls<T extends StatefulWidget> on DockHost<T> {
           semanticLabel: _t.panelSettings(panel: panel.title),
         ),
         onPressed: () => unawaited(
-          // The panels that answer for their own settings do so from BOTH
-          // routes — this button and the pane layout options' embed — or the
-          // same panel would offer two different settings surfaces depending
-          // on which way in the operator took.
-          switch (_panelSettingsOverride(buttonContext, panel.id)) {
-            final override? => showHaloDialog<void>(
-              context: buttonContext,
-              builder: (dialogContext) => HaloDialog(
-                title: Text(panel.title),
-                // An override scrolls itself, as the pane layout options'
-                // embed already requires of it; a second scroll view around a
-                // reorderable list would leave a drag nothing to auto-scroll.
-                scrollable: false,
-                content: Builder(builder: override),
-                cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(dialogContext.t.common.done)),
-              ),
-            ),
-            null => showPanelSettings(buttonContext, services: dockServices, panel: panel),
-          },
+          // A placement that rendered a form or menu entries, or a panel with a file, offers a
+          // menu: its own settings, its entries, then the file.
+          dockServices.panels.menuOf(panel.id) != null || panel.file != null
+              ? _openPanelMenu(buttonContext, panel)
+              :
+                // The panels that answer for their own settings do so from BOTH
+                // routes — this button and the pane layout options' embed — or the
+                // same panel would offer two different settings surfaces depending
+                // on which way in the operator took.
+                switch (_panelSettingsOverride(buttonContext, panel.id)) {
+                  final override? => showHaloDialog<void>(
+                    context: buttonContext,
+                    builder: (dialogContext) => HaloDialog(
+                      title: Text(panel.title),
+                      // An override scrolls itself, as the pane layout options'
+                      // embed already requires of it; a second scroll view around a
+                      // reorderable list would leave a drag nothing to auto-scroll.
+                      scrollable: false,
+                      content: Builder(builder: override),
+                      cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(dialogContext.t.common.done)),
+                    ),
+                  ),
+                  null => showPanelSettings(buttonContext, services: dockServices, panel: panel),
+                },
         ),
       ),
     );
+  }
+
+  /// The pane's menu, under its settings button: the placement's own form, its render's menu
+  /// entries, and Import and Export when the panel declares a file (`PanelContent.menu`).
+  Future<void> _openPanelMenu(BuildContext buttonContext, PanelDefinition panel) async {
+    final menu = dockServices.panels.menuOf(panel.id);
+    final box = buttonContext.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached) return;
+    // In the overlay's own coordinates, which a Font Scale other than 100% sets apart from the window's.
+    final overlay = Overlay.of(buttonContext).context.findRenderObject()! as RenderBox;
+    final under = Rect.fromPoints(
+      box.localToGlobal(box.size.bottomLeft(Offset.zero), ancestor: overlay),
+      box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay),
+    );
+    final actions = <(String, Future<void> Function())>[
+      // Before its first render has said what it offers, the panel's own form is the way in.
+      if (menu == null && panel.formFields.isNotEmpty) (_t.panelSettingsAction, () => showPanelSettings(buttonContext, services: dockServices, panel: panel)),
+      if (menu?.form case final form?) (form.title, () => showPlacementSettings(buttonContext, services: dockServices, panel: panel, form: form)),
+      for (final entry in menu?.entries ?? const <PanelMenuEntry>[])
+        (
+          entry.label,
+          () async => entry.settings
+              ? showPanelSettings(buttonContext, services: dockServices, panel: panel)
+              : sendPanelMenuEvent(dockServices, panel, {
+                  'controlId': 'menu',
+                  'action': entry.event,
+                  'phase': 'activate',
+                  'sequence': 0,
+                }, failed: _t.panelMenuFailed(panel: panel.title, entry: entry.label)),
+        ),
+      if (panel.file != null) ...[
+        (_t.panelImportFile, () => importPanelFile(buttonContext, services: dockServices, panel: panel)),
+        (_t.panelExportFile, () => exportPanelFile(buttonContext, services: dockServices, panel: panel, title: dockTitles()[panel.id] ?? panel.title)),
+      ],
+    ];
+    final picked = await showMenu<int>(
+      context: buttonContext,
+      position: RelativeRect.fromRect(under, Offset.zero & overlay.size),
+      items: [for (final (i, (label, _)) in actions.indexed) PopupMenuItem(value: i, child: Text(label))],
+    );
+    if (picked == null || !buttonContext.mounted) return;
+    await actions[picked].$2();
   }
 
   /// A tune-icon button that opens a target-scoped settings dialog — the

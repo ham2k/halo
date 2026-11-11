@@ -167,4 +167,23 @@ void main() {
     expect(said['presentation'], 'status');
     expect(said['text'], 'The radio did not take it: unsupported');
   });
+
+  test('the Sample board, as the app reads it, starts from its own copy and draws a station with its settings form', () async {
+    final (:host, calls: _) = await start();
+    final service = _Service(host, {});
+    final panels = PanelService(service);
+    addTearDown(panels.dispose);
+    await panels.refreshExtensionPanels();
+    final sample = panels['ext:control-board:sample#1']!;
+    expect(sample.file, (key: 'board', extension: 'h2kboard'));
+    expect([for (final f in sample.configFields) f['key']], ['board', 'params']);
+    final config = {...sample.initialConfig};
+    expect(config['board'], startsWith('# Ham2K Logger board'));
+    final rendered = await panels.render(sample, {...args, 'config': config});
+    final content = PanelContent.fromJson(rendered)!;
+    expect(content.kind, 'scene', reason: '${rendered?['content']}');
+    expect(content.menu?.form?.key, 'params');
+    expect([for (final e in content.menu!.form!.elements) e['options']], [r'$core.radios', r'$core.rotators']);
+    expect(content.menu?.entries.single.settings, isTrue, reason: 'Edit Board… opens the YAML, the descriptor\'s own form');
+  });
 }

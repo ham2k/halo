@@ -353,7 +353,8 @@ event: {
 }
 ```
 
-It answers `{ values, strings? }`, a patch of names already in the scene. An
+It answers `{ values, strings? }`, a patch of names already in the scene, and
+may carry the placement's own `config` (API 23, [Panels](panels.md#answering-with-config)). An
 answer with neither is a failure, and so is one that throws or runs out of
 time: the pane says the action failed and the control goes back to what the
 scene last reported. The app sends one event at a time, keeps only the

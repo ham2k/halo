@@ -16,10 +16,10 @@ interface PanelHook {
   render(args: PanelRenderArgs, ctx): Promise<PanelContent>
   onEvent?(args: PanelRenderArgs & { event: PanelSceneEvent }, ctx): Promise<PanelSceneEventResult>
 }
-// PanelDescriptor:  { key, title, description?, icon?, preview?, on?, form?, multiple? }
+// PanelDescriptor:  { key, title, description?, icon?, preview?, on?, form?, multiple?, config?, initialConfig?, file? }
 // PanelRenderArgs:  { panelKey, operation, qso?, qsoCount, config, reason, environment?, clock?, instanceId? }
-// PanelContent:     { kind: 'markdown' | 'svg' | 'html', content, title?, triggers? }
-//                 | { kind: 'scene', scene, title?, triggers? }
+// PanelContent:     { kind: 'markdown' | 'svg' | 'html', content, title?, triggers?, form?, menu? }
+//                 | { kind: 'scene', scene, title?, triggers?, form?, menu? }
 ```
 
 **`getPanels`** lists what the operator can place. The app addresses each
@@ -35,7 +35,8 @@ being composed, present when a trigger asked for it. `environment`,
 panel may be placed several times) arrive on scene-capable hosts
 ([Panel scenes](scenes.md#the-render-environment)).
 
-**`onEvent`** answers a scene's controls; [Panel scenes](scenes.md#events-and-results).
+**`onEvent`** answers a scene's controls ([Panel scenes](scenes.md#events-and-results)),
+and the pane's menu: an entry's event, or a file imported there (below).
 
 ### Content
 
@@ -171,6 +172,23 @@ against this operation.
   descriptor title.
 - **`preview`** is a still image for the list of panels: an SVG document or
   a `data:` URI, never a URL, since the list renders offline.
+- **`config`** (API 23) names keys a placement keeps beyond its `form`'s
+  fields, with no row of their own: read, saved, carried by a layout file and
+  forgotten with the placement as a field's value is. It is where a value
+  goes that a placement's own `form` or an event's `config` answer writes.
+- **`initialConfig`** (API 23) is what a placement's config starts with,
+  copied in the first time it is read with none of these keys stored. From
+  then on the values are that placement's own: a later version of your
+  extension with other defaults leaves them alone. Its keys are `form`
+  fields or in `config`; any other is dropped with a line in the console.
+- **`file`** (API 23), `{ key, extension }`, lets the operator move a
+  placement's content in and out of a file from the pane's menu. `key` is
+  one the descriptor declares, in its `form` or `config`. Export saves
+  `config[key]`, text, as `<tab title>.<extension>`. Import reads a
+  file the operator picks, up to 1 MB, and sends its text to `onEvent` as
+  `{ controlId: "file", action: "file", text }`. Nothing is kept until the
+  answer's `config` keeps it, so a file that is not yours is refused there,
+  in your words.
 
 ### The render result's other fields
 
@@ -184,6 +202,33 @@ against this operation.
   Unknown names are dropped with a line in the console, as in a descriptor.
   The declaration lands after the render that carried it, so declare in `on`
   anything the panel always needs.
+- **`form`** (API 23), `{ key, title, elements }`, is that placement's own
+  settings form, for settings that depend on what the pane shows: a form
+  built from content the operator wrote. It is offered in the pane's menu
+  under `title`. Its values are one object in `config[key]`, a key the
+  descriptor declares in `config`, and its fields' `options` may name a
+  [system list](settings.md#system-lists). Every field has a `key`, and none
+  is a `secret`: its values travel in a layout file. A render whose `form`
+  breaks one of these is refused, as a malformed scene is.
+- **`menu`** (API 23) lists more entries for the pane's menu, each
+  `{ label, event }`, sent to `onEvent` as `{ controlId: "menu", action:
+  event }`, or `{ label, settings: true }`, which opens the descriptor's
+  `form`.
+
+  A placement with a `form` or `menu`, or a panel with a `file`, has a menu
+  behind its tab's settings button: the `form` first, then the `menu`
+  entries, then Import and Export. Without them, or with an empty `menu`,
+  the button opens the descriptor's `form` as before. An entry whose event
+  fails says so in the status bar. Like `triggers`, they stand from the render
+  that carried them.
+
+### Answering with config
+
+An `onEvent` answer may carry **`config`** (API 23): values the placement
+keeps, under keys its descriptor declares (its `form`'s fields and
+`config`). The app writes them and renders the pane again. A key it does not
+declare fails the answer rather than being dropped. An answer that changes
+only config gives `values: {}`.
 
 ### Example
 

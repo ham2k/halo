@@ -16,7 +16,7 @@ import 'package:ham2k_logger/services/panel_service.dart';
 ///
 /// Keyed by the PLACEMENT id (`clock#2`), because that is the distinction
 /// worth being able to assert: two panes of one panel must not share a key.
-class FakePanelExtensions implements PanelExtensionSource {
+class FakePanelExtensions implements PanelExtensionSource, PanelConfigSink {
   /// The single placement's config, for the common case of one pane.
   final Map<String, Map<String, dynamic>> configs;
 
@@ -40,6 +40,15 @@ class FakePanelExtensions implements PanelExtensionSource {
       for (final field in fields)
         if (stored.containsKey(field['key'])) field['key'] as String: stored[field['key']],
     };
+  }
+
+  /// Every write, in order, so a test can tell a value kept from one never asked to be.
+  final writes = <(String, Map<String, dynamic>)>[];
+
+  @override
+  Future<void> writePanelConfig({required String panelKey, required List<Map<String, dynamic>> fields, required Map<String, dynamic> values}) async {
+    writes.add((panelKey, values));
+    (configs[panelKey] ??= {}).addAll(values);
   }
 
   /// What was asked to be forgotten, so a test can assert the distinction

@@ -4118,6 +4118,30 @@ class Translations$operation$layout$en {
 	/// en: 'Panel Settings'
 	String get panelSettingsAction => 'Panel Settings';
 
+	/// en: 'Import from File…'
+	String get panelImportFile => 'Import from File…';
+
+	/// en: 'Export to File…'
+	String get panelExportFile => 'Export to File…';
+
+	/// en: 'Saved to ${location}'
+	String panelFileSaved({required Object location}) => 'Saved to ${location}';
+
+	/// en: 'Couldn't save the file: ${error}'
+	String panelFileFailed({required Object error}) => 'Couldn\'t save the file: ${error}';
+
+	/// en: 'Couldn't read that file: ${error}'
+	String panelFileUnreadable({required Object error}) => 'Couldn\'t read that file: ${error}';
+
+	/// en: '${panel} could not take that file'
+	String panelImportFailed({required Object panel}) => '${panel} could not take that file';
+
+	/// en: '${panel} could not do ${entry}'
+	String panelMenuFailed({required Object panel, required Object entry}) => '${panel} could not do ${entry}';
+
+	/// en: '${panel} could not keep its settings'
+	String panelSettingsFailed({required Object panel}) => '${panel} could not keep its settings';
+
 	/// en: 'Operation View'
 	String get viewName => 'Operation View';
 
@@ -11654,6 +11678,14 @@ extension on Translations {
 			'operation.layout.availableSection' => 'Available panels',
 			'operation.layout.panelSettings' => ({required Object panel}) => '${panel} settings',
 			'operation.layout.panelSettingsAction' => 'Panel Settings',
+			'operation.layout.panelImportFile' => 'Import from File…',
+			'operation.layout.panelExportFile' => 'Export to File…',
+			'operation.layout.panelFileSaved' => ({required Object location}) => 'Saved to ${location}',
+			'operation.layout.panelFileFailed' => ({required Object error}) => 'Couldn\'t save the file: ${error}',
+			'operation.layout.panelFileUnreadable' => ({required Object error}) => 'Couldn\'t read that file: ${error}',
+			'operation.layout.panelImportFailed' => ({required Object panel}) => '${panel} could not take that file',
+			'operation.layout.panelMenuFailed' => ({required Object panel, required Object entry}) => '${panel} could not do ${entry}',
+			'operation.layout.panelSettingsFailed' => ({required Object panel}) => '${panel} could not keep its settings',
 			'operation.layout.viewName' => 'Operation View',
 			'operation.layout.viewOptions' => 'View layout options',
 			'operation.layout.viewTitleBuiltIn' => 'This view is built into the app, and so is its name',
@@ -11721,6 +11753,8 @@ extension on Translations {
 			'operation.layout.layouts.importAddHint' => 'The panels arrive in a new column on the right.',
 			'operation.layout.layouts.importPick' => 'Panels to import',
 			'operation.layout.layouts.importReplaceSettings' => 'Replace the settings of panels already set up here',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.importAction' => 'Import',
 			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} isn\'t a layout this app can read: ${problem}',
 			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => 'the text isn’t valid YAML (line ${line})',
@@ -11729,8 +11763,6 @@ extension on Translations {
 			'operation.layout.layouts.problemNoArrangement' => 'it holds no arrangement',
 			'operation.layout.layouts.problemMalformed' => 'part of it doesn’t follow the layout format',
 			'operation.layout.layouts.problemTooLarge' => 'it is too large',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Couldn\'t open the file: ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Couldn\'t import the layout: ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Couldn\'t copy the layout: ${error}',
@@ -12235,6 +12267,8 @@ extension on Translations {
 			'loggingControls.restore' => 'Restore',
 			'loggingControls.wipe' => 'Wipe',
 			'loggingControls.undo' => 'Undo',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.pendingDeleteTapWarning' => 'Tap the trashcan one more time to delete this QSO',
 			'loggingControls.pendingDeleteClickWarning' => 'Click the trashcan one more time to delete this QSO',
 			'loggingControls.deletedQsoWarning' => 'Deleted QSO',
@@ -12243,8 +12277,6 @@ extension on Translations {
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => 'Deleted ${kind}',
 			'loggingControls.timeControl' => 'Time',
 			'loggingControls.radioControl' => 'Radio',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.powerControl' => 'Power',
 			'loggingControls.notesControl' => 'Notes',
 			'loggingControls.operatorControl' => 'Operator',
@@ -12749,6 +12781,8 @@ extension on Translations {
 			'settings.radio.voiceMessages.templateField' => 'Say with my words',
 			'settings.radio.voiceMessages.templateHelp' => 'Leave empty to play the recording. Otherwise the message is said with the words you recorded, filled in for each contact, using these values:',
 			'settings.radio.voiceMessages.help' => 'Help',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.helpTitle' => 'Saying Messages with Your Words',
 			'settings.radio.voiceMessages.helpFullExample' => 'A whole message:',
 			'settings.radio.voiceMessages.helpExample' => 'Their call, their report, and your recording of “QSL?”',
@@ -12757,8 +12791,6 @@ extension on Translations {
 			'settings.radio.voiceMessages.templateHelpReport' => 'The report you give them',
 			'settings.radio.voiceMessages.templateHelpMessage' => 'Message 2\'s recording, played as recorded',
 			'settings.radio.voiceMessages.voiced' => 'Said with your words',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'Says: ${words}',
 			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'Not recorded yet: ${words}',
 			'settings.radio.voiceMessages.previewNoOperation' => 'Open an operation to see what it will say.',
@@ -13263,6 +13295,8 @@ extension on Translations {
 			'settings.station.models.everywareDirectional' => 'Green Heron Everyware directional switch',
 			'settings.station.models.otrsp' => 'SO2R Switcher (OTRSP)',
 			'settings.station.models.rigSelectPro' => 'DX Engineering RigSelect Pro',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.ycccSo2r' => 'YCCC SO2R Box',
 			'settings.station.models.so2rduino' => 'SO2Rduino',
 			'settings.station.models.rtlSdr' => 'RTL-SDR',
@@ -13271,8 +13305,6 @@ extension on Translations {
 			'settings.station.models.airspy' => 'Airspy R2 / Mini',
 			'settings.station.models.airspyHf' => 'Airspy HF+',
 			'settings.station.models.spyServer' => 'SpyServer (any receiver)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.transports.network' => 'Network/WiFi',
 			'settings.station.transports.tci' => 'TCI',
 			'settings.station.transports.secureNetwork' => 'Secure Network/WiFi',
@@ -13777,6 +13809,8 @@ extension on Translations {
 			'commands.updatingDataFiles' => ({required Object names}) => 'Checking ${names} for updates…',
 			'commands.updateDataFilesFailed' => ({required Object error}) => 'Update failed: ${error}',
 			'commands.appUpdatesNotChecked' => 'This build doesn’t check for updates',
+			_ => null,
+		} ?? switch (path) {
 			'commands.appUpToDate' => 'The app is up to date',
 			'commands.appUpdateCheckFailed' => 'Couldn’t check for app updates',
 			'commands.appUpdateNotOpened' => 'An update is available, but its store page didn’t open',
@@ -13785,8 +13819,6 @@ extension on Translations {
 			'commands.extensionCheckUnderWay' => 'Already checking the extension catalog — try again in a moment',
 			'commands.extensionsUpToDate' => 'Extensions are up to date',
 			'commands.extensionsReplaced' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'An installed extension has been replaced — see its notice', other: '${count} installed extensions have been replaced — see their notices', ), 
-			_ => null,
-		} ?? switch (path) {
 			'commands.extensionUpdatesFound' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension update found', other: '${count} extension updates found', ), 
 			'commands.unknownExperiment' => ({required Object token}) => 'Unknown experiment "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',

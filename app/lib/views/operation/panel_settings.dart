@@ -10,12 +10,19 @@
 // bridge call while the operator types: values are written on commit and
 // handed back to the panel's next render as `args.config`.
 
+import 'package:collection/collection.dart' show DeepCollectionEquality;
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import '../extension_markdown_images.dart';
 
+import '../../services/error_reporting_service.dart';
+import '../../services/file_pick.dart';
 import '../../services/halo_services.dart';
+import '../../services/panel_menu.dart';
 import '../../services/panel_service.dart';
+import '../dock_layouts/layout_menu.dart' show saveTextFile;
 import 'remote_screen/remote_screen_panel.dart';
 import 'remote_screen/remote_screen_picker.dart';
 
@@ -94,7 +101,7 @@ Future<void> showPanelSettings(BuildContext context, {required HaLoServices serv
   // Written field by field through the same path a Tier 1 settings panel
   // uses, under the PANEL's id — so a panel's config travels with the panel
   // rather than with whichever extension happens to own it today.
-  for (final field in panel.configFields) {
+  for (final field in panel.formValueFields) {
     final key = field['key'] as String?;
     if (key == null) continue;
     if (sameConfigValue(result[key], current[key], field['value'])) continue;
@@ -114,4 +121,132 @@ Future<void> showPanelSettings(BuildContext context, {required HaLoServices serv
   // a render when the form changes, and this is the only place that knows it
   // did.
   if (changed) services.panels.markConfigChanged(panel.id);
+}
+
+/// A placement's own form (`PanelContent.form`), its values one object in `config[form.key]`.
+/// Its system lists (`$core.radios`) are resolved here, as a settings group's are.
+Future<void> showPlacementSettings(
+  BuildContext context, {
+  required HaLoServices services,
+  required PanelDefinition panel,
+  required PanelPlacementForm form,
+}) async {
+  final t = context.t.operation.layout;
+  try {
+    final config = await services.panels.configFor(panel);
+    final elements = await services.systemLists.resolveInElements(form.elements);
+    if (!context.mounted) return;
+    final stored = config[form.key];
+    final current = stored is Map ? stored.cast<String, dynamic>() : const <String, dynamic>{};
+    final result = await showFormDialog(
+      context,
+      formDefinition: {'title': form.title, 'elements': elements},
+      initialState: current,
+      markdownImages: extensionImagesFor(services.extensions, panel.hookKey),
+      developerMode: services.settings.developerMode,
+      settingsList: true,
+    );
+    if (result == null) return;
+    final keys = {
+      for (final element in elements)
+        for (final field in element['type'] == 'row' ? (element['elements'] as List?) ?? const [] : [element])
+          if (field is Map && field['key'] is String) field['key'] as String,
+    };
+    final next = {...current, for (final key in keys) key: result[key]};
+    if (const DeepCollectionEquality().equals(next, current)) return;
+    await services.panels.writeConfig(panel, {form.key: next});
+  } catch (e, stack) {
+    // Said here, whatever else the session has said: the operator pressed Save, and the values
+    // they chose are not kept.
+    ErrorReportingService.report(
+      e,
+      stack,
+      context: 'panel:settings:${panel.id}',
+      notice: ErrorNotice(
+        services.statusBar,
+        key: 'panel:settings:${panel.id}',
+        title: t.panelSettingsFailed(panel: panel.title),
+      ),
+    );
+  }
+}
+
+/// What an imported file may weigh: a panel's content, never a log.
+const _maxPanelFileBytes = 1 << 20;
+
+/// Picks a file of [panel]'s kind (`PanelDescriptor.file`) and sends its text to the pane as an
+/// event, whose answer keeps what the panel accepts.
+Future<void> importPanelFile(BuildContext context, {required HaLoServices services, required PanelDefinition panel}) async {
+  final file = panel.file!;
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final t = context.t.operation.layout;
+  final XFile? chosen;
+  try {
+    chosen = await pickFile(
+      acceptedTypeGroups: [
+        // `public.data` keeps a file the system has not been taught about from being greyed out.
+        XTypeGroup(label: file.extension, extensions: [file.extension], uniformTypeIdentifiers: const ['public.data']),
+      ],
+    );
+  } catch (e, stack) {
+    ErrorReportingService.report(e, stack, context: 'panel:file:picker', told: messenger != null);
+    messenger?.showSnackBar(haloSnackBar(t.panelFileUnreadable(error: ErrorReportingService.messageOf(e))));
+    return;
+  }
+  if (chosen == null) return;
+  final String text;
+  try {
+    if (await chosen.length() > _maxPanelFileBytes) throw const FormatException('it is over 1 MB');
+    text = await chosen.readAsString();
+  } catch (e) {
+    messenger?.showSnackBar(haloSnackBar(t.panelFileUnreadable(error: ErrorReportingService.messageOf(e))));
+    return;
+  }
+  await sendPanelMenuEvent(services, panel, {
+    'controlId': 'file',
+    'action': 'file',
+    'phase': 'commit',
+    'sequence': 0,
+    'text': text,
+  }, failed: t.panelImportFailed(panel: panel.title));
+}
+
+/// Sends a menu's [event] to [panel]'s pane and says so when it fails: a menu entry has no control
+/// to snap back, so without this a failure would look like an entry that does nothing.
+Future<void> sendPanelMenuEvent(HaLoServices services, PanelDefinition panel, Map<String, dynamic> event, {required String failed}) async {
+  try {
+    await services.panels.queueEvent(panel.id, event);
+  } catch (e, stack) {
+    ErrorReportingService.report(
+      e,
+      stack,
+      context: 'panel:menu:${panel.id}',
+      notice: ErrorNotice(services.statusBar, key: 'panel:menu:${panel.id}', title: failed),
+    );
+  }
+}
+
+/// Saves [panel]'s `config[file.key]` as `<title>.<extension>`, the way a layout file is saved.
+Future<void> exportPanelFile(BuildContext context, {required HaLoServices services, required PanelDefinition panel, required String title}) async {
+  final file = panel.file!;
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final t = context.t.operation.layout;
+  try {
+    final text = (await services.panels.configFor(panel))[file.key] ?? '';
+    if (text is! String) throw FormatException('${panel.title} keeps "${file.key}" as something other than text');
+    if (!context.mounted) return;
+    final saved = await saveTextFile(
+      context,
+      services,
+      name: title,
+      fallback: file.extension,
+      extension: file.extension,
+      content: text,
+      mimeType: 'text/plain',
+    );
+    if (saved != null) messenger?.showSnackBar(haloSnackBar(t.panelFileSaved(location: saved)));
+  } catch (e, stack) {
+    ErrorReportingService.report(e, stack, context: 'panel:file:export', told: messenger != null);
+    messenger?.showSnackBar(haloSnackBar(t.panelFileFailed(error: ErrorReportingService.messageOf(e))));
+  }
 }

@@ -1905,6 +1905,14 @@ class _Translations$operation$layout$qro extends Translations$operation$layout$e
 	@override String get availableSection => 'AVAILABLE PANELS';
 	@override String panelSettings({required Object panel}) => '${panel} SETTINGS';
 	@override String get panelSettingsAction => 'PANEL SETTINGS';
+	@override String get panelImportFile => 'IMPORT FROM FILE…';
+	@override String get panelExportFile => 'EXPORT TO FILE…';
+	@override String panelFileSaved({required Object location}) => 'SAVED TO ${location}';
+	@override String panelFileFailed({required Object error}) => 'COULDN\'T SAVE THE FILE: ${error}';
+	@override String panelFileUnreadable({required Object error}) => 'COULDN\'T READ THAT FILE: ${error}';
+	@override String panelImportFailed({required Object panel}) => '${panel} COULD NOT TAKE THAT FILE';
+	@override String panelMenuFailed({required Object panel, required Object entry}) => '${panel} COULD NOT DO ${entry}';
+	@override String panelSettingsFailed({required Object panel}) => '${panel} COULD NOT KEEP ITS SETTINGS';
 	@override String get viewName => 'OPERATION VIEW';
 	@override String get viewOptions => 'VIEW LAYOUT OPTIONS';
 	@override String get viewTitleBuiltIn => 'THIS VIEW IS BUILT INTO THE APP, AND SO IS ITS NAME';
@@ -5484,6 +5492,14 @@ extension on TranslationsQro {
 			'operation.layout.availableSection' => 'AVAILABLE PANELS',
 			'operation.layout.panelSettings' => ({required Object panel}) => '${panel} SETTINGS',
 			'operation.layout.panelSettingsAction' => 'PANEL SETTINGS',
+			'operation.layout.panelImportFile' => 'IMPORT FROM FILE…',
+			'operation.layout.panelExportFile' => 'EXPORT TO FILE…',
+			'operation.layout.panelFileSaved' => ({required Object location}) => 'SAVED TO ${location}',
+			'operation.layout.panelFileFailed' => ({required Object error}) => 'COULDN\'T SAVE THE FILE: ${error}',
+			'operation.layout.panelFileUnreadable' => ({required Object error}) => 'COULDN\'T READ THAT FILE: ${error}',
+			'operation.layout.panelImportFailed' => ({required Object panel}) => '${panel} COULD NOT TAKE THAT FILE',
+			'operation.layout.panelMenuFailed' => ({required Object panel, required Object entry}) => '${panel} COULD NOT DO ${entry}',
+			'operation.layout.panelSettingsFailed' => ({required Object panel}) => '${panel} COULD NOT KEEP ITS SETTINGS',
 			'operation.layout.viewName' => 'OPERATION VIEW',
 			'operation.layout.viewOptions' => 'VIEW LAYOUT OPTIONS',
 			'operation.layout.viewTitleBuiltIn' => 'THIS VIEW IS BUILT INTO THE APP, AND SO IS ITS NAME',
@@ -5551,6 +5567,8 @@ extension on TranslationsQro {
 			'operation.layout.layouts.importAddHint' => 'THE PANELS ARRIVE IN A NEW COLUMN ON THE RIGHT.',
 			'operation.layout.layouts.importPick' => 'PANELS TO IMPORT',
 			'operation.layout.layouts.importReplaceSettings' => 'REPLACE THE SETTINGS OF PANELS ALREADY SET UP HERE',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.importAction' => 'IMPORT',
 			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} ISN\'T A LAYOUT THIS APP CAN READ: ${problem}',
 			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => 'THE TEXT ISN’T VALID YAML (LINE ${line})',
@@ -5559,8 +5577,6 @@ extension on TranslationsQro {
 			'operation.layout.layouts.problemNoArrangement' => 'IT HOLDS NO ARRANGEMENT',
 			'operation.layout.layouts.problemMalformed' => 'PART OF IT DOESN’T FOLLOW THE LAYOUT FORMAT',
 			'operation.layout.layouts.problemTooLarge' => 'IT IS TOO LARGE',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'COULDN\'T OPEN THE FILE: ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => 'COULDN\'T IMPORT THE LAYOUT: ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'COULDN\'T COPY THE LAYOUT: ${error}',
@@ -6065,6 +6081,8 @@ extension on TranslationsQro {
 			'loggingControls.restore' => 'RESTORE',
 			'loggingControls.wipe' => 'WIPE',
 			'loggingControls.undo' => 'UNDO',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.pendingDeleteTapWarning' => 'TAP THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
 			'loggingControls.pendingDeleteClickWarning' => 'CLICK THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
 			'loggingControls.deletedQsoWarning' => 'DELETED QSO',
@@ -6073,8 +6091,6 @@ extension on TranslationsQro {
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => 'DELETED ${kind}',
 			'loggingControls.timeControl' => 'TIME',
 			'loggingControls.radioControl' => 'RADIO',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.powerControl' => 'POWER',
 			'loggingControls.notesControl' => 'NOTES',
 			'loggingControls.operatorControl' => 'OPERATOR',
@@ -6579,6 +6595,8 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.templateField' => 'SAY WITH MY WORDS',
 			'settings.radio.voiceMessages.templateHelp' => 'LEAVE EMPTY TO PLAY THE RECORDING. OTHERWISE THE MESSAGE IS SAID WITH THE WORDS YOU RECORDED, FILLED IN FOR EACH CONTACT, USING THESE VALUES:',
 			'settings.radio.voiceMessages.help' => 'HELP',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.helpTitle' => 'SAYING MESSAGES WITH YOUR WORDS',
 			'settings.radio.voiceMessages.helpFullExample' => 'A WHOLE MESSAGE:',
 			'settings.radio.voiceMessages.helpExample' => 'THEIR CALL, THEIR REPORT, AND YOUR RECORDING OF “QSL?”',
@@ -6587,8 +6605,6 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.templateHelpReport' => 'THE REPORT YOU GIVE THEM',
 			'settings.radio.voiceMessages.templateHelpMessage' => 'MESSAGE 2\'S RECORDING, PLAYED AS RECORDED',
 			'settings.radio.voiceMessages.voiced' => 'SAID WITH YOUR WORDS',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'SAYS: ${words}',
 			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'NOT RECORDED YET: ${words}',
 			'settings.radio.voiceMessages.previewNoOperation' => 'OPEN AN OPERATION TO SEE WHAT IT WILL SAY.',
@@ -7093,6 +7109,8 @@ extension on TranslationsQro {
 			'settings.station.models.everywareDirectional' => 'GREEN HERON EVERYWARE DIRECTIONAL SWITCH',
 			'settings.station.models.otrsp' => 'SO2R SWITCHER (OTRSP)',
 			'settings.station.models.rigSelectPro' => 'DX ENGINEERING RIGSELECT PRO',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.ycccSo2r' => 'YCCC SO2R BOX',
 			'settings.station.models.so2rduino' => 'SO2RDUINO',
 			'settings.station.models.rtlSdr' => 'RTL-SDR',
@@ -7101,8 +7119,6 @@ extension on TranslationsQro {
 			'settings.station.models.airspy' => 'AIRSPY R2 / MINI',
 			'settings.station.models.airspyHf' => 'AIRSPY HF+',
 			'settings.station.models.spyServer' => 'SPYSERVER (ANY RECEIVER)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.transports.network' => 'NETWORK/WIFI',
 			'settings.station.transports.tci' => 'TCI',
 			'settings.station.transports.secureNetwork' => 'SECURE NETWORK/WIFI',
@@ -7607,6 +7623,8 @@ extension on TranslationsQro {
 			'commands.updatingDataFiles' => ({required Object names}) => 'CHECKING ${names} FOR UPDATES…',
 			'commands.updateDataFilesFailed' => ({required Object error}) => 'UPDATE FAILED: ${error}',
 			'commands.appUpdatesNotChecked' => 'THIS BUILD DOESN’T CHECK FOR UPDATES',
+			_ => null,
+		} ?? switch (path) {
 			'commands.appUpToDate' => 'THE APP IS UP TO DATE',
 			'commands.appUpdateCheckFailed' => 'COULDN’T CHECK FOR APP UPDATES',
 			'commands.appUpdateNotOpened' => 'AN UPDATE IS AVAILABLE, BUT ITS STORE PAGE DIDN’T OPEN',
@@ -7615,8 +7633,6 @@ extension on TranslationsQro {
 			'commands.extensionCheckUnderWay' => 'ALREADY CHECKING THE EXTENSION CATALOG — TRY AGAIN IN A MOMENT',
 			'commands.extensionsUpToDate' => 'EXTENSIONS ARE UP TO DATE',
 			'commands.extensionsReplaced' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'AN INSTALLED EXTENSION HAS BEEN REPLACED — SEE ITS NOTICE', other: '${count} INSTALLED EXTENSIONS HAVE BEEN REPLACED — SEE THEIR NOTICES', ), 
-			_ => null,
-		} ?? switch (path) {
 			'commands.extensionUpdatesFound' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} EXTENSION UPDATE FOUND', other: '${count} EXTENSION UPDATES FOUND', ), 
 			'commands.unknownExperiment' => ({required Object token}) => 'UNKNOWN EXPERIMENT "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} ENABLED',

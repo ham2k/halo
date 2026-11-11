@@ -18,6 +18,11 @@ import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart' as halo_core;
 
 class SystemLists {
+  /// The station's equipment of one kind (`radio`, `rotator`, `antennaSwitch`), each `{label,
+  /// value}` with its id as the value; null on a host with no station behind it, where the lists
+  /// are empty.
+  List<Map<String, dynamic>> Function(String kind)? equipment;
+
   /// Resolves a `$name` to its options (`[{label, value, common?}]`), or
   /// null for an unknown name. Async because `$extensions.*` lists will
   /// need runtime round-trips.
@@ -41,13 +46,20 @@ class SystemLists {
           for (final mode in halo_core.adifModes)
             {'label': mode, 'value': mode, if (common.contains(mode)) 'common': true, if (!common.contains(mode) && !popular.contains(mode)) 'uncommon': true},
         ];
+      // The station's own, by id: what a placement's form picks a radio, rotator or switch by.
+      case r'$core.radios':
+        return equipment?.call('radio') ?? const [];
+      case r'$core.rotators':
+        return equipment?.call('rotator') ?? const [];
+      case r'$core.antennaSwitches':
+        return equipment?.call('antennaSwitch') ?? const [];
       default:
         return null;
     }
   }
 
   /// Returns [elements] with every `options: "$name"` replaced by the
-  /// resolved list (recursing into `itemFields`). Unknown names resolve to
+  /// resolved list (recursing into `itemFields` and a row's `elements`). Unknown names resolve to
   /// no options — logged, and the field renders disabled rather than
   /// crashing the whole panel.
   Future<List<Map<String, dynamic>>> resolveInElements(List<Map<String, dynamic>> elements) async {
@@ -58,11 +70,23 @@ class SystemLists {
       if (options is String && options.startsWith(r'$')) {
         final list = await resolve(options);
         if (list == null) debugPrint('[settings] unknown system list "$options" for field "${el['key']}"');
-        out = {...el, 'options': list ?? const []};
+        // `none`: a way back to no choice, which a list of the station's own things does not offer.
+        final none = el['none'];
+        out = {
+          ...el,
+          'options': [
+            if (none is String && none.isNotEmpty) {'label': none, 'value': ''},
+            ...?list,
+          ],
+        };
       }
       final itemFields = out['itemFields'];
       if (itemFields is List) {
         out = {...out, 'itemFields': await resolveInElements(itemFields.cast<Map<String, dynamic>>())};
+      }
+      final members = out['elements'];
+      if (out['type'] == 'row' && members is List) {
+        out = {...out, 'elements': await resolveInElements(members.cast<Map<String, dynamic>>())};
       }
       resolved.add(out);
     }

@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MIT
 
-import type { PanelEnvironment } from "./types.ts"
+import type { JSONValue, PanelEnvironment } from "./types.ts"
 
 /** Experimental v1 panel scene contract. All coordinates are in the scene's viewBox. */
 export interface PanelScene {
@@ -1221,10 +1221,17 @@ export interface PanelSceneSpectrumClick {
   line?: number
 }
 
-/** Patch only named scene values and strings. The host ignores stale responses. */
+/**
+ * Patch only named scene values and strings. The host ignores stale responses. `config` (extension
+ * API 23) writes this placement's own config, keys its descriptor declares (its `form`'s fields and
+ * `config`), and renders it again; an answer carrying only that gives `values: {}`. An event from the pane's
+ * menu (`PanelContent.menu`) has `controlId: "menu"`, and a file imported there (`PanelDescriptor.file`)
+ * `controlId: "file"`, `action: "file"` and its `text`.
+ */
 export interface PanelSceneEventResult {
   values: Record<string, number>
   strings?: Record<string, string>
+  config?: Record<string, JSONValue>
 }
 
 /** A fixed-size piece of a scene, in logical pixels; see `PanelScene.cells`. Extension API 22. */

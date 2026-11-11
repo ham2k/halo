@@ -216,7 +216,12 @@ reserved and ignored here.
 A field's `options` may name a system list, `$<namespace>.<list>`, that the
 app resolves before rendering: `$core.bands` (the extended band vocabulary,
 the popular bands flagged `common`) and `$core.modes` (every ADIF mode and
-submode, the main ones flagged `common`). `$extensions.*` is reserved for
+submode, the main ones flagged `common`). `$core.radios`, `$core.rotators`
+and `$core.antennaSwitches` (API 23) are the station's own, each labeled by
+its name with its id as the value. A field naming a system list may add
+`none` (API 23), a label for a first option whose value is `""`: picking it
+leaves the choice unmade, where the list alone offers no way back to nothing.
+`$extensions.*` is reserved for
 lists derived at run time. An unknown name is logged and resolves to no
 options; the field renders disabled rather than failing the panel.
 

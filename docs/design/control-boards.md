@@ -17,8 +17,9 @@ code through the SDK.
 ## 1. Where a board lives
 
 - **A board belongs to its placement.** The Add a Panel list offers
-  *Blank Board* and *Sample Board*, both `multiple`. Placing one copies a
-  definition into that placement's settings. From then on it is that pane's
+  *Control Board* (empty) and *Sample Control Board*, both `multiple`.
+  Placing the sample copies its definition into that placement's settings
+  (the descriptor's `initialConfig`). From then on it is that pane's
   own: editing it changes nothing else, and a later version of the app with
   a different sample leaves it alone. To reuse a board, export it or copy it.
 - **It travels in layout files.** The definition and the parameter values
@@ -27,7 +28,9 @@ code through the SDK.
   Import already gives every instance a fresh id. A board needs no special
   case there.
 - **It exports on its own as a `.h2kboard` file** (YAML, §8), and imports
-  into an existing board pane. The add-panel list offers *Board from file…*.
+  into an existing board pane, from the pane's menu (the descriptor's
+  `file`). *Not yet built: Board from file… in the add-panel list, and
+  opening a `.h2kboard` from the system.*
 
 ## 2. The pieces, and who owns them
 
@@ -157,7 +160,7 @@ switch on each property.
 | Kind | Written as | Evaluated | For |
 | --- | --- | --- | --- |
 | Literal | `20` | never | Fixed settings |
-| Text | `"{{ params.radio1.name }} — {{ op.station }}"` | at render, as Liquid | Labels, titles, menu items |
+| Text | `"{{ params.band }} — {{ op.station }}"` | at render, as Liquid | Labels, titles, menu items |
 | Live | `value: radio1.signalDbm`, a widget's value naming a source's reading or a var | by the host as the source reports, no bridge call | Meters, readouts, lights, `when` |
 | Script | `{ js: "…" }` | at render, §6; **not in the first phase** | Anything computed |
 
@@ -268,9 +271,12 @@ millions.
 ```yaml
 ham2k-board: 1
 name: Station
+params:
+  rig: { type: radio, label: Transceiver }
+  rot: { type: rotator }
 sources:
-  rig: { radio: null }          # the designated radio; or a node id
-  rot: { rotator: "…id…" }
+  rig: { radio: "{{ params.rig }}" }   # unset: the designated radio; or null, or a node id
+  rot: { rotator: "{{ params.rot }}" }
 vars:
   drive: 40
   details: false                # true/false are 1 and 0
@@ -331,7 +337,8 @@ items:
   upper-cased as radios report it, `frequencyHz`, `powerWatts`,
   `tunerInline`, `startTune`, `keyerSpeedWpm`), `turnRotator` (`source`,
   `azimuth`, `elevation`), `stopRotator`, `selectAntenna` (`source`,
-  `port`, `antenna`), `setVar` and `toggleVar`.
+  `port`, `antenna`), `setVar`, `toggleVar` and `setParam` (each named
+  param to a value; it answers the placement's config, §9).
   - `$value` is the control's own value, only where it has one: a knob's
     or slider's `onChange`, a segmented choice's `onSelect`.
   - A tune (`startTune`, `tunerInline`) puts a carrier on the air, so it
@@ -348,16 +355,23 @@ items:
     the operator's to read, not a failure for the app to report.
 - **Events carry a stamp of the board's text.** One sent from a board since
   edited is refused rather than run on whatever item is at its place now.
+- **Params** (`radio`, `rotator`, `antennaSwitch`, `band`, `mode`,
+  `choice` with its `options`, `text`, `number`, `toggle`; each with a
+  `label`) are the placement's settings (§9). They are `params.*` in every
+  Liquid template, a source's id among them. An unset radio is the
+  designated one; an unset rotator or switch names none, its readings
+  missing and its actions refused, saying to pick one.
 - **Vars** live per placement while the app runs, and start over when the
   board is edited. An event's answer names only the vars it changed, so a
   knob still under the operator's hand is not put back. *Open: whether
-  they persist (`kvSet` by instance id) once boards carry parameters.*
+  they persist (`kvSet` by instance id).*
 - A board that cannot be read or compiled shows the reason in its pane, in
   words that say where (`item 7.2`, counting from 1).
 
 ### The `.h2kboard` file
 
-The same YAML, with a first line naming it and, from stage 3b, `params`:
+The same YAML as the pane holds, saved as it is; the first line, a comment,
+names it for a reader:
 
 ```yaml
 # Ham2K Logger board
@@ -384,15 +398,27 @@ ids mean nothing here.
 
 Parameters are the board's settings an operator changes without editing it:
 which radio is *radio1*, which rotator, a callsign. A render result may
-carry a `form` (API 23) that replaces the descriptor's for that placement, the
-way `triggers` already adds to it per placement. The board answers its
-parameters as that form, and the values land in the placement's config beside
-the definition. The operator reaches it from the **pane's menu**
-(*Board Settings…*, beside *Edit Board…*), with no layout editing involved;
-Layout Setup's gear shows the same form. Panes have no menu today, so this
-is new host UI: a menu on the pane's tab, whose entries a panel supplies.
-*Open: whether it is the tab's context menu, a button on the tab, or both,
-and whether other panels put their settings there too.*
+carry a `form` (API 23) for that placement, the way `triggers` already adds
+to the descriptor's per placement. The board answers its parameters as that
+form, and the values land in the placement's config as one object,
+`params`, a key the descriptor declares in `config`, so a layout file
+carries them and a removed placement forgets them like any field.
+
+The operator reaches it from the **pane's menu**: the tab's settings button,
+which becomes a menu when a placement's render names a `form` or `menu`
+entries or its panel a `file`. The board's reads *Board Settings…* (its
+`form`), *Edit Board…* (a `menu` entry opening the descriptor's form, the
+YAML, until the editor takes its place), then *Import from File…* and
+*Export to File…*. Any panel can supply its own. Layout Setup's gear still
+shows the descriptor's form. A `setParam` action and an import land through
+an event answer's `config`, *Board Settings…* through the host's own write
+of `config.params`; both write that placement only, under keys it declares.
+*Edit Board…* saves the descriptor's form as any panel's form is saved, and
+writes only the fields that form shows, so the params it does not show stay.
+An imported board's params start empty. An action after a `setParam` in the
+same list is aimed by the new value. An equipment param's picker starts with
+*Designated radio* (a radio) or *None* (a rotator or switch), the select's
+`none` option, so a param once picked can be left unset again.
 
 ## 10. The editor
 
@@ -436,7 +462,9 @@ Each is one branch, landed on its own.
      declarative actions. Boards are written as YAML in the pane's settings.
    - **3b:** per-placement parameters (the render result's `form`, the
      system lists, `setParam`), the pane menu, `.h2kboard` import and
-     export, and the *Sample* station board.
+     export, and the *Sample* station board. Built: the pane's menu as the
+     tab's settings button, the descriptor's `config`, `initialConfig` and
+     `file`, and an event answer's `config` (API 23).
 4. **The editor.**
 5. **Embedded panels:** the `embeddable` flag, the `PanelService` config
    seam, Map and Weather first.

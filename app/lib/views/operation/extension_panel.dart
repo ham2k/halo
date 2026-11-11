@@ -255,6 +255,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   /// The panel's own config was edited (its form is host-persisted, so
   /// nothing else would tell this panel its inputs changed).
   void _onCatalogChanged() {
+    _sendQueuedEvents();
     final revision = widget.panels.configRevision(widget.panel.id);
     if (revision == _configRevision) return;
     _configRevision = revision;
@@ -528,6 +529,10 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         return;
       }
       final content = PanelContent.fromJson(result, previous: _content);
+      // Refused here rather than when the operator presses Save, after filling the form in.
+      if (content?.menu?.form case final form? when !panel.configKeys.contains(form.key)) {
+        throw FormatException('The render result\'s form keeps its values under "${form.key}", which the panel does not declare in `config`');
+      }
       // A scene laid out for an environment that has since changed is not
       // shown. Owed here rather than left to [_captureEnvironment], which
       // cannot know a FIRST render is going to answer with a scene.
@@ -544,6 +549,10 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         _startTicker();
         _watchRadio();
       }
+      if (content != null) widget.panels.declareMenu(panel.id, content.menu);
+      // Also after a render, not only on the notice that queued them: a pane behind a tab is built
+      // when it is first shown, after its tab's menu may have sent it something.
+      if (content != null) _sendQueuedEvents();
       // A render that answered ends a refusal: the next one is news again.
       _lastRefusal = null;
       final error = content == null ? context.t.operation.layout.panelRenderFailed(panel: panel.title) : null;
@@ -668,6 +677,14 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     _requestRender('retry');
   }
 
+  /// The tab's menu sends its events here: the render arguments they go with are this pane's.
+  void _sendQueuedEvents() {
+    for (final queued in widget.panels.takeEvents(widget.panel.id)) {
+      // Its sender says how it went: a menu has no control to put back.
+      unawaited(_sceneEvent(queued.event).then<void>((_) => queued.done.complete(), onError: queued.done.completeError));
+    }
+  }
+
   Future<Map<String, Object>> _sceneEvent(Map<String, dynamic> event) async {
     _sceneRevision++;
     final panel = widget.panel;
@@ -701,6 +718,13 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       // empty patch, the operator's change would stand as if accepted.
       if (result == null || (result['values'] == null && result['strings'] == null)) {
         throw const FormatException('A panel event result needs values or strings');
+      }
+      // Kept before the patch is applied, so a control the answer moves is not drawn as kept when
+      // what it stands for was not.
+      final answered = result['config'];
+      if (answered != null) {
+        if (answered is! Map) throw const FormatException('A panel event result\'s config is a map');
+        await widget.panels.writeConfig(panel, answered.cast<String, dynamic>());
       }
       final values = parseValues(result['values'] ?? const {});
       final strings = parseStrings(result['strings'] ?? const {});

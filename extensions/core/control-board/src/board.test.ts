@@ -7,6 +7,7 @@ import { actionsFor, runActions, type BoardHost } from "./actions.ts"
 import { BoardError, maxBoardItems, maxBoardNodes, parseBoard } from "./board.ts"
 import { compileBoard, stampOf } from "./compile.ts"
 import { createBoardPanel } from "./panel.ts"
+import { resolveSources } from "./params.ts"
 
 const words = (t: string) => t
 
@@ -206,7 +207,7 @@ const run = async (host: BoardHost, event: string, value?: number | string, vars
   const board = parseBoard(station)
   const { actions, value: v, sets } = actionsFor(board, stamp, event, value)
   const next = { ...vars, ...sets }
-  await runActions(host, actions, { board, vars: next, value: v, text })
+  await runActions(host, actions, { board, sources: resolveSources(board, text), vars: next, params: {}, value: v, text })
   return next
 }
 
@@ -240,7 +241,10 @@ test("text that renders empty is refused, never sent as 0: no rotator turns nort
   const board = parseBoard(text)
   const { host, calls } = fakeHost()
   const { actions } = actionsFor(board, stampOf(text), `a:${stampOf(text)}:0`, undefined)
-  await assert.rejects(runActions(host, actions, { board, vars: {}, text: () => "" }), /azimuth came out empty/)
+  await assert.rejects(
+    runActions(host, actions, { board, sources: resolveSources(board, words), vars: {}, params: {}, text: () => "" }),
+    /azimuth came out empty/,
+  )
   assert.deepEqual(calls, [])
 })
 
@@ -305,7 +309,7 @@ test("a named radio is set by the id just read for it: the set path takes a node
   const text = "sources: { front: { radio: Front } }\nitems:\n  - { type: button, label: CW, onPress: { setRadio: { source: front, mode: cw } } }"
   const board = parseBoard(text)
   const { actions } = actionsFor(board, stampOf(text), `a:${stampOf(text)}:0`, undefined)
-  await runActions(host, actions, { board, vars: {}, text: words })
+  await runActions(host, actions, { board, sources: resolveSources(board, words), vars: {}, params: {}, text: words })
   assert.deepEqual(calls, [{ call: "setRadio", args: { mode: "CW", id: "Front-now", selection: "Front-now" } }])
 })
 

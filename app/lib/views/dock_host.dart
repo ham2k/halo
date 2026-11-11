@@ -44,6 +44,7 @@ import 'operation/layout_sheet.dart';
 import 'operation/missing_panel_pane.dart';
 import 'operation/pane_layout_options.dart';
 import 'operation/panel_settings.dart';
+import '../services/panel_menu.dart';
 import 'operation/solar/solar_panel.dart';
 import 'operation/weather/weather_panel.dart';
 import 'operation/radio/radio_panel.dart';
@@ -1200,7 +1201,8 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
       tabActions: {
         ...tabActions,
         for (final id in inLayout)
-          if (!tabActions.containsKey(id) && (dockServices.panels[id]?.formFields.isNotEmpty ?? false))
+          if (!tabActions.containsKey(id) &&
+              ((dockServices.panels[id]?.formFields.isNotEmpty ?? false) || dockServices.panels[id]?.file != null || dockServices.panels.menuOf(id) != null))
             id: (context) => buildPanelSettingsButton(dockServices.panels[id]!, context: context),
       },
       editing: layoutEditing,

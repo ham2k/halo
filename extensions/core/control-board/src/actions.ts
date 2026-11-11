@@ -4,16 +4,21 @@
 // What a board's controls do: a declarative action, run through the host's own calls under their
 // own rules, so a board commands a radio, a rotator or a switch exactly as any panel would.
 
-import type { PanelRadioSet } from "@ham2k/extension-sdk"
+import type { JSONValue, PanelRadioSet, PanelSceneSource } from "@ham2k/extension-sdk"
 import { BoardError, placeName, type Board, type BoardAction, type BoardGrid, type BoardItem } from "./board.ts"
+import { unsetEquipment } from "./params.ts"
 
 /** The host calls a board makes: the SDK's `host`, or a test's stand-in. */
 export type BoardHost = Pick<typeof import("@ham2k/extension-sdk").host, "readRadio" | "setRadio" | "setRotator" | "stopRotator" | "setAntenna" | "showMessage">
 
 export interface ActionContext {
   board: Board
+  /** The board's sources, their Liquid ids rendered on [params] as they are now (`resolveSources`). */
+  sources: Record<string, PanelSceneSource>
   /** The vars the actions read and change: a copy, kept only once every action is taken. */
   vars: Record<string, number | string>
+  /** This placement's param values, which `setParam` changes: a copy, kept as `vars` is. */
+  params: Record<string, JSONValue>
   /** The control's own value, for `$value`: a knob's, a slider's, the option picked. */
   value?: number | string
   /** Liquid, for an action's words. */
@@ -100,10 +105,14 @@ async function runAction(host: BoardHost, action: BoardAction, ctx: ActionContex
     if (!decimal.test(text)) throw new BoardError(`${what} is not a number: ${text}`)
     return Number(text)
   }
-  const equipment = (source: string, kind: "rotator" | "antennaSwitch") => (ctx.board.sources[source] as Record<string, string>)[kind]
+  const equipment = (source: string, kind: "rotator" | "antennaSwitch") => {
+    const id = (ctx.sources[source] as Record<string, string>)[kind]
+    if (id === unsetEquipment) throw new BoardError(`\`${source}\` names no ${kind === "rotator" ? "rotator" : "antenna switch"}; pick one in Board Settings`)
+    return id
+  }
   if ("setRadio" in action) {
     const { source, ...change } = action.setRadio
-    const selection = source === undefined ? null : ((ctx.board.sources[source] as { radio: string | null }).radio ?? null)
+    const selection = source === undefined ? null : ((ctx.sources[source] as { radio: string | null }).radio ?? null)
     const radio = await host.readRadio(selection ?? undefined)
     if (!radio?.id) throw new BoardError(source ? `\`${source}\` names a radio that is not set up` : "There is no radio to command")
     const patch: Record<string, unknown> = {}
@@ -135,6 +144,24 @@ async function runAction(host: BoardHost, action: BoardAction, ctx: ActionContex
   } else if ("toggleVar" in action) {
     const name = action.toggleVar.name
     ctx.vars[name] = Number(ctx.vars[name] ?? ctx.board.vars[name]) ? 0 : 1
+  } else if ("setParam" in action) {
+    for (const [name, value] of Object.entries(action.setParam)) {
+      const param = ctx.board.params[name]
+      if (typeof value === "boolean" || param.type === "number") {
+        ctx.params[name] = typeof value === "boolean" ? value : number(value, name)
+        continue
+      }
+      const text = resolve(value, ctx).trim()
+      if (param.type !== "choice" || !text) {
+        ctx.params[name] = text
+        continue
+      }
+      // The option's own value, a number where the board wrote one: Board Settings shows the
+      // option whose value it is, and a "100" for a 100 would show none.
+      const option = param.options!.find((o) => String(o.value) === text)
+      if (!option) throw new BoardError(`\`${name}\` has no option ${text}`)
+      ctx.params[name] = option.value
+    }
   }
 }
 

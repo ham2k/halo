@@ -1905,6 +1905,14 @@ class _Translations$operation$layout$cw extends Translations$operation$layout$en
 	@override String get availableSection => '·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·——· ·— —· · ·—·· ···';
 	@override String panelSettings({required Object panel}) => '${panel} / ··· · — — ·· —· ——· ···';
 	@override String get panelSettingsAction => '·——· ·— —· · ·—·· / ··· · — — ·· —· ——· ···';
+	@override String get panelImportFile => '·· —— ·——· ——— ·—· — / ··—· ·—· ——— —— / ··—· ·· ·—·· · …';
+	@override String get panelExportFile => '· —··— ·——· ——— ·—· — / — ——— / ··—· ·· ·—·· · …';
+	@override String panelFileSaved({required Object location}) => '··· ·— ···— · —·· / — ——— / ${location}';
+	@override String panelFileFailed({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ··· ·— ···— · / — ···· · / ··—· ·· ·—·· · ———··· / ${error}';
+	@override String panelFileUnreadable({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ·—· · ·— —·· / — ···· ·— — / ··—· ·· ·—·· · ———··· / ${error}';
+	@override String panelImportFailed({required Object panel}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / — ·— —·— · / — ···· ·— — / ··—· ·· ·—·· ·';
+	@override String panelMenuFailed({required Object panel, required Object entry}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —·· ——— / ${entry}';
+	@override String panelSettingsFailed({required Object panel}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —·— · · ·——· / ·· — ··· / ··· · — — ·· —· ——· ···';
 	@override String get viewName => '——— ·——· · ·—· ·— — ·· ——— —· / ···— ·· · ·——';
 	@override String get viewOptions => '···— ·· · ·—— / ·—·· ·— —·—— ——— ··— — / ——— ·——· — ·· ——— —· ···';
 	@override String get viewTitleBuiltIn => '— ···· ·· ··· / ···— ·· · ·—— / ·· ··· / —··· ··— ·· ·—·· — / ·· —· — ——— / — ···· · / ·— ·——· ·——· ——··—— / ·— —· —·· / ··· ——— / ·· ··· / ·· — ··· / —· ·— —— ·';
@@ -5484,6 +5492,14 @@ extension on TranslationsCw {
 			'operation.layout.availableSection' => '·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·——· ·— —· · ·—·· ···',
 			'operation.layout.panelSettings' => ({required Object panel}) => '${panel} / ··· · — — ·· —· ——· ···',
 			'operation.layout.panelSettingsAction' => '·——· ·— —· · ·—·· / ··· · — — ·· —· ——· ···',
+			'operation.layout.panelImportFile' => '·· —— ·——· ——— ·—· — / ··—· ·—· ——— —— / ··—· ·· ·—·· · …',
+			'operation.layout.panelExportFile' => '· —··— ·——· ——— ·—· — / — ——— / ··—· ·· ·—·· · …',
+			'operation.layout.panelFileSaved' => ({required Object location}) => '··· ·— ···— · —·· / — ——— / ${location}',
+			'operation.layout.panelFileFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ··· ·— ···— · / — ···· · / ··—· ·· ·—·· · ———··· / ${error}',
+			'operation.layout.panelFileUnreadable' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ·—· · ·— —·· / — ···· ·— — / ··—· ·· ·—·· · ———··· / ${error}',
+			'operation.layout.panelImportFailed' => ({required Object panel}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / — ·— —·— · / — ···· ·— — / ··—· ·· ·—·· ·',
+			'operation.layout.panelMenuFailed' => ({required Object panel, required Object entry}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —·· ——— / ${entry}',
+			'operation.layout.panelSettingsFailed' => ({required Object panel}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —·— · · ·——· / ·· — ··· / ··· · — — ·· —· ——· ···',
 			'operation.layout.viewName' => '——— ·——· · ·—· ·— — ·· ——— —· / ···— ·· · ·——',
 			'operation.layout.viewOptions' => '···— ·· · ·—— / ·—·· ·— —·—— ——— ··— — / ——— ·——· — ·· ——— —· ···',
 			'operation.layout.viewTitleBuiltIn' => '— ···· ·· ··· / ···— ·· · ·—— / ·· ··· / —··· ··— ·· ·—·· — / ·· —· — ——— / — ···· · / ·— ·——· ·——· ——··—— / ·— —· —·· / ··· ——— / ·· ··· / ·· — ··· / —· ·— —— ·',
@@ -5551,6 +5567,8 @@ extension on TranslationsCw {
 			'operation.layout.layouts.importAddHint' => '— ···· · / ·——· ·— —· · ·—·· ··· / ·— ·—· ·—· ·· ···— · / ·· —· / ·— / —· · ·—— / —·—· ——— ·—·· ··— —— —· / ——— —· / — ···· · / ·—· ·· ——· ···· — ·—·—·—',
 			'operation.layout.layouts.importPick' => '·——· ·— —· · ·—·· ··· / — ——— / ·· —— ·——· ——— ·—· —',
 			'operation.layout.layouts.importReplaceSettings' => '·—· · ·——· ·—·· ·— —·—· · / — ···· · / ··· · — — ·· —· ——· ··· / ——— ··—· / ·——· ·— —· · ·—·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / ··· · — / ··— ·——· / ···· · ·—· ·',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.importAction' => '·· —— ·——· ——— ·—· —',
 			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} / ·· ··· —· ·————· — / ·— / ·—·· ·— —·—— ——— ··— — / — ···· ·· ··· / ·— ·——· ·——· / —·—· ·— —· / ·—· · ·— —·· ———··· / ${problem}',
 			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => '— ···· · / — · —··— — / ·· ··· —· ’ — / ···— ·— ·—·· ·· —·· / —·—— ·— —— ·—·· / —·——· ·—·· ·· —· · / ${line} —·——·—',
@@ -5559,8 +5577,6 @@ extension on TranslationsCw {
 			'operation.layout.layouts.problemNoArrangement' => '·· — / ···· ——— ·—·· —·· ··· / —· ——— / ·— ·—· ·—· ·— —· ——· · —— · —· —',
 			'operation.layout.layouts.problemMalformed' => '·——· ·— ·—· — / ——— ··—· / ·· — / —·· ——— · ··· —· ’ — / ··—· ——— ·—·· ·—·· ——— ·—— / — ···· · / ·—·· ·— —·—— ——— ··— — / ··—· ——— ·—· —— ·— —',
 			'operation.layout.layouts.problemTooLarge' => '·· — / ·· ··· / — ——— ——— / ·—·· ·— ·—· ——· ·',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ——— ·——· · —· / — ···· · / ··—· ·· ·—·· · ———··· / ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ·· —— ·——· ——— ·—· — / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·—· ——— ·——· —·—— / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}',
@@ -6065,6 +6081,8 @@ extension on TranslationsCw {
 			'loggingControls.restore' => '·—· · ··· — ——— ·—· ·',
 			'loggingControls.wipe' => '·—— ·· ·——· ·',
 			'loggingControls.undo' => '··— —· —·· ———',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.pendingDeleteTapWarning' => '— ·— ·——· / — ···· · / — ·—· ·— ··· ···· —·—· ·— —· / ——— —· · / —— ——— ·—· · / — ·· —— · / — ——— / —·· · ·—·· · — · / — ···· ·· ··· / ——·— ··· ———',
 			'loggingControls.pendingDeleteClickWarning' => '—·—· ·—·· ·· —·—· —·— / — ···· · / — ·—· ·— ··· ···· —·—· ·— —· / ——— —· · / —— ——— ·—· · / — ·· —— · / — ——— / —·· · ·—·· · — · / — ···· ·· ··· / ——·— ··· ———',
 			'loggingControls.deletedQsoWarning' => '—·· · ·—·· · — · —·· / ——·— ··· ———',
@@ -6073,8 +6091,6 @@ extension on TranslationsCw {
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => '—·· · ·—·· · — · —·· / ${kind}',
 			'loggingControls.timeControl' => '— ·· —— ·',
 			'loggingControls.radioControl' => '·—· ·— —·· ·· ———',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.powerControl' => '·——· ——— ·—— · ·—·',
 			'loggingControls.notesControl' => '—· ——— — · ···',
 			'loggingControls.operatorControl' => '——— ·——· · ·—· ·— — ——— ·—·',
@@ -6579,6 +6595,8 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.templateField' => '··· ·— —·—— / ·—— ·· — ···· / —— —·—— / ·—— ——— ·—· —·· ···',
 			'settings.radio.voiceMessages.templateHelp' => '·—·· · ·— ···— · / · —— ·——· — —·—— / — ——— / ·——· ·—·· ·— —·—— / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· ·—·—·— / ——— — ···· · ·—· ·—— ·· ··· · / — ···· · / —— · ··· ··· ·— ——· · / ·· ··· / ··· ·— ·· —·· / ·—— ·· — ···· / — ···· · / ·—— ——— ·—· —·· ··· / —·—— ——— ··— / ·—· · —·—· ——— ·—· —·· · —·· ——··—— / ··—· ·· ·—·· ·—·· · —·· / ·· —· / ··—· ——— ·—· / · ·— —·—· ···· / —·—· ——— —· — ·— —·—· — ——··—— / ··— ··· ·· —· ——· / — ···· · ··· · / ···— ·— ·—·· ··— · ··· ———···',
 			'settings.radio.voiceMessages.help' => '···· · ·—·· ·——·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.helpTitle' => '··· ·— —·—— ·· —· ——· / —— · ··· ··· ·— ——· · ··· / ·—— ·· — ···· / —·—— ——— ··— ·—· / ·—— ——— ·—· —·· ···',
 			'settings.radio.voiceMessages.helpFullExample' => '·— / ·—— ···· ——— ·—·· · / —— · ··· ··· ·— ——· · ———···',
 			'settings.radio.voiceMessages.helpExample' => '— ···· · ·· ·—· / —·—· ·— ·—·· ·—·· ——··—— / — ···· · ·· ·—· / ·—· · ·——· ——— ·—· — ——··—— / ·— —· —·· / —·—— ——— ··— ·—· / ·—· · —·—· ——— ·—· —·· ·· —· ——· / ——— ··—· / “ ——·— ··· ·—·· ··——·· ”',
@@ -6587,8 +6605,6 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.templateHelpReport' => '— ···· · / ·—· · ·——· ——— ·—· — / —·—— ——— ··— / ——· ·· ···— · / — ···· · ——',
 			'settings.radio.voiceMessages.templateHelpMessage' => '—— · ··· ··· ·— ——· · / ··——— ·————· ··· / ·—· · —·—· ——— ·—· —·· ·· —· ——· ——··—— / ·——· ·—·· ·— —·—— · —·· / ·— ··· / ·—· · —·—· ——— ·—· —·· · —··',
 			'settings.radio.voiceMessages.voiced' => '··· ·— ·· —·· / ·—— ·· — ···· / —·—— ——— ··— ·—· / ·—— ——— ·—· —·· ···',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.willSay' => ({required Object words}) => '··· ·— —·—— ··· ———··· / ${words}',
 			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => '—· ——— — / ·—· · —·—· ——— ·—· —·· · —·· / —·—— · — ———··· / ${words}',
 			'settings.radio.voiceMessages.previewNoOperation' => '——— ·——· · —· / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / — ——— / ··· · · / ·—— ···· ·— — / ·· — / ·—— ·· ·—·· ·—·· / ··· ·— —·—— ·—·—·—',
@@ -7093,6 +7109,8 @@ extension on TranslationsCw {
 			'settings.station.models.everywareDirectional' => '——· ·—· · · —· / ···· · ·—· ——— —· / · ···— · ·—· —·—— ·—— ·— ·—· · / —·· ·· ·—· · —·—· — ·· ——— —· ·— ·—·· / ··· ·—— ·· — —·—· ····',
 			'settings.station.models.otrsp' => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—· / —·——· ——— — ·—· ··· ·——· —·——·—',
 			'settings.station.models.rigSelectPro' => '—·· —··— / · —· ——· ·· —· · · ·—· ·· —· ——· / ·—· ·· ——· ··· · ·—·· · —·—· — / ·——· ·—· ———',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.ycccSo2r' => '—·—— —·—· —·—· —·—· / ··· ——— ··——— ·—· / —··· ——— —··—',
 			'settings.station.models.so2rduino' => '··· ——— ··——— ·—· —·· ··— ·· —· ———',
 			'settings.station.models.rtlSdr' => '·—· — ·—·· —····— ··· —·· ·—·',
@@ -7101,8 +7119,6 @@ extension on TranslationsCw {
 			'settings.station.models.airspy' => '·— ·· ·—· ··· ·——· —·—— / ·—· ··——— / —··—· / —— ·· —· ··',
 			'settings.station.models.airspyHf' => '·— ·· ·—· ··· ·——· —·—— / ···· ··—· ·—·—·',
 			'settings.station.models.spyServer' => '··· ·——· —·—— ··· · ·—· ···— · ·—· / —·——· ·— —· —·—— / ·—· · —·—· · ·· ···— · ·—· —·——·—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.transports.network' => '—· · — ·—— ——— ·—· —·— —··—· ·—— ·· ··—· ··',
 			'settings.station.transports.tci' => '— —·—· ··',
 			'settings.station.transports.secureNetwork' => '··· · —·—· ··— ·—· · / —· · — ·—— ——— ·—· —·— —··—· ·—— ·· ··—· ··',
@@ -7607,6 +7623,8 @@ extension on TranslationsCw {
 			'commands.updatingDataFiles' => ({required Object names}) => '—·—· ···· · —·—· —·— ·· —· ——· / ${names} / ··—· ——— ·—· / ··— ·——· —·· ·— — · ··· …',
 			'commands.updateDataFilesFailed' => ({required Object error}) => '··— ·——· —·· ·— — · / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
 			'commands.appUpdatesNotChecked' => '— ···· ·· ··· / —··· ··— ·· ·—·· —·· / —·· ——— · ··· —· ’ — / —·—· ···· · —·—· —·— / ··—· ——— ·—· / ··— ·——· —·· ·— — · ···',
+			_ => null,
+		} ?? switch (path) {
 			'commands.appUpToDate' => '— ···· · / ·— ·——· ·——· / ·· ··· / ··— ·——· / — ——— / —·· ·— — ·',
 			'commands.appUpdateCheckFailed' => '—·—· ——— ··— ·—·· —·· —· ’ — / —·—· ···· · —·—· —·— / ··—· ——— ·—· / ·— ·——· ·——· / ··— ·——· —·· ·— — · ···',
 			'commands.appUpdateNotOpened' => '·— —· / ··— ·——· —·· ·— — · / ·· ··· / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · ——··—— / —··· ··— — / ·· — ··· / ··· — ——— ·—· · / ·——· ·— ——· · / —·· ·· —·· —· ’ — / ——— ·——· · —·',
@@ -7615,8 +7633,6 @@ extension on TranslationsCw {
 			'commands.extensionCheckUnderWay' => '·— ·—·· ·—· · ·— —·· —·—— / —·—· ···· · —·—· —·— ·· —· ——· / — ···· · / · —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——· / — / — ·—· —·—— / ·— ——· ·— ·· —· / ·· —· / ·— / —— ——— —— · —· —',
 			'commands.extensionsUpToDate' => '· —··— — · —· ··· ·· ——— —· ··· / ·— ·—· · / ··— ·——· / — ——— / —·· ·— — ·',
 			'commands.extensionsReplaced' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '·— —· / ·· —· ··· — ·— ·—·· ·—·· · —·· / · —··— — · —· ··· ·· ——— —· / ···· ·— ··· / —··· · · —· / ·—· · ·——· ·—·· ·— —·—· · —·· / — / ··· · · / ·· — ··· / —· ——— — ·· —·—· ·', other: '${count} / ·· —· ··· — ·— ·—·· ·—·· · —·· / · —··— — · —· ··· ·· ——— —· ··· / ···· ·— ···— · / —··· · · —· / ·—· · ·——· ·—·· ·— —·—· · —·· / — / ··· · · / — ···· · ·· ·—· / —· ——— — ·· —·—· · ···', ), 
-			_ => null,
-		} ?? switch (path) {
 			'commands.extensionUpdatesFound' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / · —··— — · —· ··· ·· ——— —· / ··— ·——· —·· ·— — · / ··—· ——— ··— —· —··', other: '${count} / · —··— — · —· ··· ·· ——— —· / ··— ·——· —·· ·— — · ··· / ··—· ——— ··— —· —··', ), 
 			'commands.unknownExperiment' => ({required Object token}) => '··— —· —·— —· ——— ·—— —· / · —··— ·——· · ·—· ·· —— · —· — / ·—··—· ${token} ·—··—·',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} / · —· ·— —··· ·—·· · —··',

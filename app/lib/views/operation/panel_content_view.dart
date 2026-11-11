@@ -28,6 +28,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/panel_content_budgets.dart';
+import '../../services/panel_menu.dart';
 import '../../services/windows_webview.dart';
 
 /// One rendered document from a panel's `render`.
@@ -58,7 +59,11 @@ class PanelContent {
   /// cannot invent a signal the host doesn't fire.
   final List<String> triggers;
 
-  const PanelContent({required this.kind, required this.content, this.title, this.triggers = const [], this.scene});
+  /// THIS placement's own settings form and menu entries, for the tab's settings button
+  /// ([PanelService.declareMenu]); null when the render carried neither.
+  final PanelPlacementMenu? menu;
+
+  const PanelContent({required this.kind, required this.content, this.title, this.triggers = const [], this.scene, this.menu});
 
   /// THROWS for a `scene` whose document does not validate, rather than
   /// answering null: the FormatException names the layer, tag or value at
@@ -109,15 +114,21 @@ class PanelContent {
       scene: scene,
       title: trimmed.isEmpty ? null : trimmed,
       triggers: triggers is List ? triggers.whereType<String>().toList() : const [],
+      menu: PanelPlacementMenu.fromJson(json),
     );
   }
 
   @override
   bool operator ==(Object other) =>
-      other is PanelContent && other.kind == kind && other.content == content && other.title == title && listEquals(other.triggers, triggers);
+      other is PanelContent &&
+      other.kind == kind &&
+      other.content == content &&
+      other.title == title &&
+      listEquals(other.triggers, triggers) &&
+      other.menu == menu;
 
   @override
-  int get hashCode => Object.hash(kind, content, title, Object.hashAll(triggers));
+  int get hashCode => Object.hash(kind, content, title, Object.hashAll(triggers), menu);
 }
 
 class PanelContentView extends StatelessWidget {

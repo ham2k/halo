@@ -8,6 +8,7 @@
 
 import type { PanelEnvironment, PanelScene, PanelSceneControl, PanelSceneLayer, PanelSceneLayoutNode } from "@ham2k/extension-sdk"
 import { BoardError, placeName, type Board, type BoardGrid } from "./board.ts"
+import { resolveSources } from "./params.ts"
 import { buildWidget, type Theme } from "./widgets.ts"
 
 /** Liquid, for a widget's words: rendered against the panel's template context. */
@@ -208,7 +209,14 @@ export function compileBoard(
       height: 1,
       values,
       strings,
-      ...(Object.keys(board.sources).length ? { sources: board.sources } : {}),
+      ...(Object.keys(board.sources).length
+        ? {
+            sources: resolveSources(board, (template) => {
+              templates.push(template)
+              return text(template)
+            }),
+          }
+        : {}),
       cells,
       layers,
       controls,

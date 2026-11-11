@@ -431,28 +431,49 @@ Future<void> runLayoutExport(BuildContext context, DockHost host) async {
       if (choice.everything) layoutClass.other: null,
     });
     if (file == null) return;
-    final files = [
-      {'filename': '${_fileStem(host.layoutName(layout))}.$layoutFileExtension', 'content': file.toYaml(), 'mimeType': 'application/yaml'},
-    ];
-    if (isWebPlatform) {
-      await services.exports.downloadFiles(files);
-    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      final box = context.mounted ? context.findRenderObject() as RenderBox? : null;
-      await services.exports.shareFiles(files, sharePositionOrigin: box == null ? null : box.localToGlobal(Offset.zero) & box.size);
-    } else {
-      final saved = await services.exports.saveToDisk(files);
-      if (saved != null) messenger?.showSnackBar(haloSnackBar(t.exported(location: saved.location)));
-    }
+    if (!context.mounted) return;
+    final saved = await saveTextFile(
+      context,
+      services,
+      name: host.layoutName(layout),
+      fallback: 'layout',
+      extension: layoutFileExtension,
+      content: file.toYaml(),
+      mimeType: 'application/yaml',
+    );
+    if (saved != null) messenger?.showSnackBar(haloSnackBar(t.exported(location: saved)));
   } catch (e, stack) {
     ErrorReportingService.report(e, stack, context: 'layout:export', told: messenger != null);
     messenger?.showSnackBar(haloSnackBar(t.exportFailed(error: ErrorReportingService.messageOf(e))));
   }
 }
 
-/// A layout's name as a file name: what a file system refuses goes.
-String _fileStem(String name) {
+/// Saves [content] as `<name>.<extension>`, what a file system refuses dropped from [name] and
+/// [fallback] when nothing is left: downloaded on the web, shared on iOS, saved to disk elsewhere.
+/// Returns where it was saved, when the platform says.
+Future<String?> saveTextFile(
+  BuildContext context,
+  HaLoServices services, {
+  required String name,
+  required String fallback,
+  required String extension,
+  required String content,
+  required String mimeType,
+}) async {
   final stem = name.replaceAll(RegExp(r'[\\/:*?"<>|]+'), ' ').trim();
-  return stem.isEmpty ? 'layout' : stem;
+  final files = [
+    {'filename': '${stem.isEmpty ? fallback : stem}.$extension', 'content': content, 'mimeType': mimeType},
+  ];
+  if (isWebPlatform) {
+    await services.exports.downloadFiles(files);
+    return null;
+  }
+  if (defaultTargetPlatform == TargetPlatform.iOS) {
+    final box = context.mounted ? context.findRenderObject() as RenderBox? : null;
+    await services.exports.shareFiles(files, sharePositionOrigin: box == null || !box.attached ? null : box.localToGlobal(Offset.zero) & box.size);
+    return null;
+  }
+  return (await services.exports.saveToDisk(files))?.location;
 }
 
 class _ExportDialog extends StatefulWidget {

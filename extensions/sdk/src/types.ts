@@ -3205,6 +3205,10 @@ export interface FormField {
   /// `"$core.bands"`) — a named vocabulary the app resolves before
   /// rendering; see docs/extensions/settings.md's "System lists".
   options?: FormFieldOption[] | string
+  /// Only used with a system list in `options`: a first option under this
+  /// label whose value is `""`, so the choice can be left unmade (a board's
+  /// radio left to the designated one). Extension API 23.
+  none?: string
   validate?: (value: any, state: Record<string, any>) => string | null | undefined | Promise<string | null | undefined>
   transform?: (value: any, state: Record<string, any>) => any | Promise<any>
   /// Only used when fieldType === 'list'. `value` is then a
@@ -3743,7 +3747,49 @@ export interface PanelDescriptor {
   /// an app older than that shows the fields without it. A `row` (extension
   /// API 23) puts several on one line.
   form?: (SettingsField | FormHeader | FormRowElement)[]
+  /// Keys the panel keeps in each placement's config beyond its `form`'s
+  /// fields, with no row of their own: read, saved, carried by a layout file
+  /// and forgotten with the placement just as a field's value is. The place
+  /// for a value that a placement's own `form` (`PanelContent.form`) or an
+  /// event's `config` writes. Extension API 23.
+  config?: string[]
+  /// Values a placement's config starts with, copied in the first time it is
+  /// read with none of them stored: from then on they are that placement's
+  /// own, so a later version of the extension leaves them alone. Every key is
+  /// a `form` field's or one of `config`. Extension API 23.
+  initialConfig?: Record<string, JSONValue>
+  /// A file the operator moves the panel's content in and out by, from the
+  /// pane's menu. Export saves the placement's `config[key]`, text, as
+  /// `<title>.<extension>`; Import reads a file the operator picks and sends
+  /// its text as an event (`action: "file"`, `text`), whose answer's `config`
+  /// keeps what the panel accepts. Extension API 23.
+  file?: PanelFile
 }
+
+/** See `PanelDescriptor.file`. Extension API 23. */
+export interface PanelFile {
+  /** The config key whose text is exported. */
+  key: string
+  /** The file name's extension, without the dot, lowercase letters and digits (`h2kboard`). */
+  extension: string
+}
+
+/**
+ * A placement's own settings form (`PanelContent.form`), offered in the pane's menu under `title`.
+ * Its values are one object in the placement's `config[key]`, a key the descriptor declares in
+ * `config`. Its fields' `options` may name a system list (`$core.radios`). Extension API 23.
+ */
+export interface PanelPlacementForm {
+  key: string
+  title: string
+  elements: (SettingsField | FormHeader | FormRowElement)[]
+}
+
+/**
+ * An entry of a pane's menu (`PanelContent.menu`): `event` sends a panel event with that
+ * `action`, `settings` opens the descriptor's `form`. Extension API 23.
+ */
+export type PanelMenuEntry = { label: string; event: string } | { label: string; settings: true }
 
 /** Resolved host typography; sizes are logical pixels, not the app Font Scale. */
 export interface PanelTypography {
@@ -4195,6 +4241,12 @@ export interface PanelRenderArgs {
 /// render of a panel that asks for `qso` is answered without one; it is woken
 /// by the next change to the draft.
 ///
+/// `form` and `menu` (extension API 23) make the tab's settings button a
+/// menu for THIS placement: its `form` first, under its `title`, then each
+/// `menu` entry, then Import and Export when the descriptor declares a
+/// `file`. Without either, the button opens the descriptor's `form` as it
+/// always has. Like `triggers`, they stand from the render that carried them.
+///
 /// `content` is budgeted: at most 262,144 characters of `markdown`, 1,048,576
 /// of `svg`, 4,194,304 of `html`. An `svg` is self-contained vector artwork —
 /// no `<image>`, `<script>` or `<foreignObject>`, no entity declarations — of
@@ -4202,7 +4254,7 @@ export interface PanelRenderArgs {
 /// Over a budget the document is refused whole: the pane shows a placeholder
 /// naming the budget and the console says what was sent; nothing is drawn in
 /// part.
-export type PanelContent =
+export type PanelContent = (
   | { kind: "scene"; scene: PanelScene; title?: string; triggers?: string[] }
   /**
    * @deprecated The same kind as `scene`, under its name through SDK 0.9. Apps before extension
@@ -4212,6 +4264,7 @@ export type PanelContent =
   | { kind: "markdown"; content: string; title?: string; triggers?: string[] }
   | { kind: "svg"; content: string; title?: string; triggers?: string[] }
   | { kind: "html"; content: string; title?: string; triggers?: string[] }
+) & { form?: PanelPlacementForm; menu?: PanelMenuEntry[] }
 
 /// Registered under category 'panel'. Same two-call shape as
 /// `settingsPanel`'s dynamic tier: discovery once, then content on demand.

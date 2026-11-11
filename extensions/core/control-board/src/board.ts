@@ -7,6 +7,7 @@
 
 import type { PanelColorRole, PanelSceneRadioString, PanelSceneRadioValue, PanelSceneRotatorValue, PanelSceneSource } from "@ham2k/extension-sdk"
 import { CORE_SCHEMA, load } from "js-yaml"
+import { parseParams, type BoardParam } from "./params.ts"
 
 /** A value a widget shows: a source's reading (`rig.signalDbm`) or one of the board's vars (`var.drive`). */
 export type ValueRef = string
@@ -38,6 +39,8 @@ export type BoardAction =
   | { selectAntenna: { source: string; port: string; antenna: string } }
   | { setVar: { name: string; value: number | string } }
   | { toggleVar: { name: string } }
+  /** Each named param of this placement to a value: a number, true/false, or text (Liquid, `$value`). */
+  | { setParam: Record<string, number | boolean | string> }
 
 export interface BoardItem {
   type: string
@@ -62,8 +65,10 @@ export type BoardSource = PanelSceneSource
 
 export interface Board extends BoardGrid {
   name?: string
+  /** Ids may be Liquid (`"{{ params.radio1 }}"`), rendered when the board is drawn and used. */
   sources: Record<string, BoardSource>
   vars: Record<string, number | string>
+  params: Record<string, BoardParam>
 }
 
 /** What a board refuses to be, said in words for the operator, with where in it it went wrong. */
@@ -136,7 +141,7 @@ type Kind = "number" | "word"
 /** Reads a board's YAML: the core schema only (no merge keys, no `!!omap`), its size and its values capped. */
 export function parseBoard(text: string): Board {
   if (text.length > maxBoardChars) throw new BoardError(`The board is ${text.length} characters long, at most ${maxBoardChars}`)
-  if (!text.trim()) return { sources: {}, vars: {}, items: [] }
+  if (!text.trim()) return { sources: {}, vars: {}, params: {}, items: [] }
   let raw: unknown
   try {
     raw = load(text, { schema: CORE_SCHEMA })
@@ -161,8 +166,8 @@ export function parseBoard(text: string): Board {
   // `"1"` too: a quoted version is the same version.
   if (version !== undefined && version !== 1 && version !== "1")
     throw new BoardError(`This board is written for a newer version (ham2k-board: ${String(version)})`)
-  allowed(raw, ["ham2k-board", "name", "sources", "vars", ...gridKeys], "the board")
-  const board: Board = { sources: parseSources(raw.sources), vars: parseVars(raw.vars), items: [] }
+  allowed(raw, ["ham2k-board", "name", "params", "sources", "vars", ...gridKeys], "the board")
+  const board: Board = { sources: parseSources(raw.sources), vars: parseVars(raw.vars), params: parseParams(raw.params), items: [] }
   if (raw.name !== undefined) board.name = text_(raw.name, "`name` of the board")
   const reader = new Reader(board)
   Object.assign(board, reader.grid(raw, "", "the board"))
@@ -413,7 +418,7 @@ class Reader {
     return list.map((action, i) => {
       const at = list.length > 1 ? `action ${i + 1} of ${where}` : where
       if (!isObject(action) || Object.keys(action).length !== 1)
-        throw new BoardError(`${at} is one action: setRadio, turnRotator, stopRotator, selectAntenna, setVar or toggleVar`)
+        throw new BoardError(`${at} is one action: setRadio, turnRotator, stopRotator, selectAntenna, setVar, toggleVar or setParam`)
       const [kind, params] = Object.entries(action)[0]
       if (!isObject(params)) throw new BoardError(`${kind} in ${at} needs its settings`)
       const field = (f: string) => `\`${f}\` of ${kind} in ${at}`
@@ -471,6 +476,28 @@ class Reader {
             throw new BoardError(`${field("name")} names a var the board does not have: \`${String(name)}\``)
           const value = typeof this.board.vars[name] === "number" ? amount(params.value, field("value")) : word(params.value, field("value"))
           return { setVar: { name, value } }
+        }
+        case "setParam": {
+          if (!Object.keys(params).length) throw new BoardError(`${kind} in ${at} names a param to set`)
+          const out: Record<string, number | boolean | string> = {}
+          for (const [key, value] of Object.entries(params)) {
+            const param = own(this.board.params, key) ? this.board.params[key] : undefined
+            if (!param) throw new BoardError(`${kind} in ${at} names a param the board does not have: \`${key}\``)
+            if (param.type === "toggle") {
+              if (typeof value !== "boolean") throw new BoardError(`${field(key)} is true or false`)
+              out[key] = value
+            } else if (param.type === "number") {
+              out[key] = amount(value, field(key))
+            } else {
+              // Empty text is a param unset: a radio param, the designated radio.
+              if (typeof value !== "string" && typeof value !== "number") throw new BoardError(`${field(key)} is text`)
+              if (typeof value === "string" && value.includes("$value") && !valued) {
+                throw new BoardError(`${field(key)} reads \`$value\`, and ${where} has no value to give it`)
+              }
+              out[key] = value
+            }
+          }
+          return { setParam: out }
         }
         case "toggleVar": {
           allowed(params, ["name"], `${kind} in ${at}`)

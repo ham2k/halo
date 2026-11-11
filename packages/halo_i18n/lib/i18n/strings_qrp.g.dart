@@ -1905,6 +1905,14 @@ class _Translations$operation$layout$qrp extends Translations$operation$layout$e
 	@override String get availableSection => 'available panels';
 	@override String panelSettings({required Object panel}) => '${panel} settings';
 	@override String get panelSettingsAction => 'panel settings';
+	@override String get panelImportFile => 'import from file…';
+	@override String get panelExportFile => 'export to file…';
+	@override String panelFileSaved({required Object location}) => 'saved to ${location}';
+	@override String panelFileFailed({required Object error}) => 'couldn\'t save the file: ${error}';
+	@override String panelFileUnreadable({required Object error}) => 'couldn\'t read that file: ${error}';
+	@override String panelImportFailed({required Object panel}) => '${panel} could not take that file';
+	@override String panelMenuFailed({required Object panel, required Object entry}) => '${panel} could not do ${entry}';
+	@override String panelSettingsFailed({required Object panel}) => '${panel} could not keep its settings';
 	@override String get viewName => 'operation view';
 	@override String get viewOptions => 'view layout options';
 	@override String get viewTitleBuiltIn => 'this view is built into the app, and so is its name';
@@ -5484,6 +5492,14 @@ extension on TranslationsQrp {
 			'operation.layout.availableSection' => 'available panels',
 			'operation.layout.panelSettings' => ({required Object panel}) => '${panel} settings',
 			'operation.layout.panelSettingsAction' => 'panel settings',
+			'operation.layout.panelImportFile' => 'import from file…',
+			'operation.layout.panelExportFile' => 'export to file…',
+			'operation.layout.panelFileSaved' => ({required Object location}) => 'saved to ${location}',
+			'operation.layout.panelFileFailed' => ({required Object error}) => 'couldn\'t save the file: ${error}',
+			'operation.layout.panelFileUnreadable' => ({required Object error}) => 'couldn\'t read that file: ${error}',
+			'operation.layout.panelImportFailed' => ({required Object panel}) => '${panel} could not take that file',
+			'operation.layout.panelMenuFailed' => ({required Object panel, required Object entry}) => '${panel} could not do ${entry}',
+			'operation.layout.panelSettingsFailed' => ({required Object panel}) => '${panel} could not keep its settings',
 			'operation.layout.viewName' => 'operation view',
 			'operation.layout.viewOptions' => 'view layout options',
 			'operation.layout.viewTitleBuiltIn' => 'this view is built into the app, and so is its name',
@@ -5551,6 +5567,8 @@ extension on TranslationsQrp {
 			'operation.layout.layouts.importAddHint' => 'the panels arrive in a new column on the right.',
 			'operation.layout.layouts.importPick' => 'panels to import',
 			'operation.layout.layouts.importReplaceSettings' => 'replace the settings of panels already set up here',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.importAction' => 'import',
 			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} isn\'t a layout this app can read: ${problem}',
 			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => 'the text isn’t valid yaml (line ${line})',
@@ -5559,8 +5577,6 @@ extension on TranslationsQrp {
 			'operation.layout.layouts.problemNoArrangement' => 'it holds no arrangement',
 			'operation.layout.layouts.problemMalformed' => 'part of it doesn’t follow the layout format',
 			'operation.layout.layouts.problemTooLarge' => 'it is too large',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'couldn\'t open the file: ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => 'couldn\'t import the layout: ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'couldn\'t copy the layout: ${error}',
@@ -6065,6 +6081,8 @@ extension on TranslationsQrp {
 			'loggingControls.restore' => 'restore',
 			'loggingControls.wipe' => 'wipe',
 			'loggingControls.undo' => 'undo',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.pendingDeleteTapWarning' => 'tap the trashcan one more time to delete this qso',
 			'loggingControls.pendingDeleteClickWarning' => 'click the trashcan one more time to delete this qso',
 			'loggingControls.deletedQsoWarning' => 'deleted qso',
@@ -6073,8 +6091,6 @@ extension on TranslationsQrp {
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => 'deleted ${kind}',
 			'loggingControls.timeControl' => 'time',
 			'loggingControls.radioControl' => 'radio',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.powerControl' => 'power',
 			'loggingControls.notesControl' => 'notes',
 			'loggingControls.operatorControl' => 'operator',
@@ -6579,6 +6595,8 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.templateField' => 'say with my words',
 			'settings.radio.voiceMessages.templateHelp' => 'leave empty to play the recording. otherwise the message is said with the words you recorded, filled in for each contact, using these values:',
 			'settings.radio.voiceMessages.help' => 'help',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.helpTitle' => 'saying messages with your words',
 			'settings.radio.voiceMessages.helpFullExample' => 'a whole message:',
 			'settings.radio.voiceMessages.helpExample' => 'their call, their report, and your recording of “qsl?”',
@@ -6587,8 +6605,6 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.templateHelpReport' => 'the report you give them',
 			'settings.radio.voiceMessages.templateHelpMessage' => 'message 2\'s recording, played as recorded',
 			'settings.radio.voiceMessages.voiced' => 'said with your words',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'says: ${words}',
 			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'not recorded yet: ${words}',
 			'settings.radio.voiceMessages.previewNoOperation' => 'open an operation to see what it will say.',
@@ -7093,6 +7109,8 @@ extension on TranslationsQrp {
 			'settings.station.models.everywareDirectional' => 'green heron everyware directional switch',
 			'settings.station.models.otrsp' => 'so2r switcher (otrsp)',
 			'settings.station.models.rigSelectPro' => 'dx engineering rigselect pro',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.ycccSo2r' => 'yccc so2r box',
 			'settings.station.models.so2rduino' => 'so2rduino',
 			'settings.station.models.rtlSdr' => 'rtl-sdr',
@@ -7101,8 +7119,6 @@ extension on TranslationsQrp {
 			'settings.station.models.airspy' => 'airspy r2 / mini',
 			'settings.station.models.airspyHf' => 'airspy hf+',
 			'settings.station.models.spyServer' => 'spyserver (any receiver)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.transports.network' => 'network/wifi',
 			'settings.station.transports.tci' => 'tci',
 			'settings.station.transports.secureNetwork' => 'secure network/wifi',
@@ -7607,6 +7623,8 @@ extension on TranslationsQrp {
 			'commands.updatingDataFiles' => ({required Object names}) => 'checking ${names} for updates…',
 			'commands.updateDataFilesFailed' => ({required Object error}) => 'update failed: ${error}',
 			'commands.appUpdatesNotChecked' => 'this build doesn’t check for updates',
+			_ => null,
+		} ?? switch (path) {
 			'commands.appUpToDate' => 'the app is up to date',
 			'commands.appUpdateCheckFailed' => 'couldn’t check for app updates',
 			'commands.appUpdateNotOpened' => 'an update is available, but its store page didn’t open',
@@ -7615,8 +7633,6 @@ extension on TranslationsQrp {
 			'commands.extensionCheckUnderWay' => 'already checking the extension catalog — try again in a moment',
 			'commands.extensionsUpToDate' => 'extensions are up to date',
 			'commands.extensionsReplaced' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'an installed extension has been replaced — see its notice', other: '${count} installed extensions have been replaced — see their notices', ), 
-			_ => null,
-		} ?? switch (path) {
 			'commands.extensionUpdatesFound' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} extension update found', other: '${count} extension updates found', ), 
 			'commands.unknownExperiment' => ({required Object token}) => 'unknown experiment "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',

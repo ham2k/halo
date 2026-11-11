@@ -12,6 +12,7 @@ import '../settings/settings_command.dart';
 import '../settings/spotting_settings_group.dart';
 import '../views/dock_host.dart' show DockLayoutControl;
 import '../views/settings/accounts_panel.dart';
+import 'cat/equipment.dart';
 import 'cluster/cluster_service.dart';
 import 'cluster/cluster_settings.dart';
 import 'extensions/extension_catalog_migration.dart';
@@ -39,6 +40,17 @@ void wireExtensions(HaLoServices services) {
   extensions.location = services.location;
   extensions.radioCalls.radio = services.panelRadio;
   extensions.radioCalls.equipment = PanelEquipmentService(services.cat);
+  services.systemLists.equipment = (kind) {
+    final category = switch (kind) {
+      'radio' => kCategoryTransceiver,
+      'rotator' => kCategoryRotator,
+      _ => kCategoryAntennaSwitch,
+    };
+    return [
+      for (final node in services.cat.nodes)
+        if (services.cat.typeFor(node)?.category == category) {'label': services.cat.displayNameFor(node), 'value': node.uuid},
+    ];
+  };
   _wireOpStyle(services);
   _wireCluster(services);
   (services.settingsRegistry[SpottingSettings.group]! as SpottingSettingsGroup)

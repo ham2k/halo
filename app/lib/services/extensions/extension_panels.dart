@@ -7,7 +7,7 @@
 
 part of 'extension_service.dart';
 
-mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
+mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource, PanelConfigSink {
   // Owned by the class or by another part of this library.
   ExtensionHost? get host;
   SettingsService? get settings;
@@ -142,6 +142,17 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
     if (host == null) throw StateError('Extension runtime unavailable');
     final result = await host.invoke(Hooks.panelOnEvent, key: hookKey, args: {...args, 'panelKey': panelKey}, timeout: const Duration(seconds: 5));
     return result is Map ? result.cast<String, dynamic>() : null;
+  }
+
+  /// Writes a placement's own config values, as its settings form would ([readPanelConfig] reads
+  /// them back). Secret fields go to the keychain, as there.
+  @override
+  Future<void> writePanelConfig({required String panelKey, required List<Map<String, dynamic>> fields, required Map<String, dynamic> values}) async {
+    for (final MapEntry(:key, :value) in values.entries) {
+      final field = fields.firstWhere((f) => f['key'] == key, orElse: () => const {});
+      await _writeSettingsValue(panelKey: panelKey, fieldKey: key, value: value, isSecret: field['fieldType'] == 'secret');
+    }
+    settingsGeneration.value++;
   }
 
   /// A panel's own config values, keyed by field — the same declarative

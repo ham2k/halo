@@ -21,6 +21,7 @@ import 'package:halo_core/halo_core.dart' show Operation, Qso, QsoLog, operatorC
 import 'package:halo_widgets/halo_widgets.dart' show WallClock;
 
 import 'panel_content_budgets.dart';
+import 'panel_menu.dart';
 
 /// An operation as a hook sees it — what a panel's `render` and the
 /// `template` hook (a CW message about to be keyed) are handed, so
@@ -158,11 +159,37 @@ class PanelDefinition {
   /// Every field that holds a value, a `row`'s members among them: what the
   /// panel's config is read, saved and forgotten by. [formFields] is what is
   /// drawn, rows and headers included.
-  List<Map<String, dynamic>> get configFields => [
+  List<Map<String, dynamic>> get configFields {
+    final fields = formValueFields;
+    final named = {for (final field in fields) field['key']};
+    return [
+      ...fields,
+      for (final key in configKeys)
+        if (!named.contains(key)) {'type': 'field', 'fieldType': 'text', 'key': key},
+    ];
+  }
+
+  /// The fields of [formFields] that hold a value: what the descriptor's own form shows, and so the
+  /// only keys its Save may write. A [configKeys] key is not among them, and a Save that wrote one
+  /// would clear what the placement's own form or an event answer keeps there.
+  List<Map<String, dynamic>> get formValueFields => [
     for (final element in formFields)
       for (final field in element['type'] == 'row' ? (element['elements'] as List?) ?? const [] : [element])
         if (field is Map && field['key'] is String) field.cast<String, dynamic>(),
   ];
+
+  /// Keys kept in each placement's config beyond [formFields]', with no row
+  /// of their own (`PanelDescriptor.config`): what a placement's own form and
+  /// an event's `config` answer write.
+  final List<String> configKeys;
+
+  /// What a placement's config starts with, copied in the first time it is
+  /// read with none of these keys stored ([PanelService.configFor]).
+  final Map<String, dynamic> initialConfig;
+
+  /// The config key a pane's menu exports as a file, and the file's
+  /// extension (`PanelDescriptor.file`).
+  final ({String key, String extension})? file;
 
   /// Native panels whose settings are assembled from declared settings
   /// targeting them (the logging panel's tune dialog), rather than from a
@@ -222,6 +249,9 @@ class PanelDefinition {
     this.views = const {},
     this.minWidth,
     this.minHeight,
+    this.configKeys = const [],
+    this.initialConfig = const {},
+    this.file,
   });
 
   /// Whether [view] may offer this panel — see [views] for why an empty set
@@ -248,6 +278,9 @@ class PanelDefinition {
     views: views,
     minWidth: minWidth,
     minHeight: minHeight,
+    configKeys: configKeys,
+    initialConfig: initialConfig,
+    file: file,
   );
 
   /// Value equality so a re-registration with identical content is a no-op:
@@ -271,7 +304,10 @@ class PanelDefinition {
       listEquals(other.triggers, triggers) &&
       _formFieldsEqual.equals(other.formFields, formFields) &&
       other.minWidth == minWidth &&
-      other.minHeight == minHeight;
+      other.minHeight == minHeight &&
+      listEquals(other.configKeys, configKeys) &&
+      _formFieldsEqual.equals(other.initialConfig, initialConfig) &&
+      other.file == file;
 
   @override
   int get hashCode => Object.hash(id, title, description, icon, preview, source, hookKey, panelKey, settingsTarget, minWidth, minHeight);
@@ -357,7 +393,66 @@ class PanelDefinition {
             }(),
       ],
       multiple: entry['multiple'] == true,
+      configKeys: [
+        for (final key in _list(entry['config']))
+          if (key is String && key.isNotEmpty)
+            key
+          else
+            ...() {
+              debugPrint('[panels] "$panelKey" config names $key, which is not a key');
+              return const <String>[];
+            }(),
+      ],
+      initialConfig: _initialConfig(entry, panelKey),
+      file: _file(entry, panelKey),
     );
+  }
+
+  /// [raw] when it is a list: a descriptor's malformed field costs that field, not the catalog.
+  static List<dynamic> _list(Object? raw) => raw is List ? raw : const [];
+
+  /// Every config key [entry] declares: its form's fields, a row's members among them, and `config`.
+  static Set<Object?> _declaredKeys(Map<String, dynamic> entry) => {
+    for (final f in _list(entry['form']))
+      if (f is Map) ...[
+        f['key'],
+        for (final m in _list(f['elements']))
+          if (m is Map) m['key'],
+      ],
+    ..._list(entry['config']),
+  };
+
+  /// A descriptor's `initialConfig`, its keys those it declares: a value for
+  /// any other could never be read back, nor forgotten with the placement.
+  static Map<String, dynamic> _initialConfig(Map<String, dynamic> entry, String panelKey) {
+    final raw = entry['initialConfig'];
+    if (raw is! Map) return const {};
+    final declared = _declaredKeys(entry);
+    return {
+      for (final MapEntry(:key, :value) in raw.entries)
+        if (key is String && declared.contains(key))
+          key: value
+        else
+          ...() {
+            debugPrint('[panels] "$panelKey" initialConfig names "$key", which is neither a form field nor in `config`');
+            return const <String, dynamic>{};
+          }(),
+    };
+  }
+
+  /// A descriptor's `file`, its key one it declares: any other would export an empty file.
+  static ({String key, String extension})? _file(Map<String, dynamic> entry, String panelKey) {
+    final raw = entry['file'];
+    if (raw == null) return null;
+    if (raw is Map &&
+        raw['key'] is String &&
+        _declaredKeys(entry).contains(raw['key']) &&
+        raw['extension'] is String &&
+        RegExp(r'^[a-z0-9]{1,16}$').hasMatch(raw['extension'] as String)) {
+      return (key: raw['key'] as String, extension: raw['extension'] as String);
+    }
+    debugPrint('[panels] "$panelKey" file ignored: it is { key, extension }, the key a declared config key, the extension lowercase letters and digits');
+    return null;
   }
 
   /// Deep, because a form's CONTENT is what a re-registration has to be
@@ -543,6 +638,12 @@ abstract interface class PanelExtensionSource {
   Future<Map<String, dynamic>> readPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields});
 
   Future<void> forgetPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields});
+}
+
+/// Optional capability: a source that can write a placement's config itself, for its
+/// `initialConfig` and an event's `config` answer, rather than only through the settings form.
+abstract interface class PanelConfigSink {
+  Future<void> writePanelConfig({required String panelKey, required List<Map<String, dynamic>> fields, required Map<String, dynamic> values});
 }
 
 /// Optional capability so ordinary panel sources need not implement events.
@@ -801,7 +902,62 @@ class PanelService extends ChangeNotifier {
     return (source as PanelEventSource).panelEvent(hookKey: panel.hookKey!, panelKey: panel.panelKey!, args: {...args, 'instanceId': panel.id});
   }
 
-  Future<Map<String, dynamic>> configFor(PanelDefinition panel) => extensions.readPanelConfig(panelKey: panel.id, fields: panel.configFields);
+  /// A placement's config. One with none of its descriptor's `initialConfig` keys stored has them
+  /// copied in first, so from then on they are its own: a later extension's defaults leave it alone.
+  Future<Map<String, dynamic>> configFor(PanelDefinition panel) async {
+    final config = await extensions.readPanelConfig(panelKey: panel.id, fields: panel.configFields);
+    final initial = panel.initialConfig;
+    if (initial.isEmpty || initial.keys.any(config.containsKey)) return config;
+    if (extensions is PanelConfigSink) await writeConfig(panel, initial, notify: false);
+    return {...config, ...initial};
+  }
+
+  /// Writes [values] into [panel]'s own config, keys it declares only (form fields and
+  /// `config`), and tells its pane to render again. THROWS naming a key it does not declare: an
+  /// answer that cannot be kept must not read as kept.
+  Future<void> writeConfig(PanelDefinition panel, Map<String, dynamic> values, {bool notify = true}) async {
+    final sink = extensions;
+    if (sink is! PanelConfigSink) throw StateError('Panel config cannot be written here');
+    final fields = panel.configFields;
+    final declared = {for (final field in fields) field['key']};
+    for (final key in values.keys) {
+      if (!declared.contains(key)) throw FormatException('"${panel.id}" has no config key "$key"; declare it in the descriptor\'s form or `config`');
+    }
+    await (sink as PanelConfigSink).writePanelConfig(panelKey: panel.id, fields: fields, values: values);
+    if (notify) markConfigChanged(panel.id);
+  }
+
+  /// Each placement's own menu, from its last render ([PanelPlacementMenu]).
+  final _menus = <String, PanelPlacementMenu>{};
+
+  /// Records the menu [id]'s last render carried; null for none. Notifies only on a change, so the
+  /// tab's settings button is rebuilt when there is something new to offer.
+  void declareMenu(String id, PanelPlacementMenu? menu) {
+    if (_menus[id] == menu) return;
+    if (menu == null) {
+      _menus.remove(id);
+    } else {
+      _menus[id] = menu;
+    }
+    notifyListeners();
+  }
+
+  PanelPlacementMenu? menuOf(String id) => _menus[id];
+
+  /// Events the pane's menu sent, waiting for the pane to take them ([takeEvents]): the menu is on
+  /// the tab, and the render arguments an event is sent with are the pane's.
+  final _queuedEvents = <String, List<QueuedPanelEvent>>{};
+
+  /// Completes when the pane has sent [event] and kept its answer, or THROWS with why not: a menu
+  /// entry has no control to snap back, so its sender is the one to say it failed.
+  Future<void> queueEvent(String id, Map<String, dynamic> event) {
+    final done = Completer<void>();
+    (_queuedEvents[id] ??= []).add((event: event, done: done));
+    notifyListeners();
+    return done.future;
+  }
+
+  List<QueuedPanelEvent> takeEvents(String id) => _queuedEvents.remove(id) ?? const [];
 
   /// Throws away what a removed pane held, for INSTANCES only.
   ///
@@ -827,6 +983,10 @@ class PanelService extends ChangeNotifier {
     // Same reasoning: a stale count left against a reused id makes the next
     // pane in that slot reload once on arrival, for a button nobody pressed.
     _refreshRequests.remove(id);
+    _menus.remove(id);
+    for (final queued in _queuedEvents.remove(id) ?? const <QueuedPanelEvent>[]) {
+      queued.done.completeError(StateError('The pane was removed'));
+    }
 
     final descriptorId = PanelDefinition.descriptorIdOf(id);
     if (descriptorId == id) return;
