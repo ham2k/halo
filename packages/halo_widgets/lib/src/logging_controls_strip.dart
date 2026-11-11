@@ -262,6 +262,7 @@ extension _ControlStrip on _LoggingControlsState {
     final pane = showQsoEditPane(
       context,
       gridBeforePane: gridBeforePane,
+      ourGridBeforePane: ourGridBeforePane,
       formDefinition: buildQsoEditFormDefinition(
         defaultOperatorCall: widget.prefs.defaultOperatorCall,
         ourGridHint: ourGridHint,

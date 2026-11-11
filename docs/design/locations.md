@@ -82,8 +82,12 @@ center, which is the grid restated rather than a second claim.
 The Logs view's editor (`views/logs/logs_edit_panel.dart`) is the fourth
 writer. Its Grid field writes only when it was edited, since untouched it may
 be showing a lookup's guess, and only a well-formed locator or an emptied
-field: anything else changes nothing, rather than storing a square that names
-no place and erasing the pair beside it.
+field. Anything else is refused: the save does not happen, and the editor
+says why (`gridFieldError`) — stored, it would be a square that names no
+place, erasing the pair beside it. The More pane refuses it the same way, for
+both of its Grid fields. Neither checks a grid left as it was: one stored
+malformed (an import's two-character `GRIDSQUARE`) would otherwise refuse an
+unrelated edit, and retyping it would replace a measured coordinate.
 
 Both editors also carry an Our Grid field, for a contact made somewhere other
 than where its operation says, and both write it through `ourGridOverrides`

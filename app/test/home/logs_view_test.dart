@@ -980,23 +980,41 @@ void main() {
       await _unmount(tester);
     });
 
-    testWidgets('a malformed grid changes nothing', (tester) async {
+    testWidgets('a grid that names no square refuses the save, says why, and stops saying it once edited', (tester) async {
+      // Stored, "FN3" would name no square, and the pair written with it
+      // would erase the coordinate. Quietly dropped, Enter would close the
+      // editor as if it had taken what was typed.
       final h = await _harness();
       final operation = await h.services.operations.create(stationCall: 'K1ABC');
       final qso = await _log(h.services, operation, 'W1AW', _utc(20, 10), theirExtra: {'grid': 'FN31pr', 'lat': 41.71, 'lon': -72.73});
       await _pumpLogs(tester, h);
+      const error = 'Needs 4, 6, 8 or 10 characters, like FN31pr';
 
       await _tapRow(tester, 'W1AW');
       await tester.enterText(_field('Grid'), 'FN3');
+      await tester.enterText(_field('Our grid'), 'FN20z');
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await settleFrames(tester, frames: 6);
 
-      // Stored, "FN3" would name no square, and the pair written with it
-      // would erase the coordinate — the same rule a bad date or frequency
-      // follows.
+      // Flagged by a red outline; the reason is said once, above the fields —
+      // under a field this narrow it would be cut to "Needs 4, 6…".
+      bool flagged(String label) => tester.widget<TextField>(_field(label)).decoration!.enabledBorder != null;
+      expect(_editing(tester), 'W1AW', reason: 'the editor stays open on what was typed');
+      expect(find.text(error), findsOneWidget);
+      expect((flagged('Grid'), flagged('Our grid')), (true, true));
       final their = (await _stored(tester, h.services, qso)).data['their'] as Map;
       expect(their['grid'], 'FN31pr');
       expect((their['lat'], their['lon']), (41.71, -72.73));
+
+      await tester.enterText(_field('Grid'), 'FN31');
+      await tester.pump();
+      expect((flagged('Grid'), flagged('Our grid')), (false, true), reason: 'the field being fixed stops; the other still needs fixing');
+      expect(find.text(error), findsOneWidget);
+      await tester.enterText(_field('Our grid'), '');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await settleFrames(tester, frames: 6);
+      expect(_editing(tester), isNull);
+      expect((await _stored(tester, h.services, qso)).theirGrid, 'FN31');
       await _unmount(tester);
     });
 

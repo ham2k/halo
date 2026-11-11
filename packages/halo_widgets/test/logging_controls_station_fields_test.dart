@@ -382,10 +382,12 @@ void main() {
       expect(our.containsKey('lat'), isFalse);
     });
 
-    testWidgets('a malformed grid changes nothing', (tester) async {
+    testWidgets('a grid that names no square refuses the save and says why, for either station', (tester) async {
+      // Accepted, "FN3" is a square that names no place. Quietly dropped, the
+      // pane would close as if it had taken what was typed.
       final existing = (await tester.runAsync(
         () => qsos.add(operation.uuid, {
-          'their': {'call': 'W1AW'},
+          'their': {'call': 'W1AW', 'grid': 'FN31pr'},
           'our': {'call': 'KI2D', 'grid': 'FN20aa', 'lat': 40.02, 'lon': -73.95},
           'band': '20m',
           'mode': 'SSB',
@@ -395,16 +397,49 @@ void main() {
       await tester.pump();
       await openPane(tester);
       await tester.enterText(ourGrid(), 'FN3');
-      await tester.enterText(find.widgetWithText(TextField, 'Rcvd').last, '57');
+      await tester.enterText(find.widgetWithText(TextField, 'Grid').last, 'FN31z');
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
+
+      expect(find.text('Edit QSO'), findsOneWidget, reason: 'the pane stays open on what was typed');
+      expect(find.text('Needs 4, 6, 8 or 10 characters, like FN31pr'), findsNWidgets(2));
+
+      await tester.enterText(ourGrid(), 'FN30');
+      await tester.enterText(find.widgetWithText(TextField, 'Grid').last, 'FN31pq');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(find.text('Edit QSO'), findsNothing, reason: 'corrected, it saves');
       await tester.tap(find.byType(FilledButton));
 
-      final logged = await waitForQsosWhere(tester, 'the edit to land', (logged) => (logged.single.data['their'] as Map)['sent'] == '57');
-      // Stored, "FN3" names no square, and the pair written with it would
-      // erase the coordinate the contact had.
-      expect(logged.single.data['our'], containsPair('grid', 'FN20aa'));
-      expect(logged.single.data['our'], containsPair('lat', 40.02));
+      final logged = await waitForQsosWhere(tester, 'the edit to land', (logged) => (logged.single.data['our'] as Map)['grid'] == 'FN30');
+      expect((logged.single.data['their'] as Map)['grid'], 'FN31pq');
+    });
+
+    testWidgets('a malformed grid already on the contact does not stand in the way of an unrelated edit', (tester) async {
+      // ADIF allows a two-character GRIDSQUARE, and an import stores it as
+      // written. Checked although untouched, it would refuse a note — and
+      // the only way past, retyping the grid, would trade the measured
+      // coordinate beside it for a square's center.
+      final existing = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW', 'grid': 'FN', 'lat': 41.71, 'lon': -72.73},
+          'our': {'call': 'KI2D', 'grid': 'FN'},
+          'band': '20m',
+          'mode': 'SSB',
+        }),
+      ))!;
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: existing)));
+      await tester.pump();
+      await openPane(tester);
+      await tester.enterText(find.widgetWithText(TextField, 'Notes').last, 'Worked from the porch');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(find.text('Edit QSO'), findsNothing, reason: 'the note saves');
+      await tester.tap(find.byType(FilledButton));
+
+      final logged = await waitForQsosWhere(tester, 'the note to land', (logged) => logged.single.data['notes'] == 'Worked from the porch');
+      expect(logged.single.data['their'], allOf(containsPair('grid', 'FN'), containsPair('lat', 41.71), containsPair('lon', -72.73)));
+      expect(logged.single.data['our'], containsPair('grid', 'FN'));
     });
 
     testWidgets("a contact made before a break hints its segment's grid, not the operation's latest", (tester) async {

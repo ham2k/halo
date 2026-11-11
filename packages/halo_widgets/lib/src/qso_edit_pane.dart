@@ -117,11 +117,21 @@ String panePosition(Object? typed) {
   return parsed == null || parsed <= 0 ? '' : parsed.toString();
 }
 
+/// What a Grid field says under itself about [typed], or null for text it can
+/// save: a well-formed locator, or nothing at all, which clears. Both QSO
+/// editors refuse to save over this, for either station's grid — stored,
+/// "FN3" names no square, and the pair written with it would erase the
+/// coordinate the contact had.
+String? gridFieldError(Object? typed) {
+  final grid = (typed as String? ?? '').trim();
+  return grid.isEmpty || isWellFormedGrid(grid) ? null : t.operationLocationScreen.gridInvalid;
+}
+
 /// The `our` keys a typed Our Grid writes, or null where it writes nothing.
 ///
 /// Nothing for a field left as it was shown ([before]) — compared normalized,
-/// since the uppercase formatter rewrites the whole field — or for text that
-/// is no locator: stored, "FN3" names no square. A locator replaces the
+/// since the uppercase formatter rewrites the whole field. [typed] has passed
+/// [gridFieldError]. A locator replaces the
 /// contact's coordinate with the square's own center in the same write
 /// (docs/design/locations.md), and an emptied field clears all three, which
 /// hands the contact back to its operation's location: a null is what the
@@ -131,7 +141,6 @@ String panePosition(Object? typed) {
 Map<String, Object?>? ourGridOverrides(Object? typed, String before) {
   final grid = (typed as String? ?? '').trim();
   if (normalizeGrid(grid) == normalizeGrid(before.trim())) return null;
-  if (grid.isNotEmpty && !isWellFormedGrid(grid)) return null;
   final center = locationForStatedGrid(grid);
   return {'grid': grid.isEmpty ? null : normalizeGrid(grid), 'gridSource': null, 'lat': center?.latitude, 'lon': center?.longitude};
 }
@@ -337,16 +346,31 @@ Map<String, dynamic> buildQsoEditFormDefinition({
 /// Opens the pane and returns what the operator saved, or null if they didn't.
 ///
 /// [gridBeforePane] is the locator the pane opened with, which the coordinate
-/// rule below needs to tell a real edit from a re-render.
+/// rule below needs to tell a real edit from a re-render; it and
+/// [ourGridBeforePane] are also what the grid check measures an edit by. A
+/// grid left as it was is not checked: one stored malformed (an import's
+/// two-character `GRIDSQUARE`) would otherwise refuse an unrelated edit, and
+/// the only way past it — retyping the grid — would replace a measured
+/// coordinate with a square's center.
 Future<Map<String, dynamic>?> showQsoEditPane(
   BuildContext context, {
   required Map<String, dynamic> formDefinition,
   required Map<String, dynamic> initialState,
   required String gridBeforePane,
+  required String ourGridBeforePane,
 }) => showFormPane(
   context,
   formDefinition: formDefinition,
   initialState: initialState,
+  validator: (key, value, state) async {
+    final before = switch (key) {
+      'theirGrid' => gridBeforePane,
+      'ourGrid' => ourGridBeforePane,
+      _ => null,
+    };
+    if (before == null || normalizeGrid((value as String? ?? '').trim()) == normalizeGrid(before.trim())) return null;
+    return gridFieldError(value);
+  },
   onChange: (key, value, state) async {
     // Freq wins over a manually-typed band, matching _onFreqChanged's
     // existing precedence for the inline Radio control.

@@ -49,8 +49,8 @@ export 'src/operation_lifecycle_spec.dart';
 export 'src/option_matching.dart';
 export 'src/platform_chrome.dart';
 export 'src/platform_view_shield.dart';
-// The Logs view's editor writes Our Grid on the same terms as the More pane.
-export 'src/qso_edit_pane.dart' show ourGridOverrides;
+// The Logs view's editor checks and writes its grids on the same terms as the More pane.
+export 'src/qso_edit_pane.dart' show gridFieldError, ourGridOverrides;
 export 'src/qso_list.dart';
 export 'src/qso_list_walk.dart';
 export 'src/qso_row_badges.dart' show qsoNotesMarker, qsoNotesMarkerSize;

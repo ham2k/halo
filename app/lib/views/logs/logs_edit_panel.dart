@@ -49,6 +49,14 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
   late final TextEditingController _ourGrid;
   late final TextEditingController _notes;
 
+  /// The grid fields that refused a save, each with the text it refused,
+  /// flagged until that text is edited, with why ([gridFieldError]) above
+  /// the fields. The text, not
+  /// a flag: a controller's listener also fires for a selection change.
+  final Map<TextEditingController, String> _rejectedGrids = {};
+  final _gridFocus = FocusNode(debugLabel: 'logsEditGrid');
+  final _ourGridFocus = FocusNode(debugLabel: 'logsEditOurGrid');
+
   /// What each field was seeded with, to tell an edit from a field merely
   /// showing a value. Name, grid and state can show the lookup's guess
   /// rather than anything stored; written back untouched, the guess would
@@ -109,6 +117,11 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
     _ourGrid = TextEditingController(text: qso.ourDisplayGrid ?? '');
     _notes = TextEditingController(text: qso.notes ?? '');
     _seeds = {for (final controller in _controllers) controller: controller.text};
+    for (final grid in [_grid, _ourGrid]) {
+      grid.addListener(() {
+        if (_rejectedGrids.containsKey(grid) && grid.text != _rejectedGrids[grid]) setState(() => _rejectedGrids.remove(grid));
+      });
+    }
   }
 
   List<TextEditingController> get _controllers => [_call, _date, _time, _freqOrBand, _mode, _sentRst, _rcvdRst, _name, _grid, _state, _ourGrid, _notes];
@@ -155,6 +168,8 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
       controller.dispose();
     }
     _callFocus.dispose();
+    _gridFocus.dispose();
+    _ourGridFocus.dispose();
     super.dispose();
   }
 
@@ -183,8 +198,9 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
   }
 
   /// Saves the edit, or commits the staged delete — whichever the Save
-  /// button would do right now. False when the write failed, which the
-  /// status bar has already said; the editor stays open with what was typed.
+  /// button would do right now. False when a grid field refused its text,
+  /// which the field says, or the write failed, which the status bar has
+  /// already said; the editor stays open with what was typed.
   Future<bool> commit() => _inFlight ??= (_pendingDelete ? _delete() : _save()).whenComplete(() {
     _inFlight = null;
   });
@@ -195,6 +211,21 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
   }
 
   Future<bool> _save() async {
+    // Only what was edited: an untouched field may be showing a lookup's
+    // guess, which is not the operator's to answer for and is not written.
+    final rejected = [
+      for (final (grid, focus) in [(_grid, _gridFocus), (_ourGrid, _ourGridFocus)])
+        if (_touched(grid) && gridFieldError(grid.text) != null) (grid, focus),
+    ];
+    if (rejected.isNotEmpty) {
+      setState(() {
+        for (final (grid, _) in rejected) {
+          _rejectedGrids[grid] = grid.text;
+        }
+      });
+      rejected.first.$2.requestFocus();
+      return false;
+    }
     // Composed from the SNAPSHOT the form was seeded from, not the live
     // `widget.qso` — the edit is "what the operator saw plus what they
     // typed", and update()'s merge below reconciles it against whatever the
@@ -225,11 +256,9 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
       if (_touched(_name)) their['name'] = _name.text.trim();
       if (_touched(_state)) their['state'] = _state.text.trim().toUpperCase();
       final grid = _grid.text.trim();
-      // Only a locator that is one, or an emptied field; anything else
-      // changes nothing, the rule the date and frequency follow below.
-      // Stored, "FN3" would name no square and — through the pair written
-      // with it — erase the coordinate the QSO had.
-      if (_touched(_grid) && (grid.isEmpty || isWellFormedGrid(grid))) {
+      // A locator that is one, or an emptied field: anything else was
+      // refused above.
+      if (_touched(_grid)) {
         // A stated grid replaces the pair in the same write, with the
         // square's own center — a leftover coordinate would outrank it
         // everywhere it is read (docs/design/locations.md). `locSource`
@@ -398,6 +427,16 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
                     style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.w700),
                   ),
                 ),
+              // Why the save was refused, for whichever grid fields are
+              // outlined in red ([_fieldDecoration]).
+              if (_rejectedGrids.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Space.md),
+                  child: Text(
+                    gridFieldError(_rejectedGrids.values.first)!,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.w700),
+                  ),
+                ),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -431,7 +470,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
                 children: [
                   Expanded(child: _textField(t.qsoEditForm.theirName, _name)),
                   const SizedBox(width: Space.md),
-                  _field(t.qsoEditForm.theirGrid, _grid, width: 100),
+                  _field(t.qsoEditForm.theirGrid, _grid, width: 100, focusNode: _gridFocus),
                   const SizedBox(width: Space.md),
                   _field(t.qsoEditForm.theirState, _state, width: 90),
                 ],
@@ -451,7 +490,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
                 children: [
                   FutureBuilder<String?>(
                     future: _ourGridHint,
-                    builder: (context, snapshot) => _field(t.qsoEditForm.ourGrid, _ourGrid, width: 100, hint: snapshot.data),
+                    builder: (context, snapshot) => _field(t.qsoEditForm.ourGrid, _ourGrid, width: 100, focusNode: _ourGridFocus, hint: snapshot.data),
                   ),
                   const SizedBox(width: Space.md),
                   Flexible(child: _operationButton(context, theme)),
@@ -477,7 +516,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
         focusNode: focusNode,
         enabled: !_pendingDelete,
         readOnly: _saving,
-        decoration: _fieldDecoration(context, label, hint: hint),
+        decoration: _fieldDecoration(context, label, hint: hint, flagged: _rejectedGrids.containsKey(controller)),
       );
 
   /// The operation the QSO belongs to, as the button that opens it — in a
@@ -541,10 +580,20 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
   ///
   /// A [hint] is dimmed by hand: nothing themed dims a hand-built
   /// decoration's hint, and at full strength it reads as a stored value.
-  InputDecoration _fieldDecoration(BuildContext context, String label, {String? hint}) {
+  ///
+  /// A [flagged] field is outlined and labelled in the error color, and says
+  /// nothing under itself: the reason is one line above the fields. As
+  /// `errorText` it would be cut to "Needs 4, 6…" in a field this narrow, and
+  /// would make that one field taller than the others in its row.
+  InputDecoration _fieldDecoration(BuildContext context, String label, {String? hint, bool flagged = false}) {
     final theme = Theme.of(context);
+    final error = theme.colorScheme.error;
     return InputDecoration(
       labelText: label,
+      labelStyle: flagged ? TextStyle(color: error) : null,
+      floatingLabelStyle: flagged ? TextStyle(color: error) : null,
+      enabledBorder: flagged ? OutlineInputBorder(borderSide: BorderSide(color: error)) : null,
+      focusedBorder: flagged ? OutlineInputBorder(borderSide: BorderSide(color: error, width: 2)) : null,
       hintText: hint,
       hintStyle: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.38)),
       // Without this a hint shows only once the field has focus: the label

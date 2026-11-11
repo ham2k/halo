@@ -8,7 +8,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart' show locationForStatedGrid;
-import 'package:halo_widgets/src/qso_edit_pane.dart' show buildQsoEditFormDefinition, ourGridOverrides, theirEntityDisplay;
+import 'package:halo_widgets/src/qso_edit_pane.dart' show buildQsoEditFormDefinition, gridFieldError, ourGridOverrides, theirEntityDisplay;
 
 void main() {
   Map<String, dynamic> formFor(Map<String, dynamic> guess) => buildQsoEditFormDefinition(
@@ -58,11 +58,6 @@ void main() {
       expect(ourGridOverrides('', ''), isNull);
     });
 
-    test('writes nothing for text that names no square', () {
-      expect(ourGridOverrides('FN3', 'FN31pr'), isNull);
-      expect(ourGridOverrides('HELLO', ''), isNull);
-    });
-
     test('a typed locator brings its own center as the pair', () {
       final center = locationForStatedGrid('FN20aa')!;
       // `gridSource` goes too: left, a chase contact's `refs` would go on
@@ -75,6 +70,19 @@ void main() {
       // placed by a coordinate the operator just took away.
       expect(ourGridOverrides('  ', 'FN31pr'), {'grid': null, 'gridSource': null, 'lat': null, 'lon': null});
     });
+  });
+
+  test('a grid field refuses text that names no square, and nothing else', () {
+    // An empty field clears the grid, which is the operator's to do; any
+    // well-formed length and case is a square.
+    for (final ok in ['', '  ', 'FN31', 'fn31pr', 'FN31PR', 'FN31pr44', 'FN31pr44ab']) {
+      expect(gridFieldError(ok), isNull, reason: ok);
+    }
+    // Stored, each would be a square that names no place, and the pair
+    // written with it would erase the coordinate the contact had.
+    for (final bad in ['FN3', 'FN31p', 'FN31ZZ', 'HELLO', 'SS00']) {
+      expect(gridFieldError(bad), 'Needs 4, 6, 8 or 10 characters, like FN31pr', reason: bad);
+    }
   });
 
   test('Our grid hints the place the contact falls back to', () {
