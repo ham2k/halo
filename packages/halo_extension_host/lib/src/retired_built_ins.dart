@@ -6,7 +6,7 @@
 // their catalog copies, and halo-ext, deciding which pre-loads are on by
 // default.
 
-/// Every extension the app used to build in beyond its core ones, and whether
+/// Every extension the app used to build in and no longer does, and whether
 /// it was on by default — what an install that ran them still needs to know
 /// once they are gone (docs/design/extension-install.md, "The retired built-ins").
 ///
@@ -66,4 +66,6 @@ const kRetiredBuiltIns = <String, bool>{
   'qp': false,
   'parksnpeaks': false,
   'custom-text': false,
+  'band-scope': true,
+  'band-plan': true,
 };

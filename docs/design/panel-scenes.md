@@ -243,8 +243,8 @@ the extension ([cat.md § Spectrum](cat.md#spectrum)). It is extension API 6:
 an older app does not know the kind and would refuse the whole scene, so a
 bundle using it declares `"api": 6` and is refused at install there instead;
 `follow`, `span` and label `decimals` are API 7. The public contract
-is in [panel scenes](../extensions/scenes.md#band-scope) and `PanelSceneSpectrum`. The app's own
-Band Scope (`extensions/core/band-scope`) is the reference panel; it leaves the
+is in [panel scenes](../extensions/scenes.md#band-scope) and `PanelSceneSpectrum`. Ham2K's own
+Band Scope (`ham2k-band-scope`, in the extensions repository) is the reference panel; it leaves the
 gestures to the host and takes its settings from the pane's form.
 The names are the operator's: the band scope is the whole control, and its
 spectrum and waterfall its two parts. `spectrum` stays the kind's alias and

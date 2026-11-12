@@ -239,7 +239,7 @@ without it, it stays.
 **`annotationsFor`** answers for one band, for a station at `station`'s
 location where one is known. It is asked once per band and station while the
 runtime lasts, in the background, so give what does not change: the band
-plan, which the app's own `band-plan` extension gives, is the model. An
+plan, which Ham2K's own `ham2k-band-plan` extension gives, is the model. An
 operation opening asks about its radio's band, ahead of any panel. A band a
 hook failed or missed its time for is asked again once the extensions have
 all activated, or else some time later, and as soon as one of the hook's

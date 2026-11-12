@@ -120,7 +120,7 @@ the K4's REF/SCALE settings. No spectrum CAT setters are sent.
 
 Verification covers the captured wire fixtures, crop coordinates, cancellation,
 reconnect and a stalled Main stream. The band scope
-is available in radio panels, the app's own Band Scope (`band-scope`) among
+is available in radio panels, Ham2K's own Band Scope (`ham2k-band-scope`) among
 them. Its reference
 control adjusts HaLo's display range; the width is the operator's zoom.
 

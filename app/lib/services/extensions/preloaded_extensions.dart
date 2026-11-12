@@ -250,6 +250,7 @@ Future<bool> installShippedExtensions({
       if (carried) {
         await settings.copyExtensionRecords(from: replaces, to: bundle.key);
         await copySecrets(from: replaces, to: bundle.key);
+        await settings.moveExtensionPanels(from: replaces, to: bundle.key);
       }
       // A choice already under this very key is the operator's too:
       // `ham2k-lookup` was built in under the name its pre-load has, so its
@@ -284,7 +285,11 @@ Future<bool> installShippedExtensions({
 /// replaces — else the retired built-in [key] is named after.
 ///
 /// Copied rather than moved: a twin whose install fails after the carry has
-/// to find the built-in's state still there on the next attempt.
+/// to find the built-in's state still there on the next attempt. A retired
+/// built-in's placements on screen do move: no build has the built-in to
+/// fill them, so each would be a missing panel where the twin belongs. A
+/// redirect's stay until its uninstall moves them, since the extension it
+/// replaces still fills them until then.
 Future<bool> carryPredecessorRecords({
   required String key,
   String? from,
@@ -296,6 +301,7 @@ Future<bool> carryPredecessorRecords({
   if (source == null) return false;
   await settings.copyExtensionRecords(from: source, to: key);
   await copySecrets(from: source, to: key);
+  if (from == null) await settings.moveExtensionPanels(from: source, to: key);
   return true;
 }
 

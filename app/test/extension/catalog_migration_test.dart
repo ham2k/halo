@@ -366,9 +366,9 @@ void main() {
         _CatchUp()
           ..settings = settings
           ..statusBar = statusBar
-          // What the pre-load leaves: the five on by default, installed.
+          // What the pre-load leaves: the ones on by default, installed.
           ..debugSetAvailableExtensions([
-            for (final key in ['pota', 'qrz', 'call-notes', 'spot-history', 'call-history'])
+            for (final key in ['pota', 'qrz', 'call-notes', 'spot-history', 'call-history', 'band-scope', 'band-plan'])
               ExtensionInfo(key: twinOf(key), file: 'index.js', source: ExtensionSource.installed, core: false, name: key),
           ]),
       );
@@ -485,10 +485,10 @@ void main() {
     // answered, and those are named in `kBuiltInsWithoutTwin`.
     ExtensionInfo installed(String key) => ExtensionInfo(key: key, file: '$key.js', source: ExtensionSource.installed, core: false, name: key);
 
-    /// The five retired built-ins that were on by default, installed — as the
+    /// The retired built-ins that were on by default, installed — as the
     /// pre-load leaves them.
     final preloaded = [
-      for (final key in ['pota', 'qrz', 'call-notes', 'spot-history', 'call-history']) installed(twinOf(key)),
+      for (final key in ['pota', 'qrz', 'call-notes', 'spot-history', 'call-history', 'band-scope', 'band-plan']) installed(twinOf(key)),
     ];
 
     Future<({bool landed, bool complete})> adopt(SettingsService settings, CatalogService catalog) => adoptCatalogTwins(

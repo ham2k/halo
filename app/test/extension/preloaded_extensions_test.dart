@@ -73,8 +73,10 @@ void main() {
     test('what a new install reaches for before the catalog is shipped', () {
       // Onboarding installs the activities it offers without waiting on the
       // catalog; one not shipped is picked and then simply absent. A boot
-      // moves a saved native Rotator panel onto its extension, and the
-      // lookups answer from the first contact logged.
+      // moves a saved native Rotator panel onto its extension, the lookups
+      // answer from the first contact logged, and an install that had the
+      // Band Scope and the Band Plan built in keeps them on the first launch
+      // without them, catalog or not.
       expect(
         {for (final entry in index) entry.key},
         containsAll({
@@ -83,6 +85,8 @@ void main() {
           'ham2k-lookup',
           'ham2k-dxcc',
           'ham2k-rotator',
+          twinOf('band-scope'),
+          twinOf('band-plan'),
         }),
       );
     });
@@ -351,6 +355,31 @@ void main() {
       expect(settings.prefs.getString('settingsPanel.ham2k-potato.token'), isNull);
       expect(settings.prefs.getString('settingsPanel.potato.token'), 'not mine');
     });
+
+    test('a retired built-in\'s placements move onto its twin, a redirect\'s wait for its uninstall', () async {
+      // No build has the built-in to fill a placement left under its name, so
+      // it would be a missing panel where the twin belongs. The extension a
+      // redirect replaces still fills its own until the install uninstalls it,
+      // and moved early, a failed install would empty them.
+      SharedPreferences.setMockInitialValues({
+        SettingsService.layoutPrefsKey: jsonEncode({
+          'operation.dock': {
+            'tabs': ['logging', 'ext:band-scope:band-scope#1', 'ext:ki2d-band-map:map#1'],
+            'active': 'ext:band-scope:band-scope#1',
+          },
+        }),
+      });
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      Future<void> noSecrets({required String from, required String to}) async {}
+
+      await carryPredecessorRecords(key: 'ham2k-band-scope', settings: settings, copySecrets: noSecrets);
+      await carryPredecessorRecords(key: 'ham2k-band-map', from: 'ki2d-band-map', settings: settings, copySecrets: noSecrets);
+
+      expect(settings.layoutData('operation.dock'), {
+        'tabs': ['logging', 'ext:ham2k-band-scope:band-scope#1', 'ext:ki2d-band-map:map#1'],
+        'active': 'ext:ham2k-band-scope:band-scope#1',
+      });
+    });
   });
 
   group('the shipped bundles install through the real door', () {
@@ -466,6 +495,27 @@ void main() {
       // `ham2k-lookup` renames nothing, so there is no choice to protect and
       // the ordinary rule applies.
       expect(freshness['ham2k-lookup'], isTrue);
+    });
+
+    test('a saved Band Scope lands on the pre-loaded twin\'s panel', () async {
+      // The built-in's panel and the twin's differ only in the extension key
+      // that leads their ids; left under the old one, every arrangement
+      // holding a Band Scope shows a missing panel after the update.
+      SharedPreferences.setMockInitialValues({
+        SettingsService.layoutPrefsKey: jsonEncode({
+          'operation.dock': {
+            'tabs': ['logging', 'ext:band-scope:band-scope#2'],
+          },
+        }),
+        'settingsPanel.ext:band-scope:band-scope#2.display': jsonEncode('waterfall'),
+      });
+      settings = SettingsService(await SharedPreferences.getInstance());
+      await runPreload();
+      expect(await listed(), contains('ham2k-band-scope'));
+      expect(settings.layoutData('operation.dock'), {
+        'tabs': ['logging', 'ext:ham2k-band-scope:band-scope#2'],
+      });
+      expect(settings.prefs.getString('settingsPanel.ext:ham2k-band-scope:band-scope#2.display'), jsonEncode('waterfall'));
     });
 
     test('a shipped bundle the store lost comes back, without its state being reset', () async {

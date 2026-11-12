@@ -11,8 +11,7 @@ half (the format, the packer, what the operator sees) is in
 ## What the app builds in, and what it pre-loads
 
 The app builds in only its **core** extensions: `adif`, `scoring`,
-`lookups`, `templates`, the command sets and `ham2k-lofi` sync, and the Band
-Scope panel (`band-scope`), which is listed and starts switched on. Every other
+`lookups`, `templates`, the command sets and `ham2k-lofi` sync. Every other
 extension is a catalog bundle. Some ship already packaged under
 `app/assets/preloaded-extensions/`, and the app installs the ones the
 operator has switched on into the ordinary store, after which they are
@@ -24,9 +23,11 @@ the activities onboarding offers (`ham2k-pota`, `ham2k-sota`, `ham2k-wwff`),
 which it installs without waiting on the catalog, and `ham2k-custom`; every
 lookup that answers from the network or the log (`ham2k-lookup`, `ham2k-qrz`,
 `ham2k-call-history`, `ham2k-call-notes`, `ham2k-spot-history`); the awards
-`ham2k-dxcc` and `ham2k-was`; and `ham2k-rotator`, the Rotator panel, which
-the app once drew natively; a saved arrangement holding that native panel is
-moved onto the extension's at boot (`moveNativeRotatorPanels`).
+`ham2k-dxcc` and `ham2k-was`; `ham2k-band-scope`, the Band Scope panel, and
+`ham2k-band-plan`, whose band annotations it draws, both once built in and on
+by default; and `ham2k-rotator`, the Rotator panel, which the app once drew
+natively; a saved arrangement holding that native panel is moved onto the
+extension's at boot (`moveNativeRotatorPanels`).
 
 No contest ships: each runs for a weekend, and the operator gets the one they
 are about to work from the catalog when they switch it on. Nor does anything
@@ -75,7 +76,7 @@ extension sees no build secret whatever key it claims.
 
 ## The retired built-ins
 
-The app used to build in forty-one more extensions. Their catalog copies are
+The app used to build in forty-three more extensions. Their catalog copies are
 the same extensions under the reserved prefix (`pota` became `ham2k-pota`;
 `ham2k-lookup` kept its name), and everything the app stores per extension
 hangs off the name (settings group, panel values, account credentials, the
@@ -90,7 +91,10 @@ on a build without them, unasked. The boot's catch-up
 (`catchUpOnCatalogExtensions`) carries each built-in's on/off choice onto its
 twin, installs the pre-loads switched on (which carry the built-in's
 settings, panel values and credentials on a twin's first install), then
-fetches the twin of any other built-in the operator had switched on. It
+fetches the twin of any other built-in the operator had switched on. A
+twin's first install also moves the built-in's placements on screen onto its
+own panel (`ext:band-scope:…` to `ext:ham2k-band-scope:…`), since no build has
+the built-in to fill them. It
 records the move done once the pre-load has run, so a boot killed half way
 carries the choices again. It needs no network while every twin is
 pre-loaded. The boot starts the extension runtime before settings are wired

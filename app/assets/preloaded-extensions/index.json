@@ -1,6 +1,18 @@
 {
   "preloaded": [
     {
+      "key": "ham2k-band-plan",
+      "version": "0.1.0",
+      "file": "ham2k-band-plan-0.1.0.h2kext",
+      "sha256": "8329fc229ef9023931de512d07d65914bb8bbffd488e9dca99b92bdda838d032"
+    },
+    {
+      "key": "ham2k-band-scope",
+      "version": "0.1.1",
+      "file": "ham2k-band-scope-0.1.1.h2kext",
+      "sha256": "fa0f5544dc69305331780be59029fd13b87fa732efae778888bc630add95b465"
+    },
+    {
       "key": "ham2k-call-history",
       "version": "0.2.2",
       "file": "ham2k-call-history-0.2.2.h2kext",
