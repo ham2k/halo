@@ -1215,10 +1215,26 @@ mixin _ExtensionHookApi {
     return [
       for (final (i, answer) in answers.indexed)
         (
-          source: answer.ok ? refGeojsonFromHookResult(answer.value, type: '${refs[i]['type']}') : null,
+          source: switch (answer.ok ? _refTypeOwner(refs[i]['type']) : null) {
+            final owner? => refGeojsonFromHookResult(answer.value, type: '${refs[i]['type']}', extensionKey: owner),
+            null => null,
+          },
           answered: answer.ok || !answer.asked || answer.noHandler,
         ),
     ];
+  }
+
+  /// The running extension whose manifest declares the `ref:<type>` hook
+  /// [type] is handled by: the one whose answers are its own. One installed
+  /// but not running answers nothing, and its grant is not the answer's.
+  String? _refTypeOwner(Object? type) {
+    if (type is! String) return null;
+    bool declares(String hook) {
+      final declared = Hooks.refTypeOf(hook);
+      return declared == type || (declared?.startsWith('$type/') ?? false);
+    }
+
+    return availableExtensions.where((info) => _loadedExtensionKeys.contains(info.key) && info.hooks.any(declares)).firstOrNull?.key;
   }
 
   /// [method] on every ref's `ref:<type>` handler in one [ExtensionHost.invokeHookBatch],

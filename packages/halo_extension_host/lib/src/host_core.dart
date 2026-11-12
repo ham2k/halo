@@ -556,7 +556,7 @@ class _HostCore {
           _sockets.open(
             params,
             allowlist: _allowlistFor(webSocketAllowlists, params['extensionKey'] as String?) ?? const [],
-            matches: _hostAllowed,
+            matches: allowlistAllows,
             bundle: slot,
           );
         case 'webSocketSend':
@@ -642,20 +642,6 @@ class _HostCore {
     return extensionKey;
   }
 
-  /// Whether [host] matches a declared allowlist: exact hosts, `*.example.com`
-  /// for subdomains, a lone `*` for any.
-  static bool _hostAllowed(List<String>? allowlist, String host) {
-    for (final entry in allowlist ?? const <String>[]) {
-      if (entry == '*') return true;
-      if (entry.startsWith('*.')) {
-        if (host.endsWith(entry.substring(1))) return true;
-      } else if (host == entry) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   /// Admits one more host call from [slot], or refuses it: a bundle may have
   /// [kMaxHostCallsPending] awaiting an answer, and all of them together
   /// [kMaxHostCallsPendingTotal]. Refused rather than queued, so a loop that
@@ -724,15 +710,6 @@ class _HostCore {
       _kvSeeded.putIfAbsent(ns, () => {}).add(key);
     }
     space[key] = value;
-  }
-
-  /// Enforces the manifest's declared network capability (DESIGN.md §3).
-  /// `extensionKey` is kernel-derived (bound at activation), never supplied
-  /// by extension code, so this really is "who is calling", and the check
-  /// runs against the ORIGINAL host — before any proxy rewrite.
-  void _checkFetchAllowed(String? extensionKey, String host) {
-    if (_hostAllowed(_allowlistFor(fetchAllowlists, extensionKey), host)) return;
-    throw ExtensionHostException("fetch blocked: '$host' is not in extension '${extensionKey ?? 'unknown'}'s declared domains");
   }
 
   Future<Map<String, Object?>> _hostFetch(Map<String, dynamic> params) async {
@@ -866,7 +843,9 @@ class _HostCore {
   /// checked against the extension's allowlist and the local-network rule,
   /// rewritten for this build (the proxy, on web or for an http-only host),
   /// and held to https. Every hop of a fetch passes here, and the one reading
-  /// of the host decides both the refusal and the transport.
+  /// of the host decides both the refusal and the transport. [extensionKey]
+  /// is the kernel's stamp, bound at activation and never supplied by
+  /// extension code, and [target] the URL before any proxy rewrite.
   ///
   /// The local network is never reached on a wildcard. A `*` grant means the
   /// internet, and the operator's router, printer and radio web UIs are not
@@ -876,19 +855,24 @@ class _HostCore {
   /// resolves to as well ([fetchHopGuarded]).
   ({Uri uri, http.Client client}) _fetchTarget(String? extensionKey, Uri target) {
     final host = target.host;
-    _checkFetchAllowed(extensionKey, host);
-    final local = isLocalNetworkHost(host);
-    final named = allowlistNamesHost(_allowlistFor(fetchAllowlists, extensionKey), host);
-    if (local && !developerMode && !named) {
-      throw ExtensionHostException(
-        "fetch refused: '$host' is on the local network, which extension '${extensionKey ?? 'unknown'}' reaches only by naming it in its declared domains, or in developer mode",
-      );
+    final domains = _allowlistFor(fetchAllowlists, extensionKey);
+    final who = extensionKey ?? 'unknown';
+    switch (extensionUrlRefusal(target, domains: domains, developerMode: developerMode)) {
+      case ExtensionUrlRefusal.undeclared:
+        throw ExtensionHostException("fetch blocked: '$host' is not in extension '$who's declared domains");
+      case ExtensionUrlRefusal.localNetwork:
+        throw ExtensionHostException(
+          "fetch refused: '$host' is on the local network, which extension '$who' reaches only by naming it in its declared domains, or in developer mode",
+        );
+      case ExtensionUrlRefusal.notHttps:
+        throw ExtensionHostException("fetch refused: '$target' is not https");
+      case null:
     }
-    final uri = extensionFetchUri(target, onWeb: runningOnWeb);
-    if (uri.scheme != 'https') {
-      throw ExtensionHostException("fetch refused: '$target' is not https");
-    }
-    return (uri: uri, client: fetchHopGuarded(developerMode: developerMode, namedHost: named) ? _httpGuarded : _http);
+    final named = allowlistNamesHost(domains, host);
+    return (
+      uri: extensionFetchUri(target, onWeb: runningOnWeb),
+      client: fetchHopGuarded(developerMode: developerMode, namedHost: named) ? _httpGuarded : _http,
+    );
   }
 
   /// One hop of a fetch: the request sent once, with a single retry when

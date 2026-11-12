@@ -97,7 +97,7 @@ class DataFileManager {
   /// Constructs the HTTP client for each download. Injectable so tests can
   /// exercise [downloadFile]'s real ETag/retry/timeout logic instead of
   /// stubbing the whole method out.
-  final http.Client Function() httpClientFactory;
+  final ExtensionClientFactory httpClientFactory;
 
   /// See [friendlyDownloadError] — the [kIsWeb] constant can't be flipped by
   /// a test, so web-only behavior branches on this field instead.
@@ -130,7 +130,7 @@ class DataFileManager {
     required this.extensions,
     required this.prefs,
     this.statusBar,
-    this.httpClientFactory = http.Client.new,
+    this.httpClientFactory = defaultExtensionClient,
     this.isWeb = kIsWeb,
     this.dataDirectory = appDataDirectory,
     this.offlineChanges,
@@ -180,6 +180,7 @@ class DataFileManager {
     prefs: prefs,
     statusBar: statusBar,
     httpClientFactory: httpClientFactory,
+    grantFor: extensions.networkGrantFor,
     isWeb: isWeb,
     headersTimeout: headersTimeout,
     refusedKey: _refusedKey,
@@ -501,10 +502,12 @@ class DataFileManager {
   ///
   /// An `n1mm-history:` [url] names an N1MM call history file by stem instead
   /// (see [_downloadN1mmCallHistory]).
-  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
+  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding, ExtensionNetworkGrant? grant}) async {
     final stem = n1mmCallHistoryStem(url);
     if (stem != null) return _downloadN1mmCallHistory(key, stem, force: force, encoding: encoding);
     final resolvedUrl = _resolveFetchUrl(resolveDownloadUrl(url));
+    // An extension's URL is held to its grant, as it named it (ExtensionClient).
+    http.Client client() => dataFileClient(grant, named: Uri.tryParse(url), clients: httpClientFactory, onWeb: isWeb);
     // Set when a conditional GET failed on web but the unconditional retry
     // below succeeded: that host rejects CORS preflights, and `If-None-Match`
     // always forces one, so conditional requests are permanently off for
@@ -514,7 +517,7 @@ class DataFileManager {
     final skipConditional = prefs.getBool(skipKey) ?? false;
     final cachedEtag = (force || skipConditional) ? null : prefs.getString('data_file_etag_$key');
     try {
-      return await _fetchAndDecode(key, resolvedUrl, etag: cachedEtag, storeEtag: !skipConditional, encoding: encoding);
+      return await _fetchAndDecode(key, resolvedUrl, client, etag: cachedEtag, storeEtag: !skipConditional, encoding: encoding);
     } on http.ClientException {
       // On web, a browser-level failure of a CONDITIONAL request is most
       // often a failed CORS preflight, not an outage: `If-None-Match` is not
@@ -527,7 +530,7 @@ class DataFileManager {
       // dropped. A genuine outage fails the retry too, leaving the ETag
       // intact to earn a 304 once the network returns.
       if (!isWeb || cachedEtag == null) rethrow;
-      final body = await _fetchAndDecode(key, resolvedUrl, etag: null, storeEtag: false, encoding: encoding);
+      final body = await _fetchAndDecode(key, resolvedUrl, client, etag: null, storeEtag: false, encoding: encoding);
       await prefs.remove('data_file_etag_$key');
       await prefs.setBool(skipKey, true);
       return body;
@@ -545,14 +548,14 @@ class DataFileManager {
   /// progress.
   static const bodyTimeout = Duration(minutes: 2);
 
-  Future<String?> _fetchAndDecode(String key, String resolvedUrl, {String? etag, bool storeEtag = true, String? encoding}) async {
-    final request = http.Request('GET', Uri.parse(resolvedUrl));
+  Future<String?> _fetchAndDecode(String key, String url, http.Client Function() client, {String? etag, bool storeEtag = true, String? encoding}) async {
+    final request = http.Request('GET', Uri.parse(url));
     if (etag != null) {
       request.headers['If-None-Match'] = etag;
     }
 
-    debugPrint('[data-file] Fetching $key from ${redactUrlForLog(resolvedUrl)} (cached ETag: $etag)');
-    final response = await _send(key, request);
+    debugPrint('[data-file] Fetching $key from ${redactUrlForLog(url)} (cached ETag: $etag)');
+    final response = await _send(key, request, client);
 
     if (response.statusCode == 304) {
       debugPrint('[data-file] File $key unchanged (304)');
@@ -571,10 +574,10 @@ class DataFileManager {
     return decodeDataFileBody(response.bodyBytes, encoding: resolved);
   }
 
-  /// Sends [request] under [headersTimeout] and [bodyTimeout] and reads the
-  /// whole response, whatever its status.
-  Future<http.Response> _send(String key, http.Request request) async {
-    final client = httpClientFactory();
+  /// Sends [request] on [clientFor]'s client, or the app's own, under
+  /// [headersTimeout] and [bodyTimeout]; reads the whole response.
+  Future<http.Response> _send(String key, http.Request request, [http.Client Function()? clientFor]) async {
+    final client = clientFor?.call() ?? httpClientFactory(guarded: false);
     try {
       request.headers['User-Agent'] = await ham2kUserAgent();
       final http.StreamedResponse streamedResponse;
@@ -860,7 +863,8 @@ class DataFileManager {
       // other failure at least shows a notice.
       final url = def['url'] as String;
       fetchType = def['fetchType'] as String;
-      body = await downloadFile(key, url, force: force, encoding: def['encoding'] as String?);
+      final grant = extensions.networkGrantFor(def['extensionKey'] as String?);
+      body = await downloadFile(key, url, force: force, encoding: def['encoding'] as String?, grant: grant);
     } catch (e, stack) {
       statusBar?.clear(statusKey);
       debugPrint('[data-file] Failed to download $key: $e');

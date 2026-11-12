@@ -79,8 +79,10 @@ import yazl from "yazl"
 /// `rotatorMap` control, antenna switches and rotators (`host.listEquipment`
 /// and the rest, with `host.setEquipmentConnection`), `host.updateSetting`,
 /// `host.layouts` with its `requiresLayoutControl` grant, and a scene's
-/// `cells` and `grid`, named `sources`, `clipX`/`clipY` and peak `hold`.
-export const H2KEXT_API_VERSION = 23
+/// `cells` and `grid`, named `sources`, `clipX`/`clipY` and peak `hold`; 24
+/// holds every address the app fetches for an extension to its `domains`,
+/// and adds the `requiresAnyDataFileUrl` grant.
+export const H2KEXT_API_VERSION = 24
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -272,6 +274,7 @@ SHARED_MODULES_BY_API[20] = SHARED_MODULES_BY_API[19]
 SHARED_MODULES_BY_API[21] = SHARED_MODULES_BY_API[20]
 SHARED_MODULES_BY_API[22] = SHARED_MODULES_BY_API[21]
 SHARED_MODULES_BY_API[23] = SHARED_MODULES_BY_API[22]
+SHARED_MODULES_BY_API[24] = SHARED_MODULES_BY_API[23]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still
@@ -763,6 +766,7 @@ export function indexEntryFor(key, m) {
     ...(m.requiresSettingsWrite ? { requiresSettingsWrite: true } : {}),
     ...(m.requiresDraftWrite ? { requiresDraftWrite: true } : {}),
     ...(m.requiresLayoutControl ? { requiresLayoutControl: true } : {}),
+    ...(m.requiresAnyDataFileUrl ? { requiresAnyDataFileUrl: true } : {}),
     ...(m.experiments?.length ? { experiments: m.experiments } : {}),
     ...(m.relevance ? { relevance: m.relevance } : {}),
     // Read by the host to place the extension's settings panels; without it

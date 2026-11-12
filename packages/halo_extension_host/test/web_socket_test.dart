@@ -19,6 +19,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+import 'package:halo_extension_host/src/socket_connect_io.dart' show handshakePort;
 
 import 'support/bundles.dart';
 
@@ -407,6 +408,42 @@ void main() {
 
     await until(() => server.userAgents.isNotEmpty, reason: 'the handshake');
     expect(server.userAgents, ['Ham2K-Test/1.0']);
+  });
+
+  test("a handshake redirected off the judged host and port never connects", () async {
+    // dart:io follows a redirect on the handshake GET, headers and all: the
+    // allowlist would then have judged only the first hop, and the socket
+    // would end wherever the admitted host pointed it.
+    final redirector = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => redirector.close(force: true));
+    redirector.listen((request) {
+      request.response
+        ..statusCode = HttpStatus.found
+        ..headers.set(HttpHeaders.locationHeader, server.url.replaceFirst('ws://', 'http://'));
+      request.response.close();
+    });
+    final host = await hostWith(
+      [ExtensionBundle(key: 'socks', source: _socketExtension('socks'))],
+      webSockets: {
+        'socks': ['127.0.0.1'],
+      },
+    );
+
+    await call(host, 'socks', 'open', {'name': 'a', 'url': 'ws://127.0.0.1:${redirector.port}/feed'});
+
+    await until(() async => (await events(host, 'socks')).any((e) => e['type'] == 'close' || e['type'] == 'error'), reason: 'the failure');
+    expect(await sawEvent(host, 'socks', 'open'), isFalse);
+    expect(server.connections, isEmpty, reason: 'the redirect target is a host nobody judged');
+  });
+
+  test('a socket that names no port connects on its scheme\'s own', () {
+    // Uri knows no default port for ws or wss, and dart:io rebuilds the
+    // handshake as https://host:0/: pinned to the port as spelled, every
+    // socket that names none would dial port 0 and never connect.
+    expect(handshakePort(Uri.parse('wss://feed.example.com/x')), 443);
+    expect(handshakePort(Uri.parse('https://feed.example.com:0/x')), 443);
+    expect(handshakePort(Uri.parse('ws://feed.example.com/x')), 80);
+    expect(handshakePort(Uri.parse('wss://feed.example.com:8443/x')), 8443);
   });
 
   group('the local entry', () {

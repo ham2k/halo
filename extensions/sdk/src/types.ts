@@ -2931,6 +2931,11 @@ export interface ExtensionManifest {
   /// bring a panel to the front, and read layouts and write its own, with
   /// `host.layouts`. Shown to the operator at install. Extension API 23.
   requiresLayoutControl?: boolean
+  /// Declares this extension's `dataFile` hooks may download from any https
+  /// address, not only its `domains`: a file the operator points it at.
+  /// Never the local network. Shown to the operator at install. Extension
+  /// API 24; an app before it downloads from any address.
+  requiresAnyDataFileUrl?: boolean
   /// Experiment keys (app/experiments.yaml) gating this extension: unless
   /// EVERY listed experiment is enabled, the extension is hidden from the
   /// Extensions panel and its bundle never loads. The user's enable/disable

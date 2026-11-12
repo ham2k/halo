@@ -16,7 +16,7 @@ import 'dart:io' show FileSystemException, HandshakeException, HttpException, So
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MissingPluginException, PlatformException;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException, HookTimeoutException;
+import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException, ExtensionUrlRefusal, HookTimeoutException;
 import 'package:http/http.dart' show ClientException;
 
 import 'package:halo_audio/halo_audio.dart' show HaloAudioException;
@@ -47,6 +47,7 @@ import 'package:ham2k_logger/services/extensions/extension_service.dart'
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
 import 'package:ham2k_logger/services/data_file_manager.dart' show DataFileRemoveHookFailed, DataFileUnavailable, DataFileWait;
+import 'package:ham2k_logger/services/extensions/extension_requests.dart' show ExtensionUrlRefused;
 import 'package:ham2k_logger/services/extensions/extension_catalog_migration.dart' show CatalogNotWired, UpgradeLeftNoRuntime;
 
 ErrorDisposition dispositionFor(Object error, {FlutterErrorDetails? details}) => ErrorPolicy.decide(error, details: details).disposition;
@@ -723,6 +724,16 @@ void main() {
 
     test('answered with an error status is reported, not noticed', () {
       expect(dispositionFor(const DataFileUnavailable.status('pota-all-parks', 'pota.app', 503)), ErrorDisposition.report);
+    });
+
+    test("refused because the extension's manifest does not reach its address is reported, not noticed", () {
+      // Unclassified, every boot and reconnect pass would put "Something went
+      // wrong" in front of an operator who can do nothing about a manifest.
+      final decision = ErrorPolicy.decide(
+        ExtensionUrlRefused('ham2k-sota', Uri.parse('https://www.sotadata.org.uk/summitslist.csv'), ExtensionUrlRefusal.undeclared),
+      );
+      expect(decision.rule?.id, 'extension-url-refused');
+      expect(decision.disposition, ErrorDisposition.report);
     });
 
     test('refused as far smaller than the stored data is reported, not noticed', () {

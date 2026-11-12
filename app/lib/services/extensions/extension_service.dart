@@ -49,6 +49,7 @@ import 'cluster_host_calls.dart';
 import 'radio_host_calls.dart';
 import 'app_control_host_calls.dart';
 import 'settings_placement.dart';
+import 'extension_requests.dart';
 import 'spot_command_sources.dart';
 import '../settings_service.dart';
 import '../sets/offered_keyer_sets.dart';
@@ -79,6 +80,7 @@ import 'engine_load_monitor.dart';
 // The types callers pair with the runtime: one import serves both.
 export 'extension_info.dart';
 export 'settings_placement.dart' show ExtensionSettingsPlacement;
+export 'extension_requests.dart';
 export 'extension_ref_results.dart';
 
 // One class, one library, several files. The pieces share the runtime's

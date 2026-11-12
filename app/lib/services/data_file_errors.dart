@@ -9,6 +9,8 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:http/http.dart' as http;
 
+import 'extensions/extension_requests.dart' show ExtensionUrlRefused;
+
 /// The message shown in a download-failure notice. `package:http`'s
 /// BrowserClient wraps every browser-level fetch failure (a cross-origin
 /// download the browser refuses — one that would work from a native build
@@ -18,8 +20,8 @@ import 'package:http/http.dart' as http;
 /// never the message text: `'Failed to fetch'` is Chromium/V8's own wording
 /// for the underlying `fetch()` TypeError, and Firefox and Safari phrase
 /// the identical failure differently — a string match silently never fires
-/// for them. A [DataFileUnavailable] or [N1mmCallHistoryUnavailable] gets its
-/// own translated sentence; every other failure (a malformed URL) is shown
+/// for them. A [DataFileUnavailable], [ExtensionUrlRefused] or
+/// [N1mmCallHistoryUnavailable] gets its own translated sentence; every other failure (a malformed URL) is shown
 /// as-is, since guessing at THOSE causes would be more likely to mislead than
 /// help. [isWeb] defaults to
 /// [kIsWeb] but is overridable — the constant itself isn't, so a test can't
@@ -35,6 +37,7 @@ String friendlyDownloadError(Object error, {bool isWeb = kIsWeb}) {
     if (status == 404 || status == 410) return t.dataFiles.downloadNotAvailable(host: error.host, status: status);
     return t.dataFiles.downloadServerError(host: error.host, status: status);
   }
+  if (error is ExtensionUrlRefused) return t.dataFiles.downloadRefused(host: error.url.host);
   if (error is N1mmCallHistoryUnavailable) {
     return error.noMatch ? t.dataFiles.n1mmHistoryNoMatch(stem: error.stem) : t.dataFiles.n1mmHistoryUnavailable(stem: error.stem);
   }

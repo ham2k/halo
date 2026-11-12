@@ -14,6 +14,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import '../../services/extensions/extension_requests.dart' show LookupPhoto;
 import '../../services/halo_services.dart';
 import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
@@ -110,6 +111,10 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
   /// [_reportImageFailure]. Also what makes the thumbnail inert: a placeholder
   /// that opened a full-window copy of itself is a dead end.
   String? _failedImageUrl;
+
+  /// The photo the operator asked to load from a host no extension declared
+  /// ([LookupPhoto.asks]). By URL, so another call's photo asks again.
+  String? _askedPhoto;
 
   @override
   void initState() {
@@ -329,7 +334,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (image != null) _buildImage(theme, image),
+                if (image != null) ?_photo(theme, image),
                 ActionChip(avatar: const Icon(MdiIcons.earth, size: 18), label: Text(t.qrz), onPressed: _openQrz),
               ],
             ),
@@ -367,6 +372,26 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
         ],
       ],
     );
+  }
+
+  /// The photo a lookup names, as [ExtensionService.lookupPhoto] allows it:
+  /// shown, offered by its host for the operator to load, or nothing.
+  Widget? _photo(ThemeData theme, String image) {
+    switch (widget.services.extensions.lookupPhoto(image)) {
+      case LookupPhoto.refused:
+        return null;
+      case LookupPhoto.asks when _askedPhoto != image:
+        return Padding(
+          padding: const EdgeInsets.only(bottom: Space.md),
+          child: ActionChip(
+            avatar: const Icon(MdiIcons.imageOutline, size: 18),
+            label: Text(context.t.callInfo.loadPhotoFrom(host: Uri.parse(image).host)),
+            onPressed: () => setState(() => _askedPhoto = image),
+          ),
+        );
+      case LookupPhoto.asks || LookupPhoto.loads:
+        return _buildImage(theme, image);
+    }
   }
 
   Widget _buildImage(ThemeData theme, String image) {

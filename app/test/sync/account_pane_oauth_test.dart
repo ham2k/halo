@@ -64,7 +64,11 @@ class _FakeHttpClient implements HttpClient {
       return _FakeRequest(
         url,
         method,
-        jsonEncode({'authorization_endpoint': '$_issuer/protocol/openid-connect/auth', 'token_endpoint': '$_issuer/protocol/openid-connect/token'}),
+        jsonEncode({
+          'issuer': _issuer,
+          'authorization_endpoint': '$_issuer/protocol/openid-connect/auth',
+          'token_endpoint': '$_issuer/protocol/openid-connect/token',
+        }),
       );
     }
     if (url.path.endsWith('/token')) {
@@ -208,7 +212,9 @@ final _accountDefinition = {
 
 typedef _Harness = ({HaLoServices services, _FakeDeepLinkService links, _OAuthHttpOverrides http, _AccountExtensionService extensions});
 
-Future<_Harness> _harness(_OAuthHttpOverrides overrides) async {
+/// The extension behind the account, declaring [domains]: the sign-in's
+/// issuer and endpoints are requests it causes, held to them.
+Future<_Harness> _harness(_OAuthHttpOverrides overrides, {List<String> domains = const ['sso.example.org']}) async {
   SharedPreferences.setMockInitialValues({});
   final settings = SettingsService(await SharedPreferences.getInstance());
   final extensions = _AccountExtensionService(
@@ -217,6 +223,7 @@ Future<_Harness> _harness(_OAuthHttpOverrides overrides) async {
     }),
   );
   extensions.settings = settings;
+  extensions.debugSetAvailableExtensions([ExtensionInfo(key: 'testsso', file: 'testsso.js', core: false, name: 'Test SSO', domains: domains)]);
   final links = _FakeDeepLinkService();
   final services = HaLoServices(HaLoDatabase(NativeDatabase.memory()), settings, extensions: extensions, deepLinks: links);
   return (services: services, links: links, http: overrides, extensions: extensions);
@@ -256,8 +263,8 @@ Future<void> _deliver(WidgetTester tester, _FakeDeepLinkService links, String ur
   await _flush(tester);
 }
 
-Future<_Harness> _openPane(WidgetTester tester, _OAuthHttpOverrides overrides) async {
-  final h = await _harness(overrides);
+Future<_Harness> _openPane(WidgetTester tester, _OAuthHttpOverrides overrides, {List<String> domains = const ['sso.example.org']}) async {
+  final h = await _harness(overrides, domains: domains);
   await tester.pumpWidget(
     TranslationProvider(
       // showAccountDialogByKey opens on the app's root navigator, so it needs
@@ -460,6 +467,23 @@ void main() {
       expect(_enabled(tester, _footerCancel), isTrue, reason: 'the dialog is usable again');
       expect(find.text(t.settings.accounts.connectedAs), findsOneWidget);
       expect(h.extensions.store, isEmpty);
+      await h.links.dispose();
+    }, createHttpClient: (c) => _FakeHttpClient(overrides));
+  });
+
+  testWidgets('an issuer the extension did not declare starts no sign-in, and the pane names where it would go', (tester) async {
+    // The app runs the sign-in and hands the tokens to the extension, so the
+    // issuer is the extension reaching: one the install screen never showed
+    // is not asked for anything, let alone opened in the browser.
+    final overrides = _OAuthHttpOverrides();
+    await HttpOverrides.runZoned(() async {
+      final h = await _openPane(tester, overrides, domains: const ['api.example.org']);
+      expect(find.text(t.settings.accounts.signsInAt(host: 'sso.example.org', extension: 'Test SSO')), findsOneWidget);
+      await tester.tap(_connect);
+      await _flush(tester);
+
+      expect(overrides.discoveryFetches, 0);
+      expect(find.byType(OAuthBrowserLoginBody), findsNothing);
       await h.links.dispose();
     }, createHttpClient: (c) => _FakeHttpClient(overrides));
   });

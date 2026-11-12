@@ -158,6 +158,11 @@ void main() {
       expect(result, isNot(contains(t.dataFiles.downloadFailedWebHint)));
     });
 
+    test("an address the extension may not reach names the host, not the manifest's internals", () {
+      final refused = ExtensionUrlRefused('ham2k-call-notes', Uri.parse('https://www.dropbox.com/s/notes.txt'), ExtensionUrlRefusal.undeclared);
+      expect(friendlyDownloadError(refused), t.dataFiles.downloadRefused(host: 'www.dropbox.com'));
+    });
+
     test('a timeout reads as a sentence, not a raw Duration', () {
       expect(friendlyDownloadError(const DataFileUnavailable.timedOut('parks', 'example.com', DataFileWait.body)), t.dataFiles.downloadTimedOut);
     });
@@ -1295,8 +1300,13 @@ REF-002,Summit Two,45.56,-122.78
     // A fresh client per factory call: the manager closes its client after
     // every fetch, so a factory that hands back the same instance only works
     // while MockClient.close() stays a no-op.
-    DataFileManager buildManager({required bool isWeb, required Future<http.Response> Function(http.Request) handler}) =>
-        DataFileManager(lookups: lookups, extensions: extensions, prefs: prefs, httpClientFactory: () => http.MockClient(handler), isWeb: isWeb);
+    DataFileManager buildManager({required bool isWeb, required Future<http.Response> Function(http.Request) handler}) => DataFileManager(
+      lookups: lookups,
+      extensions: extensions,
+      prefs: prefs,
+      httpClientFactory: ({required guarded}) => http.MockClient(handler),
+      isWeb: isWeb,
+    );
 
     test('on web, a failed conditional GET retries unconditionally, drops the ETag, and stops conditioning', () async {
       await prefs.setString('data_file_etag_hams', '"abc"');
@@ -1403,6 +1413,67 @@ REF-002,Summit Two,45.56,-122.78
     });
   });
 
+  test("a data file is downloaded under the grant of the extension that defined it", () async {
+    // Downloaded with no grant, an extension's URL would reach whatever host
+    // it names, past the domains the install screen showed.
+    extensions.debugSetAvailableExtensions([
+      const ExtensionInfo(key: 'k2hrc-llota', file: 'k2hrc-llota.js', core: false, name: 'LLOTA', domains: ['llota.app']),
+    ]);
+    final m = TestDataFileManager(lookups: lookups, extensions: extensions, prefs: prefs)..mockDownloadBody = 'id,title\n';
+    // Only the download is under test: the import after it has no runtime
+    // to map rows through here.
+    await m
+        .processDataFile('k2hrc-llota_lakes', {
+          'key': 'k2hrc-llota_lakes',
+          'extensionKey': 'k2hrc-llota',
+          'fetchType': 'csv',
+          'csvOptions': {'hasHeaders': true},
+          'url': 'https://llota.app/lakes.csv',
+        }, notifyOnFailure: false)
+        .catchError((Object _) => false);
+    expect(m.grants.single?.extensionKey, 'k2hrc-llota');
+    expect(m.grants.single?.domains, ['llota.app']);
+  });
+
+  group("downloadFile for an extension's data file", () {
+    // The URL is the extension's, so the request is held to its grant, as
+    // host.fetch is: what the install screen showed is all it reaches.
+    setUp(() {
+      PackageInfo.setMockInitialValues(appName: 'test', packageName: 'test', version: '1.0', buildNumber: '1', buildSignature: '');
+    });
+
+    late List<Uri> sent;
+    DataFileManager buildManager() {
+      sent = [];
+      return DataFileManager(
+        lookups: lookups,
+        extensions: extensions,
+        prefs: prefs,
+        isWeb: false,
+        httpClientFactory: ({required guarded}) => http.MockClient((request) async {
+          sent.add(request.url);
+          return http.Response('CONTENT', 200);
+        }),
+      );
+    }
+
+    const llota = ExtensionNetworkGrant(extensionKey: 'k2hrc-llota', domains: ['llota.app']);
+
+    test('reaches a declared host, and sends nothing to any other', () async {
+      final m = buildManager();
+      expect(await m.downloadFile('lakes', 'https://llota.app/lakes.csv', grant: llota), 'CONTENT');
+      await expectLater(m.downloadFile('lakes', 'https://collector.example/lakes.csv', grant: llota), throwsA(isA<ExtensionUrlRefused>()));
+      expect(sent.map((u) => u.host), ['llota.app']);
+    });
+
+    test('is judged by the address the extension named, not the download form the app turns a share link into', () async {
+      const notes = ExtensionNetworkGrant(extensionKey: 'w1xyz-notes', domains: ['dropbox.com']);
+      final m = buildManager();
+      await m.downloadFile('notes', 'https://dropbox.com/s/abc/notes.txt?dl=0', grant: notes);
+      expect(sent.single.host, 'www.dropbox.com', reason: 'the rewrite still happens; the grant is read from what was named');
+    });
+  });
+
   group('downloadFile for an n1mm-history: stem', () {
     setUp(() {
       PackageInfo.setMockInitialValues(appName: 'test', packageName: 'test', version: '1.0', buildNumber: '1', buildSignature: '');
@@ -1451,7 +1522,7 @@ REF-002,Summit Two,45.56,-122.78
     });
 
     DataFileManager buildManager({bool isWeb = false}) =>
-        DataFileManager(lookups: lookups, extensions: extensions, prefs: prefs, httpClientFactory: () => http.MockClient(site), isWeb: isWeb);
+        DataFileManager(lookups: lookups, extensions: extensions, prefs: prefs, httpClientFactory: ({required guarded}) => http.MockClient(site), isWeb: isWeb);
 
     test("POSTs the newest file's own form and returns the file", () async {
       final body = await buildManager().downloadFile('cwops', 'n1mm-history:CWOPS');
@@ -1524,7 +1595,7 @@ REF-002,Summit Two,45.56,-122.78
     // completion) ever runs.
     PackageInfo.setMockInitialValues(appName: 'test', packageName: 'test', version: '1.0', buildNumber: '1', buildSignature: '');
     fakeAsync((fake) {
-      final m = DataFileManager(lookups: lookups, extensions: extensions, prefs: prefs, httpClientFactory: _HangingClient.new);
+      final m = DataFileManager(lookups: lookups, extensions: extensions, prefs: prefs, httpClientFactory: ({required guarded}) => _HangingClient());
       Object? caught;
       m
           .downloadFile('hams', 'https://example.com/f.txt')
@@ -1552,7 +1623,7 @@ REF-002,Summit Two,45.56,-122.78
       lookups: lookups,
       extensions: extensions,
       prefs: prefs,
-      httpClientFactory: () => http.MockClient((_) async => http.Response('down', 503)),
+      httpClientFactory: ({required guarded}) => http.MockClient((_) async => http.Response('down', 503)),
     );
     await expectLater(
       m.downloadFile('hams', 'https://example.com/f.txt'),
@@ -1889,7 +1960,7 @@ class _BlockingDownloadManager extends DataFileManager {
   _BlockingDownloadManager({required super.lookups, required super.extensions, required super.prefs, super.offlineChanges});
 
   @override
-  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
+  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding, ExtensionNetworkGrant? grant}) async {
     downloadCalls++;
     final block = blockDownload;
     if (block != null) await block.future;
@@ -1963,11 +2034,15 @@ class TestDataFileManager extends DataFileManager {
   /// Every download asked for, and whether it skipped the stored ETag.
   final downloads = <({String key, bool force})>[];
 
+  /// The grant each download was held to, in order.
+  final grants = <ExtensionNetworkGrant?>[];
+
   TestDataFileManager({required super.lookups, required super.extensions, required super.prefs, super.statusBar});
 
   @override
-  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
+  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding, ExtensionNetworkGrant? grant}) async {
     downloads.add((key: key, force: force));
+    grants.add(grant);
     final error = mockDownloadError;
     if (error != null) throw error;
     return mockDownloadBody;

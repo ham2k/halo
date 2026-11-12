@@ -381,6 +381,12 @@ class ExtensionInfo with ExtensionSearchable {
   /// refused.
   final bool requiresLayoutControl;
 
+  /// Whether this extension's data files may download from any public https
+  /// address, such as one the operator gives it, rather than only from its
+  /// [domains] (the manifest's `requiresAnyDataFileUrl`). Never the local
+  /// network.
+  final bool requiresAnyDataFileUrl;
+
   /// Whether [other] declares the same capabilities the host resolves into
   /// allowlists when the runtime STARTS. A dev reload that changes one cannot
   /// be hot-swapped: the running host would keep enforcing the old answer.
@@ -486,6 +492,7 @@ class ExtensionInfo with ExtensionSearchable {
     this.requiresSettingsWrite = false,
     this.requiresDraftWrite = false,
     this.requiresLayoutControl = false,
+    this.requiresAnyDataFileUrl = false,
     required this.core,
     this.api,
     required this.name,
@@ -527,6 +534,7 @@ class ExtensionInfo with ExtensionSearchable {
     requiresSettingsWrite: json['requiresSettingsWrite'] as bool? ?? false,
     requiresDraftWrite: json['requiresDraftWrite'] as bool? ?? false,
     requiresLayoutControl: json['requiresLayoutControl'] as bool? ?? false,
+    requiresAnyDataFileUrl: json['requiresAnyDataFileUrl'] as bool? ?? false,
     // A stale index without metadata degrades to "everything core" —
     // the fail-safe: nothing gets silently disabled.
     core: json['core'] as bool? ?? true,

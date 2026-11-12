@@ -51,14 +51,24 @@ import 'src/fetch_policy.dart';
 import 'src/hook_call_stats.dart';
 import 'src/host_budgets.dart';
 import 'src/js_engine.dart';
-import 'src/local_network.dart';
 
 export 'src/extension_sockets.dart' show localNetworkEntry, maxWebSocketConnectsPerMinute, maxWebSocketFrameSize, maxWebSocketsPerExtension;
 export 'src/local_network.dart' show isLocalNetworkHost;
 export 'src/engine_load.dart' show EngineLoadBucket, EngineLoadFeed, EngineLoadWindow, engineLoadBucketMicros;
 export 'src/extension_timers.dart' show TimerSuspension;
 export 'src/engine_runtime.dart' show ClockTravelState, ExtensionBundle, ExtensionHostException, HookTimeoutException;
-export 'src/fetch_policy.dart' show fetchBodyTimeout, fetchHeaderTimeout;
+export 'src/fetch_client.dart' if (dart.library.io) 'src/fetch_client_io.dart' show guardedFetchClient;
+export 'src/fetch_policy.dart'
+    show
+        ExtensionUrlRefusal,
+        allowlistAllows,
+        allowlistNamesHost,
+        extensionFetchUri,
+        extensionUrlRefusal,
+        fetchBodyTimeout,
+        fetchHeaderTimeout,
+        fetchHopGuarded,
+        kMaxFetchRedirects;
 export 'src/hook_call_stats.dart' show HookCallSample, HookLatencyStat, QueueWaitStat, batchLabel, summarizeLatencies;
 export 'src/host_budgets.dart' show RateWindow, kMaxHostCallsPending, kMaxHostCallsPendingTotal, kMaxKvEntryChars, kMaxKvKeysPerBundle;
 export 'src/hook_calls.dart' show HookCalls;

@@ -58,11 +58,11 @@ class CachedGeoshape {
 }
 
 class GeoshapeService {
-  GeoshapeService({required this.extensions, required this.lookups, this.httpClientFactory = http.Client.new, this.fetchTimeout = defaultFetchTimeout});
+  GeoshapeService({required this.extensions, required this.lookups, this.httpClientFactory = defaultExtensionClient, this.fetchTimeout = defaultFetchTimeout});
 
   final ExtensionService extensions;
   final LookupRepository lookups;
-  final http.Client Function() httpClientFactory;
+  final ExtensionClientFactory httpClientFactory;
 
   /// How long one whole exchange may take — connect, headers and body. Named
   /// on the instance so a test can prove the deadline holds without waiting
@@ -160,19 +160,21 @@ class GeoshapeService {
   }
 
   Future<Geoshape> _fetchAndStore(RefGeojson source, {CachedGeoshape? fallback}) async {
-    final client = httpClientFactory();
+    // Held to the grant of the extension that named it, as host.fetch is:
+    // its domains, https, and never the local network. An address the app
+    // names itself (the outline grid's) is its own consent, held to https
+    // and off the local network all the same.
+    final grant = switch (source.extensionKey) {
+      final key? => extensions.networkGrantFor(key),
+      null => ExtensionNetworkGrant(extensionKey: 'halo', domains: [Uri.parse(source.url).host]),
+    };
+    final client = ExtensionClient(grant, clients: httpClientFactory);
     try {
       final request = http.Request('GET', Uri.parse(source.url));
       request.headers['User-Agent'] = await ham2kUserAgent();
-      // The https-only check in `refGeojsonFromHookResult` guards the URL a
-      // hook NAMES; a redirect would otherwise walk straight past it, since a
-      // program's server can answer its own https URL with `Location:
-      // http://…` and complete the fetch in the clear. Refusing to follow one
-      // keeps the check meaning what it says. A browser enforces this itself
-      // (mixed content is blocked outright), and package:http's BrowserClient
-      // throws on a request that declines redirects, so this is set only off
-      // the web.
-      if (!kIsWeb) request.followRedirects = false;
+      // A redirect is followed by the client, which holds each hop to https
+      // and off the local network: a program's server answering its own
+      // https URL with `Location: http://…` gets no further than that.
 
       // The timeout covers the whole exchange, connect and headers included —
       // NOT just the body read. A server that accepts the connection and then
@@ -212,10 +214,12 @@ class GeoshapeService {
       // whatever this device already holds is still the best answer it has.
       // Only for what offline looks like — the transport failing, the
       // exchange timing out, or a body that is not JSON (a captive portal's
-      // page). Anything else is a bug here, or the database refusing a
-      // write, and goes on to the caller's report rather than being retried
-      // as an outage every 30 seconds.
-      if (!ErrorPolicy.isTransportFailure(e) && e is! TimeoutException && e is! FormatException) rethrow;
+      // page) — or an address the program's grant does not reach, a server
+      // redirecting off https among them, which is the program's to fix and
+      // settles nothing about the reference. Anything else is a bug here, or
+      // the database refusing a write, and goes on to the caller's report
+      // rather than being retried as an outage every 30 seconds.
+      if (!ErrorPolicy.isTransportFailure(e) && e is! TimeoutException && e is! FormatException && e is! ExtensionUrlRefused) rethrow;
       debugPrint('[geoshape] Could not fetch ${source.url}: $e');
       return _fallback(fallback);
     } finally {

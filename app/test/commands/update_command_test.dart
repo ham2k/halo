@@ -24,7 +24,7 @@ class _CannedDataFileManager extends DataFileManager {
   _CannedDataFileManager({required this.bodiesByKey, required super.lookups, required super.extensions, required super.prefs, super.statusBar});
 
   @override
-  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
+  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding, ExtensionNetworkGrant? grant}) async {
     downloads.add((key: key, force: force));
     return bodiesByKey[key];
   }

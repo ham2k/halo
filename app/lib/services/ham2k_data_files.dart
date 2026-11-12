@@ -21,13 +21,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/user_agent.dart';
 import 'data_file_errors.dart';
 import 'error_reporting_service.dart';
+import 'extensions/extension_requests.dart';
 import 'status_bar_service.dart';
 
 class Ham2kDataFiles {
   final LookupRepository lookups;
   final SharedPreferences prefs;
   final StatusBarService? statusBar;
-  final http.Client Function() httpClientFactory;
+  final ExtensionClientFactory httpClientFactory;
+
+  /// What the extension a data file belongs to may have the app reach
+  /// (ExtensionService.networkGrantFor): its URLs are the extension's.
+  final ExtensionNetworkGrant Function(String? extensionKey) grantFor;
   final bool isWeb;
   final Duration headersTimeout;
 
@@ -42,6 +47,7 @@ class Ham2kDataFiles {
     required this.prefs,
     required this.statusBar,
     required this.httpClientFactory,
+    required this.grantFor,
     required this.isWeb,
     required this.headersTimeout,
     required this.refusedKey,
@@ -89,7 +95,7 @@ class Ham2kDataFiles {
         heldVersion: held != null && held.startsWith('ham2k:') ? held.substring('ham2k:'.length) : null,
         snapshot: force,
         force: force,
-        fetch: (url, {required goneIsAnswer}) => _fetch(key, url, goneIsAnswer: goneIsAnswer),
+        fetch: (url, {required goneIsAnswer}) => _fetch(key, url, grantFor(def['extensionKey'] as String?), goneIsAnswer: goneIsAnswer),
         lookups: lookups,
         onSnapshotWrites: () => prefs.remove(versionKey),
         onRows: showProgress
@@ -108,7 +114,7 @@ class Ham2kDataFiles {
       // dropped mid-body reaches here as the platform's own IOException
       // (a SocketException on iOS and Android), unwrapped so ErrorPolicy's
       // network rules still see it.
-      final fetchFailed = e is DataFileUnavailable || e is http.ClientException || e is IOException;
+      final fetchFailed = e is DataFileUnavailable || e is ExtensionUrlRefused || e is http.ClientException || e is IOException;
       if (e is DataFileImportShrank) await prefs.setString(refusedKey(key), jsonEncode({'imported': e.imported, 'existing': e.existing}));
       ErrorReportingService.report(
         e,
@@ -156,9 +162,9 @@ class Ham2kDataFiles {
 
   /// One request: [headersTimeout] for the answer, [idleTimeout] between body
   /// chunks, and the client closed once the body is read, abandoned or failed.
-  Future<Ham2kResponse> _fetch(String key, Uri url, {required bool goneIsAnswer}) async {
+  Future<Ham2kResponse> _fetch(String key, Uri url, ExtensionNetworkGrant grant, {required bool goneIsAnswer}) async {
     debugPrint('[data-file] Fetching $key from ${redactUrlForLog(url.toString())}');
-    final client = httpClientFactory();
+    final client = ExtensionClient(grant, dataFile: true, clients: httpClientFactory, onWeb: isWeb);
     final http.StreamedResponse response;
     try {
       final request = http.Request('GET', url)..headers['User-Agent'] = await ham2kUserAgent();

@@ -21,12 +21,19 @@ const _shape = '{"type":"FeatureCollection","features":[]}';
 /// — overriding the method rather than stubbing the hook keeps this about
 /// GeoshapeService, not about how a hook's answer becomes a [RefGeojson].
 class _FakeExtensions extends ExtensionService {
-  _FakeExtensions(this.answer, {this.answered = true});
+  _FakeExtensions(this.answer, {this.answered = true, this.domains = const ['*']});
   final RefGeojson? answer;
   final bool answered;
+  final List<String> domains;
 
   @override
   Future<List<RefGeojsonAnswer>> geojsonUrlsForRefs(List<Map<String, dynamic>> refs) async => [for (final _ in refs) (source: answer, answered: answered)];
+
+  /// A program allowed every public host unless a test says otherwise: what
+  /// this file tests is the cache and the fetch (extension_requests_test
+  /// tests the grant itself).
+  @override
+  ExtensionNetworkGrant networkGrantFor(String? extensionKey) => ExtensionNetworkGrant(extensionKey: extensionKey ?? 'outlines', domains: domains);
 }
 
 void main() {
@@ -45,12 +52,13 @@ void main() {
     required http.Client Function() client,
     Duration timeout = GeoshapeService.defaultFetchTimeout,
     bool answered = true,
+    List<String> domains = const ['*'],
   }) {
     lookups = LookupRepository(db);
     return GeoshapeService(
-      extensions: _FakeExtensions(source, answered: answered),
+      extensions: _FakeExtensions(source, answered: answered, domains: domains),
       lookups: lookups,
-      httpClientFactory: client,
+      httpClientFactory: ({required guarded}) => client(),
       fetchTimeout: timeout,
     );
   }
@@ -307,12 +315,12 @@ void main() {
     expect(attempts, 2);
   });
 
-  test('a redirect is refused, not followed — the https check is on the url a hook NAMES', () async {
+  test('a redirect off https is refused — the https check holds on every hop, not only the url a hook NAMES', () async {
     // Followed, a `Location: http://…` would complete the fetch in the clear
     // and walk straight past refGeojsonFromHookResult's scheme check, on a
-    // program server's say-so. (A browser blocks mixed content itself, and
-    // BrowserClient throws on a request that declines redirects, so the flag
-    // is set only off the web.)
+    // program server's say-so. The client follows redirects itself, judging
+    // each, which is why the request declines the transport's own following
+    // (a browser blocks mixed content itself, so not on the web).
     var declinedRedirects = false;
     final service = serviceFor(
       const RefGeojson(url: _url, maxAge: Duration(days: 30), missMaxAge: Duration(days: 1)),
@@ -330,13 +338,43 @@ void main() {
     expect(await lookups.getLookup(geoshapeLookupCategory, _url), isNull);
   });
 
+  test("the app's own outline address is fetched under no extension's grant", () async {
+    // The outline grid names its bundles itself: judged as some extension's,
+    // a grant that never listed the app's host would refuse every one.
+    final service = serviceFor(
+      const RefGeojson(url: _url, maxAge: Duration(days: 30), missMaxAge: Duration(days: 1)),
+      domains: const [],
+      client: () => http.MockClient((_) async => http.Response('{}', 200)),
+    );
+
+    expect((await service.shapeForRef(_summit)).resolved, isTrue);
+  });
+
+  test("an outline on a host the program did not declare is never fetched", () async {
+    // The URL is the program's: fetched anyway, it would reach a host the
+    // install screen never showed, with the reference in its path.
+    var fetched = false;
+    final service = serviceFor(
+      const RefGeojson(url: _url, maxAge: Duration(days: 30), missMaxAge: Duration(days: 1), extensionKey: 'ham2k-sota'),
+      domains: const ['api-db2.sota.org.uk'],
+      client: () => http.MockClient((_) async {
+        fetched = true;
+        return http.Response('{}', 200);
+      }),
+    );
+
+    final answer = await service.shapeForRef(_summit);
+    expect(fetched, isFalse);
+    expect(answer.resolved, isFalse);
+  });
+
   group('refGeojsonFromHookResult', () {
     test('rejects a plaintext url — this one is fetched, not handed to the platform', () {
-      expect(refGeojsonFromHookResult({'url': 'http://az.sotl.as/W2/GC/116.geojson'}, type: 'sotaActivation'), isNull);
+      expect(refGeojsonFromHookResult({'url': 'http://az.sotl.as/W2/GC/116.geojson'}, type: 'sotaActivation', extensionKey: 'ham2k-sota'), isNull);
     });
 
     test('takes the defaults when a hook names no ages', () {
-      final source = refGeojsonFromHookResult({'url': _url}, type: 'sotaActivation');
+      final source = refGeojsonFromHookResult({'url': _url}, type: 'sotaActivation', extensionKey: 'ham2k-sota');
       expect(source?.maxAge, const Duration(days: 30));
       expect(source?.missMaxAge, const Duration(days: 1));
     });
@@ -344,7 +382,7 @@ void main() {
     test('ignores a non-positive age instead of honoring it', () {
       // Honored, a zero would re-fetch on every rebuild of the map — a
       // request per keystroke in the search field above it.
-      final source = refGeojsonFromHookResult({'url': _url, 'maxAgeInDays': 0, 'missMaxAgeInDays': -1}, type: 'sotaActivation');
+      final source = refGeojsonFromHookResult({'url': _url, 'maxAgeInDays': 0, 'missMaxAgeInDays': -1}, type: 'sotaActivation', extensionKey: 'ham2k-sota');
       expect(source?.maxAge, const Duration(days: 30));
       expect(source?.missMaxAge, const Duration(days: 1));
     });
@@ -353,21 +391,24 @@ void main() {
       // Converting a day count this large overflows and throws — and the
       // reference's answer is read in the same pass as every other on the map,
       // so one program's wild number would cost them all their outlines.
-      final source = refGeojsonFromHookResult({'url': _url, 'maxAgeInDays': 1e308}, type: 'sotaActivation');
+      final source = refGeojsonFromHookResult({'url': _url, 'maxAgeInDays': 1e308}, type: 'sotaActivation', extensionKey: 'ham2k-sota');
       expect(source?.maxAge, const Duration(days: 30));
     });
 
     test('reads a fractional age, so a program can ask for hours', () {
-      expect(refGeojsonFromHookResult({'url': _url, 'missMaxAgeInDays': 0.5}, type: 'sotaActivation')?.missMaxAge, const Duration(hours: 12));
+      expect(
+        refGeojsonFromHookResult({'url': _url, 'missMaxAgeInDays': 0.5}, type: 'sotaActivation', extensionKey: 'ham2k-sota')?.missMaxAge,
+        const Duration(hours: 12),
+      );
     });
 
     test('credits the source a hook names, and the url\'s host when it names none', () {
       // Every outline on a map is credited to someone: a blank or missing
       // name falls back to the server, never to an empty credit line.
-      expect(refGeojsonFromHookResult({'url': _url, 'sourceName': ' OSM '}, type: 'pota')?.sourceName, 'OSM');
-      expect(refGeojsonFromHookResult({'url': _url}, type: 'sotaActivation')?.sourceName, 'az.sotl.as');
-      expect(refGeojsonFromHookResult({'url': _url, 'sourceName': '  '}, type: 'sotaActivation')?.sourceName, 'az.sotl.as');
-      expect(refGeojsonFromHookResult({'url': _url, 'sourceName': 42}, type: 'sotaActivation')?.sourceName, 'az.sotl.as');
+      expect(refGeojsonFromHookResult({'url': _url, 'sourceName': ' OSM '}, type: 'pota', extensionKey: 'ham2k-sota')?.sourceName, 'OSM');
+      expect(refGeojsonFromHookResult({'url': _url}, type: 'sotaActivation', extensionKey: 'ham2k-sota')?.sourceName, 'az.sotl.as');
+      expect(refGeojsonFromHookResult({'url': _url, 'sourceName': '  '}, type: 'sotaActivation', extensionKey: 'ham2k-sota')?.sourceName, 'az.sotl.as');
+      expect(refGeojsonFromHookResult({'url': _url, 'sourceName': 42}, type: 'sotaActivation', extensionKey: 'ham2k-sota')?.sourceName, 'az.sotl.as');
     });
   });
 }

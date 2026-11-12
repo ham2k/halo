@@ -16,7 +16,7 @@ import '../link_opener.dart';
 /// the check is on the SCHEME the fetch stack will accept — `https` only. A
 /// plaintext shape URL would silently downgrade every activator's connection
 /// on a program's say-so.
-RefGeojson? refGeojsonFromHookResult(dynamic result, {required String type}) {
+RefGeojson? refGeojsonFromHookResult(dynamic result, {required String type, required String extensionKey}) {
   if (result == null) return null;
   if (result is! Map) {
     debugPrint('[extensions] geojsonUrlForRef(ref:$type) answered ${result.runtimeType}, not a map');
@@ -35,6 +35,7 @@ RefGeojson? refGeojsonFromHookResult(dynamic result, {required String type}) {
     // The host when the hook names none: every outline on a map is credited
     // to someone, and the server it came from is never wrong about that.
     sourceName: sourceName is String && sourceName.trim().isNotEmpty ? sourceName.trim() : Uri.tryParse(url)?.host,
+    extensionKey: extensionKey,
   );
 }
 
@@ -53,7 +54,7 @@ Duration? _positiveDays(dynamic value) {
 /// long the app may keep it — [missMaxAge] being how long it remembers that
 /// there is no outline at all.
 class RefGeojson {
-  const RefGeojson({required this.url, required this.maxAge, required this.missMaxAge, this.sourceName});
+  const RefGeojson({required this.url, required this.maxAge, required this.missMaxAge, this.sourceName, this.extensionKey});
 
   final String url;
   final Duration maxAge;
@@ -61,6 +62,11 @@ class RefGeojson {
 
   /// Who the shapes come from, as the map's credit line names them.
   final String? sourceName;
+
+  /// The extension that named [url], whose grant the fetch is held to
+  /// (ExtensionService.networkGrantFor); null only for an address the app
+  /// names itself.
+  final String? extensionKey;
 }
 
 /// A `geojsonUrlForRef` answer as a list of them reports it: the [source], and

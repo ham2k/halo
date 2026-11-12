@@ -61,7 +61,12 @@ registerHook("account", {
   one per edition with the provider, and give the configuration as a
   function of `ctx` so it can read `ctx.edition`. `webhookRedirectUrl` is
   the relay callback the app uses instead on Web, Linux and Windows; without
-  it those three platforms cannot start the login at all.
+  it those three platforms cannot start the login at all. The issuer's host,
+  and those of the authorization and token endpoints its discovery document
+  names, must be in your `domains`, over https and off the local network,
+  and the document must name your `issuer` as its own; otherwise the login
+  does not start. The account pane names the issuer's host and your
+  extension before the operator signs in.
 - **`synchronizable: true`** syncs the stored credentials across the
   operator's Apple devices through iCloud Keychain; false keeps them on the
   device. No effect elsewhere. Set it only for a login that is genuinely the

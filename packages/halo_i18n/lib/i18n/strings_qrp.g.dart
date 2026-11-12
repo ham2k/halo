@@ -217,6 +217,7 @@ class _Translations$extensionsPanel$qrp extends Translations$extensionsPanel$en 
 	@override String get canSetUserAgent => 'identify itself to servers under its own name';
 	@override String get canChangeSettings => 'your settings, to change any of them, through its commands or on its own; through its commands, developer mode and experiments too';
 	@override String get canControlLayouts => 'your layouts, to switch between them, bring a panel to the front, and add layouts of its own';
+	@override String get canDownloadAnyUrl => 'data files from any web address, such as one you give it';
 	@override String get canChangeDraft => 'the contact you are logging, to change any of its fields, the call included, as you type';
 	@override String get noCapabilities => 'it asks for nothing outside the app.';
 	@override String get sandboxNote => 'extensions run sandboxed: no access to your files, and no network beyond what is listed here.';
@@ -785,6 +786,7 @@ class _Translations$callInfo$qrp extends Translations$callInfo$en {
 	// Translations
 	@override String get qrz => 'qrz';
 	@override String get showImage => 'show image';
+	@override String loadPhotoFrom({required Object host}) => 'load photo from ${host}';
 	@override String get imageUnavailable => 'photo unavailable';
 	@override String get photo => 'photo';
 	@override String get notes => 'notes';
@@ -1134,6 +1136,7 @@ class _Translations$dataFiles$qrp extends Translations$dataFiles$en {
 	@override String get downloadTimedOut => 'the server took too long to respond. try again later.';
 	@override String downloadServerError({required Object host, required Object status}) => '${host} answered with an error (http ${status}). try again later.';
 	@override String downloadNotAvailable({required Object host, required Object status}) => '${host} couldn\'t provide this file (http ${status}). check that its address is still right.';
+	@override String downloadRefused({required Object host}) => '${host} isn\'t an address this extension may download from.';
 	@override String n1mmHistoryNoMatch({required Object stem}) => 'n1mm has no call history file for ${stem}.';
 	@override String n1mmHistoryUnavailable({required Object stem}) => 'n1mm\'s call history download for ${stem} didn\'t work. try again later.';
 	@override String processingFailedTitle({required Object name}) => 'couldn\'t process ${name}';
@@ -2824,6 +2827,7 @@ class _Translations$settings$accounts$qrp extends Translations$settings$accounts
 	@override String get pressSaveToKeep => 'press save to keep this account connected.';
 	@override String connectedTo({required Object label}) => 'connected to ${label}';
 	@override String get connect => 'connect';
+	@override String signsInAt({required Object host, required Object extension}) => 'signs in at ${host}, for ${extension}';
 	@override String get disconnect => 'disconnect';
 	@override String get connectedAs => 'connected as';
 	@override String get test => 'test';
@@ -5162,6 +5166,7 @@ extension on TranslationsQrp {
 			'extensionsPanel.canSetUserAgent' => 'identify itself to servers under its own name',
 			'extensionsPanel.canChangeSettings' => 'your settings, to change any of them, through its commands or on its own; through its commands, developer mode and experiments too',
 			'extensionsPanel.canControlLayouts' => 'your layouts, to switch between them, bring a panel to the front, and add layouts of its own',
+			'extensionsPanel.canDownloadAnyUrl' => 'data files from any web address, such as one you give it',
 			'extensionsPanel.canChangeDraft' => 'the contact you are logging, to change any of its fields, the call included, as you type',
 			'extensionsPanel.noCapabilities' => 'it asks for nothing outside the app.',
 			'extensionsPanel.sandboxNote' => 'extensions run sandboxed: no access to your files, and no network beyond what is listed here.',
@@ -5583,9 +5588,9 @@ extension on TranslationsQrp {
 			'operation.layout.layouts.importTitle' => 'import layout',
 			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'made for the ${view} view: panels only that view has are left out.',
 			'operation.layout.layouts.viewHome' => 'home',
-			'operation.layout.layouts.viewOperation' => 'operation',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.viewOperation' => 'operation',
 			'operation.layout.layouts.viewLogs' => 'logs',
 			'operation.layout.layouts.viewChase' => 'chasing',
 			'operation.layout.layouts.importAsNew' => 'as a new layout',
@@ -6097,9 +6102,9 @@ extension on TranslationsQrp {
 			'loggingControls.mode' => 'mode',
 			'loggingControls.theirCall' => 'their call',
 			'loggingControls.noteField' => 'note',
-			'loggingControls.todoField' => 'todo',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.todoField' => 'todo',
 			'loggingControls.sent' => 'sent',
 			'loggingControls.rcvd' => 'rcvd',
 			'loggingControls.more' => 'more',
@@ -6276,6 +6281,7 @@ extension on TranslationsQrp {
 			'fyi.sp' => 's&p',
 			'callInfo.qrz' => 'qrz',
 			'callInfo.showImage' => 'show image',
+			'callInfo.loadPhotoFrom' => ({required Object host}) => 'load photo from ${host}',
 			'callInfo.imageUnavailable' => 'photo unavailable',
 			'callInfo.photo' => 'photo',
 			'callInfo.notes' => 'notes',
@@ -6610,10 +6616,10 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.problemRecordingSilent' => 'nothing was heard from the recording device, so the message was left as it was. check the input, and that the app is allowed to use the microphone.',
 			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'the radio is not taking audio from the app right now. it needs a network connection to the radio.',
 			'settings.radio.voiceMessages.problemSourceRefused' => 'the radio would not switch its transmit audio to the app, so the message stopped. set the radio to transmit the app\'s audio.',
-			'settings.radio.voiceMessages.problemCannotKey' => 'this radio can\'t be keyed over cat, so the computer can\'t play messages into it.',
-			'settings.radio.voiceMessages.problemUnplayable' => 'that message\'s file isn\'t a sound file the app can play. use a wav, flac or mp3 file, or record it again.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemCannotKey' => 'this radio can\'t be keyed over cat, so the computer can\'t play messages into it.',
+			'settings.radio.voiceMessages.problemUnplayable' => 'that message\'s file isn\'t a sound file the app can play. use a wav, flac or mp3 file, or record it again.',
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'the recording was cut short, so the message was left as it was. check that the recording device is still connected and that there is room on the disk.',
 			'settings.radio.voiceMessages.problemFileFailed' => 'the recording couldn\'t be saved in the message\'s place, so the message was left as it was.',
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'that message needs words you haven\'t recorded: ${words}.',
@@ -6848,6 +6854,7 @@ extension on TranslationsQrp {
 			'settings.accounts.pressSaveToKeep' => 'press save to keep this account connected.',
 			'settings.accounts.connectedTo' => ({required Object label}) => 'connected to ${label}',
 			'settings.accounts.connect' => 'connect',
+			'settings.accounts.signsInAt' => ({required Object host, required Object extension}) => 'signs in at ${host}, for ${extension}',
 			'settings.accounts.disconnect' => 'disconnect',
 			'settings.accounts.connectedAs' => 'connected as',
 			'settings.accounts.test' => 'test',
@@ -7123,11 +7130,11 @@ extension on TranslationsQrp {
 			'settings.station.models.key' => 'cw key',
 			'settings.station.models.midiController' => 'midi controller',
 			'settings.station.models.winkeyer' => 'winkeyer',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.placeholderRadio' => 'simulated radio',
 			'settings.station.models.placeholderRadioNodeName' => 'simulated radio',
 			'settings.station.models.simulatedRotator' => 'simulated rotator',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.simulatedSwitch' => 'simulated antenna switch',
 			'settings.station.models.antennaGenius' => '4o3a antenna genius',
 			'settings.station.models.sierraCoax' => 'sierra radio cx-1 coax switch',
@@ -7637,11 +7644,11 @@ extension on TranslationsQrp {
 			'settings.panels.aboutDescription' => 'version, credits, and legal information',
 			'settings.panels.unavailableTitle' => 'some settings are unavailable',
 			'settings.panels.unavailableText' => 'the extension runtime failed to start, so extension-contributed settings are missing.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.station' => 'station configuration',
 			'settings.panels.stationDescription' => 'cat control and more options',
 			'settings.panels.peers' => 'peer devices',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.peersDescription' => 'connect to other devices nearby',
 			'settings.showMoreSettings' => 'show more settings',
 			'settings.gridPrecision' => 'grid precision',
@@ -7913,6 +7920,7 @@ extension on TranslationsQrp {
 			'dataFiles.downloadTimedOut' => 'the server took too long to respond. try again later.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} answered with an error (http ${status}). try again later.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} couldn\'t provide this file (http ${status}). check that its address is still right.',
+			'dataFiles.downloadRefused' => ({required Object host}) => '${host} isn\'t an address this extension may download from.',
 			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'n1mm has no call history file for ${stem}.',
 			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => 'n1mm\'s call history download for ${stem} didn\'t work. try again later.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'couldn\'t process ${name}',
@@ -8150,12 +8158,12 @@ extension on TranslationsQrp {
 			'templateEditor.reset' => 'reset',
 			'templateEditor.docs' => 'templating docs',
 			'templateEditor.preview' => 'sample preview',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.reference' => 'template reference',
 			'templateEditor.attributes' => 'available attributes',
 			'templateEditor.filters' => 'filters',
 			'templateEditor.flowControl' => 'flow control',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.unavailable' => 'preview is unavailable until extensions are ready.',
 			'templateEditor.empty' => '(empty output)',
 			'fileOpen.dropHint' => 'drop your file here',

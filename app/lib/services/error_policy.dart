@@ -48,6 +48,7 @@ import 'export_service.dart' show ExportException;
 import 'sets/set_category.dart' show SetFileException;
 import 'extensions/extension_catalog_migration.dart' show BundleWouldNotEvaluate, CatalogNotWired, UpgradeLeftNoRuntime;
 import 'extensions/extension_chasing.dart' show ChasingHookFailure;
+import 'extensions/extension_requests.dart' show ExtensionUrlRefused;
 import 'extensions/extension_scoring.dart' show ScoringHookFailure;
 import 'extensions/extension_service.dart'
     show ExtensionTimersSuspended, MalformedBandAnnotationException, MalformedKeyerSetException, MalformedLookupDataException, MalformedSpotDataException;
@@ -485,6 +486,17 @@ class ErrorPolicy {
           'Uploaded because the rate per host says whether a source is dying or a timeout is too tight',
       disposition: ErrorDisposition.report,
       matches: (error, details) => error is DataFileUnavailable,
+    ),
+    ErrorRule(
+      id: 'extension-url-refused',
+      reason:
+          'an extension named an address its manifest does not reach (a host it did not declare, plain '
+          'http, the local network), and the request was refused before anything was sent. The '
+          "extension's to fix, not the operator's: a data file's notice names the host and an outline "
+          'quietly stays off the map. Uploaded because the rate per extension shows a manifest '
+          'missing a host it uses',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is ExtensionUrlRefused,
     ),
     ErrorRule(
       id: 'data-file-import-shrank',

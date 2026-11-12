@@ -34,7 +34,7 @@ import 'extension_service.dart';
 /// says so rather than failing somewhere inside a hook. Kept equal to the
 /// packer's `H2KEXT_API_VERSION` (extensions/tools/h2kext.mjs), which lists
 /// what each version adds.
-const kExtensionApiVersion = 23;
+const kExtensionApiVersion = 24;
 
 /// The prefix reserved for Ham2K's own extensions. Refused to an installed
 /// bundle: there is no signing, so anyone could claim it, and the key is what
@@ -331,6 +331,7 @@ class InspectedBundle {
   bool get requiresSettingsWrite => manifest['requiresSettingsWrite'] == true;
   bool get requiresDraftWrite => manifest['requiresDraftWrite'] == true;
   bool get requiresLayoutControl => manifest['requiresLayoutControl'] == true;
+  bool get requiresAnyDataFileUrl => manifest['requiresAnyDataFileUrl'] == true;
 
   /// The extension API the manifest declares, 0 for none.
   int get _api => manifest['api'] is int ? manifest['api'] as int : 0;
@@ -351,7 +352,8 @@ class InspectedBundle {
       allowUserAgentOverride ||
       requiresSettingsWrite ||
       requiresDraftWrite ||
-      requiresLayoutControl;
+      requiresLayoutControl ||
+      requiresAnyDataFileUrl;
 
   /// Whether this asks for anything [installed] — the version it would
   /// replace — was not granted: a host, a stronger grant, or an assistant.
@@ -361,6 +363,7 @@ class InspectedBundle {
           (!installed.requiresSettingsWrite || (_api >= AppControlHostCalls.unaskedSettingsApi && installed._api < AppControlHostCalls.unaskedSettingsApi))) ||
       (requiresDraftWrite && !installed.requiresDraftWrite) ||
       (requiresLayoutControl && !installed.requiresLayoutControl) ||
+      (requiresAnyDataFileUrl && !installed.requiresAnyDataFileUrl) ||
       !installed.domains.toSet().containsAll(domains) ||
       !installed.webSockets.toSet().containsAll(webSockets) ||
       (requiresLocation && !installed.requiresLocation) ||

@@ -52,11 +52,11 @@ void main() {
 
   DataFileManager manager({StatusBarService? statusBar}) => DataFileManager(
     lookups: lookups,
-    extensions: ExtensionService(),
+    extensions: _Granting(),
     prefs: prefs,
     statusBar: statusBar,
     isWeb: false,
-    httpClientFactory: () => http.MockClient((request) async {
+    httpClientFactory: ({required guarded}) => http.MockClient((request) async {
       requested.add('${request.url}');
       return answers['${request.url}'] ?? http.Response('', 404);
     }),
@@ -143,11 +143,11 @@ void main() {
     final statusBar = StatusBarService(prefs);
     final m = DataFileManager(
       lookups: lookups,
-      extensions: ExtensionService(),
+      extensions: _Granting(),
       prefs: prefs,
       statusBar: statusBar,
       isWeb: false,
-      httpClientFactory: () => http.MockClient.streaming((request, _) async {
+      httpClientFactory: ({required guarded}) => http.MockClient.streaming((request, _) async {
         // The rows before the cut are written: the category is now at no
         // version, and a delta from v0 would build on rows it no longer holds.
         Stream<List<int>> body() async* {
@@ -186,4 +186,12 @@ void main() {
 
     expect(prefs.getString('data_file_etag_calls-hf'), isNull);
   });
+}
+
+/// An extension service whose every data file belongs to an extension that
+/// declares the test's host: what this file tests is the sync, not the grant
+/// (extension_requests_test does that).
+class _Granting extends ExtensionService {
+  @override
+  ExtensionNetworkGrant networkGrantFor(String? extensionKey) => const ExtensionNetworkGrant(extensionKey: 'lookups', domains: ['example.test']);
 }

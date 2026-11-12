@@ -186,6 +186,7 @@ packer can check it without running the bundle: a manifest listing
 | `domains` | The hosts `host.fetch` may call: exact names (`api.pota.app`), a wildcard (`*.example.com`), or `*`. |
 | `webSockets` | The hosts `host.webSocket` may connect to. Same shapes, plus `"local"`. A host listed only under `domains` gets no socket: consenting to requests is not consenting to a standing connection. |
 | `allowUserAgentOverride` | Lets your `host.fetch` headers set `User-Agent`. Otherwise the app stamps its own canonical one on every request and ignores yours. |
+| `requiresAnyDataFileUrl` | Lets your `dataFile` hooks download from any https address, not only your `domains`: for a file the operator points you at, a club's list on a host you cannot name in advance. Never the local network. Shown to the operator at install. Extension API 24; an app before it downloads from any address. |
 
 The rules the host enforces:
 
@@ -193,6 +194,12 @@ The rules the host enforces:
   serves http only and Ham2K's services proxy fronts it, in which case the
   request goes out over https through the proxy; `domains` still names the
   original host, and the bundle declares `api` 4 or later.
+- **The same rules hold for everything the app fetches for you**: your
+  `dataFile` and `geojsonUrlForRef` URLs, a lookup's `image`, your
+  account's OAuth issuer and its endpoints. A data file's first address must
+  be in `domains` unless you declare `requiresAnyDataFileUrl`; a redirect
+  from it may go to any https host, never the local network. A lookup photo
+  on a host you did not declare waits for the operator to tap it.
 - **A wildcard never reaches the local network**: loopback, the private
   ranges, link-local, IPv6 unique-local, `localhost` and `.local` names.
   Gear in the shack is reachable only by naming its host under `domains`, or

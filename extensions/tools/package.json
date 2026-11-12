@@ -1,6 +1,6 @@
 {
   "name": "@ham2k/extension-tools",
-  "version": "1.23.0",
+  "version": "1.24.0",
   "description": "Build and package extensions for the Ham2K Logger",
   "keywords": [
     "ham2k",

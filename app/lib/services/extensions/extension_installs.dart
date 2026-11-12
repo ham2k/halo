@@ -578,6 +578,47 @@ mixin _ExtensionInstalls {
   /// The one of [availableExtensions] called [key], if any.
   ExtensionInfo? extensionInfo(String key) => availableExtensions.where((info) => info.key == key).firstOrNull;
 
+  /// Whether a lookup's photo at [url] loads by itself, waits for the
+  /// operator to ask for it, or never loads (extension_requests.dart).
+  ///
+  /// The lookup pipeline merges every source's answer, so which extension
+  /// named the photo is not known. One loads unasked when its host is one an
+  /// extension the runtime loaded names in its `domains`: that extension may
+  /// already send anything there through `host.fetch`, so the request tells
+  /// that host nothing the operator did not consent to. A bare `*` is not
+  /// that consent — it is the declaring extension's alone. Any other https
+  /// host waits for a tap; plain http and the local network never load.
+  LookupPhoto lookupPhoto(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasAuthority) return LookupPhoto.refused;
+    if (extensionUrlRefusal(uri, domains: const [], developerMode: settings?.developerMode ?? false, anyHost: true) != null) return LookupPhoto.refused;
+    for (final info in availableExtensions) {
+      if (!_loadedExtensionKeys.contains(info.key)) continue;
+      final named = info.domains.where((entry) => entry != '*').toList();
+      if (allowlistAllows(named, uri.host)) return LookupPhoto.loads;
+    }
+    return LookupPhoto.asks;
+  }
+
+  /// The extension of [availableExtensions] that [extensionKey], as the
+  /// kernel stamped it, belongs to (`owningExtension`).
+  ExtensionInfo? owningExtensionOf(String? extensionKey) =>
+      extensionKey == null ? null : owningExtension(extensionKey, availableExtensions, (ExtensionInfo info) => info.key);
+
+  /// What [extensionKey], as the kernel stamped it, may have the app reach
+  /// for it (extension_requests.dart): its bundle's declared `domains` and
+  /// data-file grant, and developer mode. An extension the app does not
+  /// know reaches nothing.
+  ExtensionNetworkGrant networkGrantFor(String? extensionKey) {
+    final info = owningExtensionOf(extensionKey);
+    return ExtensionNetworkGrant(
+      extensionKey: extensionKey ?? 'unknown',
+      domains: info?.domains ?? const [],
+      anyDataFileHost: info?.requiresAnyDataFileUrl ?? false,
+      developerMode: settings?.developerMode ?? false,
+    );
+  }
+
   @visibleForTesting
   void debugSetAvailableExtensions(List<ExtensionInfo> extensions) => _availableExtensions = extensions;
 

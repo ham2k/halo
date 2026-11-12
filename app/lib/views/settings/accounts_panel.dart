@@ -285,12 +285,21 @@ class _AccountPaneState extends State<AccountPane> {
     return null;
   }
 
+  /// Where the sign-in goes and for which extension (`signsInAt`), or null
+  /// for an issuer that names no host.
+  String? _signInLine(BuildContext context) {
+    final host = Uri.tryParse(_oauth2?['issuer'] as String? ?? '')?.host;
+    if (host == null || host.isEmpty) return null;
+    final locale = LocaleSettings.currentLocale.languageCode;
+    final owner = widget.services.extensions.owningExtensionOf(_ownerKey);
+    return context.t.settings.accounts.signsInAt(host: host, extension: owner?.nameFor(locale) ?? '${widget.account['label']}');
+  }
+
+  /// The extension that declared this account.
+  String? get _ownerKey => widget.account['extensionKey'] as String? ?? widget.account['key'] as String?;
+
   /// Markdown the account's extension wrote, drawing its own images.
-  Widget _markdown(String data) => ExtensionMarkdownImages.owning(
-    widget.services.extensions,
-    widget.account['extensionKey'] as String? ?? widget.account['key'] as String?,
-    child: HaloMarkdown(data: data),
-  );
+  Widget _markdown(String data) => ExtensionMarkdownImages.owning(widget.services.extensions, _ownerKey, child: HaloMarkdown(data: data));
 
   List<Map<String, dynamic>> get _fields => (widget.account['fields'] as List? ?? const []).cast<Map<String, dynamic>>();
 
@@ -456,12 +465,21 @@ class _AccountPaneState extends State<AccountPane> {
       }
 
       final userAgent = await ham2kUserAgent();
+      // Each address below is one the extension caused, held to what it
+      // declared: the issuer it names, and the endpoints that issuer's
+      // discovery document names (extension_requests.dart).
+      final grant = widget.services.extensions.networkGrantFor(_ownerKey);
+      checkedOAuthUrl(issuer, grant);
       final discoveryUrl = Uri.parse('$issuer/.well-known/openid-configuration');
-      final response = await http.get(discoveryUrl, headers: {'User-Agent': userAgent});
+      final discoveryClient = ExtensionClient(grant);
+      final http.Response response;
+      try {
+        response = await discoveryClient.get(discoveryUrl, headers: {'User-Agent': userAgent});
+      } finally {
+        discoveryClient.close();
+      }
       if (response.statusCode != 200) throw Exception('Failed to load OIDC discovery: ${response.statusCode}');
-      final discovery = jsonDecode(response.body) as Map<String, dynamic>;
-      final authEndpoint = discovery['authorization_endpoint'] as String;
-      final tokenEndpoint = discovery['token_endpoint'] as String;
+      final endpoints = oauthEndpointsFrom(issuer: issuer, discovery: jsonDecode(response.body) as Map<String, dynamic>, grant: grant);
 
       final codeVerifier = _randomString(64);
       final codeChallenge = _sha256Challenge(codeVerifier);
@@ -480,7 +498,7 @@ class _AccountPaneState extends State<AccountPane> {
           ? base64Url.encode(utf8.encode(jsonEncode({'n': _randomString(16), 't': registration!.webhookClientToken, 'p': widget.account['key']})))
           : _randomString(16);
 
-      final authUri = Uri.parse(authEndpoint).replace(
+      final authUri = endpoints.authorization.replace(
         queryParameters: {
           'response_type': 'code',
           'client_id': clientId,
@@ -569,16 +587,23 @@ class _AccountPaneState extends State<AccountPane> {
       if (!mounted) return;
       setState(() => _testing = true);
 
-      final tokenResponse = await http.post(
-        // Through Ham2K's CORS proxy on web, direct everywhere else — SOTA's
-        // Keycloak sends this endpoint no Access-Control-Allow-Origin, so a
-        // browser refuses the exchange after the sign-in has already
-        // succeeded. The extension's own refresh grant takes the same route
-        // (halo_extension_host's extensionFetchUri).
-        ham2kSsoFetchUri(Uri.parse(tokenEndpoint), onWeb: kIsWeb),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': userAgent},
-        body: {'grant_type': 'authorization_code', 'client_id': clientId, 'code': code, 'redirect_uri': redirectUrl, 'code_verifier': codeVerifier},
-      );
+      // Through Ham2K's CORS proxy on web, direct everywhere else — SOTA's
+      // Keycloak sends this endpoint no Access-Control-Allow-Origin, so a
+      // browser refuses the exchange after the sign-in has already
+      // succeeded. The extension's own refresh grant takes the same route
+      // (halo_extension_host's extensionFetchUri). Judged as the endpoint the
+      // discovery document named, not the proxy's address.
+      final tokenClient = ExtensionClient(grant, named: endpoints.token);
+      final http.Response tokenResponse;
+      try {
+        tokenResponse = await tokenClient.post(
+          ham2kSsoFetchUri(endpoints.token, onWeb: kIsWeb),
+          headers: {'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': userAgent},
+          body: {'grant_type': 'authorization_code', 'client_id': clientId, 'code': code, 'redirect_uri': redirectUrl, 'code_verifier': codeVerifier},
+        );
+      } finally {
+        tokenClient.close();
+      }
 
       if (tokenResponse.statusCode != 200) {
         // The status leads, and the body is capped: on web this went through
@@ -675,6 +700,12 @@ class _AccountPaneState extends State<AccountPane> {
               textAlign: TextAlign.center,
             ),
           ] else ...[
+            // Who is asking, and where the operator is about to sign in: the
+            // issuer is the extension's choice, and the tokens go to it.
+            if (_signInLine(context) case final line?) ...[
+              Text(line, style: theme.textTheme.bodySmall, textAlign: TextAlign.center),
+              const SizedBox(height: Space.sm),
+            ],
             OutlinedButton(onPressed: (_testing || _startingOAuth) ? null : _doOAuth, child: Text(context.t.settings.accounts.connect)),
           ],
         ] else ...[

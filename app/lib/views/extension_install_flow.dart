@@ -626,6 +626,7 @@ class _ConsentDialog extends StatelessWidget {
             if (bundle.requiresSettingsWrite) _Capability(icon: MdiIcons.cogOutline, label: t.canChangeSettings),
             if (bundle.requiresDraftWrite) _Capability(icon: MdiIcons.pencilOutline, label: t.canChangeDraft),
             if (bundle.requiresLayoutControl) _Capability(icon: MdiIcons.viewDashboardOutline, label: t.canControlLayouts),
+            if (bundle.requiresAnyDataFileUrl) _Capability(icon: MdiIcons.downloadNetworkOutline, label: t.canDownloadAnyUrl),
           ],
           const SizedBox(height: Space.xl),
           Text(t.sandboxNote, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
@@ -848,6 +849,7 @@ class _DetailsDialog extends StatelessWidget {
         info.requiresSettingsWrite ||
         info.requiresDraftWrite ||
         info.requiresLayoutControl ||
+        info.requiresAnyDataFileUrl ||
         info.allowUserAgentOverride;
     final hookLabels = extensionHookLabels(info.hooks, t);
 
@@ -912,6 +914,7 @@ class _DetailsDialog extends StatelessWidget {
             if (info.requiresSettingsWrite) _Capability(icon: MdiIcons.cogOutline, label: t.canChangeSettings),
             if (info.requiresDraftWrite) _Capability(icon: MdiIcons.pencilOutline, label: t.canChangeDraft),
             if (info.requiresLayoutControl) _Capability(icon: MdiIcons.viewDashboardOutline, label: t.canControlLayouts),
+            if (info.requiresAnyDataFileUrl) _Capability(icon: MdiIcons.downloadNetworkOutline, label: t.canDownloadAnyUrl),
           ],
           if (hookLabels.isNotEmpty) ...[
             const SizedBox(height: Space.xl),

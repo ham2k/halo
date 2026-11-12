@@ -6,6 +6,8 @@
 
 import 'package:halo_core/halo_core.dart' show ham2kProxyHost, ham2kSsoFetchUri, sotaSsoHost;
 
+import 'local_network.dart';
+
 /// Hosts a WEB build reaches through services.ham2k.net at
 /// `https://services.ham2k.net/<host>/…`, because none of them answers a
 /// browser's cross-origin request. Kept in step with that Worker's
@@ -80,6 +82,53 @@ const kMaxFetchRedirects = 5;
 /// with every other extension's requests queued behind them. The ninth is
 /// refused rather than queued: a runaway loop fails where it runs.
 const kMaxFetchesInFlight = 8;
+
+/// Whether [host] matches a declared allowlist: exact hosts, `*.example.com`
+/// for subdomains, a lone `*` for any.
+bool allowlistAllows(List<String>? allowlist, String host) {
+  for (final entry in allowlist ?? const <String>[]) {
+    if (entry == '*') return true;
+    if (entry.startsWith('*.')) {
+      if (host.endsWith(entry.substring(1))) return true;
+    } else if (host == entry) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/// Why a request to [url] may not be made for an extension.
+enum ExtensionUrlRefusal {
+  /// Its host is not in the extension's declared `domains`.
+  undeclared,
+
+  /// Its host is on the local network, which only an exact `domains` entry
+  /// or developer mode reaches.
+  localNetwork,
+
+  /// It is not https, nor a plain-http host the Ham2K proxy fronts.
+  notHttps,
+}
+
+/// Why [url] may not be requested for an extension that declared [domains],
+/// or null when it may: the one rule for every request an extension causes,
+/// whoever sends it — `host.fetch`, a data file, a lookup's photo, an OAuth
+/// sign-in (docs/design/network.md).
+///
+/// Its host is in [domains], or [anyHost] admits every host the extension
+/// was granted all of; a host on the local network only when [domains] names
+/// it exactly ([allowlistNamesHost]) or in [developerMode], whatever
+/// [anyHost] says; and https, or a host [extensionFetchUri] sends through
+/// the proxy over https. Judged by spelling: where the platform resolves
+/// names, [fetchHopGuarded] says whether the connection must be judged
+/// again by what the name resolves to.
+ExtensionUrlRefusal? extensionUrlRefusal(Uri url, {required List<String>? domains, required bool developerMode, bool anyHost = false}) {
+  final host = url.host;
+  if (!anyHost && !allowlistAllows(domains, host)) return ExtensionUrlRefusal.undeclared;
+  if (isLocalNetworkHost(host) && !developerMode && !allowlistNamesHost(domains, host)) return ExtensionUrlRefusal.localNetwork;
+  if (extensionFetchUri(url, onWeb: false).scheme != 'https') return ExtensionUrlRefusal.notHttps;
+  return null;
+}
 
 /// Whether [allowlist] names [host] itself: an entry equal to it, not a
 /// wildcard that happens to match. The one form of consent that reaches the

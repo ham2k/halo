@@ -400,6 +400,9 @@ class Translations$extensionsPanel$en {
 	/// en: 'Your layouts, to switch between them, bring a panel to the front, and add layouts of its own'
 	String get canControlLayouts => 'Your layouts, to switch between them, bring a panel to the front, and add layouts of its own';
 
+	/// en: 'Data files from any web address, such as one you give it'
+	String get canDownloadAnyUrl => 'Data files from any web address, such as one you give it';
+
 	/// en: 'The contact you are logging, to change any of its fields, the call included, as you type'
 	String get canChangeDraft => 'The contact you are logging, to change any of its fields, the call included, as you type';
 
@@ -1774,6 +1777,9 @@ class Translations$callInfo$en {
 	/// en: 'Show Image'
 	String get showImage => 'Show Image';
 
+	/// en: 'Load photo from ${host}'
+	String loadPhotoFrom({required Object host}) => 'Load photo from ${host}';
+
 	/// en: 'Photo unavailable'
 	String get imageUnavailable => 'Photo unavailable';
 
@@ -2561,6 +2567,9 @@ class Translations$dataFiles$en {
 
 	/// en: '${host} couldn't provide this file (HTTP ${status}). Check that its address is still right.'
 	String downloadNotAvailable({required Object host, required Object status}) => '${host} couldn\'t provide this file (HTTP ${status}). Check that its address is still right.';
+
+	/// en: '${host} isn't an address this extension may download from.'
+	String downloadRefused({required Object host}) => '${host} isn\'t an address this extension may download from.';
 
 	/// en: 'N1MM has no call history file for ${stem}.'
 	String n1mmHistoryNoMatch({required Object stem}) => 'N1MM has no call history file for ${stem}.';
@@ -6116,6 +6125,9 @@ class Translations$settings$accounts$en {
 
 	/// en: 'Connect'
 	String get connect => 'Connect';
+
+	/// en: 'Signs in at ${host}, for ${extension}'
+	String signsInAt({required Object host, required Object extension}) => 'Signs in at ${host}, for ${extension}';
 
 	/// en: 'Disconnect'
 	String get disconnect => 'Disconnect';
@@ -11382,6 +11394,7 @@ extension on Translations {
 			'extensionsPanel.canSetUserAgent' => 'Identify itself to servers under its own name',
 			'extensionsPanel.canChangeSettings' => 'Your settings, to change any of them, through its commands or on its own; through its commands, developer mode and experiments too',
 			'extensionsPanel.canControlLayouts' => 'Your layouts, to switch between them, bring a panel to the front, and add layouts of its own',
+			'extensionsPanel.canDownloadAnyUrl' => 'Data files from any web address, such as one you give it',
 			'extensionsPanel.canChangeDraft' => 'The contact you are logging, to change any of its fields, the call included, as you type',
 			'extensionsPanel.noCapabilities' => 'It asks for nothing outside the app.',
 			'extensionsPanel.sandboxNote' => 'Extensions run sandboxed: no access to your files, and no network beyond what is listed here.',
@@ -11803,9 +11816,9 @@ extension on Translations {
 			'operation.layout.layouts.importTitle' => 'Import Layout',
 			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'Made for the ${view} view: panels only that view has are left out.',
 			'operation.layout.layouts.viewHome' => 'Home',
-			'operation.layout.layouts.viewOperation' => 'Operation',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.viewOperation' => 'Operation',
 			'operation.layout.layouts.viewLogs' => 'Logs',
 			'operation.layout.layouts.viewChase' => 'Chasing',
 			'operation.layout.layouts.importAsNew' => 'As a new layout',
@@ -12317,9 +12330,9 @@ extension on Translations {
 			'loggingControls.mode' => 'Mode',
 			'loggingControls.theirCall' => 'Their call',
 			'loggingControls.noteField' => 'Note',
-			'loggingControls.todoField' => 'Todo',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.todoField' => 'Todo',
 			'loggingControls.sent' => 'Sent',
 			'loggingControls.rcvd' => 'Rcvd',
 			'loggingControls.more' => 'More',
@@ -12496,6 +12509,7 @@ extension on Translations {
 			'fyi.sp' => 'S&P',
 			'callInfo.qrz' => 'QRZ',
 			'callInfo.showImage' => 'Show Image',
+			'callInfo.loadPhotoFrom' => ({required Object host}) => 'Load photo from ${host}',
 			'callInfo.imageUnavailable' => 'Photo unavailable',
 			'callInfo.photo' => 'Photo',
 			'callInfo.notes' => 'Notes',
@@ -12830,10 +12844,10 @@ extension on Translations {
 			'settings.radio.voiceMessages.problemRecordingSilent' => 'Nothing was heard from the recording device, so the message was left as it was. Check the input, and that the app is allowed to use the microphone.',
 			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'The radio is not taking audio from the app right now. It needs a network connection to the radio.',
 			'settings.radio.voiceMessages.problemSourceRefused' => 'The radio would not switch its transmit audio to the app, so the message stopped. Set the radio to transmit the app\'s audio.',
-			'settings.radio.voiceMessages.problemCannotKey' => 'This radio can\'t be keyed over CAT, so the computer can\'t play messages into it.',
-			'settings.radio.voiceMessages.problemUnplayable' => 'That message\'s file isn\'t a sound file the app can play. Use a WAV, FLAC or MP3 file, or record it again.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemCannotKey' => 'This radio can\'t be keyed over CAT, so the computer can\'t play messages into it.',
+			'settings.radio.voiceMessages.problemUnplayable' => 'That message\'s file isn\'t a sound file the app can play. Use a WAV, FLAC or MP3 file, or record it again.',
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'The recording was cut short, so the message was left as it was. Check that the recording device is still connected and that there is room on the disk.',
 			'settings.radio.voiceMessages.problemFileFailed' => 'The recording couldn\'t be saved in the message\'s place, so the message was left as it was.',
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'That message needs words you haven\'t recorded: ${words}.',
@@ -13068,6 +13082,7 @@ extension on Translations {
 			'settings.accounts.pressSaveToKeep' => 'Press Save to keep this account connected.',
 			'settings.accounts.connectedTo' => ({required Object label}) => 'Connected to ${label}',
 			'settings.accounts.connect' => 'Connect',
+			'settings.accounts.signsInAt' => ({required Object host, required Object extension}) => 'Signs in at ${host}, for ${extension}',
 			'settings.accounts.disconnect' => 'Disconnect',
 			'settings.accounts.connectedAs' => 'Connected as',
 			'settings.accounts.test' => 'Test',
@@ -13343,11 +13358,11 @@ extension on Translations {
 			'settings.station.models.key' => 'CW Key',
 			'settings.station.models.midiController' => 'MIDI Controller',
 			'settings.station.models.winkeyer' => 'WinKeyer',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.placeholderRadio' => 'Simulated Radio',
 			'settings.station.models.placeholderRadioNodeName' => 'Simulated Radio',
 			'settings.station.models.simulatedRotator' => 'Simulated Rotator',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.simulatedSwitch' => 'Simulated Antenna Switch',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
@@ -13857,11 +13872,11 @@ extension on Translations {
 			'settings.panels.aboutDescription' => 'Version, credits, and legal information',
 			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
 			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.station' => 'Station Configuration',
 			'settings.panels.stationDescription' => 'CAT control and more options',
 			'settings.panels.peers' => 'Peer Devices',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.peersDescription' => 'Connect to other devices nearby',
 			'settings.showMoreSettings' => 'Show more settings',
 			'settings.gridPrecision' => 'Grid Precision',
@@ -14133,6 +14148,7 @@ extension on Translations {
 			'dataFiles.downloadTimedOut' => 'The server took too long to respond. Try again later.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} answered with an error (HTTP ${status}). Try again later.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} couldn\'t provide this file (HTTP ${status}). Check that its address is still right.',
+			'dataFiles.downloadRefused' => ({required Object host}) => '${host} isn\'t an address this extension may download from.',
 			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'N1MM has no call history file for ${stem}.',
 			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => 'N1MM\'s call history download for ${stem} didn\'t work. Try again later.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'Couldn\'t process ${name}',
@@ -14370,12 +14386,12 @@ extension on Translations {
 			'templateEditor.reset' => 'Reset',
 			'templateEditor.docs' => 'Templating Docs',
 			'templateEditor.preview' => 'Sample preview',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.reference' => 'Template reference',
 			'templateEditor.attributes' => 'Available Attributes',
 			'templateEditor.filters' => 'Filters',
 			'templateEditor.flowControl' => 'Flow Control',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.unavailable' => 'Preview is unavailable until extensions are ready.',
 			'templateEditor.empty' => '(empty output)',
 			'fileOpen.dropHint' => 'Drop your file here',

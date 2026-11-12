@@ -85,6 +85,48 @@ otherwise. The gate lives in `resolveFetchUserAgent`
 ([`fetch_policy.dart`](../../packages/halo_extension_host/lib/src/fetch_policy.dart)),
 seeded by the app from the manifest capability.
 
+## One rule for every request an extension causes
+
+The install screen tells the operator an extension reaches nothing beyond
+what its manifest lists. An address the extension names is the extension
+reaching, whoever sends the request, so one rule decides them all:
+`extensionUrlRefusal`
+([`fetch_policy.dart`](../../packages/halo_extension_host/lib/src/fetch_policy.dart)).
+The host is in the extension's `domains`; the local network only when
+`domains` names the host exactly, or in developer mode; and https, or a
+plain-http host the Ham2K proxy fronts. Natively a host reached through a
+wildcard is also judged by what its name resolves to (`guardedFetchClient`).
+
+Who applies it:
+
+- **`host.fetch`**: the host core, on every hop.
+- **`host.webSocket`**: the allowlist on the URL given; the handshake's
+  connections are pinned to that host and port, so a redirect fails to
+  connect (`socket_connect_io.dart`).
+- **Data files, Ham2K data files and reference outlines**: the app, through
+  `ExtensionClient`
+  ([`extension_requests.dart`](../../app/lib/services/extensions/extension_requests.dart)),
+  with the grant of the extension that named the URL
+  (`ExtensionService.networkGrantFor`). The address judged is the one the
+  extension named, not the form the app rewrote it to (a share link's
+  download form, the proxy on web). A data file under the manifest's
+  `requiresAnyDataFileUrl` may name any public https host, for a file the
+  operator points it at. A redirect is the server's choice, not the
+  extension's: it is followed to any public https host, never the local
+  network or plain http. An `n1mm-history:` address is the app's own and is
+  not judged.
+- **A lookup's photo**: which source named it is lost in the merge, so the
+  rule is the host's. One that a running extension names in its `domains`
+  (a bare `*` does not count, being that extension's consent alone) loads
+  as it arrives; any other https host waits for the operator to tap it,
+  named; plain http and the local network never load
+  (`ExtensionService.lookupPhoto`).
+- **OAuth sign-in**: the issuer and the authorization and token endpoints
+  its discovery document names, which must also name the issuer as its own
+  (`oauthEndpointsFrom`). The browser opens an https page only, and the
+  account pane names the issuer's host and the extension before the
+  operator signs in.
+
 ## Not covered here
 
 Tile-layer identifiers such as `flutter_map`'s `userAgentPackageName`

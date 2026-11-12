@@ -12,6 +12,7 @@ import 'package:halo_core/halo_core.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart' show ExtensionInfo;
 import 'package:ham2k_logger/views/operation/call_info_panel.dart';
 
 import '../support/halo_test_support.dart';
@@ -19,8 +20,15 @@ import '../support/halo_test_support.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  Future<HaLoServices> buildServices() async {
-    return (await makeHaLoServices()).services;
+  /// Services whose running extensions declare the photo host, so a photo
+  /// loads unasked ([ExtensionService.lookupPhoto]); the tests below are about
+  /// what the thumbnail does once it is asked for.
+  Future<HaLoServices> buildServices({List<String> declared = const ['example.test']}) async {
+    final services = (await makeHaLoServices()).services;
+    services.extensions
+      ..debugSetAvailableExtensions([ExtensionInfo(key: 'w1xyz-photos', file: 'w1xyz-photos.js', core: false, name: 'Photos', domains: declared)])
+      ..debugLoadedExtensionKeys = {'w1xyz-photos'};
+    return services;
   }
 
   /// Every image load fails under the test binding — which is exactly the case
@@ -94,5 +102,23 @@ void main() {
 
     final thumbnail = find.byType(InkWell);
     expect(tester.widget<InkWell>(thumbnail.first).onTap, isNotNull);
+  });
+
+  testWidgets('a photo on a host no running extension declared waits for the operator, naming the host', (tester) async {
+    // Loaded unasked, a lookup source could send anything to any host in the
+    // photo's address — the callsign looked up, for one — past the domains
+    // the install screen showed. Asked, the operator sees where it goes.
+    await pumpPanel(tester, await buildServices(declared: const []), image: 'https://collector.example/w1aw.jpg');
+    expect(find.byType(Image), findsNothing);
+
+    await tester.tap(find.text('Load photo from collector.example'));
+    await tester.pumpAndSettle();
+    expect(find.text('Photo unavailable'), findsOneWidget, reason: 'asked for, it loads (and, under the test binding, fails)');
+  });
+
+  testWidgets('a photo over plain http is not shown at all', (tester) async {
+    await pumpPanel(tester, await buildServices(), image: 'http://example.test/w1aw.jpg');
+    expect(find.byType(Image), findsNothing);
+    expect(find.textContaining('Load photo'), findsNothing);
   });
 }

@@ -217,7 +217,10 @@ class _OAuthBrowserLoginBodyState extends State<OAuthBrowserLoginBody> {
   }
 
   Future<void> _openBrowser() async {
-    final launcher = widget.launcher ?? (uri) => launchUrl(uri, mode: LaunchMode.externalApplication);
+    // https only, whatever reaches here: the sign-in page an extension's
+    // issuer named is opened by the operator's browser, and `file:` or
+    // `javascript:` there is not a sign-in page (link_opener.dart).
+    final launcher = widget.launcher ?? (uri) async => uri.scheme == 'https' && await launchUrl(uri, mode: LaunchMode.externalApplication);
     var opened = false;
     try {
       opened = await launcher(widget.authUri);
