@@ -135,38 +135,42 @@ class HistoryFilter {
   /// `refPrefix`, `operation`, `band`, `mode`) given with no values: `operation: []`
   /// built from an empty list asks for "none of these", which no answer
   /// here expresses. An empty `exclude…` option excludes nothing.
-  factory HistoryFilter.fromParams(Map<String, dynamic> params) {
-    final unknown = params.keys.where((key) => !_knownParams.contains(key));
+  ///
+  /// [hostCall] is the host call the message names; [alsoKnown] are that
+  /// call's own options beside these (`findCalls`'s `match`), read by
+  /// another parser.
+  factory HistoryFilter.fromParams(Map<String, dynamic> params, {String hostCall = 'getHistoryForCall', Set<String> alsoKnown = const {}}) {
+    final unknown = params.keys.where((key) => !_knownParams.contains(key) && !alsoKnown.contains(key));
     if (unknown.isNotEmpty) {
-      throw FormatException('getHistoryForCall: unknown option `${unknown.first}`');
+      throw FormatException('$hostCall: unknown option `${unknown.first}`');
     }
     final froms = <int>[
-      if (params['fromDate'] != null) _startOfUtcDay(_parseInstant('fromDate', params['fromDate'])),
-      if (params['fromDateMillis'] != null) _startOfUtcDay(_parseMillis('fromDateMillis', params['fromDateMillis'])),
-      if (params['fromTime'] != null) _parseInstant('fromTime', params['fromTime']),
-      if (params['fromTimeMillis'] != null) _parseMillis('fromTimeMillis', params['fromTimeMillis']),
+      if (params['fromDate'] != null) _startOfUtcDay(_parseInstant(hostCall, 'fromDate', params['fromDate'])),
+      if (params['fromDateMillis'] != null) _startOfUtcDay(_parseMillis(hostCall, 'fromDateMillis', params['fromDateMillis'])),
+      if (params['fromTime'] != null) _parseInstant(hostCall, 'fromTime', params['fromTime']),
+      if (params['fromTimeMillis'] != null) _parseMillis(hostCall, 'fromTimeMillis', params['fromTimeMillis']),
     ];
     final tos = <int>[
-      if (params['toDate'] != null) _endOfUtcDay(_parseInstant('toDate', params['toDate'])),
-      if (params['toDateMillis'] != null) _endOfUtcDay(_parseMillis('toDateMillis', params['toDateMillis'])),
-      if (params['toTime'] != null) _parseInstant('toTime', params['toTime']),
-      if (params['toTimeMillis'] != null) _parseMillis('toTimeMillis', params['toTimeMillis']),
+      if (params['toDate'] != null) _endOfUtcDay(_parseInstant(hostCall, 'toDate', params['toDate'])),
+      if (params['toDateMillis'] != null) _endOfUtcDay(_parseMillis(hostCall, 'toDateMillis', params['toDateMillis'])),
+      if (params['toTime'] != null) _parseInstant(hostCall, 'toTime', params['toTime']),
+      if (params['toTimeMillis'] != null) _parseMillis(hostCall, 'toTimeMillis', params['toTimeMillis']),
     ];
-    final mode = _strings(params, 'mode', include: true);
-    final excludeMode = _strings(params, 'excludeMode');
+    final mode = _strings(hostCall, params, 'mode', include: true);
+    final excludeMode = _strings(hostCall, params, 'excludeMode');
     return HistoryFilter(
-      refTypes: _strings(params, 'refType', include: true),
-      refPrefixes: {for (final prefix in _strings(params, 'refPrefix', include: true)) _asciiUpper(prefix)},
-      refsSegmentAware: _bool(params, 'refsSegmentAware'),
-      operations: _strings(params, 'operation', include: true),
-      excludeOperations: _strings(params, 'excludeOperation'),
-      bands: {for (final band in _strings(params, 'band', include: true)) band.toLowerCase()},
-      excludeBands: {for (final band in _strings(params, 'excludeBand')) band.toLowerCase()},
+      refTypes: _strings(hostCall, params, 'refType', include: true),
+      refPrefixes: {for (final prefix in _strings(hostCall, params, 'refPrefix', include: true)) _asciiUpper(prefix)},
+      refsSegmentAware: _bool(hostCall, params, 'refsSegmentAware'),
+      operations: _strings(hostCall, params, 'operation', include: true),
+      excludeOperations: _strings(hostCall, params, 'excludeOperation'),
+      bands: {for (final band in _strings(hostCall, params, 'band', include: true)) band.toLowerCase()},
+      excludeBands: {for (final band in _strings(hostCall, params, 'excludeBand')) band.toLowerCase()},
       modes: mode.isEmpty ? null : HistoryModeMatch.parse(mode),
       excludeModes: excludeMode.isEmpty ? null : HistoryModeMatch.parse(excludeMode),
       fromMillis: froms.isEmpty ? null : froms.reduce((a, b) => a > b ? a : b),
       toMillis: tos.isEmpty ? null : tos.reduce((a, b) => a < b ? a : b),
-      limit: _limit(params['limit']),
+      limit: _limit(hostCall, params['limit']),
     );
   }
 
@@ -315,7 +319,7 @@ class HistoryFilter {
     'limit',
   };
 
-  static Set<String> _strings(Map<String, dynamic> params, String key, {bool include = false}) {
+  static Set<String> _strings(String hostCall, Map<String, dynamic> params, String key, {bool include = false}) {
     final value = params[key];
     if (value == null) return const {};
     final Set<String> values;
@@ -327,37 +331,37 @@ class HistoryFilter {
           if (v.trim().isNotEmpty) v.trim(),
       };
     } else {
-      throw FormatException('getHistoryForCall: `$key` must be a string or an array of strings, got $value');
+      throw FormatException('$hostCall: `$key` must be a string or an array of strings, got $value');
     }
     if (include && values.isEmpty) {
-      throw FormatException('getHistoryForCall: `$key` has no values, so it would match nothing');
+      throw FormatException('$hostCall: `$key` has no values, so it would match nothing');
     }
     return values;
   }
 
-  static bool _bool(Map<String, dynamic> params, String key) {
+  static bool _bool(String hostCall, Map<String, dynamic> params, String key) {
     final value = params[key];
     if (value == null || value is bool) return value == true;
-    throw FormatException('getHistoryForCall: `$key` must be true or false, got $value');
+    throw FormatException('$hostCall: `$key` must be true or false, got $value');
   }
 
-  static int _limit(Object? value) {
+  static int _limit(String hostCall, Object? value) {
     if (value == null) return defaultLimit;
     if (value is! num || value < 1) {
-      throw FormatException('getHistoryForCall: `limit` must be a positive number, got $value');
+      throw FormatException('$hostCall: `limit` must be a positive number, got $value');
     }
     return value.toInt().clamp(1, maxLimit);
   }
 
-  static int _parseMillis(String key, Object? value) {
+  static int _parseMillis(String hostCall, String key, Object? value) {
     if (value is num) return value.toInt();
-    throw FormatException('getHistoryForCall: `$key` must be a number of milliseconds, got $value');
+    throw FormatException('$hostCall: `$key` must be a number of milliseconds, got $value');
   }
 
   /// An ISO 8601 date or timestamp. One with no offset is UTC, not local:
   /// a log's times are UTC, and the same call must not answer differently
   /// by the machine's time zone.
-  static int _parseInstant(String key, Object? value) {
+  static int _parseInstant(String hostCall, String key, Object? value) {
     final parsed = value is String ? DateTime.tryParse(value.trim()) : null;
     if (parsed != null) {
       if (parsed.isUtc) return parsed.millisecondsSinceEpoch;
@@ -372,7 +376,7 @@ class HistoryFilter {
         parsed.microsecond,
       ).millisecondsSinceEpoch;
     }
-    throw FormatException('getHistoryForCall: `$key` must be an ISO 8601 date or timestamp, got $value');
+    throw FormatException('$hostCall: `$key` must be an ISO 8601 date or timestamp, got $value');
   }
 
   static const _dayMillis = Duration.millisecondsPerDay;

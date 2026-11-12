@@ -52,6 +52,10 @@ class LookupStore {
     for (final row in await repository.queryLookups(category, query, activeOnly: activeOnly)) _toJson(row)!,
   ];
 
+  Future<List<Map<String, Object?>>> findCalls(String category, CallMatch match) async => [
+    for (final (row, kind) in await repository.findLookupCalls(category, match)) {..._toJson(row)!, 'match': kind.name},
+  ];
+
   Future<List<Map<String, Object?>>> selectByLocation(String category, double lat, double lon, double delta, {bool activeOnly = false}) async => [
     for (final row in await repository.queryLookupsByLocation(category, lat, lon, delta, activeOnly: activeOnly)) _toJson(row)!,
   ];

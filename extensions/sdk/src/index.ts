@@ -16,6 +16,8 @@ import type {
   JSONValue,
   ExtensionDefinition,
   LookupRow,
+  CallMatchOptions,
+  FoundLookupRow,
   FormDefinition,
   FormField,
   ResultMessage,
@@ -65,7 +67,7 @@ import { adoptExtensionTimers, clearInterval, clearTimeout, setInterval, setTime
  * `^1.<api>.0` range names the oldest API an extension needs and admits every
  * later one.
  */
-export const API_VERSION = 24
+export const API_VERSION = 25
 
 export * from "./types.ts"
 export * from "./hookCategories.ts"
@@ -628,6 +630,13 @@ export const host = {
   /// it. A row that never said (`flags` null) is NOT retired and survives.
   async dbLookupSelectAll(category: string, query: string, subCategory?: string, activeOnly?: boolean): Promise<LookupRow[]> {
     return (await hostCallFn()("dbLookupSelectAll", { category, query, subCategory, activeOnly })) as LookupRow[]
+  },
+
+  /// The rows of a dataset keyed by callsign whose key [call] — the text
+  /// being typed — could be, as `ctx.findCalls` matches the log: closest
+  /// first, then by key, each with how it matched. API 25.
+  async dbLookupFindCalls(category: string, call: string, options: CallMatchOptions = {}): Promise<FoundLookupRow[]> {
+    return (await hostCallFn()("dbLookupFindCalls", { category, call, ...options })) as FoundLookupRow[]
   },
 
   async dbLookupSelectByLocation(category: string, lat: number, lon: number, delta: number, activeOnly?: boolean): Promise<LookupRow[]> {

@@ -8,6 +8,7 @@
 import 'package:drift/drift.dart';
 
 import '../db/database.dart';
+import 'call_match.dart';
 
 /// Escapes SQLite LIKE metacharacters (`%`, `_`) in [input] so a search term
 /// containing either is matched literally rather than as a wildcard —
@@ -132,6 +133,38 @@ class LookupRepository {
           ])
           ..limit(100))
         .get();
+  }
+
+  /// The rows of [category] whose `key` [match] finds, each with how it
+  /// matched — `host.dbLookupFindCalls`, for a dataset keyed by callsign.
+  /// Closest first, then by key, at most [CallMatch.limit]. Keys are
+  /// compared as stored, so a dataset keyed by callsign stores them
+  /// uppercase.
+  Future<List<(LookupRow, CallMatchKind)>> findLookupCalls(String category, CallMatch match) async {
+    if (match.isEmpty) return const [];
+    final column = '"${db.lookups.aliasedName}"."${db.lookups.key.name}"';
+    final rank = match.rankSql(column);
+    final rows =
+        await (db.select(db.lookups)
+              ..where(
+                (l) =>
+                    l.category.equals(category) &
+                    CustomExpression<bool>(
+                      match.whereSql(
+                        column,
+                        table: '"${db.lookups.actualTableName}"',
+                        key: '"${db.lookups.key.name}"',
+                        also: "\"${db.lookups.category.name}\" = '${category.replaceAll("'", "''")}'",
+                      ),
+                    ),
+              )
+              ..orderBy([if (rank != null) (l) => OrderingTerm.asc(CustomExpression<int>(rank)), (l) => OrderingTerm.asc(l.key)])
+              ..limit(match.limit))
+            .get();
+    return [
+      for (final row in rows)
+        if (match.kindOf(row.key) case final kind?) (row, kind),
+    ];
   }
 
   /// Searches lookups in a category by proximity to a lat/lon coordinate

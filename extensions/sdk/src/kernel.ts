@@ -46,6 +46,9 @@ import type {
   SettingsPanelDescriptor,
   Spot,
   HistoryForCallOptions,
+  FindCallsOptions,
+  FoundCall,
+  CandidateVerdict,
   GetSpotsOptions,
   BoardSpot,
   HeldBandAnnotation,
@@ -937,6 +940,17 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     // HookContext.getHistoryForCall.
     getHistoryForCall: async (call: string, options?: HistoryForCallOptions) =>
       ((await dispatchHostCall("getHistoryForCall", { ...options, call }, record.extensionKey)) as Record<string, unknown>[] | null) ?? [],
+    // The log's calls the typed text could be — see HookContext.findCalls.
+    findCalls: async (call: string, options?: FindCallsOptions) =>
+      ((await dispatchHostCall("findCalls", { ...options, call }, record.extensionKey)) as FoundCall[] | null) ?? [],
+    // Judged against the operation this hook was handed unless told another
+    // — see HookContext.scoreCandidates.
+    scoreCandidates: async (candidates: Record<string, unknown>, options?: { operationUuid?: string }) =>
+      ((await dispatchHostCall(
+        "scoreCandidates",
+        { candidates, operationUuid: options?.operationUuid ?? operationUuidOf(args) },
+        record.extensionKey,
+      )) as Record<string, CandidateVerdict> | null) ?? null,
   }
   if (record.category !== "panel" || method !== "onEvent") return await member.call(record.hook, args, ctx)
   panelEventsRunning[record.extensionKey] = (panelEventsRunning[record.extensionKey] ?? 0) + 1

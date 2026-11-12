@@ -963,6 +963,11 @@ class ExtensionService
   /// (`host.updateDraft`). False when no such operation is open to take it.
   bool Function(Map<String, dynamic> patch, String? operationUuid, {required bool replace})? onUpdateDraft;
 
+  /// Judges [candidates] against the operation in front — [operationUuid]'s
+  /// only, when given — as its logging fields judge the contact being typed
+  /// (`ctx.scoreCandidates`). Null when no such operation is open.
+  Future<Map<String, Map<String, dynamic>>?> Function(Map<String, Map<String, dynamic>> candidates, String? operationUuid)? onScoreCandidates;
+
   /// Deterministic offline lookups: with `--dart-define=HALO_STUB_LOOKUPS=1`
   /// in a dev build, [lookupCall] returns a fixed canned result instead of
   /// invoking the (network/credentialed) lookup extensions. `debugEnvFlag`

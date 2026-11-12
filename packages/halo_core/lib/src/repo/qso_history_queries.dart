@@ -8,6 +8,7 @@ import 'package:drift/drift.dart';
 import '../db/database.dart';
 import '../dev_log.dart';
 import '../models/models.dart';
+import 'call_match.dart';
 import 'history_filter.dart';
 import 'repo_support.dart';
 
@@ -66,6 +67,46 @@ mixin QsoHistoryQueries {
     if (limit != null) query.limit(limit);
     final rows = await query.get();
     return [for (final row in rows) qsoFromRow(row.readTable(db.qsos))];
+  }
+
+  /// The callsigns in the log that [match] finds, with how many contacts
+  /// each has and when the latest started, in [compareFoundCalls]' order
+  /// and at most [CallMatch.limit] of them — `ctx.findCalls`. The same rules
+  /// as [historyForCall]: soft-deleted contacts, those of deleted
+  /// operations, and event markers do not count, and [filter] narrows the
+  /// contacts counted before the calls are grouped (its own `limit` is
+  /// [historyForCall]'s, not this one's).
+  ///
+  /// A partial match reads the whole `theirCall` index, about 12 ms on a log
+  /// of 300,000 contacts; exact and one-edit matches look each call up.
+  Future<List<FoundCall>> findCalls(CallMatch match, {HistoryFilter filter = HistoryFilter.none}) async {
+    if (match.isEmpty) return const [];
+    final column = '"${db.qsos.aliasedName}"."${db.qsos.theirCall.name}"';
+    final count = db.qsos.uuid.count();
+    final last = db.qsos.startAtMillis.max();
+    final rank = match.rankSql(column);
+    final query = db.selectOnly(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
+      ..addColumns([db.qsos.theirCall, count, last])
+      ..where(
+        CustomExpression<bool>(match.whereSql(column, table: '"${db.qsos.actualTableName}"', key: '"${db.qsos.theirCall.name}"')) &
+            db.qsos.deleted.equals(false) &
+            isContact &
+            (db.operations.deleted.equals(false) | db.operations.uuid.isNull()) &
+            filter.toSql(db.qsos, db.operations),
+      )
+      ..groupBy([db.qsos.theirCall])
+      ..orderBy([
+        if (rank != null) OrderingTerm.asc(CustomExpression<int>(rank)),
+        OrderingTerm.desc(count),
+        OrderingTerm.desc(last),
+        OrderingTerm.asc(db.qsos.theirCall),
+      ])
+      ..limit(match.limit);
+    return [
+      for (final row in await query.get())
+        if ((row.read(db.qsos.theirCall), row.read(count)) case (final String call, final int n))
+          if (match.kindOf(call) case final kind?) (call: call, match: kind, count: n, lastAtMillis: row.read(last)),
+    ];
   }
 
   /// [historyForCall] for each of [calls] at once: each one's history under

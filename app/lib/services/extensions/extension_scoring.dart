@@ -381,6 +381,18 @@ mixin ExtensionScoring {
   /// (`ScoringService.candidateResumesFor`). Each carries its own tail: these
   /// checkpoints are not the operation's, and stand at a different point in
   /// the log.
+  /// [candidate] with `their.call` trimmed and uppercased, as the log
+  /// spells calls: scorers key their worked-call tables on the call as
+  /// spelled, so a lowercase one, from an extension or a spot, is never a
+  /// duplicate of anything.
+  static Map<String, dynamic> _withCallUppercased(Map<String, dynamic> candidate) => switch (candidate['their']) {
+    final Map<dynamic, dynamic> their when their['call'] is String => {
+      ...candidate,
+      'their': {...their.cast<String, dynamic>(), 'call': (their['call'] as String).trim().toUpperCase()},
+    },
+    _ => candidate,
+  };
+
   Future<Map<String, Map<String, dynamic>>?> scoreCandidates({
     required Map<String, dynamic> operation,
     required String operationUuid,
@@ -427,7 +439,7 @@ mixin ExtensionScoring {
     // A hunt-only scorer sees only the candidates hunting its references
     // (see [priority.judgesCandidate]), and none means no call at all.
     final everyCandidate = [
-      for (final entry in candidates.entries) {'key': entry.key, 'qso': entry.value},
+      for (final entry in candidates.entries) {'key': entry.key, 'qso': _withCallUppercased(entry.value)},
     ];
     final batches = [
       for (final scorer in scorers)

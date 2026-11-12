@@ -81,8 +81,10 @@ import yazl from "yazl"
 /// `host.layouts` with its `requiresLayoutControl` grant, and a scene's
 /// `cells` and `grid`, named `sources`, `clipX`/`clipY` and peak `hold`; 24
 /// holds every address the app fetches for an extension to its `domains`,
-/// and adds the `requiresAnyDataFileUrl` grant.
-export const H2KEXT_API_VERSION = 24
+/// and adds the `requiresAnyDataFileUrl` grant; 25 adds `ctx.findCalls`,
+/// `host.dbLookupFindCalls` and `ctx.scoreCandidates`, what a super check
+/// partial reads.
+export const H2KEXT_API_VERSION = 25
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -275,6 +277,7 @@ SHARED_MODULES_BY_API[21] = SHARED_MODULES_BY_API[20]
 SHARED_MODULES_BY_API[22] = SHARED_MODULES_BY_API[21]
 SHARED_MODULES_BY_API[23] = SHARED_MODULES_BY_API[22]
 SHARED_MODULES_BY_API[24] = SHARED_MODULES_BY_API[23]
+SHARED_MODULES_BY_API[25] = SHARED_MODULES_BY_API[24]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

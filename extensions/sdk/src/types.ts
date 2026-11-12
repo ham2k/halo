@@ -158,6 +158,67 @@ export interface HookContext {
   /// re-check on the results whatever the caller relies on — and read an
   /// empty answer there as "none among the latest five", not "none at all".
   getHistoryForCall?(call: string, options?: HistoryForCallOptions): Promise<Record<string, JSONValue>[]>
+  /// The callsigns logged before, across every operation, that [call] — the
+  /// text being typed — could be: the whole call, a call it appears inside,
+  /// or one a single edit away (a character changed, added or removed, or
+  /// two neighbours swapped). A `?` in [call] stands for any one character
+  /// and turns one-edit matching off. Each comes with how it matched, how
+  /// many contacts it has and when the latest started, closest matches
+  /// first, then the most worked, then the most recent; `[]` for none or
+  /// no log access.
+  ///
+  /// [options] are `getHistoryForCall`'s filters, which narrow the contacts
+  /// counted, with `match` to ask for some kinds only and `limit` (20 when
+  /// omitted, never more than 100). [call] holding anything but letters,
+  /// digits, `/` and `?` rejects the promise, as a malformed option does.
+  /// Extension API 25; absent on hosts older than it.
+  findCalls?(call: string, options?: FindCallsOptions): Promise<FoundCall[]>
+  /// What logging each of [candidates] would be in the operation open in
+  /// front — by default the `operation` the calling hook was handed, and
+  /// only while it is open — judged by the scorers that judge the contact
+  /// being typed: each key's `notices` and `alerts` (`duplicate`, a new
+  /// multiplier) and the `icons` scorers name, absent where no scorer had
+  /// anything to say. Null when no such operation is open. At most 20
+  /// candidates, each a QSO as far as it is known (`their.call`, `band`,
+  /// `mode`, `refs`); more rejects the promise.
+  /// Extension API 25; absent on hosts older than it.
+  scoreCandidates?(
+    candidates: Record<string, Record<string, JSONValue>>,
+    options?: { operationUuid?: string },
+  ): Promise<Record<string, CandidateVerdict> | null>
+}
+
+/// How a callsign matched the text `findCalls` or `host.dbLookupFindCalls`
+/// was given, closest first: the whole call, the text inside it, or one
+/// edit away.
+export type CallMatchKind = "exact" | "partial" | "oneEdit"
+
+/// Which kinds of match to look for (every kind when omitted), and how many
+/// calls to answer with: 20 when omitted, never more than 100.
+export interface CallMatchOptions {
+  match?: CallMatchKind | CallMatchKind[]
+  limit?: number
+}
+
+/// `findCalls`' options: `getHistoryForCall`'s filters, which narrow the
+/// contacts counted, and the match.
+export interface FindCallsOptions extends Omit<HistoryForCallOptions, "limit">, CallMatchOptions {}
+
+/// A callsign `findCalls` found in the log.
+export interface FoundCall {
+  call: string
+  match: CallMatchKind
+  /// Contacts with it that passed the filters.
+  count: number
+  /// When the latest of them started; null when none has a start time.
+  lastAtMillis: number | null
+}
+
+/// What `scoreCandidates` says about one candidate.
+export interface CandidateVerdict {
+  notices: string[]
+  alerts: string[]
+  icons?: { icon: string; color?: string }[]
 }
 
 /// Filters for `HookContext.getHistoryForCall`. Every one is optional, and a
@@ -3069,6 +3130,11 @@ export interface LookupRow {
   lat?: number
   lon?: number
   flags?: number
+}
+
+/// A row `host.dbLookupFindCalls` found, with how its key matched.
+export interface FoundLookupRow extends LookupRow {
+  match: CallMatchKind
 }
 
 export interface LookupEntry {

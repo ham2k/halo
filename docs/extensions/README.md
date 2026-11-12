@@ -181,7 +181,7 @@ it.
 The extension API is a number. Each level adds calls, hook methods or
 manifest fields, and a bundle declares in its manifest the lowest level that
 has what it uses, so every app that can run it is offered it. The SDK and the
-tools follow the same numbering: SDK 1.24 describes API 24 and exports it as
+tools follow the same numbering: SDK 1.25 describes API 25 and exports it as
 `API_VERSION`. [Packaging](packaging.md#api-levels) lists what each level
 added.
 

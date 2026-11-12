@@ -46,7 +46,10 @@ class _ExtensionHostCalls {
       'suggestQso' => _suggestQso(params),
       'updateDraft' => _updateDraft(params),
       'getHistoryForCall' => _getHistoryForCall(params),
+      'findCalls' => _findCalls(params),
+      'scoreCandidates' => _scoreCandidates(params),
       'dbLookupSelectOne' => _dbLookupSelectOne(params),
+      'dbLookupFindCalls' => _dbLookupFindCalls(params),
       'dbLookupSelectAll' => _dbLookupSelectAll(params),
       'dbLookupSelectByLocation' => _dbLookupSelectByLocation(params),
       'dbLookupSelectInBounds' => _dbLookupSelectInBounds(params),
@@ -620,22 +623,74 @@ class _ExtensionHostCalls {
     return waiting;
   }
 
+  /// Backs `ctx.findCalls`: the callsigns in the log the typed text could
+  /// be, across every operation unless the options narrow it, as
+  /// `getHistoryForCall`'s do. Parsed first, so a malformed option rejects
+  /// even where there is no log to answer from.
+  Future<dynamic> _findCalls(Map<String, dynamic> params) async {
+    final match = CallMatch.fromParams(params, hostCall: 'findCalls');
+    final filter = HistoryFilter.fromParams(params, hostCall: 'findCalls', alsoKnown: CallMatch.paramKeys);
+    final qsos = _service.qsos;
+    if (qsos == null) return const <Map<String, dynamic>>[];
+    return [for (final found in await qsos.findCalls(match, filter: filter)) foundCallToJson(found)];
+  }
+
+  /// How many candidates one `scoreCandidates` call may ask about: a scorer
+  /// folds the log once per call, and then judges each candidate against it
+  /// inside the caller's own hook budget.
+  static const maxScoredCandidates = 20;
+
+  /// Backs `ctx.scoreCandidates`: what logging each candidate would be in
+  /// the operation open in front — the verdicts the logging fields show for
+  /// the contact being typed, from the same scorers. Null when no such
+  /// operation is open to judge against.
+  Future<dynamic> _scoreCandidates(Map<String, dynamic> params) async {
+    final candidates = params['candidates'];
+    if (candidates is! Map || candidates.values.any((candidate) => candidate is! Map)) {
+      throw ExtensionHostException('scoreCandidates: `candidates` must be an object of QSOs by key');
+    }
+    if (candidates.length > maxScoredCandidates) {
+      throw ExtensionHostException('scoreCandidates: at most $maxScoredCandidates candidates in one call, got ${candidates.length}');
+    }
+    final operationUuid = params['operationUuid'];
+    if (operationUuid != null && operationUuid is! String) {
+      throw ExtensionHostException('scoreCandidates: `operationUuid` must be a string, got $operationUuid');
+    }
+    final score = _service.onScoreCandidates;
+    if (score == null) return null;
+    if (candidates.isEmpty) return const <String, dynamic>{};
+    return score({for (final MapEntry(:key, :value) in candidates.entries) '$key': (value as Map).cast<String, dynamic>()}, operationUuid as String?);
+  }
+
+  /// Backs `host.dbLookupFindCalls`: the rows of a dataset keyed by callsign
+  /// whose key the typed text could be, each with how it matched.
+  Future<dynamic> _dbLookupFindCalls(Map<String, dynamic> params) async {
+    final category = params['category'];
+    if (category is! String) throw ExtensionHostException('dbLookupFindCalls: `category` must be a string, got $category');
+    final match = CallMatch.fromParams(params, hostCall: 'dbLookupFindCalls', alsoKnown: const {'category'});
+    final found = await _service.lookups?.findLookupCalls(category, match) ?? const [];
+    return [
+      for (final (row, kind) in found) {..._lookupRowJson(row), 'match': kind.name},
+    ];
+  }
+
+  /// A lookup row as every `host.dbLookup…` call answers it.
+  static Map<String, dynamic> _lookupRowJson(LookupRow row) => {
+    'category': row.category,
+    'subCategory': row.subCategory,
+    'key': row.key,
+    'name': row.name,
+    'data': row.data != null ? jsonDecode(row.data!) : null,
+    'lat': row.lat,
+    'lon': row.lon,
+    'flags': row.flags,
+  };
+
   Future<dynamic> _dbLookupSelectOne(Map<String, dynamic> params) async {
     final category = params['category'] as String;
     final key = params['key'] as String;
     final row = await _service.lookups?.getLookup(category, key);
-    return row == null
-        ? null
-        : {
-            'category': row.category,
-            'subCategory': row.subCategory,
-            'key': row.key,
-            'name': row.name,
-            'data': row.data != null ? jsonDecode(row.data!) : null,
-            'lat': row.lat,
-            'lon': row.lon,
-            'flags': row.flags,
-          };
+    return row == null ? null : _lookupRowJson(row);
   }
 
   Future<dynamic> _dbLookupSelectAll(Map<String, dynamic> params) async {
@@ -644,20 +699,7 @@ class _ExtensionHostCalls {
     final subCategory = params['subCategory'] as String?;
     final activeOnly = params['activeOnly'] as bool? ?? false;
     final list = await _service.lookups?.queryLookups(category, query, subCategory: subCategory, activeOnly: activeOnly) ?? const [];
-    return list
-        .map(
-          (row) => {
-            'category': row.category,
-            'subCategory': row.subCategory,
-            'key': row.key,
-            'name': row.name,
-            'data': row.data != null ? jsonDecode(row.data!) : null,
-            'lat': row.lat,
-            'lon': row.lon,
-            'flags': row.flags,
-          },
-        )
-        .toList();
+    return list.map(_lookupRowJson).toList();
   }
 
   Future<dynamic> _dbLookupSelectByLocation(Map<String, dynamic> params) async {
@@ -667,20 +709,7 @@ class _ExtensionHostCalls {
     final delta = (params['delta'] as num).toDouble();
     final activeOnly = params['activeOnly'] as bool? ?? false;
     final list = await _service.lookups?.queryLookupsByLocation(category, lat, lon, delta, activeOnly: activeOnly) ?? const [];
-    return list
-        .map(
-          (row) => {
-            'category': row.category,
-            'subCategory': row.subCategory,
-            'key': row.key,
-            'name': row.name,
-            'data': row.data != null ? jsonDecode(row.data!) : null,
-            'lat': row.lat,
-            'lon': row.lon,
-            'flags': row.flags,
-          },
-        )
-        .toList();
+    return list.map(_lookupRowJson).toList();
   }
 
   Future<dynamic> _dbLookupSelectInBounds(Map<String, dynamic> params) async {
@@ -695,20 +724,7 @@ class _ExtensionHostCalls {
           limit: (params['limit'] as num?)?.toInt() ?? 500,
         ) ??
         const [];
-    return list
-        .map(
-          (row) => {
-            'category': row.category,
-            'subCategory': row.subCategory,
-            'key': row.key,
-            'name': row.name,
-            'data': row.data != null ? jsonDecode(row.data!) : null,
-            'lat': row.lat,
-            'lon': row.lon,
-            'flags': row.flags,
-          },
-        )
-        .toList();
+    return list.map(_lookupRowJson).toList();
   }
 
   Future<dynamic> _getLocation(Map<String, dynamic> params) async {

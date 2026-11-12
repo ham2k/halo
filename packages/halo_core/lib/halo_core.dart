@@ -46,6 +46,7 @@ export 'src/repo/claims_repository.dart';
 export 'src/repo/operations_repository.dart';
 export 'src/repo/operation_qson_import.dart';
 export 'src/repo/operation_undelete.dart';
+export 'src/repo/call_match.dart';
 export 'src/repo/history_filter.dart';
 export 'src/repo/qso_log.dart';
 export 'src/repo/qsos_repository.dart';

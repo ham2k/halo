@@ -156,6 +156,7 @@ runs and the error names the budget.
 | WebSockets | 4 per extension; 1 MiB per frame; 12 opens a minute per bundle |
 | Timers | 16 live; callbacks average at most 10% of real time, with 5 s of burst |
 | Radio commands | 4 of yours queued at once; one that cannot go out within 2 s expires |
+| Candidates scored | 20 per `ctx.scoreCandidates` call |
 | Panel content | 262,144 characters of markdown, 1,048,576 of SVG, 4,194,304 of HTML |
 
 [The host API](host.md) has every call and the rule behind each budget.

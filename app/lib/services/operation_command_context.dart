@@ -44,6 +44,12 @@ class OperationCommandContext {
   /// editing in its place.
   bool Function(Map<String, dynamic> patch, {required bool replace})? updateDraft;
 
+  /// An extension's candidate contacts, by key, judged against this
+  /// operation's log as the logging fields judge the one being typed
+  /// (`ctx.scoreCandidates`): each key's notices, alerts and icons, absent
+  /// where no scorer had anything to say. Null when nothing ran.
+  Future<Map<String, Map<String, dynamic>>?> Function(Map<String, Map<String, dynamic>> candidates)? scoreCandidates;
+
   /// Whether this operation is the route the operator is actually looking at.
   /// False with Settings, or a nested operation, pushed over it — where a
   /// suggestion still lands correctly but nothing on screen shows it.

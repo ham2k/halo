@@ -82,6 +82,14 @@ void wireExtensions(HaLoServices services) {
     if (update == null || (operationUuid != null && front!.uuid != operationUuid)) return false;
     return update(patch, replace: replace);
   };
+  extensions.onScoreCandidates = (candidates, operationUuid) async {
+    final front = services.frontOperationContext;
+    final score = front?.scoreCandidates;
+    // As updateDraft: the operation the extension asked about, or the one in
+    // front, judged against the log that view holds.
+    if (score == null || (operationUuid != null && front!.uuid != operationUuid)) return null;
+    return score(candidates);
+  };
   // The boot starts the runtime before the services exist, so one quick to
   // come up has already run its catch-up — and stood it down, with no
   // settings to carry choices or record installs in. Without this that

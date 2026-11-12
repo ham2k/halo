@@ -271,6 +271,28 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
 
   ({int serial, Map<String, dynamic> patch})? _draftPatch;
 
+  /// An extension's candidate contacts judged as the logging fields judge
+  /// the one being typed — see [OperationCommandContext.scoreCandidates]:
+  /// against the log this view holds, the activities it has hunted counted
+  /// as the pills count them (docs/design/activities.md §4), resuming from
+  /// the last rescore's checkpoints where they still describe that log.
+  Future<Map<String, Map<String, dynamic>>?> _scoreCandidates(Map<String, Map<String, dynamic>> candidates) async {
+    final operation = _operation;
+    if (!mounted || operation == null) return null;
+    final qsos = _runtime.latestQsos;
+    final scoring = widget.services.scoring;
+    final segmented = SegmentedOperation.from(operation: operation.data, qsos: qsos);
+    return widget.services.extensions.scoreCandidates(
+      operation: segmented.current,
+      operationUuid: operation.uuid,
+      candidates: candidates,
+      segments: segmented.isSegmented ? segmented.payload : null,
+      resume: scoring.liveResumeFor(operation, qsos),
+      resumesFor: (scorers) => scoring.candidateResumesFor(operation, qsos, scorers),
+      huntedRefTypes: ((operation.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet(),
+    );
+  }
+
   /// Takes back a suggestion a slide made — the row that made it has closed.
   /// Only ever a tentative one: a station the operator TAPPED (or typed) is
   /// theirs, and a slide closing somewhere else may not take it away.
@@ -445,6 +467,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     _commandContext.suggestQso = (qso) => _suggestQso(qso, measured: true);
     _commandContext.suggestSpot = _suggestQso;
     _commandContext.updateDraft = _updateDraft;
+    _commandContext.scoreCandidates = _scoreCandidates;
     // Whether the operator can actually SEE this operation — false with
     // Settings, or another operation, pushed over it. A suggestion delivered
     // to a view nobody is looking at is not lost, but it is invisible, and

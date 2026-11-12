@@ -511,6 +511,81 @@ void main() {
     });
   });
 
+  group('findCalls', () {
+    test('counts the contacts the app would, under the same options', () async {
+      final calls = host(
+        log: const LogContext(
+          operation: {'uuid': 'op-1'},
+          qsos: [
+            {
+              'their': {'call': 'K1AB'},
+              'band': '20m',
+              'startAtMillis': 1000,
+            },
+            // Stored lowercase, which the app's index never matches against
+            // uppercase text: counted here, the CLI and the app would give
+            // one extension two answers.
+            {
+              'their': {'call': 'k1ab'},
+              'band': '40m',
+              'startAtMillis': 3000,
+            },
+            {
+              'their': {'call': 'K1AB'},
+              'band': '40m',
+              'startAtMillis': 2500,
+            },
+            {
+              'their': {'call': 'WK1AB'},
+              'band': '20m',
+              'startAtMillis': 2000,
+            },
+            // Neither is a contact: one deleted, one an event marker.
+            {
+              'their': {'call': 'K1ABC'},
+              'band': '20m',
+              'deleted': true,
+            },
+            {
+              'their': {'call': 'K1ABD'},
+              'band': 'event',
+            },
+          ],
+        ),
+      );
+      expect(await calls.call('findCalls', {'call': 'K1AB'}), [
+        {'call': 'K1AB', 'match': 'exact', 'count': 2, 'lastAtMillis': 2500},
+        {'call': 'WK1AB', 'match': 'partial', 'count': 1, 'lastAtMillis': 2000},
+      ]);
+      expect(await calls.call('findCalls', {'call': 'K1AB', 'band': '40m'}), [
+        {'call': 'K1AB', 'match': 'exact', 'count': 1, 'lastAtMillis': 2500},
+      ]);
+    });
+
+    test('rejects what it cannot read, with no log to answer from', () async {
+      expect(() => host().call('findCalls', {'call': 'K1*'}), throwsFormatException);
+      expect(() => host().call('findCalls', {'call': 'K1', 'bands': '20m'}), throwsFormatException);
+    });
+
+    test('dbLookupFindCalls rejects a missing category and an option it does not know, as the app does', () async {
+      expect(() => host().call('dbLookupFindCalls', {'call': 'K1AB'}), throwsFormatException);
+      expect(() => host().call('dbLookupFindCalls', {'category': 'scp', 'call': 'K1AB', 'matches': 'exact'}), throwsFormatException);
+    });
+
+    test('scoreCandidates answers null: a CLI has no operation in front to judge against', () async {
+      expect(
+        await host().call('scoreCandidates', {
+          'candidates': {
+            'a': {
+              'their': {'call': 'K1AB'},
+            },
+          },
+        }),
+        isNull,
+      );
+    });
+  });
+
   test('an unimplemented host call is REFUSED, not answered with null', () async {
     // The kernel turns a rejection into a rejected promise, so the extension
     // takes its error path. A null would read as a real answer and could be

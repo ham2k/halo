@@ -301,39 +301,36 @@ class CliHostCalls {
         // trims first, but this shouldn't depend on that.
         final historyCall = (params['call'] as String?)?.trim().toUpperCase();
         if (historyCall == null) return const <Map<String, Object?>>[];
-        final operationUuid = log.operation?['uuid'] as String?;
-        // The --op's refs describe only its own QSOs, as an operation's refs
-        // do in the app's join. An --op with no uuid owns every QSO, as it
-        // does for getQsos.
-        bool ours(Map<String, Object?> qso) => operationUuid == null || qso['operation'] == null || qso['operation'] == operationUuid;
-        final segmented = filter.refsSegmentAware && log.operation != null
-            ? SegmentedOperation.from(
-                operation: log.operation!.cast<String, dynamic>(),
-                qsos: qsosOf(log.operation!, [
-                  for (final qso in log.qsos!)
-                    if (ours(qso)) qso,
-                ]),
-              )
-            : null;
-        final matches = [
-          for (final qso in log.qsos!)
-            // `band != 'event'` mirrors `Qso.isEvent`/`historyForCall`'s own
-            // exclusion — an event marker is a timeline annotation, not a
-            // contact, and must not stand in as someone's "most recent QSO".
-            // `asQsonBool` is the app's reading of `deleted`, so every client's
-            // spelling of it drops the QSO here as it does there.
-            if (qso['band'] != 'event' &&
-                !asQsonBool(qso['deleted']) &&
-                ((qso['their'] as Map?)?['call'] as String?)?.toUpperCase() == historyCall &&
-                filter.matches(
-                  qso,
-                  operationUuid: operationUuid,
-                  operation: !ours(qso) ? null : segmented?.effectiveAt(_startAtMillisOrNull(qso)) ?? log.operation,
-                ))
-              qso,
-        ];
+        final matches = _counted(filter, where: (qso) => ((qso['their'] as Map?)?['call'] as String?)?.toUpperCase() == historyCall);
         matches.sort((a, b) => _startAtMillis(b).compareTo(_startAtMillis(a)));
         return matches.take(filter.limit).toList();
+
+      case 'findCalls':
+        // `ctx.findCalls`, over the one log the CLI was handed, by the
+        // rules `QsosRepository.findCalls` applies in the app. Calls are
+        // compared as stored, as the app's index compares them: one stored
+        // lowercase or padded matches nothing there, so it matches nothing
+        // here either.
+        final match = CallMatch.fromParams(params, hostCall: 'findCalls');
+        final filter = HistoryFilter.fromParams(params, hostCall: 'findCalls', alsoKnown: CallMatch.paramKeys);
+        if (log.qsos == null) return const <Map<String, Object?>>[];
+        return [
+          for (final found in findCallsAmong([
+            for (final qso in _counted(filter))
+              if ((qso['their'] as Map?)?['call'] case final String call when call.isNotEmpty) (call: call, startAtMillis: _startAtMillisOrNull(qso)),
+          ], match))
+            foundCallToJson(found),
+        ];
+
+      case 'scoreCandidates':
+        // Judged against the operation open in front, and a CLI has none.
+        return null;
+
+      case 'dbLookupFindCalls':
+        final category = params['category'];
+        if (category is! String) throw FormatException('dbLookupFindCalls: `category` must be a string, got $category');
+        final match = CallMatch.fromParams(params, hostCall: 'dbLookupFindCalls', alsoKnown: const {'category'});
+        return await lookups?.findCalls(category, match) ?? const [];
 
       case 'dbLookupSelectOne':
         return await lookups?.selectOne(params['category'] as String, params['key'] as String);
@@ -408,6 +405,45 @@ class CliHostCalls {
       default:
         throw HostCallRefused('host call $method is not implemented by halo-ext');
     }
+  }
+
+  /// The QSOs of the log handed in that count as contacts and pass
+  /// [filter] — `historyForCall`'s rules in the app. `band != 'event'`
+  /// mirrors `Qso.isEvent`: an event marker is a timeline annotation, not a
+  /// contact, and must not stand in as someone's "most recent QSO".
+  /// `asQsonBool` is the app's reading of `deleted`, so every client's
+  /// spelling of it drops the QSO here as it does there.
+  ///
+  /// [where] is asked first, so a caller after one call's contacts pays for
+  /// [filter] — segment resolution, refs — on those alone.
+  List<Map<String, Object?>> _counted(HistoryFilter filter, {bool Function(Map<String, Object?> qso)? where}) {
+    final qsos = log.qsos ?? const <Map<String, Object?>>[];
+    final operationUuid = log.operation?['uuid'] as String?;
+    // The --op's refs describe only its own QSOs, as an operation's refs
+    // do in the app's join. An --op with no uuid owns every QSO, as it
+    // does for getQsos.
+    bool ours(Map<String, Object?> qso) => operationUuid == null || qso['operation'] == null || qso['operation'] == operationUuid;
+    final segmented = filter.refsSegmentAware && log.operation != null
+        ? SegmentedOperation.from(
+            operation: log.operation!.cast<String, dynamic>(),
+            qsos: qsosOf(log.operation!, [
+              for (final qso in qsos)
+                if (ours(qso)) qso,
+            ]),
+          )
+        : null;
+    return [
+      for (final qso in qsos)
+        if ((where == null || where(qso)) &&
+            qso['band'] != 'event' &&
+            !asQsonBool(qso['deleted']) &&
+            filter.matches(
+              qso,
+              operationUuid: operationUuid,
+              operation: !ours(qso) ? null : segmented?.effectiveAt(_startAtMillisOrNull(qso)) ?? log.operation,
+            ))
+          qso,
+    ];
   }
 
   static String _spotCall(Map<String, Object?> spot) => ((spot['their'] as Map?)?['call'] as String? ?? '').toUpperCase();
