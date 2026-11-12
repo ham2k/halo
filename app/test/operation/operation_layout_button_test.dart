@@ -23,6 +23,9 @@ import '../support/halo_test_support.dart';
 void main() {
   final t = AppLocale.en.buildSync().operation.layout;
   final tabs = AppLocale.en.buildSync().operation.tabs;
+  final common = AppLocale.en.buildSync().common;
+  // Scoped to the header's button: "Save" alone is a word other controls use.
+  final headerSave = find.descendant(of: find.byType(AppBar), matching: find.widgetWithText(TextButton, common.save));
 
   Future<HaLoServices> servicesWith(WidgetTester tester) async {
     final HaLoHarness(:services, :settings) = await makeHaLoServices();
@@ -147,22 +150,22 @@ void main() {
     // customizable layout has asked to see the way into it.
     final button = find.widgetWithIcon(IconButton, MdiIcons.viewDashboard);
     expect(button, findsOneWidget);
-    expect(find.text(t.saveLayout), findsNothing);
+    expect(headerSave, findsNothing);
 
     await startEditing(tester);
 
     // No sheet in the way — what an operator wants when they reach for this
     // is to move a pane.
     expect(find.byType(LayoutSheet), findsNothing);
-    expect(find.text(t.saveLayout), findsOneWidget);
+    expect(headerSave, findsOneWidget);
     expect(find.widgetWithIcon(IconButton, MdiIcons.plus), findsOneWidget);
     expect(find.byIcon(MdiIcons.undoVariant), findsOneWidget);
-    expect(button, findsNothing, reason: 'the button became Save Layout — it is the same control');
+    expect(button, findsNothing, reason: 'the button gave way to the edit controls');
 
     await unmount(tester);
   });
 
-  testWidgets('an edit is a draft: nothing reaches settings until Save Layout', (tester) async {
+  testWidgets('an edit is a draft: nothing reaches settings until Save', (tester) async {
     final services = await servicesWith(tester);
     await pumpWide(tester, services);
     final settings = services.settings;
@@ -173,10 +176,10 @@ void main() {
     await dragToDelete(tester, tabs.info);
     expect(settings.layoutData(LayoutKeys.operationDock), isNull, reason: 'a draft that reached storage is a discard button that promises nothing');
 
-    await tester.tap(find.text(t.saveLayout));
+    await tester.tap(headerSave);
     await tester.pumpAndSettle();
     expect(DockNode.fromJson(settings.layoutData(LayoutKeys.operationDock))!.collectModules(), ['logging', 'spots', 'map']);
-    expect(find.text(t.saveLayout), findsNothing, reason: 'saving leaves edit mode');
+    expect(headerSave, findsNothing, reason: 'saving leaves edit mode');
 
     await unmount(tester);
   });
@@ -192,9 +195,9 @@ void main() {
     await tester.tap(find.byIcon(MdiIcons.undoVariant));
     await tester.pumpAndSettle();
 
-    // Discard is the cancel to Save Layout's commit: every way out of edit
+    // Discard is the cancel to Save's commit: every way out of edit
     // mode keeps everything or keeps nothing.
-    expect(find.text(t.saveLayout), findsNothing, reason: 'discarding ends the edit');
+    expect(headerSave, findsNothing, reason: 'discarding ends the edit');
     expect(find.widgetWithIcon(IconButton, MdiIcons.viewDashboard), findsOneWidget);
     expect(services.settings.layoutData(LayoutKeys.operationDock), isNull);
 
@@ -274,7 +277,7 @@ void main() {
     sheetOf(tester).onAdd!('info');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text(t.saveLayout));
+    await tester.tap(headerSave);
     await tester.pumpAndSettle();
 
     // The removal's forget is DEFERRED to the save, and the id is free in the
@@ -295,7 +298,7 @@ void main() {
 
     await startEditing(tester);
     await dragToDelete(tester, 'Chart');
-    await tester.tap(find.text(t.saveLayout));
+    await tester.tap(headerSave);
     await tester.pumpAndSettle();
 
     // Serialized BEFORE the forget, the map would carry the gone pane's title
@@ -316,8 +319,7 @@ void main() {
 
     // The button that opened the sheet is not redrawn into it: pressing it
     // again is refused, and an enabled, focusable, announced control that
-    // does nothing is worse than one that is not there. Discard and Save are
-    // what the operator needs up there.
+    // does nothing is worse than one that is not there.
     //
     // A BUTTON with a plus: each offered panel row draws one too, as the
     // row's own cue, and the row is what takes the tap.
@@ -327,7 +329,7 @@ void main() {
       findsWidgets,
       reason: 'the rows are listed, so the assertion above is not vacuous',
     );
-    expect(find.text(t.saveLayout), findsOneWidget);
+    expect(headerSave, findsOneWidget);
 
     // And the guard behind it still refuses, so no other caller can stack one.
     final view = tester.state(find.byType(OperationView));
@@ -349,7 +351,7 @@ void main() {
 
     await startEditing(tester);
     await dragToDelete(tester, tabs.info);
-    expect(find.text(t.viewName), findsOneWidget);
+    expect(find.textContaining(t.editingLayoutShort), findsOneWidget);
 
     // Narrowing hands the operator the OTHER arrangement, not the way out of
     // the edit. A resize is not a decision about the layout, and an edit that
@@ -357,8 +359,8 @@ void main() {
     // wide draft above is still uncommitted at this point.
     tester.view.physicalSize = const Size(600, 800);
     await tester.pumpAndSettle();
-    expect(find.text(t.viewName), findsOneWidget, reason: 'still editing, and still saying so');
-    expect(find.text(t.saveLayout), findsOneWidget);
+    expect(find.textContaining(t.editingLayoutShort), findsOneWidget, reason: 'still editing, and still saying so');
+    expect(headerSave, findsOneWidget);
     expect(find.byType(DockLayoutView), findsOneWidget, reason: 'the narrow arrangement is a dock too');
     expect(find.text(tabs.spots), findsOneWidget, reason: 'and it is the NARROW tree — its own default, not the wide one this edit has been changing');
 
@@ -366,7 +368,7 @@ void main() {
     // back to.
     tester.view.physicalSize = const Size(1200, 800);
     await tester.pumpAndSettle();
-    expect(find.text(t.saveLayout), findsOneWidget);
+    expect(headerSave, findsOneWidget);
     expect(find.text(tabs.info), findsNothing, reason: 'the edit survived the trip');
 
     await unmount(tester);
@@ -388,7 +390,7 @@ void main() {
     await tester.pumpAndSettle();
     await dragToDelete(tester, tabs.spots);
 
-    await tester.tap(find.text(t.saveLayout));
+    await tester.tap(headerSave);
     await tester.pumpAndSettle();
 
     expect(DockNode.fromJson(settings.layoutData(LayoutKeys.operationNarrowDock))!.collectModules(), [
@@ -422,7 +424,7 @@ void main() {
 
     tester.view.physicalSize = const Size(1200, 800);
     await tester.pumpAndSettle();
-    expect(find.text(t.saveLayout), findsNothing, reason: 'the edit is over');
+    expect(headerSave, findsNothing, reason: 'the edit is over');
     expect(find.text(tabs.info), findsOneWidget, reason: 'and the pane it dropped came back');
 
     await unmount(tester);
@@ -494,20 +496,23 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('leaving edit mode from the sheet takes the sheet with it', (tester) async {
+  testWidgets('an edit cannot end under the Add a Panel sheet', (tester) async {
     final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
     await startEditing(tester);
+    await dragToDelete(tester, tabs.info);
     await openAddSheet(tester);
-    await tester.tap(find.text(t.saveLayout));
+    // Under the sheet, a press on Save meets the route's barrier, which only
+    // closes the sheet. An edit that ended with the sheet still up would leave
+    // its adds writing straight to settings, with Discard gone from beside
+    // them.
+    await tester.tap(headerSave, warnIfMissed: false);
     await tester.pumpAndSettle();
 
-    // Left open past the exit, every control in it writes straight to
-    // settings the moment it is pressed — and the Discard that was beside
-    // them is gone. Reset Layout right after a Save would destroy the
-    // arrangement that had just been committed.
     expect(find.byType(LayoutSheet), findsNothing);
+    expect(find.text(t.editingLayout), findsOneWidget, reason: 'still editing');
+    expect(services.settings.layoutData(LayoutKeys.operationDock), isNull, reason: 'nothing was saved');
 
     await unmount(tester);
   });
@@ -608,22 +613,62 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('editing names the VIEW in the header, and offers the view its own options', (tester) async {
+  testWidgets('editing names itself in the header, with Save and Discard beside the name through an added panel', (tester) async {
+    // Edit mode makes every pane ignore taps and keys, so a view in it looks
+    // like a logger that stopped answering. The header is what says why, and
+    // the way out sits beside that, not among the trailing icons, where
+    // Discard's arrow reads as "back" and throws away the panel just added.
     final services = await servicesWith(tester);
     await pumpWide(tester, services);
+    final header = find.byType(AppBar);
+    Finder inHeader(Finder finder) => find.descendant(of: header, matching: finder);
+    final title = inHeader(find.text(t.editingLayout));
+    final save = headerSave;
+    final discard = inHeader(find.widgetWithIcon(IconButton, MdiIcons.undoVariant));
 
-    // Ordinarily the header is about the operation in the view.
-    expect(find.textContaining('KI2D'), findsWidgets);
-    expect(find.text(t.viewName), findsNothing);
+    expect(inHeader(find.textContaining('KI2D')), findsWidgets, reason: 'ordinarily the header is about the operation');
+    expect(title, findsNothing);
 
     await startEditing(tester);
 
-    // While editing it is about the VIEW: what is being rearranged belongs to
-    // the view, and outlives this operation and every other one.
-    expect(find.text(t.viewName), findsOneWidget);
-    // The same glyph a pane's options carry — the same kind of thing one
-    // level up. What tells them apart is where they are.
-    expect(find.widgetWithIcon(IconButton, MdiIcons.viewDashboardEdit), findsWidgets);
+    expect(title, findsOneWidget);
+    expect(inHeader(find.textContaining('KI2D')), findsNothing, reason: 'the operation is not what is being arranged');
+    expect(save, findsOneWidget);
+    expect(discard, findsOneWidget);
+    // Name, Discard, Save, and only then the rest of the edit's controls.
+    final x = tester.getCenter;
+    expect(x(title).dx, lessThan(x(discard).dx));
+    expect(x(discard).dx, lessThan(x(save).dx));
+    final viewOptions = inHeader(find.widgetWithIcon(IconButton, MdiIcons.viewDashboardEdit));
+    final plus = inHeader(find.widgetWithIcon(IconButton, MdiIcons.plus));
+    expect(viewOptions, findsOneWidget, reason: "the view's own options, the same glyph a pane's carry");
+    expect(x(save).dx, lessThan(x(viewOptions).dx));
+    expect(x(save).dx, lessThan(x(plus).dx));
+
+    // Under the Add a Panel sheet the header takes no taps: they stay where
+    // they are, visibly disabled, and no second live copy appears.
+    await openAddSheet(tester);
+    expect(save, findsOneWidget);
+    expect(tester.widget<TextButton>(save).onPressed, isNull);
+    expect(tester.widget<IconButton>(discard).onPressed, isNull);
+    expect(find.widgetWithText(TextButton, common.save), findsOneWidget, reason: "the sheet's header carries no Save of its own");
+
+    final added = sheetOf(tester).available.first.id;
+    sheetOf(tester).onAdd!(added);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LayoutSheet), findsNothing);
+    expect(title, findsOneWidget, reason: 'adding a panel does not end the edit, so the header still says so');
+    expect(tester.widget<TextButton>(save).onPressed, isNotNull);
+
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(title, findsNothing);
+    expect(
+      DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
+      // An instanceable panel is placed as `<id>#n`.
+      anyElement(startsWith(added)),
+    );
 
     await unmount(tester);
   });
@@ -719,7 +764,7 @@ void main() {
       // fine — this is the "next thing written" the bug let through.
       await startEditing(tester);
       await dragToDelete(tester, tabs.info);
-      await tester.tap(find.text(t.saveLayout));
+      await tester.tap(headerSave);
       await tester.pumpAndSettle();
 
       expect(
@@ -761,7 +806,7 @@ void main() {
 
       await startEditing(tester);
       await dragToDelete(tester, tabs.info);
-      await tester.tap(find.text(t.saveLayout));
+      await tester.tap(headerSave);
       await tester.pumpAndSettle();
       expect(
         DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
@@ -815,7 +860,7 @@ void main() {
       // recovered default was unaccepted.
       await startEditing(tester);
       await dragToDelete(tester, tabs.info);
-      await tester.tap(find.text(t.saveLayout));
+      await tester.tap(headerSave);
       await tester.pumpAndSettle();
       expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(), isNot(contains('info')));
 

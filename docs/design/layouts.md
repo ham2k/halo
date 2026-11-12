@@ -98,9 +98,9 @@ arrives, rather than leaving a hole where it stood.
 **The railless header holds the product name and the cog, and nothing else.**
 The profile name and the layout button come with the rail, which is one tap on
 the logo away: a phone's header has no room to carry them beside the cog. The
-exception is an edit already in progress — once editing, the layout controls
-are Save and Discard, so they stay through a rail toggled away mid-edit rather
-than leaving the edit with no way to end.
+exception is an edit already in progress: the plus and the switcher stay
+through a rail toggled away mid-edit, and Save and Discard are in the title
+(see Edit mode), which the rail never touches.
 
 **Headers span the window and never answer to the rail.** Every destination's
 header runs the full width above it, holding the same leading gap for the mark
@@ -750,9 +750,7 @@ and the innermost that names one decides: a pane that overrides nothing sits
 inside the view's scope, and the view's own falls back to the app's settings.
 The title is greyed for a built-in view (the Operation view is the app's, so
 its name is too) rather than hidden, so an operator looking for the setting
-is told it does not apply instead of hunting for it. While editing, the
-header shows the view's name in place of the operation's — what is being
-rearranged belongs to the view, and outlives this operation and every other.
+is told it does not apply instead of hunting for it.
 
 All of it is part of the ARRANGEMENT: edited in the same draft, written by
 the same save, restored by the same discard, and a pane's options are
@@ -856,8 +854,9 @@ gesture arena against the tap.
 the setting is on — an operator who asked for a customizable layout has asked
 to see the way into it — and pressing it goes straight into editing, with no
 sheet in between: what they want when they reach for it is to move a pane.
-While editing it becomes **Save Layout**, with a **discard** and a **plus**
-to its left. While editing:
+While editing it gives way to a **plus** (after the switcher, with named
+layouts), and the header's title becomes **Editing Layout**, with
+**Discard** and **Save** right beside it. While editing:
 
 - every tab is a grab handle, at full strength, on every tab in a group. The
   strip stops sharing evenly and starts squeezing: a strip too narrow to
@@ -876,9 +875,15 @@ to its left. While editing:
   at least leaves every name readable while the dock is being read;
   mid-rearrange the tab scrolled out of sight is as likely as not the one
   being worked on;
-- the view's header goes inert: it names the view, drops the dots, and no
-  longer opens the operation's setup sheet. The operation is not what is being
-  arranged;
+- the view's header names the MODE: its title reads **Editing Layout**, in
+  every view, with Discard and Save beside it, and it drops the dots and no
+  longer opens the operation's setup sheet — the operation is not what is
+  being arranged. Panes take no input while editing (below), the logger
+  included, so a header that went on naming the view would make edit mode
+  look like a logger that has stopped answering. The name says why; the way
+  out sits beside it rather than out among the trailing icons, where
+  Discard's arrow, alone, reads as a back button and throws away the edit.
+  The title is what gives way on a narrow header, never the two buttons;
 - each pane is **outlined as a folder** in `fabAccentColor` — every tab is a
   block with a rounded top, and the one that is showing is filled dark blue
   and leaves its bottom open, so the line runs down into the pane's body and
@@ -929,8 +934,7 @@ to its left. While editing:
   over the same distance into a **half-opaque grey**, so the pane's contents
   come back gradually rather than at a line. The stock tab indicator is
   suppressed while editing: it would draw a line across exactly the gap the
-  folder shape leaves open;
-- the header carries **Save Layout** and, left of it, a **discard**.
+  folder shape leaves open.
 
 **The pane gives up the room the outline needs.** It gets a little smaller on
 its three free sides while editing, and the line sits in what it gave up
@@ -1026,7 +1030,7 @@ selecting a plain tab first; the dock's own edge strips are always there.
 
 **The edit is a draft.** Nothing an edit does — a drag, a split, a divider,
 an add from the plus or a drag onto the delete target — reaches settings
-until Save Layout;
+until Save;
 that is the whole basis on which discard can promise anything. The two
 buttons are the only ways out and they are exact opposites: Save keeps
 everything, discard restores the arrangement as it was when editing began and
@@ -1062,11 +1066,14 @@ which pane is on top is state, not arrangement (below), and it is saved as
 the operator makes it whether or not they are editing.
 
 Two structural notes. The view's header takes no taps while a modal route is
-up — the route's barrier takes them wherever they land. So the edit controls
-are built once by the view and rendered in *two* places, never both: the
-view's own header while no sheet is up, and the sheet's
+up — the route's barrier takes them wherever they land. So the trailing
+edit controls are built once by the view and rendered in *two* places, never
+both: the view's own header while no sheet is up, and the sheet's
 `TopModalPaneRoute.headerTrailing` while one is. A control left in the header
-under an open sheet is visible and dead.
+under an open sheet is visible and dead. Save and Discard are the exception:
+they stay in the title under the sheet, disabled, and the sheet's own close is
+the way back to them. Removing them would shift the title each time the
+sheet opens and closes.
 
 The plus is one of the controls the sheet's own header carries, so it is the
 obvious thing to press while the sheet is already up. It refuses: a second
@@ -1082,10 +1089,11 @@ opened. That getter answers for the class ON SCREEN, which is the other half
 of the same rule: a captured key is stale about which dock as well as about
 whether there is one.
 
-**Leaving edit mode from that header takes the sheet with it.** The sheet is
-a control panel for an edit in progress; left open past the exit, its add
-writes straight to settings on the next press, with the discard that was
-beside it gone.
+**An edit never ends under an open sheet.** The sheet is a control panel for
+an edit in progress; left open past the exit, its add would write straight to
+settings on the next press, with the discard that was beside it gone. So its
+header carries no Save or Discard, and the switcher there takes the sheet
+down before it can end the edit.
 
 **The dock's definition and its state are stored apart.** The definition
 (`LayoutKeys.operationDock`) is the tree — splits, weights, which modules sit
@@ -1242,9 +1250,9 @@ for a name and whether to **duplicate the current layout** (the default) or
 **start from the default** arrangement.
 
 **While editing, the header keeps the switcher**, the same control as outside
-the edit, left of Save, which loses its label and stays the rightmost
-control. With several layouts, the header has to say which one a Save writes
-into. From the Add a Panel sheet's own header copy, the switcher takes that
+the edit, among the trailing controls left of the plus; Save is in the title.
+With several layouts, the header has to say which one a Save writes into.
+From the Add a Panel sheet's own header copy, the switcher takes that
 sheet down before opening the layouts sheet: what the layouts sheet does next
 can end the edit, and an Add a Panel sheet left up past that writes its adds
 straight to settings.

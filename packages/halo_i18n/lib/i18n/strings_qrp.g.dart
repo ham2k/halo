@@ -1956,6 +1956,8 @@ class _Translations$operation$layout$qrp extends Translations$operation$layout$e
 	@override String get nestedPaneTitle => 'more';
 	@override late final _Translations$operation$layout$layouts$qrp layouts = _Translations$operation$layout$layouts$qrp._(_root);
 	@override String get editLayout => 'edit layout';
+	@override String get editingLayout => 'editing layout';
+	@override String get editingLayoutShort => 'editing';
 	@override String get saveLayout => 'save layout';
 	@override String get revertLayout => 'discard layout changes';
 	@override String get done => 'done';
@@ -5619,6 +5621,8 @@ extension on TranslationsQrp {
 			'operation.layout.layouts.listRecoveredTitle' => 'layout names couldn’t be read',
 			'operation.layout.layouts.listRecoveredBody' => 'this view’s list of layouts could not be read. every layout is still here, numbered in place of its name.',
 			'operation.layout.editLayout' => 'edit layout',
+			'operation.layout.editingLayout' => 'editing layout',
+			'operation.layout.editingLayoutShort' => 'editing',
 			'operation.layout.saveLayout' => 'save layout',
 			'operation.layout.revertLayout' => 'discard layout changes',
 			'operation.layout.done' => 'done',
@@ -6100,10 +6104,10 @@ extension on TranslationsQrp {
 			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} minute', other: '${count} minutes', ), 
 			'loggingControls.frequency' => 'frequency',
 			'loggingControls.mode' => 'mode',
-			'loggingControls.theirCall' => 'their call',
-			'loggingControls.noteField' => 'note',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.theirCall' => 'their call',
+			'loggingControls.noteField' => 'note',
 			'loggingControls.todoField' => 'todo',
 			'loggingControls.sent' => 'sent',
 			'loggingControls.rcvd' => 'rcvd',
@@ -6614,10 +6618,10 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.problemDeviceFailed' => 'the sound device would not open.',
 			'settings.radio.voiceMessages.problemNotRecorded' => 'that message has no recording yet.',
 			'settings.radio.voiceMessages.problemRecordingSilent' => 'nothing was heard from the recording device, so the message was left as it was. check the input, and that the app is allowed to use the microphone.',
-			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'the radio is not taking audio from the app right now. it needs a network connection to the radio.',
-			'settings.radio.voiceMessages.problemSourceRefused' => 'the radio would not switch its transmit audio to the app, so the message stopped. set the radio to transmit the app\'s audio.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'the radio is not taking audio from the app right now. it needs a network connection to the radio.',
+			'settings.radio.voiceMessages.problemSourceRefused' => 'the radio would not switch its transmit audio to the app, so the message stopped. set the radio to transmit the app\'s audio.',
 			'settings.radio.voiceMessages.problemCannotKey' => 'this radio can\'t be keyed over cat, so the computer can\'t play messages into it.',
 			'settings.radio.voiceMessages.problemUnplayable' => 'that message\'s file isn\'t a sound file the app can play. use a wav, flac or mp3 file, or record it again.',
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'the recording was cut short, so the message was left as it was. check that the recording device is still connected and that there is room on the disk.',
@@ -7128,10 +7132,10 @@ extension on TranslationsQrp {
 			'settings.station.models.commanderNodeName' => 'my radio (via commander)',
 			'settings.station.models.antenna' => 'antenna',
 			'settings.station.models.key' => 'cw key',
-			'settings.station.models.midiController' => 'midi controller',
-			'settings.station.models.winkeyer' => 'winkeyer',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.midiController' => 'midi controller',
+			'settings.station.models.winkeyer' => 'winkeyer',
 			'settings.station.models.placeholderRadio' => 'simulated radio',
 			'settings.station.models.placeholderRadioNodeName' => 'simulated radio',
 			'settings.station.models.simulatedRotator' => 'simulated rotator',
@@ -7642,10 +7646,10 @@ extension on TranslationsQrp {
 			'settings.panels.developerSettingsDescription' => 'debugging and development tools',
 			'settings.panels.about' => 'about',
 			'settings.panels.aboutDescription' => 'version, credits, and legal information',
-			'settings.panels.unavailableTitle' => 'some settings are unavailable',
-			'settings.panels.unavailableText' => 'the extension runtime failed to start, so extension-contributed settings are missing.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.unavailableTitle' => 'some settings are unavailable',
+			'settings.panels.unavailableText' => 'the extension runtime failed to start, so extension-contributed settings are missing.',
 			'settings.panels.station' => 'station configuration',
 			'settings.panels.stationDescription' => 'cat control and more options',
 			'settings.panels.peers' => 'peer devices',
@@ -8156,10 +8160,10 @@ extension on TranslationsQrp {
 			'exportSettings.defaultTemplates' => 'turn on custom templates to edit this type’s templates.',
 			'templateEditor.previewLabel' => 'preview:',
 			'templateEditor.reset' => 'reset',
-			'templateEditor.docs' => 'templating docs',
-			'templateEditor.preview' => 'sample preview',
 			_ => null,
 		} ?? switch (path) {
+			'templateEditor.docs' => 'templating docs',
+			'templateEditor.preview' => 'sample preview',
 			'templateEditor.reference' => 'template reference',
 			'templateEditor.attributes' => 'available attributes',
 			'templateEditor.filters' => 'filters',

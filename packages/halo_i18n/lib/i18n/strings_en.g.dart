@@ -4270,6 +4270,12 @@ class Translations$operation$layout$en {
 	/// en: 'Edit Layout'
 	String get editLayout => 'Edit Layout';
 
+	/// en: 'Editing Layout'
+	String get editingLayout => 'Editing Layout';
+
+	/// en: 'Editing'
+	String get editingLayoutShort => 'Editing';
+
 	/// en: 'Save Layout'
 	String get saveLayout => 'Save Layout';
 
@@ -11847,6 +11853,8 @@ extension on Translations {
 			'operation.layout.layouts.listRecoveredTitle' => 'Layout names couldn’t be read',
 			'operation.layout.layouts.listRecoveredBody' => 'This view’s list of layouts could not be read. Every layout is still here, numbered in place of its name.',
 			'operation.layout.editLayout' => 'Edit Layout',
+			'operation.layout.editingLayout' => 'Editing Layout',
+			'operation.layout.editingLayoutShort' => 'Editing',
 			'operation.layout.saveLayout' => 'Save Layout',
 			'operation.layout.revertLayout' => 'Discard layout changes',
 			'operation.layout.done' => 'Done',
@@ -12328,10 +12336,10 @@ extension on Translations {
 			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} minute', other: '${count} minutes', ), 
 			'loggingControls.frequency' => 'Frequency',
 			'loggingControls.mode' => 'Mode',
-			'loggingControls.theirCall' => 'Their call',
-			'loggingControls.noteField' => 'Note',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.theirCall' => 'Their call',
+			'loggingControls.noteField' => 'Note',
 			'loggingControls.todoField' => 'Todo',
 			'loggingControls.sent' => 'Sent',
 			'loggingControls.rcvd' => 'Rcvd',
@@ -12842,10 +12850,10 @@ extension on Translations {
 			'settings.radio.voiceMessages.problemDeviceFailed' => 'The sound device would not open.',
 			'settings.radio.voiceMessages.problemNotRecorded' => 'That message has no recording yet.',
 			'settings.radio.voiceMessages.problemRecordingSilent' => 'Nothing was heard from the recording device, so the message was left as it was. Check the input, and that the app is allowed to use the microphone.',
-			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'The radio is not taking audio from the app right now. It needs a network connection to the radio.',
-			'settings.radio.voiceMessages.problemSourceRefused' => 'The radio would not switch its transmit audio to the app, so the message stopped. Set the radio to transmit the app\'s audio.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'The radio is not taking audio from the app right now. It needs a network connection to the radio.',
+			'settings.radio.voiceMessages.problemSourceRefused' => 'The radio would not switch its transmit audio to the app, so the message stopped. Set the radio to transmit the app\'s audio.',
 			'settings.radio.voiceMessages.problemCannotKey' => 'This radio can\'t be keyed over CAT, so the computer can\'t play messages into it.',
 			'settings.radio.voiceMessages.problemUnplayable' => 'That message\'s file isn\'t a sound file the app can play. Use a WAV, FLAC or MP3 file, or record it again.',
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'The recording was cut short, so the message was left as it was. Check that the recording device is still connected and that there is room on the disk.',
@@ -13356,10 +13364,10 @@ extension on Translations {
 			'settings.station.models.commanderNodeName' => 'My Radio (via Commander)',
 			'settings.station.models.antenna' => 'Antenna',
 			'settings.station.models.key' => 'CW Key',
-			'settings.station.models.midiController' => 'MIDI Controller',
-			'settings.station.models.winkeyer' => 'WinKeyer',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.midiController' => 'MIDI Controller',
+			'settings.station.models.winkeyer' => 'WinKeyer',
 			'settings.station.models.placeholderRadio' => 'Simulated Radio',
 			'settings.station.models.placeholderRadioNodeName' => 'Simulated Radio',
 			'settings.station.models.simulatedRotator' => 'Simulated Rotator',
@@ -13870,10 +13878,10 @@ extension on Translations {
 			'settings.panels.developerSettingsDescription' => 'Debugging and development tools',
 			'settings.panels.about' => 'About',
 			'settings.panels.aboutDescription' => 'Version, credits, and legal information',
-			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
-			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
+			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			'settings.panels.station' => 'Station Configuration',
 			'settings.panels.stationDescription' => 'CAT control and more options',
 			'settings.panels.peers' => 'Peer Devices',
@@ -14384,10 +14392,10 @@ extension on Translations {
 			'exportSettings.defaultTemplates' => 'Turn on Custom templates to edit this type’s templates.',
 			'templateEditor.previewLabel' => 'Preview:',
 			'templateEditor.reset' => 'Reset',
-			'templateEditor.docs' => 'Templating Docs',
-			'templateEditor.preview' => 'Sample preview',
 			_ => null,
 		} ?? switch (path) {
+			'templateEditor.docs' => 'Templating Docs',
+			'templateEditor.preview' => 'Sample preview',
 			'templateEditor.reference' => 'Template reference',
 			'templateEditor.attributes' => 'Available Attributes',
 			'templateEditor.filters' => 'Filters',

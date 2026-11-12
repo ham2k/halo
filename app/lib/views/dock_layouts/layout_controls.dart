@@ -268,11 +268,10 @@ extension LayoutControls<T extends StatefulWidget> on DockHost<T> {
     );
   }
 
-  /// The VIEW's own layout options, beside the title rather than out in the
-  /// actions group: it is about the thing the title names, and the actions are
-  /// about the EDIT — add a panel, discard it, save it. Hidden while the Add a
-  /// Panel sheet is up, like every other control down here, since the view's
-  /// header takes no taps under a modal route.
+  /// The VIEW's own layout options, leading the header's trailing controls
+  /// while editing. Hidden while the Add a Panel sheet is up, like every other
+  /// control down there, since the view's header takes no taps under a modal
+  /// route.
   Widget? viewOptionsButton(BuildContext context, {required bool editing}) {
     if (!editing || layoutSheetOpen) return null;
     final theme = Theme.of(context);
@@ -318,10 +317,10 @@ extension LayoutControls<T extends StatefulWidget> on DockHost<T> {
   List<Widget> layoutHeaderControls(BuildContext context, {bool inSheet = false}) {
     // The VIEW's copy is suppressed while the sheet is up — the route draws
     // its own into the strip of header it leaves uncovered, and a copy left
-    // here would be a second set of Save/Discard buttons, visible and dead
-    // under a modal route. Enforced HERE rather than at each call site: this
-    // method's contract is "rendered in two places, never both at once", and a
-    // host that has to remember a guard is a host that will forget it.
+    // here would be a second switcher, visible and dead under a modal route.
+    // Enforced HERE rather than at each call site: this method's contract is
+    // "rendered in two places, never both at once", and a host that has to
+    // remember a guard is a host that will forget it.
     if (!inSheet && layoutSheetOpen) return const [];
     final theme = Theme.of(context);
     // The app shows no hover tooltips (docs/design/user-interface.md), so an
@@ -354,7 +353,12 @@ extension LayoutControls<T extends StatefulWidget> on DockHost<T> {
         ),
       ];
     }
+    // Save and Discard are not here: they are the title's (see
+    // [editingLayoutTitle]).
     return [
+      // With named layouts, the edit says WHICH layout it is saving into: the
+      // same switcher as outside the edit.
+      if (namedLayoutsOffered) _layoutSwitcher(context, onHeader, inSheet: inSheet),
       // Not in the sheet's own copy: this is the button that OPENED it, and
       // pressing it again is refused (see [AddPanelSheet.openAddPanelSheet]). An enabled,
       // focusable, screen-reader-announced control that does nothing is worse
@@ -366,31 +370,61 @@ extension LayoutControls<T extends StatefulWidget> on DockHost<T> {
           icon: Icon(MdiIcons.plus, color: onHeader, semanticLabel: _t.title),
           onPressed: () => unawaited(openAddPanelSheet()),
         ),
-      IconButton(
-        // Left of Save, and an icon rather than a second labelled button:
-        // saving is what the operator came here to do, and discarding is the
-        // way back out from a rearrangement they thought better of.
-        icon: Icon(MdiIcons.undoVariant, semanticLabel: _t.revertLayout),
-        color: onHeader,
-        onPressed: () => _endEditingFrom(context, inSheet: inSheet, exit: revertLayout),
-      ),
-      // With named layouts, the edit says WHICH layout it is saving into: the
-      // same switcher as outside the edit sits left of a bare Save, which
-      // stays the rightmost control.
-      if (namedLayoutsOffered) ...[
-        _layoutSwitcher(context, onHeader, inSheet: inSheet),
-        IconButton(
-          icon: Icon(MdiIcons.contentSave, semanticLabel: _t.saveLayout),
-          color: onHeader,
-          onPressed: () => _endEditingFrom(context, inSheet: inSheet, exit: saveLayout),
-        ),
-      ] else
-        TextButton.icon(
-          onPressed: () => _endEditingFrom(context, inSheet: inSheet, exit: saveLayout),
-          icon: const Icon(MdiIcons.contentSave, size: 18),
-          label: Text(_t.saveLayout),
-          style: TextButton.styleFrom(foregroundColor: onHeader),
-        ),
     ];
+  }
+
+  /// The view's header title while its layout is being edited: the mode, by
+  /// name, and right beside it the two ways out of it.
+  ///
+  /// Edit mode makes every pane ignore taps and keys, so a view in it looks
+  /// like a logger that has stopped answering. Naming the mode where the
+  /// view's own name was is what tells the operator why; Save and Discard
+  /// beside that name are what tell them how to get back. Left out among the
+  /// trailing icons, Discard's arrow reads as "back" — and leaving that way
+  /// throws away the panel they just added.
+  ///
+  /// Disabled rather than removed while the Add a Panel sheet is up: the
+  /// header takes no taps under that route, and the sheet's own close is the
+  /// way back to them. Removing them would shift the title each time the sheet
+  /// opens and closes.
+  Widget editingLayoutTitle(BuildContext context) {
+    final theme = Theme.of(context);
+    final onHeader = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
+    final dimmed = onHeader.withValues(alpha: 0.38);
+    final enabled = !layoutSheetOpen;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // The text gives way, never the buttons: a title squeezed to an
+        // ellipsis still leaves the edit something to end it with. Before it
+        // squeezes, it drops to "Editing" — the word that says why the panes
+        // stopped answering — rather than cut "Editing Layout" mid-word.
+        Flexible(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final full = _t.editingLayout;
+              final fits = textWidth(context, full, DefaultTextStyle.of(context).style) <= constraints.maxWidth;
+              return shrinkToFitText(Text(fits ? full : _t.editingLayoutShort));
+            },
+          ),
+        ),
+        const SizedBox(width: Space.md),
+        IconButton(
+          // An icon, not a second labelled button: saving is what the
+          // operator came here to do, and discarding is the way back out from
+          // a rearrangement they thought better of.
+          icon: Icon(MdiIcons.undoVariant, semanticLabel: _t.revertLayout),
+          color: onHeader,
+          disabledColor: dimmed,
+          onPressed: enabled ? revertLayout : null,
+        ),
+        TextButton.icon(
+          onPressed: enabled ? saveLayout : null,
+          icon: const Icon(MdiIcons.contentSave, size: 18),
+          label: Text(context.t.common.save),
+          style: TextButton.styleFrom(foregroundColor: onHeader, disabledForegroundColor: dimmed),
+        ),
+      ],
+    );
   }
 }

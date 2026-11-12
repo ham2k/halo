@@ -347,7 +347,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
 
   /// Whether the arrangement is being edited (see [DockLayoutView.editing]).
   /// While this is on, the dock's changes are a DRAFT: nothing reaches
-  /// settings until Save Layout.
+  /// settings until it is saved.
   bool layoutEditing = false;
 
   /// True while the Add a Panel sheet's route is on screen. It is a top modal
@@ -824,8 +824,8 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
       }
       layoutEditing = true;
     });
-    // Entering from the sheet's own header copy: those are the buttons that
-    // change, and the route rebuilds them on the revision, not on setState.
+    // An open sheet draws its own copy of the header controls, which change
+    // with edit mode; the route rebuilds it on the revision, not on setState.
     bumpSheet();
   }
 
@@ -967,24 +967,8 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
       }
     });
     restoreFocusAfterEditing();
-    // Saving from the sheet's own header copy has to redraw it: these very
-    // buttons are what changes.
+    // See the matching call in [startLayoutEditing].
     bumpSheet();
-  }
-
-  /// Runs one of the two exits, and — pressed from the sheet's own header copy
-  /// — takes the sheet down with it.
-  ///
-  /// The sheet is a control panel for an edit in progress: it lists what can be
-  /// added. Left open past the exit, that add writes straight to settings the
-  /// moment it is pressed — with the Discard that was beside it a second ago
-  /// gone — and the sheet's own header still offers a Save for an edit that is
-  /// already over.
-  void _endEditingFrom(BuildContext context, {required bool inSheet, required VoidCallback exit}) {
-    exit();
-    // Pop AFTER: the exits call `_bumpSheet`, and a route already gone simply
-    // has nothing listening.
-    if (inSheet && Navigator.of(context).canPop()) Navigator.of(context).pop();
   }
 
   /// Everything about this view's layout, back to how it ships: the default
@@ -1100,7 +1084,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   // ------------------------------------------------------------- the controls
 
   /// The strings below live under `operation.layout` for historical reasons
-  /// and are view-neutral in content ("Add a Panel", "Save Layout") — the key
+  /// and are view-neutral in content ("Add a Panel", "Editing Layout") — the key
   /// path is not user-visible, and moving the subtree would rewrite both
   /// locales and every reference for no change on screen.
   Translations$operation$layout$en get _t => context.t.operation.layout;

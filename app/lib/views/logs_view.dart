@@ -1117,21 +1117,26 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
         leadingWidth: HomeRailLogo.headerReserveOf(context),
         leading: const SizedBox.shrink(),
         // None: the title opens with the sheet's dots, whose own padding is
-        // the gap after the mark.
-        titleSpacing: 0,
+        // the gap after the mark. The editing title has no dots, and takes
+        // Home's gap instead.
+        titleSpacing: layoutEditing ? Space.xl : 0,
         // Rebuilt with the sheet's slide on its own — the dots and the gap
         // follow it frame by frame.
-        title: AnimatedBuilder(
-          animation: _sheetAnimation ?? kAlwaysDismissedAnimation,
-          builder: (context, _) => _buildTitle(context, filtered, includeSearch: isTwoPane),
-        ),
+        title: layoutEditing
+            ? editingLayoutTitle(context)
+            : AnimatedBuilder(
+                animation: _sheetAnimation ?? kAlwaysDismissedAnimation,
+                builder: (context, _) => _buildTitle(context, filtered, includeSearch: isTwoPane),
+              ),
         actions: [
           ?viewOptionsButton(context, editing: layoutEditing),
           ...layoutHeaderControls(context),
           windowsCaptionSpacer(context),
         ],
-        // Row two, narrow only: the search field the title row dropped.
-        bottom: isTwoPane ? null : _narrowSearchRow(context),
+        // Row two, narrow only: the search field the title row dropped. Gone
+        // while editing, as the wide title's is: the list it filters takes no
+        // input until the edit ends.
+        bottom: isTwoPane || layoutEditing ? null : _narrowSearchRow(context),
       ),
       body: BesideRail(
         child: FileSuggestions(

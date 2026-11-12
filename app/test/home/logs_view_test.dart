@@ -24,6 +24,7 @@ import 'package:ham2k_logger/views/home_view.dart';
 import 'package:ham2k_logger/views/logs_view.dart';
 import 'package:ham2k_logger/views/file_open/file_destinations.dart' show logsAdifDestinationId;
 import 'package:ham2k_logger/views/file_open/file_router.dart';
+import 'package:ham2k_logger/views/dock_host.dart';
 
 import '../support/halo_test_support.dart';
 
@@ -689,6 +690,29 @@ void main() {
       // Over all time the period has no days of its own: the span is the
       // QSOs' own.
       expect(find.text('3 QSOs · 2026-09-20 – 2026-09-21'), findsOneWidget);
+      await _unmount(tester);
+    });
+
+    testWidgets('a narrow header drops its search row while the layout is edited, and gets it back after', (tester) async {
+      // The wide title's search goes with the title while editing; the narrow
+      // row is the same field, and leaving it up offers a search over a list
+      // that takes no input until the edit ends.
+      final h = await _harness();
+      await _seed(h.services);
+      await _pumpLogs(tester, h);
+      tester.view.physicalSize = const Size(500, 900);
+      await settleFrames(tester);
+      final search = find.widgetWithText(TextField, 'Search callsign or name');
+      expect(search, findsOneWidget);
+
+      final host = tester.state(find.byType(LogsView)) as DockHost;
+      host.startLayoutEditing();
+      await settleFrames(tester);
+      expect(search, findsNothing);
+
+      host.revertLayout();
+      await settleFrames(tester);
+      expect(search, findsOneWidget);
       await _unmount(tester);
     });
 

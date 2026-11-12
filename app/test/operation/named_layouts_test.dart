@@ -8,7 +8,6 @@
 // operator's back in a place they are not looking.
 
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MethodChannel, PlatformException;
@@ -146,7 +145,7 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('editing: the same switcher, then a bare Save as the rightmost control', (tester) async {
+  testWidgets('editing: the same switcher, out with the trailing controls while Save stays by the title', (tester) async {
     final services = await servicesWith(tester);
     final host = await pumpWide(tester, services);
     await host.duplicateLayout(ViewLayouts.defaultId, 'Other');
@@ -157,7 +156,8 @@ void main() {
     host.startLayoutEditing();
     await tester.pumpAndSettle();
 
-    final save = find.bySemanticsLabel(AppLocale.en.buildSync().operation.layout.saveLayout);
+    final l = AppLocale.en.buildSync().operation.layout;
+    final save = find.descendant(of: find.byType(AppBar), matching: find.widgetWithText(TextButton, AppLocale.en.buildSync().common.save));
     final name = find.text('Contest Station');
     expect(save, findsOneWidget);
     expect(
@@ -166,15 +166,10 @@ void main() {
       reason: 'the edit says which layout it saves into',
     );
     expect(tester.getSize(find.byType(LayoutSwitcherButton)), outside, reason: 'the same control as outside the edit, not a label of its own');
-    expect(find.text(AppLocale.en.buildSync().operation.layout.saveLayout), findsNothing, reason: 'Save carries no label');
-    expect(tester.getCenter(name).dx, lessThan(tester.getCenter(save).dx));
-    // Rightmost of the header's own buttons: nothing after it but the window
-    // caption spacer.
-    final buttons = find
-        .descendant(of: find.byType(AppBar), matching: find.byType(IconButton))
-        .evaluate()
-        .map((e) => tester.getCenter(find.byWidget(e.widget)).dx);
-    expect(tester.getCenter(save).dx, buttons.reduce(math.max));
+    // Save belongs to the "Editing Layout" title, not to the switcher: the way
+    // out of the mode sits beside the name of the mode.
+    expect(tester.getCenter(find.text(l.editingLayout)).dx, lessThan(tester.getCenter(save).dx));
+    expect(tester.getCenter(save).dx, lessThan(tester.getCenter(name).dx));
 
     await tester.tap(save);
     await tester.pumpAndSettle();
@@ -203,7 +198,15 @@ void main() {
     await tester.pumpAndSettle();
     // An overflow here is a header whose Save is pushed off the edge.
     expect(tester.takeException(), isNull);
-    expect(find.bySemanticsLabel(AppLocale.en.buildSync().operation.layout.saveLayout).hitTestable(), findsOneWidget);
+    // "Editing Layout" has no room here; cut mid-word it would no longer say
+    // which mode the view is in.
+    final l = AppLocale.en.buildSync().operation.layout;
+    expect(find.text(l.editingLayoutShort), findsOneWidget);
+    expect(find.text(l.editingLayout), findsNothing);
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.widgetWithText(TextButton, AppLocale.en.buildSync().common.save)).hitTestable(),
+      findsOneWidget,
+    );
     final switcher = find.bySemanticsLabel(AppLocale.en.buildSync().operation.layout.layouts.switcherLabel(name: 'A rather long layout name for a phone'));
     expect(switcher.hitTestable(), findsOneWidget);
     await unmount(tester);

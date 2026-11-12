@@ -242,7 +242,13 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
           ignoring: _headerIconsInert,
           child: Opacity(
             opacity: layoutControlsOpacity,
-            child: Row(mainAxisSize: MainAxisSize.min, children: layoutHeaderControls(context)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ?viewOptionsButton(context, editing: editingHeader),
+                ...layoutHeaderControls(context),
+              ],
+            ),
           ),
         ),
       ],
@@ -346,7 +352,7 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
 
     // The view's layout controls sit in this same row (see
     // [_headerTrailingControls]) and take width the labels cannot also
-    // spend. One button: the three-button editing form only appears while
+    // spend. One button: the editing form only appears while
     // layoutEditing, and that is exactly when these actions are not built at
     // all (`editingHeader`), so it can never coincide with this measurement.
     //
@@ -569,7 +575,6 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
     required bool editingHeader,
     required ({String title, String subtitle}) headerLines,
   }) {
-    final refsLine = headerLines.subtitle;
     return AppBar(
       flexibleSpace: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -643,120 +648,126 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
         ),
         windowsCaptionSpacer(context),
       ],
-      title: InkWell(
-        key: _headerTitleKey,
-        // Inert while editing: the operation's own setup is not what
-        // is being arranged, and the dots that hand off to its sheet
-        // would be offering a second thing to do with a header that
-        // has just become part of the layout editor.
-        onTap: editingHeader
-            ? null
-            : () {
-                final progress = _sheetAnimation?.value ?? 0.0;
-                if (progress > 0.5) {
-                  _activeSheetKey?.currentState?.saveAndClose();
-                } else {
-                  _editActivities(operation);
-                }
-              },
-        mouseCursor: SystemMouseCursors.click,
-        borderRadius: BorderRadius.circular(8),
-        // Default M3 hover/pressed overlays are tuned for a surface-
-        // colored widget and barely show up on this teal AppBar —
-        // same bump as TabBar's own overlayColor (theme.dart).
-        overlayColor: WidgetStateProperty.resolveWith((states) {
-          final onPrimary = Theme.of(context).colorScheme.onPrimary;
-          if (states.contains(WidgetState.pressed) || states.contains(WidgetState.focused)) {
-            return onPrimary.withValues(alpha: 0.20);
-          }
-          if (states.contains(WidgetState.hovered)) {
-            return onPrimary.withValues(alpha: 0.16);
-          }
-          return null;
-        }),
-        child: Padding(
-          // Wide keeps a small left inset so the dots control
-          // doesn't sit flush against the back button. Narrow sits
-          // the title right against it instead — the leading slot is
-          // already sized to the button alone there (see
-          // leadingWidth above), so there's no residual gap left to
-          // close on that side. Both keep a small right inset — the
-          // title doesn't stretch to fill the AppBar — so the
-          // control's own edge doesn't sit flush against whatever's
-          // to its right (actions, or the window's own edge).
-          padding: EdgeInsets.only(left: isTwoPane ? Space.xs : 0, right: Space.lg, top: Space.xxs, bottom: Space.xxs),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!editingHeader) ...[
-                // Widens from the dots control's own footprint to
-                // the accept button's as the sheet opens — that
-                // button draws OVER this corner via headerLeading,
-                // wider than the dots it covers, so without this the
-                // title behind it would sit UNDER the button's tail
-                // end instead of clear of it (see _leadingGapWidth).
-                // The dots stay mounted and animating underneath
-                // purely so they're not visibly stuck mid-fall for
-                // the instant between the route unmounting at the
-                // end of a close and their own progress catching up
-                // to 0.
-                SizedBox(
-                  width: _leadingGapWidth(context, isTwoPane: isTwoPane),
-                  height: 32,
-                  child: Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: SheetHeaderDots(progress: _sheetAnimation?.value ?? 0.0),
-                  ),
-                ),
-                // Separates the title from whichever control
-                // precedes it — the dots, or the accept button that
-                // grows out of them. Constant, not animated with the
-                // gap above: what that gap corrects for is the
-                // button's own left overhang, not the breathing room
-                // after it, which both states want the same.
-                const SizedBox(width: Space.xs),
-              ],
-              // Flexible (loose), not Expanded (tight): Expanded
-              // forces this Column — and so the InkWell's whole
-              // tap/hover area above — to stretch to the AppBar's
-              // full available width regardless of how little text
-              // there is. Flexible still hands shrinkToFitText below
-              // a bounded max width to shrink/ellipsize against (a
-              // bare, non-flexible Row child gets an UNBOUNDED main-
-              // axis constraint instead — Flutter only bounds a
-              // Row's main axis for Expanded/Flexible children —
-              // which would overflow), without forcing
-              // the Column to consume space it doesn't need.
-              Flexible(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title and description each shrink to fit their own
-                    // width independently rather than
-                    // truncating — down to 75% of their natural font size,
-                    // past which the line ellipsizes instead. The
-                    // description tries Roboto's condensed glyph width
-                    // first, before shrinking its font size at all.
-                    // While editing, the header names the VIEW rather
-                    // than the operation in it: what is being
-                    // rearranged belongs to the view, and it outlives
-                    // this operation and every other one.
-                    shrinkToFitText(Text(editingHeader ? (viewOptions.title ?? context.t.operation.layout.viewName) : headerLines.title)),
-                    if (!editingHeader && refsLine.isNotEmpty)
-                      shrinkToFitText(
-                        Text(
-                          refsLine,
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85)),
-                        ),
-                        condensed: true,
-                      ),
-                  ],
-                ),
+      // While editing, no dots and no way into the operation's setup: the
+      // operation is not what is being arranged.
+      title: editingHeader
+          ? Padding(
+              padding: EdgeInsets.only(left: isTwoPane ? Space.xs : 0),
+              child: editingLayoutTitle(context),
+            )
+          : _operationTitle(context, operation: operation, isTwoPane: isTwoPane, headerLines: headerLines),
+    );
+  }
+
+  /// The dots-and-title control: the operation's name over its refs, and the
+  /// tap that opens its setup sheet.
+  Widget _operationTitle(
+    BuildContext context, {
+    required Operation operation,
+    required bool isTwoPane,
+    required ({String title, String subtitle}) headerLines,
+  }) {
+    final refsLine = headerLines.subtitle;
+    return InkWell(
+      key: _headerTitleKey,
+      onTap: () {
+        final progress = _sheetAnimation?.value ?? 0.0;
+        if (progress > 0.5) {
+          _activeSheetKey?.currentState?.saveAndClose();
+        } else {
+          _editActivities(operation);
+        }
+      },
+      mouseCursor: SystemMouseCursors.click,
+      borderRadius: BorderRadius.circular(8),
+      // Default M3 hover/pressed overlays are tuned for a surface-
+      // colored widget and barely show up on this teal AppBar —
+      // same bump as TabBar's own overlayColor (theme.dart).
+      overlayColor: WidgetStateProperty.resolveWith((states) {
+        final onPrimary = Theme.of(context).colorScheme.onPrimary;
+        if (states.contains(WidgetState.pressed) || states.contains(WidgetState.focused)) {
+          return onPrimary.withValues(alpha: 0.20);
+        }
+        if (states.contains(WidgetState.hovered)) {
+          return onPrimary.withValues(alpha: 0.16);
+        }
+        return null;
+      }),
+      child: Padding(
+        // Wide keeps a small left inset so the dots control
+        // doesn't sit flush against the back button. Narrow sits
+        // the title right against it instead — the leading slot is
+        // already sized to the button alone there (see
+        // leadingWidth above), so there's no residual gap left to
+        // close on that side. Both keep a small right inset — the
+        // title doesn't stretch to fill the AppBar — so the
+        // control's own edge doesn't sit flush against whatever's
+        // to its right (actions, or the window's own edge).
+        padding: EdgeInsets.only(left: isTwoPane ? Space.xs : 0, right: Space.lg, top: Space.xxs, bottom: Space.xxs),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Widens from the dots control's own footprint to
+            // the accept button's as the sheet opens — that
+            // button draws OVER this corner via headerLeading,
+            // wider than the dots it covers, so without this the
+            // title behind it would sit UNDER the button's tail
+            // end instead of clear of it (see _leadingGapWidth).
+            // The dots stay mounted and animating underneath
+            // purely so they're not visibly stuck mid-fall for
+            // the instant between the route unmounting at the
+            // end of a close and their own progress catching up
+            // to 0.
+            SizedBox(
+              width: _leadingGapWidth(context, isTwoPane: isTwoPane),
+              height: 32,
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: SheetHeaderDots(progress: _sheetAnimation?.value ?? 0.0),
               ),
-              ?viewOptionsButton(context, editing: editingHeader),
-            ],
-          ),
+            ),
+            // Separates the title from whichever control
+            // precedes it — the dots, or the accept button that
+            // grows out of them. Constant, not animated with the
+            // gap above: what that gap corrects for is the
+            // button's own left overhang, not the breathing room
+            // after it, which both states want the same.
+            const SizedBox(width: Space.xs),
+            // Flexible (loose), not Expanded (tight): Expanded
+            // forces this Column — and so the InkWell's whole
+            // tap/hover area above — to stretch to the AppBar's
+            // full available width regardless of how little text
+            // there is. Flexible still hands shrinkToFitText below
+            // a bounded max width to shrink/ellipsize against (a
+            // bare, non-flexible Row child gets an UNBOUNDED main-
+            // axis constraint instead — Flutter only bounds a
+            // Row's main axis for Expanded/Flexible children —
+            // which would overflow), without forcing
+            // the Column to consume space it doesn't need.
+            Flexible(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title and description each shrink to fit their own
+                  // width independently rather than
+                  // truncating — down to 75% of their natural font size,
+                  // past which the line ellipsizes instead. The
+                  // description tries Roboto's condensed glyph width
+                  // first, before shrinking its font size at all.
+                  shrinkToFitText(Text(headerLines.title)),
+                  if (refsLine.isNotEmpty)
+                    shrinkToFitText(
+                      Text(
+                        refsLine,
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85)),
+                      ),
+                      condensed: true,
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

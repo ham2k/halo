@@ -318,7 +318,7 @@ void main() {
     await tester.pumpAndSettle();
     // An add is a draft like any other edit — it only reaches settings when
     // the edit is saved, which is what this asserts on.
-    await tester.tap(find.text(AppLocale.en.buildSync().operation.layout.saveLayout));
+    await tester.tap(find.descendant(of: find.byType(AppBar), matching: find.widgetWithText(TextButton, AppLocale.en.buildSync().common.save)));
     await tester.pumpAndSettle();
 
     // Placing the DESCRIPTOR id a second time would put the same module in

@@ -1956,6 +1956,8 @@ class _Translations$operation$layout$qro extends Translations$operation$layout$e
 	@override String get nestedPaneTitle => 'MORE';
 	@override late final _Translations$operation$layout$layouts$qro layouts = _Translations$operation$layout$layouts$qro._(_root);
 	@override String get editLayout => 'EDIT LAYOUT';
+	@override String get editingLayout => 'EDITING LAYOUT';
+	@override String get editingLayoutShort => 'EDITING';
 	@override String get saveLayout => 'SAVE LAYOUT';
 	@override String get revertLayout => 'DISCARD LAYOUT CHANGES';
 	@override String get done => 'DONE';
@@ -5619,6 +5621,8 @@ extension on TranslationsQro {
 			'operation.layout.layouts.listRecoveredTitle' => 'LAYOUT NAMES COULDN’T BE READ',
 			'operation.layout.layouts.listRecoveredBody' => 'THIS VIEW’S LIST OF LAYOUTS COULD NOT BE READ. EVERY LAYOUT IS STILL HERE, NUMBERED IN PLACE OF ITS NAME.',
 			'operation.layout.editLayout' => 'EDIT LAYOUT',
+			'operation.layout.editingLayout' => 'EDITING LAYOUT',
+			'operation.layout.editingLayoutShort' => 'EDITING',
 			'operation.layout.saveLayout' => 'SAVE LAYOUT',
 			'operation.layout.revertLayout' => 'DISCARD LAYOUT CHANGES',
 			'operation.layout.done' => 'DONE',
@@ -6100,10 +6104,10 @@ extension on TranslationsQro {
 			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} MINUTE', other: '${count} MINUTES', ), 
 			'loggingControls.frequency' => 'FREQUENCY',
 			'loggingControls.mode' => 'MODE',
-			'loggingControls.theirCall' => 'THEIR CALL',
-			'loggingControls.noteField' => 'NOTE',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.theirCall' => 'THEIR CALL',
+			'loggingControls.noteField' => 'NOTE',
 			'loggingControls.todoField' => 'TODO',
 			'loggingControls.sent' => 'SENT',
 			'loggingControls.rcvd' => 'RCVD',
@@ -6614,10 +6618,10 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.problemDeviceFailed' => 'THE SOUND DEVICE WOULD NOT OPEN.',
 			'settings.radio.voiceMessages.problemNotRecorded' => 'THAT MESSAGE HAS NO RECORDING YET.',
 			'settings.radio.voiceMessages.problemRecordingSilent' => 'NOTHING WAS HEARD FROM THE RECORDING DEVICE, SO THE MESSAGE WAS LEFT AS IT WAS. CHECK THE INPUT, AND THAT THE APP IS ALLOWED TO USE THE MICROPHONE.',
-			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'THE RADIO IS NOT TAKING AUDIO FROM THE APP RIGHT NOW. IT NEEDS A NETWORK CONNECTION TO THE RADIO.',
-			'settings.radio.voiceMessages.problemSourceRefused' => 'THE RADIO WOULD NOT SWITCH ITS TRANSMIT AUDIO TO THE APP, SO THE MESSAGE STOPPED. SET THE RADIO TO TRANSMIT THE APP\'S AUDIO.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'THE RADIO IS NOT TAKING AUDIO FROM THE APP RIGHT NOW. IT NEEDS A NETWORK CONNECTION TO THE RADIO.',
+			'settings.radio.voiceMessages.problemSourceRefused' => 'THE RADIO WOULD NOT SWITCH ITS TRANSMIT AUDIO TO THE APP, SO THE MESSAGE STOPPED. SET THE RADIO TO TRANSMIT THE APP\'S AUDIO.',
 			'settings.radio.voiceMessages.problemCannotKey' => 'THIS RADIO CAN\'T BE KEYED OVER CAT, SO THE COMPUTER CAN\'T PLAY MESSAGES INTO IT.',
 			'settings.radio.voiceMessages.problemUnplayable' => 'THAT MESSAGE\'S FILE ISN\'T A SOUND FILE THE APP CAN PLAY. USE A WAV, FLAC OR MP3 FILE, OR RECORD IT AGAIN.',
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'THE RECORDING WAS CUT SHORT, SO THE MESSAGE WAS LEFT AS IT WAS. CHECK THAT THE RECORDING DEVICE IS STILL CONNECTED AND THAT THERE IS ROOM ON THE DISK.',
@@ -7128,10 +7132,10 @@ extension on TranslationsQro {
 			'settings.station.models.commanderNodeName' => 'MY RADIO (VIA COMMANDER)',
 			'settings.station.models.antenna' => 'ANTENNA',
 			'settings.station.models.key' => 'CW KEY',
-			'settings.station.models.midiController' => 'MIDI CONTROLLER',
-			'settings.station.models.winkeyer' => 'WINKEYER',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.midiController' => 'MIDI CONTROLLER',
+			'settings.station.models.winkeyer' => 'WINKEYER',
 			'settings.station.models.placeholderRadio' => 'SIMULATED RADIO',
 			'settings.station.models.placeholderRadioNodeName' => 'SIMULATED RADIO',
 			'settings.station.models.simulatedRotator' => 'SIMULATED ROTATOR',
@@ -7642,10 +7646,10 @@ extension on TranslationsQro {
 			'settings.panels.developerSettingsDescription' => 'DEBUGGING AND DEVELOPMENT TOOLS',
 			'settings.panels.about' => 'ABOUT',
 			'settings.panels.aboutDescription' => 'VERSION, CREDITS, AND LEGAL INFORMATION',
-			'settings.panels.unavailableTitle' => 'SOME SETTINGS ARE UNAVAILABLE',
-			'settings.panels.unavailableText' => 'THE EXTENSION RUNTIME FAILED TO START, SO EXTENSION-CONTRIBUTED SETTINGS ARE MISSING.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.unavailableTitle' => 'SOME SETTINGS ARE UNAVAILABLE',
+			'settings.panels.unavailableText' => 'THE EXTENSION RUNTIME FAILED TO START, SO EXTENSION-CONTRIBUTED SETTINGS ARE MISSING.',
 			'settings.panels.station' => 'STATION CONFIGURATION',
 			'settings.panels.stationDescription' => 'CAT CONTROL AND MORE OPTIONS',
 			'settings.panels.peers' => 'PEER DEVICES',
@@ -8156,10 +8160,10 @@ extension on TranslationsQro {
 			'exportSettings.defaultTemplates' => 'TURN ON CUSTOM TEMPLATES TO EDIT THIS TYPE’S TEMPLATES.',
 			'templateEditor.previewLabel' => 'PREVIEW:',
 			'templateEditor.reset' => 'RESET',
-			'templateEditor.docs' => 'TEMPLATING DOCS',
-			'templateEditor.preview' => 'SAMPLE PREVIEW',
 			_ => null,
 		} ?? switch (path) {
+			'templateEditor.docs' => 'TEMPLATING DOCS',
+			'templateEditor.preview' => 'SAMPLE PREVIEW',
 			'templateEditor.reference' => 'TEMPLATE REFERENCE',
 			'templateEditor.attributes' => 'AVAILABLE ATTRIBUTES',
 			'templateEditor.filters' => 'FILTERS',

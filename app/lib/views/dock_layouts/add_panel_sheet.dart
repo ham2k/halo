@@ -51,9 +51,9 @@ extension AddPanelSheet<T extends StatefulWidget> on DockHost<T> {
         closeLabel: context.t.common.close,
         // The header's layout controls, drawn by the route into the strip of
         // header it leaves uncovered — the view's own copies are suppressed
-        // while this is up (see [LayoutControls.layoutHeaderControls]). Rebuilt on the same
-        // revision the sheet body is, since Save Layout is one of them and
-        // changes which of them there are.
+        // while this is up (see [LayoutControls.layoutHeaderControls]).
+        // Rebuilt on the same revision the sheet body is, since the switcher
+        // among them changes with the layouts and with edit mode.
         headerTrailing: ValueListenableBuilder<int>(
           valueListenable: revision,
           // A context from inside the route, so the buttons resolve their

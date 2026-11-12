@@ -630,6 +630,8 @@
         "listRecoveredBody": "this view’s list of layouts could not be read. every layout is still here, numbered in place of its name."
       },
       "editLayout": "edit layout",
+      "editingLayout": "editing layout",
+      "editingLayoutShort": "editing",
       "saveLayout": "save layout",
       "revertLayout": "discard layout changes",
       "done": "done",

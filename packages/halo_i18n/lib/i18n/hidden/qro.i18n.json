@@ -630,6 +630,8 @@
         "listRecoveredBody": "THIS VIEW’S LIST OF LAYOUTS COULD NOT BE READ. EVERY LAYOUT IS STILL HERE, NUMBERED IN PLACE OF ITS NAME."
       },
       "editLayout": "EDIT LAYOUT",
+      "editingLayout": "EDITING LAYOUT",
+      "editingLayoutShort": "EDITING",
       "saveLayout": "SAVE LAYOUT",
       "revertLayout": "DISCARD LAYOUT CHANGES",
       "done": "DONE",
