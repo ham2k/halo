@@ -467,13 +467,13 @@ a scope, the control says why instead. Placed like a native control, it takes:
   instead of the window: where the radio lets the app place it, moved just
   far enough to keep the dial that share of the sweep's own width from its
   edges.
-- `follow` (0 to 0.45): keeps the tuned frequency at least this share of the
-  width from either edge by moving the window just far enough — within the
-  sweep a crop, past it the radio's scope — gliding there once the dial
-  rests, so the picture scrolls with the dial rather than jumping to center
-  it. Only where
-  the radio lets the app place its scope and the panel declares
-  `requiresRadioWrite`; elsewhere it changes nothing.
+- `follow` (0 to 0.45): moves the window just far enough to keep the tuned
+  frequency this share of the width from either edge. After a jump, the
+  window glides once the dial rests. Moving the radio's sweep requires
+  `requiresRadioWrite` and a radio that lets the app place its scope.
+  Where the sweep stays put, the app keeps the window inside the sweep
+  whenever the entire window fits and the dial can still be shown. The
+  dial can then sit closer to the edge.
 - `annotations`: up to 256 (64 before API 20) pieces of text at frequencies, each with a pointer.
   One with an `event` sends `activate` when clicked, its frequency as
   `value`, its `id` as `annotation` and where it was clicked as `at`, and

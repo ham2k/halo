@@ -124,9 +124,11 @@ PAN offsets are relative to the outer payload:
 
 The decoder requires a nonnegative center, positive sample rate and receiver
 0 or 1. It derives bin count from the payload, accepting 2–4,096 bins as a
-resource bound rather than assuming a fixed sweep size. The shared presenter
-handles both 1,024- and 2,048-bin sweeps, crops around the transmitted center
-and uses the sample rate for the frequency width.
+resource bound rather than assuming a fixed sweep size. The presenter shared
+with the LAN pairing uses the transmitted center and sample rate to place
+each receiver's bins and publishes the full sweep by default. See
+[Spectrum](cat.md#elecraft-k4-lan-tcp-9201) for display zoom and explicit
+scope span requests.
 
 A1 leaves the PAN version, nested type and declared inner length ambiguous.
 Those fields are preserved without imposing guessed validity rules. Bin

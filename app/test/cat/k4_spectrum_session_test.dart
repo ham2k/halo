@@ -254,6 +254,9 @@ void main() {
     connection.receive(_capturedPans());
     await pumpEventQueue();
     expect(sink.frames, hasLength(1), reason: 'the captured sub and mini pans must not replace main A');
+    final frame = sink.frames.single;
+    expect(frame.levels, hasLength(2048));
+    expect((frame.lowHz, frame.highHz), (13997000, 14092953));
     expect(session.setSpectrum(const SpectrumRequest(refLevelDb: 3)), isTrue);
     expect(sink.settings.last.refLevelDb, 3);
     expect(sink.sent, isEmpty, reason: 'opening and adjusting the local scope must not write CAT settings');
@@ -389,6 +392,7 @@ void main() {
     final connection = spectrumTransport.attempts.single.connection!;
     connection.receive(_mainPanAtRate(96000));
     await pumpEventQueue();
+    expect(cat.setSpectrum(uuid, const SpectrumRequest(spanHz: 10000)), isTrue);
     final settings = cat.stateFor(uuid).spectrum!;
     final session = cat.spectrumSessionFor(uuid)!;
     expect(session.spectrumCapabilities.spansHz.last, 48000);

@@ -55,6 +55,8 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   void showWidth(String uuid, Object owner, int? widthHz) {}
   @override
+  bool canRecenter(String uuid) => true;
+  @override
   bool recenter(String uuid, int centerHz) {
     recentered.add(centerHz);
     return true;

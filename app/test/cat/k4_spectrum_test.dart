@@ -139,10 +139,11 @@ void main() {
     });
   });
 
-  test('the main pan retains its bin scale and actual frequencies when locally cropped', () {
+  test('an explicit scope span crops the main pan and preserves its actual frequencies', () {
     fakeAsync((async) {
       spectrum.start();
       final connection = transport.accept(async);
+      expect(spectrum.set(const SpectrumRequest(spanHz: 10000)), isTrue);
       connection.incoming.add(_packet(bins: {811: -1500, 1152: -250, 1237: -1450}));
       final frame = sink.frames.single;
       expect(frame.levels, hasLength(427));
@@ -207,7 +208,7 @@ void main() {
         connection.incoming.add(Uint8List.sublistView(bytes, offset, end));
       }
       expect(sink.frames, hasLength(1));
-      expect((sink.frames.single.lowHz, sink.frames.single.highHz), (7090016, 7109984));
+      expect((sink.frames.single.lowHz, sink.frames.single.highHz), (7052000, 7147953));
     });
   });
 
@@ -381,7 +382,7 @@ void main() {
       expect(sink.frames, hasLength(1));
       second.incoming.add(_packet(center: 14200000));
       expect(sink.frames, hasLength(2));
-      expect(sink.settings.last.lowHz, 14190016);
+      expect((sink.settings.last.lowHz, sink.settings.last.highHz), (14152000, 14247953));
     });
   });
 

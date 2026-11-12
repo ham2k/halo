@@ -111,12 +111,13 @@ spectrum display listens, closes when the last display stops or CAT
 disconnects, and retries a failed or stalled stream independently of CAT.
 USB and the other Kenwood-family radios retain their existing capabilities.
 
-Main uses `A` packets; Sub and mini-pan packets are ignored. Each packet's own center and
-sample rate place its bins; local zoom crops those bins without moving the
-radio or substituting the VFO frequency. Local reference adjustment and
-frame-rate limiting use the existing spectrum controls and noise-floor
-estimator. These are display controls, not claims about calibrated dBm or
-the K4's REF/SCALE settings. No spectrum CAT setters are sent.
+Main uses `A` packets. Each packet's own center and sample rate place its
+bins. The presenter supplies the full sweep to displays by default, as it
+does on the secure connection. Each display can zoom over those bins.
+Local reference adjustment and frame-rate limiting use the existing
+spectrum controls and noise-floor estimator. These are display controls,
+not claims about calibrated dBm or the K4's REF/SCALE settings. No spectrum
+CAT setters are sent.
 
 Verification covers the captured wire fixtures, crop coordinates, cancellation,
 reconnect and a stalled Main stream. The band scope

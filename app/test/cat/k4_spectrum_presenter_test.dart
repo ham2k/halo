@@ -80,22 +80,26 @@ void main() {
     });
   });
 
-  test('a 1024-bin remote sweep retains the same frequency scale as a 2048-bin LAN sweep', () {
+  test('full 1024-bin remote and 2048-bin LAN sweeps preserve frequencies outside the center crop', () {
     fakeAsync((async) {
       presenter.start();
-      for (final count in [1024, 2048]) {
+      expect(sink.settings.last.spanHz, isNull);
+      for (final (count, highHz) in [(1024, 14092906), (2048, 14092953)]) {
         final levels = Float32List.fromList(List.filled(count, -120));
-        levels[count ~/ 2 + count ~/ 16] = -25;
+        levels[count ~/ 2 + count ~/ 4] = -25;
         presenter.add(centerHz: 14045000, sampleRateHz: 96000, levels: levels);
         final frame = sink.frames.last;
         final peak = frame.levels.indexOf(-25);
+        expect(peak, isNonNegative, reason: 'a pan toward this carrier must have bins beyond the center crop');
         final peakHz = frame.lowHz + peak / (frame.levels.length - 1) * (frame.highHz - frame.lowHz);
-        expect(peakHz, closeTo(14051000, 1));
+        expect(peakHz, closeTo(14069000, 1));
+        expect(frame.levels, hasLength(count));
+        expect((frame.lowHz, frame.highHz), (13997000, highHz));
+        final settings = sink.settings.last;
+        expect((settings.lowHz, settings.highHz, settings.spanHz), (frame.lowHz, frame.highHz, 48000));
         expect(frame.ceilingDb - frame.floorDb, 80);
       }
       expect(sink.frames, hasLength(2), reason: 'a changed source size must be shown immediately');
-      expect(sink.frames[0].levels, hasLength(213));
-      expect(sink.frames[1].levels, hasLength(427));
     });
   });
 

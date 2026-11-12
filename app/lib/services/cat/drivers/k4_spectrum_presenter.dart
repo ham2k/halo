@@ -27,10 +27,10 @@ class K4SpectrumPresenter {
   int? _centerHz;
   int? _binCount;
 
-  /// The operator's choice, kept apart from [_spanHz] so a stream that
-  /// narrows and widens again gets that choice back rather than the clamp.
-  int _requestedSpanHz = 10000;
-  int _spanHz = 10000;
+  /// An explicit scope span survives a change in sample rate. Without one,
+  /// every display can choose its own view over the full sweep.
+  int? _requestedSpanHz;
+  int? _spanHz;
   double _refLevelDb = 0;
   SpectrumSpeed _speed = SpectrumSpeed.fast;
   SpectrumSettings? _reportedSettings;
@@ -93,7 +93,7 @@ class K4SpectrumPresenter {
     if (sourceChanged) {
       _rate = sampleRateHz;
       _binCount = levels.length;
-      _spanHz = capabilities.snapSpan(_requestedSpanHz);
+      if (_requestedSpanHz case final span?) _spanHz = capabilities.snapSpan(span);
       _noise.reset();
       _lastEmitMillis = null;
     }
@@ -125,7 +125,10 @@ class K4SpectrumPresenter {
 
   ({int first, int end, int lowHz, int highHz}) _crop() {
     final rate = _rate!, count = _binCount!;
-    final radius = math.max(1, (_spanHz * count / rate).floor());
+    final radius = switch (_spanHz) {
+      final span? => math.max(1, (span * count / rate).floor()),
+      null => count ~/ 2,
+    };
     final first = math.max(0, count ~/ 2 - radius);
     final end = math.min(count, count ~/ 2 + radius + 1);
     // Each endpoint names a retained bin, not the requested window edge:
@@ -138,7 +141,7 @@ class K4SpectrumPresenter {
     final crop = _centerHz == null ? null : _crop();
     final settings = SpectrumSettings(
       mode: SpectrumMode.fixed,
-      spanHz: _spanHz,
+      spanHz: _spanHz ?? (_binCount == null ? null : _rate! ~/ 2),
       lowHz: crop?.lowHz,
       highHz: crop?.highHz,
       refLevelDb: _refLevelDb,

@@ -62,6 +62,8 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   void showWidth(String uuid, Object owner, int? widthHz) => widths.add(widthHz);
   @override
+  bool canRecenter(String uuid) => recenters;
+  @override
   bool recenter(String uuid, int centerHz) {
     if (recenters) recentered.add(centerHz);
     return recenters;
@@ -175,13 +177,15 @@ double? _labelHz(WidgetTester tester) =>
             .vfoLabelHz()
         as double?;
 
+SpectrumFrame _shownFrame(WidgetTester tester) =>
+    (tester.widgetList<CustomPaint>(find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_PanPainter')).single.painter
+                as dynamic)
+            .frame()
+        as SpectrumFrame;
+
 /// The middle of the window the panadapter draws.
 double _shownMiddle(WidgetTester tester) {
-  final frame =
-      (tester.widgetList<CustomPaint>(find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_PanPainter')).single.painter
-                  as dynamic)
-              .frame()
-          as SpectrumFrame;
+  final frame = _shownFrame(tester);
   return (frame.lowHz + frame.highHz) / 2;
 }
 
@@ -1588,6 +1592,67 @@ void main() {
     expect(radio.recentered.last, 21074000 - 35000);
     expect(_shownMiddle(tester), 21039000);
     await tester.pump(const Duration(seconds: 2));
+  });
+
+  testWidgets('a full sweep stays covered when a spot is inside its edge margin', (tester) async {
+    final radio = _Radio();
+    await _show(tester, radio, spectrum: const {'follow': .15});
+    radio.vfo = 14002000;
+    radio.notifyListeners();
+    await tester.pump(const Duration(milliseconds: 210));
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(_shownFrame(tester).lowHz, 14000000);
+    expect(_shownFrame(tester).highHz, 14100000);
+    expect(_drawnVfo(tester), 14002000);
+
+    // A manual pan can still show the band beyond the sweep, even while the dial is covered.
+    await tester.dragFrom(_onPan(tester, .4), const Offset(100, 0));
+    radio.controller.add(_sweep());
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(_shownFrame(tester).lowHz, lessThan(14000000));
+  });
+
+  testWidgets('a zoomed view follows an edge spot and fits a late sweep once it covers the dial', (tester) async {
+    final radio = _Radio();
+    await _show(tester, radio, spectrum: const {'follow': .15, 'span': 20000});
+
+    Future<void> settleFollow() async {
+      await tester.pump(const Duration(milliseconds: 210));
+      await tester.pump(const Duration(milliseconds: 350));
+    }
+
+    radio.vfo = 14002000;
+    radio.notifyListeners();
+    await settleFollow();
+    expect(_shownFrame(tester).lowHz, 14000000);
+    expect(_shownFrame(tester).highHz, 14020000);
+
+    radio.vfo = 13998000;
+    radio.notifyListeners();
+    await settleFollow();
+    expect(_shownFrame(tester).lowHz, 13995000, reason: 'the dial is outside the available sweep');
+
+    // The dial is already at the follow margin when the new sweep arrives.
+    // Coverage can improve without another CAT frequency change.
+    radio.controller.add(_sweep(lowHz: 13997000));
+    await tester.pump();
+    await settleFollow();
+    expect(_shownFrame(tester).lowHz, 13997000);
+    expect(_shownFrame(tester).highHz, 14017000);
+    expect(_drawnVfo(tester), 13998000);
+  });
+
+  testWidgets('a spot several zoomed windows away can still be inside the same sweep', (tester) async {
+    final radio = _Radio();
+    await _show(tester, radio, spectrum: const {'follow': .15, 'span': 10000});
+    radio.vfo = 14095000;
+    radio.notifyListeners();
+    await tester.pump();
+
+    expect(_shownFrame(tester).lowHz, 14086500);
+    expect(_shownFrame(tester).highHz, 14096500);
+    expect(_drawnVfo(tester), 14095000);
   });
 
   testWidgets('follow chases a spinning dial, trailing it by more the faster it spins, and settles on the margin', (tester) async {

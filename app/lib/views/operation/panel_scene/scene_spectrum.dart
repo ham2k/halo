@@ -78,6 +78,9 @@ abstract class SceneSpectrumSource {
   /// panel's `radio` trigger fires on. Read on [readingChanges].
   List<Object?> dialState();
 
+  /// Whether this panel can move [uuid]'s sweep independently of the dial.
+  bool canRecenter(String uuid);
+
   /// Moves [uuid]'s scope to centre on [centerHz], for a control that
   /// `follow`s the VFO. False where the radio's window is not the app's to
   /// move, or the panel may not command the radio.

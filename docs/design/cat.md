@@ -3869,10 +3869,12 @@ retry independently; they do not disconnect CAT or interrupt keying.
 
 The packet's center and sample rate place its 2048 ascending bins. Its
 center can stay fixed while VFO A moves, so the VFO only places the receive
-marker. Local zoom selects actual bins and reports their frequency endpoints;
-it never stretches the entire sampled width into the chosen visible span.
-Zoom is bounded by the available samples. The K4 controls which source
-window is available; HaLo sends no pan-center or span CAT commands.
+marker. The LAN and secure pairings use the same presenter. It publishes
+every bin by default with the first and last bin frequencies as the sweep
+edges. Each display can zoom and pan over that sweep. An explicit
+`setRadioSpectrum({ spanHz })` request crops the selected receiver's
+shared sweep around the packet center, bounded by the available samples.
+The K4 controls the source window independently of these local controls.
 
 Reference adjustment and sweep-speed controls are local to HaLo. The
 existing noise-floor estimator supplies a drawing range, without claiming

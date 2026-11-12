@@ -113,12 +113,29 @@ extension _SpectrumFollow on _SceneSpectrumViewState {
   }
 
   /// Where the window's middle goes to put [vfo] on [margin] of [frame]'s
-  /// width in from its nearer edge; null where it is already further in.
+  /// width in from its nearer edge. On a sweep the app cannot move, keeping
+  /// the whole window covered takes precedence over the margin when the dial
+  /// is within the sweep. Recheck coverage even when the dial is already in
+  /// view: a new sweep can arrive after the dial moves.
   double? _keptCenter(double vfo, SpectrumFrame frame, double margin) {
     final width = (frame.highHz - frame.lowHz).toDouble(), edge = margin * width;
-    if (vfo < frame.lowHz + edge) return vfo + (.5 - margin) * width;
-    if (vfo > frame.highHz - edge) return vfo - (.5 - margin) * width;
-    return null;
+    final from = (frame.lowHz + frame.highHz) / 2;
+    var center = vfo < frame.lowHz + edge
+        ? vfo + (.5 - margin) * width
+        : vfo > frame.highHz - edge
+        ? vfo - (.5 - margin) * width
+        : from;
+    final (sweep, uuid, source) = (_sweep, _uuid, widget.source);
+    if (sweep != null &&
+        uuid != null &&
+        source != null &&
+        vfo >= sweep.lowHz &&
+        vfo <= sweep.highHz &&
+        width <= sweep.highHz - sweep.lowHz &&
+        !source.canRecenter(uuid)) {
+      center = center.clamp(sweep.lowHz + width / 2, sweep.highHz - width / 2);
+    }
+    return (center - from).abs() < 1 ? null : center;
   }
 
   /// [SceneSpectrumSpec.follow] for the scope under a window wider than it
