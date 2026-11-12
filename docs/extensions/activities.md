@@ -304,6 +304,12 @@ A contest whose sent exchange changes per contact (a serial) mirrors that
 into `our.exchange` too, and the column shows it ahead of theirs; keep it to
 the part that varies, since it repeats on every row.
 
+A part of the exchange that says where the station is belongs in the
+contact's own fields as well — `their.grid` (with its center as
+`lat`/`lon`), `their.state`, `their.county`, `their.arrlSection` — since
+those, not your ref, are what a SOTA or POTA file, a plain ADIF export, an
+award and the map read ([guidelines](guidelines.md#contests)).
+
 Return a **patch**, not a mutated QSO: it merges shallowly except `our` and
 `their`, which merge one level deep, so `{ their: { exchange: "ZN5" } }` sets
 that field and leaves the callsign alone. `refs` in a patch merge field-wise

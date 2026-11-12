@@ -341,6 +341,22 @@ from.
   writes the exchange the scorer used onto the contact, guesses resolved,
   and mirrors it into `their.exchange` (and a varying sent part into
   `our.exchange`), so the QSO list and a plain ADIF show it.
+- **Say where the station is, in the contact's own fields.** A part of the
+  exchange that says where the other station is goes into the field every
+  other reader takes it from, in the same `processQsoBeforeSave` patch:
+  a grid into `their.grid` (with the square's center as `lat`/`lon`,
+  [locations](../design/locations.md)), a US state or Canadian province into
+  `their.state`, a US county into `their.county` as ADIF names it
+  (`NY,Sullivan`), an ARRL or RAC section into `their.arrlSection`. Left
+  only on your ref, it reaches your own files and nothing else: a SOTA or
+  POTA file of the same operation, a plain ADIF export, Worked All States
+  and the map all fall back to the lookup, which names the station's home
+  address and not where it is operating from. Write only what the station
+  actually said: a prefix that spells a state (`OK`, `OH`) is not one from
+  outside the US, and a county line names no single county. The
+  [`@ham2k/lib-contest-exchange`](https://github.com/ham2k/extensions/tree/main/packages/lib-contest-exchange)
+  helpers `theirGridFields` and `theirStateFields` do this; `ham2k-rsgb-vhf-tests`
+  and `ham2k-naqp` use them.
 
 ### Dupes, multipliers and alerts
 
