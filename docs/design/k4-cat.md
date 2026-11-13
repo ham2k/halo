@@ -115,9 +115,17 @@ Main uses `A` packets. Each packet's own center and sample rate place its
 bins. The presenter supplies the full sweep to displays by default, as it
 does on the secure connection. Each display can zoom over those bins.
 Local reference adjustment and frame-rate limiting use the existing
-spectrum controls and noise-floor estimator. These are display controls,
-not claims about calibrated dBm or the K4's REF/SCALE settings. No spectrum
-CAT setters are sent.
+spectrum controls and noise-floor estimator.
+
+A Band Scope zoom or pan that needs more coverage can widen the radio's
+panadapter with `#SPN`. This changes the K4's displayed span for all clients.
+The LAN pairing sends it on the CAT connection. The secure pairing sends it
+on the secure CAT connection with the selected receiver's suffix. Both use
+the received PAN bin frequencies to determine what is covered. At the end
+of a zoom in, PoLo can switch to a narrower PAN tier for finer bin spacing
+when only one PoLo display is using that sweep. A double tap on the axis
+brings back the sweep from before zooming in. Following the dial leaves
+the hardware span alone.
 
 Verification covers the captured wire fixtures, crop coordinates, cancellation,
 reconnect and a stalled Main stream. The band scope
@@ -178,5 +186,6 @@ This format is distinct from the remote-access stream on 9204/9205.
 ## References
 
 - [K4 Programmer's Reference, D12](https://ftp.elecraft.com/K4/Manuals%20Downloads/K4ProgrammersReferencerev.D12.html)
+- [QK4 PAN spectrum tier measurements](https://github.com/mikeg-dal/QK4/blob/90eccd169bee03031fb455e8a7ab7964aee7d1d7/docs/k4-protocol-quirks.md#9-pan-spectrum-tiers--the-radio-picks-the-bandwidth-not-the-span)
 - [K4 Operating Manual, D14](https://ftp.elecraft.com/K4/Manuals%20Downloads/K4%20Built-In%20Operating%20Manual%20rev%20D14/K4BuiltInOperatingManualrevD14.html)
 - [RUMlog K4 connection documentation](https://dl2rum.de/RUMlogNG/docs/en/pages/CAT-K4.html)

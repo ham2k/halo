@@ -145,6 +145,116 @@ void main() {
     });
   });
 
+  test('a hardware width request waits for PAN data and coalesces writes until coverage changes', () {
+    fakeAsync((async) {
+      final writes = <int>[];
+      final levels = Float32List.fromList(List.filled(1024, -120));
+      void sweep(int rate) => presenter.add(centerHz: 14045000, sampleRateHz: rate, levels: levels);
+      bool widen(int width) => presenter.set(SpectrumRequest(hardwareWidthHz: width), writeHardwareSpan: writes.add);
+
+      presenter.start();
+      expect(presenter.capabilities.hardwareMaxWidthHz, 384000);
+      expect(widen(50000), isFalse);
+      sweep(24000);
+      expect(presenter.capabilities.hardwareMaxWidthHz, 383625, reason: 'the zoom limit accounts for the first and last bin centres');
+      expect(widen(20000), isFalse);
+      expect(widen(30000), isTrue);
+      expect(widen(35000), isFalse, reason: 'the first command already asks for a 48 kHz packet');
+      expect(widen(50000), isTrue, reason: 'a larger request supersedes the earlier request before the first response');
+      expect(writes, [25000, 40000]);
+      expect(sink.frames.last.highHz - sink.frames.last.lowHz, 23977, reason: 'a command does not change what was received');
+      sweep(48000);
+      expect(widen(50000), isFalse, reason: 'the intermediate tier does not satisfy the pending request');
+      async.elapse(const Duration(seconds: 1));
+      expect(widen(50000), isTrue, reason: 'a later gesture can retry a command with no matching packet');
+      sweep(96000);
+      expect(widen(50000), isFalse);
+      sweep(48000);
+      expect(widen(50000), isTrue, reason: 'the previous widened packet cleared the pending request');
+      presenter.reset();
+      expect(widen(50000), isFalse, reason: 'no previous geometry can trigger commands after reconnect');
+      sweep(48000);
+      expect(widen(50000), isTrue, reason: 'the previous connection cannot suppress a fresh request');
+      expect(writes, [25000, 40000, 40000, 40000, 40000]);
+    });
+  });
+
+  test('a committed zoom can narrow the hardware, and only new PAN data changes the sweep', () {
+    fakeAsync((async) {
+      final writes = <int>[];
+      final levels = Float32List.fromList(List.filled(1024, -120));
+      void sweep(int rate) => presenter.add(centerHz: 14045000, sampleRateHz: rate, levels: levels);
+      bool fit(int width, {bool narrow = false}) => presenter.set(
+        SpectrumRequest(hardwareWidthHz: width, allowHardwareNarrowing: narrow),
+        writeHardwareSpan: writes.add,
+      );
+
+      presenter.start();
+      sweep(96000);
+      expect(fit(20000), isFalse, reason: 'intermediate gesture updates cannot narrow');
+      expect(fit(60000, narrow: true), isFalse, reason: 'a zoom that remains in the same tier needs no command');
+      expect(fit(20000, narrow: true), isTrue);
+      expect(writes, [15000]);
+      sweep(96000);
+      expect(sink.settings.last.spanHz, 48000);
+      expect(fit(20000, narrow: true), isFalse, reason: 'an older wider packet does not acknowledge the downshift');
+      async.elapse(const Duration(seconds: 1));
+      expect(fit(20000, narrow: true), isTrue, reason: 'an unconfirmed downshift can be retried');
+      sweep(24000);
+      expect(sink.settings.last.spanHz, 12000);
+      expect(sink.frames.last.levels, hasLength(1024));
+      expect(sink.frames.last.highHz - sink.frames.last.lowHz, 23977);
+      expect(fit(20000, narrow: true), isFalse);
+      expect(writes, [15000, 15000]);
+    });
+  });
+
+  test('widening during a pending downshift restores coverage even while wider packets are still arriving', () {
+    fakeAsync((async) {
+      final writes = <int>[];
+      final levels = Float32List.fromList(List.filled(1024, -120));
+      void sweep(int rate) => presenter.add(centerHz: 14045000, sampleRateHz: rate, levels: levels);
+      bool fit(int width, {bool narrow = false}) => presenter.set(
+        SpectrumRequest(hardwareWidthHz: width, allowHardwareNarrowing: narrow),
+        writeHardwareSpan: writes.add,
+      );
+
+      presenter.start();
+      sweep(96000);
+      expect(fit(20000, narrow: true), isTrue);
+      expect(fit(60000), isTrue, reason: 'the current frame covers the new viewport, but the pending downshift would crop it');
+      expect(writes, [15000, 40000]);
+      sweep(96000);
+      sweep(24000);
+      expect(fit(60000), isFalse, reason: 'an old packet at the restored width did not clear the correction');
+      sweep(96000);
+      sweep(24000);
+      expect(fit(60000), isTrue, reason: 'the confirmed correction does not block a later widening');
+    });
+  });
+
+  test('tier selection fits both rounded edges and can restore the exact former width', () {
+    final writes = <int>[];
+    final levels = Float32List.fromList(List.filled(2048, -120));
+    void sweep(int rate) => presenter.add(centerHz: 14045000, sampleRateHz: rate, levels: levels);
+    bool fit(int width, {bool narrow = false}) => presenter.set(
+      SpectrumRequest(hardwareWidthHz: width, allowHardwareNarrowing: narrow),
+      writeHardwareSpan: writes.add,
+    );
+
+    presenter.start();
+    sweep(96000);
+    expect(fit(47977, narrow: true), isFalse, reason: 'the lower tier has this width but cannot cover both edges about the current midpoint');
+    expect(fit(47000, narrow: true), isTrue);
+    sweep(48000);
+    final oldWidth = sink.frames.last.highHz - sink.frames.last.lowHz;
+    expect(oldWidth, 47977);
+    expect(fit(20000, narrow: true), isTrue);
+    sweep(24000);
+    expect(fit(oldWidth), isTrue, reason: 'the exact old LAN width fits its original tier');
+    expect(writes, [25000, 15000, 25000]);
+  });
+
   test('a settings callback can stop or replace the source before its sweep is published', () {
     presenter.start();
     sink.onSettings = () {

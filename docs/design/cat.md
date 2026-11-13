@@ -4183,7 +4183,10 @@ every bin by default with the first and last bin frequencies as the sweep
 edges. Each display can zoom and pan over that sweep. An explicit
 `setRadioSpectrum({ spanHz })` request crops the selected receiver's
 shared sweep around the packet center, bounded by the available samples.
-The K4 controls the source window independently of these local controls.
+When a Band Scope zoom or pan reaches beyond that coverage, a panel with
+radio write access can widen the K4's shared panadapter span. A zoom in can
+narrow it for finer bin spacing when only one PoLo display uses the sweep.
+The radio still places the sweep center. See [k4-cat.md](k4-cat.md#app-integration).
 
 Reference adjustment and sweep-speed controls are local to HaLo. The
 existing noise-floor estimator supplies a drawing range, without claiming

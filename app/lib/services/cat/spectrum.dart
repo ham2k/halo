@@ -125,6 +125,10 @@ class SpectrumCapabilities {
   /// Elsewhere a fixed scope's width is its own, and a zoom leaves it be.
   final bool spanSetsEdges;
 
+  /// The maximum full sweep width in Hz when the radio can resize its shared
+  /// panadapter to cover a display window.
+  final int? hardwareMaxWidthHz;
+
   const SpectrumCapabilities({
     required this.spansHz,
     required this.refMinDb,
@@ -135,6 +139,7 @@ class SpectrumCapabilities {
     this.canRecenter = false,
     this.autoSpan = false,
     this.spanSetsEdges = false,
+    this.hardwareMaxWidthHz,
   });
 
   int snapSpan(int hz) => spansHz.reduce((a, b) => (a - hz).abs() <= (b - hz).abs() ? a : b);
@@ -152,7 +157,8 @@ class SpectrumCapabilities {
       setEquals(other.speeds, speeds) &&
       other.canRecenter == canRecenter &&
       other.autoSpan == autoSpan &&
-      other.spanSetsEdges == spanSetsEdges;
+      other.spanSetsEdges == spanSetsEdges &&
+      other.hardwareMaxWidthHz == hardwareMaxWidthHz;
 
   @override
   int get hashCode => Object.hash(
@@ -165,6 +171,7 @@ class SpectrumCapabilities {
     canRecenter,
     autoSpan,
     spanSetsEdges,
+    hardwareMaxWidthHz,
   );
 }
 
@@ -179,7 +186,13 @@ class SpectrumRequest {
   /// Where to centre the window, for a scope that [SpectrumCapabilities.canRecenter].
   final int? centerHz;
 
-  const SpectrumRequest({this.mode, this.spanHz, this.refLevelDb, this.speed, this.centerHz});
+  /// The minimum full width in Hz to cover about the radio's sweep centre.
+  final int? hardwareWidthHz;
+
+  /// Allow a narrower hardware sweep when it covers [hardwareWidthHz].
+  final bool allowHardwareNarrowing;
+
+  const SpectrumRequest({this.mode, this.spanHz, this.refLevelDb, this.speed, this.centerHz, this.hardwareWidthHz, this.allowHardwareNarrowing = false});
 }
 
 /// A session whose radio can stream its panadapter.

@@ -41,6 +41,12 @@ extension CatServiceSpectrum on CatService {
   /// What each display drawing [uuid]'s scope shows of it, as [wantSpectrumWidth] was told.
   Iterable<int> spectrumWidthsFor(String uuid) => _runtimes[uuid]?.spectrumWidths.values ?? const [];
 
+  /// Whether [owner] is the only display registered for [uuid]'s sweep.
+  bool isOnlySpectrumDisplay(String uuid, Object owner) {
+    final displays = _runtimes[uuid]?.spectrumWidths;
+    return displays != null && displays.length == 1 && displays.containsKey(owner);
+  }
+
   /// [uuid]'s scope, when it is connected and has one.
   SpectrumSession? spectrumSessionFor(String uuid) => switch (connectedSession(uuid)) {
     final SpectrumSession session => session,

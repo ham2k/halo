@@ -16,7 +16,7 @@ import 'scene_spectrum.dart';
 
 /// A scene's spectrum controls, fed by the station's CAT connections.
 @immutable
-class CatSpectrumSource implements SceneSpectrumSource {
+class CatSpectrumSource implements SceneSpectrumSource, SceneSpectrumHardwareSpan {
   final CatService cat;
 
   /// Holds the SDR receivers experiment (`fall` in experiments.yaml): whether
@@ -213,6 +213,19 @@ class CatSpectrumSource implements SceneSpectrumSource {
   void showWidth(String uuid, Object owner, int? widthHz) => cat.wantSpectrumWidth(uuid, owner, widthHz);
 
   @override
+  int? hardwareMaxWidthHz(String uuid) => canCommand ? cat.spectrumCapabilitiesFor(uuid)?.hardwareMaxWidthHz : null;
+
+  @override
+  bool fitHardwareSpan(String uuid, Object owner, int widthHz, {required int offCenterHz, bool allowNarrowing = false}) {
+    final maxWidth = hardwareMaxWidthHz(uuid);
+    if (maxWidth == null) return false;
+    // Other views report only their widths. Their positions may require the
+    // current sweep even when their widths alone would fit a narrower one.
+    final width = (widthHz + 2 * offCenterHz).clamp(0, maxWidth);
+    return cat.setSpectrum(uuid, SpectrumRequest(hardwareWidthHz: width, allowHardwareNarrowing: allowNarrowing && cat.isOnlySpectrumDisplay(uuid, owner)));
+  }
+
+  @override
   int? maxWidthHz(String uuid) {
     final caps = cat.spectrumCapabilitiesFor(uuid);
     if (caps == null || caps.spansHz.isEmpty || !(caps.autoSpan || canCommand)) return null;
@@ -244,13 +257,11 @@ class CatSpectrumSource implements SceneSpectrumSource {
     return true;
   }
 
-  /// The widest display drawing the scope sets its span: one display's zoom
-  /// in must not cut off another's wider window, and one naming no width
-  /// draws the whole sweep, so it holds the span at least where it is.
+  /// Fit the scope to the widest display, including those drawing the whole sweep.
   @override
   bool fitSpan(String uuid, int widthHz, {int? centerHz, int offCenterHz = 0}) {
     final caps = cat.spectrumCapabilitiesFor(uuid);
-    if (!canCommand || caps == null || caps.autoSpan || caps.spansHz.isEmpty) return false;
+    if (!canCommand || caps == null || caps.autoSpan || caps.hardwareMaxWidthHz != null || caps.spansHz.isEmpty) return false;
     final settings = cat.stateFor(uuid).spectrum;
     final fixed = settings?.mode == SpectrumMode.fixed;
     // A fixed scope's width is its edges: a span set there changes nothing but the one centre mode
