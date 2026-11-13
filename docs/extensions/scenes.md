@@ -35,7 +35,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 20 | the band scope's `minWidthHz` and `maxWidthHz`, its `vfoLabel`'s `arrow`, up to 512 of its `layers` and 256 `annotations`, and an annotation's `collapsed` |
 | 22 | the band scope's `window` and `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed one's `width: 'box'`, a zoom's `commit` of its middle as a pan, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click; `radio.compression`; `cells`, the `grid` and `cell` layout nodes, and a layout up to 12 deep and 512 nodes; a slider's or knob's `invertScroll`; named `sources` for radios, rotators and antenna switches, a band scope's `radio` naming one; a layer's `clipX` and `clipY`, and a binding's `hold` |
 | 23 | the rotator map control (`rotatorMap`), a `nativeButton`'s `icon` variant, an event's `bearing` and `km`, and a binding's `offset` |
-| 25 | the map control (`map`), an event's `lat` and `lon`, and the `reset` gesture |
+| 25 | the map control (`map`), an event's `lat` and `lon`, and the `reset` gesture; an event answer's `patch` and `host.updateScene`, changing a scene in place |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -356,7 +356,9 @@ event: {
 ```
 
 It answers `{ values, strings? }`, a patch of names already in the scene, and
-may carry the placement's own `config` (API 23, [Panels](panels.md#answering-with-config)). An
+may carry the placement's own `config` (API 23, [Panels](panels.md#answering-with-config)) and a
+`patch` to the scene (API 25, [Changing a scene in place](#changing-a-scene-in-place)), shown
+at once, ahead of the render that follows. An
 answer with neither is a failure, and so is one that throws or runs out of
 time: the pane says the action failed and the control goes back to what the
 scene last reported. The app sends one event at a time, keeps only the
@@ -417,6 +419,46 @@ export const spotter: PanelHook = {
   },
 }
 ```
+
+## Changing a scene in place
+
+A render sends the whole scene, and the app reads all of it again. For a
+scene of thousands of markers that changes a few at a time, change those
+instead (API 25): an event answer may carry a `patch`, and
+[`host.updateScene`](host.md#hostupdatesceneinstanceid-patch) sends one at
+any moment, from a socket's message or a timer, with no render.
+
+A patch is a list of steps, applied in order, at most 8,192. Each names a
+place in the scene by a path of keys and ids: the keys of objects, and the
+`id` of an item in a list of them, so `["controls", "map", "markers",
+"pin-3"]` is the marker `pin-3` of the control `map`, at most 16 deep.
+
+- `{ set: path, value }` puts `value` there: a key's value, or the item
+  with that `id`, added at the end of its list when the list has none.
+- `{ merge: path, value }` lays `value`'s fields over the object there; a
+  field set to `null` is removed.
+- `{ remove: path }` takes the key or the item away.
+- `{ insert: path, value, before? }` adds `value`, an item with an `id` the
+  list does not have, to the list `path` names: before the item `before`,
+  or at the end.
+
+```ts
+await host.updateScene(args.instanceId, [
+  { merge: ["controls", "map", "markers", "k1abc"], value: { lat: 40.1, lon: -75.2 } },
+  { insert: ["controls", "map", "markers"], value: { id: "w1aw", lat: 41.7, lon: -72.7, style: "spot" } },
+  { set: ["strings", "status"], value: "2 spots" },
+])
+```
+
+A patch applies to the scene the placement shows: the one its last render,
+answer or update left. The scene it leaves is checked as a whole one is,
+and one a step cannot apply to, or that the scene would not pass, is
+refused whole, never applied in part; `host.updateScene` then rejects. When
+the app shows no scene from that placement, or not the one the patch was
+taken from (it had not yet shown the last render, say), it is not applied,
+nor its steps checked: `host.updateScene` answers false, and the app
+renders the panel again, for a whole scene. A render that gives the same
+scene the placement shows again costs almost nothing to send or read.
 
 ## The render environment
 

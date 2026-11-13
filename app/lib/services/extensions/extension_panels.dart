@@ -7,7 +7,11 @@
 
 part of 'extension_service.dart';
 
-mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource, PanelConfigSink {
+mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource, PanelConfigSink, PanelSceneUpdateSource {
+  /// Where `host.updateScene` calls go: the panel service, once it has one.
+  @override
+  bool Function(String? extensionKey, Map<String, dynamic> params)? sceneUpdates;
+
   // Owned by the class or by another part of this library.
   ExtensionHost? get host;
   SettingsService? get settings;
@@ -103,7 +107,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource, PanelC
           continue;
         }
         for (final item in (entry['value'] as List)) {
-          if (item is Map) results.add({...item.cast<String, dynamic>(), 'hookKey': entry['key']});
+          if (item is Map) results.add({...item.cast<String, dynamic>(), 'hookKey': entry['key'], 'extensionKey': entry['extensionKey']});
         }
       }
       return results;

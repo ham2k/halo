@@ -58,6 +58,7 @@ import { installAppClock } from "./appClock.ts"
 import type { ComposableHookCategory, HookCategoryName } from "./hookCategories.ts"
 import { hasPrefix, requireComposable, requireHookMethodName } from "./composable.ts"
 import { freezeRealm } from "./freezeRealm.ts"
+import { applyScenePatch } from "./scenePatch.ts"
 import { createTimerQueue, removeAmbientTimers } from "./timerQueue.ts"
 import { createLogCopies, deepFreeze, FROZEN_QSOS_API, type LogChanges } from "./logCopy.ts"
 
@@ -547,6 +548,7 @@ for (const method of [
   "webSocketSend",
   "webSocketClose",
   "suggestQso",
+  "updateScene",
 ]) {
   IDENTITY_HOST_METHODS[method] = true
 }
@@ -677,8 +679,136 @@ function boundHostCallFor(extensionKey: string) {
         throw e
       })
     }
+    if (method === "updateScene") return pushScene(extensionKey, params)
     return dispatchHostCall(method, params, extensionKey, extensionKey, kvKey, duringPanelEvent)
   }
+}
+
+/// The last scene each placement was sent, by extension and `instanceId`,
+/// as the app has it (docs/design/panel-scenes.md § Patches): its JSON, or
+/// its document once a patch has been applied to it — each made from the
+/// other only when wanted, since either costs about what writing out the
+/// whole scene does. A render that gives the same scene again, while the app
+/// shows that one (`args.sceneRevision`), crosses as an empty patch; a patch
+/// from an event answer or `host.updateScene` crosses as itself. Never the
+/// hook's own objects: a scene the hook keeps and changes in place would
+/// otherwise be compared with itself.
+///
+/// A render that changed goes whole. Taken apart item by item, the
+/// difference of a scene of thousands of markers costs this runtime more
+/// than the app saves by reading only what changed; a hook that changes a
+/// few of thousands says so itself, with a patch.
+type HeldScene = { json: string | null; doc: Record<string, unknown> | null; revision: number }
+const scenesHeld = new Map<string, HeldScene>()
+
+/// The most placements held: the oldest goes past it, and is sent whole next time.
+const SCENES_HELD_MAX = 64
+
+/// Revisions number every scene the kernel sends, across placements, so one
+/// is never taken for another's — and across runtimes: counted from when this
+/// one started, a scene a runtime sends never shares a number with one an
+/// earlier runtime sent that the app still shows, which it would take for
+/// that one and keep.
+let nextSceneRevision = Math.floor(realNow()) * 1024
+
+function holdScene(key: string, held: HeldScene) {
+  scenesHeld.delete(key)
+  scenesHeld.set(key, held)
+  if (scenesHeld.size > SCENES_HELD_MAX) scenesHeld.delete(scenesHeld.keys().next().value!)
+}
+
+const isPlainObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v)
+
+/// A panel's `render` or `onEvent` answer as it crosses. A whole scene goes as
+/// the difference from the one the app shows (`args.sceneRevision`, which
+/// the app sends while it shows one), when that is the last one sent. An
+/// event answer's `patch` is applied here too, so the next difference is
+/// taken from it, and sent on only when the app is in step to take it; out
+/// of step, the render the app follows every event with sends it whole.
+function sceneAnswer(extensionKey: string, args: unknown, result: unknown): unknown {
+  const instanceId = (args as { instanceId?: unknown } | null)?.instanceId
+  if (typeof instanceId !== "string" || !isPlainObject(result)) return result
+  const key = extensionKey + "\n" + instanceId
+  const shown = (args as { sceneRevision?: unknown }).sceneRevision
+  const held = scenesHeld.get(key)
+  const inStep = held !== undefined && typeof shown === "number" && held.revision === shown
+  // A null patch is no patch, as the app reads it.
+  if (result.patch != null && result.kind === undefined) {
+    // Nothing held to patch (it went past the most held): the render the
+    // event is followed by sends the scene whole, and the rest of the answer
+    // stands.
+    if (held === undefined) return { ...result, patch: undefined }
+    const steps = asSent(result.patch)
+    const doc = applyScenePatch(documentOf(held), steps)
+    const revision = nextSceneRevision++
+    holdScene(key, { json: null, doc, revision })
+    return inStep ? { ...result, patch: steps, base: shown, revision } : { ...result, patch: undefined }
+  }
+  if (result.kind !== "scene") return result
+  // A render answer is a whole scene, never a patch: one carrying `patch` or
+  // `base` would read as a patch to the app, against no scene, and it would
+  // ask again forever. Without a scene it is refused as having none.
+  if (!isPlainObject(result.scene)) return { ...result, patch: undefined, base: undefined }
+  const json = JSON.stringify(result.scene)
+  if (inStep && (held.json ??= JSON.stringify(held.doc)) === json) {
+    holdScene(key, held)
+    return { ...result, scene: undefined, patch: [], base: shown, revision: shown }
+  }
+  const revision = nextSceneRevision++
+  holdScene(key, { json, doc: null, revision })
+  // Written out once, here: the scene's JSON goes into the answer as it is.
+  const rest = JSON.stringify({ ...result, scene: undefined, patch: undefined, base: undefined, revision })
+  return new WrittenAnswer(rest.slice(0, -1) + ',"scene":' + json + "}")
+}
+
+/// An answer already written out as JSON, which crosses as it is.
+class WrittenAnswer {
+  constructor(readonly json: string) {}
+}
+
+/// [steps] as the app receives them: written out and read back, so the
+/// steps applied here are the very ones the app applies — a field left
+/// undefined gone from both, not removed here and kept there — and none of
+/// their values is an object the hook still holds and may change.
+function asSent(steps: unknown): unknown {
+  return steps === undefined ? undefined : JSON.parse(JSON.stringify(steps))
+}
+
+/// [held]'s document, made from its JSON the first time one is wanted.
+function documentOf(held: HeldScene): Record<string, unknown> {
+  return (held.doc ??= JSON.parse(held.json!) as Record<string, unknown>)
+}
+
+/// `host.updateScene`: the patch applied to the scene the placement was last
+/// sent, and sent on to the app as the step from that one. The app takes it
+/// only when it shows that scene, and renders the panel again when it does
+/// not — told so too when nothing is held here to patch, with no step from
+/// anything, so that it asks for the scene whole.
+function pushScene(extensionKey: string, params: Record<string, unknown>): Promise<unknown> {
+  const instanceId = params?.instanceId
+  if (typeof instanceId !== "string") return Promise.reject(new Error("updateScene names the placement's instanceId"))
+  const key = extensionKey + "\n" + instanceId
+  const held = scenesHeld.get(key)
+  let steps: unknown
+  let doc: Record<string, unknown> | undefined
+  try {
+    steps = asSent(params.patch)
+    if (held !== undefined) doc = applyScenePatch(documentOf(held), steps)
+  } catch (e) {
+    return Promise.reject(e)
+  }
+  if (held === undefined || doc === undefined) {
+    return dispatchHostCall("updateScene", { instanceId, base: null, revision: null, patch: [] }, extensionKey, extensionKey)
+  }
+  const revision = nextSceneRevision++
+  holdScene(key, { json: null, doc, revision })
+  // Refused by the app, the scene it would have left is not one the app
+  // shows: held on, a corrected retry would be judged against it. Let go,
+  // the next render sends the scene whole.
+  return dispatchHostCall("updateScene", { instanceId, base: held.revision, revision, patch: steps }, extensionKey, extensionKey).catch((e) => {
+    if (scenesHeld.get(key)?.revision === revision) scenesHeld.delete(key)
+    throw e
+  })
 }
 
 /// The keychain key of an `account` hook: its declared `kvKey` when that sits
@@ -990,7 +1120,8 @@ async function runHook(category: HookCategoryName, key: string | null, method: s
   const requested = (args as { online?: unknown } | null)?.online
   const online = typeof requested === "boolean" ? requested : true
   if (category === "scoring") args = await withLoggedQsos(record, args)
-  return await callHookMethod(record, method, args, online)
+  const result = await callHookMethod(record, method, args, online)
+  return category === "panel" && (method === "render" || method === "onEvent") ? sceneAnswer(record.extensionKey, args, result) : result
 }
 
 /// A full rescore names the contacts it read (`qsoUuids`) instead of sending
@@ -1327,7 +1458,11 @@ const kernelEntries = {
     void (async () => {
       try {
         const result = await runHook(category, key, method, JSON.parse(argsJson))
-        post({ type: "result", id, ok: true, value: result ?? null, jsMillis: realNow() - startedAt })
+        if (result instanceof WrittenAnswer) {
+          rawSendMessage("polo", '{"type":"result","id":' + id + ',"ok":true,"jsMillis":' + (realNow() - startedAt) + ',"value":' + result.json + "}")
+        } else {
+          post({ type: "result", id, ok: true, value: result ?? null, jsMillis: realNow() - startedAt })
+        }
       } catch (e) {
         post({ type: "result", id, ok: false, error: describeError(e), jsMillis: realNow() - startedAt })
       }
@@ -1356,7 +1491,8 @@ const kernelEntries = {
             try {
               // A call the host could not encode arrives carrying why, and fails alone.
               if (call.error) throw new Error(call.error)
-              entry = { key: String(i), ok: true, value: (await runHook(call.category, call.key ?? null, call.method, call.args ?? {})) ?? null }
+              const value = await runHook(call.category, call.key ?? null, call.method, call.args ?? {})
+              entry = { key: String(i), ok: true, value: (value instanceof WrittenAnswer ? JSON.parse(value.json) : value) ?? null }
             } catch (e) {
               entry = { key: String(i), ok: false, error: describeError(e), ...(e instanceof NoHandlerError ? { noHandler: true } : {}) }
             }

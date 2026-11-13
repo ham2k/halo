@@ -1336,7 +1336,31 @@ export interface PanelSceneEventResult {
   values: Record<string, number>
   strings?: Record<string, string>
   config?: Record<string, JSONValue>
+  /** The scene changed in place, at once, ahead of the render the event is followed by. Extension API 25. */
+  patch?: PanelScenePatch
 }
+
+/**
+ * A place in a scene: the keys of objects, and the `id`s of items in lists of them, so
+ * `["controls", "map", "markers", "pin-3"]` is the marker `pin-3` of the control `map`. Extension API 25.
+ */
+export type PanelScenePath = string[]
+
+/**
+ * One step of a scene patch. `set` puts `value` at the path: a key's value, or the item with that `id`,
+ * added at the end of its list when the list has none. `merge` lays `value`'s fields over the object
+ * there, a `null` field removing that one. `remove` takes the key or item away. `insert` adds `value`,
+ * an item with a new `id`, to the list the path names, before the item `before` or at the end.
+ * Extension API 25.
+ */
+export type PanelScenePatchStep =
+  | { set: PanelScenePath; value: JSONValue }
+  | { merge: PanelScenePath; value: { [key: string]: JSONValue } }
+  | { remove: PanelScenePath }
+  | { insert: PanelScenePath; value: { id: string; [key: string]: JSONValue }; before?: string }
+
+/** Steps applied in order, at most 8,192, each path at most 16 deep; refused whole if one cannot apply. Extension API 25. */
+export type PanelScenePatch = PanelScenePatchStep[]
 
 /** A fixed-size piece of a scene, in logical pixels; see `PanelScene.cells`. Extension API 23. */
 export interface PanelSceneCell {

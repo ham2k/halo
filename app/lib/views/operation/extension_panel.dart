@@ -89,6 +89,11 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   int _sceneRevision = 0;
   String? _error;
 
+  /// The next render asks for the whole scene rather than the difference
+  /// from the one shown: a patch came that was not taken from it, or the
+  /// runtime that numbered it was replaced.
+  bool _askWhole = false;
+
   /// The refusal the console last named, so a ticking panel's repeat prints
   /// nothing and a new reason behind the same placeholder does.
   String? _lastRefusal;
@@ -113,7 +118,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   /// Whether anyone can actually see this pane right now.
   // Read the inherited flag at timer dispatch too: an offstage subtree can
   // remain dirty until its next frame, leaving didChangeDependencies pending.
-  bool get _awake => _appVisible && DockPaneVisibility.readOf(context);
+  bool get _awake => _appVisible && DockPaneVisibility.readOf(context) && TickerMode.getValuesNotifier(context).value.enabled;
 
   /// Set while a render is in flight, so a burst of triggers coalesces into
   /// one follow-up call instead of stacking calls the bridge will run in
@@ -178,7 +183,12 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final visible = DockPaneVisibility.of(context);
+    // Its tab in front, and its screen not covered by another opened over
+    // it: the navigator turns tickers off beneath an opaque route, never
+    // beneath a dialog. A view stays mounted under the one opened over it,
+    // and a pane there showing the placement the top one shows too would
+    // otherwise render on every update the other takes, for nobody.
+    final visible = DockPaneVisibility.of(context) && TickerMode.valuesOf(context).enabled;
     final becameVisible = visible && !_visible;
     _visible = visible;
     if (!_rendered) {
@@ -229,6 +239,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     AppClock.instance.addListener(_onClockTravel);
     widget.panels.addListener(_onCatalogChanged);
     widget.panels.extensions.runtimeGeneration.addListener(_onSceneRuntimeChanged);
+    widget.panels.listenForSceneUpdates(widget.panel.id, _takeSceneUpdate);
     _startTicker();
     _watchRadio();
   }
@@ -271,6 +282,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   }
 
   void _onSceneRuntimeChanged() {
+    _askWhole = true;
     if (!mounted || _content?.kind != 'scene') return;
     setState(() {
       _sceneGeneration++;
@@ -283,6 +295,10 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   @override
   void didUpdateWidget(ExtensionPanel old) {
     super.didUpdateWidget(old);
+    if (old.panels != widget.panels || old.panel.id != widget.panel.id) {
+      old.panels.stopSceneUpdates(old.panel.id, _takeSceneUpdate);
+      widget.panels.listenForSceneUpdates(widget.panel.id, _takeSceneUpdate);
+    }
     if (old.panels != widget.panels) {
       old.panels.removeListener(_onCatalogChanged);
       old.panels.extensions.runtimeGeneration.removeListener(_onSceneRuntimeChanged);
@@ -516,7 +532,12 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       final config = await _readConfig(panel) ?? const <String, dynamic>{};
       final operation = ctx.operation;
       final renderedEnvironment = _environmentKey;
+      final askWhole = _askWhole;
+      _askWhole = false;
+      final shown = _content;
       final result = await widget.panels.render(panel, {
+        // What the runtime sends the next scene as the difference from.
+        if (!askWhole && shown?.kind == 'scene' && shown?.revision != null) 'sceneRevision': shown!.revision,
         // Absent, not empty, on a view with no operation open: an empty map
         // would answer a template's `op.call` with the empty string, which
         // reads as "this operation has no callsign" rather than "there is no
@@ -581,6 +602,11 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       // failure would never be reported at all. A null document is a failed
       // render too, so it must not clear the streak either.
       if (content != null) ErrorReportingService.recordSuccess('panel:render:${panel.id}');
+    } on SceneOutOfStep {
+      // The difference from a scene this pane no longer shows: the update or
+      // render that came in between moved it on. Asked again, whole.
+      _askWhole = true;
+      _pending = true;
     } on PanelContentRefusal catch (e) {
       // A budget is the extension's to keep, like a refused host call, not a
       // failure of the app's: nothing is reported. The pane names the budget
@@ -630,6 +656,29 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     }
   }
 
+  /// `host.updateScene`: [update] applied to the scene this pane shows, when
+  /// it was taken from that one. Otherwise the pane asks for the whole scene
+  /// again, and answers that it did not apply it. One that cannot apply
+  /// throws, back to the extension that sent it, and changes nothing.
+  bool _takeSceneUpdate(Map<String, dynamic> update) {
+    final content = _content;
+    if (!mounted || content == null) return false;
+    try {
+      final updated = content.updated(update);
+      if (updated != content) setState(() => _content = updated);
+      return true;
+    } on SceneOutOfStep {
+      _askWhole = true;
+      _requestRender('scene');
+      return false;
+    } on Exception catch (e) {
+      // The extension's to fix, and told it as the call's failure; said here
+      // too, as a render or an event refused is, for one that never awaits it.
+      debugPrint('[panels] "${widget.panel.id}" update refused: $e');
+      rethrow;
+    }
+  }
+
   /// What the operator reads in place of a document over its budget.
   String _refusalMessage(PanelContentRefusal refusal, PanelDefinition panel) {
     final layout = context.t.operation.layout;
@@ -651,6 +700,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
 
   @override
   void dispose() {
+    widget.panels.stopSceneUpdates(widget.panel.id, _takeSceneUpdate);
     widget.panels.removeListener(_onCatalogChanged);
     widget.panels.extensions.runtimeGeneration.removeListener(_onSceneRuntimeChanged);
     AppClock.instance.removeListener(_onClockTravel);
@@ -707,7 +757,10 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         throw StateError('Panel config unavailable');
       }
       if (!current()) throw StateError('Panel replaced');
+      final shown = _content;
       final result = await widget.panels.event(panel, {
+        // What an answer's `patch` is taken from, as a render's difference is.
+        if (!_askWhole && shown?.kind == 'scene' && shown?.revision != null) 'sceneRevision': shown!.revision,
         if (ctx.operation != null) 'operation': operationHookArgs(ctx.operation!),
         if (ctx.qso != null) 'qso': ctx.qso,
         'qsoCount': ctx.qsoCount,
@@ -733,6 +786,18 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       final values = parseValues(result['values'] ?? const {});
       final strings = parseStrings(result['strings'] ?? const {});
       if (strings.keys.any(values.containsKey)) throw const FormatException('A panel event result names a value as both a number and a string');
+      // An answer's `patch` changes the scene at once — once the rest of the
+      // answer has been found sound: applied first, a refused answer would
+      // leave the scene changed and the control back where it was. Out of
+      // step, the render every event is followed by brings it whole.
+      if (result['patch'] != null && result['base'] != null && _content != null) {
+        try {
+          final updated = _content!.updated(result);
+          if (updated != _content) setState(() => _content = updated);
+        } on SceneOutOfStep {
+          _askWhole = true;
+        }
+      }
       final patch = <String, Object>{...values, ...strings};
       ErrorReportingService.recordSuccess('panel:event:${panel.id}');
       return patch;

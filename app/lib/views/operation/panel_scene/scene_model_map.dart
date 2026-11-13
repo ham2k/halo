@@ -118,13 +118,17 @@ class SceneMapLook {
 /// its [menu] and sends the item picked.
 class SceneMapItem {
   final String id;
+
+  /// The document's object this was read from.
+  final Map<dynamic, dynamic> source;
   final String? style;
   final SceneMapLook own;
   final String? event;
   final SceneMenu? menu;
 
   SceneMapItem(Map<dynamic, dynamic> json)
-    : id = string(json, 'id'),
+    : source = json,
+      id = string(json, 'id'),
       style = json['style'] == null ? null : string(json, 'style'),
       own = SceneMapLook(json),
       event = json['event'] == null ? null : string(json, 'event'),
@@ -219,7 +223,10 @@ class SceneMapSpec {
   /// `native` or `off`.
   final String zoomGesture, panGesture;
 
-  SceneMapSpec(Map<dynamic, dynamic> json)
+  /// [previous], this map in the scene before, lends every marker, line and
+  /// circle read from the very object it was: a patch to one marker of
+  /// thousands reads that one.
+  SceneMapSpec(Map<dynamic, dynamic> json, {SceneMapSpec? previous})
     : projection = _oneOf(json, 'projection', const ['mercator', 'equirectangular', 'miller', 'patterson', 'azimuthal', 'robinson']) ?? 'mercator',
       home = switch (json['home']) {
         null => null,
@@ -259,9 +266,17 @@ class SceneMapSpec {
         final Map<dynamic, dynamic> s => throw _overCount('map styles', s.length, maxStyles),
         _ => throw const FormatException('Invalid map styles'),
       },
-      markers = [for (final m in items(json['markers'] ?? const [], maxMarkers, what: 'map markers')) _item(m, SceneMapMarker.new)],
-      lines = [for (final l in items(json['lines'] ?? const [], maxLines, what: 'map lines')) _item(l, SceneMapLine.new)],
-      circles = [for (final c in items(json['circles'] ?? const [], maxCircles, what: 'map circles')) _item(c, SceneMapCircle.new)],
+      markers = [
+        for (final m in items(json['markers'] ?? const [], maxMarkers, what: 'map markers'))
+          previous?._from[m] as SceneMapMarker? ?? _item(m, SceneMapMarker.new),
+      ],
+      lines = [
+        for (final l in items(json['lines'] ?? const [], maxLines, what: 'map lines')) previous?._from[l] as SceneMapLine? ?? _item(l, SceneMapLine.new),
+      ],
+      circles = [
+        for (final c in items(json['circles'] ?? const [], maxCircles, what: 'map circles'))
+          previous?._from[c] as SceneMapCircle? ?? _item(c, SceneMapCircle.new),
+      ],
       zoomValue = json['zoomValue'] == null ? null : string(json, 'zoomValue'),
       hoverLat = json['hoverLat'] == null ? null : string(json, 'hoverLat'),
       hoverLon = json['hoverLon'] == null ? null : string(json, 'hoverLon'),
@@ -309,6 +324,8 @@ class SceneMapSpec {
     if (gestures is! Map) throw const FormatException('Invalid map gestures');
     return _oneOf(gestures, key, const ['native', 'off']) ?? 'native';
   }
+
+  late final Map<Map<dynamic, dynamic>, SceneMapItem> _from = Map.identity()..addEntries([...markers, ...lines, ...circles].map((i) => MapEntry(i.source, i)));
 
   /// A marker or line's look: its own fields, over its style's.
   SceneMapLook lookOf(SceneMapItem item) => item.own.over(styles[item.style] ?? SceneMapLook.empty);

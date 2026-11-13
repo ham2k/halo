@@ -139,6 +139,72 @@ frequency. It sends **no real CAT commands**; KI2D’s Radio Panel is the one th
 does. LED flicker is explicitly decorative,
 not a claim that a radio emitted individual activity events.
 
+## Patches
+
+A scene can change in place (extension API 25): an event answer's `patch`,
+or `host.updateScene` from anywhere in the extension, applies steps (`set`,
+`merge`, `remove`, `insert`, each at a path of keys and item ids) to the
+scene the placement shows. The public contract is in [panel
+scenes](../extensions/scenes.md#changing-a-scene-in-place). Measured on a
+scene of 4,096 markers and 1,024 lines (420 KB), in the VM against the
+QuickJS runtime, before patches: about 42 ms a render, half in the runtime
+writing it out and the bridge, half in the app decoding it (4 ms),
+re-encoding it to compare with the last (7 ms) and parsing it (2 ms, more
+with JIT warm-up).
+
+- **The app's scene is shared, not copied.** A patch copies only the
+  objects and lists along its steps' paths, each once per patch
+  (`scene_patch.dart`); the rest of the patched document is the very object
+  it was. The parser lends a scene's layers, controls and map items to the
+  next wherever the source object is the same one, so a patch is read in
+  proportion to its size; the checks that look at the whole document run
+  either way (about 1 ms on the scene above, against 2.3 ms to read it all).
+- **Revisions keep the two sides in step.** The kernel keeps the last
+  scene it sent each placement, by extension and `instanceId`, and numbers
+  every scene it sends, counting from when the runtime started, so a new
+  runtime never hands out a number the app still shows from an old one. The app sends the revision it shows with each
+  render (`sceneRevision`), and takes a patch only against that one; one
+  taken from any other — a render it dropped as stale, an update that came
+  in between, a runtime replaced — is `SceneOutOfStep`, and the pane asks
+  for the whole scene again — as it does for an update the kernel holds no
+  scene to apply to. An event carries the revision too, so its answer's
+  patch shows at once. Nothing an extension does can leave the pane showing
+  a scene it did not render; at worst it renders once more.
+- **Every pane showing a placement takes its updates.** A placement's id
+  is the same in every view's layout, and a view stays mounted under the
+  one opened over it, so two panes can show one placement; each applies an
+  update when it is in step, and closing one leaves the others theirs. A
+  pane under a screen opened over its own counts as hidden, as one behind a
+  tab does (the navigator turns its tickers off; a dialog does not): put out
+  of step by the other's updates, it asks for the scene again when it is
+  shown, not on every update, which would have the two take turns
+  rendering it whole. An
+  update the app refuses — a step that cannot apply, a scene that would
+  not pass — leaves the kernel holding nothing for that placement, so the
+  next render goes whole rather than being judged against a scene no pane
+  shows.
+- **What crosses is what is held.** The kernel writes a patch's steps out
+  and reads them back before applying them, so it applies exactly what the
+  app does (a field left undefined is gone from both) and holds none of the
+  hook's own objects, which it may change after sending them.
+- **The kernel holds JSON, never the hook's objects.** A scene a hook keeps
+  and changes in place would otherwise be compared with itself. It holds
+  the scene's JSON, or its document once a patch has been applied to it,
+  each made from the other only when wanted.
+- **A render that gives the same scene again crosses as nothing changed**,
+  judged by the JSON the kernel writes out anyway: the scene above costs
+  about 11 ms that way, all of it writing it out. One that changed goes
+  whole, written out once — the kernel puts its JSON into the answer
+  itself — and the app numbers it by revision rather than re-encoding it
+  to compare: about 22 ms.
+- **A changed render is not diffed.** Taking the difference item by item
+  cost the QuickJS runtime more than the app saved by reading only what
+  changed: walking the documents, 45 ms on top of 8 ms parsing the last
+  one back; comparing each item's own JSON, 30 ms more than writing the
+  whole scene out once. A hook that changes a few items of thousands knows
+  which, and says so with a patch. A browser's JIT would walk it far
+  faster, and is not measured here.
+
 ## Native controls and layout
 
 The drawn controls are hit areas over artwork the extension paints; the
@@ -885,8 +951,8 @@ experimental:
    show an unavailable message.
 2. **Settle the schema.** Document the limits the parser enforces
    (`scene_model.dart`) in the public contract. Decide whether charts need a series
-   patch: `onEvent` and triggers patch only numeric values, so any change to a
-   chart's data re-renders the whole scene. Weather and solar each carry their own
+   patch beyond [Patches](#patches): a chart's data is one list of numbers,
+   set whole by a step. Weather and solar each carry their own
    `svg()`/`sample()` helpers; extract shared chart helpers, or decide not to. Give
    the radio knob `valueLabels`: a screen reader announces its raw number.
 3. **Own the command lifecycle, or say the extension does.** The host has no

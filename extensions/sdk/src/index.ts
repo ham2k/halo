@@ -56,6 +56,7 @@ import type {
   SuggestedQso,
   ClusterStatus,
 } from "./types.ts"
+import type { PanelScenePatch } from "./panelScene.ts"
 
 import { base64ToBytes, bytesToBase64 } from "./base64.ts"
 import type { ComposableHookCategory } from "./hookCategories.ts"
@@ -475,6 +476,17 @@ export const host = {
   /// existing QSO open for editing in its place. Extension API 22.
   async updateDraft(patch: DraftPatch, options: { replace?: boolean; operationUuid?: string } = {}): Promise<{ accepted: boolean }> {
     return (await hostCallFn()("updateDraft", { patch, ...options })) as { accepted: boolean }
+  },
+
+  /// Changes the scene a placement shows, now, with no render: `patch`
+  /// applied to the scene its last render, event answer or update left —
+  /// a spot arriving on a socket, a marker moved. `instanceId` is the
+  /// placement's, from its render args. True when the app applied it; false
+  /// when it shows no scene from this placement to apply it to, in which
+  /// case it renders the panel again. Refused, and not applied, when a step
+  /// cannot apply. Extension API 25.
+  async updateScene(instanceId: string, patch: PanelScenePatch): Promise<boolean> {
+    return (await hostCallFn()("updateScene", { instanceId, patch })) === true
   },
 
   /// The contacts the call being typed could be, offered on the line under

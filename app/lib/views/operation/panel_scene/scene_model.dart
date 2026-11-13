@@ -97,7 +97,12 @@ class PanelScene {
   /// the view there. [event], when given, is sent once scrolling settles, with the position.
   final ({String axis, String value, String? event})? scroll;
 
-  PanelScene(Map<dynamic, dynamic> json)
+  /// [previous], the scene this one follows, lends every layer and control
+  /// whose source object is the very one it was read from — a patched
+  /// document shares everything the patch did not touch (scene_patch.dart),
+  /// so a patch is read in proportion to its size. What the document says as
+  /// a whole is checked again either way.
+  PanelScene(Map<dynamic, dynamic> json, {PanelScene? previous})
     : width = number(json, 'width', min: 1, max: 8192),
       height = number(json, 'height', min: 1, max: 8192),
       values = parseValues(json['values']),
@@ -105,8 +110,11 @@ class PanelScene {
       radio = json['radio'] is Map && (json['radio'] as Map)['node'] != null ? string(json['radio'] as Map, 'node') : null,
       sources = SceneSource.parse(json['sources']),
       strings = parseStrings(json['strings'] ?? const {}),
-      layers = items(json['layers'], 512, budget: PanelBudget.layers, what: 'layers').map(SceneLayer.new).toList(),
-      controls = items(json['controls'] ?? [], 256, budget: PanelBudget.controls, what: 'controls').map(SceneControl.new).toList(),
+      layers = [for (final j in items(json['layers'], 512, budget: PanelBudget.layers, what: 'layers')) previous?._layerFrom[j] ?? SceneLayer(j)],
+      controls = [
+        for (final j in items(json['controls'] ?? [], 256, budget: PanelBudget.controls, what: 'controls'))
+          previous?._controlFrom[j] ?? SceneControl(j, previous: previous?.controlsById[j['id']]),
+      ],
       controlsById = {},
       layout = json['layout'] == null ? null : SceneLayoutNode.parse(json['layout']),
       cells = _cells(json['cells']),
@@ -300,6 +308,9 @@ class PanelScene {
     if (sceneLeaves > 1) throw const FormatException('Layout shows the scene twice');
     if (layout case final root?) _checkGrids(root);
   }
+
+  late final Map<Map<dynamic, dynamic>, SceneLayer> _layerFrom = Map.identity()..addEntries(layers.map((l) => MapEntry(l.source, l)));
+  late final Map<Map<dynamic, dynamic>, SceneControl> _controlFrom = Map.identity()..addEntries(controls.map((c) => MapEntry(c.source, c)));
 }
 
 Map<String, double> parseValues(Object? raw) {
@@ -541,6 +552,9 @@ List<double> _bindingSamples(dynamic value) {
 class SceneLayer {
   final String id;
 
+  /// The document's object this was read from.
+  final Map<dynamic, dynamic> source;
+
   final Rect rect;
   final String? svg;
   final Map<dynamic, dynamic>? text;
@@ -571,7 +585,8 @@ class SceneLayer {
   final int transitionMs;
   final Map<dynamic, dynamic>? pulse;
   SceneLayer(Map<dynamic, dynamic> json)
-    : id = string(json, 'id'),
+    : source = json,
+      id = string(json, 'id'),
       rect = bounds(json),
       blocksPointer = json['blocksPointer'] == true,
       fixed = json['fixed'] == true,
@@ -709,6 +724,9 @@ Object? _kindOf(Object? kind) => kind == 'bandScope' ? 'spectrum' : kind;
 
 class SceneControl {
   final String id, label, kind;
+
+  /// The document's object this was read from.
+  final Map<dynamic, dynamic> source;
   final String? value, event;
 
   /// Null only for a native control placed by the layout.
@@ -774,10 +792,14 @@ class SceneControl {
   /// Whether this is another control's [yAxis].
   final bool isYAxis;
 
-  SceneControl(Map<dynamic, dynamic> json) : this._parse(json, isYAxis: false);
+  /// [previous], the control of this id in the scene this one follows, lends
+  /// its parts that are read from the same objects: a map's markers, lines
+  /// and circles.
+  SceneControl(Map<dynamic, dynamic> json, {SceneControl? previous}) : this._parse(json, isYAxis: false, previous: previous);
 
-  SceneControl._parse(Map<dynamic, dynamic> json, {required this.isYAxis})
-    : yAxis = isYAxis || json['valueY'] == null
+  SceneControl._parse(Map<dynamic, dynamic> json, {required this.isYAxis, SceneControl? previous})
+    : source = json,
+      yAxis = isYAxis || json['valueY'] == null
           ? null
           : SceneControl._parse({
               ...json,
@@ -791,7 +813,7 @@ class SceneControl {
       after = json['after'] == null ? null : string(json, 'after'),
       spectrum = _kindOf(json['kind']) == 'spectrum' ? SceneSpectrumSpec(json) : null,
       rotatorMap = json['kind'] == 'rotatorMap' ? SceneRotatorSpec(json) : null,
-      map = json['kind'] == 'map' ? SceneMapSpec(json) : null,
+      map = json['kind'] == 'map' ? SceneMapSpec(json, previous: previous?.map) : null,
       hoverSet = json['hoverSet'] is Map
           ? (value: string(json['hoverSet'] as Map<dynamic, dynamic>, 'value'), to: number(json['hoverSet'] as Map<dynamic, dynamic>, 'to'))
           : null,

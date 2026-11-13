@@ -45,6 +45,7 @@ class _ExtensionHostCalls {
       'unmarkSpots' => _unmarkSpots(params),
       'suggestQso' => _suggestQso(params),
       'updateDraft' => _updateDraft(params),
+      'updateScene' => _service.sceneUpdates?.call(params['extensionKey'] as String?, params) ?? false,
       'getHistoryForCall' => _getHistoryForCall(params),
       'findCalls' => _findCalls(params),
       'scoreCandidates' => _scoreCandidates(params),

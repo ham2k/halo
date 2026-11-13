@@ -286,6 +286,18 @@ any of them also needs `requiresRadioWrite`. Answers `{ accepted }`, false
 when no such operation is open, or an existing QSO is open for editing in
 place of the draft.
 
+### `host.updateScene(instanceId, patch)`
+
+Extension API 25. Changes the scene a placement of your panel shows, now,
+with no render: `patch` applied to the scene its last render, event answer
+or update left ([Changing a scene in
+place](scenes.md#changing-a-scene-in-place)). `instanceId` is the
+placement's, from its render args. Answers true when the app applied it,
+false when it shows no scene from that placement, or not the one the patch
+was taken from, in which case it renders the panel again. Rejects, applying
+nothing, when a step cannot apply or the scene it would leave is not a
+valid one. Only your own panels' placements.
+
 ### `host.draftSuggestions`
 
 Extension API 25, `requiresDraftWrite`. The contacts the call being typed

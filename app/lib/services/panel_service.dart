@@ -18,6 +18,7 @@ import 'package:collection/collection.dart' show DeepCollectionEquality;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:halo_core/halo_core.dart' show Operation, Qso, QsoLog, operatorCallFor;
+import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
 import 'package:halo_widgets/halo_widgets.dart' show WallClock;
 
 import 'panel_content_budgets.dart';
@@ -145,6 +146,11 @@ class PanelDefinition {
   final String? hookKey;
   final String? panelKey;
 
+  /// Extension panels only: the extension whose hook registered it, by the
+  /// runtime's own record — the one whose `host.updateScene` may change what
+  /// its placements show. A panel hook's key says nothing of whose it is.
+  final String? extensionKey;
+
   /// What this panel asks to be re-rendered on ('operation', 'qso',
   /// 'qsoLogged', 'lookup', 'spots', `tick:<seconds>`). Empty means "render
   /// once" — right for static reference material, and the default, so a
@@ -242,6 +248,7 @@ class PanelDefinition {
     required this.source,
     this.hookKey,
     this.panelKey,
+    this.extensionKey,
     this.triggers = const [],
     this.formFields = const [],
     this.settingsTarget,
@@ -271,6 +278,7 @@ class PanelDefinition {
     source: source,
     hookKey: hookKey,
     panelKey: panelKey,
+    extensionKey: extensionKey,
     triggers: triggers,
     formFields: formFields,
     settingsTarget: settingsTarget,
@@ -298,6 +306,7 @@ class PanelDefinition {
       other.source == source &&
       other.hookKey == hookKey &&
       other.panelKey == panelKey &&
+      other.extensionKey == extensionKey &&
       other.settingsTarget == settingsTarget &&
       other.multiple == multiple &&
       setEquals(other.views, views) &&
@@ -354,6 +363,7 @@ class PanelDefinition {
       source: PanelSource.extension,
       hookKey: hookKey,
       panelKey: panelKey,
+      extensionKey: entry['extensionKey'] as String?,
       triggers: [
         for (final t in (entry['on'] as List?) ?? const [])
           if (t is String && isKnownPanelTrigger(t))
@@ -646,6 +656,13 @@ abstract interface class PanelConfigSink {
   Future<void> writePanelConfig({required String panelKey, required List<Map<String, dynamic>> fields, required Map<String, dynamic> values});
 }
 
+/// Optional capability: a source whose extensions change what a placement
+/// shows in place (`host.updateScene`), each call handed to [sceneUpdates]
+/// with the caller's extension as the runtime records it.
+abstract interface class PanelSceneUpdateSource {
+  set sceneUpdates(bool Function(String? extensionKey, Map<String, dynamic> params)? handler);
+}
+
 /// Optional capability so ordinary panel sources need not implement events.
 abstract interface class PanelEventSource {
   Future<Map<String, dynamic>?> panelEvent({required String hookKey, required String panelKey, required Map<String, dynamic> args});
@@ -656,6 +673,45 @@ class PanelService extends ChangeNotifier {
 
   PanelService(this.extensions) {
     extensions.runtimeGeneration.addListener(_onRuntimeReplaced);
+    if (extensions case final PanelSceneUpdateSource source) source.sceneUpdates = updateScene;
+  }
+
+  /// The panes showing each placement, by id, as they take an update to its
+  /// scene: each answers whether it applied it. A placement's id is the same
+  /// in every view's layout, and a view stays mounted under the one opened
+  /// over it, so more than one pane can show it at once.
+  final _sceneUpdates = <String, List<bool Function(Map<String, dynamic> update)>>{};
+
+  /// [apply] takes the updates to placement [id]'s scene until [stopSceneUpdates].
+  void listenForSceneUpdates(String id, bool Function(Map<String, dynamic> update) apply) => (_sceneUpdates[id] ??= []).add(apply);
+
+  void stopSceneUpdates(String id, bool Function(Map<String, dynamic> update) apply) {
+    final panes = _sceneUpdates[id];
+    // By equality: a pane hands its method torn off, and two tear-offs of one
+    // method on one object are equal but never identical.
+    panes?.remove(apply);
+    if (panes != null && panes.isEmpty) _sceneUpdates.remove(id);
+  }
+
+  /// `host.updateScene`: [update] (`instanceId`, `base`, `revision`, `patch`)
+  /// for every pane showing that placement; true when any applied it.
+  /// Refused for a placement whose panel another extension registered; false
+  /// when no pane shows it, or the catalog does not hold its panel just now —
+  /// between a runtime's start and the panels it offers being read again, the
+  /// owner's own update would otherwise be refused as another's.
+  bool updateScene(String? extensionKey, Map<String, dynamic> update) {
+    final id = update['instanceId'];
+    if (id is! String) throw const FormatException('updateScene names the placement\'s instanceId');
+    final panel = this[id];
+    if (panel == null) return false;
+    if (panel.extensionKey == null || panel.extensionKey != extensionKey) {
+      throw ExtensionHostException("updateScene blocked: extension '${extensionKey ?? 'unknown'}' does not own the panel '$id'");
+    }
+    var applied = false;
+    for (final apply in [...?_sceneUpdates[id]]) {
+      if (apply(update)) applied = true;
+    }
+    return applied;
   }
 
   /// A fresh runtime carries a different set of extensions, so the panels it

@@ -14,6 +14,7 @@
 import 'dart:convert';
 
 import 'panel_scene/scene_model.dart';
+import 'panel_scene/scene_patch.dart';
 import 'panel_scene/scene_rotator.dart';
 import 'panel_scene/scene_spectrum.dart';
 import 'panel_scene/scene_view.dart';
@@ -32,6 +33,14 @@ import '../../services/panel_content_budgets.dart';
 import '../../services/panel_menu.dart';
 import '../../services/windows_webview.dart';
 
+/// What a scene's patch says when the pane does not show the scene it was
+/// taken from: a render dropped as stale, a pane rebuilt, an update that
+/// came in between. Not a failure of the panel's — the pane asks for the
+/// whole scene again (docs/design/panel-scenes.md § Patches).
+class SceneOutOfStep implements Exception {
+  const SceneOutOfStep();
+}
+
 /// One rendered document from a panel's `render`.
 class PanelContent {
   /// 'markdown' | 'svg' | 'html' | 'scene' — an unknown kind renders as an error
@@ -40,6 +49,13 @@ class PanelContent {
   final String kind;
   final String content;
   final PanelScene? scene;
+
+  /// A scene's document, and the revision the extension runtime numbered it
+  /// with: what a patch from it is applied to, and what the next render is
+  /// asked against (`sceneRevision`), so the runtime sends that one as the
+  /// difference from this. Null for a scene from anywhere else.
+  final Map<dynamic, dynamic>? document;
+  final int? revision;
 
   /// A tab label for this rendering, overriding the descriptor's title.
   /// Optional, and the reason it exists is panels an operator may place more
@@ -64,7 +80,7 @@ class PanelContent {
   /// ([PanelService.declareMenu]); null when the render carried neither.
   final PanelPlacementMenu? menu;
 
-  const PanelContent({required this.kind, required this.content, this.title, this.triggers = const [], this.scene, this.menu});
+  const PanelContent({required this.kind, required this.content, this.title, this.triggers = const [], this.scene, this.menu, this.document, this.revision});
 
   /// THROWS for a `scene` whose document does not validate, rather than
   /// answering null: the FormatException names the layer, tag or value at
@@ -84,16 +100,31 @@ class PanelContent {
     final kind = json['kind'] == 'svgScene' ? 'scene' : json['kind'];
     final Object? content;
     PanelScene? scene;
-    if (kind == 'scene') {
-      final document = json['scene'];
-      if (document is! Map) throw const FormatException('A scene render result needs a scene document');
-      try {
-        content = jsonEncode(document);
-      } on JsonUnsupportedObjectError catch (e) {
-        throw FormatException('The scene document is not JSON: ${e.cause ?? e.unsupportedObject}');
+    Map<dynamic, dynamic>? document;
+    final revision = json['revision'];
+    if (revision != null && revision is! int) throw const FormatException('Invalid scene revision');
+    if (kind == 'scene' && json.containsKey('patch')) {
+      if (previous == null) throw const SceneOutOfStep();
+      (:document, :scene, :content) = previous._patched(json['patch'], base: json['base'], revision: revision);
+    } else if (kind == 'scene') {
+      final whole = json['scene'];
+      if (whole is! Map) throw const FormatException('A scene render result needs a scene document');
+      document = whole;
+      if (revision is int) {
+        // Numbered by the runtime, which sends the same scene again as an
+        // empty patch: no text to compare it by.
+        content = 'scene $revision';
+      } else {
+        try {
+          content = jsonEncode(whole);
+        } on JsonUnsupportedObjectError catch (e) {
+          throw FormatException('The scene document is not JSON: ${e.cause ?? e.unsupportedObject}');
+        }
       }
+      // Not lent the previous scene's parts: a document read fresh off the
+      // bridge shares no object with it.
       scene = previous?.kind == kind && previous?.content == content ? previous?.scene : null;
-      scene ??= PanelScene(document);
+      scene ??= PanelScene(whole);
     } else {
       content = json['content'];
       // The same document again — a ticking panel's, most renders — was
@@ -113,9 +144,44 @@ class PanelContent {
       kind: kind,
       content: content,
       scene: scene,
+      document: document,
+      revision: revision as int?,
       title: trimmed.isEmpty ? null : trimmed,
       triggers: triggers is List ? triggers.whereType<String>().toList() : const [],
       menu: PanelPlacementMenu.fromJson(json),
+    );
+  }
+
+  /// This scene with [steps] applied, if it is the one they were taken from
+  /// ([base]): the document they leave, and the scene read from it, lent
+  /// everything they did not touch. Throws [SceneOutOfStep] when it is not.
+  ({Map<dynamic, dynamic> document, PanelScene scene, String content}) _patched(Object? steps, {required Object? base, required Object? revision}) {
+    final document = this.document, scene = this.scene;
+    if (kind != 'scene' || document == null || scene == null || this.revision == null || base != this.revision || revision is! int) {
+      throw const SceneOutOfStep();
+    }
+    // No steps still moves it on to [revision], the one the runtime now holds.
+    if (steps is List && steps.isEmpty) return (document: document, scene: scene, content: 'scene $revision');
+    final patched = patchScene(document, steps);
+    return (document: patched, scene: PanelScene(patched, previous: scene), content: 'scene $revision');
+  }
+
+  /// This scene with an update from outside a render applied — an event
+  /// answer's `patch`, or `host.updateScene` — keeping its title, triggers
+  /// and menu. Throws [SceneOutOfStep] when it is not the scene the update
+  /// was taken from.
+  PanelContent updated(Map<dynamic, dynamic> update) {
+    final revision = update['revision'];
+    final (:document, :scene, :content) = _patched(update['patch'], base: update['base'], revision: revision);
+    return PanelContent(
+      kind: kind,
+      content: content,
+      title: title,
+      triggers: triggers,
+      scene: scene,
+      menu: menu,
+      document: document,
+      revision: revision as int,
     );
   }
 
