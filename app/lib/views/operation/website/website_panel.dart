@@ -406,17 +406,7 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
               // ours — see WindowsWebView.
               webViewEnvironment: WindowsWebView.environment,
               initialUrlRequest: URLRequest(url: WebUri.uri(uri)),
-              initialSettings: InAppWebViewSettings(
-                // On, unlike the extension sandbox: most of what an operator
-                // would point this at renders blank without scripts. It is also
-                // why website_url.dart refuses `javascript:` and `data:`.
-                javaScriptEnabled: true,
-                // Never set `incognito` here: on Android it clears every cookie
-                // in the PROCESS, taking the operator's account logins with it.
-                useShouldOverrideUrlLoading: true,
-                transparentBackground: true,
-                supportZoom: true,
-              ),
+              initialSettings: websitePanelSettings(),
               onWebViewCreated: (controller) {
                 ErrorReportingService.breadcrumb('website panel webview created', category: 'webview');
                 _controller = controller;
@@ -578,3 +568,22 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
     );
   }
 }
+
+/// What the pane's web view runs with: a page anyone may have written.
+@visibleForTesting
+InAppWebViewSettings websitePanelSettings() => InAppWebViewSettings(
+  // On, unlike the extension sandbox: most of what an operator
+  // would point this at renders blank without scripts. It is also
+  // why website_url.dart refuses `javascript:` and `data:`.
+  javaScriptEnabled: true,
+  // Off: the page is anyone's, and the plugin's bridge would hand
+  // its scripts, and every frame's, a channel into native code
+  // that a malformed message can crash. This pane registers no
+  // handler and needs none.
+  javaScriptBridgeEnabled: false,
+  // Never set `incognito` here: on Android it clears every cookie
+  // in the PROCESS, taking the operator's account logins with it.
+  useShouldOverrideUrlLoading: true,
+  transparentBackground: true,
+  supportZoom: true,
+);

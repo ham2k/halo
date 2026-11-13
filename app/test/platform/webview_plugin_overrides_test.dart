@@ -247,10 +247,11 @@ void main() {
   test('the vendored macOS copy still carries the patched deployment target', () {
     // Resolving to the vendored directory is not the same as the patch being
     // in it. PATCH.md's re-vendor procedure is "copy the new package over
-    // this directory, re-apply the one-line change if upstream still has it",
-    // and a copy that stops after the first half leaves the assertion above
-    // true. Nothing in ./scripts/test.sh compiles Swift, so this one line is
-    // the only part of the patch a Dart test can see at all.
+    // this directory, re-apply the changes above while upstream still needs
+    // them", and a copy that stops after the first half leaves the assertion
+    // above true. Nothing in ./scripts/test.sh compiles Swift, so reading the
+    // sources is all a Dart test can do; the page-message half is the next
+    // test.
     const manifestPath =
         '../packages/flutter_inappwebview_macos_patched/'
         'macos/flutter_inappwebview_macos/Package.swift';
@@ -279,6 +280,27 @@ void main() {
           'a 10.14 minimum anywhere in this manifest is upstream\'s own '
           'value, which fails the release build with "$failure"',
     );
+  });
+
+  // A page posts these messages through the bridge, in any frame, and
+  // upstream's reader force-casts them: a page that sends `{}` ends the app.
+  // The patch looks the channel or listener up before reading anything, and
+  // the app creates none (webview_call_sites_test.dart).
+  test('the vendored macOS copy still drops a page\'s web message before reading it', () {
+    final source = File(
+      '../packages/flutter_inappwebview_macos_patched/macos/flutter_inappwebview_macos/Sources/flutter_inappwebview_macos/InAppWebView/InAppWebView.swift',
+    ).readAsStringSync();
+    for (final (handler, guard) in [
+      ('"onWebMessagePortMessageReceived"', RegExp(r'guard\s+webView\.webMessageChannels\[webMessageChannelId\]\s*!=\s*nil\s+else\s*\{\s*break\s*\}')),
+      ('"onWebMessageListenerPostMessageReceived"', RegExp(r'guard\s+webView\.webMessageListeners\.contains\(where:[^)]*\)\s+else\s*\{\s*break\s*\}')),
+    ]) {
+      final start = source.indexOf('case $handler:');
+      expect(start, isNot(-1), reason: 'no $handler branch to check');
+      final branch = source.substring(start, source.indexOf('case "', start + 1));
+      final guarded = guard.firstMatch(branch);
+      expect(guarded, isNotNull, reason: '$handler must look its channel or listener up first (PATCH.md)');
+      expect(guarded!.start, lessThan(branch.indexOf('WebMessage.fromMap(')), reason: '$handler reads the page\'s message only after the lookup');
+    }
   });
 
   test('Windows resolves to the patched copy, not the published one', () {
@@ -474,6 +496,27 @@ void main() {
           '~InAppWebView completes an unfinished print job, and that send '
           'reads through a null engine at quit just as an unregister does',
     );
+  });
+
+  // As on macOS: the page writes these arguments, and the reads below the
+  // lookup trust their types, so the patch drops the message unread while
+  // there is no channel or listener; the console receiver reads what the page
+  // logged, so it catches.
+  test('the vendored Windows copy still drops a page\'s web message before reading it', () {
+    final source = File('../packages/flutter_inappwebview_windows_patched/windows/in_app_webview/in_app_webview.cpp').readAsStringSync();
+    for (final (handler, store) in [
+      ('onWebMessagePortMessageReceived', 'webMessageChannels_'),
+      ('onWebMessageListenerPostMessageReceived', 'webMessageListeners_'),
+    ]) {
+      final start = source.indexOf('if (handlerName == "$handler")');
+      expect(start, isNot(-1), reason: 'no $handler branch to check');
+      final early = RegExp(
+        'if\\s*\\(\\s*$store\\.empty\\(\\)\\s*\\)\\s*\\{\\s*resolveInternalHandler\\(\\);\\s*return S_OK;',
+      ).firstMatch(source.substring(start));
+      expect(early, isNotNull, reason: '$handler must return before reading when $store is empty (PATCH.md)');
+      expect(early!.start, lessThan(source.indexOf('nlohmann::json::parse(handlerArgs)', start) - start), reason: '$handler returns before parsing');
+    }
+    expect(RegExp(r'try\s*\{\s*auto consoleMessageJson').hasMatch(source), isTrue, reason: 'the console receiver reads what the page logged inside a catch');
   });
 
   test('the vendored Windows copy still emits a Release PDB for its own code', () {

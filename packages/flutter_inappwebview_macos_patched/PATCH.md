@@ -1,4 +1,4 @@
-# Vendored `flutter_inappwebview_macos` 1.2.0-beta.3, one line changed
+# Vendored `flutter_inappwebview_macos` 1.2.0-beta.3, two changes
 
 This is a copy of upstream's package. Every file it carries is byte-identical
 to the published one except `Package.swift`:
@@ -9,6 +9,19 @@ to the published one except `Package.swift`:
 +        .macOS("10.15"),
      ],
 ```
+
+and a guard in each of the two script-message branches of
+`InAppWebView/InAppWebView.swift` that read a web message a page posts:
+
+```diff
++                            guard webView.webMessageChannels[webMessageChannelId] != nil else { break }
+```
+
+```diff
++                            guard webView.webMessageListeners.contains(where: { $0.jsObjectName == jsObjectName }) else { break }
+```
+
+(each with a comment naming this file).
 
 Upstream's `example/` is the one thing left out — a whole Flutter app with
 an Xcode project and app icons, none of which any build here reads. Only
@@ -48,9 +61,34 @@ bug only appears once the plugin is consumed via SPM, which 1.2.0-beta.3 is
 the first version to offer. iOS is unaffected: there the same witness is
 annotated `@available(iOS 12.0, *)`, matching its declared `.iOS("12.0")`.
 
+## Why page messages are dropped unread
+
+`WebMessage.fromMap` force-casts `map["type"] as! Int` and force-unwraps
+`WebMessageType(rawValue:)!`, and so does `WebMessagePort.fromMap` for a
+port's index and channel id. `onWebMessagePortMessageReceived` and
+`onWebMessageListenerPostMessageReceived` hand it the `message` object a page
+script passed to `window.flutter_inappwebview.callHandler`, in any frame,
+with the bridge's secret already attached, so a page that sends `{}` or
+`{type: 9}` traps the Swift runtime and the whole app exits. Upstream reads
+the message first and looks the channel or listener up after; the guards
+look it up first and drop the message when there is none.
+
+The app creates no web-message channel and no web-message listener
+(`app/test/guards/webview_call_sites_test.dart` fails if it starts to), so
+every such message is dropped before anything in it is read. A change that
+creates one has to make these reads safe first: the page still writes
+everything in the message.
+
+The app also gives the one pane that shows outside pages, the Web Site pane,
+no bridge at all (`javaScriptBridgeEnabled: false`). iOS ships the published
+`flutter_inappwebview_ios`, which reads the message before it looks anything
+up, so there the app creating no channel or listener protects nothing: the
+Web Site pane's setting is the whole protection, and a web view with the
+bridge on (the map) must only ever run the app's own page.
+
 ## Verifying this copy
 
-Everything except the line above must match the published package. Diff
+Everything except the changes above must match the published package. Diff
 against a freshly extracted archive, **never against `~/.pub-cache`**: a
 `flutter build macos` writes `.swiftpm/` and other residue into the cached
 copy as well as into this one, so contamination that exists on both sides
@@ -68,7 +106,7 @@ diff -r -x example -x PATCH.md \
 (The archive unpacks the package's contents at the top level, so `$upstream`
 is the package root.)
 
-A clean run prints the `Package.swift` header line and exactly this hunk:
+A clean run prints the `Package.swift` hunk:
 
 ```
 9c9
@@ -77,13 +115,15 @@ A clean run prints the `Package.swift` header line and exactly this hunk:
 >         .macOS("10.15"),
 ```
 
+and the two `InAppWebView.swift` guards above, nothing else.
+
 Every other line is a finding. `Only in packages/…: .swiftpm` is the residue
 above showing through as intended — delete it and re-run.
 
 ## Re-vendoring a newer version
 
 Copy the new package over this directory, drop its `example/`, re-apply the
-one-line change if upstream still has it, update the version above and in
+changes above while upstream still needs them, update the version above and in
 the archive URL, and re-run the diff. Do not hand-merge — this directory is
 a copy, not a maintained fork.
 

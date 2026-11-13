@@ -2298,6 +2298,9 @@ public class InAppWebView: WKWebView, WKUIDelegate,
                         if let jsonData = jsonArgs?.first,
                            let webMessageChannelId = jsonData["webMessageChannelId"] as? String,
                            let index = jsonData["index"] as? Int64 {
+                            // HaLo patch (PATCH.md): nothing the page sent is read for a channel this
+                            // web view never created. WebMessage.fromMap force-casts the page's fields.
+                            guard webView.webMessageChannels[webMessageChannelId] != nil else { break }
                             var webMessage: WebMessage? = nil
                             if let webMessageMap = jsonData["message"] as? [String : Any?] {
                                 webMessage = WebMessage.fromMap(map: webMessageMap)
@@ -2313,6 +2316,8 @@ public class InAppWebView: WKWebView, WKUIDelegate,
                     if let args = body["args"] as? String, let data = args.data(using: .utf8) {
                         let jsonArgs = try? JSONSerialization.jsonObject(with: data, options: .mutableContainers) as? [[String: Any]]
                         if let jsonData = jsonArgs?.first, let jsObjectName = jsonData["jsObjectName"] as? String {
+                            // HaLo patch (PATCH.md): as above, for a listener.
+                            guard webView.webMessageListeners.contains(where: { $0.jsObjectName == jsObjectName }) else { break }
                             var webMessage: WebMessage? = nil
                             if let webMessageMap = jsonData["message"] as? [String : Any?] {
                                 webMessage = WebMessage.fromMap(map: webMessageMap)

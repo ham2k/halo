@@ -211,8 +211,10 @@ dependency_overrides:
     path: ../packages/flutter_inappwebview_windows_patched
   # Upstream's SPM manifest declares a lower macOS minimum than its own code
   # requires, so the package does not compile under Swift Package Manager —
-  # which 6.2 is the first version to use here. One line differs; see the
-  # package's PATCH.md.
+  # which 6.2 is the first version to use here. It also drops a web message a
+  # page posts unread, where upstream's reader traps. Both are in the
+  # package's PATCH.md, and an upstream fix for one is no reason to drop the
+  # copy while the other stands.
   flutter_inappwebview_macos:
     path: ../packages/flutter_inappwebview_macos_patched
   # The endorsed Linux implementation needs WPE WebKit, whose absence makes

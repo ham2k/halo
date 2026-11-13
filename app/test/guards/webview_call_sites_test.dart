@@ -103,4 +103,31 @@ void main() {
           'of that list too.',
     );
   });
+
+  // The vendored macOS and Windows plugins drop a page's web message unread
+  // while a web view has no web-message channel or listener, because the
+  // code that reads one trusts what the page put in it, and a wrong type ends
+  // the app (each vendored package's PATCH.md). That holds only while the app
+  // creates none, which this pins. Any mention in code counts, not only a
+  // call: a tear-off reaches the same reader. iOS reads before it looks, so
+  // there this protects nothing; the Web Site pane's bridge setting does.
+  test('no web view is given a web-message channel or listener', () {
+    final creates = RegExp(r'\b(?:createWebMessageChannel|addWebMessageListener|WebMessageListener|WebMessageChannel)\b');
+    final found = <String>[];
+    for (final file in _appSources()) {
+      for (final line in file.readAsLinesSync()) {
+        if (line.trimLeft().startsWith('//')) continue;
+        if (creates.hasMatch(line)) found.add('${file.path}: ${line.trim()}');
+      }
+    }
+    expect(
+      found,
+      isEmpty,
+      reason:
+          'A web-message channel or listener lets a page reach the vendored '
+          'plugins\' unguarded readers. Make those reads safe first, in both '
+          'packages/flutter_inappwebview_*_patched copies and on iOS, then '
+          'update this test and the PATCH.md files.',
+    );
+  });
 }

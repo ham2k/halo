@@ -774,29 +774,37 @@ namespace flutter_inappwebview_plugin
 
             wil::unique_cotaskmem_string json;
             if (succeededOrLog(args->get_ParameterObjectAsJson(&json))) {
-              auto consoleMessageJson = nlohmann::json::parse(wide_to_utf8(json.get()));
+              // HaLo patch (PATCH.md): a console message carries whatever the
+              // page logged, and any json exception reading it would leave the
+              // WebView2 callback and end the process; it drops the message.
+              try {
+                auto consoleMessageJson = nlohmann::json::parse(wide_to_utf8(json.get()));
 
-              auto level = consoleMessageJson.at("type").get<std::string>();
-              int64_t messageLevel = 1;
-              if (string_equals(level, "log")) {
-                messageLevel = 1;
-              }
-              else if (string_equals(level, "debug")) {
-                messageLevel = 0;
-              }
-              else if (string_equals(level, "error")) {
-                messageLevel = 3;
-              }
-              else if (string_equals(level, "info")) {
-                messageLevel = 1;
-              }
-              else if (string_equals(level, "warn")) {
-                messageLevel = 2;
-              }
+                auto level = consoleMessageJson.at("type").get<std::string>();
+                int64_t messageLevel = 1;
+                if (string_equals(level, "log")) {
+                  messageLevel = 1;
+                }
+                else if (string_equals(level, "debug")) {
+                  messageLevel = 0;
+                }
+                else if (string_equals(level, "error")) {
+                  messageLevel = 3;
+                }
+                else if (string_equals(level, "info")) {
+                  messageLevel = 1;
+                }
+                else if (string_equals(level, "warn")) {
+                  messageLevel = 2;
+                }
 
-              auto consoleArgs = consoleMessageJson.at("args").get<std::vector<nlohmann::json>>();
-              auto message = join(functional_map(consoleArgs, [](const nlohmann::json& json) { return json.contains("value") ? json.at("value").dump() : (json.contains("description") ? json.at("description").dump() : json.dump()); }), std::string{ " " });
-              channelDelegate->onConsoleMessage(message, messageLevel);
+                auto consoleArgs = consoleMessageJson.at("args").get<std::vector<nlohmann::json>>();
+                auto message = join(functional_map(consoleArgs, [](const nlohmann::json& json) { return json.contains("value") ? json.at("value").dump() : (json.contains("description") ? json.at("description").dump() : json.dump()); }), std::string{ " " });
+                channelDelegate->onConsoleMessage(message, messageLevel);
+              }
+              catch (const nlohmann::json::exception& e) {
+                debugLog(std::string("console message dropped: ") + e.what());
+              }
             }
 
             return S_OK;
@@ -3929,6 +3937,13 @@ namespace flutter_inappwebview_plugin
             };
 
           if (handlerName == "onWebMessagePortMessageReceived") {
+            // HaLo patch (PATCH.md): nothing the page sent is read while this web
+            // view has no channel for it to reach. The reads below trust the page's
+            // types, and a wrong one ends the process.
+            if (webMessageChannels_.empty()) {
+              resolveInternalHandler();
+              return S_OK;
+            }
             std::string webMessageChannelId = "";
             int portIndex = 0;
             std::string messageData = "";
@@ -3983,6 +3998,11 @@ namespace flutter_inappwebview_plugin
           }
 
           if (handlerName == "onWebMessageListenerPostMessageReceived") {
+            // HaLo patch (PATCH.md): as above, for a listener.
+            if (webMessageListeners_.empty()) {
+              resolveInternalHandler();
+              return S_OK;
+            }
             std::string jsObjectName = "";
             std::string messageData = "";
             int64_t messageType = 0;

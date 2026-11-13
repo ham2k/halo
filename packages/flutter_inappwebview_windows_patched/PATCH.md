@@ -1,4 +1,4 @@
-# Vendored `flutter_inappwebview_windows` 0.7.0-beta.3, nine files changed
+# Vendored `flutter_inappwebview_windows` 0.7.0-beta.3, ten files changed
 
 This is a copy of upstream's package. Every file it carries is byte-identical
 to the published one except
@@ -13,8 +13,10 @@ supplied from `windows/flutter_inappwebview_windows_plugin_c_api.cpp`, the
 guards in `windows/types/channel_delegate.cpp`'s
 `UnregisterMethodCallHandler` and
 `windows/print_job/print_job_channel_delegate.cpp`'s `onComplete` (plus the
-include each needs), and two build-settings lines added to
-`windows/CMakeLists.txt`.
+include each needs), two build-settings lines added to
+`windows/CMakeLists.txt`, and two early returns and one catch in
+`windows/in_app_webview/in_app_webview.cpp` (see "Page-supplied web
+messages" below).
 
 ```diff
    CustomPlatformView::~CustomPlatformView()
@@ -341,6 +343,46 @@ and would be one more thing to keep in step with the engine's teardown
 order. Skipping the unregister is safe in that state: the callback map it
 would have been removed from dies with the engine an instant later, and
 nothing can dispatch into it in between.
+
+## Page-supplied web messages
+
+A page script can call `window.flutter_inappwebview.callHandler` in any
+frame, and the bridge attaches its secret, so the arguments `onCallJsHandler`
+parses are the page's to write. Its `onWebMessagePortMessageReceived` and
+`onWebMessageListenerPostMessageReceived` branches trust the types in them:
+`byte.get<int>()` throws `nlohmann::json::type_error` for a byte that is not
+a number, past a catch for `parse_error` only, a float index converted to
+`int` is undefined behaviour, and `WebMessageChannel::onMessage` runs an
+unguarded `std::stoi` over array-buffer data. Any of them ends the process.
+Each branch now returns before reading anything when the web view has no
+channel (or no listener) at all:
+
+```diff
+           if (handlerName == "onWebMessagePortMessageReceived") {
++            if (webMessageChannels_.empty()) {
++              resolveInternalHandler();
++              return S_OK;
++            }
+```
+
+(`webMessageListeners_` in the second branch, each with a comment). The app
+creates neither (`app/test/guards/webview_call_sites_test.dart` fails if it
+starts to), so a page's message is never read. The check is on the whole
+store rather than the named channel, as the macOS copy does, because the
+name is inside the arguments these branches parse; with one channel present,
+a page naming a made-up one would reach the reads. A change that creates a
+channel or listener has to make these reads safe first.
+
+The DevTools console receiver reads what the page logged with `.at(...)`,
+`.get<...>()` and `.dump()`, all of which throw the same family, and it runs
+whatever the bridge setting says. Its body is wrapped in a catch for
+`nlohmann::json::exception`, and a message it cannot read is dropped with a
+`debugLog`. The `Fetch.requestPaused` receiver is left as upstream wrote it:
+its fields are the browser's, not the page's, and catching there would leave
+the request paused for good.
+
+The app also gives the one pane that shows outside pages, the Web Site pane,
+no bridge at all (`javaScriptBridgeEnabled: false`).
 
 ## Verifying this copy
 
