@@ -33,10 +33,7 @@ class RotatorFrame {
   /// [RotatorFrame]'s limits clamped what was asked.
   final Offset pan;
 
-  /// Everywhere the station may be panned to at this zoom, in pane pixels.
-  final Rect reach;
-
-  RotatorFrame._(this.size, this.base, this.zoom, this.station, this.rim, this.rimPath, this.pan, this.reach);
+  RotatorFrame._(this.size, this.base, this.zoom, this.station, this.rim, this.rimPath, this.pan);
 
   /// How far the station may move from the pane's middle at [zoom], in
   /// units of [base]: only as far as keeps the far side of the Earth — the
@@ -122,8 +119,7 @@ class RotatorFrame {
     arc(right - br, bottom - br, br, 0, math.pi * 0.5);
     arc(left + bl, bottom - bl, bl, math.pi * 0.5, math.pi);
     final path = Path()..addPolygon(points, true);
-    final stations = Rect.fromLTRB(c.dx - ax.down, c.dy - ay.down, c.dx + ax.up, c.dy + ay.up);
-    return RotatorFrame._(size, base, zoom, station, points, path, off, stations);
+    return RotatorFrame._(size, base, zoom, station, points, path, off);
   }
 
   /// Pixels per unit of the projection's disc, whose radius 1 is the antipode.
@@ -170,10 +166,4 @@ class RotatorFrame {
 
   /// The box the rim lies in.
   Rect get bounds => rimPath.getBounds();
-
-  /// The stretch of the projection's disc the pane can show at this zoom,
-  /// wherever the station is panned to: a picture of it moves with a pan
-  /// rather than being drawn again.
-  Rect get reachableDisc =>
-      Rect.fromLTRB((0 - reach.right) / discPx, (0 - reach.bottom) / discPx, (size.width - reach.left) / discPx, (size.height - reach.top) / discPx);
 }

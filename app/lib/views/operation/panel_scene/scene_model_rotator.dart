@@ -399,32 +399,6 @@ class SceneRotatorRing {
       ];
 }
 
-/// The map's colors: a preset, then any the scene names over it.
-class SceneRotatorMapStyle {
-  final String palette;
-  final Color? sea, land, coast, borders, divisions, graticule, background;
-
-  /// Whether the night side is shaded.
-  final bool grayline;
-
-  /// Whether the land is drawn at all; without it, a bare compass.
-  final bool world;
-
-  SceneRotatorMapStyle(Map<dynamic, dynamic> json)
-    : palette = _oneOf(json, 'palette', const ['color', 'gray', 'muted', 'contrast', 'teal']) ?? 'color',
-      sea = _color(json, 'sea'),
-      land = _color(json, 'land'),
-      coast = _color(json, 'coast'),
-      borders = _color(json, 'borders'),
-      divisions = _color(json, 'divisions'),
-      graticule = _color(json, 'graticule'),
-      background = _color(json, 'background'),
-      grayline = json['grayline'] != false,
-      world = json['world'] != false;
-
-  static final none = SceneRotatorMapStyle(const {});
-}
-
 /// A `rotatorMap` control: one rotator, on a map of the world centred on the
 /// station, and whatever the scene draws over it by bearing and distance.
 class SceneRotatorSpec {
@@ -441,7 +415,7 @@ class SceneRotatorSpec {
 
   /// The map's centre; null, the operation's location.
   final ({double lat, double lon})? home;
-  final SceneRotatorMapStyle map;
+  final SceneMapStyle map;
 
   /// Null: the host's own rim — ticks every 10°, N, E, S and W.
   final SceneRotatorRim? rim;
@@ -502,7 +476,7 @@ class SceneRotatorSpec {
         final Map<dynamic, dynamic> h => (lat: number(h, 'lat', min: -90, max: 90), lon: number(h, 'lon', min: -540, max: 540)),
         _ => throw const FormatException('Invalid rotator home'),
       },
-      map = json['map'] == null ? SceneRotatorMapStyle.none : SceneRotatorMapStyle(_map(json, 'map')),
+      map = json['map'] == null ? SceneMapStyle.none : SceneMapStyle(_map(json, 'map')),
       rim = json['rim'] == null ? null : SceneRotatorRim(_map(json, 'rim')),
       rings = [for (final r in items(json['rings'] ?? const [], 16, what: 'rotator rings')) SceneRotatorRing(r)],
       layers = json['decorations'] == null

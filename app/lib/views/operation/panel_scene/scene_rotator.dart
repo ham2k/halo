@@ -2,36 +2,30 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // A scene's rotator map: one rotator, on an azimuthal equidistant map of the
-// world centred on the station (rotator_geometry.dart says why that
-// projection), and whatever the scene places over it by bearing and
+// world centred on the station (map_projection.dart says why
+// that projection), and whatever the scene places over it by bearing and
 // distance or by place on Earth. The host draws it and turns the rotator on
 // a click or a drag; the extension says what is drawn
 // (docs/design/panel-scenes.md § Rotator map).
 
 import 'dart:async';
-import 'dart:convert';
-import 'dart:isolate';
 import 'dart:math' as math;
-import 'dart:typed_data';
-import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
-import 'package:flutter/services.dart' show HardwareKeyboard, rootBundle;
+import 'package:flutter/services.dart' show HardwareKeyboard;
 import 'package:flutter_svg/flutter_svg.dart' show PictureInfo, SvgStringLoader, vg;
-import 'package:halo_core/halo_core.dart' show GridLocation, nowUtc, realNowMillis;
+import 'package:halo_core/halo_core.dart' show GridLocation, realNowMillis;
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../../services/cat/equipment.dart' show EquipmentStatus, rotatorArrivedWithin, rotatorHeadingGap;
-import '../../../services/error_reporting_service.dart';
-import '../../map/map_grayline.dart' show graylineColor, graylineInstant;
 import '../../station_rows.dart' show StationConnectionToggle;
-import '../rotator/rotator_geometry.dart';
+import '../world_map/map_projection.dart';
 import 'scene_model.dart';
 import 'scene_rotator_frame.dart';
+import 'scene_world.dart';
 
 part 'scene_rotator_painter.dart';
 part 'scene_rotator_rubber_band.dart';
@@ -98,127 +92,10 @@ abstract class SceneRotatorSource {
   GridLocation? get call;
 }
 
-/// The world's colors, as a map's `palette` names them. A palette holds in
-/// both app themes, only darker in the dark one: the map is a picture of the
-/// world rather than a surface of the app.
-class RotatorPalette {
-  final Color sea, land, coast, background, backgroundDark;
-
-  /// The lines between countries and the graticule; null, drawn from [coast].
-  final Color? borders, graticule;
-
-  /// The default decorations' lines: the heading at rest and while
-  /// turning, and the target — each picked to stand off this palette's sea
-  /// and land both — over a [casing] that lifts them off whatever they cross.
-  final Color heading, turning, target, casing;
-
-  /// Whether the map is drawn darker in the app's dark theme. A palette
-  /// with a face of its own, the same in both, keeps its colors too.
-  final bool dimsInDark;
-
-  const RotatorPalette({
-    required this.sea,
-    required this.land,
-    required this.coast,
-    required this.background,
-    required this.backgroundDark,
-    this.borders,
-    this.graticule,
-    required this.heading,
-    required this.turning,
-    required this.target,
-    required this.casing,
-    this.dimsInDark = true,
-  });
-
-  /// The red-ham-toolkit widget's own.
-  static const color = RotatorPalette(
-    sea: Color(0xFF76ACD6),
-    land: Color(0xFF9E7E3D),
-    coast: Color(0xFF5C402E),
-    background: Color(0xFFE4EEF5),
-    backgroundDark: Color(0xFF1B2833),
-    heading: Color(0xFF101010),
-    turning: Color(0xFF0026FF),
-    target: Color(0xFFFF5500),
-    casing: Color(0xE6FFFFFF),
-  );
-  static const gray = RotatorPalette(
-    sea: Color(0xFFDADADA),
-    land: Color(0xFFA3A3A3),
-    coast: Color(0xFF5E5E5E),
-    background: Color(0xFFF0F0F0),
-    backgroundDark: Color(0xFF262626),
-    heading: Color(0xFF000000),
-    turning: Color(0xFF0047FF),
-    target: Color(0xFFFF4400),
-    casing: Color(0xFFFFFFFF),
-  );
-  static const muted = RotatorPalette(
-    sea: Color(0xFFB4C6D0),
-    land: Color(0xFFCDBF9F),
-    coast: Color(0xFF8C7B62),
-    background: Color(0xFFEDE8DE),
-    backgroundDark: Color(0xFF2A2722),
-    heading: Color(0xFF1F160B),
-    turning: Color(0xFF1D3FB0),
-    target: Color(0xFFE0480A),
-    casing: Color(0xF2FFFFFF),
-  );
-
-  /// Land and sea as far apart as they go, in an old wall map's colors:
-  /// deep ocean, pale parchment land, dark coasts and sienna borders, for a
-  /// screen in bright light or an operator who needs the edges plain. The
-  /// heading turns crimson rather than blue while turning: blue would sink
-  /// into the ocean.
-  static const contrast = RotatorPalette(
-    sea: Color(0xFF1F5FA8),
-    land: Color(0xFFF3E3A1),
-    coast: Color(0xFF3B2A1A),
-    background: Color(0xFFF4EBD0),
-    backgroundDark: Color(0xFF10233F),
-    borders: Color(0xE6A0522D),
-    graticule: Color(0x40FFFFFF),
-    heading: Color(0xFF000000),
-    turning: Color(0xFFC4002B),
-    target: Color(0xFFFF6A00),
-    casing: Color(0xFFFFFFFF),
-  );
-
-  /// KI2D's panels' Teal: the app's teal lightened and muted, the map in
-  /// the steps of their waterfall's teal, on the same #a9c4cb face in both
-  /// app themes, as their panels keep it.
-  static const teal = RotatorPalette(
-    sea: Color(0xFF3F8A9B),
-    land: Color(0xFFD6EEF4),
-    coast: Color(0xFF1F3A42),
-    background: Color(0xFFA9C4CB),
-    backgroundDark: Color(0xFFA9C4CB),
-    borders: Color(0xCC2C5C68),
-    graticule: Color(0x40FFFFFF),
-    heading: Color(0xFF000000),
-    turning: Color(0xFFA3261A),
-    target: Color(0xFFFF8A4C),
-    casing: Color(0xFFFFFFFF),
-    dimsInDark: false,
-  );
-
-  static RotatorPalette named(String name) => switch (name) {
-    'gray' => gray,
-    'muted' => muted,
-    'contrast' => contrast,
-    'teal' => teal,
-    _ => color,
-  };
-}
-
 const _current = Color(0xFF001EF9);
 const _targetColor = Color(0xFFFF4400);
 const _aligned = Color(0xFF000000);
 const _hud = Color(0xD9C8C8C8);
-
-/// How far toward black the dark theme takes the map's colors.
-const double _darkDimming = 0.35;
 
 /// How close to the station, in pixels, a drag takes hold of the view to pan it.
 const double _panGrab = 22;
@@ -226,55 +103,12 @@ const double _panGrab = 22;
 /// How long a turn sent is drawn ahead of the rotator's own report of it.
 const int _pendingMillis = 2000;
 
-/// The raster's longest side, in pixels: past it a pixel is finer than the
-/// land mask under it, even over the stretch a pan can reach.
-const int _rasterMax = 1024;
-
-/// Lines are broken this close to the antipode, as a fraction of the way
-/// round the Earth: past it the projection stretches a step of the outline
-/// across the rim.
-const double _antipodeCutoff = 0.97;
-
-/// A step longer than this, as a fraction of the disc's radius, crosses the
-/// antipode — it went round the back — and is not drawn.
-const double _longestStep = 0.25;
-
 const double _earthRadiusKm = 6371.0088;
-
-/// The night on a rotator map: sunset, civil and nautical twilight, each
-/// step darker than the Map tab's four — night plain at a glance on a small
-/// map — and each fading in across a degree and a half of the sun's
-/// altitude, a narrow blend rather than a hard edge.
-const _nightAltitudes = [-0.833, -6.0, -12.0];
-double _nightStep({required bool dark}) => dark ? 0.25 : 0.2;
-const _nightBlend = 1.5;
-
-/// A raster made on an isolate of its own. Top level, so its closure holds
-/// only these: one made inside the State would carry the State — timers and
-/// all — and cannot be sent.
-Future<MapRaster> _rasterApart(AzimuthalProjection projection, LandMask mask, Rect disc, int w, int h) =>
-    Isolate.run(() => MapRaster(projection, mask, disc, w, h));
-
-Future<WorldOutlines>? _outlinesLoad;
-Future<List<Float32List>>? _divisionsLoad;
-
-/// Read once for the app's life: the assets never change under it.
-Future<WorldOutlines> _loadOutlines() =>
-    _outlinesLoad ??= rootBundle.loadString('assets/geo/world-110m.json').then((text) => WorldOutlines.fromJson(jsonDecode(text) as Map<String, dynamic>));
-
-/// The lines between the states and provinces of the largest countries
-/// (scripts/admin1-outlines.py), drawn as the view closes in.
-Future<List<Float32List>> _loadDivisions() => _divisionsLoad ??= rootBundle.loadString('assets/geo/admin1-50m.json').then((text) {
-  final lines = (jsonDecode(text) as Map<String, dynamic>)['admin1'] as List<dynamic>;
-  return [
-    for (final line in lines.cast<List<dynamic>>()) Float32List.fromList([for (final v in line) (v as num) / 100]),
-  ];
-});
 
 /// The decorations a scene gets when it names no layers of its own: the
 /// beam, the target while turning, the heading (dragged to turn it), and
 /// the station in the call field (clicked to aim at it).
-List<SceneRotatorLayer> defaultRotatorLayers(double beamWidth, RotatorPalette palette) {
+List<SceneRotatorLayer> defaultRotatorLayers(double beamWidth, MapPalette palette) {
   String hex(Color c, [int? alpha]) =>
       '#${(alpha == null ? c.toARGB32() : c.toARGB32() & 0xFFFFFF | alpha << 24).toRadixString(16).padLeft(8, '0').toUpperCase()}';
   const arrow = {'width': 16, 'length': 16};
@@ -384,17 +218,9 @@ enum _DragMode { none, pinch, pan, layer, band }
 class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerProviderStateMixin {
   SceneRotatorSpec get _spec => widget.control.rotatorMap!;
 
-  WorldOutlines? _outlines;
-  List<Float32List>? _divisions;
-  AzimuthalProjection? _projection;
-  _Paths? _paths;
-  MapRaster? _raster;
-  ui.Image? _image;
-  int _imageSeq = 0;
-  Timer? _rasterLater;
+  late final _world = WorldMapBase(onChanged: _onChange, errorContext: 'rotator');
 
-  /// What the last raster was asked for: the view it covers, its size, the theme.
-  (Rect, int, int, bool)? _rasterKey;
+  AzimuthalProjection? get _projection => _world.projection as AzimuthalProjection?;
 
   /// The operator's zoom and pan, held over the scene's until it changes its own.
   double? _zoom;
@@ -445,15 +271,7 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
   void initState() {
     super.initState();
     widget.source?.changes.addListener(_onChange);
-    WallClock.minutes.addListener(_onMinute);
-    _loadOutlines().then((outlines) {
-      if (!mounted) return;
-      setState(() => _outlines = outlines);
-    }, onError: (Object error, StackTrace stack) => ErrorReportingService.report(error, stack, context: 'rotator:outlines'));
-    _loadDivisions().then((divisions) {
-      if (!mounted) return;
-      setState(() => _divisions = divisions);
-    }, onError: (Object error, StackTrace stack) => ErrorReportingService.report(error, stack, context: 'rotator:divisions'));
+    _world.start();
   }
 
   @override
@@ -481,10 +299,8 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
   @override
   void dispose() {
     widget.source?.changes.removeListener(_onChange);
-    WallClock.minutes.removeListener(_onMinute);
-    _rasterLater?.cancel();
+    _world.dispose();
     _spinner?.dispose();
-    _image?.dispose();
     for (final art in _pictures.values) {
       art.picture.dispose();
     }
@@ -493,10 +309,6 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
 
   void _onChange() {
     if (mounted) setState(() {});
-  }
-
-  void _onMinute() {
-    if (_spec.map.grayline) _paintNight();
   }
 
   // ------------------------------------------------------------- the view
@@ -532,109 +344,7 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
 
   void _syncProjection() {
     final home = _home;
-    final outlines = _outlines;
-    if (home == null || !_spec.map.world) {
-      if (_projection != null) {
-        _projection = null;
-        _paths = null;
-        _raster = null;
-        _rasterKey = null;
-        _setImage(null);
-      }
-      return;
-    }
-    if (_projection?.center == home && _paths?.world == outlines && _paths?.divisionsSource == _divisions) return;
-    _projection = AzimuthalProjection(home);
-    _paths = _Paths(_projection!, outlines, _divisions);
-    _rasterKey = null;
-  }
-
-  /// Asked from build, made off the UI thread: a raster is far too slow for
-  /// a frame. It covers everything a pan can reach at this zoom, so a pan
-  /// only moves it; a zoom still moving keeps the last one, stretched, and
-  /// asks again once it slows.
-  void _wantRaster(RotatorFrame frame, bool dark, double pixelRatio) {
-    final projection = _projection, outlines = _outlines;
-    if (projection == null || outlines == null) return;
-    final disc = frame.reachableDisc;
-    final px = Size(disc.width * frame.discPx, disc.height * frame.discPx);
-    if (px.isEmpty) return;
-    final scale = math.min(pixelRatio, _rasterMax / math.max(px.width, px.height));
-    final w = (px.width * scale).ceil(), h = (px.height * scale).ceil();
-    final key = (disc, w, h, dark);
-    if (_rasterKey == key) {
-      // The same view in other colors — a palette changed, or the grayline
-      // turned on or off — needs the pixels colored again, not projected again.
-      if (_raster != null && (_paintedColors != _mapColors(dark) || _paintedGrayline != _spec.map.grayline) && !_repaintAsked) {
-        _repaintAsked = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _repaintAsked = false;
-          if (mounted) _paintNight();
-        });
-      }
-      return;
-    }
-    _rasterKey = key;
-    _rasterLater?.cancel();
-    final mask = outlines.mask;
-    _rasterLater = Timer(Duration(milliseconds: _mode == _DragMode.none && _wheelSettle?.isActive != true ? 0 : 80), () async {
-      if (!mounted || _rasterKey != key) return;
-      // The web has no isolates to spare; there it is made where it is asked.
-      final raster = kIsWeb ? MapRaster(projection, mask, disc, w, h) : await _rasterApart(projection, mask, disc, w, h);
-      if (!mounted || _rasterKey != key) return;
-      _raster = raster;
-      _paintNight();
-    });
-  }
-
-  bool get _dark => _rasterKey?.$4 ?? false;
-
-  ({Color sea, Color land, Color coast}) _mapColors(bool dark) {
-    final palette = RotatorPalette.named(_spec.map.palette);
-    Color dim(Color c) => dark && palette.dimsInDark ? Color.lerp(c, Colors.black, _darkDimming)! : c;
-    return (sea: dim(_spec.map.sea ?? palette.sea), land: dim(_spec.map.land ?? palette.land), coast: dim(_spec.map.coast ?? palette.coast));
-  }
-
-  /// The colors the raster was last painted in, and whether a repaint in new ones is on its way.
-  ({Color sea, Color land, Color coast})? _paintedColors;
-  bool? _paintedGrayline;
-  bool _repaintAsked = false;
-
-  void _paintNight() {
-    final raster = _raster;
-    if (raster == null) return;
-    final colors = _mapColors(_dark);
-    _paintedColors = colors;
-    _paintedGrayline = _spec.map.grayline;
-    final pixels = raster.pixels(
-      sea: colors.sea.toARGB32(),
-      land: colors.land.toARGB32(),
-      night: graylineColor.toARGB32(),
-      nightStep: _nightStep(dark: _dark),
-      utc: _spec.map.grayline ? graylineInstant(nowUtc()) : null,
-      altitudes: _nightAltitudes,
-      blend: _nightBlend,
-    );
-    final seq = ++_imageSeq;
-    ui.decodeImageFromPixels(pixels, raster.width, raster.height, ui.PixelFormat.rgba8888, (image) {
-      if (!mounted || seq != _imageSeq) {
-        image.dispose();
-        return;
-      }
-      _setImage(image, raster.disc);
-    });
-  }
-
-  Rect? _imageDisc;
-
-  void _setImage(ui.Image? image, [Rect? disc]) {
-    if (image == null) _imageSeq++;
-    final old = _image;
-    setState(() {
-      _image = image;
-      _imageDisc = disc;
-    });
-    old?.dispose();
+    _world.project(home == null || !_spec.map.world ? null : AzimuthalProjection(home));
   }
 
   void _loadArt(String svg) {
@@ -973,7 +683,7 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
         if (place == null || projection == null) return null;
         final spot = projection.project(place.latitude, place.longitude);
         // Past the rim's antipode it would be drawn on the wrong side of the world.
-        if (spot.distance > math.pi * _antipodeCutoff) return null;
+        if (spot.distance > math.pi * AzimuthalProjection.antipodeCutoff) return null;
         base = (at: frame.toScreen(spot.x, spot.y), bearing: headingOf(spot.x, spot.y), km: spot.distance * _earthRadiusKm);
       } else {
         final bearing = angle(p.az, rotator);
@@ -1087,7 +797,7 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
     final dark = theme.brightness == Brightness.dark;
     final p = context.t.operation.layout.panels;
     final source = widget.source;
-    final palette = RotatorPalette.named(_spec.map.palette);
+    final palette = MapPalette.named(_spec.map.palette);
     final background = _spec.map.background ?? palette.backgroundFor(dark);
     final r = _rotator(null);
     _writeReadouts(r);
@@ -1107,7 +817,6 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
           final size = constraints.biggest;
           final frame = RotatorFrame(size, zoom: _zoomNow, widest: _spec.zoomMin, pan: _panNow, panArea: _spec.panArea, panMargin: _spec.panMargin);
           _frame = frame;
-          _wantRaster(frame, dark, MediaQuery.devicePixelRatioOf(context));
           // The antenna's own beam over the scene's: a 90° 4-square drawn at a beam's 30 would show a third of what it covers.
           final defaults = defaultRotatorLayers(r.reading.beamWidth?.toDouble() ?? _spec.beamWidth?.resolve(widget.values) ?? 30, palette);
           final layers = switch (_spec.layers) {
@@ -1136,10 +845,9 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
                         painter: _RotatorMapPainter(
                           frame: frame,
                           spec: _spec,
-                          paths: _paths,
-                          image: _image,
-                          imageDisc: _imageDisc,
-                          colors: _mapColors(dark),
+                          world: _world,
+                          colors: mapColorsOf(_spec.map, dark: dark),
+                          dark: dark,
                           palette: palette,
                           drawn: _drawn,
                           pictures: _pictures,
@@ -1149,7 +857,7 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
                           labelStyle: theme.textTheme.labelMedium!.copyWith(fontWeight: FontWeight.bold),
                           compass: [p.rotatorNorth, p.rotatorEast, p.rotatorSouth, p.rotatorWest],
                           showStation: _projection != null,
-                          sea: _projection == null ? theme.colorScheme.onSurface.withValues(alpha: 0.06) : _mapColors(dark).sea,
+                          sea: _projection == null ? theme.colorScheme.onSurface.withValues(alpha: 0.06) : mapColorsOf(_spec.map, dark: dark).sea,
                         ),
                       ),
                     ),
@@ -1212,10 +920,6 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
       ),
     );
   }
-}
-
-extension on RotatorPalette {
-  Color backgroundFor(bool dark) => dark ? backgroundDark : background;
 }
 
 class _Rotator {

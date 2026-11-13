@@ -799,6 +799,7 @@
         "rotatorNoReading": "—",
         "rotatorNotResponding": "—· ——— — / ·—· · ··· ·——· ——— —· —·· ·· —· ——·",
         "rotatorResetView": "··· ···· ——— ·—— / — ···· · / ·—— ···· ——— ·—·· · / —— ·— ·——· / ·— ——· ·— ·· —·",
+        "mapResetView": "—··· ·— —·—· —·— / — ——— / — ···· · / ·——· ·— —· · ·—·· ·————· ··· / ——— ·—— —· / ···— ·· · ·——",
         "rotatorElevation": "${degrees} ° / · ·—··",
         "rotatorNorth": "—·",
         "rotatorEast": "·",

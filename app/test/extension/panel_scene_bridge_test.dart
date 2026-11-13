@@ -51,7 +51,7 @@ void main() {
     final panels = PanelService(service);
     addTearDown(panels.dispose);
     await panels.refreshExtensionPanels();
-    expect(panels.catalog.length, 4);
+    expect(panels.catalog.length, 5);
     final radio = panels['ext:k2hrc-panel-scenes:radio#1']!;
     final other = panels['ext:k2hrc-panel-scenes:radio#2']!;
     final weather = panels['ext:k2hrc-panel-scenes:weather#1']!;

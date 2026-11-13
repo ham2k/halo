@@ -35,7 +35,7 @@ void main() {
 
     expect(panels, isA<List>());
     final byKey = {for (final p in (panels as List).cast<Map>()) p['key']: p};
-    expect(byKey.keys, ['radio', 'weather', 'controls', 'grid']);
+    expect(byKey.keys, ['radio', 'weather', 'controls', 'grid', 'map']);
     // The descriptor's optional halves are what the Layout Setup sheet and
     // the several-placements machinery are built from — a panel that
     // declared them must not lose them on the way across.

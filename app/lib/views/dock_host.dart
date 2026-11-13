@@ -1167,6 +1167,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                           call: callLocation,
                         )
                       : null,
+                  home: operationLocation,
                 )
               // A module nothing in the catalog explains — an extension
               // disabled or uninstalled since this arrangement was saved. It

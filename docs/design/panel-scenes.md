@@ -725,15 +725,13 @@ the operator's zoom and pan kept per placement in the key-value store.
 - **A turn shows at once.** The target is drawn the moment it is sent and
   held for 2 seconds, long enough for a polled rotator's own report to
   catch up, so a click is never followed by a moment with nothing drawn.
-- **The raster covers everywhere the pan can reach.** Land and night are a
-  raster asking each pixel where on Earth it is (the reason is in
-  [cat.md § Rotators](cat.md#rotators)). It is built for the zoom, over the whole
-  stretch of disc a pan at that zoom can show, at most 1024 pixels a side,
-  so a pan moves a picture rather than projecting it again; off the UI
-  isolate except on the web. Its night is three steps — sunset, civil and
-  nautical twilight — each 20% darker (25% on a dark theme) and faded in
-  across 1.5° of the sun's altitude rather than at the hard edges of the
-  Map tab's four.
+- **Land and night are shapes, not pixels.** Both are filled paths in the
+  projection's units (how the disc's antipode is handled is in
+  [cat.md § Rotators](cat.md#rotators)), so they are sharp at any zoom and a
+  pan or a zoom only moves them. Its night is three caps round the point
+  opposite the sun — sunset, civil and nautical twilight — each 20% darker
+  (25% on a dark theme) and blurred across 1.5° rather than at the hard
+  edges of the Map tab's four; they are made again each minute.
 - **States and provinces fade in as the view closes in.** Natural Earth's
   1:50m first-order divisions, which that scale has only for the USA,
   Canada, Brazil, Russia, China, India and Australia
@@ -743,6 +741,85 @@ the operator's zoom and pan kept per placement in the key-value store.
   rotator's last heading while it is disconnected or not answering, so a
   readout does not blank on a dropped connection; `status` says whether it
   is current.
+
+## Map
+
+A map (`map`, extension API 25) is the world in Web Mercator,
+equirectangular, Miller's, Patterson's, azimuthal equidistant or Robinson's
+projection, with markers, great-circle lines and distance circles
+the scene places by latitude and longitude. The public contract is in
+[panel scenes](../extensions/scenes.md#map) and `PanelSceneMap`. It needs no
+grant: it shows nothing of the station but the operation's location, which
+it centers on only when the scene names no place.
+
+- **One world under both maps.** The rotator map and this one draw the same
+  world (`scene_world.dart`): the palettes, and Natural Earth's land,
+  outlines and the night projected once per projection as paths. Each
+  projection (`world_map/map_projection.dart`) turns a place into a point in
+  its own units and back, and says how far its world reaches. The
+  cylinder-like ones also place a point east of their meridian without
+  wrapping, so a ring or a line across the antimeridian is laid in one
+  piece past the edge, and again a turn the other way to reach in from the
+  far one; the azimuthal breaks a line where a step jumps across the rim.
+- **The map goes round the world.** The rectangular worlds — Web
+  Mercator, plate carrée, Miller's and Patterson's, which differ only in
+  how high each latitude is drawn — repeat east and west, each copy drawn
+  inside its own edge, which is cut on whole pixels so two copies meet
+  with no seam. Robinson's world has curved edges and cannot
+  repeat, so a pan east or west turns the world under the view instead:
+  its meridian is always the view's middle, and the land, outlines,
+  markers and lines are projected again as it turns (each line's great
+  circle is kept, only placed again). A turn of a cylindrical projection
+  only adds to each point's longitude east of the meridian, and x is that
+  times a factor of the latitude, so each outline and line is made ready
+  once with its points' factors and heights (`TurningShapes`), and a turn
+  places them with a multiply a point: a frame of a Robinson pan is a
+  third of what projecting it all again costs. Pan bounds stop both
+  wraps, and hold the projection to the meridian through their middle, so
+  the seam lies behind them.
+- **Covering is the camera's.** `pan.cover` raises the zoom floor to the
+  least zoom that fills the pane, worked out at each layout since it
+  follows the pane's shape, and keeps the view on the world. A box —
+  a rectangular world, which only the north and south limit when it
+  repeats, or the bounds — is held side by side as before. A curved edge
+  is convex and symmetric about the world's middle, so the largest view
+  that fits sits there, found by halving the scale, and a view asked for
+  off it is drawn in toward the middle until its corners and the middles
+  of its sides are all on the world.
+- **Zoom is a web map's level, not the rotator map's factor.** 0 fits the
+  whole world in the pane, each step doubles the scale. Radii and widths
+  that follow the zoom are stops over the level, the shape MapLibre's
+  `interpolate` takes, read between as a straight line, which on a
+  doubling scale is the curve an author expects. The rotator map keeps its
+  factor: it is extension API 23's, and published.
+- **The scene's view, then the operator's.** Like the rotator map, the
+  operator's zoom and pan hold until a render changes the scene's own
+  `home` or `zoom.initial` to somewhere other than where the last gesture
+  settled: a panel that keeps the operator's view hands that back, and
+  taken as the scene moving the view, it would pull the operator's out
+  from under a gesture already under way. The azimuthal map's middle
+  without an `origin` follows `home` the same way, or the view would move
+  by the pan a second time. A change of projection carries the place in
+  the view's middle over, since the operator's view is a point in the old
+  projection's units.
+- **A distance circle is the grayline's cap.** `circles` are laid out by
+  `capAround`, the same edge the night is, its radius in degrees on the
+  sphere `distanceOnEarthKm` measures, so a circle at a contact's distance
+  passes through it. It is filled as the night is, the right way round a
+  pole or the antipode, and stroked as its edge alone, once round, without
+  the closing run along the pole. A click takes its edge only: a range
+  ring round the station would otherwise take every click inside it from
+  the map.
+- **Markers and lines are placed once per projection.** A marker's point
+  and a line's great circle (a point a degree) are kept in the projection's
+  units and moved onto the screen with the view, so a pan or a zoom of a
+  rectangular or azimuthal map projects nothing; only a new scene or a new
+  projection, which a Robinson map's pan is, places them again. A line's
+  great circle, and its place in the projection, are kept by its ends from
+  render to render: a panel that keeps the operator's view renders after
+  every pan, and with a thousand lines, making them all again each time
+  would be most of the cost of that render. Markers are placed again,
+  which costs little.
 
 ## Radio values
 

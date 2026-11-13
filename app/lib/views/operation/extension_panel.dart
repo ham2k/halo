@@ -60,6 +60,9 @@ class ExtensionPanel extends StatefulWidget {
   /// the rotators.
   final SceneRotatorSource? rotator;
 
+  /// The operation's location, where a scene's `map` centres when it names no place.
+  final GridLocation? home;
+
   /// How a markdown pane draws its images: the extension's own, from
   /// `extensionImagesFor`. Null draws each as its alt text.
   final MarkdownSizedImageBuilder? markdownImages;
@@ -72,6 +75,7 @@ class ExtensionPanel extends StatefulWidget {
     this.onTitle,
     this.spectrum,
     this.rotator,
+    this.home,
     this.markdownImages,
   });
 
@@ -771,6 +775,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         onSceneEvent: _sceneEvent,
         spectrum: widget.spectrum,
         rotator: widget.rotator,
+        home: widget.home,
       );
       final images = widget.markdownImages;
       return images == null ? view : MarkdownImages(builder: images, child: view);

@@ -15,6 +15,7 @@ part 'scene_model_spectrum_trace.dart';
 part 'scene_model_spectrum_annotations.dart';
 part 'scene_model_layout.dart';
 part 'scene_model_rotator.dart';
+part 'scene_model_map.dart';
 part 'scene_model_sources.dart';
 
 /// The values a scene that names a [PanelScene.radio] is given, live, by the
@@ -252,6 +253,9 @@ class PanelScene {
       }
       if (control.rotatorMap?.statusNames.any((name) => !strings.containsKey(name)) ?? false) {
         throw FormatException('Unknown rotator map status string: ${control.id}');
+      }
+      if (control.map?.valueNames.any((name) => !values.containsKey(name)) ?? false) {
+        throw FormatException('Unknown map value: ${control.id}');
       }
       // Only a rect puts a control over the artwork, so only a rect gives it
       // a place among the layers, and only among the layers it is drawn with.
@@ -678,7 +682,26 @@ const _nativeKinds = {
   // Painted by the host from a rotator's heading; its event carries the
   // bearing clicked, as `value`.
   'rotatorMap': SceneBinds.none,
+  // Painted by the host from the scene's markers and lines; its event
+  // carries the place clicked, in `at`.
+  'map': SceneBinds.none,
 };
+
+/// The control kinds each kind's own key may appear on — some are shared,
+/// the same word for the same idea. On any other kind the control is refused.
+final Map<String, Set<String>> _kindKeys = () {
+  final out = <String, Set<String>>{};
+  void add(Iterable<String> keys, String kind) {
+    for (final key in keys) {
+      (out[key] ??= {}).add(kind);
+    }
+  }
+
+  add(SceneSpectrumSpec.keys, 'spectrum');
+  add([...SceneRotatorSpec.keys, ...SceneRotatorSpec.sharedKeys], 'rotatorMap');
+  add(SceneMapSpec.keys, 'map');
+  return out;
+}();
 
 /// `bandScope` is the band scope control's name from extension API 17;
 /// `spectrum`, its name before, reads the same, and is what [SceneControl.kind] holds for either.
@@ -734,6 +757,9 @@ class SceneControl {
   /// Set on a `rotatorMap` control, and only on one.
   final SceneRotatorSpec? rotatorMap;
 
+  /// Set on a `map` control, and only on one.
+  final SceneMapSpec? map;
+
   /// A drawn control's `hoverSet`: while the pointer is over it, the scene
   /// value [hoverSet.value] reads [hoverSet.to], set by the host with no call
   /// to the extension, so artwork bound to it lights up under the pointer.
@@ -765,6 +791,7 @@ class SceneControl {
       after = json['after'] == null ? null : string(json, 'after'),
       spectrum = _kindOf(json['kind']) == 'spectrum' ? SceneSpectrumSpec(json) : null,
       rotatorMap = json['kind'] == 'rotatorMap' ? SceneRotatorSpec(json) : null,
+      map = json['kind'] == 'map' ? SceneMapSpec(json) : null,
       hoverSet = json['hoverSet'] is Map
           ? (value: string(json['hoverSet'] as Map<dynamic, dynamic>, 'value'), to: number(json['hoverSet'] as Map<dynamic, dynamic>, 'to'))
           : null,
@@ -843,8 +870,7 @@ class SceneControl {
         (json['valueY'] != null && kind != 'knob') ||
         // An event carries no other mark of which axis moved: the second needs its own.
         (!isYAxis && json['valueY'] != null && json['event'] != null && (json['eventY'] == null || json['eventY'] == json['event'])) ||
-        SceneSpectrumSpec.keys.any((key) => !only(json[key], {'spectrum', if (SceneRotatorSpec.sharedKeys.contains(key)) 'rotatorMap'})) ||
-        SceneRotatorSpec.keys.any((key) => !only(json[key], {'rotatorMap'}))) {
+        _kindKeys.entries.any((e) => !only(json[e.key], e.value))) {
       throw FormatException('Invalid scene control: $id');
     }
   }

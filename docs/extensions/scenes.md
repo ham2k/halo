@@ -35,6 +35,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 20 | the band scope's `minWidthHz` and `maxWidthHz`, its `vfoLabel`'s `arrow`, up to 512 of its `layers` and 256 `annotations`, and an annotation's `collapsed` |
 | 22 | the band scope's `window` and `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed one's `width: 'box'`, a zoom's `commit` of its middle as a pan, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click; `radio.compression`; `cells`, the `grid` and `cell` layout nodes, and a layout up to 12 deep and 512 nodes; a slider's or knob's `invertScroll`; named `sources` for radios, rotators and antenna switches, a band scope's `radio` naming one; a layer's `clipX` and `clipY`, and a binding's `hold` |
 | 23 | the rotator map control (`rotatorMap`), a `nativeButton`'s `icon` variant, an event's `bearing` and `km`, and a binding's `offset` |
+| 25 | the map control (`map`), an event's `lat` and `lon`, and the `reset` gesture |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -138,6 +139,7 @@ and never reaches the extension. `value` names what it shows and sets.
 | `nativeText` | number, string, or none | | `style` (a typography role), `align` |
 | `bandScope` | | `commit` with the frequency clicked, where the scene hears its tunes; `activate` from an annotation or a layer; `change` and `commit` for a zoom, pan, split or level drag it hears | below |
 | `rotatorMap` | | `commit` with the bearing clicked, where the scene hears its turns; `activate` from a decoration; `commit` for a zoom or pan | below |
+| `map` | | `commit` with the place clicked; `activate` from a marker, a line or a circle; `commit` for a zoom, a pan or a reset | API 25; below |
 | `zoom` | | `commit` with the factor, on release | `min`, `max` (the factors allowed); needs `event`; only with `scroll`; API 12; below |
 
 The three drawn kinds are invisible hit areas over artwork you paint; the
@@ -939,6 +941,119 @@ is turned there as it lands, the way any other turn is.
 
 To keep the operator's view, store each `commit` and give it back as
 `zoom.initial` and `pan.x` and `pan.y`; forget it on a zoom of `0`.
+
+## Map
+
+A `map` control (extension API 25) is the world in a projection, with
+markers and the great circles between them placed by latitude and
+longitude. The operator zooms and pans it; the app redraws it and moves
+everything on it with no call to your extension. It needs no grant. Placed
+like a native control, it takes:
+
+- `projection`: `mercator` (Web Mercator, the default), `equirectangular`
+  (plate carrée: twice as wide as tall, every grid square of a size the
+  same rectangle), `miller` (Mercator's look with the poles drawn),
+  `patterson` (between those two, the high latitudes kept from swelling),
+  `azimuthal` (azimuthal equidistant: every straight line out of the middle
+  is a great circle, and its edge is the far side of the Earth) or
+  `robinson`.
+- `home`, `{ lat, lon }`: the place in the view's middle until the
+  operator pans; omitted, the operation's location, or 0, 0 without one.
+- `origin`, `{ lat, lon }`: the azimuthal map's middle; omitted, `home`
+  as the scene last moved it. A `home` that gives back where the
+  operator's pan settled moves neither the view nor the middle. The others
+  go on round the world as the
+  operator pans east or west, the rectangular ones repeating beside
+  themselves and Robinson turning the world under the view, so they take
+  no `origin`.
+- `map`: the world under it, as the rotator map's: `palette`, the colors
+  over it, `grayline` and `world`. `world: false` draws a plain sea.
+- `zoom`: `{ min, max, initial }` in zoom levels, 0 fitting the whole world
+  in the pane and each step closer doubling the scale; 0 to 10 when
+  omitted, at most 16. `initial` may name a scene value.
+- `pan`: `{ bounds: { north, south, west, east }, cover }`. `bounds` is
+  what the view may be panned over; omitted, the whole world, round and
+  round. An `east` less than `west` crosses the antimeridian. A view wider
+  than the bounds sits at their middle. `cover: true` keeps the pane full:
+  the view never shows past the world's edge, or the bounds, so the widest
+  zoom is the one that fills the pane, which follows its shape, and a pan
+  stops at the edge. A `zoom.max` short of that zoom still holds, and the
+  view shows past the edge there. A Robinson or azimuthal world, whose edge is a curve,
+  is never seen whole that way.
+- `styles`: up to 64 looks by name, for markers, lines and circles to
+  take by `style`.
+- `markers`: up to 4,096, each an `id`, a `lat` and a `lon`. Drawn over
+  the lines, a later one over an earlier. On Web Mercator, one past its
+  cut at 85.05° sits on the world's edge, where its lines end.
+- `lines`: up to 1,024, each an `id`, `from` and `to`, each a marker's `id`
+  or `{ lat, lon }`. A line is the great circle between its ends, the
+  shortest way round the Earth, broken where the projection's edge cuts it.
+- `circles`: up to 256, each an `id`, `at`, a marker's `id` or
+  `{ lat, lon }`, and `km`, more than 0 and at most 20,015, half the way
+  round the Earth: the places that far from `at`, measured as a contact's
+  distance is. On most projections that is no circle, and one round a pole
+  or past the far side of the Earth is filled the right way round. Drawn
+  under the lines, a later one over an earlier.
+- `zoomValue`, `hoverLat` and `hoverLon`: scene values the control writes,
+  each named by the scene and declared in its `values`: the zoom, and the
+  place under the pointer (the bottom of a binding's range off the world).
+- `actions: false` hides the app's button that takes the view back to the
+  scene's own.
+
+A look is `fill` (a marker's or a circle's inside; a circle without one
+is its edge alone), `color` (a marker's or a circle's edge, or the line),
+`width` (1 for a marker's edge, 1.5 for a line or a circle), `radius` (4),
+`casing`, a color drawn a pixel wider either side under a line or a
+circle's edge or round a marker, and `dashed`. A marker, line or circle
+takes a `style` from `styles` and any of the same fields over it. `radius` and `width` follow the zoom: a
+number, or up to 16 stops `[[zoom, value], ...]` rising with the zoom,
+read between two stops as a straight line and held past the first and
+the last, so `radius: [[0, 2], [6, 8]]` grows a marker from 2 pixels on the
+whole world to 8 at zoom 6 and stays 8 closer in.
+
+```ts
+{
+  id: "map", kind: "map", label: "Contacts", event: "map",
+  projection: "robinson", home: { lat: 40.7, lon: -74 },
+  styles: {
+    qso: { fill: "#FF4400", color: "#FFFFFF", radius: [[0, 3], [6, 8]] },
+    path: { color: "#CC0026FF", width: [[0, 1], [6, 3]], casing: "#80FFFFFF" },
+  },
+  markers: [
+    { id: "home", lat: 40.7, lon: -74, fill: "#000000" },
+    { id: "ja1abc", lat: 35.7, lon: 139.7, style: "qso", event: "open" },
+  ],
+  lines: [{ id: "to-ja1abc", from: "home", to: "ja1abc", style: "path" }],
+  circles: [{ id: "5000km", at: "home", km: 5000, color: "#80FFFFFF", dashed: true }],
+}
+```
+
+A marker, line or circle with an `event` sends `activate` with that
+action, `layer` its id, and `at` with `x` and `y`, pixels in the control,
+and `lat` and `lon`: the marker's place, or the place clicked on a line or
+a circle. With a `menu`, `[{ label, event }]`, it opens where clicked and
+the item picked is sent as `event` is. A click within 6 pixels of a
+marker's edge, a line's side or a circle's edge is on it; inside a circle
+it is the map's. A marker is found before a line, a line before a circle,
+a later one before an earlier.
+
+The control's own `event`, where it has one, hears the rest, as `commit`:
+
+- a click off every marker, line and circle that acts, `at` the place
+  clicked;
+- `gesture: 'zoom'` once a zoom settles, `value` the zoom;
+- `gesture: 'pan'` once a pan or a zoom settles, `at.lat` and `at.lon` the
+  view's middle;
+- `gesture: 'reset'` from the app's button, back to the scene's view.
+
+A drag pans, the mouse wheel, a trackpad's two-finger scroll and a pinch
+zoom about the pointer. `gestures` takes `zoom` and `pan`, each `native`
+(the default) or `off`. To keep the operator's view, store the last
+`zoom` and `pan` and give them back as `zoom.initial` and `home`; forget
+them on a `reset`. A render that changes `home` or `zoom.initial` to
+anywhere else moves the view there, and a change of `projection` keeps the
+place in the view's middle; one that leaves them alone leaves the
+operator's view alone.
 
 ## Radio values
 

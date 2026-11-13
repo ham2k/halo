@@ -76,9 +76,14 @@ GridLocation subsolarPoint(DateTime utc) {
 /// point every 90° so that a renderer that wraps each point back into ±180
 /// can still tell which way it went.
 List<List<GridLocation>> graylineCaps(DateTime utc) {
+  final center = antisolarPoint(utc);
+  return [for (final altitude in graylineSunAltitudes) capAround(center, 90 + altitude)];
+}
+
+/// The point opposite the sun at [utc]: the middle of the night.
+GridLocation antisolarPoint(DateTime utc) {
   final sun = subsolarPoint(utc);
-  final center = GridLocation(-sun.latitude, _wrap(sun.longitude + 180));
-  return [for (final altitude in graylineSunAltitudes) _cap(center, 90 + altitude)];
+  return GridLocation(-sun.latitude, _wrap(sun.longitude + 180));
 }
 
 /// [graylineCaps] as the GL script's `setGrayline` takes them: each ring as
@@ -94,16 +99,19 @@ Map<String, dynamic> mapGraylinePayload(DateTime utc, {required bool dark}) => {
   ],
 };
 
-/// Bearing steps around a cap's edge.
-const _capSteps = 180;
+/// Bearing steps around a cap's edge: [capAround]'s first this many points
+/// are the edge, before any it adds round a pole.
+const capEdgePoints = 180;
 
-List<GridLocation> _cap(GridLocation center, double radiusDegrees) {
+/// The edge of the cap [radiusDegrees] round [center], as [graylineCaps]
+/// lays each one out.
+List<GridLocation> capAround(GridLocation center, double radiusDegrees) {
   final lat = center.latitude * math.pi / 180;
   final r = radiusDegrees * math.pi / 180;
   final ring = <GridLocation>[];
   double? previous;
-  for (var step = 0; step < _capSteps; step++) {
-    final bearing = 2 * math.pi * step / _capSteps;
+  for (var step = 0; step < capEdgePoints; step++) {
+    final bearing = 2 * math.pi * step / capEdgePoints;
     final pointLat = math.asin(math.sin(lat) * math.cos(r) + math.cos(lat) * math.sin(r) * math.cos(bearing));
     final delta = math.atan2(math.sin(bearing) * math.sin(r) * math.cos(lat), math.cos(r) - math.sin(lat) * math.sin(pointLat)) * 180 / math.pi;
     var lon = center.longitude + delta;

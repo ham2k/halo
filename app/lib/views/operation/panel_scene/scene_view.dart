@@ -10,11 +10,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:halo_core/halo_core.dart' show GridLocation;
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../panel_environment.dart';
 import 'scene_grid.dart';
+import 'scene_map.dart';
 import 'scene_model.dart';
 import 'scene_rotator.dart';
 import 'scene_spectrum.dart';
@@ -46,7 +48,10 @@ class PanelSceneView extends StatefulWidget {
   /// Where `rotatorMap` controls get their rotators — null for a panel that
   /// may not read them.
   final SceneRotatorSource? rotator;
-  const PanelSceneView({super.key, required this.scene, this.onEvent, this.spectrum, this.rotator});
+
+  /// The operation's location, where a `map` control centres when the scene names no place.
+  final GridLocation? home;
+  const PanelSceneView({super.key, required this.scene, this.onEvent, this.spectrum, this.rotator, this.home});
   @override
   State<PanelSceneView> createState() => _PanelSceneViewState();
 }
@@ -187,6 +192,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
       // Written by the control — the pointer, the width shown — never by the extension.
       for (final c in widget.scene.controls) ...[?c.spectrum?.hoverHz, ?c.spectrum?.hoverDb, ?c.spectrum?.widthHz, ?c.spectrum?.stepHz, ?c.spectrum?.vfoHz],
       for (final c in widget.scene.controls) ...?c.rotatorMap?.written,
+      for (final c in widget.scene.controls) ...?c.map?.written,
       // A hover value is the pointer's only while it is over the control; otherwise a render's.
       ..._hovering,
     };
@@ -416,7 +422,23 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
         ? _spectrumView(control)
         : control.rotatorMap != null
         ? _rotatorView(control)
+        : control.map != null
+        ? _mapView(control)
         : _nativeView(control),
+  );
+
+  Widget _mapView(SceneControl control) => SceneMapView(
+    key: ValueKey('map:${control.id}'),
+    control: control,
+    values: _values,
+    disabled: control.disabled,
+    home: widget.home,
+    onClick: control.event == null || control.disabled ? null : (at) => _sendControl(control, 'commit', at: at),
+    onItem: control.disabled ? null : (id, action, at) => _sendControl(control, 'activate', action: action, layer: id, at: at),
+    onGesture: control.event == null || control.disabled
+        ? null
+        : (gesture, value, at) => _sendControl(control, 'commit', value: value, gesture: gesture, at: at),
+    onReadout: (name, value) => setState(() => _values[name] = value),
   );
 
   Widget _rotatorView(SceneControl control) => SceneRotatorView(

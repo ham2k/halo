@@ -3496,9 +3496,11 @@ still clickable. A location the panel names and cannot read is said so,
 never replaced by the operation's: the map would be right and every bearing
 on it wrong. The world is Natural Earth's 1:110m, bundled as
 `assets/geo/world-110m.json` by `scripts/world-outlines.py`. Land and night
-are a raster asking each pixel where on Earth it is, because the
-projection's rim is a single point — the antipode — and a polygon round it
-projects inside out (New Zealand seen from Spain); only the outlines are
+are filled shapes, in even-odd. The projection's rim is a single point — the
+antipode — and a polygon round it projects inside out (New Zealand seen from
+Spain), so whenever the antipode is inside the land or the night the whole
+disc is filled with it too, which turns it back; a step of a ring near the
+antipode is split until no piece cuts across the disc. The outlines are
 lines, broken near the antipode.
 
 ### Yaesu GS-232A

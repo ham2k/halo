@@ -3993,6 +3993,7 @@ class _Translations$operation$layout$panels$qrp extends Translations$operation$l
 	@override String get rotatorNoReading => '—';
 	@override String get rotatorNotResponding => 'not responding';
 	@override String get rotatorResetView => 'show the whole map again';
+	@override String get mapResetView => 'back to the panel\'s own view';
 	@override String rotatorElevation({required Object degrees}) => '${degrees}° el';
 	@override String get rotatorNorth => 'n';
 	@override String get rotatorEast => 'e';
@@ -5781,6 +5782,7 @@ extension on TranslationsQrp {
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => 'not responding',
 			'operation.layout.panels.rotatorResetView' => 'show the whole map again',
+			'operation.layout.panels.mapResetView' => 'back to the panel\'s own view',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
 			'operation.layout.panels.rotatorNorth' => 'n',
 			'operation.layout.panels.rotatorEast' => 'e',
@@ -6103,9 +6105,9 @@ extension on TranslationsQrp {
 			'loggingControls.manualTimeIncrementNone' => 'none',
 			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} minute', other: '${count} minutes', ), 
 			'loggingControls.frequency' => 'frequency',
-			'loggingControls.mode' => 'mode',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.mode' => 'mode',
 			'loggingControls.theirCall' => 'their call',
 			'loggingControls.noteField' => 'note',
 			'loggingControls.todoField' => 'todo',
@@ -6617,9 +6619,9 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.problemInputMissing' => 'the recording device is not connected.',
 			'settings.radio.voiceMessages.problemDeviceFailed' => 'the sound device would not open.',
 			'settings.radio.voiceMessages.problemNotRecorded' => 'that message has no recording yet.',
-			'settings.radio.voiceMessages.problemRecordingSilent' => 'nothing was heard from the recording device, so the message was left as it was. check the input, and that the app is allowed to use the microphone.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemRecordingSilent' => 'nothing was heard from the recording device, so the message was left as it was. check the input, and that the app is allowed to use the microphone.',
 			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'the radio is not taking audio from the app right now. it needs a network connection to the radio.',
 			'settings.radio.voiceMessages.problemSourceRefused' => 'the radio would not switch its transmit audio to the app, so the message stopped. set the radio to transmit the app\'s audio.',
 			'settings.radio.voiceMessages.problemCannotKey' => 'this radio can\'t be keyed over cat, so the computer can\'t play messages into it.',
@@ -7131,9 +7133,9 @@ extension on TranslationsQrp {
 			'settings.station.models.commander' => 'radio controlled via dxlab commander',
 			'settings.station.models.commanderNodeName' => 'my radio (via commander)',
 			'settings.station.models.antenna' => 'antenna',
-			'settings.station.models.key' => 'cw key',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.key' => 'cw key',
 			'settings.station.models.midiController' => 'midi controller',
 			'settings.station.models.winkeyer' => 'winkeyer',
 			'settings.station.models.placeholderRadio' => 'simulated radio',
@@ -7645,9 +7647,9 @@ extension on TranslationsQrp {
 			'settings.panels.developerSettings' => 'developer settings',
 			'settings.panels.developerSettingsDescription' => 'debugging and development tools',
 			'settings.panels.about' => 'about',
-			'settings.panels.aboutDescription' => 'version, credits, and legal information',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.aboutDescription' => 'version, credits, and legal information',
 			'settings.panels.unavailableTitle' => 'some settings are unavailable',
 			'settings.panels.unavailableText' => 'the extension runtime failed to start, so extension-contributed settings are missing.',
 			'settings.panels.station' => 'station configuration',
@@ -8159,9 +8161,9 @@ extension on TranslationsQrp {
 			'exportSettings.shared' => 'settings apply to every extension using this export type.',
 			'exportSettings.defaultTemplates' => 'turn on custom templates to edit this type’s templates.',
 			'templateEditor.previewLabel' => 'preview:',
-			'templateEditor.reset' => 'reset',
 			_ => null,
 		} ?? switch (path) {
+			'templateEditor.reset' => 'reset',
 			'templateEditor.docs' => 'templating docs',
 			'templateEditor.preview' => 'sample preview',
 			'templateEditor.reference' => 'template reference',

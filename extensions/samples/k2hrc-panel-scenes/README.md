@@ -1,6 +1,6 @@
 # Panel Scene Prototypes
 
-Experimental radio front face, weather inspection chart and native controls form, using the public
+Experimental radio front face, weather inspection chart, native controls form and contacts map, using the public
 `scene` / `PanelHook.onEvent` contracts. Requires a host with panel scene support.
 All data is simulated; this extension does not fetch weather or control a radio.
 

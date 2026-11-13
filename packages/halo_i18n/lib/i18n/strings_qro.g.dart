@@ -3993,6 +3993,7 @@ class _Translations$operation$layout$panels$qro extends Translations$operation$l
 	@override String get rotatorNoReading => '—';
 	@override String get rotatorNotResponding => 'NOT RESPONDING';
 	@override String get rotatorResetView => 'SHOW THE WHOLE MAP AGAIN';
+	@override String get mapResetView => 'BACK TO THE PANEL\'S OWN VIEW';
 	@override String rotatorElevation({required Object degrees}) => '${degrees}° EL';
 	@override String get rotatorNorth => 'N';
 	@override String get rotatorEast => 'E';
@@ -5781,6 +5782,7 @@ extension on TranslationsQro {
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => 'NOT RESPONDING',
 			'operation.layout.panels.rotatorResetView' => 'SHOW THE WHOLE MAP AGAIN',
+			'operation.layout.panels.mapResetView' => 'BACK TO THE PANEL\'S OWN VIEW',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° EL',
 			'operation.layout.panels.rotatorNorth' => 'N',
 			'operation.layout.panels.rotatorEast' => 'E',
@@ -6103,9 +6105,9 @@ extension on TranslationsQro {
 			'loggingControls.manualTimeIncrementNone' => 'NONE',
 			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} MINUTE', other: '${count} MINUTES', ), 
 			'loggingControls.frequency' => 'FREQUENCY',
-			'loggingControls.mode' => 'MODE',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.mode' => 'MODE',
 			'loggingControls.theirCall' => 'THEIR CALL',
 			'loggingControls.noteField' => 'NOTE',
 			'loggingControls.todoField' => 'TODO',
@@ -6617,9 +6619,9 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.problemInputMissing' => 'THE RECORDING DEVICE IS NOT CONNECTED.',
 			'settings.radio.voiceMessages.problemDeviceFailed' => 'THE SOUND DEVICE WOULD NOT OPEN.',
 			'settings.radio.voiceMessages.problemNotRecorded' => 'THAT MESSAGE HAS NO RECORDING YET.',
-			'settings.radio.voiceMessages.problemRecordingSilent' => 'NOTHING WAS HEARD FROM THE RECORDING DEVICE, SO THE MESSAGE WAS LEFT AS IT WAS. CHECK THE INPUT, AND THAT THE APP IS ALLOWED TO USE THE MICROPHONE.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemRecordingSilent' => 'NOTHING WAS HEARD FROM THE RECORDING DEVICE, SO THE MESSAGE WAS LEFT AS IT WAS. CHECK THE INPUT, AND THAT THE APP IS ALLOWED TO USE THE MICROPHONE.',
 			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'THE RADIO IS NOT TAKING AUDIO FROM THE APP RIGHT NOW. IT NEEDS A NETWORK CONNECTION TO THE RADIO.',
 			'settings.radio.voiceMessages.problemSourceRefused' => 'THE RADIO WOULD NOT SWITCH ITS TRANSMIT AUDIO TO THE APP, SO THE MESSAGE STOPPED. SET THE RADIO TO TRANSMIT THE APP\'S AUDIO.',
 			'settings.radio.voiceMessages.problemCannotKey' => 'THIS RADIO CAN\'T BE KEYED OVER CAT, SO THE COMPUTER CAN\'T PLAY MESSAGES INTO IT.',
@@ -7131,9 +7133,9 @@ extension on TranslationsQro {
 			'settings.station.models.commander' => 'RADIO CONTROLLED VIA DXLAB COMMANDER',
 			'settings.station.models.commanderNodeName' => 'MY RADIO (VIA COMMANDER)',
 			'settings.station.models.antenna' => 'ANTENNA',
-			'settings.station.models.key' => 'CW KEY',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.key' => 'CW KEY',
 			'settings.station.models.midiController' => 'MIDI CONTROLLER',
 			'settings.station.models.winkeyer' => 'WINKEYER',
 			'settings.station.models.placeholderRadio' => 'SIMULATED RADIO',
@@ -7645,9 +7647,9 @@ extension on TranslationsQro {
 			'settings.panels.developerSettings' => 'DEVELOPER SETTINGS',
 			'settings.panels.developerSettingsDescription' => 'DEBUGGING AND DEVELOPMENT TOOLS',
 			'settings.panels.about' => 'ABOUT',
-			'settings.panels.aboutDescription' => 'VERSION, CREDITS, AND LEGAL INFORMATION',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.aboutDescription' => 'VERSION, CREDITS, AND LEGAL INFORMATION',
 			'settings.panels.unavailableTitle' => 'SOME SETTINGS ARE UNAVAILABLE',
 			'settings.panels.unavailableText' => 'THE EXTENSION RUNTIME FAILED TO START, SO EXTENSION-CONTRIBUTED SETTINGS ARE MISSING.',
 			'settings.panels.station' => 'STATION CONFIGURATION',
@@ -8159,9 +8161,9 @@ extension on TranslationsQro {
 			'exportSettings.shared' => 'SETTINGS APPLY TO EVERY EXTENSION USING THIS EXPORT TYPE.',
 			'exportSettings.defaultTemplates' => 'TURN ON CUSTOM TEMPLATES TO EDIT THIS TYPE’S TEMPLATES.',
 			'templateEditor.previewLabel' => 'PREVIEW:',
-			'templateEditor.reset' => 'RESET',
 			_ => null,
 		} ?? switch (path) {
+			'templateEditor.reset' => 'RESET',
 			'templateEditor.docs' => 'TEMPLATING DOCS',
 			'templateEditor.preview' => 'SAMPLE PREVIEW',
 			'templateEditor.reference' => 'TEMPLATE REFERENCE',

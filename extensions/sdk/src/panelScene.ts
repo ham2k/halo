@@ -274,6 +274,7 @@ export type PanelSceneControlKind =
   | "spectrum"
   | "zoom"
   | "rotatorMap"
+  | "map"
 
 /** A literal, or the name of a scene value — which a slider with no `event` retunes with no bridge call. */
 export type PanelSceneSpectrumNumber = number | string
@@ -961,7 +962,7 @@ export interface PanelSceneRotatorRimMarks {
 export interface PanelSceneRotatorMap {
   /** A rotator's id from `listEquipment`, or the name of a rotator in the scene's `sources`; omitted, the station's first. */
   rotator?: string
-  /** The map's centre; omitted, the operation's location. */
+  /** The map's centre; omitted, the operation's location. On a `map` (extension API 25), the place in the view's middle until the operator pans. */
   home?: { lat: number; lon: number }
   map?: {
     palette?: "color" | "gray" | "muted" | "contrast" | "teal"
@@ -989,7 +990,10 @@ export interface PanelSceneRotatorMap {
     dashed?: boolean
     labels?: { az: number; text?: string; size?: number; color?: string }[]
   }[]
-  /** 1 fits the whole Earth; omitted, 1 to 20. `initial` may name a scene value. */
+  /**
+   * 1 fits the whole Earth; omitted, 1 to 20. `initial` may name a scene value. On a `map` (extension
+   * API 25) a zoom level instead: 0 fits the whole world, each step closer doubles the scale; omitted, 0 to 10.
+   */
   zoom?: { min?: number; max?: number; initial?: PanelSceneSpectrumNumber }
   /**
    * Where the station may be panned: within the `square` around the circle the widest zoom draws, or
@@ -1006,6 +1010,13 @@ export interface PanelSceneRotatorMap {
      */
     x?: PanelSceneSpectrumNumber
     y?: PanelSceneSpectrumNumber
+    /** On a `map` (extension API 25): what the view may be panned over; omitted, the whole world. An `east` less than `west` crosses the antimeridian. */
+    bounds?: { north: number; south: number; west: number; east: number }
+    /**
+     * On a `map` (extension API 25): the view never shows past the world's edge, or the bounds; the
+     * widest zoom is the one that fills the pane.
+     */
+    cover?: boolean
   }
   /** The default decorations' beam, in degrees (30 by default; 0 draws none); an antenna whose device reports its own beam is drawn with that. */
   beamWidth?: PanelSceneSpectrumNumber
@@ -1049,7 +1060,90 @@ export interface PanelSceneRotatorMap {
   decorations?: PanelSceneRotatorLayer[]
 }
 
-export interface PanelSceneControl extends PanelSceneSpectrum, PanelSceneRotatorMap {
+/**
+ * A number that follows a map's zoom: one value, or stops `[[zoom, value], …]` rising with the zoom,
+ * read between two as a straight line and held past the first and the last. At most 16.
+ */
+export type PanelSceneMapZoomed = number | [number, number][]
+
+/** How a map's marker, line or circle is drawn; a named style, or the same fields on the item, over its style's. */
+export interface PanelSceneMapLook {
+  /** A marker's or a circle's inside; a circle without one is its edge alone. */
+  fill?: string
+  /** A marker's or a circle's edge, or a line. */
+  color?: string
+  /** Drawn a pixel wider either side under a line or a circle's edge, or round a marker. */
+  casing?: string
+  /** A marker's radius, in pixels (4). */
+  radius?: PanelSceneMapZoomed
+  /** A line's or a circle's width, or a marker's edge's, in pixels (1.5, 1.5 and 1). */
+  width?: PanelSceneMapZoomed
+  dashed?: boolean
+}
+
+/** A map's marker, line or circle: its look, and what a click on it does. */
+export interface PanelSceneMapItem extends PanelSceneMapLook {
+  id: string
+  /** A name from the map's `styles`. */
+  style?: string
+  /** Sent as `activate`, `layer` the item's id and `at` where it is. */
+  event?: string
+  /** Opened where clicked; the item picked is sent as `event` is. */
+  menu?: { label: string; event: string }[]
+}
+
+export interface PanelSceneMapMarker extends PanelSceneMapItem {
+  lat: number
+  lon: number
+}
+
+/** The great circle between two places: a marker's `id`, or a place. */
+export interface PanelSceneMapLine extends PanelSceneMapItem {
+  from: string | { lat: number; lon: number }
+  to: string | { lat: number; lon: number }
+}
+
+/**
+ * The places `km` round `at`, a marker's `id` or a place: a distance from it, drawn as its edge in
+ * `color` and `width`, filled with `fill` when it has one. A click on the edge is the circle's.
+ */
+export interface PanelSceneMapCircle extends PanelSceneMapItem {
+  at: string | { lat: number; lon: number }
+  /** More than 0, at most 20,015, half the way round the Earth. */
+  km: number
+}
+
+/**
+ * A `map` control (extension API 25): the world in a projection, zoomed and panned by the operator,
+ * with markers, the great circles between them, and circles of a distance round them. It shares `home`, `map`, `zoom`, `pan`,
+ * `zoomValue`, `actions` and `gestures` with the rotator map.
+ */
+export interface PanelSceneMap {
+  /**
+   * `mercator` (Web Mercator, the default), `equirectangular` (plate carrée), `miller`, `patterson`,
+   * `azimuthal` (equidistant) or `robinson`.
+   */
+  projection?: "mercator" | "equirectangular" | "miller" | "patterson" | "azimuthal" | "robinson"
+  /**
+   * The azimuthal map's middle. Omitted, `home` as the scene last moved it: a `home` that gives back
+   * where the operator's pan settled moves neither. The other projections go on round the world as
+   * the view pans east or west, and take none.
+   */
+  origin?: { lat: number; lon: number }
+  /** Up to 64 looks, by name, for markers, lines and circles to take by `style`. */
+  styles?: Record<string, PanelSceneMapLook>
+  /** Up to 4,096, drawn over the lines, a later one over an earlier. */
+  markers?: PanelSceneMapMarker[]
+  /** Up to 1,024. */
+  lines?: PanelSceneMapLine[]
+  /** Up to 256, drawn under the lines, a later one over an earlier. */
+  circles?: PanelSceneMapCircle[]
+  /** Scene values the control writes: the place under the pointer. */
+  hoverLat?: string
+  hoverLon?: string
+}
+
+export interface PanelSceneControl extends PanelSceneSpectrum, PanelSceneRotatorMap, PanelSceneMap {
   id: string
   label: string
   kind: PanelSceneControlKind
@@ -1187,13 +1281,18 @@ export interface PanelSceneEvent {
    * `waterfallFloor`, the whole length moving it 12 dB). API 23.
    * A rotator map's zoom (`value` the zoom, 0 for the whole map again) or pan (`at.x` and `at.y`
    * where the station is, in pixels from the pane's middle). API 23.
+   * A map's zoom (`value` the zoom), pan (`at.lat` and `at.lon` the view's middle) or `reset`, its
+   * whole-map button, back to the scene's own view. API 25.
    */
-  gesture?: "zoom" | "pan" | "split" | "floor" | "range" | "speed" | "waterfallFloor"
-  /** Where a band scope annotation or layer (extension API 17), or a rotator map decoration (extension API 23), was clicked. */
+  gesture?: "zoom" | "pan" | "split" | "floor" | "range" | "speed" | "waterfallFloor" | "reset"
+  /**
+   * Where a band scope annotation or layer (extension API 17), or a rotator map decoration (extension
+   * API 23), was clicked; on a map (extension API 25), the place clicked, or the marker's.
+   */
   at?: PanelSceneSpectrumClick
 }
 
-/** Where a click on a band scope, or on a rotator map, landed. */
+/** Where a click on a band scope, a rotator map or a map landed. */
 export interface PanelSceneSpectrumClick {
   /** Pixels in the control, the ones a layer's `px` measures. */
   x: number
@@ -1216,6 +1315,9 @@ export interface PanelSceneSpectrumClick {
   bearing?: number
   /** On a rotator map, how far from the station the point clicked is on the ground. Extension API 23. */
   km?: number
+  /** On a map, the place clicked. Extension API 25. */
+  lat?: number
+  lon?: number
   /**
    * On an annotation open with its `more` lines, the line clicked: 0 its own text, 1 the first of
    * `more`. Extension API 22.

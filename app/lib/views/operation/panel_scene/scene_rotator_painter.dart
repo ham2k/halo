@@ -7,65 +7,13 @@
 
 part of 'scene_rotator.dart';
 
-/// The outlines projected once per centre, on the disc of radius 1.
-class _Paths {
-  final WorldOutlines? world;
-  final List<Float32List>? divisionsSource;
-  final Path coast, borders, graticule, divisions;
-
-  _Paths(AzimuthalProjection projection, this.world, this.divisionsSource)
-    : coast = world == null ? Path() : _linePath(projection, world.land),
-      borders = world == null ? Path() : _linePath(projection, world.borders),
-      graticule = _linePath(projection, _graticule()),
-      divisions = divisionsSource == null ? Path() : _linePath(projection, divisionsSource);
-
-  /// Parallels and meridians every 30°.
-  static List<Float32List> _graticule() => [
-    for (var lat = -60; lat <= 60; lat += 30)
-      Float32List.fromList([
-        for (var lon = -180; lon <= 180; lon += 2) ...[lon.toDouble(), lat.toDouble()],
-      ]),
-    for (var lon = -180; lon < 180; lon += 30)
-      Float32List.fromList([
-        for (var lat = -88; lat <= 88; lat += 2) ...[lon.toDouble(), lat.toDouble()],
-      ]),
-  ];
-
-  /// Each line broken where it nears the antipode or jumps across it, and
-  /// at a pole: a land ring's only points there are the cut that closes
-  /// Antarctica, which is not a coast.
-  static Path _linePath(AzimuthalProjection projection, List<Float32List> lines) {
-    final path = Path();
-    for (final line in lines) {
-      Offset? last;
-      for (var i = 0; i + 1 < line.length; i += 2) {
-        final lat = line[i + 1];
-        final p = projection.project(lat, line[i]);
-        if (lat.abs() >= 89.99 || p.distance > math.pi * _antipodeCutoff) {
-          last = null;
-          continue;
-        }
-        final point = Offset(p.x, p.y);
-        if (last == null || (point - last).distance > _longestStep) {
-          path.moveTo(point.dx, point.dy);
-        } else {
-          path.lineTo(point.dx, point.dy);
-        }
-        last = point;
-      }
-    }
-    return path;
-  }
-}
-
 class _RotatorMapPainter extends CustomPainter {
   final RotatorFrame frame;
   final SceneRotatorSpec spec;
-  final _Paths? paths;
-  final ui.Image? image;
-  final Rect? imageDisc;
-  final ({Color sea, Color land, Color coast}) colors;
-  final RotatorPalette palette;
+  final WorldMapBase world;
+  final MapColors colors;
+  final bool dark;
+  final MapPalette palette;
   final List<_Drawn> drawn;
   final Map<String, PictureInfo> pictures;
   final void Function(String svg) load;
@@ -80,10 +28,9 @@ class _RotatorMapPainter extends CustomPainter {
   _RotatorMapPainter({
     required this.frame,
     required this.spec,
-    required this.paths,
-    required this.image,
-    required this.imageDisc,
+    required this.world,
     required this.colors,
+    required this.dark,
     required this.palette,
     required this.drawn,
     required this.pictures,
@@ -102,11 +49,7 @@ class _RotatorMapPainter extends CustomPainter {
     canvas.save();
     canvas.clipPath(frame.rimPath);
     canvas.drawPaint(Paint()..color = sea);
-    if ((image, imageDisc) case (final image?, final disc?)) {
-      final dst = Rect.fromPoints(frame.toScreen(disc.left, disc.top), frame.toScreen(disc.right, disc.bottom));
-      canvas.drawImageRect(image, Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()), dst, Paint()..filterQuality = FilterQuality.medium);
-    }
-    if (paths case final paths?) _paintOutlines(canvas, paths);
+    world.paint(canvas, origin: frame.station, scale: frame.discPx, style: spec.map, colors: colors, closeness: frame.zoom, dark: dark);
     for (final ring in spec.rings) {
       _paintRing(canvas, ring);
     }
@@ -141,26 +84,6 @@ class _RotatorMapPainter extends CustomPainter {
     }
   }
 
-  void _paintOutlines(Canvas canvas, _Paths paths) {
-    canvas.save();
-    canvas.translate(frame.station.dx, frame.station.dy);
-    canvas.scale(frame.discPx);
-    Paint line(Color color, double width) => Paint()
-      ..style = PaintingStyle.stroke
-      ..color = color
-      ..strokeWidth = width / frame.discPx;
-    final coast = spec.map.coast ?? colors.coast;
-    canvas.drawPath(paths.graticule, line(spec.map.graticule ?? palette.graticule ?? const Color(0x66444444), 0.5));
-    // The states and provinces come in as the view closes in on a country,
-    // fully from 4x: on the whole world they are a smudge.
-    final divisions = ((frame.zoom - 2.5) / 1.5).clamp(0.0, 1.0);
-    final borders = spec.map.borders ?? palette.borders ?? coast.withValues(alpha: 0.6);
-    if (divisions > 0) canvas.drawPath(paths.divisions, line((spec.map.divisions ?? borders).withValues(alpha: divisions * 0.6), 0.5));
-    canvas.drawPath(paths.borders, line(borders, 0.5 + math.max(0, frame.zoom - 2) * 0.15));
-    canvas.drawPath(paths.coast, line(coast, 0.8));
-    canvas.restore();
-  }
-
   void _paintRing(Canvas canvas, SceneRotatorRing ring) {
     final r = ring.km * frame.pxPerKm;
     final color = ring.color ?? rimColor.withValues(alpha: 0.5);
@@ -169,7 +92,7 @@ class _RotatorMapPainter extends CustomPainter {
       ..color = color
       ..strokeWidth = ring.width;
     final circle = Path()..addOval(Rect.fromCircle(center: frame.station, radius: r));
-    canvas.drawPath(ring.dashed ? _dashed(circle) : circle, paint);
+    canvas.drawPath(ring.dashed ? dashedPath(circle) : circle, paint);
     for (final label in ring.labels) {
       final text = label.text ?? '${(ring.unit == 'mi' ? ring.km / 1.609344 : ring.km).round()} ${ring.unit}';
       _label(canvas, text, frame.along(label.az, r), labelStyle.copyWith(fontSize: label.size, color: label.color ?? color, fontWeight: FontWeight.normal));
@@ -210,7 +133,7 @@ class _RotatorMapPainter extends CustomPainter {
                 ..close());
         // A pixel of the casing either side, under the line and round its head.
         if (layer.casing case final casing?) {
-          canvas.drawPath(layer.dashed ? _dashed(line) : line, stroke(casing)..strokeWidth = width + 2);
+          canvas.drawPath(layer.dashed ? dashedPath(line) : line, stroke(casing)..strokeWidth = width + 2);
           if (tip != null) {
             canvas.drawPath(
               tip,
@@ -222,11 +145,11 @@ class _RotatorMapPainter extends CustomPainter {
             );
           }
         }
-        canvas.drawPath(layer.dashed ? _dashed(line) : line, stroke(color));
+        canvas.drawPath(layer.dashed ? dashedPath(line) : line, stroke(color));
         if (tip != null) canvas.drawPath(tip, Paint()..color = color);
       case SceneRotatorLayerKind.wedge:
         if (d.fill case final fill?) canvas.drawPath(d.path!, Paint()..color = fill);
-        final edge = layer.dashed ? _dashed(d.path!) : d.path!;
+        final edge = layer.dashed ? dashedPath(d.path!) : d.path!;
         // Along the outside of each side only: the arc mostly lies on the rim,
         // which has its own line, and inside, the casing would wash the fill.
         if ((d.color, layer.casing) case (_?, final casing?)) {
@@ -237,7 +160,7 @@ class _RotatorMapPainter extends CustomPainter {
               ..moveTo((a + shift).dx, (a + shift).dy)
               ..lineTo((b + shift).dx, (b + shift).dy);
           }
-          canvas.drawPath(layer.dashed ? _dashed(along) : along, stroke(casing)..strokeWidth = 1);
+          canvas.drawPath(layer.dashed ? dashedPath(along) : along, stroke(casing)..strokeWidth = 1);
         }
         if (d.color case final color?) canvas.drawPath(edge, stroke(color));
       case SceneRotatorLayerKind.circle:
@@ -323,17 +246,6 @@ class _RotatorMapPainter extends CustomPainter {
     )..layout();
     painter.paint(canvas, at - Offset(painter.width / 2, painter.height / 2));
     painter.dispose();
-  }
-
-  /// [path] in dashes of 6 pixels, 4 apart.
-  static Path _dashed(Path path) {
-    final out = Path();
-    for (final metric in path.computeMetrics()) {
-      for (var d = 0.0; d < metric.length; d += 10) {
-        out.addPath(metric.extractPath(d, math.min(d + 6, metric.length)), Offset.zero);
-      }
-    }
-    return out;
   }
 
   @override

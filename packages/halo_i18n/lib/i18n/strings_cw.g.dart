@@ -3993,6 +3993,7 @@ class _Translations$operation$layout$panels$cw extends Translations$operation$la
 	@override String get rotatorNoReading => '—';
 	@override String get rotatorNotResponding => '—· ——— — / ·—· · ··· ·——· ——— —· —·· ·· —· ——·';
 	@override String get rotatorResetView => '··· ···· ——— ·—— / — ···· · / ·—— ···· ——— ·—·· · / —— ·— ·——· / ·— ——· ·— ·· —·';
+	@override String get mapResetView => '—··· ·— —·—· —·— / — ——— / — ···· · / ·——· ·— —· · ·—·· ·————· ··· / ——— ·—— —· / ···— ·· · ·——';
 	@override String rotatorElevation({required Object degrees}) => '${degrees} ° / · ·—··';
 	@override String get rotatorNorth => '—·';
 	@override String get rotatorEast => '·';
@@ -5781,6 +5782,7 @@ extension on TranslationsCw {
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => '—· ——— — / ·—· · ··· ·——· ——— —· —·· ·· —· ——·',
 			'operation.layout.panels.rotatorResetView' => '··· ···· ——— ·—— / — ···· · / ·—— ···· ——— ·—·· · / —— ·— ·——· / ·— ——· ·— ·· —·',
+			'operation.layout.panels.mapResetView' => '—··· ·— —·—· —·— / — ——— / — ···· · / ·——· ·— —· · ·—·· ·————· ··· / ——— ·—— —· / ···— ·· · ·——',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees} ° / · ·—··',
 			'operation.layout.panels.rotatorNorth' => '—·',
 			'operation.layout.panels.rotatorEast' => '·',
@@ -6103,9 +6105,9 @@ extension on TranslationsCw {
 			'loggingControls.manualTimeIncrementNone' => '—· ——— —· ·',
 			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / —— ·· —· ··— — ·', other: '${count} / —— ·· —· ··— — · ···', ), 
 			'loggingControls.frequency' => '··—· ·—· · ——·— ··— · —· —·—· —·——',
-			'loggingControls.mode' => '—— ——— —·· ·',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.mode' => '—— ——— —·· ·',
 			'loggingControls.theirCall' => '— ···· · ·· ·—· / —·—· ·— ·—·· ·—··',
 			'loggingControls.noteField' => '—· ——— — ·',
 			'loggingControls.todoField' => '— ——— —·· ———',
@@ -6617,9 +6619,9 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.problemInputMissing' => '— ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·· · ···— ·· —·—· · / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —·· ·—·—·—',
 			'settings.radio.voiceMessages.problemDeviceFailed' => '— ···· · / ··· ——— ··— —· —·· / —·· · ···— ·· —·—· · / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —· ·—·—·—',
 			'settings.radio.voiceMessages.problemNotRecorded' => '— ···· ·— — / —— · ··· ··· ·— ——· · / ···· ·— ··· / —· ——— / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·—— · — ·—·—·—',
-			'settings.radio.voiceMessages.problemRecordingSilent' => '—· ——— — ···· ·· —· ——· / ·—— ·— ··· / ···· · ·— ·—· —·· / ··—· ·—· ——— —— / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·· · ···— ·· —·—· · ——··—— / ··· ——— / — ···· · / —— · ··· ··· ·— ——· · / ·—— ·— ··· / ·—·· · ··—· — / ·— ··· / ·· — / ·—— ·— ··· ·—·—·— / —·—· ···· · —·—· —·— / — ···· · / ·· —· ·——· ··— — ——··—— / ·— —· —·· / — ···· ·— — / — ···· · / ·— ·——· ·——· / ·· ··· / ·— ·—·· ·—·· ——— ·—— · —·· / — ——— / ··— ··· · / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · ·—·—·—',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemRecordingSilent' => '—· ——— — ···· ·· —· ——· / ·—— ·— ··· / ···· · ·— ·—· —·· / ··—· ·—· ——— —— / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·· · ···— ·· —·—· · ——··—— / ··· ——— / — ···· · / —— · ··· ··· ·— ——· · / ·—— ·— ··· / ·—·· · ··—· — / ·— ··· / ·· — / ·—— ·— ··· ·—·—·— / —·—· ···· · —·—· —·— / — ···· · / ·· —· ·——· ··— — ——··—— / ·— —· —·· / — ···· ·— — / — ···· · / ·— ·——· ·——· / ·· ··· / ·— ·—·· ·—·· ——— ·—— · —·· / — ——— / ··— ··· · / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · ·—·—·—',
 			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => '— ···· · / ·—· ·— —·· ·· ——— / ·· ··· / —· ——— — / — ·— —·— ·· —· ——· / ·— ··— —·· ·· ——— / ··—· ·—· ——— —— / — ···· · / ·— ·——· ·——· / ·—· ·· ——· ···· — / —· ——— ·—— ·—·—·— / ·· — / —· · · —·· ··· / ·— / —· · — ·—— ——— ·—· —·— / —·—· ——— —· —· · —·—· — ·· ——— —· / — ——— / — ···· · / ·—· ·— —·· ·· ——— ·—·—·—',
 			'settings.radio.voiceMessages.problemSourceRefused' => '— ···· · / ·—· ·— —·· ·· ——— / ·—— ——— ··— ·—·· —·· / —· ——— — / ··· ·—— ·· — —·—· ···· / ·· — ··· / — ·—· ·— —· ··· —— ·· — / ·— ··— —·· ·· ——— / — ——— / — ···· · / ·— ·——· ·——· ——··—— / ··· ——— / — ···· · / —— · ··· ··· ·— ——· · / ··· — ——— ·——· ·——· · —·· ·—·—·— / ··· · — / — ···· · / ·—· ·— —·· ·· ——— / — ——— / — ·—· ·— —· ··· —— ·· — / — ···· · / ·— ·——· ·——· ·————· ··· / ·— ··— —·· ·· ——— ·—·—·—',
 			'settings.radio.voiceMessages.problemCannotKey' => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / —·—· ·— —· ·————· — / —··· · / —·— · —·—— · —·· / ——— ···— · ·—· / —·—· ·— — ——··—— / ··· ——— / — ···· · / —·—· ——— —— ·——· ··— — · ·—· / —·—· ·— —· ·————· — / ·——· ·—·· ·— —·—— / —— · ··· ··· ·— ——· · ··· / ·· —· — ——— / ·· — ·—·—·—',
@@ -7131,9 +7133,9 @@ extension on TranslationsCw {
 			'settings.station.models.commander' => '·—· ·— —·· ·· ——— / —·—· ——— —· — ·—· ——— ·—·· ·—·· · —·· / ···— ·· ·— / —·· —··— ·—·· ·— —··· / —·—· ——— —— —— ·— —· —·· · ·—·',
 			'settings.station.models.commanderNodeName' => '—— —·—— / ·—· ·— —·· ·· ——— / —·——· ···— ·· ·— / —·—· ——— —— —— ·— —· —·· · ·—· —·——·—',
 			'settings.station.models.antenna' => '·— —· — · —· —· ·—',
-			'settings.station.models.key' => '—·—· ·—— / —·— · —·——',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.key' => '—·—· ·—— / —·— · —·——',
 			'settings.station.models.midiController' => '—— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·',
 			'settings.station.models.winkeyer' => '·—— ·· —· —·— · —·—— · ·—·',
 			'settings.station.models.placeholderRadio' => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ·— —·· ·· ———',
@@ -7645,9 +7647,9 @@ extension on TranslationsCw {
 			'settings.panels.developerSettings' => '—·· · ···— · ·—·· ——— ·——· · ·—· / ··· · — — ·· —· ——· ···',
 			'settings.panels.developerSettingsDescription' => '—·· · —··· ··— ——· ——· ·· —· ——· / ·— —· —·· / —·· · ···— · ·—·· ——— ·——· —— · —· — / — ——— ——— ·—·· ···',
 			'settings.panels.about' => '·— —··· ——— ··— —',
-			'settings.panels.aboutDescription' => '···— · ·—· ··· ·· ——— —· ——··—— / —·—· ·—· · —·· ·· — ··· ——··—— / ·— —· —·· / ·—·· · ——· ·— ·—·· / ·· —· ··—· ——— ·—· —— ·— — ·· ——— —·',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.aboutDescription' => '···— · ·—· ··· ·· ——— —· ——··—— / —·—· ·—· · —·· ·· — ··· ——··—— / ·— —· —·· / ·—·· · ——· ·— ·—·· / ·· —· ··—· ——— ·—· —— ·— — ·· ——— —·',
 			'settings.panels.unavailableTitle' => '··· ——— —— · / ··· · — — ·· —· ——· ··· / ·— ·—· · / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'settings.panels.unavailableText' => '— ···· · / · —··— — · —· ··· ·· ——— —· / ·—· ··— —· — ·· —— · / ··—· ·— ·· ·—·· · —·· / — ——— / ··· — ·— ·—· — ——··—— / ··· ——— / · —··— — · —· ··· ·· ——— —· —····— —·—· ——— —· — ·—· ·· —··· ··— — · —·· / ··· · — — ·· —· ——· ··· / ·— ·—· · / —— ·· ··· ··· ·· —· ——· ·—·—·—',
 			'settings.panels.station' => '··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —·',
@@ -8159,9 +8161,9 @@ extension on TranslationsCw {
 			'exportSettings.shared' => '··· · — — ·· —· ——· ··· / ·— ·——· ·——· ·—·· —·—— / — ——— / · ···— · ·—· —·—— / · —··— — · —· ··· ·· ——— —· / ··— ··· ·· —· ——· / — ···· ·· ··· / · —··— ·——· ——— ·—· — / — —·—— ·——· · ·—·—·—',
 			'exportSettings.defaultTemplates' => '— ··— ·—· —· / ——— —· / —·—· ··— ··· — ——— —— / — · —— ·——· ·—·· ·— — · ··· / — ——— / · —·· ·· — / — ···· ·· ··· / — —·—— ·——· · ’ ··· / — · —— ·——· ·—·· ·— — · ··· ·—·—·—',
 			'templateEditor.previewLabel' => '·——· ·—· · ···— ·· · ·—— ———···',
-			'templateEditor.reset' => '·—· · ··· · —',
 			_ => null,
 		} ?? switch (path) {
+			'templateEditor.reset' => '·—· · ··· · —',
 			'templateEditor.docs' => '— · —— ·——· ·—·· ·— — ·· —· ——· / —·· ——— —·—· ···',
 			'templateEditor.preview' => '··· ·— —— ·——· ·—·· · / ·——· ·—· · ···— ·· · ·——',
 			'templateEditor.reference' => '— · —— ·——· ·—·· ·— — · / ·—· · ··—· · ·—· · —· —·—· ·',

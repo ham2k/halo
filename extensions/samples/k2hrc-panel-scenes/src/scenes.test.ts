@@ -67,3 +67,23 @@ test("the grid board places every cell once and answers its keys", async () => {
   const mode = await panel.onEvent!({ ...grid, event: press("mode:FT8") }, ctx)
   assert.equal(mode.strings?.mode, "FT8")
 })
+
+// The map keeps the operator's view by giving back where a pan and a zoom
+// settled: a render that drew `home` and `zoom.initial` from anything else
+// would throw the operator back to the station on every render.
+test("the contacts map gives back the operator's view and names the contact clicked", async () => {
+  const panel = createScenePanels()
+  const map = (config: Record<string, number | string> = {}): PanelRenderArgs => ({ ...args(), panelKey: "map", config })
+  const commit = (gesture: "pan" | "zoom", extra: object) => ({ controlId: "map", action: "map", phase: "commit" as const, sequence: 1, gesture, ...extra })
+  const panned = await panel.onEvent!({ ...map(), event: commit("pan", { at: { x: 1, y: 2, lat: 51, lon: 0 } }) }, ctx)
+  assert.deepEqual(panned.config, { lat: 51, lon: 0 })
+  const zoomed = await panel.onEvent!({ ...map(), event: commit("zoom", { value: 3 }) }, ctx)
+  const content = await panel.render(map({ ...panned.config, ...zoomed.config, projection: "robinson" } as Record<string, number | string>), ctx)
+  if (content.kind !== "scene") throw Error("scene expected")
+  const control = content.scene.controls!.find((c) => c.kind === "map")!
+  assert.deepEqual(control.home, { lat: 51, lon: 0 })
+  assert.equal(control.zoom?.initial, 3)
+  assert.equal(control.projection, "robinson")
+  const clicked = await panel.onEvent!({ ...map(), event: { controlId: "map", action: "contact", phase: "activate", sequence: 2, layer: "G4XYZ" } }, ctx)
+  assert.equal(clicked.strings?.picked, "G4XYZ, London")
+})

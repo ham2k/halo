@@ -9111,6 +9111,9 @@ class Translations$operation$layout$panels$en {
 	/// en: 'Show the whole map again'
 	String get rotatorResetView => 'Show the whole map again';
 
+	/// en: 'Back to the panel's own view'
+	String get mapResetView => 'Back to the panel\'s own view';
+
 	/// en: '${degrees}° el'
 	String rotatorElevation({required Object degrees}) => '${degrees}° el';
 
@@ -12013,6 +12016,7 @@ extension on Translations {
 			'operation.layout.panels.rotatorNoReading' => '—',
 			'operation.layout.panels.rotatorNotResponding' => 'not responding',
 			'operation.layout.panels.rotatorResetView' => 'Show the whole map again',
+			'operation.layout.panels.mapResetView' => 'Back to the panel\'s own view',
 			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
 			'operation.layout.panels.rotatorNorth' => 'N',
 			'operation.layout.panels.rotatorEast' => 'E',
@@ -12335,9 +12339,9 @@ extension on Translations {
 			'loggingControls.manualTimeIncrementNone' => 'None',
 			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} minute', other: '${count} minutes', ), 
 			'loggingControls.frequency' => 'Frequency',
-			'loggingControls.mode' => 'Mode',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.mode' => 'Mode',
 			'loggingControls.theirCall' => 'Their call',
 			'loggingControls.noteField' => 'Note',
 			'loggingControls.todoField' => 'Todo',
@@ -12849,9 +12853,9 @@ extension on Translations {
 			'settings.radio.voiceMessages.problemInputMissing' => 'The recording device is not connected.',
 			'settings.radio.voiceMessages.problemDeviceFailed' => 'The sound device would not open.',
 			'settings.radio.voiceMessages.problemNotRecorded' => 'That message has no recording yet.',
-			'settings.radio.voiceMessages.problemRecordingSilent' => 'Nothing was heard from the recording device, so the message was left as it was. Check the input, and that the app is allowed to use the microphone.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemRecordingSilent' => 'Nothing was heard from the recording device, so the message was left as it was. Check the input, and that the app is allowed to use the microphone.',
 			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'The radio is not taking audio from the app right now. It needs a network connection to the radio.',
 			'settings.radio.voiceMessages.problemSourceRefused' => 'The radio would not switch its transmit audio to the app, so the message stopped. Set the radio to transmit the app\'s audio.',
 			'settings.radio.voiceMessages.problemCannotKey' => 'This radio can\'t be keyed over CAT, so the computer can\'t play messages into it.',
@@ -13363,9 +13367,9 @@ extension on Translations {
 			'settings.station.models.commander' => 'Radio controlled via DXLab Commander',
 			'settings.station.models.commanderNodeName' => 'My Radio (via Commander)',
 			'settings.station.models.antenna' => 'Antenna',
-			'settings.station.models.key' => 'CW Key',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.key' => 'CW Key',
 			'settings.station.models.midiController' => 'MIDI Controller',
 			'settings.station.models.winkeyer' => 'WinKeyer',
 			'settings.station.models.placeholderRadio' => 'Simulated Radio',
@@ -13877,9 +13881,9 @@ extension on Translations {
 			'settings.panels.developerSettings' => 'Developer Settings',
 			'settings.panels.developerSettingsDescription' => 'Debugging and development tools',
 			'settings.panels.about' => 'About',
-			'settings.panels.aboutDescription' => 'Version, credits, and legal information',
 			_ => null,
 		} ?? switch (path) {
+			'settings.panels.aboutDescription' => 'Version, credits, and legal information',
 			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
 			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			'settings.panels.station' => 'Station Configuration',
@@ -14391,9 +14395,9 @@ extension on Translations {
 			'exportSettings.shared' => 'Settings apply to every extension using this export type.',
 			'exportSettings.defaultTemplates' => 'Turn on Custom templates to edit this type’s templates.',
 			'templateEditor.previewLabel' => 'Preview:',
-			'templateEditor.reset' => 'Reset',
 			_ => null,
 		} ?? switch (path) {
+			'templateEditor.reset' => 'Reset',
 			'templateEditor.docs' => 'Templating Docs',
 			'templateEditor.preview' => 'Sample preview',
 			'templateEditor.reference' => 'Template reference',

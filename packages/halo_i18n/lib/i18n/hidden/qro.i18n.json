@@ -799,6 +799,7 @@
         "rotatorNoReading": "—",
         "rotatorNotResponding": "NOT RESPONDING",
         "rotatorResetView": "SHOW THE WHOLE MAP AGAIN",
+        "mapResetView": "BACK TO THE PANEL'S OWN VIEW",
         "rotatorElevation": "${degrees}° EL",
         "rotatorNorth": "N",
         "rotatorEast": "E",

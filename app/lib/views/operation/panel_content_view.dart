@@ -22,6 +22,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:halo_core/halo_core.dart' show GridLocation;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -149,8 +150,9 @@ class PanelContentView extends StatelessWidget {
   final SceneEventHandler? onSceneEvent;
   final SceneSpectrumSource? spectrum;
   final SceneRotatorSource? rotator;
+  final GridLocation? home;
 
-  const PanelContentView({super.key, required this.content, this.error, this.onRetry, this.onSceneEvent, this.spectrum, this.rotator});
+  const PanelContentView({super.key, required this.content, this.error, this.onRetry, this.onSceneEvent, this.spectrum, this.rotator, this.home});
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +161,7 @@ class PanelContentView extends StatelessWidget {
     if (content == null) return const Center(child: CircularProgressIndicator());
     switch (content.kind) {
       case 'scene' when content.scene != null:
-        return PanelSceneView(scene: content.scene!, onEvent: onSceneEvent, spectrum: spectrum, rotator: rotator);
+        return PanelSceneView(scene: content.scene!, onEvent: onSceneEvent, spectrum: spectrum, rotator: rotator, home: home);
       case 'markdown':
         return SingleChildScrollView(
           padding: const EdgeInsets.all(Space.lg),

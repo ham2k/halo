@@ -1,6 +1,6 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MIT
-import type { PanelContent, PanelHook, PanelScene, SceneBinding, PanelSceneLayer } from "@ham2k/extension-sdk"
+import type { PanelContent, PanelHook, PanelScene, PanelSceneEventResult, SceneBinding, PanelSceneLayer } from "@ham2k/extension-sdk"
 
 const svg = (body: string, width = 640, height = 360) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">${body}</svg>`
 const bind = (value: string, input: [number, number], output: [number, number]): SceneBinding => ({ value, input, output })
@@ -23,6 +23,7 @@ export function createScenePanels(now: () => number = () => Date.now()): PanelHo
   const radios = new Map<string, RadioState>()
   const forms = new Map<string, FormState>()
   const boards = new Map<string, FormState>()
+  const maps = new Map<string, string>()
   function board(id: string): FormState {
     let b = boards.get(id)
     if (!b) {
@@ -43,6 +44,9 @@ export function createScenePanels(now: () => number = () => Date.now()): PanelHo
       forms.set(id, f)
     }
     return f
+  }
+  function picked(id: string): string {
+    return maps.get(id) ?? "Click a contact"
   }
   function state(id: string): RadioState {
     let s = radios.get(id)
@@ -65,11 +69,13 @@ export function createScenePanels(now: () => number = () => Date.now()): PanelHo
         { key: "weather", title: "Weather Chart · Simulation", icon: "weather-partly-cloudy", multiple: true },
         { key: "controls", title: "Native Controls · Simulation", icon: "form-textbox", multiple: true },
         { key: "grid", title: "Grid Board · Simulation", icon: "view-grid", multiple: true },
+        { key: "map", title: "Contacts Map · Simulation", icon: "earth", multiple: true, config: ["projection", "zoom", "lat", "lon"] },
       ]
     },
     async render(args): Promise<PanelContent> {
       if (args.panelKey === "controls") return { kind: "scene", scene: controlsScene(form(args.instanceId ?? args.panelKey)) }
       if (args.panelKey === "grid") return { kind: "scene", scene: gridScene(board(args.instanceId ?? args.panelKey)) }
+      if (args.panelKey === "map") return { kind: "scene", scene: mapScene(mapView(args.config), picked(args.instanceId ?? args.panelKey)) }
       if (args.panelKey === "weather") {
         const temperatures = [17, 18, 21, 24, 25, 23, 20, 18]
         const points = temperatures.map((t, i) => `${60 + i * 74},${265 - (t - 15) * 14}`).join(" ")
@@ -240,7 +246,7 @@ export function createScenePanels(now: () => number = () => Date.now()): PanelHo
         },
       }
     },
-    async onEvent(args) {
+    async onEvent(args): Promise<PanelSceneEventResult> {
       const event = args.event
       if (args.panelKey === "controls") {
         const f = form(args.instanceId ?? args.panelKey)
@@ -258,6 +264,25 @@ export function createScenePanels(now: () => number = () => Date.now()): PanelHo
           f.strings.status = "Nothing spotted yet"
         }
         return { values: f.values, strings: f.strings }
+      }
+      if (args.panelKey === "map") {
+        const id = args.instanceId ?? args.panelKey
+        if (event.action === "contact") {
+          const c = CONTACTS.find((c) => c.call === event.layer)
+          if (c) {
+            if (maps.size >= 64 && !maps.has(id)) maps.delete(maps.keys().next().value!)
+            maps.set(id, `${c.call}, ${c.place}`)
+          }
+          return { values: {}, strings: { picked: picked(id) } }
+        }
+        // The projection and the operator's view live in the placement's config, which renders again.
+        if (event.controlId === "projection" && event.text !== undefined) return { values: {}, config: { projection: event.text } }
+        if (event.gesture === "zoom" && event.value !== undefined) return { values: {}, config: { zoom: event.value } }
+        if (event.gesture === "pan" && event.at?.lat !== undefined && event.at.lon !== undefined) {
+          return { values: {}, config: { lat: event.at.lat, lon: event.at.lon } }
+        }
+        if (event.gesture === "reset") return { values: {}, config: { zoom: 0, lat: STATION.lat, lon: STATION.lon } }
+        return { values: {} }
       }
       if (args.panelKey === "grid") {
         const b = board(args.instanceId ?? args.panelKey)
@@ -531,6 +556,125 @@ function gridScene(b: FormState): PanelScene {
       gap,
       padding: 8,
       style: { background: "surfaceContainer" },
+    },
+  }
+}
+
+interface MapView {
+  projection: "mercator" | "azimuthal" | "robinson"
+  zoom: number
+  home: { lat: number; lon: number }
+}
+
+function mapView(config: Record<string, unknown> | undefined): MapView {
+  const projection = config?.projection === "azimuthal" || config?.projection === "robinson" ? config.projection : "mercator"
+  const num = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) ? v : fallback)
+  return { projection, zoom: num(config?.zoom, 0), home: { lat: num(config?.lat, STATION.lat), lon: num(config?.lon, STATION.lon) } }
+}
+
+const STATION = { lat: 40.7, lon: -74 }
+const CONTACTS = [
+  { call: "JA1ABC", place: "Tokyo", lat: 35.7, lon: 139.7, mode: "CW" },
+  { call: "G4XYZ", place: "London", lat: 51.5, lon: -0.1, mode: "SSB" },
+  { call: "VK2DEF", place: "Sydney", lat: -33.9, lon: 151.2, mode: "FT8" },
+  { call: "PY1GHI", place: "Rio de Janeiro", lat: -22.9, lon: -43.2, mode: "CW" },
+  { call: "ZS6JKL", place: "Johannesburg", lat: -26.2, lon: 28.0, mode: "FT8" },
+  { call: "KH6MNO", place: "Honolulu", lat: 21.3, lon: -157.9, mode: "SSB" },
+  { call: "VU2PQR", place: "Bengaluru", lat: 12.97, lon: 77.6, mode: "FT8" },
+  { call: "OH2STU", place: "Helsinki", lat: 60.2, lon: 24.9, mode: "CW" },
+  { call: "LU1VWX", place: "Buenos Aires", lat: -34.6, lon: -58.4, mode: "SSB" },
+  { call: "KL7YZA", place: "Anchorage", lat: 61.2, lon: -149.9, mode: "CW" },
+]
+
+/**
+ * Contacts on a map: markers that grow as the view closes in, the great circle to each, a style per
+ * mode, and the operator's zoom and pan kept by giving them back.
+ */
+function mapScene(v: MapView, picked: string): PanelScene {
+  return {
+    version: 1,
+    width: 640,
+    height: 28,
+    values: {},
+    strings: { projection: v.projection, picked },
+    layers: [{ id: "picked", x: 0, y: 4, width: 640, height: 20, text: { value: "picked", size: 14, color: "#9aaec6" } }],
+    controls: [
+      {
+        id: "projection",
+        kind: "nativeSegmented",
+        label: "Projection",
+        value: "projection",
+        event: "set",
+        options: [
+          { label: "Mercator", value: "mercator" },
+          { label: "Azimuthal", value: "azimuthal" },
+          { label: "Robinson", value: "robinson" },
+        ],
+      },
+      {
+        id: "map",
+        kind: "map",
+        label: "Contacts",
+        event: "map",
+        projection: v.projection,
+        home: v.home,
+        origin: STATION,
+        zoom: { min: 0, max: 8, initial: v.zoom },
+        styles: {
+          CW: {
+            fill: "#FF5500",
+            color: "#FFFFFF",
+            radius: [
+              [0, 3],
+              [6, 8],
+            ],
+          },
+          SSB: {
+            fill: "#2E7D32",
+            color: "#FFFFFF",
+            radius: [
+              [0, 3],
+              [6, 8],
+            ],
+          },
+          FT8: {
+            fill: "#6A1B9A",
+            color: "#FFFFFF",
+            radius: [
+              [0, 3],
+              [6, 8],
+            ],
+          },
+          path: {
+            color: "#CC0026FF",
+            width: [
+              [0, 1],
+              [6, 2.5],
+            ],
+            casing: "#80FFFFFF",
+          },
+        },
+        markers: [
+          {
+            id: "station",
+            lat: STATION.lat,
+            lon: STATION.lon,
+            fill: "#000000",
+            radius: [
+              [0, 4],
+              [6, 7],
+            ],
+          },
+          ...CONTACTS.map((c) => ({ id: c.call, lat: c.lat, lon: c.lon, style: c.mode, event: "contact" })),
+        ],
+        lines: CONTACTS.map((c) => ({ id: `to-${c.call}`, from: "station", to: c.call, style: "path", dashed: c.mode === "FT8" })),
+      },
+    ],
+    layout: {
+      column: [{ control: "projection" }, { control: "map", flex: 1 }, { scene: true, height: 28 }],
+      padding: 8,
+      spacing: 8,
+      crossAxisAlignment: "stretch",
     },
   }
 }
