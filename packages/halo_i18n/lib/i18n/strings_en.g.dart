@@ -2572,6 +2572,9 @@ class Translations$dataFiles$en {
 	/// en: '${host} isn't an address this extension may download from.'
 	String downloadRefused({required Object host}) => '${host} isn\'t an address this extension may download from.';
 
+	/// en: '${host} answered with something other than the file — often a Wi-Fi network's sign-in page. Try again once you're online.'
+	String downloadNotADatabase({required Object host}) => '${host} answered with something other than the file — often a Wi-Fi network\'s sign-in page. Try again once you\'re online.';
+
 	/// en: 'N1MM has no call history file for ${stem}.'
 	String n1mmHistoryNoMatch({required Object stem}) => 'N1MM has no call history file for ${stem}.';
 
@@ -14259,6 +14262,7 @@ extension on Translations {
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} answered with an error (HTTP ${status}). Try again later.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} couldn\'t provide this file (HTTP ${status}). Check that its address is still right.',
 			'dataFiles.downloadRefused' => ({required Object host}) => '${host} isn\'t an address this extension may download from.',
+			'dataFiles.downloadNotADatabase' => ({required Object host}) => '${host} answered with something other than the file — often a Wi-Fi network\'s sign-in page. Try again once you\'re online.',
 			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'N1MM has no call history file for ${stem}.',
 			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => 'N1MM\'s call history download for ${stem} didn\'t work. Try again later.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'Couldn\'t process ${name}',
@@ -14470,9 +14474,9 @@ extension on Translations {
 			'exportSettings.referenceActivities' => 'Reference Activities',
 			'exportSettings.otherActivities' => 'Other Activities',
 			'exportSettings.adifFields' => 'ADIF Fields',
-			'exportSettings.loadFailed' => 'Export settings could not be loaded.',
 			_ => null,
 		} ?? switch (path) {
+			'exportSettings.loadFailed' => 'Export settings could not be loaded.',
 			'exportSettings.retry' => 'Retry',
 			'exportSettings.compactFileNamesDescriptionOn' => 'Compact filenames, such as N0CALL@US-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.',

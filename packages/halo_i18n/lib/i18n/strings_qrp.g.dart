@@ -1138,6 +1138,7 @@ class _Translations$dataFiles$qrp extends Translations$dataFiles$en {
 	@override String downloadServerError({required Object host, required Object status}) => '${host} answered with an error (http ${status}). try again later.';
 	@override String downloadNotAvailable({required Object host, required Object status}) => '${host} couldn\'t provide this file (http ${status}). check that its address is still right.';
 	@override String downloadRefused({required Object host}) => '${host} isn\'t an address this extension may download from.';
+	@override String downloadNotADatabase({required Object host}) => '${host} answered with something other than the file — often a wi-fi network\'s sign-in page. try again once you\'re online.';
 	@override String n1mmHistoryNoMatch({required Object stem}) => 'n1mm has no call history file for ${stem}.';
 	@override String n1mmHistoryUnavailable({required Object stem}) => 'n1mm\'s call history download for ${stem} didn\'t work. try again later.';
 	@override String processingFailedTitle({required Object name}) => 'couldn\'t process ${name}';
@@ -7981,6 +7982,7 @@ extension on TranslationsQrp {
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} answered with an error (http ${status}). try again later.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} couldn\'t provide this file (http ${status}). check that its address is still right.',
 			'dataFiles.downloadRefused' => ({required Object host}) => '${host} isn\'t an address this extension may download from.',
+			'dataFiles.downloadNotADatabase' => ({required Object host}) => '${host} answered with something other than the file — often a wi-fi network\'s sign-in page. try again once you\'re online.',
 			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'n1mm has no call history file for ${stem}.',
 			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => 'n1mm\'s call history download for ${stem} didn\'t work. try again later.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'couldn\'t process ${name}',
@@ -8192,9 +8194,9 @@ extension on TranslationsQrp {
 			'exportSettings.referenceActivities' => 'reference activities',
 			'exportSettings.otherActivities' => 'other activities',
 			'exportSettings.adifFields' => 'adif fields',
-			'exportSettings.loadFailed' => 'export settings could not be loaded.',
 			_ => null,
 		} ?? switch (path) {
+			'exportSettings.loadFailed' => 'export settings could not be loaded.',
 			'exportSettings.retry' => 'retry',
 			'exportSettings.compactFileNamesDescriptionOn' => 'compact filenames, such as n0call@us-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'descriptive filenames, such as 2026-07-15 n0call at us-1234.adi.',

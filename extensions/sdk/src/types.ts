@@ -3174,10 +3174,11 @@ export interface JsonOptions {
 /// `ham2k` is a Ham2K service's versioned dataset: an NDJSON snapshot, then
 /// deltas from the version held (extension API 22). See docs/extensions/
 /// activities.md's `dataFile`.
-export type FetchType = "csv" | "json" | "raw" | "ham2k"
+export type FetchType = "csv" | "json" | "raw" | "ham2k" | "sqlite"
 
-/// Which fields of a `ham2k` record fill a lookup row's columns, by name. The
-/// whole record becomes the row's `data`.
+/// Which fields of a `ham2k` record, or columns of a `sqlite` file's row,
+/// fill a lookup row's columns, by name. The whole record becomes the row's
+/// `data`.
 export interface Ham2kFields {
   key: string
   name?: string
@@ -3220,8 +3221,15 @@ export interface DataFileDefinition {
   /// version the device holds. Extension API 22.
   deltaUrl?: Localizable<string>
   /// `fetchType: 'ham2k'`: the record fields that fill a lookup row. Extension
-  /// API 22.
+  /// API 22. `fetchType: 'sqlite'`: the columns that do, which spares the
+  /// rows your mapper. Extension API 25.
   fields?: Ham2kFields
+
+  /// `fetchType: 'sqlite'`: the one SELECT the app runs on the downloaded
+  /// database, read-only. Its rows land as `fields` names, or go to
+  /// `jsonToLookupEntry` one object per row when there are no `fields`.
+  /// Extension API 25.
+  sqliteQuery?: string
 
   rawToJSONData?: (args: { body: string; url: string; options: Record<string, any> }) => Promise<any>
   onLoadRawData?: (data: any) => void

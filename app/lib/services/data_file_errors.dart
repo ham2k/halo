@@ -38,6 +38,7 @@ String friendlyDownloadError(Object error, {bool isWeb = kIsWeb}) {
     return t.dataFiles.downloadServerError(host: error.host, status: status);
   }
   if (error is ExtensionUrlRefused) return t.dataFiles.downloadRefused(host: error.url.host);
+  if (error is DataFileNotADatabase) return t.dataFiles.downloadNotADatabase(host: error.host);
   if (error is N1mmCallHistoryUnavailable) {
     return error.noMatch ? t.dataFiles.n1mmHistoryNoMatch(stem: error.stem) : t.dataFiles.n1mmHistoryUnavailable(stem: error.stem);
   }
@@ -52,6 +53,20 @@ String friendlyDownloadError(Object error, {bool isWeb = kIsWeb}) {
 /// (the host never answered) or `DataFileManager.bodyTimeout` (it answered,
 /// then the body stalled or crawled).
 enum DataFileWait { headers, body }
+
+/// A `sqlite` data file's server answered 200 with something other than a
+/// database: an error page, or a captive portal's sign-in. The network's
+/// fault, not the data's: its own type, so ErrorPolicy can treat it as a
+/// download that did not arrive, and the operator is told what to check.
+class DataFileNotADatabase implements Exception {
+  const DataFileNotADatabase(this.key, this.host);
+
+  final String key;
+  final String host;
+
+  @override
+  String toString() => 'DataFileNotADatabase: $host answered $key with something other than a SQLite database';
+}
 
 /// A data file's server did not deliver it: a [timedOut] wait, or an answer
 /// ([statusCode]) other than 200 or 304 — exactly one of the two is set.

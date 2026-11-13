@@ -35,6 +35,7 @@ import 'dart:io';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show HookCalls;
 import 'package:http/http.dart' as http;
+import 'package:sqlite3/sqlite3.dart' show sqlite3;
 
 import 'lookup_store.dart';
 import 'runtime.dart';
@@ -121,6 +122,7 @@ class DataFileSync {
     final url = def.url;
     if (url == null) return DataFileResult(key: def.key, error: 'definition has no url');
     if (def.fetchType == 'ham2k') return _importHam2k(def, url);
+    if (def.fetchType == 'sqlite') return _importSqlite(def, url);
     try {
       return await importBody(def, await _download(url, encoding: def.raw['encoding'] as String?));
     } catch (e) {
@@ -271,6 +273,36 @@ class DataFileSync {
       return DataFileResult(key: def.key, error: '$e');
     } finally {
       client.close();
+    }
+  }
+
+  /// The app's `sqlite` import (halo_core's sqlite_data_file.dart): the
+  /// database downloaded whole and read with its `sqliteQuery`, the rows
+  /// landing by `fields` or, without, through the extension's mapper.
+  Future<DataFileResult> _importSqlite(DataFileDef def, String url) async {
+    try {
+      final (:query, :fields) = sqliteDefinition(def.key, def.raw);
+      final response = _ok(await http.get(Uri.parse(_log('GET', url)), headers: {'User-Agent': userAgent}));
+      if (fields == null) {
+        final read = await readSqliteRows(sqlite3, response.bodyBytes, query, key: def.key, map: (row) => row);
+        return await _mapAndWrite(def, Hooks.dataFileMapJsonBatch, 'entries', read.rows);
+      }
+      final updated = nowMillis();
+      final read = await readSqliteRows(
+        sqlite3,
+        response.bodyBytes,
+        query,
+        key: def.key,
+        map: sqliteLookupRow(fields, category: def.category, updated: updated),
+      );
+      checkSqliteKeys(def.key, fields, read: read.read, kept: read.rows.length);
+      final shrank = await replaceCategoryRows(store.repository, def.key, def.category, read.rows, updated: updated, force: force);
+      if (shrank != null) stderr.writeln('halo-ext: $shrank');
+      return DataFileResult(key: def.key, category: def.category, rows: read.rows.length);
+    } on DataFileImportShrank catch (e) {
+      return DataFileResult(key: def.key, category: def.category, rows: e.imported, refused: true, error: '$e (--force accepts it)');
+    } catch (e) {
+      return DataFileResult(key: def.key, error: '$e');
     }
   }
 

@@ -472,14 +472,15 @@ const lakeList: DataFileDefinition = {
 | `key`, `name`, `description` | Identity; `name` and `description` are `Localizable`. The key is the one you register under: your extension's key, or it followed by `-` or `_` and more, in lowercase letters, digits, `-` and `_`. A data file under any other key is never registered |
 | `url` | Where to fetch; `Localizable` too. `n1mm-history:<stem>` is a special form, below |
 | `maxAgeInDays` | How often to refresh |
-| `fetchType` | `csv`, `json`, `raw` or `ham2k` |
+| `fetchType` | `csv`, `json`, `raw`, `ham2k` or `sqlite` |
 | `category` | The lookup category the rows land in |
 | `csvOptions` | `{ hasHeaders?, skipRows?, delimiter? }` |
 | `csvToLookupEntry(row)` | One row to one `LookupEntry` (`{ key, name?, lat?, lon?, flags?, data?, subCategory? }`), or `null` to skip it |
 | `jsonOptions`, `jsonToLookupEntry(entry)` | The same for a JSON array |
 | `rawToJSONData({ body, url, options })`, `onLoadRawData(data)`, `onRemoveRawData()` | For a `raw` file: parse it yourself; the parsed JSON is cached and replayed through `onLoadRawData` at every start |
 | `deltaUrl` | For a `ham2k` file: where its deltas are, with `{since}` standing for the version the device holds; `Localizable` |
-| `fields` | For a `ham2k` file: the record fields that fill a row, `{ key, name?, lat?, lon?, subCategory?, flags? }` |
+| `fields` | For a `ham2k` file: the record fields that fill a row, `{ key, name?, lat?, lon?, subCategory?, flags? }`; for a `sqlite` file, the columns that do |
+| `sqliteQuery` | For a `sqlite` file: the one SELECT the app runs on it |
 
 **How CSV rows reach your mapper.** You write a per-row mapper; the app
 sends rows positionally with the header row once per chunk, and the SDK
@@ -530,6 +531,33 @@ const offlineCalls: DataFileDefinition = {
   fetchType: "ham2k",
   category: "w7abc-calls",
   fields: { key: "call", name: "name" },
+}
+```
+
+**SQLite databases** (extension API 25) are `fetchType: 'sqlite'`: a file
+downloaded whole, as Super Check Partial publishes its `SCP.DB`. The app
+opens it read-only and runs `sqliteQuery`, one statement that only reads.
+With `fields`, each row lands as they name, its columns becoming its
+`data`, and the import never reaches your extension: SCP's 69,000 calls are
+read and written in about half a second. Without, each row goes to
+`jsonToLookupEntry` as an object of its columns. A blob, or a number JSON
+cannot hold, reads as `null`. A query that writes, a second statement, or
+one bringing more than 2,000,000 rows fails the import, as does a `fields`
+whose `key` no row has; an answer that is not a database, often a Wi-Fi
+network's sign-in page, fails the download. The file keeps its ETag only
+once its rows are in.
+
+```ts
+const scp: DataFileDefinition = {
+  key: "w7abc-scp",
+  name: "Super Check Partial",
+  description: "Calls heard in contests, from supercheckpartial.com",
+  url: "https://www.supercheckpartial.com/SCP.DB",
+  maxAgeInDays: 1,
+  fetchType: "sqlite",
+  category: "w7abc-scp",
+  sqliteQuery: "SELECT callsign, annual_rate AS rate, modes, contests FROM callsigns",
+  fields: { key: "callsign" },
 }
 ```
 

@@ -3326,6 +3326,7 @@
     "downloadServerError": "${host} answered with an error (HTTP ${status}). Try again later.",
     "downloadNotAvailable": "${host} couldn't provide this file (HTTP ${status}). Check that its address is still right.",
     "downloadRefused": "${host} isn't an address this extension may download from.",
+    "downloadNotADatabase": "${host} answered with something other than the file — often a Wi-Fi network's sign-in page. Try again once you're online.",
     "n1mmHistoryNoMatch": "N1MM has no call history file for ${stem}.",
     "n1mmHistoryUnavailable": "N1MM's call history download for ${stem} didn't work. Try again later.",
     "processingFailedTitle": "Couldn't process ${name}",

@@ -46,7 +46,7 @@ import 'package:ham2k_logger/services/extensions/extension_service.dart'
     show ExtensionTimersSuspended, MalformedLookupDataException, MalformedSpotDataException;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
-import 'package:ham2k_logger/services/data_file_manager.dart' show DataFileRemoveHookFailed, DataFileUnavailable, DataFileWait;
+import 'package:ham2k_logger/services/data_file_manager.dart' show DataFileNotADatabase, DataFileRemoveHookFailed, DataFileUnavailable, DataFileWait;
 import 'package:ham2k_logger/services/extensions/extension_requests.dart' show ExtensionUrlRefused;
 import 'package:ham2k_logger/services/extensions/extension_catalog_migration.dart' show CatalogNotWired, UpgradeLeftNoRuntime;
 
@@ -724,6 +724,14 @@ void main() {
 
     test('answered with an error status is reported, not noticed', () {
       expect(dispositionFor(const DataFileUnavailable.status('pota-all-parks', 'pota.app', 503)), ErrorDisposition.report);
+    });
+
+    test('answered with a page in place of the database is reported, not noticed', () {
+      // A hotel or airport Wi-Fi's sign-in page answers 200 on every boot
+      // until the operator signs in.
+      final decision = ErrorPolicy.decide(const DataFileNotADatabase('scp', 'www.supercheckpartial.com'));
+      expect(decision.rule?.id, 'data-file-not-a-database');
+      expect(decision.disposition, ErrorDisposition.report);
     });
 
     test("refused because the extension's manifest does not reach its address is reported, not noticed", () {

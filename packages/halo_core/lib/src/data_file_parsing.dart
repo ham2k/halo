@@ -18,7 +18,9 @@
 import 'dart:convert';
 import 'dart:io' show ContentType;
 
+import 'db/database.dart';
 import 'dev_log.dart';
+import 'repo/lookup_repository.dart';
 
 /// The encoding to decode a data file with, resolved by precedence:
 /// the definition's [defEncoding] wins (it overrides a wrong/missing server
@@ -162,6 +164,34 @@ class DataFileImportShrank implements Exception {
 /// the stale sweep, the step that deletes the rows an import did not restamp.
 DataFileImportShrank? dataFileImportShrinkage(String key, {required int imported, required int existing, bool forced = false}) =>
     imported < existing * minDataFileImportShare ? DataFileImportShrank(key, imported: imported, existing: existing, forced: forced) : null;
+
+/// Writes [rows], all stamped [updated], as [category]'s, replacing what it
+/// held: rows this import did not write are swept, unless it brought far
+/// fewer than the category held ([dataFileImportShrinkage]), which throws
+/// unless [force]d — before the sweep, or a short file would empty the
+/// category. A forced shrink goes through, and is answered for the caller to
+/// report. [onRows] hears the count written so far.
+Future<DataFileImportShrank?> replaceCategoryRows(
+  LookupRepository lookups,
+  String key,
+  String category,
+  List<LookupRow> rows, {
+  required int updated,
+  required bool force,
+  void Function(int written)? onRows,
+  int batchSize = 5000,
+}) async {
+  final existing = await lookups.countCategory(category);
+  for (var start = 0; start < rows.length; start += batchSize) {
+    final end = start + batchSize < rows.length ? start + batchSize : rows.length;
+    await lookups.insertLookupBatch(rows.sublist(start, end));
+    onRows?.call(end);
+  }
+  final shrank = dataFileImportShrinkage(key, imported: rows.length, existing: existing, forced: force);
+  if (shrank != null && !force) throw shrank;
+  await lookups.deleteCategoryStale(category, updated);
+  return shrank;
+}
 
 final _dataFileKeyPattern = RegExp(r'^[a-z0-9][a-z0-9_-]{0,127}$');
 

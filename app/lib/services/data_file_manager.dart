@@ -14,9 +14,11 @@ import '../config/user_agent.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'app_storage.dart';
 import 'data_file_errors.dart';
+import 'data_file_fetch_url.dart';
 import 'error_reporting_service.dart';
 import 'extensions/extension_service.dart';
 import 'ham2k_data_files.dart';
+import 'sqlite_data_files.dart';
 import 'status_bar_service.dart';
 
 export 'data_file_errors.dart';
@@ -410,7 +412,7 @@ class DataFileManager {
       u = u.replaceAll(RegExp(r'[&?]raw=\d'), '').replaceAll(RegExp(r'[&?]dl=\d'), '');
       u = u.contains('?') ? '$u&dl=1&raw=1' : '$u?dl=1&raw=1';
       // Dropbox serves share links from both the bare and `www.` host, but
-      // only `www.dropbox.com` is in `_resolveFetchUrl`'s allowedDomains (and
+      // only `www.dropbox.com` is in `dataFileFetchUrl`'s proxied hosts (and
       // the services.ham2k.net proxy route) — without this, a bare-host link
       // would skip the CORS proxy on web and hit the exact failure this is
       // meant to fix.
@@ -449,47 +451,7 @@ class DataFileManager {
     return u;
   }
 
-  String _resolveFetchUrl(String urlString) {
-    if (isWeb) {
-      final uri = Uri.parse(urlString);
-      const allowedDomains = {
-        'api.pota.app',
-        'logbook.qrz.com',
-        'xmldata.qrz.com',
-        'country-files.com',
-        'pota.app',
-        'www.sotadata.org.uk',
-        'sotadata.org.uk',
-        'llota.app',
-        // Award-program hosts serving reference lists with no CORS headers of
-        // their own. ham2k.com (ECA/ELA), polo.ham2k.com (Satellites/WCA) and
-        // api.wwbota.org are deliberately absent: all three already answer a
-        // cross-origin GET, verified against the real services.
-        'www.cqgma.org',
-        'www.sq7acp.pl',
-        'www.silosontheair.com',
-        'wwff.co',
-        'ontheair.nz',
-        'www.rozhledny.eu',
-        // Custom data-file hosts (e.g. call-notes' custom note files):
-        // neither sends CORS headers on its share-link redirect hop, so a
-        // direct browser fetch is blocked even though the final redirected
-        // response is itself CORS-permissive. docs.google.com and GitHub
-        // Gists' raw content aren't listed here — both already send
-        // permissive CORS headers directly, verified against the real
-        // services, so proxying them would be needless indirection.
-        'www.dropbox.com',
-        'drive.google.com',
-        // N1MM call history (`n1mm-history:`): no CORS headers on any of its
-        // pages, and the download is a POST.
-        'n1mmwp.hamdocs.com',
-      };
-      if (allowedDomains.contains(uri.host)) {
-        return 'https://services.ham2k.net/${uri.host}${uri.path}${uri.hasQuery ? "?${uri.query}" : ""}';
-      }
-    }
-    return urlString;
-  }
+  String _resolveFetchUrl(String url) => dataFileFetchUrl(url, isWeb: isWeb);
 
   /// Downloads the file at [url] and returns the decoded body string, or null
   /// on a 304, or throws. Decoded per [resolveDataFileEncoding]: the
@@ -505,6 +467,20 @@ class DataFileManager {
   Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding, ExtensionNetworkGrant? grant}) async {
     final stem = n1mmCallHistoryStem(url);
     if (stem != null) return _downloadN1mmCallHistory(key, stem, force: force, encoding: encoding);
+    return _download(
+      key,
+      url,
+      force: force,
+      grant: grant,
+      read: (r) => decodeDataFileBody(r.bodyBytes, encoding: resolveDataFileEncoding(encoding, r.headers['content-type'])),
+    );
+  }
+
+  /// [downloadFile]'s bytes, undecoded — a `sqlite` file's.
+  Future<Uint8List?> downloadBytes(String key, String url, {bool force = false, ExtensionNetworkGrant? grant}) =>
+      _download(key, url, force: force, grant: grant, read: (r) => r.bodyBytes);
+
+  Future<T?> _download<T>(String key, String url, {required bool force, ExtensionNetworkGrant? grant, required T Function(http.Response) read}) async {
     final resolvedUrl = _resolveFetchUrl(resolveDownloadUrl(url));
     // An extension's URL is held to its grant, as it named it (ExtensionClient).
     http.Client client() => dataFileClient(grant, named: Uri.tryParse(url), clients: httpClientFactory, onWeb: isWeb);
@@ -517,7 +493,7 @@ class DataFileManager {
     final skipConditional = prefs.getBool(skipKey) ?? false;
     final cachedEtag = (force || skipConditional) ? null : prefs.getString('data_file_etag_$key');
     try {
-      return await _fetchAndDecode(key, resolvedUrl, client, etag: cachedEtag, storeEtag: !skipConditional, encoding: encoding);
+      return await _fetch(key, resolvedUrl, client, etag: cachedEtag, storeEtag: !skipConditional, read: read);
     } on http.ClientException {
       // On web, a browser-level failure of a CONDITIONAL request is most
       // often a failed CORS preflight, not an outage: `If-None-Match` is not
@@ -530,7 +506,7 @@ class DataFileManager {
       // dropped. A genuine outage fails the retry too, leaving the ETag
       // intact to earn a 304 once the network returns.
       if (!isWeb || cachedEtag == null) rethrow;
-      final body = await _fetchAndDecode(key, resolvedUrl, client, etag: null, storeEtag: false, encoding: encoding);
+      final body = await _fetch(key, resolvedUrl, client, etag: null, storeEtag: false, read: read);
       await prefs.remove('data_file_etag_$key');
       await prefs.setBool(skipKey, true);
       return body;
@@ -548,7 +524,14 @@ class DataFileManager {
   /// progress.
   static const bodyTimeout = Duration(minutes: 2);
 
-  Future<String?> _fetchAndDecode(String key, String url, http.Client Function() client, {String? etag, bool storeEtag = true, String? encoding}) async {
+  Future<T?> _fetch<T>(
+    String key,
+    String url,
+    http.Client Function() client, {
+    String? etag,
+    bool storeEtag = true,
+    required T Function(http.Response) read,
+  }) async {
     final request = http.Request('GET', Uri.parse(url));
     if (etag != null) {
       request.headers['If-None-Match'] = etag;
@@ -570,8 +553,7 @@ class DataFileManager {
     if (storeEtag && newEtag != null) {
       await prefs.setString('data_file_etag_$key', newEtag);
     }
-    final resolved = resolveDataFileEncoding(encoding, response.headers['content-type']);
-    return decodeDataFileBody(response.bodyBytes, encoding: resolved);
+    return read(response);
   }
 
   /// Sends [request] on [clientFor]'s client, or the app's own, under
@@ -853,7 +835,7 @@ class DataFileManager {
     }
 
     if (showProgress) statusBar?.setProgress(key: statusKey, title: label, text: t.dataFiles.downloading);
-    final String? body;
+    final Object? body;
     final String fetchType;
     try {
       // `url`/`fetchType` extraction lives INSIDE this try, not before it —
@@ -864,7 +846,9 @@ class DataFileManager {
       final url = def['url'] as String;
       fetchType = def['fetchType'] as String;
       final grant = extensions.networkGrantFor(def['extensionKey'] as String?);
-      body = await downloadFile(key, url, force: force, encoding: def['encoding'] as String?, grant: grant);
+      body = fetchType == 'sqlite'
+          ? await downloadSqliteFile(this, key, def, url, force: force, grant: grant)
+          : await downloadFile(key, url, force: force, encoding: def['encoding'] as String?, grant: grant);
     } catch (e, stack) {
       statusBar?.clear(statusKey);
       debugPrint('[data-file] Failed to download $key: $e');
@@ -910,12 +894,24 @@ class DataFileManager {
     bool cutByRestart(Object error) => !force && redoneOnRestart && error is ExtensionHostException && (host == null || !identical(extensions.host, host));
 
     try {
-      if (fetchType == 'csv') {
-        await _processCsv(key, def, body, force: force, showProgress: showProgress);
+      if (fetchType == 'sqlite') {
+        await processSqliteFile(
+          this,
+          key,
+          def,
+          body as Uint8List,
+          label: label,
+          force: force,
+          showProgress: showProgress,
+          mapRows: (category, rows) =>
+              _batchWriteToDatabase(key, category, label, Hooks.dataFileMapJsonBatch, 'entries', rows, force: force, showProgress: showProgress),
+        );
+      } else if (fetchType == 'csv') {
+        await _processCsv(key, def, body as String, force: force, showProgress: showProgress);
       } else if (fetchType == 'json') {
-        await _processJson(key, def, body, force: force, showProgress: showProgress);
+        await _processJson(key, def, body as String, force: force, showProgress: showProgress);
       } else if (fetchType == 'raw') {
-        await _processRaw(key, def, body, showProgress: showProgress);
+        await _processRaw(key, def, body as String, showProgress: showProgress);
       } else {
         return false;
       }

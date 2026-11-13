@@ -1138,6 +1138,7 @@ class _Translations$dataFiles$qro extends Translations$dataFiles$en {
 	@override String downloadServerError({required Object host, required Object status}) => '${host} ANSWERED WITH AN ERROR (HTTP ${status}). TRY AGAIN LATER.';
 	@override String downloadNotAvailable({required Object host, required Object status}) => '${host} COULDN\'T PROVIDE THIS FILE (HTTP ${status}). CHECK THAT ITS ADDRESS IS STILL RIGHT.';
 	@override String downloadRefused({required Object host}) => '${host} ISN\'T AN ADDRESS THIS EXTENSION MAY DOWNLOAD FROM.';
+	@override String downloadNotADatabase({required Object host}) => '${host} ANSWERED WITH SOMETHING OTHER THAN THE FILE — OFTEN A WI-FI NETWORK\'S SIGN-IN PAGE. TRY AGAIN ONCE YOU\'RE ONLINE.';
 	@override String n1mmHistoryNoMatch({required Object stem}) => 'N1MM HAS NO CALL HISTORY FILE FOR ${stem}.';
 	@override String n1mmHistoryUnavailable({required Object stem}) => 'N1MM\'S CALL HISTORY DOWNLOAD FOR ${stem} DIDN\'T WORK. TRY AGAIN LATER.';
 	@override String processingFailedTitle({required Object name}) => 'COULDN\'T PROCESS ${name}';
@@ -7981,6 +7982,7 @@ extension on TranslationsQro {
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} ANSWERED WITH AN ERROR (HTTP ${status}). TRY AGAIN LATER.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} COULDN\'T PROVIDE THIS FILE (HTTP ${status}). CHECK THAT ITS ADDRESS IS STILL RIGHT.',
 			'dataFiles.downloadRefused' => ({required Object host}) => '${host} ISN\'T AN ADDRESS THIS EXTENSION MAY DOWNLOAD FROM.',
+			'dataFiles.downloadNotADatabase' => ({required Object host}) => '${host} ANSWERED WITH SOMETHING OTHER THAN THE FILE — OFTEN A WI-FI NETWORK\'S SIGN-IN PAGE. TRY AGAIN ONCE YOU\'RE ONLINE.',
 			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'N1MM HAS NO CALL HISTORY FILE FOR ${stem}.',
 			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => 'N1MM\'S CALL HISTORY DOWNLOAD FOR ${stem} DIDN\'T WORK. TRY AGAIN LATER.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'COULDN\'T PROCESS ${name}',
@@ -8192,9 +8194,9 @@ extension on TranslationsQro {
 			'exportSettings.referenceActivities' => 'REFERENCE ACTIVITIES',
 			'exportSettings.otherActivities' => 'OTHER ACTIVITIES',
 			'exportSettings.adifFields' => 'ADIF FIELDS',
-			'exportSettings.loadFailed' => 'EXPORT SETTINGS COULD NOT BE LOADED.',
 			_ => null,
 		} ?? switch (path) {
+			'exportSettings.loadFailed' => 'EXPORT SETTINGS COULD NOT BE LOADED.',
 			'exportSettings.retry' => 'RETRY',
 			'exportSettings.compactFileNamesDescriptionOn' => 'COMPACT FILENAMES, SUCH AS N0CALL@US-1234-20260715.ADI.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'DESCRIPTIVE FILENAMES, SUCH AS 2026-07-15 N0CALL AT US-1234.ADI.',

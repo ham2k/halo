@@ -42,7 +42,7 @@ import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 import 'connectivity_service.dart' show ConnectivityService;
 import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'extensions/catalog_service.dart' show CatalogRefused, CatalogUnreachable;
-import 'data_file_manager.dart' show DataFileRemoveHookFailed, DataFileUnavailable;
+import 'data_file_manager.dart' show DataFileNotADatabase, DataFileRemoveHookFailed, DataFileUnavailable;
 import 'edition_keychain.dart' show KeychainMoveIncomplete;
 import 'export_service.dart' show ExportException;
 import 'sets/set_category.dart' show SetFileException;
@@ -486,6 +486,16 @@ class ErrorPolicy {
           'Uploaded because the rate per host says whether a source is dying or a timeout is too tight',
       disposition: ErrorDisposition.report,
       matches: (error, details) => error is DataFileUnavailable,
+    ),
+    ErrorRule(
+      id: 'data-file-not-a-database',
+      reason:
+          "a `sqlite` data file's server answered with something other than a database, most "
+          "often a Wi-Fi network's sign-in page; the data already on the device stays and the next "
+          'pass tries again, and a refresh the operator asked for says what to check in its own '
+          'notice. Uploaded because the rate per host says whether a source has stopped serving the file',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is DataFileNotADatabase,
     ),
     ErrorRule(
       id: 'extension-url-refused',
