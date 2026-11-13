@@ -3,6 +3,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
@@ -649,14 +650,17 @@ void main() {
     addTearDown(second.cancel);
     await pumpEventQueue();
     final beforePan = _commandsWithoutHeartbeat(secure);
-    secure.receive(_pan(receiver: 1, centerHz: 7100000));
-    secure.receive(_pan());
+    secure.receive(File('test/cat/fixtures/k4-remote/k4-remote-9204-main-sub.bin').readAsBytesSync());
     await pumpEventQueue();
-    expect(frames, hasLength(1));
+    expect(frames, hasLength(2), reason: 'only the captured Main frames feed this receiver');
+    for (final frame in frames) {
+      expect(frame.levels, hasLength(1024));
+      expect((frame.lowHz, frame.highHz), (14222000, 14245977));
+    }
     expect(cat.stateFor(uuid).spectrum, isNotNull);
     final snapshot = panel.read(uuid)['spectrum'] as Map<String, dynamic>;
     expect(snapshot['problem'], isNull);
-    expect((snapshot['spansHz'] as List<int>).last, 24000);
+    expect((snapshot['spansHz'] as List<int>).last, 12000);
     expect(_commandsWithoutHeartbeat(secure), beforePan, reason: 'spectrum demand must not configure the shared radio');
     expect(cat.setSpectrum(uuid, const SpectrumRequest(refLevelDb: 3)), isTrue);
     expect(_commandsWithoutHeartbeat(secure), beforePan);
@@ -783,12 +787,20 @@ void main() {
     await pumpEventQueue();
     expect(mainFrames, hasLength(1));
     expect(subFrames, hasLength(1));
-    expect(mainFrames.single.lowHz, greaterThan(14000000));
-    expect(subFrames.single.highHz, lessThan(7100000));
-    expect(f.cat.setSpectrum(f.uuid, const SpectrumRequest(refLevelDb: 2)), true);
+    expect(mainFrames.single.levels, hasLength(1024));
+    expect((mainFrames.single.lowHz, mainFrames.single.highHz), (14226000, 14273953));
+    expect(subFrames.single.levels, hasLength(1024));
+    expect((subFrames.single.lowHz, subFrames.single.highHz), (7021000, 7068953));
+    expect(f.cat.setSpectrum(f.uuid, const SpectrumRequest(spanHz: 5000, refLevelDb: 2)), true);
     expect(f.cat.setSpectrum(sub.uuid, const SpectrumRequest(refLevelDb: 7)), true);
     expect(f.cat.stateFor(f.uuid).spectrum?.refLevelDb, 2);
     expect(f.cat.stateFor(sub.uuid).spectrum?.refLevelDb, 7);
+    secure.receive([..._pan(centerHz: 14250000), ..._pan(receiver: 1, centerHz: 7045000)]);
+    await pumpEventQueue();
+    expect(mainFrames, hasLength(2));
+    expect(subFrames, hasLength(2));
+    expect((mainFrames.last.lowHz, mainFrames.last.highHz), (14245031, 14254969));
+    expect((subFrames.last.lowHz, subFrames.last.highHz), (7021000, 7068953), reason: 'Main\'s explicit scope span must leave Sub at full width');
     await f.cat.disconnect(f.uuid);
     expect(secure.closeCalls, 0);
     expect(f.cat.stateFor(sub.uuid).status, EquipmentStatus.connected);

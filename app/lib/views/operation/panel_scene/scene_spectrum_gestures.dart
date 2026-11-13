@@ -885,8 +885,8 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
     if (jump) {
       _glide.stop();
       _glideSpan = null;
-      // Where the scope stays put, the window is its sweeps' again, wherever they arrive from.
-      if (_recenters != true) _viewCenter = null;
+      // A jump beyond a scope that stays put waits for the sweep at the new band.
+      if (_recenters != true && to != hz) _viewCenter = null;
       return _reframe();
     }
     if ((to - from).abs() < 1) return;

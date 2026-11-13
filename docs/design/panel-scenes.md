@@ -303,7 +303,7 @@ published panels name them; what API 17 added has the new names only.
   few sweeps, and a move sent on each of them would overshoot. Within the
   margins (between 15% and 85% of the width at `follow: 0.15`) nothing moves,
   so the picture scrolls with the dial rather than jumping to recentre on
-  every step. It applies only where the radio lets the app place its scope
+  every step. Moving the sweep requires a radio that lets the app place it
   (`SpectrumCapabilities.canRecenter`, a FlexRadio) and the panel may command
   the radio (`requiresRadioWrite`). On a Flex the scope is the slice's pan,
   which SmartSDR shows too, so following moves the operator's own panadapter
@@ -456,7 +456,11 @@ published panels name them; what API 17 added has the new names only.
   would shift the whole picture further than the click needs — the radio's
   scope at once and the drawing after it, so the eye keeps the signal
   instead of losing it to a jump. `follow` keeps the dial in the same
-  way, and tells a jump of the dial from a spin by the step, whatever moved
+  way. On a sweep the panel cannot move, automatic follow keeps the window
+  inside the sweep whenever there is room for both the window and the dial.
+  The dial may then sit closer to the edge than the usual margin. Follow
+  checks again when a sweep arrives, even if the dial has not moved again.
+  It tells a jump of the dial from a spin by the step, whatever moved
   it: a step of up to a tenth of the window's width is a spin — the radio's
   knob, the wheel, a trackpad, a drag of the line, a MIDI controller —
   and anything longer a jump — a click, a memory, a frequency typed in.

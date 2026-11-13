@@ -199,8 +199,11 @@ class CatSpectrumSource implements SceneSpectrumSource {
   Listenable get equipmentChanges => cat;
 
   @override
+  bool canRecenter(String uuid) => canCommand && (cat.spectrumCapabilitiesFor(uuid)?.canRecenter ?? false);
+
+  @override
   bool recenter(String uuid, int centerHz) {
-    if (!canCommand || !(cat.spectrumCapabilitiesFor(uuid)?.canRecenter ?? false)) return false;
+    if (!canRecenter(uuid)) return false;
     return cat.setSpectrum(uuid, SpectrumRequest(centerHz: centerHz));
   }
 
