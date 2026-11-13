@@ -1410,6 +1410,28 @@ void main() {
 
       expect(modeField(tester).controller!.text, 'USB', reason: 'spelled out because 40m runs lower');
     });
+
+    // A band command carries no mode, but the panel's push after it STATES
+    // one — the panel's own, still the sideband of the band being left — and
+    // `setVfo` takes a stated mode as stated. Without the re-derive ahead of
+    // that push, "40m" from 20m SSB puts the rig on 40m in USB.
+    testWidgets('a band command re-derives the sideband the rig is told', (tester) async {
+      final radio = FakeVfoStore()..setVfo('vfoA', freq: 14285, mode: 'USB');
+      await tester.pumpWidget(
+        host(
+          radio: baseRadio().copyWith(radioService: radio),
+          commands: CommandHooks(interpretCommand: fakeInterpretCommand),
+        ),
+      );
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), '40m');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(radio.vfoA.band, '40m');
+      expect(radio.vfoA.mode, 'LSB', reason: 'the sideband belonged to the band being left');
+    });
   });
 
   // The `setVfo` command action stored whatever it was handed. It is the last

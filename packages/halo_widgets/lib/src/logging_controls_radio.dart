@@ -1058,25 +1058,35 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   /// — editing an existing QSO applies changes to the QSO, never the VFO.
   void applyBandPick(String value) {
     final cfg = config();
-    // A stored sideband was derived from the band being left, so a MOVE
-    // re-derives it — `setVfo`'s own condition, for its reason: re-picking the
-    // band you are on must not discard a deliberate far sideband. Editing an
-    // existing QSO reaches no VFO to do this for it. Compared against the
-    // VFO's band, not [band], which [commitBandTypedIntoFreqField] has
-    // already blanked by replacing the text that named the old band.
-    //
     // Computed BEFORE the field writes: clearing the frequency field notifies
     // `_onFreqChanged` synchronously, and its empty-field branch pushes the
     // VFO stating the mode — pinning the old band's sideband onto the new band
     // at the rig while the panel holds the new one, until the next wipe
     // reseeds the panel from the rig.
-    final leavingBand = cfg.editingQso == null ? (cfg.radio.radioService?.vfoA.band ?? band) : band;
-    final resolved = (value != leavingBand && isSidebandMode(mode)) ? (resolveSideband('SSB', null, band: value) ?? mode) : mode;
-    mode = resolved;
+    mode = modeForBandMove(value);
     manualBand = value;
     freqController.clear();
     notify();
     if (cfg.editingQso == null) _writeVfo((store) => store.setVfo('vfoA', band: value));
+  }
+
+  /// [mode] once the panel moves to [toBand] with no mode stated: a stored
+  /// sideband was derived from the band being left, so a MOVE re-derives it —
+  /// `setVfo`'s own condition, for its reason: re-picking the band you are on
+  /// must not discard a deliberate far sideband. Every way of naming a band
+  /// without a mode — the Band field, its arrows, a "40m" command — comes
+  /// through here BEFORE it writes anything, since the push that follows
+  /// states the mode and `setVfo` takes a stated mode as stated.
+  ///
+  /// Compared against the VFO's band while composing, not [band], which
+  /// [commitBandTypedIntoFreqField] has already blanked by replacing the text
+  /// that named the old band. Editing an existing QSO compares against the
+  /// QSO's own band.
+  String modeForBandMove(String toBand) {
+    final cfg = config();
+    final leavingBand = cfg.editingQso == null ? (cfg.radio.radioService?.vfoA.band ?? band) : band;
+    if (toBand == leavingBand || !isSidebandMode(mode)) return mode;
+    return resolveSideband('SSB', null, band: toBand) ?? mode;
   }
 
   /// A pick from the Band menu. A pick is a selection, never a filter.

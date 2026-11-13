@@ -1063,7 +1063,10 @@ deliberately on the far sideband keeps it, and a rig reporting its own mode is n
 those say; it is not a mode a radio can be put in, and it is not what an operator on 40 m is running,
 so the panel, the logged QSO and the rig all name the same sideband. Resolving it only at the CAT
 boundary left a shack with no radio attached resolving nothing at all, and logging "SSB" for a spot
-that named a band. `halo_core`'s `resolveSideband` is the one implementation.
+that named a band. `halo_core`'s `resolveSideband` is the one implementation. The logging panel's
+writes always state its mode, so every way it names a band without one — the Band field, its arrows,
+a `40m` command — re-derives the panel's sideband first (`RadioControlModel.modeForBandMove`);
+otherwise the old band's sideband goes out as stated.
 
 `CatService` still calls it on the way to a driver — no CAT protocol has an "SSB" mode, and a mode
 can reach one without passing through this device's VFO (a peer driving a rig we offer). It is

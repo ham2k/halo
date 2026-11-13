@@ -34,6 +34,7 @@ extension _ActionDispatch on _LoggingControlsState {
             if (freq is num) {
               _radio.setFrequency(freq.toDouble());
             } else if (band is String) {
+              if (mode is! String) _radio.mode = _radio.modeForBandMove(band);
               _radio.setBand(band);
             }
             if (mode is String) {
