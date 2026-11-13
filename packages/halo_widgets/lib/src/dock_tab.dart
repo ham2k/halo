@@ -7,6 +7,7 @@
 
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show SemanticsHitTestBehavior;
 
 import 'package:flutter/material.dart';
 
@@ -784,29 +785,49 @@ class _PaneHeaderPeekState extends State<PaneHeaderPeek> {
         onExit: (_) => _onExit(),
         child: OverlayPortal(
           controller: _peek,
-          // Positioned with no size: unbounded constraints, so the follower is
-          // the strip's own size and its anchor lands on the strip. The cap is
-          // the ConstrainedBox below.
-          overlayChildBuilder: (context) => Positioned(
-            left: 0,
-            top: 0,
-            child: CompositedTransformFollower(
-              link: _link,
-              targetAnchor: Alignment.topLeft,
-              followerAnchor: widget.atTop ? Alignment.topLeft : Alignment.bottomLeft,
-              // Hidden but kept — see [_peek]. Visibility also takes the
-              // hidden strip's button out of focus traversal and semantics.
-              child: Visibility(
-                visible: _visible,
-                maintainState: true,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: _stripMaxWidth(constraints.maxWidth)),
-                  child: _PeekStrip(
-                    title: widget.title,
-                    action: widget.action?.call(context),
-                    onHover: (over) => _update(overPeek: over),
+          // The always-shown portal is an accessibility node the size of the
+          // whole overlay, left empty while the strip is hidden — and on web an
+          // empty node takes the clicks over everything beneath it. A click on
+          // a text field then lands on that node instead of the field's
+          // `<input>`, and the browser moves its focus to the view: the field
+          // keeps its caret and drops every keystroke. A transparent node of the
+          // same size passes the clicks through, and the strip's button still
+          // takes its own. It has to fill the overlay: a node with no size,
+          // like the hidden strip's, is dropped along with what it says.
+          overlayChildBuilder: (context) => Positioned.fill(
+            child: Semantics(
+              container: true,
+              hitTestBehavior: SemanticsHitTestBehavior.transparent,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Positioned with no size: unbounded constraints, so the
+                  // follower is the strip's own size and its anchor lands on
+                  // the strip. The cap is the ConstrainedBox below.
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    child: CompositedTransformFollower(
+                      link: _link,
+                      targetAnchor: Alignment.topLeft,
+                      followerAnchor: widget.atTop ? Alignment.topLeft : Alignment.bottomLeft,
+                      // Hidden but kept — see [_peek]. Visibility also takes the
+                      // hidden strip's button out of focus traversal and semantics.
+                      child: Visibility(
+                        visible: _visible,
+                        maintainState: true,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: _stripMaxWidth(constraints.maxWidth)),
+                          child: _PeekStrip(
+                            title: widget.title,
+                            action: widget.action?.call(context),
+                            onHover: (over) => _update(overPeek: over),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),

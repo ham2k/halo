@@ -10,9 +10,12 @@
 // whole point of user-arrangeable panes — a half-typed field must not reset
 // because its pane was docked elsewhere).
 
+import 'dart:ui' show SemanticsHitTestBehavior;
+
 import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart' show SemanticsNode;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_widgets/src/dock_tab.dart' show PaneHeaderPeek;
@@ -1610,6 +1613,65 @@ void main() {
         await tester.pumpAndSettle();
         expect(closed, isTrue);
         expect(find.text('Close'), findsNothing);
+      });
+    });
+
+    testWidgets("a hidden peek leaves nothing in the accessibility tree that takes the pane's clicks", (tester) async {
+      // On web, an accessibility leaf that defers its hit testing takes the
+      // clicks over everything beneath it. The peek's portal is always shown,
+      // so without its own transparent node it is such a leaf, the size of the
+      // whole overlay: a click on a text field in the pane lands on it, the
+      // browser moves its focus off the field's `<input>`, and the field keeps
+      // its caret while every keystroke goes nowhere.
+      await _as(TargetPlatform.macOS, () async {
+        final semantics = tester.ensureSemantics();
+        await tester.pumpWidget(
+          harness(
+            spec: DockSplit(
+              Axis.vertical,
+              [
+                DockGroup(['b']),
+                DockGroup(['a']),
+              ],
+              [1, 1],
+            ),
+            headerlessModules: const {'a'},
+            children: const {
+              'a': SizedBox.expand(
+                key: Key('pane-a'),
+                child: Center(child: TextField()),
+              ),
+              'b': SizedBox.expand(key: Key('pane-b')),
+            },
+          ),
+        );
+        // The tree's rects are in physical pixels.
+        final center = tester.getCenter(find.byType(TextField)) * tester.view.devicePixelRatio;
+        final covering = <String>[];
+        var reachedField = false;
+        void walk(SemanticsNode node, Matrix4 parent) {
+          final transform = node.transform == null ? parent : (parent.clone()..multiply(node.transform!));
+          final rect = MatrixUtils.transformRect(transform, node.rect);
+          final data = node.getSemanticsData();
+          if (data.flagsCollection.isTextField && rect.contains(center)) reachedField = true;
+          // An empty leaf: nothing to say, nothing to do, and nothing under it to defer to.
+          final emptyLeaf = node.childrenCount == 0 && data.label.isEmpty && data.actions == 0;
+          if (emptyLeaf && data.hitTestBehavior == SemanticsHitTestBehavior.defer && rect.contains(center)) covering.add('$node $rect');
+          node.visitChildren((child) {
+            walk(child, transform);
+            return true;
+          });
+        }
+
+        walk(tester.binding.renderViews.first.owner!.semanticsOwner!.rootSemanticsNode!, Matrix4.identity());
+        // Without the field itself at the click point, the walk's geometry is
+        // wrong and an empty `covering` proves nothing.
+        try {
+          expect(reachedField, isTrue);
+          expect(covering, isEmpty);
+        } finally {
+          semantics.dispose();
+        }
       });
     });
 
