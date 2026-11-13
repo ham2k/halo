@@ -165,28 +165,30 @@ class KenwoodDriver extends EquipmentDriver {
   @override
   int get telemetryWatchBytes => kenwoodTxWatchBytes;
 
-  /// Per node: only an entry whose calibration file scales a meter reads it,
-  /// so a generic Kenwood's placeholder is its watch's alone.
+  /// Per node: the K4 reads its own signal meter. A Kenwood without a
+  /// calibration file only budgets for its transmit watch.
   @override
   Duration defaultTelemetryInterval(Map<String, dynamic> config) => telemetryIntervalFor(
     const {},
     cycleBytes:
         kenwoodTxWatchBytes +
-        kenwoodMeterCycleBytes(
-          calibrationFor(config),
-          transmitting: true,
-          capturing: config[meterCaptureKey] == true,
-          lab599: modeDialectFrom(config) == KenwoodModeDialect.lab599,
-        ),
+        (isK4
+            ? _k4SignalExchangeBytes
+            : kenwoodMeterCycleBytes(
+                calibrationFor(config),
+                transmitting: true,
+                capturing: config[meterCaptureKey] == true,
+                lab599: modeDialectFrom(config) == KenwoodModeDialect.lab599,
+              )),
     baudRate: serialBaudRateOrNull(config),
   );
 
-  /// What the entry's calibration file scales, and a TX-500's supply. A
-  /// generic entry names no file, since it cannot know which radio's scale
-  /// applies, and so reads none.
+  /// The K4 reports its own scaled values. For Kenwoods, the calibration
+  /// file defines which meters have a scale. A TX-500 also reports supply volts.
   @override
-  Set<RadioMeter> telemetryMetersWith(Map<String, dynamic> config) =>
-      isK4 ? const {} : kenwoodMetersFor(calibrationFor(config), lab599: modeDialectFrom(config) == KenwoodModeDialect.lab599);
+  Set<RadioMeter> telemetryMetersWith(Map<String, dynamic> config) => isK4
+      ? const {RadioMeter.signalDbm, RadioMeter.powerOut, RadioMeter.swr}
+      : kenwoodMetersFor(calibrationFor(config), lab599: modeDialectFrom(config) == KenwoodModeDialect.lab599);
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {

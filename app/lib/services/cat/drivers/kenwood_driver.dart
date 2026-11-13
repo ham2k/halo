@@ -39,6 +39,7 @@ import 'cat_ascii_codec.dart';
 import 'cw_send_queue.dart';
 import 'kenwood_cat_codec.dart';
 import 'k4_codec.dart';
+import 'k4_receiver_codec.dart';
 import 'k4_setting_switch.dart';
 import 'k4_spectrum.dart';
 import 'k4_shared_session_config.dart';
@@ -50,6 +51,7 @@ import 'rated_power_config.dart';
 import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
 
+part 'k4_metering.dart';
 part 'k4_spectrum_session.dart';
 part 'kenwood_equipment.dart';
 part 'kenwood_lab599.dart';
@@ -76,7 +78,7 @@ const kenwoodPassbandReadEvery = 5;
 const kenwoodAntennaReadEvery = 5;
 
 class KenwoodSession
-    with _Lab599, _KenwoodMeters
+    with _Lab599, _KenwoodMeters, _K4Metering
     implements
         ReadBackSession,
         CwKeyerSession,
@@ -90,6 +92,7 @@ class KenwoodSession
   @override
   final EquipmentSink _sink;
   final bool isK4;
+  @override
   final bool remote;
   bool? _remoteTransmitting;
 
@@ -97,6 +100,7 @@ class KenwoodSession
   bool get _transmitting => remote ? _remoteTransmitting == true : _telemetry.transmitting;
 
   bool _noteTransmitting(bool value) {
+    if (isK4 && !value) _clearK4TxMeter();
     if (!remote) return _telemetry.noteTransmitting(value);
     final changed = _remoteTransmitting != value;
     _remoteTransmitting = value;
@@ -127,14 +131,16 @@ class KenwoodSession
   /// Watches for the operator to key the rig, by asking for the `IF` packet
   /// that carries the flag — see [_handleInfo] — and on a TX-500 for `PT`
   /// besides, see [_watchLab599Ptt]. The meters an entry's calibration file
-  /// gives a scale to are asked ahead of them, see [_readMeters].
+  /// gives a scale to are asked ahead of them, see [_readMeters]. The K4
+  /// pushes transmit meters and reads its signal meter while receiving.
   @override
   late final TelemetryPoller _telemetry = TelemetryPoller(
     onPoll: (transmitting) {
-      _readMeters(transmitting);
+      if (!isK4) _readMeters(transmitting);
       if (transmitting && _lab599) _readLab599Volts();
       if (_lab599) _watchLab599Ptt();
       _send(buildKenwoodReadInfoCommand());
+      if (isK4 && !transmitting) _readK4Signal();
     },
     idleInterval: _telemetryInterval(transmitting: false),
     txInterval: _telemetryInterval(transmitting: true),
@@ -142,7 +148,11 @@ class KenwoodSession
 
   Duration _telemetryInterval({required bool transmitting}) => telemetryIntervalFor(
     _config,
-    cycleBytes: _txWatchBytes + kenwoodMeterCycleBytes(_meterCalibration, transmitting: transmitting, capturing: _capturingMeters, lab599: _lab599),
+    cycleBytes:
+        _txWatchBytes +
+        (isK4
+            ? (transmitting ? 0 : _k4SignalExchangeBytes)
+            : kenwoodMeterCycleBytes(_meterCalibration, transmitting: transmitting, capturing: _capturingMeters, lab599: _lab599)),
     baudRate: serialBaudRateOrNull(_config),
   );
 
@@ -707,9 +717,10 @@ class KenwoodSession
 
       case 'PC':
         if (isK4) {
-          if (remote && RegExp(r'^\d{3}$').hasMatch(command.params)) _send('PCX;');
+          if (RegExp(r'^\d{3}$').hasMatch(command.params)) _readK4PowerRange();
           final power = parseK4Power(command.params);
           if (power == null) return;
+          if (_transmitting) _noteK4PowerRange(command.params[3]);
           _sink.reportPower(power.watts);
           final pending = _pendingK4Power;
           _pendingK4Power = null;
@@ -728,6 +739,7 @@ class KenwoodSession
               _sink.reportProblem(t.settings.station.k4PowerRange);
             } else {
               _sink.reportProblem(null);
+              _clearK4TxMeter();
               _send(write);
               _send('PCX;');
             }
@@ -737,9 +749,13 @@ class KenwoodSession
         final level = parseKenwoodPowerParams(command.params);
         if (level != null) _sink.reportPower(_lab599 ? lab599WattsForLevel(level, ratedWatts: _lab599RatedWatts) : level);
 
-      case 'SM':
+      case 'SM' when isK4 && !remote && _started && !_transmitting:
+        _handleK4Signal(command.params);
+      case 'TM' when isK4 && _started && _transmitting:
+        _handleK4TxMeter(command.params);
+      case 'SM' when !isK4:
         _handleSMeter(command.params);
-      case 'RM':
+      case 'RM' when !isK4:
         _handleMeterRead(command.params);
       case 'VL' when _lab599:
         _handleLab599Volts(command.params);
@@ -1356,6 +1372,7 @@ class KenwoodSession
     _k4PowerResync = false;
     _k4InfoRejected = false;
     _remoteTransmitting = null;
+    _resetK4Metering();
     _k4PowerTimeout?.cancel();
     _tunerFlags = null;
     _tunerPollsToSkip = 0;
@@ -1388,6 +1405,7 @@ class KenwoodSession
     // shows it re-reads it when it opens.
     if (cwDialect != null) _send(buildKenwoodReadKeyerSpeedCommand());
     _lineIn?.settle();
+    if (isK4) _startK4Metering();
     if (!remote) _poller.start();
   }
 
@@ -1396,6 +1414,7 @@ class KenwoodSession
     _k4Band = null;
     _pendingK4Power = null;
     _k4PowerResync = false;
+    _clearK4TxMeter();
     _k4PowerTimeout?.cancel();
     _poller.stop();
     _telemetry.stop();
@@ -1406,6 +1425,7 @@ class KenwoodSession
     if (!_started) return;
     _started = false;
     if (!remote) _send(buildKenwoodAutoInformationCommand(false));
+    if (isK4) _send('TM0;');
   }
 
   @override
