@@ -200,6 +200,9 @@ spots board. `dist/index.d.ts` has the rest.
 - **Hook method names are routed by string.** `renderPanel` where `render`
   was meant is an extension that installs, activates, and does nothing. Type
   every hook with its SDK interface.
+- **Apply operation presets from a command or panel event.** Use
+  `updateOperation` (extension API 26) with the shared `OperationSetupPatch`.
+  A panel event that changes only the operation still returns `values: {}`.
 - **A runtime restart cancels your timers and closes your sockets without an
   `onclose`.** Set them from `onActivation`, never only from module scope.
   Reconnect with a growing delay, never straight from `onclose`.

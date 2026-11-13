@@ -69,6 +69,7 @@ class TranslationsQrp extends Translations with BaseTranslations<AppLocale, Tran
 	@override late final _Translations$dataFiles$qrp dataFiles = _Translations$dataFiles$qrp._(_root);
 	@override late final _Translations$updates$qrp updates = _Translations$updates$qrp._(_root);
 	@override late final _Translations$extensionService$qrp extensionService = _Translations$extensionService$qrp._(_root);
+	@override late final _Translations$operationSetupAction$qrp operationSetupAction = _Translations$operationSetupAction$qrp._(_root);
 	@override late final _Translations$operationLocationScreen$qrp operationLocationScreen = _Translations$operationLocationScreen$qrp._(_root);
 	@override late final _Translations$versionLabel$qrp versionLabel = _Translations$versionLabel$qrp._(_root);
 	@override late final _Translations$notices$qrp notices = _Translations$notices$qrp._(_root);
@@ -1217,6 +1218,23 @@ class _Translations$extensionService$qrp extends Translations$extensionService$e
 	@override String timersSuspendedBudget({required Object name}) => '${name} spent too much time in its timers. they\'re stopped until the extensions restart.';
 	@override String timersSuspendedFailures({required Object name}) => '${name}\'s timers kept failing. they\'re stopped until the extensions restart.';
 	@override String timersSuspendedInterrupted({required Object name}) => '${name} got stuck in a timer. its timers are stopped until the extensions restart.';
+}
+
+// Path: operationSetupAction
+class _Translations$operationSetupAction$qrp extends Translations$operationSetupAction$en {
+	_Translations$operationSetupAction$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String invalidField({required Object field}) => 'the operation update has an invalid value for ${field}.';
+	@override String invalidRefEntry({required Object index}) => 'activation reference ${index} needs a program key and a reference code.';
+	@override String invalidReference({required Object reference}) => '${reference} is not a valid activation reference.';
+	@override String unavailableReference({required Object reference}) => 'could not validate ${reference}. check that its activity is available.';
+	@override String conflictingReference({required Object reference, required Object existing}) => 'could not add ${reference}. this activity already has reference ${existing}.';
+	@override String get invalidLocation => 'an operation location needs either a grid locator or a latitude and longitude.';
+	@override String invalidGrid({required Object grid}) => '"${grid}" is not a valid grid locator.';
+	@override String get invalidCoordinates => 'the operation update needs a valid latitude and longitude.';
 }
 
 // Path: operationLocationScreen
@@ -7984,6 +8002,14 @@ extension on TranslationsQrp {
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} spent too much time in its timers. they\'re stopped until the extensions restart.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name}\'s timers kept failing. they\'re stopped until the extensions restart.',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} got stuck in a timer. its timers are stopped until the extensions restart.',
+			'operationSetupAction.invalidField' => ({required Object field}) => 'the operation update has an invalid value for ${field}.',
+			'operationSetupAction.invalidRefEntry' => ({required Object index}) => 'activation reference ${index} needs a program key and a reference code.',
+			'operationSetupAction.invalidReference' => ({required Object reference}) => '${reference} is not a valid activation reference.',
+			'operationSetupAction.unavailableReference' => ({required Object reference}) => 'could not validate ${reference}. check that its activity is available.',
+			'operationSetupAction.conflictingReference' => ({required Object reference, required Object existing}) => 'could not add ${reference}. this activity already has reference ${existing}.',
+			'operationSetupAction.invalidLocation' => 'an operation location needs either a grid locator or a latitude and longitude.',
+			'operationSetupAction.invalidGrid' => ({required Object grid}) => '"${grid}" is not a valid grid locator.',
+			'operationSetupAction.invalidCoordinates' => 'the operation update needs a valid latitude and longitude.',
 			'operationLocationScreen.title' => 'operation location',
 			'operationLocationScreen.selectedLocation' => 'selected location',
 			'operationLocationScreen.gridSquare' => 'maidenhead grid square locator',
@@ -8155,6 +8181,8 @@ extension on TranslationsQrp {
 			'exportSettings.type' => 'export type',
 			'exportSettings.defaults' => 'defaults',
 			'exportSettings.includeLookupData' => 'include lookup data',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.customTemplates' => 'custom templates',
 			'exportSettings.filenameTemplate' => 'file name template',
 			'exportSettings.compactFilenameTemplate' => 'compact file name template',
@@ -8163,8 +8191,6 @@ extension on TranslationsQrp {
 			'exportSettings.adifCommentTemplate' => 'adif qso comments',
 			'exportSettings.adifQslMessageTemplate' => 'adif qsl message',
 			'exportSettings.shared' => 'settings apply to every extension using this export type.',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.defaultTemplates' => 'turn on custom templates to edit this type’s templates.',
 			'templateEditor.previewLabel' => 'preview:',
 			'templateEditor.reset' => 'reset',

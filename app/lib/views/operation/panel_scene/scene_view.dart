@@ -15,6 +15,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../panel_environment.dart';
+import 'scene_events.dart';
 import 'scene_grid.dart';
 import 'scene_map.dart';
 import 'scene_model.dart';
@@ -83,9 +84,8 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
   bool _appVisible = true;
   int _sequence = 0;
 
-  /// Whether the last action failed. A flag, not the message: the banner is
-  /// translated when it is built, so it follows a locale change.
-  bool _failed = false;
+  /// Only a [SceneEventRefusal] carries text intended for the operator.
+  Object? _actionError;
 
   @override
   void initState() {
@@ -302,7 +302,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
         : control.id;
     _queue.remove(key);
     _queue[key] = event;
-    setState(() => _failed = false);
+    setState(() => _actionError = null);
     _drain();
   }
 
@@ -327,12 +327,12 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
             _dirty.removeWhere((key) => !_active.contains(key));
           });
         }
-      } catch (_) {
+      } catch (error) {
         if (!mounted) return;
         setState(() {
           // Said even when a newer interaction has superseded the event: a
           // refused value is news whether or not it is still the one shown.
-          _failed = true;
+          _actionError = error;
           // An action queued behind a refused value would act on the value
           // the extension has, not the one the operator just gave it.
           // An annotation's click carries its own frequency, so it does not
@@ -974,10 +974,13 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
         excluding: !awake,
         child: Column(
           children: [
-            if (_failed)
+            if (_actionError != null)
               MaterialBanner(
-                content: Text(context.t.operation.layout.panelActionFailed),
-                actions: [TextButton(onPressed: () => setState(() => _failed = false), child: Text(context.t.common.dismiss))],
+                content: Text(switch (_actionError) {
+                  SceneEventRefusal(:final message) => message,
+                  _ => context.t.operation.layout.panelActionFailed,
+                }),
+                actions: [TextButton(onPressed: () => setState(() => _actionError = null), child: Text(context.t.common.dismiss))],
               ),
             Expanded(
               // Whatever a control draws stops at the pane: past it, it would paint over the

@@ -3371,6 +3371,16 @@
     "timersSuspendedFailures": "${name}'S TIMERS KEPT FAILING. THEY'RE STOPPED UNTIL THE EXTENSIONS RESTART.",
     "timersSuspendedInterrupted": "${name} GOT STUCK IN A TIMER. ITS TIMERS ARE STOPPED UNTIL THE EXTENSIONS RESTART."
   },
+  "operationSetupAction": {
+    "invalidField": "THE OPERATION UPDATE HAS AN INVALID VALUE FOR ${field}.",
+    "invalidRefEntry": "ACTIVATION REFERENCE ${index} NEEDS A PROGRAM KEY AND A REFERENCE CODE.",
+    "invalidReference": "${reference} IS NOT A VALID ACTIVATION REFERENCE.",
+    "unavailableReference": "COULD NOT VALIDATE ${reference}. CHECK THAT ITS ACTIVITY IS AVAILABLE.",
+    "conflictingReference": "COULD NOT ADD ${reference}. THIS ACTIVITY ALREADY HAS REFERENCE ${existing}.",
+    "invalidLocation": "AN OPERATION LOCATION NEEDS EITHER A GRID LOCATOR OR A LATITUDE AND LONGITUDE.",
+    "invalidGrid": "\"${grid}\" IS NOT A VALID GRID LOCATOR.",
+    "invalidCoordinates": "THE OPERATION UPDATE NEEDS A VALID LATITUDE AND LONGITUDE."
+  },
   "operationLocationScreen": {
     "title": "OPERATION LOCATION",
     "selectedLocation": "SELECTED LOCATION",

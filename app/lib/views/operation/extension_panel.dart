@@ -36,6 +36,7 @@ import '../../services/panel_content_budgets.dart';
 import '../../services/panel_service.dart';
 import 'panel_content_view.dart';
 import 'panel_environment.dart';
+import 'panel_scene/scene_events.dart';
 import 'panel_scene/scene_model.dart';
 import 'panel_scene/scene_rotator.dart';
 import 'panel_scene/scene_spectrum.dart';
@@ -734,8 +735,22 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       final strings = parseStrings(result['strings'] ?? const {});
       if (strings.keys.any(values.containsKey)) throw const FormatException('A panel event result names a value as both a number and a string');
       final patch = <String, Object>{...values, ...strings};
+      if (result.containsKey('updateOperation')) {
+        if (!current()) throw StateError('Panel replaced');
+        final update = result['updateOperation'];
+        if (update is! Map) throw const FormatException('updateOperation must be an object');
+        final uuid = ctx.operation?.uuid;
+        if (uuid == null) throw SceneEventRefusal(t.commands.noOperationOpen);
+        if (uuid != widget.renderContext.operation?.uuid) throw StateError('Panel operation changed');
+        final apply = widget.panels.onUpdateOperation;
+        if (apply == null) throw StateError('Panel operation updates unavailable');
+        final refusal = await apply(uuid, update.cast<String, dynamic>());
+        if (refusal != null) throw SceneEventRefusal(refusal);
+      }
       ErrorReportingService.recordSuccess('panel:event:${panel.id}');
       return patch;
+    } on SceneEventRefusal {
+      rethrow;
     } on PanelContentRefusal catch (e) {
       // A budget is the extension's to keep, as a render's is: the console, not a report.
       debugPrint('[panels] "${panel.id}" refused: ${e.message}');

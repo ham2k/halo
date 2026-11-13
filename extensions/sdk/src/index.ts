@@ -68,7 +68,7 @@ import { adoptExtensionTimers, clearInterval, clearTimeout, setInterval, setTime
  * `^1.<api>.0` range names the oldest API an extension needs and admits every
  * later one.
  */
-export const API_VERSION = 25
+export const API_VERSION = 26
 
 export * from "./types.ts"
 export * from "./hookCategories.ts"

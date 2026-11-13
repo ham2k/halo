@@ -36,6 +36,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 22 | the band scope's `window` and `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed one's `width: 'box'`, a zoom's `commit` of its middle as a pan, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click; `radio.compression`; `cells`, the `grid` and `cell` layout nodes, and a layout up to 12 deep and 512 nodes; a slider's or knob's `invertScroll`; named `sources` for radios, rotators and antenna switches, a band scope's `radio` naming one; a layer's `clipX` and `clipY`, and a binding's `hold` |
 | 23 | the rotator map control (`rotatorMap`), a `nativeButton`'s `icon` variant, an event's `bearing` and `km`, and a binding's `offset` |
 | 25 | the map control (`map`), an event's `lat` and `lon`, and the `reset` gesture |
+| 26 | `updateOperation` in an `onEvent` result |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -360,14 +361,35 @@ may carry the placement's own `config` (API 23, [Panels](panels.md#answering-wit
 answer with neither is a failure, and so is one that throws or runs out of
 time: the pane says the action failed and the control goes back to what the
 scene last reported. The app sends one event at a time, keeps only the
-newest of a control's queued changes, ignores an answer to an event a newer
-one has superseded, and requests a render after each. A text field's typing
-is sent before any action, and an action queued behind a value the extension
-refused is not sent. A control shows its pending value until the outcome is
-known. An `onEvent` that cannot read its panel's config is refused rather
-than run with an empty one, since a config is where a panel keeps which
-radio it commands; the app allows an event about ten seconds in all, config
-and hook together.
+newest of a control's queued changes, and requests a render after each.
+When a newer event supersedes an answer, the app discards that answer's
+`values` and `strings`. A text field's typing is sent before any action,
+and an action queued behind a value the extension refused is not sent.
+A control shows its pending value until the outcome is known. An `onEvent`
+that cannot read its panel's config is refused rather than run with an
+empty one, since a config is where a panel keeps which radio it commands;
+the app allows an event about ten seconds in all, config and hook together.
+
+An `onEvent` result can also carry `updateOperation` (extension API 26).
+Before applying the [operation patch](commands.md#updating-the-open-operation),
+the app checks that the operation that received the event is still open in
+the panel. Use `values: {}` when the event changes only the operation. An
+Apply button can use this result to set up a trailhead operation.
+
+```ts
+return {
+  values: {},
+  updateOperation: {
+    addActivationRefs: [
+      { activityKey: "pota", ref: "US-1234" },
+      { activityKey: "pota", ref: "US-5678" },
+      { activityKey: "wwff", ref: "KFF-0123" },
+    ],
+    location: { grid: "FM18ab" },
+    userTitle: "North Trailhead",
+  },
+}
+```
 
 ### Example
 
