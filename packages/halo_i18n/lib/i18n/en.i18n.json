@@ -1962,7 +1962,7 @@
       "body": "${name} is asking to use Ham2K Logger.",
       "bodyLauncher": "${name}, started by ${launcher}, is asking to use Ham2K Logger.",
       "watch": "Watch",
-      "watchDetail": "Read the operation, its QSOs, spots, the radio and your equipment, observe what you do as you log, and show messages.",
+      "watchDetail": "Read your operations and their QSOs, spots, the radio and your equipment, observe what you do as you log, and show messages.",
       "change": "Make changes",
       "changeDetail": "Fill in the QSO, mark spots, control the radio and equipment, and change settings and layouts.",
       "stoppedWaiting": "${name} stopped waiting. If you allow it, it gets in the next time it connects.",

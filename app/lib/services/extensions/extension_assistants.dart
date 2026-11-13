@@ -11,6 +11,7 @@ mixin _ExtensionAssistants implements AssistantExtensionSource {
   RadioHostCalls get radioCalls;
   List<ExtensionInfo> get availableExtensions;
   SpotMarksService get spotMarks;
+  void noteAgentLinkObserved(String hookKey);
 
   /// Every assistant every `assistant` hook offers, tagged with its `hookKey`.
   /// Null means "could not ask", so a failed call never reads as every
@@ -68,7 +69,12 @@ mixin _ExtensionAssistants implements AssistantExtensionSource {
   Future<bool> observe({required String hookKey, required String assistantKey, required Map<String, dynamic> args}) async {
     final host = this.host;
     if (host == null) return false;
-    await host.invoke(Hooks.assistantObserve, key: hookKey, args: {...args, 'assistantKey': assistantKey}, timeout: const Duration(seconds: 5));
+    try {
+      await host.invoke(Hooks.assistantObserve, key: hookKey, args: {...args, 'assistantKey': assistantKey}, timeout: const Duration(seconds: 5));
+    } finally {
+      // A call that failed part way may still have queued events.
+      noteAgentLinkObserved(hookKey);
+    }
     return true;
   }
 

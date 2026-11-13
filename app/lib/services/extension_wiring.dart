@@ -83,6 +83,7 @@ void wireExtensions(HaLoServices services) {
     return update(patch, replace: replace);
   };
   extensions.frontOperationUuid = () => services.frontOperationContext?.uuid;
+  extensions.openOperationUuids = () => services.openOperationUuids;
   extensions.onScoreCandidates = (candidates, operationUuid) async {
     final front = services.frontOperationContext;
     final score = front?.scoreCandidates;

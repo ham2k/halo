@@ -9,6 +9,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_core/halo_core.dart' show realNowMillis;
 
 import '../error_reporting_service.dart';
 import 'agent_link_model.dart';
@@ -20,6 +21,10 @@ abstract interface class AgentLinkEndpoint {
   /// Whether there is anything to hand messages to. An app is answered
   /// `unavailable` rather than asked about while there is not.
   bool get available;
+
+  /// Notified when the endpoint may have something new for a held request
+  /// (see [agentHoldOf]): the link asks again then.
+  Listenable get news;
 
   /// The messages to send back for [message], in order.
   Future<List<Map<String, dynamic>>> handle({
@@ -96,6 +101,7 @@ class AgentLinkService extends ChangeNotifier {
     required this._now,
   }) : _bind = bind ?? bindAgentLink {
     _changes?.addListener(_follow);
+    _endpoint.news.addListener(_askHeldAgain);
     _follow();
   }
 
@@ -108,6 +114,11 @@ class AgentLinkService extends ChangeNotifier {
 
   final _requests = <AgentLinkRequest>[];
   final _connections = <String, ({String grantId, AgentLinkPeer peer})>{};
+  final _held = <_HeldRequest>[];
+  int _newsGeneration = 0;
+
+  /// How many requests the link holds at once, across every app.
+  static const maxHeld = 64;
 
   /// The port it listens on, null while it is not listening.
   int? get port => _listener?.port;
@@ -300,6 +311,9 @@ class AgentLinkService extends ChangeNotifier {
         }
       } finally {
         _connections.remove(connection);
+        for (final held in [..._held.where((h) => h.connection == connection)]) {
+          _finish(held);
+        }
         if (!_disposed) notifyListeners();
       }
     } finally {
@@ -348,31 +362,100 @@ class AgentLinkService extends ChangeNotifier {
 
   void _refuse(AgentLinkPeer peer, String reason) => peer.send(jsonEncode({'agentLink': kAgentLinkVersion, 'ok': false, 'reason': reason}));
 
-  Future<void> _deliver(String connection, String grantId, AgentLinkPeer peer, Map<String, dynamic> message) async {
+  /// Hands [message] to the endpoint and sends what it answers. A reply that
+  /// asks to be held (docs/design/agent-link.md § Events) waits instead, as
+  /// [held], until its time is up, asked again whenever the endpoint has
+  /// news; [held] is that request being asked again.
+  Future<void> _deliver(String connection, String grantId, AgentLinkPeer peer, Map<String, dynamic> message, {_HeldRequest? held}) async {
     // Read per message: an access the operator changed applies from the next
     // one, and a grant removed meanwhile answers nothing more.
     final grant = grants.where((g) => g.id == grantId).firstOrNull;
-    if (grant == null) {
-      await peer.close();
-      return;
-    }
     // The endpoint stopped under a connected app (the runtime restarting):
     // hung up, so the app's next connection is answered `unavailable`.
-    if (!_endpoint.available) {
+    if (grant == null || !_endpoint.available) {
+      if (held != null) _finish(held);
       await peer.close();
       return;
     }
-    try {
-      final replies = await _endpoint.handle(connection: connection, client: grant.client, access: grant.access, message: message);
-      for (final reply in replies) {
-        peer.send(jsonEncode(reply));
+    var ask = message;
+    while (true) {
+      // News that comes while the endpoint is answering is news the answer
+      // may not have seen: a hold that comes back after it is asked again
+      // at once, or the event waits out the whole hold.
+      final generation = _newsGeneration;
+      final List<Map<String, dynamic>> replies;
+      try {
+        replies = await _endpoint.handle(connection: connection, client: grant.client, access: grant.access, message: ask);
+      } catch (e, st) {
+        ErrorReportingService.report(e, st, context: 'AgentLink:handle');
+        // Its time came while asking: the agent has had its answer.
+        if (held?.settled ?? false) return;
+        if (held != null) _finish(held);
+        final id = message['id'];
+        // A request the agent waits on is answered even when the endpoint
+        // failed: an unanswered one holds the agent until its own timeout.
+        if (id != null) _rpcError(peer, id, -32603, 'Ham2K Logger could not answer: $e');
+        return;
       }
-    } catch (e, st) {
-      ErrorReportingService.report(e, st, context: 'AgentLink:handle');
-      final id = message['id'];
-      // A request the agent waits on is answered even when the endpoint
-      // failed: an unanswered one holds the agent until its own timeout.
-      if (id != null) _rpcError(peer, id, -32603, 'Ham2K Logger could not answer: $e');
+      if (held?.settled ?? false) return;
+      var askAgain = false;
+      for (final reply in replies) {
+        final hold = agentHoldOf(reply);
+        final plain = hold == null ? reply : withoutAgentHold(reply);
+        final due = held?.dueAtMillis ?? (hold == null ? 0 : realNowMillis() + hold.seconds * 1000);
+        if (hold == null || due <= realNowMillis() || !_connections.containsKey(connection)) {
+          if (held != null) _finish(held);
+          peer.send(jsonEncode(plain));
+          continue;
+        }
+        if (held == null) {
+          // Counted from the first ask: one already held is never refused
+          // for the room others took meanwhile.
+          if (_held.length >= maxHeld) {
+            // Answered empty instead, an agent calling in a loop would call
+            // again at once.
+            _rpcError(peer, message['id'], -32000, 'Too many requests are waiting on Ham2K Logger; wait for one to be answered before sending another');
+            continue;
+          }
+          final request = held = _HeldRequest(connection, grantId, peer, due);
+          _held.add(request);
+          request.timer = Timer(Duration(milliseconds: due - realNowMillis()), () => _expire(request));
+        }
+        held
+          ..message = withAgentArguments(message, hold.arguments)
+          ..reply = plain;
+        askAgain = _newsGeneration != generation;
+      }
+      if (!askAgain) {
+        held?.asking = false;
+        return;
+      }
+      held!.asking = true;
+      ask = held.message;
+    }
+  }
+
+  /// [held]'s time is up: the last answer goes, whatever is asking.
+  void _expire(_HeldRequest held) {
+    if (held.settled) return;
+    _finish(held);
+    held.peer.send(jsonEncode(held.reply));
+  }
+
+  void _finish(_HeldRequest held) {
+    held.settled = true;
+    held.timer?.cancel();
+    _held.remove(held);
+  }
+
+  /// Every held request not already being asked, asked again: the endpoint
+  /// may have its answer now.
+  void _askHeldAgain() {
+    _newsGeneration++;
+    for (final held in [..._held]) {
+      if (held.asking) continue;
+      held.asking = true;
+      unawaited(_deliver(held.connection, held.grantId, held.peer, held.message, held: held));
     }
   }
 
@@ -388,6 +471,10 @@ class AgentLinkService extends ChangeNotifier {
   Future<void> closeForExit() async {
     _disposed = true;
     _changes?.removeListener(_follow);
+    _endpoint.news.removeListener(_askHeldAgain);
+    for (final held in [..._held]) {
+      _finish(held);
+    }
     _retry?.cancel();
     for (final request in [..._requests]) {
       _settle(request);
@@ -412,4 +499,32 @@ class PrefsAgentGrantStore implements AgentGrantStore {
 
   @override
   Future<void> write(Map<String, dynamic> grants) => _write(key, grants);
+}
+
+/// A request whose answer the endpoint asked the link to hold. It counts
+/// toward [AgentLinkService.maxHeld] from its first ask to its answer, while
+/// being asked again too.
+class _HeldRequest {
+  final String connection;
+  final String grantId;
+  final AgentLinkPeer peer;
+  final int dueAtMillis;
+
+  /// What to ask the endpoint again: the request, with the arguments the
+  /// latest hold named.
+  Map<String, dynamic> message = const {};
+
+  /// What to send if nothing better comes by [dueAtMillis].
+  Map<String, dynamic> reply = const {};
+
+  Timer? timer;
+
+  /// Being asked again now: news meanwhile is caught by the generation it
+  /// was asked at, not by asking twice.
+  bool asking = false;
+
+  /// Answered, or its app gone: nothing more is sent for it.
+  bool settled = false;
+
+  _HeldRequest(this.connection, this.grantId, this.peer, this.dueAtMillis);
 }

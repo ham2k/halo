@@ -11,6 +11,26 @@ import type { AgentLinkArgs, HookContext, JSONValue } from "@ham2k/extension-sdk
 type Message = Record<string, JSONValue>
 type Access = AgentLinkArgs["access"]
 
+/// A tool's answer that asks the app to hold the request rather than send
+/// it: the app sends [value] after [seconds], unless asking again, with
+/// [args] in place of the call's arguments, answers otherwise first. It asks
+/// again each time this extension's assistant has observed something
+/// (docs/design/agent-link.md § Events).
+export class Hold {
+  readonly value: JSONValue
+  readonly seconds: number
+  readonly args: Record<string, JSONValue>
+
+  constructor(value: JSONValue, seconds: number, args: Record<string, JSONValue>) {
+    this.value = value
+    this.seconds = seconds
+    this.args = args
+  }
+}
+
+/// Where a reply carries its hold, for the app to find and take off.
+export const HOLD_META_KEY = "ham2k/hold"
+
 /// One tool, as `tools/list` describes it and `tools/call` runs it.
 export interface Tool {
   name: string
@@ -20,7 +40,7 @@ export interface Tool {
   /// `watch` tools read; `change` tools act, and are offered only to an app
   /// the operator let make changes.
   access: Access
-  run(args: Record<string, JSONValue>, ctx: HookContext): Promise<JSONValue>
+  run(args: Record<string, JSONValue>, ctx: HookContext): Promise<JSONValue | Hold>
 }
 
 /// The protocol versions this endpoint speaks, newest first. A client asking
@@ -29,8 +49,10 @@ export const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "202
 
 const INSTRUCTIONS =
   "You are connected to Ham2K Logger, an amateur radio logging app, while its operator is on the air. " +
-  "Read what the station is doing with the tools. The operator decided whether you may also make changes; " +
-  "when you may, change only what helps them log, and say what you changed."
+  "Read what the station is doing with the tools, and call wait_for_events in a loop to follow what the operator does. " +
+  "Speak to the operator with post_fyi for a short line they read while operating, and show_notice only for what needs their attention. " +
+  "The operator decided whether you may also make changes; when you may, change only what helps them log, and say what you changed. " +
+  "You fill in a contact; the operator logs it."
 
 export interface EndpointOptions {
   version: string
@@ -87,9 +109,16 @@ async function dispatch(method: string, params: Record<string, JSONValue>, acces
         throw new RpcError(-32602, exists ? `The operator allowed this app to watch only; ${String(name)} makes changes` : `No tool named ${String(name)}`)
       }
       const toolArgs = (isObject(params.arguments) ? params.arguments : {}) as Record<string, JSONValue>
+      checkArguments(tool, toolArgs)
       try {
-        const value = await tool.run(toolArgs, ctx)
-        return { content: [{ type: "text", text: JSON.stringify(value) }], ...(isObject(value) ? { structuredContent: value } : {}) }
+        const answer = await tool.run(toolArgs, ctx)
+        const value = answer instanceof Hold ? answer.value : answer
+        const result: Record<string, JSONValue> = {
+          content: [{ type: "text", text: JSON.stringify(value) }],
+          ...(isObject(value) ? { structuredContent: value } : {}),
+        }
+        if (answer instanceof Hold) result._meta = { [HOLD_META_KEY]: { seconds: answer.seconds, arguments: answer.args } }
+        return result
       } catch (e) {
         // A tool that fails is an answer the agent reads and can act on,
         // per MCP, not a protocol error.
@@ -99,6 +128,49 @@ async function dispatch(method: string, params: Record<string, JSONValue>, acces
     default:
       throw new RpcError(-32601, `Method not found: ${method}`)
   }
+}
+
+/// Holds [args] to the tool's schema: a missing argument, one of the wrong
+/// type, or one the tool does not take is refused by name. Read leniently
+/// instead, `"undefined"` becomes a callsign searched for, and a list sent
+/// as a string becomes "every one".
+function checkArguments(tool: Tool, args: Record<string, JSONValue>): void {
+  const required = Array.isArray(tool.inputSchema.required) ? (tool.inputSchema.required as string[]) : []
+  for (const name of required) if (args[name] === undefined) throw new RpcError(-32602, `${tool.name} needs \`${name}\``)
+  // A schema that lists no properties says nothing about them.
+  if (!isObject(tool.inputSchema.properties)) return
+  const properties = tool.inputSchema.properties as Record<string, Record<string, JSONValue>>
+  for (const [name, value] of Object.entries(args)) {
+    const schema = properties[name]
+    if (!schema) throw new RpcError(-32602, `${tool.name} takes no \`${name}\``)
+    if (!fits(value, schema)) throw new RpcError(-32602, `${tool.name}: \`${name}\` must be ${describeType(schema)}`)
+  }
+}
+
+function fits(value: JSONValue, schema: Record<string, JSONValue>): boolean {
+  if (Array.isArray(schema.enum) && !schema.enum.includes(value)) return false
+  switch (schema.type) {
+    case "string":
+      return typeof value === "string"
+    case "number":
+      return typeof value === "number" && Number.isFinite(value)
+    case "boolean":
+      return typeof value === "boolean"
+    case "object":
+      return isObject(value)
+    case "array": {
+      const items = isObject(schema.items) ? (schema.items as Record<string, JSONValue>) : null
+      return Array.isArray(value) && (!items || value.every((item) => fits(item, items)))
+    }
+    default:
+      return true
+  }
+}
+
+function describeType(schema: Record<string, JSONValue>): string {
+  if (Array.isArray(schema.enum)) return `one of ${schema.enum.join(", ")}`
+  if (schema.type === "array" && isObject(schema.items)) return `a list of ${String((schema.items as Record<string, JSONValue>).type)}s`
+  return `a ${String(schema.type)}`
 }
 
 function offered(tools: Tool[], access: Access): Tool[] {

@@ -5699,8 +5699,8 @@ class Translations$settings$agentLink$en {
 	/// en: 'Watch'
 	String get watch => 'Watch';
 
-	/// en: 'Read the operation, its QSOs, spots, the radio and your equipment, observe what you do as you log, and show messages.'
-	String get watchDetail => 'Read the operation, its QSOs, spots, the radio and your equipment, observe what you do as you log, and show messages.';
+	/// en: 'Read your operations and their QSOs, spots, the radio and your equipment, observe what you do as you log, and show messages.'
+	String get watchDetail => 'Read your operations and their QSOs, spots, the radio and your equipment, observe what you do as you log, and show messages.';
 
 	/// en: 'Make changes'
 	String get change => 'Make changes';
@@ -13035,7 +13035,7 @@ extension on Translations {
 			'settings.agentLink.body' => ({required Object name}) => '${name} is asking to use Ham2K Logger.',
 			'settings.agentLink.bodyLauncher' => ({required Object name, required Object launcher}) => '${name}, started by ${launcher}, is asking to use Ham2K Logger.',
 			'settings.agentLink.watch' => 'Watch',
-			'settings.agentLink.watchDetail' => 'Read the operation, its QSOs, spots, the radio and your equipment, observe what you do as you log, and show messages.',
+			'settings.agentLink.watchDetail' => 'Read your operations and their QSOs, spots, the radio and your equipment, observe what you do as you log, and show messages.',
 			'settings.agentLink.change' => 'Make changes',
 			'settings.agentLink.changeDetail' => 'Fill in the QSO, mark spots, control the radio and equipment, and change settings and layouts.',
 			'settings.agentLink.stoppedWaiting' => ({required Object name}) => '${name} stopped waiting. If you allow it, it gets in the next time it connects.',

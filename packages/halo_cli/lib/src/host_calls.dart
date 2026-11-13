@@ -206,6 +206,39 @@ class CliHostCalls {
         if (ours != null && ours != uuid) return null;
         return {...operation, 'uuid': uuid};
 
+      case 'listOperations':
+        // The one operation the CLI was handed, as the app lists one; it is
+        // what the command runs against, so it counts as open and in front.
+        // Its options are checked as the app checks them: an extension that
+        // passes here must not be refused there.
+        final unknown = params.keys.where((key) => !const {'limit', 'open', 'extensionKey'}.contains(key));
+        if (unknown.isNotEmpty) throw FormatException('listOperations: unknown option ${unknown.first}');
+        final limit = params['limit'] ?? 50;
+        if (limit is! int || limit < 1 || limit > 500) throw const FormatException('listOperations: `limit` must be a whole number from 1 to 500');
+        if (params['open'] is! bool?) throw const FormatException('listOperations: `open` must be true or false');
+        final operation = log.operation;
+        if (operation == null) return const <Map<String, Object?>>[];
+        final qsos = [
+          for (final qso in log.qsos ?? const <Map<String, dynamic>>[])
+            if (!asQsonBool(qso['deleted']) && qso['band'] != 'event') qso,
+        ];
+        final starts = [for (final qso in qsos) ?asQsonNum(qso['startAtMillis'])?.toInt()]..sort();
+        final userTitle = asQsonString(operation['userTitle']) ?? '';
+        return [
+          {
+            'uuid': operation['uuid'] ?? '',
+            'stationCall': asQsonString(operation['stationCall']) ?? '',
+            'title': userTitle.isNotEmpty ? userTitle : (asQsonString(operation['title']) ?? ''),
+            'refs': [...?asQsonList(operation['refs'])?.whereType<Map<dynamic, dynamic>>()],
+            'grid': asQsonString(operation['grid']),
+            'qsoCount': qsos.length,
+            'startAtMillisMin': starts.firstOrNull,
+            'startAtMillisMax': starts.lastOrNull,
+            'open': true,
+            'front': true,
+          },
+        ];
+
       case 'getQsos':
         // Null, not [] — "no log access" is distinct from "an operation with
         // no QSOs yet" (HookContext.getQsos), and hooks branch on it.

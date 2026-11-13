@@ -96,9 +96,65 @@ the connection is secure.
 
 ## Watch and change
 
-`watch` lets the agent read: the operation, its QSOs, spots, the radio and
-equipment, and the events the operator's activity raises. It also lets the
-agent show the operator messages, on the FYI line and as notices, which any
-assistant may do without a permission. `change` adds everything else an
-assistant may do. The endpoint receives the access with every
-message and offers only the tools it allows.
+`watch` lets the agent read: the operations, their QSOs, spots, the radio
+and equipment, and the events the operator's activity raises. It also lets
+the agent show the operator messages, on the FYI line and as notices, which
+any assistant may do without a permission. `change` adds what an assistant
+may do to the station, short of transmitting: never a tune, CW, voice, PTT
+or a spot posted to the cluster, and never logging a contact. The agent
+fills in the contact; the operator logs it. The endpoint receives the access
+with every message and offers only the tools it allows; a change tool asked
+for by name from an app that only watches is refused, saying so.
+
+## Tools
+
+Each tool is one host call, or a few, made as the `mcp` extension:
+
+| Access | Tools |
+| --- | --- |
+| watch | `wait_for_events`, `list_operations`, `get_operation`, `get_qsos`, `get_call_history`, `find_calls`, `get_radio`, `list_radios`, `list_equipment`, `get_spots`, `get_band_annotations`, `search_settings`, `list_layouts`, `post_fyi`, `clear_fyi`, `show_notice` |
+| change | `update_draft`, `set_radio`, `set_antenna`, `set_rotator`, `stop_rotator`, `mark_spots`, `unmark_spots`, `annotate_band`, `clear_band_annotations`, `update_setting`, `switch_layout`, `focus_panel` |
+
+A tool about an operation takes its uuid, and reads the one in front without
+it; which operations exist, and which is in front, comes from
+`ctx.listOperations`. Every argument is checked against the tool's schema,
+and a missing, mistyped or unknown one is refused by name. A change the
+host refuses (`accepted: false`) comes back to the agent as a failed tool
+call, with the reason, so it is never reported to the operator as done.
+
+## Events
+
+MCP lets the app answer only what the agent asks, so an agent follows the
+operator by asking: `wait_for_events` answers at once with the events past
+the cursor it passes, or holds the request until one comes, at most 45
+seconds. Other requests from the same agent are answered meanwhile.
+
+The extension never holds the request itself: a hook call left open keeps
+the extension engine pumping its jobs every few milliseconds, which an
+agent looping on `wait_for_events` would keep up all afternoon. With
+nothing to answer, the tool answers at once with a hold in the reply's
+`_meta` (`ham2k/hold`: for how long, and the arguments to ask again with,
+which carry the cursor it read from). The link keeps the request, asks
+the extension again each time its assistant has observed something, the
+only moment its events change, and sends the last answer, without the
+hold, when the time is up or the app hangs up. It holds at most 64
+requests across every app, and refuses a 65th rather than answering it
+empty, which an agent calling in a loop would repeat at once.
+
+The events come from the `mcp` extension's own assistant, "Agent apps", in
+Settings › Application Preferences › Assistants: an operation opening,
+contacts logged (with the contacts, the first 50 of a larger batch), the
+radio and equipment changing, and the spots board moving, at most once a
+minute of real time. An operation counts as changed when anything the
+operator sets on it does, not the counters, contact times and status that
+logging a contact moves by itself. The radio counts as changed when its
+frequency to the kHz, mode, status or transmitting does, once however many
+operations are open. Typing is left out: watching the draft would make the
+app produce one on every pause in typing, for every open operation. While
+no operation is open, or the operator has the assistant switched off, no
+events come.
+
+They wait in one queue of the latest 200, which every connection reads with
+its own cursor; an agent further behind is told it `missed` some, as is one
+holding a cursor from before the extension last started: each start counts
+from a cursor of its own, far from any other's.

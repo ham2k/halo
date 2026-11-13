@@ -50,6 +50,8 @@ import type {
   FoundCall,
   CandidateVerdict,
   GetSpotsOptions,
+  ListOperationsOptions,
+  OperationSummary,
   BoardSpot,
   HeldBandAnnotation,
 } from "./types.ts"
@@ -1033,6 +1035,9 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     // Not identity-bearing (no ns/kvKey), but stamped with the caller all the
     // same: the host budgets a bundle's calls awaiting an answer by it.
     getOperation: async (uuid: string) => ((await dispatchHostCall("getOperation", { uuid }, record.extensionKey)) as Record<string, unknown> | null) ?? null,
+    // The operations list — see HookContext.listOperations.
+    listOperations: async (options?: ListOperationsOptions) =>
+      ((await dispatchHostCall("listOperations", { ...options }, record.extensionKey)) as OperationSummary[] | null) ?? [],
     // Null (unknown operation / no log access) passes through untouched —
     // it means something different from [] (see HookContext.getQsos).
     getQsos: (operationUuid: string) =>

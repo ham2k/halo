@@ -2634,7 +2634,7 @@ class _Translations$settings$agentLink$qrp extends Translations$settings$agentLi
 	@override String body({required Object name}) => '${name} is asking to use ham2k logger.';
 	@override String bodyLauncher({required Object name, required Object launcher}) => '${name}, started by ${launcher}, is asking to use ham2k logger.';
 	@override String get watch => 'watch';
-	@override String get watchDetail => 'read the operation, its qsos, spots, the radio and your equipment, observe what you do as you log, and show messages.';
+	@override String get watchDetail => 'read your operations and their qsos, spots, the radio and your equipment, observe what you do as you log, and show messages.';
 	@override String get change => 'make changes';
 	@override String get changeDetail => 'fill in the qso, mark spots, control the radio and equipment, and change settings and layouts.';
 	@override String stoppedWaiting({required Object name}) => '${name} stopped waiting. if you allow it, it gets in the next time it connects.';
@@ -6755,7 +6755,7 @@ extension on TranslationsQrp {
 			'settings.agentLink.body' => ({required Object name}) => '${name} is asking to use ham2k logger.',
 			'settings.agentLink.bodyLauncher' => ({required Object name, required Object launcher}) => '${name}, started by ${launcher}, is asking to use ham2k logger.',
 			'settings.agentLink.watch' => 'watch',
-			'settings.agentLink.watchDetail' => 'read the operation, its qsos, spots, the radio and your equipment, observe what you do as you log, and show messages.',
+			'settings.agentLink.watchDetail' => 'read your operations and their qsos, spots, the radio and your equipment, observe what you do as you log, and show messages.',
 			'settings.agentLink.change' => 'make changes',
 			'settings.agentLink.changeDetail' => 'fill in the qso, mark spots, control the radio and equipment, and change settings and layouts.',
 			'settings.agentLink.stoppedWaiting' => ({required Object name}) => '${name} stopped waiting. if you allow it, it gets in the next time it connects.',

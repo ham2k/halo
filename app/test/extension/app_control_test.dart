@@ -521,10 +521,23 @@ class _NoEndpoint implements AgentLinkEndpoint {
   bool get available => false;
 
   @override
+  Listenable get news => const _Never();
+
+  @override
   Future<List<Map<String, dynamic>>> handle({
     required String connection,
     required AgentClient client,
     required AgentAccess access,
     required Map<String, dynamic> message,
   }) async => const [];
+}
+
+class _Never implements Listenable {
+  const _Never();
+
+  @override
+  void addListener(VoidCallback listener) {}
+
+  @override
+  void removeListener(VoidCallback listener) {}
 }

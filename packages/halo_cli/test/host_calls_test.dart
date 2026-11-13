@@ -186,6 +186,56 @@ void main() {
       expect(await calls.call('getOperation', {'uuid': 'op-1'}), containsPair('uuid', 'op-1'));
     });
 
+    test('listOperations answers the one operation the CLI holds, counting only the contacts the app would', () async {
+      // A hook that finds operations through listOperations reaches nothing
+      // in a CLI run without it.
+      final calls = host(
+        log: const LogContext(
+          operation: {'uuid': 'op-1', 'stationCall': 'KI2D', 'userTitle': 'Field Day'},
+          qsos: [
+            {
+              'their': {'call': 'W1AW'},
+              'startAtMillis': 2000,
+            },
+            {
+              'their': {'call': 'K1AB'},
+              'startAtMillis': 1000,
+            },
+            {
+              'their': {'call': 'N0CALL'},
+              'startAtMillis': 500,
+              'deleted': true,
+            },
+            {'band': 'event', 'startAtMillis': 100},
+          ],
+        ),
+      );
+      expect(await calls.call('listOperations', {}), [
+        {
+          'uuid': 'op-1',
+          'stationCall': 'KI2D',
+          'title': 'Field Day',
+          'refs': <Map<dynamic, dynamic>>[],
+          'grid': null,
+          'qsoCount': 2,
+          'startAtMillisMin': 1000,
+          'startAtMillisMax': 2000,
+          'open': true,
+          'front': true,
+        },
+      ]);
+      expect(await host().call('listOperations', {}), isEmpty);
+      // Checked as the app checks them: an extension passing here must not
+      // be refused there.
+      for (final params in [
+        {'limit': 0},
+        {'limt': 5},
+        {'open': 'yes'},
+      ]) {
+        await expectLater(host().call('listOperations', params), throwsFormatException, reason: '$params');
+      }
+    });
+
     test('getQsos leaves out soft-deleted QSOs, in any client\'s spelling of deleted', () async {
       // The app never hands a hook a deleted QSO; a CLI replay of an
       // exported log that did would score or export contacts the operator

@@ -1,11 +1,15 @@
 {
   "key": "mcp",
   "name": "Agent Apps",
-  "version": "0.1.0",
-  "api": 23,
+  "version": "0.2.0",
+  "api": 25,
   "description": "Answers agent apps on this computer over MCP, through the app's agent link",
   "icon": "robot-outline",
   "experiments": ["mcp"],
-  "hooks": ["agentLink"],
-  "requiresRadioRead": true
+  "hooks": ["agentLink", "assistant"],
+  "requiresRadioRead": true,
+  "requiresRadioWrite": true,
+  "requiresDraftWrite": true,
+  "requiresSettingsWrite": true,
+  "requiresLayoutControl": true
 }

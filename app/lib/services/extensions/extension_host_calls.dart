@@ -31,6 +31,7 @@ class _ExtensionHostCalls {
       'translate' => _translate(params),
       'translateAll' => _translateAll(params),
       'getOperation' => _getOperation(params),
+      'listOperations' => _listOperations(params),
       'getQsos' => _getQsos(params),
       'getQsoChanges' => _getQsoChanges(params),
       'getSpotsForCall' => _getSpotsForCall(params),
@@ -263,6 +264,51 @@ class _ExtensionHostCalls {
     // Same shape as qsonPayloadFor's `operation`: the QSON with `uuid`
     // folded in.
     return operation == null ? null : {...operation.data, 'uuid': operation.uuid};
+  }
+
+  /// How many operations one `listOperations` call answers at most.
+  static const maxListedOperations = 500;
+
+  /// Backs `ctx.listOperations`: the operations list, the most recent first,
+  /// with which are open in a view and which is in front; with `open`, only
+  /// those, the front one first, read one by one rather than the whole list.
+  Future<dynamic> _listOperations(Map<String, dynamic> params) async {
+    // `extensionKey` is the caller, which the kernel stamps on every call.
+    final unknown = params.keys.where((key) => !const {'limit', 'open', 'extensionKey'}.contains(key));
+    if (unknown.isNotEmpty) throw ExtensionHostException('listOperations: unknown option ${unknown.first}');
+    final limit = params['limit'] ?? 50;
+    if (limit is! int || limit < 1 || limit > maxListedOperations) {
+      throw ExtensionHostException('listOperations: `limit` must be a whole number from 1 to $maxListedOperations');
+    }
+    final openOnly = params['open'] ?? false;
+    if (openOnly is! bool) throw ExtensionHostException('listOperations: `open` must be true or false');
+    final operations = _service.operations;
+    if (operations == null) return const <Map<String, dynamic>>[];
+    final open = _service.openOperationUuids?.call() ?? const <String>[];
+    final front = _service.frontOperationUuid?.call();
+    // `get` answers a deleted operation too, and one a view still shows may
+    // have been deleted elsewhere since.
+    final list = openOnly
+        ? [
+            for (final uuid in open.reversed.toSet())
+              if (await operations.get(uuid) case final operation? when !operation.deleted) operation,
+          ]
+        : await operations.watchAll().first;
+    return [
+      for (final operation in list.take(limit))
+        {
+          'uuid': operation.uuid,
+          'stationCall': operation.stationCall,
+          'title': operation.userTitle.isNotEmpty ? operation.userTitle : operation.title,
+          'refs': operation.refs,
+          'grid': operation.grid,
+          'qsoCount': operation.qsoCount,
+          'startAtMillisMin': operation.startAtMillisMin,
+          'startAtMillisMax': operation.startAtMillisMax,
+          'open': open.contains(operation.uuid),
+          'front': operation.uuid == front,
+        },
+    ];
   }
 
   Future<dynamic> _getQsos(Map<String, dynamic> params) async {

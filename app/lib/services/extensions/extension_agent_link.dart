@@ -14,6 +14,17 @@ mixin _ExtensionAgentLink implements AgentLinkEndpoint {
   List<ExtensionInfo> get availableExtensions;
   Set<String> get _loadedExtensionKeys;
 
+  final _agentLinkNews = _Pulse();
+
+  /// Pulsed after the endpoint's own assistant has observed something: the
+  /// only moment its events can change.
+  @override
+  Listenable get news => _agentLinkNews;
+
+  void noteAgentLinkObserved(String hookKey) {
+    if (hookKey == kAgentLinkEndpointKey) _agentLinkNews.pulse();
+  }
+
   /// The endpoint is the bundle the app ships under [kAgentLinkEndpointKey],
   /// never one installed: an installed bundle cannot take a built-in key,
   /// and the source is checked as well so that stays true here whatever
@@ -48,4 +59,8 @@ mixin _ExtensionAgentLink implements AgentLinkEndpoint {
     if (result is! List || result.any((reply) => reply is! Map)) throw ExtensionHostException('the agent link endpoint answered ${result.runtimeType}');
     return [for (final reply in result) (reply as Map).cast<String, dynamic>()];
   }
+}
+
+class _Pulse extends ChangeNotifier {
+  void pulse() => notifyListeners();
 }

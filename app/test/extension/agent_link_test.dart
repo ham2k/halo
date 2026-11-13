@@ -33,6 +33,14 @@ class _Endpoint implements AgentLinkEndpoint {
   final received = <({AgentAccess access, Map<String, dynamic> message})>[];
   Object? failWith;
 
+  /// What a test answers instead of the access, by message.
+  Map<String, dynamic>? Function(Map<String, dynamic> message)? resultFor;
+
+  final pulse = ValueNotifier(0);
+
+  @override
+  Listenable get news => pulse;
+
   @override
   Future<List<Map<String, dynamic>>> handle({
     required String connection,
@@ -48,11 +56,20 @@ class _Endpoint implements AgentLinkEndpoint {
       {
         'jsonrpc': '2.0',
         'id': id,
-        'result': {'access': access.name},
+        'result': resultFor?.call(message) ?? {'access': access.name},
       },
     ];
   }
 }
+
+/// A result asking the link to hold it, as the `mcp` extension's
+/// `wait_for_events` answers while nothing has happened.
+Map<String, dynamic> _held(int seconds, Map<String, dynamic> arguments) => {
+  'structuredContent': {'events': 0},
+  '_meta': {
+    kAgentHoldMetaKey: {'seconds': seconds, 'arguments': arguments},
+  },
+};
 
 /// The command's side of one connection.
 class _Command {
@@ -366,5 +383,104 @@ void main() {
     final reply = (await c.next())!;
     expect(reply['id'], 9);
     expect((reply['error'] as Map)['code'], -32603);
+  });
+
+  // Held in the endpoint's own hook call instead, the wait would keep the
+  // extension engine pumping its jobs every few milliseconds for as long as
+  // an agent loops on it.
+  group('a reply the endpoint asks to hold', () {
+    Future<_Command> connected() async {
+      await start();
+      final c = await command();
+      c.hello('claude-code');
+      unawaited(link.answer(await asked(), AgentAccess.watch));
+      await c.next();
+      return c;
+    }
+
+    Map<String, dynamic> argumentsOf(Map<String, dynamic> message) => ((message['params'] as Map)['arguments'] as Map).cast<String, dynamic>();
+
+    test('waits while other requests are answered, and is asked again, with the arguments it named, when the endpoint has news', () async {
+      final c = await connected();
+      var news = false;
+      endpoint.resultFor = (message) => message['id'] != 5
+          ? null
+          : news
+          ? {
+              'structuredContent': {'events': 1},
+            }
+          : _held(20, {'after': 7});
+      c.send({
+        'jsonrpc': '2.0',
+        'id': 5,
+        'method': 'tools/call',
+        'params': {'name': 'wait_for_events', 'arguments': <String, dynamic>{}},
+      });
+      c.send({'jsonrpc': '2.0', 'id': 6, 'method': 'ping'});
+      expect((await c.next())!['id'], 6, reason: 'the held request is not answered yet');
+
+      news = true;
+      endpoint.pulse.value++;
+      final reply = (await c.next())!;
+      expect(reply['id'], 5);
+      expect(reply['result'], {
+        'structuredContent': {'events': 1},
+      });
+      // Asked again from where the hold said, not from "now", or what came
+      // meanwhile would be skipped.
+      expect(argumentsOf(endpoint.received.last.message), {'after': 7});
+    });
+
+    // The extension reads its queue, then waits on a host call before it
+    // answers; an event that comes in between pulses the news while nothing
+    // is held yet, and would otherwise wait out the whole hold.
+    test('news that comes while the endpoint is answering asks again at once', () async {
+      final c = await connected();
+      var asks = 0;
+      endpoint.resultFor = (message) {
+        if (message['id'] != 5) return null;
+        if (++asks == 1) {
+          endpoint.pulse.value++;
+          return _held(20, {'after': 7});
+        }
+        return {
+          'structuredContent': {'events': 1},
+        };
+      };
+      c.send({'jsonrpc': '2.0', 'id': 5, 'method': 'tools/call', 'params': <String, dynamic>{}});
+      final reply = (await c.next())!;
+      expect(reply['id'], 5);
+      expect(reply['result'], {
+        'structuredContent': {'events': 1},
+      });
+      expect(asks, 2);
+    });
+
+    test('with no news, is answered when its time is up, without the hold in it', () async {
+      final c = await connected();
+      endpoint.resultFor = (message) => message['id'] == 5 ? _held(1, {'after': 7}) : null;
+      c.send({'jsonrpc': '2.0', 'id': 5, 'method': 'tools/call', 'params': <String, dynamic>{}});
+      final reply = (await c.next())!;
+      expect(reply['id'], 5);
+      expect(reply['result'], {
+        'structuredContent': {'events': 0},
+      });
+    });
+
+    test('is forgotten when its app hangs up: news asks the endpoint nothing more', () async {
+      final c = await connected();
+      endpoint.resultFor = (message) => message['id'] == 5 ? _held(20, {'after': 7}) : null;
+      c.send({'jsonrpc': '2.0', 'id': 5, 'method': 'tools/call', 'params': <String, dynamic>{}});
+      c.send({'jsonrpc': '2.0', 'id': 6, 'method': 'ping'});
+      await c.next();
+      await c.close();
+      for (var i = 0; i < 100 && link.connectionsOf(link.grants.single.id) > 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      final asked = endpoint.received.length;
+      endpoint.pulse.value++;
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(endpoint.received.length, asked);
+    });
   });
 }

@@ -209,6 +209,9 @@ class ExtensionService
   /// none is about.
   String? Function()? frontOperationUuid;
 
+  /// The uuids of the operations open in a view now, the front one last.
+  List<String> Function()? openOperationUuids;
+
   /// Back the `getOperation`/`getQsos` host calls (HookContext.getOperation/
   /// getQsos in the SDK). Optional like the other service references — a
   /// host without them (bench harnesses, focused tests) answers those calls

@@ -86,6 +86,14 @@ export interface HookContext {
   /// that only receive part of the picture (e.g. a `command` hook handed
   /// the operation it's typed into, wanting fresher or fuller data).
   getOperation?(uuid: string): Promise<Record<string, JSONValue> | null>
+  /// The operator's operations, the most recent first: what the list of
+  /// operations shows for each, and whether it is `open` in a view now and
+  /// the one in `front`; with `open: true`, only the open ones, the front
+  /// one first. Deleted ones are left out. `limit` is 50 when
+  /// omitted, never more than 500; a malformed or unknown option rejects the
+  /// promise. `[]` where the host keeps no log. Extension API 25; absent on
+  /// hosts older than it.
+  listOperations?(options?: ListOperationsOptions): Promise<OperationSummary[]>
   /// Fetches every QSO logged in an operation — each entry the QSO's raw
   /// QSON `data` — oldest first, excluding soft-deleted records but
   /// including event markers (`band: 'event'`). Resolves null when the
@@ -186,6 +194,34 @@ export interface HookContext {
     candidates: Record<string, Record<string, JSONValue>>,
     options?: { operationUuid?: string },
   ): Promise<Record<string, CandidateVerdict> | null>
+}
+
+/// `listOperations`' options.
+export interface ListOperationsOptions {
+  /// How many, the most recent first: 50 when omitted, never more than 500.
+  limit?: number
+  /// Only the operations open in a view now, the front one first.
+  open?: boolean
+}
+
+/// One operation as `listOperations` answers it.
+export interface OperationSummary {
+  uuid: string
+  /// The station's callsign, as the operation logs it.
+  stationCall: string
+  /// The title the operator gave it, or the one the app made up from its
+  /// references; empty when it has neither.
+  title: string
+  /// Its references (`{ type, ref, … }`): parks, summits, a contest.
+  refs: Record<string, JSONValue>[]
+  grid: string | null
+  qsoCount: number
+  /// When its first and latest contacts started; null before the first.
+  startAtMillisMin: number | null
+  startAtMillisMax: number | null
+  /// Whether a view shows it now, and whether that view is in front.
+  open: boolean
+  front: boolean
 }
 
 /// How a callsign matched the text `findCalls` or `host.dbLookupFindCalls`

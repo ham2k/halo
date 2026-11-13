@@ -133,3 +133,44 @@ class AgentGrant {
     );
   }
 }
+
+/// Where a reply carries a hold: the endpoint's way of asking the link to
+/// keep a request and ask again, rather than holding its own hook call open
+/// (docs/design/agent-link.md § Events). Kept in step with `HOLD_META_KEY`
+/// in extensions/core/mcp/src/mcp.ts.
+const kAgentHoldMetaKey = 'ham2k/hold';
+
+/// The hold [reply] asks for: for how long, and the arguments to ask again
+/// with. Null for a reply to send as it is.
+({int seconds, Map<String, dynamic> arguments})? agentHoldOf(Map<String, dynamic> reply) {
+  final hold = switch (reply['result']) {
+    {'_meta': {kAgentHoldMetaKey: final Map<String, dynamic> hold}} => hold,
+    _ => null,
+  };
+  if (hold == null) return null;
+  final seconds = hold['seconds'];
+  final arguments = hold['arguments'];
+  if (seconds is! num || seconds <= 0 || arguments is! Map<String, dynamic>) return null;
+  return (seconds: seconds.ceil(), arguments: arguments);
+}
+
+/// [reply] as the agent gets it, with no hold in it.
+Map<String, dynamic> withoutAgentHold(Map<String, dynamic> reply) {
+  final result = {...(reply['result'] as Map<String, dynamic>)};
+  final meta = {...(result['_meta'] as Map<String, dynamic>)}..remove(kAgentHoldMetaKey);
+  if (meta.isEmpty) {
+    result.remove('_meta');
+  } else {
+    result['_meta'] = meta;
+  }
+  return {...reply, 'result': result};
+}
+
+/// [message], a `tools/call`, with [arguments] in place of its own.
+Map<String, dynamic> withAgentArguments(Map<String, dynamic> message, Map<String, dynamic> arguments) {
+  final params = message['params'];
+  return {
+    ...message,
+    'params': {...(params is Map<String, dynamic> ? params : const <String, dynamic>{}), 'arguments': arguments},
+  };
+}

@@ -2634,7 +2634,7 @@ class _Translations$settings$agentLink$qro extends Translations$settings$agentLi
 	@override String body({required Object name}) => '${name} IS ASKING TO USE HAM2K LOGGER.';
 	@override String bodyLauncher({required Object name, required Object launcher}) => '${name}, STARTED BY ${launcher}, IS ASKING TO USE HAM2K LOGGER.';
 	@override String get watch => 'WATCH';
-	@override String get watchDetail => 'READ THE OPERATION, ITS QSOS, SPOTS, THE RADIO AND YOUR EQUIPMENT, OBSERVE WHAT YOU DO AS YOU LOG, AND SHOW MESSAGES.';
+	@override String get watchDetail => 'READ YOUR OPERATIONS AND THEIR QSOS, SPOTS, THE RADIO AND YOUR EQUIPMENT, OBSERVE WHAT YOU DO AS YOU LOG, AND SHOW MESSAGES.';
 	@override String get change => 'MAKE CHANGES';
 	@override String get changeDetail => 'FILL IN THE QSO, MARK SPOTS, CONTROL THE RADIO AND EQUIPMENT, AND CHANGE SETTINGS AND LAYOUTS.';
 	@override String stoppedWaiting({required Object name}) => '${name} STOPPED WAITING. IF YOU ALLOW IT, IT GETS IN THE NEXT TIME IT CONNECTS.';
@@ -6755,7 +6755,7 @@ extension on TranslationsQro {
 			'settings.agentLink.body' => ({required Object name}) => '${name} IS ASKING TO USE HAM2K LOGGER.',
 			'settings.agentLink.bodyLauncher' => ({required Object name, required Object launcher}) => '${name}, STARTED BY ${launcher}, IS ASKING TO USE HAM2K LOGGER.',
 			'settings.agentLink.watch' => 'WATCH',
-			'settings.agentLink.watchDetail' => 'READ THE OPERATION, ITS QSOS, SPOTS, THE RADIO AND YOUR EQUIPMENT, OBSERVE WHAT YOU DO AS YOU LOG, AND SHOW MESSAGES.',
+			'settings.agentLink.watchDetail' => 'READ YOUR OPERATIONS AND THEIR QSOS, SPOTS, THE RADIO AND YOUR EQUIPMENT, OBSERVE WHAT YOU DO AS YOU LOG, AND SHOW MESSAGES.',
 			'settings.agentLink.change' => 'MAKE CHANGES',
 			'settings.agentLink.changeDetail' => 'FILL IN THE QSO, MARK SPOTS, CONTROL THE RADIO AND EQUIPMENT, AND CHANGE SETTINGS AND LAYOUTS.',
 			'settings.agentLink.stoppedWaiting' => ({required Object name}) => '${name} STOPPED WAITING. IF YOU ALLOW IT, IT GETS IN THE NEXT TIME IT CONNECTS.',
