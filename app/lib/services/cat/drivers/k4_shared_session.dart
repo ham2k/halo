@@ -29,7 +29,7 @@ part 'k4_shared_session_receiver.dart';
 /// One CAT command owner for all logical receivers on a physical K4 link.
 /// The connection pool alone owns its lifetime; receiver facades never close
 /// the connection or initialize another AI stream, key queue, or TX owner.
-class K4SharedSession implements EquipmentSink {
+class K4SharedSession implements EquipmentSink, TunerSink, TuneCarrierSink {
   final void Function(List<int>) _sendBytes;
   final Stream<K4RemotePanPacket> _pan;
   final Map<String, dynamic> _config;
@@ -119,6 +119,7 @@ class K4SharedSession implements EquipmentSink {
       _voiceOwner = null;
       _radio.stopVoice();
     }
+    _radio.stopK4Tune(facade);
     // Ahead of the unkey: a packet after it keys the radio again.
     facade._output?.lost();
     if (_pttOwner == facade) {
@@ -440,6 +441,17 @@ class K4SharedSession implements EquipmentSink {
   void reportVoiceMemories(List<VoiceMemory> memories) => _remember('memories', (sink) => sink.reportVoiceMemories(memories));
   @override
   void reportDiagnostic(String? note) => _remember('diagnostic', (sink) => sink.reportDiagnostic(note));
+
+  @override
+  void reportTuner(TunerStatus? status) => _remember('tuner', (sink) {
+    if (sink case final TunerSink reporter) reporter.reportTuner(status);
+  });
+
+  @override
+  void reportTuneCarrier(bool on) => _remember('tuneCarrier', (sink) {
+    if (sink case final TuneCarrierSink reporter) reporter.reportTuneCarrier(on);
+  });
+
   @override
   void reportProblem(String? message) {
     _problem = message;

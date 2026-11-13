@@ -55,6 +55,24 @@ execute a stale power change. Disconnect clears pending writes. A refused or
 expired write reads the power back at once, so the app shows what the radio
 has; the refusal stays up until the next power answer after that read.
 
+## Built-in antenna tuner
+
+The USB, LAN and secure CAT pairings use `AT` to detect a KAT4 and read its
+Auto/Bypass mode. On R39 the mode remains in effect across band changes.
+PoLo keeps the last reported mode as the band or antenna changes. On a
+secure connection Main and Sub share the transmitter's mode. The radio
+stores antenna matches separately by band and antenna.
+
+Switching between bypass and auto only changes `AT`. An explicit Tune
+uses `TU3` after the radio confirms auto mode and an idle transmitter.
+Stop and disconnect use `TU0` for a tune started by that session. The radio
+reports an ATU search separately from a plain TUNE or TUNE LP carrier, so
+PoLo can classify both kinds of transmission without taking control of a
+tune started at the radio. Tune start and stop still need verification on a
+physical K4.
+
+## Keyers
+
 CW uses the existing Elecraft text/cancel commands and 24-character chunks,
 within the K4's 60-character limit, with a K4-specific 8–100 WPM range.
 The existing K4 voice dialect exposes eight memories and a 90-second ceiling:
