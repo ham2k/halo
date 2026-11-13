@@ -3,6 +3,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { EXPORT_DEFAULTS, exportQso, exportTypeDefinition, prepareExportOption, resolveExportSettings } from "./exportSettings.ts"
+import type { ExportTypeDefinition } from "./types.ts"
 
 const operation = { stationCall: "N0CALL/P", userTitle: "Private title", startAtMillisMin: Date.UTC(2026, 6, 15), refs: [] }
 
@@ -161,4 +162,48 @@ test("saved common defaults survive until an activity category is customized", (
   assert.equal(resolveExportSettings(other, global).filenameTemplate, "Saved filename")
   assert.equal(resolveExportSettings(reference, global).titleTemplate, "")
   assert.equal(resolveExportSettings(other, global).titleTemplate, "")
+})
+
+test("a type's choice is the operator's pick, and its default for a pick it no longer offers", () => {
+  const definition = {
+    ...exportTypeDefinition("potaActivation", "adif", "POTA"),
+    choices: [
+      {
+        key: "sigFields",
+        label: "Park fields",
+        options: [
+          { value: "potaRef", label: "POTA_REF only" },
+          { value: "both", label: "POTA_REF and SIG_INFO" },
+        ],
+        default: "potaRef",
+      },
+    ],
+  }
+  assert.deepEqual(resolveExportSettings(definition).choices, { sigFields: "potaRef" })
+  assert.deepEqual(resolveExportSettings(definition, {}, { choices: { sigFields: "both" } }).choices, { sigFields: "both" })
+  // A value no hook recognizes would write neither shape.
+  assert.deepEqual(resolveExportSettings(definition, {}, { choices: { sigFields: "sigOnly" } }).choices, { sigFields: "potaRef" })
+  // Not hidden behind custom templates, which gate the templates alone.
+  assert.deepEqual(resolveExportSettings(definition, {}, { customTemplates: false, choices: { sigFields: "both" } }).choices, { sigFields: "both" })
+  assert.equal(resolveExportSettings(exportTypeDefinition("cqww", "cabrillo", "CQ WW")).choices, undefined)
+})
+
+test("a malformed choice is left out, and the type's other settings still resolve", () => {
+  const good = { key: "sigFields", label: "Park fields", options: [{ value: "potaRef", label: "POTA_REF only" }], default: "potaRef" }
+  const definition = {
+    ...exportTypeDefinition("potaActivation", "adif", "POTA"),
+    defaults: { choices: { leaked: "x" } },
+    choices: [
+      good,
+      null,
+      { key: "noOptions", label: "No options", default: "a" },
+      { key: "strayDefault", label: "Stray default", options: [{ value: "a", label: "A" }], default: "b" },
+      { key: "badOptions", label: "Bad options", options: [{ value: 1, label: "One" }], default: 1 },
+    ],
+  } as unknown as ExportTypeDefinition
+  // Throwing here fails the settings of every type at once, and with them every export.
+  const resolved = resolveExportSettings(definition, {}, { choices: { noOptions: "a", strayDefault: "b" } })
+  // A pick for a choice the settings page never drew would tell the hook the operator chose it.
+  assert.deepEqual(resolved.choices, { sigFields: "potaRef" })
+  assert.equal(typeof resolved.includePrivateData, "boolean")
 })

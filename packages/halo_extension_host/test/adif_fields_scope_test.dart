@@ -80,6 +80,25 @@ __halo.defineExtension({
 })
 ''';
 
+/// An extension writing what its file's settings say: the pick for its
+/// export type's `sigFields` choice, or `none` when it was handed no settings.
+const _chooser = '''
+__halo.defineExtension({
+  key: 'chooser',
+  name: 'chooser',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('ref:chooser', { key: 'chooser', hook: { decorateRef: async function (args) { return args.ref } } })
+    api.registerHook('adifFields', { key: 'chooser', hook: {
+      fieldsForOneQSO: async function (args) {
+        const pick = args.exportSettings && args.exportSettings.choices && args.exportSettings.choices.sigFields
+        return [{ name: 'APP_TEST_CHOICE', value: pick || 'none' }]
+      },
+    }})
+  },
+})
+''';
+
 void main() {
   requireBundles();
 
@@ -127,13 +146,19 @@ void main() {
         ),
         ExtensionBundle(key: 'overreach', source: _overreach),
         ExtensionBundle(key: 'split-only', source: _splitOnly),
+        ExtensionBundle(key: 'chooser', source: _chooser),
       ],
     );
   });
 
   tearDownAll(() => host.dispose());
 
-  Future<String> export({List<Map<String, dynamic>> operationRefs = const [], List<Map<String, dynamic>> qsoRefs = const [], String? mainHandler}) async {
+  Future<String> export({
+    List<Map<String, dynamic>> operationRefs = const [],
+    List<Map<String, dynamic>> qsoRefs = const [],
+    String? mainHandler,
+    Map<String, dynamic>? exportSettings,
+  }) async {
     final result =
         await host.invokeHook(
               'export',
@@ -154,6 +179,7 @@ void main() {
                 ],
                 'exportType': 'adif',
                 'mainHandler': ?mainHandler,
+                'exportSettings': ?exportSettings,
               },
               timeout: const Duration(seconds: 20),
             )
@@ -307,5 +333,30 @@ void main() {
 
     expect(content, contains('<APP_TEST_CARELESS:1>Y'));
     expect(content, isNot(contains('APP_TEST_EVERYWHERE')), reason: 'a named file asks only its own program');
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // A program's own file is written the way the operator set its type up: the
+  // pick has to reach the hook that writes the program's fields, or a choice
+  // in Settings → Exports changes nothing in the file.
+  test("a program's own file hands its hook the file's settings; the full export hands none", () async {
+    final refs = [
+      {'type': 'chooser', 'ref': 'C-1'},
+    ];
+    final own = await export(
+      operationRefs: refs,
+      mainHandler: 'chooser',
+      exportSettings: {
+        'choices': {'sigFields': 'both'},
+      },
+    );
+    expect(own, contains('<APP_TEST_CHOICE:4>both'));
+
+    final full = await export(
+      operationRefs: refs,
+      exportSettings: {
+        'choices': {'sigFields': 'both'},
+      },
+    );
+    expect(full, contains('<APP_TEST_CHOICE:4>none'), reason: "the backup is no program's file, and no program's pick shapes it");
   }, timeout: const Timeout(Duration(seconds: 60)));
 }

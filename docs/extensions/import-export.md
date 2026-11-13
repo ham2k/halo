@@ -62,8 +62,8 @@ async getExportTypes() {
 An exporter without it still works but has no entry in the export settings.
 `ExportSettings` holds `includePrivateData`, `includeLookupData`,
 `customTemplates`, `filenameTemplate`, `compactFilenameTemplate`,
-`titleTemplate`, `adifNotesTemplate`, `adifCommentTemplate` and
-`adifQslMessageTemplate`, all optional, resolved from the SDK's defaults,
+`titleTemplate`, `adifNotesTemplate`, `adifCommentTemplate`,
+`adifQslMessageTemplate` and `choices` (below), all optional, resolved from the SDK's defaults,
 then the operator's global preferences, then the type's own `defaults`.
 `GlobalExportSettings` adds `referenceFilenameTemplate`,
 `referenceCompactFilenameTemplate` and `referenceTitleTemplate` and the
@@ -75,6 +75,27 @@ off keeps the operator's edits for later. Non-ADIF formats expose only the
 filename templates. Settings apply globally and per type, never per
 operation. Empty templates deliberately suppress text. A definition may
 supply `templateSample: { operation, log }` for the editor's preview.
+
+**A type's own settings.** `choices` (extension API 25) adds settings of
+the type's own to its page in Settings → Exports, each one pick among a few
+options:
+
+```ts
+choices: [{
+  key: "sigFields",
+  label: t("sigFieldsLabel"),
+  description: t("sigFieldsDescription"),
+  options: [{ value: "potaRef", label: t("potaRefOnly") }, { value: "both", label: t("potaRefAndSig") }],
+  default: "potaRef",
+}]
+```
+
+The picks arrive in `exportSettings.choices`, keyed by each choice's `key`:
+always one of its option values, and its `default` until the operator picks
+another. An app older than API 25 shows no choices and sends none, so a
+missing pick means the operator was never offered the choice: write what
+your files held before it existed, which a new default may not be. Forward `exportSettings` when you delegate to
+`adifForExport`, and your `adifFields` hook receives them too (below).
 
 **How a row looks.** `refType` names the activity the export covers: the
 app slices the file's contacts by it and takes the row's icon and color
@@ -146,24 +167,32 @@ or `hooks.invokeOne`; no bridge crossing. Which hooks are asked is below.
 
 ```ts
 interface AdifFieldsHook {
-  fieldsForOneQSO(args: { qso, operation, mainHandler? }, ctx): Promise<{ name, value }[]>
-  fieldCombinationsForOneQSO?(args: { qso, operation, mainHandler? }, ctx): Promise<{ name, value }[][]>
+  fieldsForOneQSO(args: { qso, operation, mainHandler?, exportSettings? }, ctx): Promise<{ name, value }[]>
+  fieldCombinationsForOneQSO?(args: { qso, operation, mainHandler?, exportSettings? }, ctx): Promise<{ name, value }[][]>
 }
 ```
 
 `mainHandler` is true when the file is your own export: how a program
 writes what only its own submission asks for, such as both stations'
 gridsquares, which the full export leaves to the contact's privacy rules.
+`exportSettings` (extension API 25) is the file's own, present when the file
+is a program's export rather than the full one: with `mainHandler`, its
+`choices` are the operator's picks for your file, such as which fields name
+your references.
 
-**One contact can owe several records.** Work a station standing in two
-parks and each park is submitted separately. `fieldCombinationsForOneQSO`
+**One contact can owe several records.** Where a program takes one
+reference per record, work a station standing at two of its references and
+each is submitted separately; a program whose field takes a list, as POTA's
+`POTA_REF` does, gets one record naming both. `fieldCombinationsForOneQSO`
 returns one field set per record; the exporter writes that many, shifting
 each later record's `QSO_DATE`/`TIME_ON` by a second so they are not read as
 duplicates. The record count is the largest any hook asks for. A hook
 returning a single set describes the contact, and its fields go on every
-record. Declaring both methods is fine: a hook that does is asked only for
-its combinations. Only a program's **own** export asks for combinations;
-the full export is one record per contact, the copy the operator keeps, and
+record. Declaring both methods is fine: a hook that does is asked both,
+its combinations win unless the list is empty, and either one failing fails
+the file. Only a named export asks for combinations, of its own
+program and the programs it includes, `mainHandler` saying which the hook
+is; the full export is one record per contact, the copy the operator keeps, and
 asks every hook for `fieldsForOneQSO` alone, so a splitting program answers
 that too, naming its first reference in `SIG_INFO` and every one in its
 `*_REF` list. A hook answering only combinations is left out of the full

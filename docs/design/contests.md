@@ -598,8 +598,9 @@ The motivating case: one operation that runs a contest throughout while also
 activating two parks, with a stretch in the middle at neither.
 
 **An activity that supports multiple references gets one export per
-reference.** Not one export that knows about segments — two POTA exports, one
-per park. And each is asked for, and generated against, a view in which it sees
+reference.** Not one export that knows about segments — two WWFF exports, one
+per park (POTA, whose uploader takes every park in one file, is the exception:
+activities.md §3.2). And each is asked for, and generated against, a view in which it sees
 **one operation carrying one ref, plus the QSOs that correspond to it**. The
 export hook does not reason about segments at all; the core has already reduced
 the log to the slice that reference is responsible for.
@@ -2359,9 +2360,11 @@ the POTA references already being logged. Each sponsor is offered the one file
 it asks for and nothing else: Ohio's Cabrillo; a per-park ADIF for Texas and
 Georgia, whose uploaders dictate the filename (`CALL@US-PARK-DATE`) and read
 the park out of it, so those files carry POTA's `SIG_INFO`/`MY_SIG_INFO`
-alongside the contest's own fields; and nothing at all for Florida, whose rules
-name no filename and whose §7.4 asks only for "the recommended POTA log
-format" — which is POTA's own per-park export, as it is in polo. ADIF's
+alongside the contest's own fields; and the same per-park ADIF for Florida,
+whose §7.4 asks for "the recommended POTA log format". POTA's own export
+joins every park into one record, so these files are where a contact with a
+station at several parks is a record per park, as all three sponsors count
+it. ADIF's
 `Contest_ID` enumeration lists none of the four events, and no sponsor reads
 the value. Per #149 and §5.6, `qp` and
 `stateparks` ship in HaLo as ONE extension each whose events are offered through

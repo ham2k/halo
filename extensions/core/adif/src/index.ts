@@ -25,7 +25,7 @@ import {
   startMillisOf,
   templateContext,
 } from "@ham2k/extension-sdk"
-import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, HookContext, JSONValue } from "@ham2k/extension-sdk"
+import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, ExportSettings, HookContext, JSONValue } from "@ham2k/extension-sdk"
 
 import manifest from "../manifest.json" with { type: "json" }
 import { formatAdifCoordinate } from "./coordinates.ts"
@@ -614,10 +614,10 @@ function refsOf(record: Record<string, unknown>): unknown[] {
 /// A NAMED handler's sets come back in the order it asked, itself first — the
 /// order their fields land in a record, and so, since a field name is written
 /// once ([renderRow]), the order that decides a collision. That holds whichever
-/// METHOD each hook answered: stateparks names `pota` in `includeFieldsFrom`,
-/// and pota answers combinations where the contest answers plain fields, so
-/// returning the combinations first would put the included hook ahead of the
-/// file's own program.
+/// METHOD each hook answered: a contest can name an activity in
+/// `includeFieldsFrom` that answers combinations where the contest answers
+/// plain fields, so returning the combinations first would put the included
+/// hook ahead of the file's own program.
 ///
 /// The FULL export asks the one method, so its sets come back in the hook
 /// priority order `invokeForRefs` answers in.
@@ -626,6 +626,7 @@ async function fieldSetsPerHook(
   operation: Record<string, unknown>,
   mainHandler?: string,
   includeFieldsFrom?: string[],
+  exportSettings?: ExportSettings,
 ): Promise<AdifField[][][]> {
   const byHook = new Map<string, AdifField[][]>()
   // A handler that also lists itself is asked once: the map below would collapse
@@ -633,7 +634,9 @@ async function fieldSetsPerHook(
   const keys = mainHandler ? [...new Set([mainHandler, ...(includeFieldsFrom ?? [])])] : undefined
   const invoke = async (method: string) =>
     keys
-      ? (await Promise.all(keys.map((key) => hooks.invokeOne("adifFields", key, method, { qso, operation, mainHandler: key === mainHandler })))).flat()
+      ? (
+          await Promise.all(keys.map((key) => hooks.invokeOne("adifFields", key, method, { qso, operation, mainHandler: key === mainHandler, exportSettings })))
+        ).flat()
       : hooks.invokeForRefs("adifFields", method, { qso, operation }, [...refsOf(operation), ...refsOf(qso)])
 
   const combined = keys ? await invoke("fieldCombinationsForOneQSO") : []
@@ -852,7 +855,7 @@ const ExportHandler = {
       // rover's county or a contest's setup lives on a ref the segments
       // restate, and a hook handed the base operation would write the last
       // county onto every record of the log.
-      const perHook = await fieldSetsPerHook(qso, operationForQso(operation, qso, segments), mainHandler, includeFieldsFrom)
+      const perHook = await fieldSetsPerHook(qso, operationForQso(operation, qso, segments), mainHandler, includeFieldsFrom, exportSettings)
       // One record per QSO unless a program's own file expands it. In practice
       // at most one hook does — you are not activating an n-fer in two
       // programs at once — so the record count is simply the largest any hook

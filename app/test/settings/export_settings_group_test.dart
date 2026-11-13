@@ -30,12 +30,74 @@ class _Extensions extends ExtensionService {
             ...overrides(type),
           },
           'defaults': const <String, dynamic>{},
+          if (type == 'potaActivation-adif')
+            'choices': [
+              {
+                'key': 'sigFields',
+                'label': 'Park fields',
+                'description': 'Which fields name the parks.',
+                'default': 'potaRef',
+                'options': [
+                  {'value': 'potaRef', 'label': 'POTA_REF only'},
+                  {'value': 'both', 'label': 'POTA_REF and SIG_INFO'},
+                ],
+              },
+              {
+                'key': 'hunterFields',
+                'label': 'Hunter fields',
+                'default': 'a',
+                'options': [
+                  {'value': 'a', 'label': 'A'},
+                  {'value': 'b', 'label': 'B'},
+                ],
+              },
+              // No options: nothing to pick, so no row.
+              {'key': 'broken', 'label': 'Broken', 'default': 'x'},
+              // A default no option names: the SDK sends no pick for it, so a
+              // row here would be a setting that reaches no hook.
+              {
+                'key': 'strayDefault',
+                'label': 'Stray default',
+                'default': 'x',
+                'options': [
+                  {'value': 'a', 'label': 'A'},
+                ],
+              },
+            ],
         },
     ];
   }
 }
 
 void main() {
+  test("a type's own choices are pickers on its page, each pick saved beside the others", () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final extensions = _Extensions();
+    final group = ExportsSettingsGroup(settings, extensions);
+    Map<String, dynamic> row(List<Map<String, dynamic>> fields, String key) => fields.firstWhere((e) => e['key'] == 'potaActivation-adif::choices/$key');
+
+    final fields = await group.typeElements('potaActivation-adif');
+    final park = row(fields, 'sigFields');
+    expect(park['fieldType'], 'select');
+    expect(park['label'], 'Park fields');
+    expect(park['description'], 'Which fields name the parks.');
+    expect(park['value'], 'potaRef', reason: 'an untouched choice shows the default the file is written with');
+    expect((park['options'] as List).map((o) => o['label']), ['POTA_REF only', 'POTA_REF and SIG_INFO']);
+    expect(fields.any((e) => e['key'] == 'potaActivation-adif::choices/broken'), isFalse);
+    expect(fields.any((e) => e['key'] == 'potaActivation-adif::choices/strayDefault'), isFalse);
+    expect((await group.typeElements('cqww-cabrillo')).any((e) => e['key'].toString().contains('choices/')), isFalse);
+
+    await group.commit('potaActivation-adif::choices/sigFields', 'both');
+    await group.commit('potaActivation-adif::choices/hunterFields', 'b');
+    // Saved as the one map `ExportSettings.choices` reads, the first pick kept.
+    expect(settings.exportTypeOverrides('potaActivation-adif')['choices'], {'sigFields': 'both', 'hunterFields': 'b'});
+    final updated = await group.typeElements('potaActivation-adif');
+    expect(row(updated, 'sigFields')['value'], 'both');
+    settings.dispose();
+    extensions.runtimeGeneration.dispose();
+  });
+
   test('defaults have two independent template categories and shared ADIF fields', () async {
     SharedPreferences.setMockInitialValues({});
     final settings = SettingsService(await SharedPreferences.getInstance());

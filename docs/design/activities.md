@@ -113,18 +113,35 @@ day spent only hunting, or at another park, after a break is not offered as an
 empty file.
 A log of one UTC day is offered what it always was.
 
+**POTA is the exception: one file for every park.** Its uploader reads
+`MY_POTA_REF` and `POTA_REF` as comma-separated lists, so an n-fer owes POTA
+ONE file claiming all its parks, and offering a file per park would have the
+operator upload the same contacts several times. `ham2k-pota` registers its own
+`export` hook rather than this helper: one option (`ham2k-pota-adif`, the same
+`potaActivation-adif` type, so the operator's settings for it carry over), named
+for every park, with no `ref` and the comma-joined list as `templateData.ref`.
+That joined value matches no single park, so the core slices to every segment
+where ANY park was activated, and the operation reaching `generateExport`
+carries them all. Each record's `MY_POTA_REF` still comes from its own
+contact's segment, so a log that moved parks at a break is one file whose
+contacts each claim only the parks they were made at.
+
 Not to be confused with the *other* multiplicity, which **is** built (A0):
 **one QSO can owe several ADIF records.** §4's per-reference rule says a
-park-to-park contact with a two-park station counts twice because it is
-submitted as two records — so `adifFields` gained
-`fieldCombinationsForOneQSO`, returning one field set per record, and the
-exporter writes that many, shifting each successive record's
+park-to-park contact with a two-park station counts twice, and a program that
+takes one reference per record has it submitted as two records — so
+`adifFields` gained `fieldCombinationsForOneQSO`, returning one field set per
+record, and the exporter writes that many, shifting each successive record's
 `QSO_DATE`/`TIME_ON` by a second (as app-polo's `qsonToADIF.js:144` does).
-`pota` implements it. That is per HUNTED reference, WITHIN one file; §3.2's is
-per ACTIVATED reference, ACROSS files. The two compose: activate two parks,
-work a station standing in two others, and you get two files of two records
-each. The full ADIF export splits neither way: it is one record per contact,
-as app-polo's is.
+The reference-activity factory's split programs implement it (§4b). That is
+per HUNTED reference, WITHIN one file; §3.2's is per ACTIVATED reference,
+ACROSS files. The two compose: activate two references, work a station
+standing in two others, and you get two files of two records each. POTA's
+own files split neither way: its `POTA_REF` names every hunted park
+comma-joined, so the same contact is one record in one file. A state-park
+file that includes POTA's fields still gets a record per hunted park, each
+naming its park in `SIG_INFO`, because those sponsors count records. The
+full ADIF export splits neither way: it is one record per contact, as app-polo's is.
 
 Each file also carries only its OWN program's fields. `generateExport` names
 the activity as the delegated request's `mainHandler` — app-polo's main handler
@@ -147,11 +164,9 @@ it. That is the whole difference — a rival program's `MY_SIG` claims the log,
 a satellite's fields describe the QSO — and only the program itself can say
 which of the two another extension's fields are.
 
-POTA's combinations still write `MY_POTA_REF` comma-joined over every activated
-park, where app-polo names a single one. Inside an activity export that is now
-moot — §3.2 hands `generateExport` an operation carrying one activation ref, so
-the joined list has one element. It still shows in the *plain* ADIF export of an
-n-fer activation, which is the honest thing for a file that claims both.
+POTA writes `MY_POTA_REF` comma-joined over every activated park, where
+app-polo names a single one and writes a file per park; `MY_SIG_INFO`, which
+takes one reference, names the first.
 
 ### 3.3 The GMA spot-posting API (shared) — **BUILT (A1)**
 
@@ -370,7 +385,8 @@ does for its own dupe rule. Port the *rules*, not the scan.
 `value` on the activation side is `refCount || 1`, and that is the programs'
 rule rather than an arithmetic slip: a single on-air contact with a station
 declaring two references is submitted as two records, one per reference, so it
-advances the activation by two. A station at one reference, or at none, is one
+advances the activation by two. POTA takes both references in one record and
+credits each, which is the same count. A station at one reference, or at none, is one
 contact. Only `allowsMultipleReferences` programs (`pota`, `llota`, `tota`) can
 reach a count above one — elsewhere the hunted refs are sliced to at most one
 first. Ported as-is.
@@ -490,13 +506,15 @@ programs genuinely disagree, not because the shape was unclear:
 
 | Rule | Who needs it |
 |---|---|
-| `splitRecordsPerHuntedRef` — one ADIF record per hunted reference, or one naming them all | split: `pota`, `mota`; join: `gma`, `siota`, `wwbota`, `zlota` |
+| `splitRecordsPerHuntedRef` — one ADIF record per hunted reference, or one naming them all | split: `mota`; join: `gma`, `siota`, `wwbota`, `zlota` (`pota`, outside the factory, joins in its own files and splits in the state-park files that include its fields) |
 | `qsosToActivate` as a function of the activated references | `wwbota` (10 in S5/Z3, else 25), `zlota` (1–4 by kind of place) |
 | `freshRefRescuesActivation` — does a fresh hunted reference rescue the activation credit on a repeat contact? | false for `mota`, `siota`; true elsewhere |
 | `tracksActivation` — does the award have a threshold at all? | false for `mota`, which counts nothing |
 
 A joining program must declare NO `fieldCombinationsForOneQSO`, not one that
 returns a single set — the exporter would otherwise ask twice for one answer.
+POTA declares it for the files that include its fields, and answers its own
+with an empty list, which leaves them to `fieldsForOneQSO`.
 
 HOTA and PPOTA, which only the catalog carries, brought two more:
 

@@ -126,8 +126,22 @@ class ExportsSettingsGroup extends SettingsGroup {
         },
       },
     };
+    final picks = Map<String, dynamic>.from(values['choices'] as Map? ?? {});
     return [
       {'type': 'markdown', 'text': id == 'default' ? labels.defaultsDescription : labels.shared},
+      for (final choice in _choices(definition))
+        {
+          'type': 'field',
+          'fieldType': 'select',
+          'key': '$id::$_choicePrefix${choice['key']}',
+          'label': choice['label'],
+          'icon': 'cog-outline',
+          'description': ?choice['description'],
+          'value': picks[choice['key']] ?? choice['default'],
+          'defaultValue': choice['default'],
+          'options': choice['options'],
+          'target': 'exports',
+        },
       if (definition['format'] == 'adif') ...[
         field(
           'includePrivateData',
@@ -171,11 +185,45 @@ class ExportsSettingsGroup extends SettingsGroup {
     ];
   }
 
+  static const _choicePrefix = 'choices/';
+
+  /// The type's own `choices` (ExportChoice), each with a key, a label, a
+  /// default and options of string values, the default among them. An
+  /// extension's malformed entry is left off the page, by the same rule that
+  /// leaves it out of `ExportSettings.choices` (`wellFormedChoices` in the
+  /// SDK's exportSettings.ts): a hook gets a pick only for a choice shown here.
+  List<Map<String, dynamic>> _choices(Map<String, dynamic> definition) => [
+    for (final choice in (definition['choices'] as List? ?? const []).whereType<Map<dynamic, dynamic>>())
+      if (choice['key'] is String && choice['label'] is String && choice['default'] is String && choice['options'] is List)
+        if (_options(choice['options'] as List) case final options when options.any((o) => o['value'] == choice['default']))
+          {
+            'key': choice['key'],
+            'label': choice['label'],
+            if (choice['description'] is String) 'description': choice['description'],
+            'default': choice['default'],
+            'options': options,
+          },
+  ];
+
+  static List<Map<String, String>> _options(List<dynamic> options) => [
+    for (final option in options.whereType<Map<dynamic, dynamic>>())
+      if (option['value'] is String && option['label'] is String) {'value': option['value'] as String, 'label': option['label'] as String},
+  ];
+
   @override
   Future<void> commit(String fieldKey, dynamic value) async {
     final separator = fieldKey.indexOf('::');
     if (separator >= 0) {
-      await settings.setExportTypeSetting(fieldKey.substring(0, separator), fieldKey.substring(separator + 2), value);
+      final type = fieldKey.substring(0, separator);
+      final key = fieldKey.substring(separator + 2);
+      if (key.startsWith(_choicePrefix)) {
+        // One map for every choice of the type, as `ExportSettings.choices`
+        // reads it: a pick is saved beside the others, never over them.
+        final picks = Map<String, dynamic>.from(settings.exportTypeOverrides(type)['choices'] as Map? ?? {});
+        await settings.setExportTypeSetting(type, 'choices', {...picks, key.substring(_choicePrefix.length): value});
+        return;
+      }
+      await settings.setExportTypeSetting(type, key, value);
     } else {
       await settings.setSettingValue(SettingsService.exportsGroup, fieldKey, value);
     }

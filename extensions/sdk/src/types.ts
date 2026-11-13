@@ -1423,8 +1423,12 @@ export interface AdifFieldsHook {
   ///
   /// `mainHandler` is true when the file is this extension's own export — the
   /// one place a program can write what only its own submission asks for.
+  ///
+  /// `exportSettings` is the file's, when the file is a program's own export
+  /// (absent from the full ADIF export): with `mainHandler`, its `choices`
+  /// are the operator's picks for this program's file. Extension API 25.
   fieldsForOneQSO(
-    args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue>; mainHandler?: boolean },
+    args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue>; mainHandler?: boolean; exportSettings?: ExportSettings },
     ctx: HookContext,
   ): Promise<{ name: string; value: string }[]>
 }
@@ -1470,6 +1474,27 @@ export interface ExportSettings {
   adifNotesTemplate?: string
   adifCommentTemplate?: string
   adifQslMessageTemplate?: string
+  /// The operator's pick for each of the export type's own `choices`, by the
+  /// choice's key — always one of its option values, its `default` until the
+  /// operator picks another. Extension API 25.
+  choices?: Record<string, string>
+}
+
+/// A setting an export type adds to its own page in Settings → Exports: one
+/// pick among a few options, such as which fields its file writes. The
+/// operator's pick reaches `generateExport` in `exportSettings.choices`, and
+/// the program's own `adifFields` hook in its `exportSettings`. Extension
+/// API 25; an older app doesn't show it and sends no pick, so a missing pick
+/// says the operator was never offered the choice.
+export interface ExportChoice {
+  /// Unique within the export type.
+  key: string
+  label: string
+  /// One sentence under the label.
+  description?: string
+  options: { value: string; label: string }[]
+  /// One of the options' values.
+  default: string
 }
 
 /// Global filename/title defaults are independent for reference and other activities.
@@ -1493,6 +1518,9 @@ export interface ExportTypeDefinition {
   defaults?: ExportSettings
   /// Illustrative operation/log values used by the template editor.
   templateSample?: Record<string, JSONValue>
+  /// Settings of the type's own, shown on its page in Settings → Exports.
+  /// Extension API 25.
+  choices?: ExportChoice[]
 }
 
 export interface ExportRequest {

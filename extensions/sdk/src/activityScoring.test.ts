@@ -136,9 +136,9 @@ test("past five references the ticks become a count", async () => {
 // --- Park-to-park counts per reference ---------------------------------------
 
 test("a contact with a two-park station advances MY park by two", async () => {
-  // One on-air contact, but the programs count it per reference: it is
-  // submitted as two records, one per park, so it is two contacts toward the
-  // activation. Only reachable where `allowsMultipleReferences` is set.
+  // One on-air contact, but the programs credit it per reference — as two
+  // records, or one record naming both parks — so it is two contacts toward
+  // the activation. Only reachable where `allowsMultipleReferences` is set.
   const operation = operationActivating("potaActivation", "US-0001")
   const result = await score(POTA, operation, [qso("W1AW", { hunting: ["US-9001", "US-9002"] })])
   assert.deepEqual(tally(result.operationSummary, "activation")!.activatedRefs, { "US-0001": 2 })

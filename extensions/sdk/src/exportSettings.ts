@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MIT
 
-import type { ExportOption, ExportSettings, ExportTypeDefinition, GlobalExportSettings, JSONValue } from "./types.ts"
+import type { ExportChoice, ExportOption, ExportSettings, ExportTypeDefinition, GlobalExportSettings, JSONValue } from "./types.ts"
 import { startMillisOf } from "./exportNames.ts"
 import { templateContext } from "./templateContext.ts"
 import { oneLine, renderTemplate } from "./templates.ts"
@@ -63,6 +63,24 @@ const templateKeys = [
   "adifQslMessageTemplate",
 ] as const
 
+/// The choices an extension declared that the app can offer: a string key,
+/// label and default, and string-valued options among which the default is.
+/// The settings page draws the same ones (`export_settings_group.dart`), so a
+/// hook gets a pick exactly for the choices the operator was shown; a
+/// malformed one is left out rather than failing every type's settings.
+function wellFormedChoices(choices: unknown): ExportChoice[] {
+  if (!Array.isArray(choices)) return []
+  const isText = (value: unknown): value is string => typeof value === "string"
+  return choices.flatMap((choice: Partial<Record<keyof ExportChoice, unknown>> | null) => {
+    if (!isText(choice?.key) || !isText(choice.label) || !isText(choice.default) || !Array.isArray(choice.options)) return []
+    const options = (choice.options as Partial<Record<"value" | "label", unknown>>[]).filter(
+      (option): option is ExportChoice["options"][number] => isText(option?.value) && isText(option.label),
+    )
+    if (!options.some((option) => option.value === choice.default)) return []
+    return [{ ...(choice as ExportChoice), options }]
+  })
+}
+
 export function resolveExportSettings(definition: ExportTypeDefinition, global: GlobalExportSettings = {}, overrides: ExportSettings = {}): ExportSettings {
   const defaults = resolveGlobalExportSettings(global)
   const reference = definition.templateCategory === "reference"
@@ -86,6 +104,18 @@ export function resolveExportSettings(definition: ExportTypeDefinition, global: 
       // Empty is intentional: an empty ADIF template suppresses that field.
       if (typeof overrides[key] === "string") resolved[key] = overrides[key]
     }
+  }
+  // A pick the type no longer offers — a renamed option, an extension
+  // update — is the default again rather than a value no hook recognizes.
+  delete resolved.choices
+  const choices = wellFormedChoices(definition.choices)
+  if (choices.length) {
+    resolved.choices = Object.fromEntries(
+      choices.map((choice) => {
+        const picked = overrides.choices?.[choice.key]
+        return [choice.key, choice.options.some((option) => option.value === picked) ? picked! : choice.default]
+      }),
+    )
   }
   if (definition.format !== "adif") {
     delete resolved.includePrivateData
