@@ -227,7 +227,7 @@ class _K4ReceiverSession
   @override
   int? sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) => _usable ? owner._radio.sendRaw(bytes, onAnswer: onAnswer) : null;
   @override
-  bool get canStartTune => owner._radio.canStartTune;
+  bool get canStartTune => _usable && owner._radio.canStartTune;
   @override
   void setTuner({required bool inline}) {
     if (_usable) owner._radio.setTuner(inline: inline);
@@ -235,11 +235,11 @@ class _K4ReceiverSession
 
   @override
   void startTune() {
-    if (_usable) owner._radio.startTune();
+    if (_usable) owner._radio.startK4Tune(this);
   }
 
   @override
   void stopTune() {
-    if (_usable) owner._radio.stopTune();
+    if (_usable) owner._radio.stopK4Tune(this);
   }
 }

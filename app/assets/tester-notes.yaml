@@ -11,6 +11,7 @@ upcoming:
     - "New per-pane map settings, with Map Movements and Map Framing choices"
     - "Added Elecraft K3 and K3S to the radio list, with CW and voice keying (tell us how it behaves)"
     - "New CW and phone messages on F1–F8 through a CAT-controlled radio"
+    - "New built-in antenna tuner controls for Elecraft K4 radios"
     - "New Track run / S&P operating styles setting (Settings → Logging)"
     - "Links in Web Site panels open inside the panel, with a Back button"
     - "New Info and Summaries panel settings: themes, section order, checklist style"
