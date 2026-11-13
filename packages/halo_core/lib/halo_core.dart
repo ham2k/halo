@@ -10,6 +10,7 @@ export 'src/data_file_parsing.dart';
 export 'src/ham2k_data_file.dart';
 export 'src/db/database.dart';
 export 'src/dev_log.dart';
+export 'src/export_filename.dart';
 export 'src/format.dart';
 export 'src/ham/band_annotations.dart';
 export 'src/ham/dxcc_entities.dart';

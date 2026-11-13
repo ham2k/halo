@@ -53,7 +53,10 @@ void main() {
       // would be one file there.
       expect(safeExportFilename('x.adi.'), 'x.adi');
       expect(safeExportFilename('x.adi . '), 'x.adi');
-      expect(safeExportFilename('.hidden'), '.hidden');
+      // A hidden name is a dotfile: `.bashrc` in the home directory runs.
+      expect(safeExportFilename('.bashrc'), 'bashrc');
+      expect(safeExportFilename('. .zshrc'), 'zshrc');
+      expect(safeExportFilename('..adi'), 'adi');
     });
 
     test('drops format characters, which would show one extension and save another', () {

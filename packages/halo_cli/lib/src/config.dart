@@ -221,11 +221,39 @@ class CliConfig {
       if (extensionOverrides.isNotEmpty) 'extensions': extensionOverrides,
     }..removeWhere((_, value) => value is Map && value.isEmpty);
 
-    target.parent.createSync(recursive: true);
-    target.writeAsStringSync('${const JsonEncoder.withIndent('  ').convert(json)}\n');
     // Credentials live in here. The keychain the app uses is protected by the
-    // OS; this file has only its mode.
-    if (!Platform.isWindows) Process.runSync('chmod', ['600', target.path]);
+    // OS; this file has only its mode. Written in place, a new file is
+    // readable by others under the usual umask until a chmod after the
+    // write, and a reader who opened it then keeps reading every later save
+    // of the same file. So it is written in a staging directory only this
+    // user can enter (created 0700, under a name no one can guess), made
+    // 0600 there, and renamed into place. A link is followed, so a config
+    // kept elsewhere and linked here is the file that changes.
+    final real = target.existsSync() ? File(target.resolveSymbolicLinksSync()) : target;
+    final parent = real.parent;
+    if (!parent.existsSync()) {
+      parent.createSync(recursive: true);
+      _restrict(parent, '700');
+    }
+    final staging = parent.createTempSync('.halo-cli-');
+    try {
+      final pending = File('${staging.path}/${real.uri.pathSegments.last}')
+        ..writeAsStringSync('${const JsonEncoder.withIndent('  ').convert(json)}\n', flush: true);
+      _restrict(pending, '600');
+      pending.renameSync(real.path);
+    } finally {
+      staging.deleteSync(recursive: true);
+    }
+  }
+
+  /// Sets [entity]'s mode, or throws: a credentials file left readable is a
+  /// failure to save it, not a detail.
+  static void _restrict(FileSystemEntity entity, String mode) {
+    if (Platform.isWindows) return;
+    final result = Process.runSync('chmod', [mode, entity.path]);
+    if (result.exitCode != 0) {
+      throw FileSystemException('could not make it private (chmod $mode): ${'${result.stderr}'.trim()}', entity.path);
+    }
   }
 
   static Map<String, Object?> _mapOf(Object? value) => value is Map ? value.cast<String, Object?>() : const <String, Object?>{};

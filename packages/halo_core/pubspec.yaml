@@ -12,6 +12,7 @@ dependencies:
   clock: ^1.1.1
   drift: ^2.28.0
   meta: ^1.15.0
+  path: ^1.9.0
   uuid: ^4.5.0
 
 dev_dependencies:

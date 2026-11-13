@@ -11,7 +11,9 @@ import 'dart:io';
 
 import 'package:halo_cli/src/cli.dart';
 import 'package:halo_cli/src/commands/account_commands.dart';
+import 'package:halo_cli/src/commands/hook_commands.dart' show exportTarget;
 import 'package:halo_cli/src/config.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 void main() {
@@ -112,6 +114,51 @@ void main() {
 
     test('a value containing = keeps it', () {
       expect(assignmentsFor(account: qrz, commandLine: const ['password=a=b']), {'password': 'a=b'});
+    });
+  });
+
+  group('files the CLI writes', () {
+    // An export hook is extension code; its filename is the extension's to
+    // choose. Joined as-is, `../.bashrc` writes the operator's shell startup,
+    // and `.bashrc` does when --out is the home directory.
+    test('an export lands in the directory named, under a name and nothing more', () {
+      expect(exportTarget(temp.path, '../.bashrc').path, p.join(temp.path, 'bashrc'));
+      expect(exportTarget(temp.path, '/etc/passwd').path, p.join(temp.path, 'passwd'));
+      expect(exportTarget(temp.path, r'..\..\x.adi').path, p.join(temp.path, 'x.adi'));
+      expect(exportTarget(temp.path, 42).path, p.join(temp.path, 'export.txt'));
+      expect(exportTarget(configPath, '../elsewhere.adi').path, configPath, reason: 'a file named with --out is the file');
+    });
+
+    // Written in place, a new config is readable by others under the usual
+    // umask until a chmod after the write, and a reader who opened it then
+    // keeps reading every later save.
+    test('the config, credentials and all, is never readable by anyone else', () {
+      if (Platform.isWindows) return;
+      String mode(String path) => (FileStat.statSync(path).mode & 0x1ff).toRadixString(8);
+      CliConfig.load(environment: {'XDG_CONFIG_HOME': temp.path}).setAccountSession('qrz', {'key': 'abc123'});
+      final made = '${temp.path}/ham2k';
+      expect(mode('$made/halo-cli.json'), '600');
+      expect(mode(made), '700', reason: 'a directory the CLI made for it is private too');
+      expect(Directory(made).listSync().map((e) => e.uri.pathSegments.last), ['halo-cli.json'], reason: 'nothing left beside it');
+
+      final shared = Directory('${temp.path}/shared')..createSync();
+      Process.runSync('chmod', ['755', shared.path]);
+      final loose = File('${shared.path}/halo-cli.json')..writeAsStringSync('{}');
+      Process.runSync('chmod', ['644', loose.path]);
+      CliConfig.load(path: loose.path).setAccountSession('qrz', {'key': 'abc123'});
+      expect(mode(loose.path), '600', reason: 'a loose file is made private by the next save');
+      expect(mode(shared.path), '755', reason: "a directory that was already there is not the CLI's to change");
+      expect(shared.listSync().map((e) => e.uri.pathSegments.last), ['halo-cli.json'], reason: 'the staging directory goes once the file is in place');
+
+      // A config kept elsewhere and linked here is the one that changes.
+      final kept = File('${temp.path}/dotfiles/halo-cli.json')
+        ..createSync(recursive: true)
+        ..writeAsStringSync('{}');
+      final link = Link('${temp.path}/linked.json')..createSync(kept.path);
+      CliConfig.load(path: link.path).setAccountSession('qrz', {'key': 'abc123'});
+      expect(FileSystemEntity.isLinkSync(link.path), isTrue);
+      expect(kept.readAsStringSync(), contains('abc123'));
+      expect(mode(kept.path), '600');
     });
   });
 }

@@ -10,7 +10,8 @@
 
 import 'dart:io';
 
-import 'package:halo_core/halo_core.dart' show Hooks, RefMethod;
+import 'package:halo_core/halo_core.dart' show Hooks, RefMethod, safeExportFilename;
+import 'package:path/path.dart' as p;
 
 import '../cli.dart';
 import '../runtime.dart' show CliUsageError;
@@ -189,11 +190,12 @@ class ExportCommand extends ExtCommand {
       }
       // Exports are files. Keeping the body out of stdout means the JSON stays
       // readable and an ADIF with CRLFs lands on disk byte-for-byte.
-      final target = FileSystemEntity.isDirectorySync(out) ? File('$out/${result['filename'] ?? 'export.txt'}') : File(out);
+      final target = exportTarget(out, result['filename']);
       target.writeAsStringSync('${result['content'] ?? ''}');
       emit({
         for (final entry in result.entries)
           if (entry.key != 'content') entry.key: entry.value,
+        'filename': p.basename(target.path),
         'writtenTo': target.path,
         'bytes': target.lengthSync(),
       });
@@ -201,6 +203,13 @@ class ExportCommand extends ExtCommand {
     });
   }
 }
+
+/// Where `export --out` writes: [out] itself, or, when it is a directory,
+/// the file there the hook named. The name is the hook's, so it is reduced
+/// to a name ([safeExportFilename]): `../.bashrc` lands in [out] as
+/// `.bashrc`, not beside it.
+File exportTarget(String out, Object? offered) =>
+    FileSystemEntity.isDirectorySync(out) ? File(p.join(out, safeExportFilename(offered is String ? offered : null))) : File(out);
 
 /// `suggest` — the Activities view's search and nearby list.
 class SuggestCommand extends ExtCommand {
