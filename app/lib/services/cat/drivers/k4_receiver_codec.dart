@@ -46,6 +46,16 @@ String? buildK4ReceiverMode(K4Receiver receiver, String mode) {
   return (receiver: match[1]!.isEmpty ? K4Receiver.main : K4Receiver.sub, dbm: dbm);
 }
 
+final _txMeter = RegExp(r'^\d{6}(\d{3})(\d{3})$');
+
+/// TM includes ALC bars and compression. The shared ALC meter expects a
+/// calibrated fraction, so expose only forward power and SWR here.
+({int forward, int swrTenths})? parseK4TransmitMeter(String params) {
+  final match = _txMeter.firstMatch(params);
+  if (match == null) return null;
+  return (forward: int.parse(match[1]!), swrTenths: int.parse(match[2]!));
+}
+
 /// SSB has a documented RF orientation. Shifted CW and DATA do not, so
 /// their filters stay unknown rather than inventing an on-frequency marker.
 Passband? k4ReceiverPassband({required String? mode, required int? widthHz, required int? centerHz, required int? cwPitchHz}) {

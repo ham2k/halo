@@ -178,29 +178,31 @@ class KenwoodDriver extends EquipmentDriver {
   @override
   int get telemetryWatchBytes => kenwoodTxWatchBytes;
 
-  /// Per node: only an entry whose calibration file scales a meter reads it,
-  /// so a generic Kenwood's placeholder is its watch's alone.
+  /// Per node: the K4 reads its own signal meter. A Kenwood without a
+  /// calibration file only budgets for its transmit watch.
   @override
   Duration defaultTelemetryInterval(Map<String, dynamic> config) => telemetryIntervalFor(
     const {},
     cycleBytes:
         kenwoodTxWatchBytes +
-        kenwoodMeterCycleBytes(
-          calibrationFor(config),
-          transmitting: true,
-          capturing: config[meterCaptureKey] == true,
-          lab599: modeDialectFrom(config) == KenwoodModeDialect.lab599,
-          k3: !isK4 && config[k3Key] == true,
-        ),
+        (isK4
+            ? _k4SignalExchangeBytes
+            : kenwoodMeterCycleBytes(
+                calibrationFor(config),
+                transmitting: true,
+                capturing: config[meterCaptureKey] == true,
+                lab599: modeDialectFrom(config) == KenwoodModeDialect.lab599,
+                k3: !isK4 && config[k3Key] == true,
+              )),
     baudRate: serialBaudRateOrNull(config),
   );
 
-  /// What the entry's calibration file scales, and a TX-500's supply. A
-  /// generic entry names no file, since it cannot know which radio's scale
-  /// applies, and so reads none.
+  /// The K4 reports its own scaled values. For Kenwoods, the calibration
+  /// file defines which meters have a scale. A TX-500 also reports supply volts.
   @override
-  Set<RadioMeter> telemetryMetersWith(Map<String, dynamic> config) =>
-      isK4 ? const {} : kenwoodMetersFor(calibrationFor(config), lab599: modeDialectFrom(config) == KenwoodModeDialect.lab599, k3: config[k3Key] == true);
+  Set<RadioMeter> telemetryMetersWith(Map<String, dynamic> config) => isK4
+      ? const {RadioMeter.signalDbm, RadioMeter.powerOut, RadioMeter.swr}
+      : kenwoodMetersFor(calibrationFor(config), lab599: modeDialectFrom(config) == KenwoodModeDialect.lab599, k3: config[k3Key] == true);
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
@@ -307,4 +309,38 @@ class KenwoodDriver extends EquipmentDriver {
     pollIntervalConfigKey => validatePollInterval(value),
     _ => null,
   };
+}
+
+extension _KenwoodAntennaParsing on KenwoodSession {
+  /// `AN`'s answer as ports, or null when it is not in [antennaDialect]'s
+  /// shape.
+  ///
+  /// The TS-590 transmits on ANT1 or ANT2 and receives there too unless its
+  /// RX ANT jack is switched in. So it is [RadioAntennas.separate], but its
+  /// receive choice is only ever the transmit port or RX ANT: offering the
+  /// other transmit port for receive would offer a pairing it cannot make.
+  RadioAntennas? _parseAntennas(String params) {
+    switch (antennaDialect) {
+      case KenwoodAntennaDialect.twoPort:
+        final port = parseKenwoodAntennaParams(params);
+        if (port == null) return null;
+        final name = kenwoodAntennaPorts[port - 1];
+        return RadioAntennas(rxPorts: kenwoodAntennaPorts, txPorts: kenwoodAntennaPorts, rx: name, tx: name);
+      case KenwoodAntennaDialect.ts590:
+        final answer = parseTs590AntennaParams(params);
+        if (answer == null) return null;
+        final tx = kenwoodAntennaPorts[answer.port - 1];
+        return RadioAntennas(
+          rxPorts: [tx, ts590RxAntennaPort],
+          txPorts: kenwoodAntennaPorts,
+          rx: answer.rxAntenna ? ts590RxAntennaPort : tx,
+          tx: tx,
+          separate: true,
+        );
+      case KenwoodAntennaDialect.k3:
+        return _parseK3Antennas(params);
+      case null:
+        return null;
+    }
+  }
 }

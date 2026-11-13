@@ -535,7 +535,7 @@ void main() {
       baseline = sink.sent.length;
       session.teardown();
       owner.teardown();
-      expect(sink.sent, hasLength(baseline), reason: 'remote disconnect must not downgrade AI4 with AI0');
+      expect(sink.sent.skip(baseline), ['TM0;'], reason: 'remote disconnect stops meter push without downgrading AI4');
       expect(async.pendingTimers, isEmpty);
     });
   });
@@ -726,7 +726,7 @@ void main() {
       expect(f.cat.pttHeldOn(target), isTrue);
       expect(_commandsWithoutHeartbeat(secure), isEmpty, reason: 'closing the non-owning receiver cannot release the physical key');
       await f.cat.disconnect(target);
-      expect(_commandsWithoutHeartbeat(secure), ['RX;', 'TQ;']);
+      expect(_commandsWithoutHeartbeat(secure), ['RX;', 'TQ;', 'TM0;']);
       expect(f.cat.pttHeldOn(target), isFalse);
     });
   }

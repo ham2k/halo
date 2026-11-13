@@ -109,6 +109,9 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
     }
     _publish(facade);
     _publishChannels();
+    if (facade._active && !_disposed && (facade.receiver == K4Receiver.main || _subOn == true)) {
+      _send('SMH${facade.receiver.suffix};');
+    }
   }
 
   void _detach(_K4ReceiverSession facade) {
@@ -252,7 +255,9 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
         }
       case 'SB':
         if (params != '0' && params != '1') return;
+        final wasOn = _subOn == true;
         _subOn = params == '1';
+        if (!wasOn && _subOn == true && _facades.any((facade) => facade._active && facade.receiver == K4Receiver.sub)) _send(r'SMH$;');
       case 'BW':
         final width = parseElecraftBandwidthParams(params);
         if (width == null) return;
