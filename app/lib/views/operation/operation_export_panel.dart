@@ -35,6 +35,7 @@ import '../../settings/settings_target_dialog.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/export_service.dart';
+import '../../services/link_opener.dart';
 import '../../services/status_bar_service.dart';
 import '../../tools/operation_title.dart';
 import 'stash_sent_dialog.dart';
@@ -880,6 +881,13 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
                       style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: colors.onSurfaceAccent),
                     ),
                     if (option['filename'] != null) Text(filename, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    if (option['instructions'] case final String instructions when instructions.trim().isNotEmpty)
+                      InlineMarkdownText(
+                        instructions,
+                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface, fontFamilyFallback: const [emojiFontFamily]),
+                        onOpenLink: openExternalUrl,
+                        maxLines: 2,
+                      ),
                   ],
                 ),
               ),

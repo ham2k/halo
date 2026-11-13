@@ -1583,6 +1583,13 @@ export interface ExportOption {
   /// applies. Omit it only if the name genuinely can't be known until the
   /// content exists.
   filename?: string
+  /// What the operator does with the file once they have it, in one short
+  /// sentence — "Upload it at [pota.app](https://pota.app/#/user/logs)". The
+  /// panel shows it below the filename as inline markdown, cut off after two
+  /// lines, so a link is the way to point at anything longer. A link opens
+  /// only when it is `https`, `http` or `mailto`; images are not shown.
+  /// Extension API 25; an older app doesn't show it.
+  instructions?: string
   /// Icon for the panel row, by name (see `resolveIconName`). Omit it and an
   /// export that names a `refType` inherits its activity's icon, exactly as
   /// `color` below inherits the accent — a contest's files are the contest's

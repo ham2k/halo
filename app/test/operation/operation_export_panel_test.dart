@@ -14,11 +14,12 @@
 //     built by the extensions, so they can't be patched up locally — WITHOUT
 //     discarding ticks already made.
 
-import 'dart:ui' show CheckedState;
+import 'dart:ui' show CheckedState, SemanticsAction;
 import 'dart:async';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -380,6 +381,43 @@ void main() {
       expect(iconX, lessThan(labelX));
       expect(labelX, lessThan(buttonX));
       expect(buttonX, lessThan(checkboxX), reason: 'the checkbox is the far-right control');
+    });
+
+    // An extension's instructions are markdown so they can point at the
+    // upload page; rendered as plain text the operator would read raw
+    // `[pota.app](…)` and have nothing to tap — and a screen reader, which
+    // only reaches the link as its own node, would have nothing to activate.
+    testWidgets("an option's instructions sit under its filename, with a live link", (tester) async {
+      final handle = tester.ensureSemantics();
+      exports.potaInstructions = 'Upload it at [pota.app](https://pota.app/#/user/logs)';
+      await pump(tester);
+
+      final instructions = find.textContaining('Upload it at pota.app', findRichText: true);
+      expect(instructions, findsOneWidget);
+      expect(tester.getTopLeft(instructions).dy, greaterThan(tester.getTopLeft(find.text('2026-07-15 N0CALL at US-1234.adi')).dy));
+
+      final link = find.semantics.byPredicate((node) => node.label == 'pota.app');
+      expect(link, findsOne);
+      final linkNode = link.evaluate().single;
+      expect(linkNode.flagsCollection.isLink, isTrue);
+      expect(linkNode.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+
+      handle.dispose();
+    });
+
+    // The row is one entry in a list of files; instructions that ran on would
+    // push every row under them down the sheet.
+    testWidgets('instructions stop at two lines', (tester) async {
+      exports.potaInstructions = List.filled(40, 'Upload it to the program before the deadline.').join(' ');
+      await pump(tester);
+
+      final paragraph = tester.renderObject<RenderParagraph>(find.descendant(of: find.byType(InlineMarkdownText), matching: find.byType(RichText)));
+      expect(paragraph.didExceedMaxLines, isTrue);
+      // Two lines, not one: an ellipsis with no line limit truncates to ONE
+      // line, which would also exceed it. The filename is one line of the
+      // same text size.
+      final line = tester.getSize(find.text('2026-07-15 N0CALL at US-1234.adi')).height;
+      expect(paragraph.size.height, closeTo(2 * line, line / 2));
     });
 
     testWidgets('the option name is bold, so the filename reads as its subtitle', (tester) async {
@@ -1198,6 +1236,10 @@ class _FakeExportService extends ExportService {
   bool includeContest = false;
   bool includeSecondPark = false;
 
+  /// What POTA's option tells the operator to do with its file, when the
+  /// test wants instructions on a row.
+  String? potaInstructions;
+
   /// An icon name for that Cabrillo, for the test that gives it one that
   /// doesn't resolve.
   String? contestIcon;
@@ -1240,6 +1282,7 @@ class _FakeExportService extends ExportService {
         'label': 'POTA US-1234',
         'icon': 'pine-tree',
         'filename': compact ? 'N0CALL@US-1234-20260715.adi' : '2026-07-15 N0CALL at US-1234.adi',
+        if (potaInstructions != null) 'instructions': potaInstructions,
         'selectedByDefault': true,
         'priority': 0,
       },

@@ -27,7 +27,7 @@ interface ExportHook {
   generateExport(args: ExportRequest, ctx): Promise<ExportResult>
 }
 // ExportOptionsRequest: { operation, qsos, segments?, compactFilenames? }
-// ExportOption:         { exportType, exportKey?, format, label, filename?, icon?, color?, refType?, ref?,
+// ExportOption:         { exportType, exportKey?, format, label, filename?, instructions?, icon?, color?, refType?, ref?,
 //                         priority?, selectedByDefault?, qsoCount?, templateData? }
 // ExportRequest:        { operation, qsos, segments?, events?, exportType?, exportKey?, compactFilenames?,
 //                         exportSettings?, exportData?, exportTitle?, includePrivateData?, includeLookupData?,
@@ -87,7 +87,11 @@ several) names it in `ref`, and the app narrows the slice to the segments
 carrying that reference. `qsoCount` tells the app how many contacts an
 option covers when the hook filters further; `templateData`
 (`{ ref, refName, activity, modifier, … }`) populates the `log` namespace
-the filename and title templates read.
+the filename and title templates read. `instructions` (extension API 25)
+is one short sentence telling the operator what to do with the file, shown
+below its name as inline markdown and cut off after two lines; a link to the
+upload page says more than a paragraph would. A link opens only when it is
+`https`, `http` or `mailto`, and images are not shown.
 
 **Filenames.** Build them with the SDK's `exportFilename`, passing the
 request's `compactFilenames` through; that is what makes the operator's
