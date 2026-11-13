@@ -39,12 +39,19 @@ typedef OpenAccount = void Function(String accountKey, {String? subkey});
 /// notices too, the way an uninstall does. Dismissed, not deleted: Recent
 /// Notices keeps them either way.
 ///
-/// Only what an extension posted through its own namespace. A data file's
-/// progress is the app's (`dataFile:…`) and outlives any one generation.
-void clearGenerationStatus({required StatusBarService? statusBar, required FyiService? fyi, required Iterable<String> dying, required Set<String> returning}) {
+/// Only what an extension posted through its own namespace, or through a
+/// sub-extension's that [owns] says it answers for. A data file's progress is
+/// the app's (`dataFile:…`) and outlives any one generation.
+void clearGenerationStatus({
+  required StatusBarService? statusBar,
+  required FyiService? fyi,
+  required Iterable<String> dying,
+  required Set<String> returning,
+  bool Function(String ns) Function(String key)? owns,
+}) {
   for (final key in dying) {
-    statusBar?.clearNamespace(key, notices: !returning.contains(key));
-    fyi?.clearExtension(key);
+    statusBar?.clearNamespace(key, notices: !returning.contains(key), owns: owns?.call(key));
+    fyi?.clearExtension(key, owns: owns?.call(key));
   }
 }
 

@@ -76,6 +76,11 @@ Future<bool> runCommandAction(HaLoServices services, String action, [Map<String,
       outcome = await _runUpdateApp(services);
     case 'updateExtensions':
       outcome = await _runUpdateExtensions(services);
+    // DEVSUGGEST: the stand-in for a draft-suggestions extension
+    // (logging-fields.md § Draft suggestions), which each logging panel runs.
+    case 'devSuggest':
+      services.extensions.draftSuggestions.devStandIn.value = params?['on'] != false;
+      outcome = null;
     default:
       outcome = await services.handleCommandAction(action, params);
   }

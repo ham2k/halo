@@ -179,7 +179,8 @@ in each. Outside SO2R there is one set, radio A's. Messages come in four
 **categories**, which decide where on the line they go: the high-priority
 **alerts** first, then the **operational** messages — things under way,
 the keyer line first of all but for the high-priority ones (the operating
-style) — then the other alerts, then the
+style), and the suggestions line after it (§ Draft suggestions) — then the
+other alerts, then the
 **warnings**, and the **info** messages last.
 
 Every message shows its icon and its text, left to right in that order —
@@ -260,6 +261,85 @@ with it and the Radio control's on-the-air dot shares it), warnings in an amber 
 theme's tertiary, operational items in the tertiary (the keyer's colour),
 info in a muted `onSurface`. A message may name its own icon and text
 colours instead.
+
+## Draft suggestions
+
+An extension that reads the call being typed — a super check partial, a
+call-history matcher — can offer the contacts it thinks the call is: a short
+list of **draft suggestions**, each a draft QSO with what the scorers say
+logging it would be (`host.draftSuggestions`, extension API 25,
+docs/extensions/host.md). The FYI area hosts them as the set's **suggestions
+line**, an operational item like the keyer line: not posted, never
+dismissed, with taps of its own (`DraftSuggestions`, `fyi_area.dart`).
+
+**What it shows.** An icon, then each suggestion's call, left to right in
+the extension's order, at most ten. Each call carries its verdict as the
+spots list shows one: a duplicate struck through and dimmed, a new
+multiplier in the multiplier colour and bold, any other alert in the
+important colour and bold — bold as well as coloured, since colour alone is
+no signal ([user-interface.md](user-interface.md)). The call the field
+reads, typed in full or picked, is in the important green and bold, struck
+through still when it is a duplicate. It sits after the
+operating style and the keyer line — what is under way is read first — and
+before the other operational messages, taking the room the items before it
+leave, and shows as many calls as fit there whole, from the first — the
+extension's most likely — and the first cut short when not even it fits.
+Each is measured bold, as the call the field reads is drawn, so the count
+holds still while Alt-Y moves the mark.
+
+**When it shows.** A list is made for one text: the call field as it read
+when the extension was asked (`forCall`). It shows in a set's area only
+while that set's call field reads that text — trimmed and uppercased, as the
+field reads calls — or a call picked from the list. A key typed into the call
+field leaves the list behind: it stays for up to a second, dimmed and out of
+reach of taps, and the list the extension posts for the new text fades in
+over it, the line resizing to its calls in 150 ms; with none by then, it
+goes. While the suggestions are all the area shows, the area grows and fades
+in and out over those 150 ms rather than sliding, since a list comes with
+every pause in typing. It hides while a logged contact is open for editing, as the
+keyer line does, and goes with a wipe or a log: a list posted before the
+field was last emptied never shows again, since its verdicts describe the
+log before the contact just logged. Each extension keeps one list per
+operation, and an empty one takes its list down; with two posting, a set
+shows the newest made for what its own field reads, so one extension's list
+for text already typed past never hides another's for the text in the
+field.
+
+**Picking one.** A tap on a call, or Alt-Y reaching it, picks that
+suggestion: its draft is laid over the contact as `host.updateDraft` lays a
+patch — a map merges key by key, so a suggestion carrying a name or a state
+from call history fills those and leaves a report as it was. A draft carries
+the station (`their`, text values), the references worked and a note, and
+nothing else — the host refuses one that does, at the post, so a draft that
+would break the contact never reaches a keypress — and a pick keeps the
+contact's own frequency, band, mode and time: the radio and the clock do not
+move for a suggestion. While a pick stands the line keeps the list it was
+picked from: the picked call is new text to an extension, which may post a
+list for it, and that list waits until the operator types, or the walk would
+lose the calls it has not reached. The call picked is marked on the line. Focus stays
+where it was, the caret at the end of the call field when it was there.
+
+**Alt-Y cycles** (`logging.nextSuggestion`; Shift-Alt-Y,
+`logging.previousSuggestion`). From the text typed, Alt-Y picks the first
+suggestion, then each next one the line shows — never one it has no room
+for, which the operator cannot see; after the last it puts the contact back as
+it was before the first pick — the typed text and every field a pick filled —
+with nothing marked. Shift-Alt-Y walks the other way. A tap picks out of
+turn, and Alt-Y carries on from there. The keys are claimed in the logging
+panel whether or not a list shows, as ⌥W is: unclaimed, macOS types ⌥Y into
+the field as "¥". They do nothing while no list shows.
+
+**An edit ends the cycle.** Anything the operator types in a field — the
+call, a report, the notes, or a grid, state or exchange field they type
+into — makes the contact as it then stands the text the next cycle starts
+from and returns to; the fields a pick filled stay filled. What a pick's
+lookup fills in after it, and the radio moving, are not edits: the next
+Alt-Y goes on walking from the text typed. Logging a pick logs what the fields read, as for a call typed.
+
+`DEVSUGGEST` turns on a stand-in for the extension, for a developer to see
+the line work before one offers it: on each pause in typing it offers the
+log's own matches for the call (`findCalls`), scored as an extension's would
+be (`scoreCandidates`). `DEVSUGGEST OFF` turns it off.
 
 ## How wide each main field is
 

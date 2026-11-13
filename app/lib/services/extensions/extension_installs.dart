@@ -50,6 +50,8 @@ mixin _ExtensionInstalls {
   SettingsService? get settings;
   StatusBarService? get statusBar;
   FyiService? get fyi;
+  DraftSuggestionsService get draftSuggestions;
+  bool Function(String ns) _ownedBy(String bundle);
   void _dropHeldFor(Iterable<String> keys);
   CatalogService? get catalog;
   ValueNotifier<int> get runtimeGeneration;
@@ -341,8 +343,9 @@ mixin _ExtensionInstalls {
     await settings?.forgetExtension(key);
     await _leaveShippedSwitchedOff(key);
     await _forgetSecrets(key);
-    statusBar?.clearNamespace(key);
-    fyi?.clearExtension(key);
+    statusBar?.clearNamespace(key, owns: _ownedBy(key));
+    fyi?.clearExtension(key, owns: _ownedBy(key));
+    draftSuggestions.clearExtension(key, owns: _ownedBy(key));
   }
 
   /// Removes [key]'s keychain items, and those of the retired built-in it
@@ -688,8 +691,9 @@ mixin _ExtensionInstalls {
     // The previous code's transient UI is nobody's to clear once its hooks are
     // gone — a progress bar it left behind would sit there for the session.
     _dropHeldFor([key]);
-    statusBar?.clearNamespace(key);
-    fyi?.clearExtension(key);
+    statusBar?.clearNamespace(key, owns: _ownedBy(key));
+    fyi?.clearExtension(key, owns: _ownedBy(key));
+    draftSuggestions.clearExtension(key, owns: _ownedBy(key));
     await host.reloadBundle(
       ExtensionBundle(key: key, source: source, api: info.runtimeApi),
       domains: info.domains,

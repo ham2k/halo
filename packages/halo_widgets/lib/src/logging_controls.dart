@@ -38,6 +38,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 import 'call_field_text.dart';
 import 'call_info_summary.dart';
+import 'draft_suggestions.dart';
 import 'key_bindings.dart';
 import 'keyboard_accessory.dart';
 import 'keyboard_dismiss.dart';
@@ -85,6 +86,7 @@ part 'logging_controls_fields.dart';
 part 'logging_controls_keys.dart';
 part 'logging_controls_strip.dart';
 part 'logging_controls_submit.dart';
+part 'logging_controls_suggestions.dart';
 part 'logging_controls_updates.dart';
 part 'logging_controls_wipe.dart';
 
@@ -514,6 +516,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // the ⌘K dialog lands on THIS logging panel's state.
     widget.commands.onDispatcherChanged?.call(_dispatchActions);
     _focusBackstop.attach();
+    _attachSuggestions(widget.session.draftSuggestions);
     FocusManager.instance.addListener(_rebuildForNumbersRow);
     // Observe metrics so the numbers row appears/disappears with the on-screen
     // keyboard — MediaQuery can't tell us (Scaffold strips the inset, see
@@ -689,6 +692,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   @override
   void didUpdateWidget(LoggingControls oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.session.draftSuggestions != oldWidget.session.draftSuggestions) {
+      _detachSuggestions(oldWidget.session.draftSuggestions);
+      _attachSuggestions(widget.session.draftSuggestions);
+    }
     // First, and on every rebuild: the status can move out from under the
     // panel (an export promoting it), and nothing below may run on a stale one.
     _lifecycle.follow(widget.log.lifecycle, _callController, _callFocus);
@@ -887,6 +894,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   @override
   void dispose() {
+    _detachSuggestions(widget.session.draftSuggestions);
     for (final host in widget.strip.hostControls) {
       host.openRequests?.removeListener(_hostOpenListeners[host.key] ?? () {});
     }
@@ -1021,9 +1029,24 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// included — so a caret move after a spot or an opened QSO is seen as one.
   String _lastCallText = '';
 
+  /// A draft-suggestion cycle (logging_controls_suggestions.dart): the
+  /// contact as it stood before its first pick, which walking past the last
+  /// suggestion puts back, and as its last pick left it — a contact that no
+  /// longer matches has been changed since, and starts the next cycle.
+  Map<String, dynamic>? _suggestionBase;
+  Map<String, Object?>? _suggestionLeft;
+
+  /// This panel's tap handler for its set's suggestions: its tear-off equals
+  /// itself across the panel's lifetime and no other panel's, so its dispose
+  /// unwires only its own.
+  void _suggestionTap(int index) => _pickSuggestion(index);
+
   void _onCallChanged() {
     final textChanged = _callController.text != _lastCallText;
     _lastCallText = _callController.text;
+    // Picks and patches included: the line shows for the text the field
+    // reads, however it got there.
+    widget.session.draftSuggestions?.call = _callController.text;
     // An emptied call field ends ESM's contact: without this, the same call
     // typed again could be thanked and logged without ever being answered.
     if (_callController.text.trim().isEmpty) _esmAnsweredCall = null;

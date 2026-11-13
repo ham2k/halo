@@ -534,6 +534,8 @@ for (const method of [
   "markSpots",
   "unmarkSpots",
   "updateDraft",
+  "draftSuggestionsPost",
+  "draftSuggestionsClear",
   "updateSetting",
   "listLayouts",
   "switchLayout",

@@ -45,6 +45,10 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
   /// kept with the set that was active when it came, as a log request is.
   final _draftPatches = <String, ({int serial, Map<String, dynamic> patch})?>{};
 
+  /// Each set's draft suggestions (logging-fields.md § Draft suggestions),
+  /// which its LoggingControls picks from and its FYI area draws.
+  late final _draftSuggestions = DraftSuggestionsFeed(widget.operation.uuid, services: widget.services);
+
   /// Each set's command dispatcher; the active set's is the one published
   /// for the ⌘K dialog.
   final _dispatchers = <String, CommandActionsDispatcher?>{};
@@ -122,6 +126,7 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
     phone: widget.keyingSuperMode == 'Phone',
     digital: widget.keyingSuperMode == 'Digital',
     suppressed: editingHere && _selectedQso != null,
+    suggestions: _draftSuggestions.sets[radio],
   );
 
   /// What [radio]'s set says its contact lacks of the radio state, said in

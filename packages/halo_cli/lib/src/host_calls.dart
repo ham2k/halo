@@ -285,6 +285,10 @@ class CliHostCalls {
       case 'replaceSpots':
       case 'putSpots':
       case 'removeSpots':
+      // A CLI has no operation open to offer suggestions in.
+      case 'draftSuggestionsPost':
+        return {'accepted': false};
+      case 'draftSuggestionsClear':
         return null;
 
       case 'getHistoryForCall':

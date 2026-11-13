@@ -568,14 +568,18 @@ extension _WidgetUpdates on _LoggingControlsState {
   /// the patch does not name — refs, exchange, notes — comes back as it was.
   /// The fields whose text did not change keep their caret and composing
   /// range: the operator may be typing in one while the patch lands.
-  void _applyDraftPatch(Map<String, dynamic> patch) {
+  ///
+  /// [whole] is a contact to put in place of this one instead — a draft
+  /// suggestion picked, or the contact the picks started from put back —
+  /// in the shape [QsoDraft.toData] gives with `composing`.
+  void _applyDraftPatch(Map<String, dynamic> patch, {Map<String, dynamic>? whole}) {
     final callBefore = _callController.text;
     final guesses = _refs.takeGuessSnapshot();
     final typed = {
       for (final controller in [_callController, _sentController, _rcvdController, _gridController, _stateController, _notesController, _radio.powerController])
         controller: controller.value,
     };
-    final merged = mergeDraftPatch(_draft.toData(), patch);
+    final merged = whole ?? mergeDraftPatch(_draft.toData(), patch);
     _draft.populate(() {
       _draft.applyData(merged, restoringDraft: true);
       // The refs a lookup proposed stay marked as its, or a call the patch

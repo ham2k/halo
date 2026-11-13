@@ -68,6 +68,7 @@ A chord is one key and the modifiers held for it, stored as text:
 | `style.toggle` | ⌥U | Operation: Run or S&P for the operator's set |
 | `so2r.stereo` | [\\] | Operation, an SO2R switcher switching; listed only with `so2r` on |
 | `logging.wipe` | ⌥W | the logging panel |
+| `logging.nextSuggestion` / `previousSuggestion` | ⌥Y / ⇧⌥Y | the logging panel, while a list of draft suggestions shows ([logging-fields.md](logging-fields.md#draft-suggestions)) |
 | `vfo.fineUp` / `fineDown` | ⌥↓ / ⌥↑ | Operation, Chasing; not with a logged contact loaded (below) |
 | `vfo.coarseUp` / `coarseDown` | ⇧⌥↓ / ⇧⌥↑ | Operation, Chasing; not with a logged contact loaded |
 | `text:<command>` | none | anywhere |

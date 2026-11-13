@@ -43,6 +43,7 @@ import type {
   Spot,
   SpotMark,
   DraftPatch,
+  DraftSuggestion,
   StationEquipment,
   StationEquipmentResult,
   UpdateSettingResult,
@@ -475,6 +476,30 @@ export const host = {
   async updateDraft(patch: DraftPatch, options: { replace?: boolean; operationUuid?: string } = {}): Promise<{ accepted: boolean }> {
     return (await hostCallFn()("updateDraft", { patch, ...options })) as { accepted: boolean }
   },
+
+  /// The contacts the call being typed could be, offered on the line under
+  /// the call info: the operator picks one with a tap or Alt-Y, which lays
+  /// its `qso` over the contact. `forCall` is the call field's text the list
+  /// was made for, `args.qso.their.call` in an assistant's `observe`; the
+  /// list shows only while the field reads it, or a call picked from it, so
+  /// one left behind by typing on is never shown. At most ten drafts, in the
+  /// order you would have the operator read them: the line shows as many as
+  /// fit, from the first. Each extension keeps one list per operation,
+  /// `operationUuid`'s or the one in front's, and an empty list takes yours
+  /// down; the newest made for what the field reads is the one shown.
+  /// `accepted` is false when no such operation is open. Needs
+  /// `requiresDraftWrite`. Extension API 25.
+  draftSuggestions: {
+    async post(params: { forCall: string; drafts: DraftSuggestion[]; operationUuid?: string }): Promise<{ accepted: boolean }> {
+      return (await hostCallFn()("draftSuggestionsPost", params)) as { accepted: boolean }
+    },
+
+    /// Takes your list down.
+    async clear(options: { operationUuid?: string } = {}): Promise<void> {
+      await hostCallFn()("draftSuggestionsClear", options)
+    },
+  },
+
   async fetch(url: string, options?: FetchOptions): Promise<FetchResponse> {
     return (await hostCallFn()("fetch", { url, ...options })) as FetchResponse
   },

@@ -3593,6 +3593,8 @@ class _Translations$keyboardShortcuts$command$qro extends Translations$keyboardS
 	@override String get ptt => 'PUSH TO TALK';
 	@override String get so2rStereo => 'SO2R: HEAR BOTH RADIOS, OR ONLY THE FOCUSED ONE';
 	@override String get wipe => 'CLEAR THE CONTACT BEING LOGGED';
+	@override String get nextSuggestion => 'NEXT SUGGESTED CALL';
+	@override String get previousSuggestion => 'PREVIOUS SUGGESTED CALL';
 	@override String get vfoFineUp => 'VFO UP ONE FINE STEP';
 	@override String get vfoFineDown => 'VFO DOWN ONE FINE STEP';
 	@override String get vfoCoarseUp => 'VFO UP ONE COARSE STEP';
@@ -7833,6 +7835,8 @@ extension on TranslationsQro {
 			'keyboardShortcuts.command.ptt' => 'PUSH TO TALK',
 			'keyboardShortcuts.command.so2rStereo' => 'SO2R: HEAR BOTH RADIOS, OR ONLY THE FOCUSED ONE',
 			'keyboardShortcuts.command.wipe' => 'CLEAR THE CONTACT BEING LOGGED',
+			'keyboardShortcuts.command.nextSuggestion' => 'NEXT SUGGESTED CALL',
+			'keyboardShortcuts.command.previousSuggestion' => 'PREVIOUS SUGGESTED CALL',
 			'keyboardShortcuts.command.vfoFineUp' => 'VFO UP ONE FINE STEP',
 			'keyboardShortcuts.command.vfoFineDown' => 'VFO DOWN ONE FINE STEP',
 			'keyboardShortcuts.command.vfoCoarseUp' => 'VFO UP ONE COARSE STEP',
@@ -8159,10 +8163,10 @@ extension on TranslationsQro {
 			'exportSettings.adifCommentTemplate' => 'ADIF QSO COMMENTS',
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL MESSAGE',
 			'exportSettings.shared' => 'SETTINGS APPLY TO EVERY EXTENSION USING THIS EXPORT TYPE.',
-			'exportSettings.defaultTemplates' => 'TURN ON CUSTOM TEMPLATES TO EDIT THIS TYPE’S TEMPLATES.',
-			'templateEditor.previewLabel' => 'PREVIEW:',
 			_ => null,
 		} ?? switch (path) {
+			'exportSettings.defaultTemplates' => 'TURN ON CUSTOM TEMPLATES TO EDIT THIS TYPE’S TEMPLATES.',
+			'templateEditor.previewLabel' => 'PREVIEW:',
 			'templateEditor.reset' => 'RESET',
 			'templateEditor.docs' => 'TEMPLATING DOCS',
 			'templateEditor.preview' => 'SAMPLE PREVIEW',

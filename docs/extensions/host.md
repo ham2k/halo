@@ -286,6 +286,30 @@ any of them also needs `requiresRadioWrite`. Answers `{ accepted }`, false
 when no such operation is open, or an existing QSO is open for editing in
 place of the draft.
 
+### `host.draftSuggestions`
+
+Extension API 25, `requiresDraftWrite`. The contacts the call being typed
+could be, offered on the line under the call info, where the operator picks
+one with a tap or Alt-Y. A pick lays the suggestion's `qso` over the contact
+as `updateDraft` lays a patch; walking past the last suggestion puts the
+contact back as it was.
+
+| Call | Does |
+| --- | --- |
+| `post({ forCall, drafts, operationUuid? })` | Offers `drafts`, at most ten, for `forCall`: the call field's text you were asked about, `qso.their.call` in an assistant's `observe`. Each is `{ qso, notices?, alerts? }`: the fields a pick fills, and the verdicts `ctx.scoreCandidates` gave it. A `qso` carries `their` (text values, `call` among them, never `sent`: the report is the operator's), `refs` (`{ type, ref }`, text values) and `notes`, and nothing else: a pick fills in the station, never the radio, the time or the record. Anything else rejects, as do a `forCall` or call past 32 characters, and more than 16 verdicts of each kind or one past 64 characters. An empty `drafts` takes your list down. Answers `{ accepted }`, false when no such operation is open |
+| `clear({ operationUuid? })` | Takes your list down |
+
+The list shows only while the call field reads `forCall`, or a call picked
+from it: one left behind by typing on is never shown, so there is nothing to
+take down as the operator types, nor after a contact is logged — a list
+posted before the field was last emptied never shows again. Each extension
+keeps one list for each operation, `operationUuid`'s or the one in front's,
+and the line shows the newest made for what the field reads. While a pick
+stands, the line keeps the list it was picked from: a list you post for the
+picked call waits until the operator types. Order the drafts as you would have the operator read them:
+the line shows as many as fit whole, from the first, so a phone may show
+three where a wide panel shows all ten.
+
 ### `host.layouts`
 
 Extension API 23, `requiresLayoutControl`. The layouts the operator's views

@@ -2277,6 +2277,10 @@ export interface CommandAction {
   /// several stand at once, as `devStatus`'s does. The message is the
   /// station's, shown in each set's area.
   devFyi?: { key?: string; category: string; priority?: string; icon?: string; text: string }
+  /// Developer-only: turns the stand-in for a draft-suggestions extension on
+  /// or off (DEVSUGGEST — docs/design/logging-fields.md § Draft
+  /// suggestions): it offers the log's own matches for each call typed.
+  devSuggest?: { on: boolean }
   /// Developer-only: posts a progress bar (DEVPROGRESS); omit `percent` for
   /// an indeterminate bar.
   devProgress?: { icon?: string; title?: string; percent?: number }
@@ -3727,6 +3731,23 @@ export type FyiCategory = "alert" | "warning" | "operational" | "info"
 /// How a message ranks among its category's. A high-priority alert is drawn
 /// as a filled pill.
 export type FyiPriority = "high" | "normal" | "low"
+
+/// One draft suggestion (`host.draftSuggestions.post`): a contact the call
+/// being typed could be, and what the scorers say logging it would be —
+/// what `ctx.scoreCandidates` answers for it. Extension API 25.
+export interface DraftSuggestion {
+  /// The fields a pick lays over the contact, as `host.updateDraft` lays a
+  /// patch: `their` — `call`, and whatever else you know of the station, a
+  /// name, a state, all text — `refs` (`{ type, ref }`, text values) and
+  /// `notes`. Nothing else: a pick fills in the station, never the radio,
+  /// the time or the record, and a draft carrying any other field rejects.
+  qso: DraftPatch
+  /// The verdicts the line shows: `duplicate` struck through, `newMult` in
+  /// the multiplier colour, any other alert in the important one. At most
+  /// 16 of each, each at most 64 characters.
+  notices?: string[]
+  alerts?: string[]
+}
 
 /// A message for the FYI line under the call info, where the app's own
 /// components leave a glance's worth of news for the operator (`host.fyi`).

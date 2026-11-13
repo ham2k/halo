@@ -64,6 +64,8 @@ class _ExtensionHostCalls {
       'statusBarDismissNotice' => _statusBarDismissNotice(params),
       'fyiPost' => _fyiPost(params),
       'fyiClear' => _fyiClear(params),
+      'draftSuggestionsPost' => _draftSuggestionsPost(params),
+      'draftSuggestionsClear' => _draftSuggestionsClear(params),
       _ => throw UnimplementedError('Host call method $method not implemented'),
     };
   }
@@ -375,6 +377,129 @@ class _ExtensionHostCalls {
     }
     final operationUuid = params['operationUuid'] is String ? params['operationUuid'] as String : null;
     return {'accepted': _service.onUpdateDraft?.call(patch.cast<String, dynamic>(), operationUuid, replace: replace) ?? false};
+  }
+
+  /// How many draft suggestions one list may hold. The line shows as many
+  /// as fit whole beside its other items, so a wide panel can show them all
+  /// and a phone's only the first few.
+  static const maxDraftSuggestions = 10;
+
+  /// The longest text a list's `forCall`, a draft's call or a verdict may
+  /// be, and the most verdicts one draft may carry: room for any callsign,
+  /// and a bound on what a runaway extension can make the line lay out.
+  static const maxDraftCallChars = 32, maxDraftVerdicts = 16, maxDraftVerdictChars = 64;
+
+  /// What a draft may carry: the station — `their`, its values text — the
+  /// references worked, and a note. Nothing else of the record: a pick fills
+  /// in who the station is, and the rest of the contact (its time, its
+  /// frequency, its identity) stays the operator's.
+  static const _draftKeys = {'their', 'refs', 'notes'};
+
+  /// Backs `host.draftSuggestions.post` (logging-fields.md § Draft
+  /// suggestions): the contacts the call being typed could be, for the line
+  /// under the call info. A pick writes the draft, so it takes the grant
+  /// [_updateDraft] does. Every draft is read whole here, at the post: one
+  /// that would break the contact must be refused to the extension, not
+  /// found by the operator's keypress. An empty list takes the caller's
+  /// down. `accepted` is false when no operation is open to show it in.
+  Future<dynamic> _draftSuggestionsPost(Map<String, dynamic> params) async {
+    final extensionKey = _draftSuggestionsCaller(params, 'post');
+    final forCall = params['forCall'];
+    if (forCall is! String || forCall.trim().isEmpty || forCall.length > maxDraftCallChars) {
+      throw const FormatException("draftSuggestions.post: `forCall` must be the call field's text, at most $maxDraftCallChars characters");
+    }
+    final drafts = params['drafts'];
+    if (drafts is! List) throw const FormatException('draftSuggestions.post: `drafts` must be a list');
+    if (drafts.length > maxDraftSuggestions) {
+      throw ExtensionHostException('draftSuggestions.post: at most $maxDraftSuggestions drafts in one list, got ${drafts.length}');
+    }
+    final list = DraftSuggestionList(forCall: suggestionCallText(forCall), drafts: [for (final draft in drafts) _draftSuggestion(draft)]);
+    final operationUuid = await _draftSuggestionsOperation(params, 'post');
+    if (operationUuid == null) return {'accepted': false};
+    if (list.drafts.isEmpty) {
+      _service.draftSuggestions.clear(extensionKey, operationUuid);
+    } else {
+      _service.draftSuggestions.post(extensionKey, operationUuid, list);
+    }
+    return {'accepted': true};
+  }
+
+  Future<dynamic> _draftSuggestionsClear(Map<String, dynamic> params) async {
+    final extensionKey = _draftSuggestionsCaller(params, 'clear');
+    final operationUuid = await _draftSuggestionsOperation(params, 'clear');
+    if (operationUuid != null) _service.draftSuggestions.clear(extensionKey, operationUuid);
+    return null;
+  }
+
+  /// The caller, by the kernel's stamp, when it may write the draft.
+  String _draftSuggestionsCaller(Map<String, dynamic> params, String verb) {
+    final extensionKey = params['extensionKey'] as String?;
+    if (extensionKey == null || !CapabilityGrant.among(_service.availableExtensions, (info) => info.requiresDraftWrite).allows(extensionKey)) {
+      throw ExtensionHostException("draftSuggestions.$verb blocked: extension '${extensionKey ?? 'unknown'}' does not declare requiresDraftWrite");
+    }
+    return extensionKey;
+  }
+
+  /// The operation named, when the log has it, or the one in front; null
+  /// with neither — a list kept for an operation that does not exist would
+  /// never show, and nobody would hear why.
+  Future<String?> _draftSuggestionsOperation(Map<String, dynamic> params, String verb) async {
+    final operationUuid = params['operationUuid'];
+    if (operationUuid == null) return _service.frontOperationUuid?.call();
+    if (operationUuid is! String) throw FormatException('draftSuggestions.$verb: `operationUuid` must be a string, got $operationUuid');
+    final operations = _service.operations;
+    if (operations != null && await operations.get(operationUuid) == null) return null;
+    return operationUuid;
+  }
+
+  static DraftSuggestion _draftSuggestion(Object? draft) {
+    const shape = 'draftSuggestions.post: each draft is { qso, notices?, alerts? }, its qso with their.call';
+    if (draft is! Map || draft['qso'] is! Map) throw const FormatException(shape);
+    final qso = (draft['qso'] as Map).cast<String, dynamic>();
+    for (final key in qso.keys) {
+      if (!_draftKeys.contains(key)) {
+        throw FormatException(
+          'draftSuggestions.post: a draft carries only their, refs and notes, not `$key` — a pick fills in the station, never the radio, the time or the record',
+        );
+      }
+    }
+    final their = qso['their'];
+    if (their is! Map || their.values.any((value) => value is! String)) {
+      throw const FormatException("draftSuggestions.post: a draft's `their` is text values, their.call among them");
+    }
+    if (their.containsKey('sent')) throw const FormatException("draftSuggestions.post: a draft never sets their.sent — the report is the operator's");
+    final call = their['call'];
+    if (call is! String || call.trim().isEmpty || call.length > maxDraftCallChars) throw const FormatException(shape);
+    final refs = qso['refs'];
+    if (refs != null &&
+        (refs is! List || refs.any((ref) => ref is! Map || ref['type'] is! String || ref['ref'] is! String || ref.values.any((v) => v is! String)))) {
+      throw const FormatException('draftSuggestions.post: a draft\'s `refs` is a list of { type, ref } of text values');
+    }
+    if (qso['notes'] case final notes? when notes is! String) throw const FormatException('draftSuggestions.post: a draft\'s `notes` is text');
+    Set<String> verdicts(String key) => switch (draft[key]) {
+      null => const {},
+      final List<dynamic> list when list.length <= maxDraftVerdicts && list.every((v) => v is String && v.length <= maxDraftVerdictChars) =>
+        list.cast<String>().toSet(),
+      _ => throw FormatException(
+        'draftSuggestions.post: `$key` must be a list of at most $maxDraftVerdicts strings of at most $maxDraftVerdictChars characters',
+      ),
+    };
+    final normalized = suggestionCallText(call);
+    return DraftSuggestion(
+      call: normalized,
+      qso: {
+        ...qso,
+        'their': {
+          ...their.cast<String, dynamic>(),
+          'call': normalized,
+          // A grid written without its coordinate clears the pair, which
+          // would otherwise outrank it (docs/design/locations.md).
+          if (their.containsKey('grid')) ...{'lat': null, 'lon': null},
+        },
+      },
+      notices: verdicts('notices'),
+      alerts: verdicts('alerts'),
+    );
   }
 
   Future<dynamic> _getSpots(Map<String, dynamic> params) async {

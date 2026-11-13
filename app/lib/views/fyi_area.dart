@@ -20,6 +20,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderParagraph;
+import 'package:flutter/scheduler.dart' show SchedulerPhase;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../services/fyi_service.dart';
@@ -32,6 +33,16 @@ const _revealDuration = Duration(milliseconds: 250);
 /// A message growing into its room as it arrives, and shrinking out of it
 /// as it goes, the rest of the line following.
 const _resizeDuration = Duration(milliseconds: 200);
+
+/// The suggestions line's own reveal, when it is all the area shows, and the
+/// fade between one list of calls and the next: quick, since a new list
+/// comes with every pause in typing.
+const _suggestionsChange = Duration(milliseconds: 150);
+
+/// How long a list the typing has moved past stays on the line, dimmed and
+/// out of reach of taps, waiting for the list for the new text: the next one
+/// fades in over it rather than the line going and coming back.
+const _suggestionsHoldFor = Duration(seconds: 1);
 
 /// How long a message tapped open holds the line before it folds back.
 const _expandedFor = Duration(seconds: 5);
@@ -64,6 +75,9 @@ const _hangBelow = lineBarBelowText - _textInset;
 /// The keyer line's slot among the messages' keys — one no poster can use.
 const _keyerKey = '\u0000keyer';
 
+/// The suggestions line's slot (logging-fields.md § Draft suggestions).
+const _suggestionsKey = '\u0000suggestions';
+
 /// A warning's icon: an amber apart from the theme's tertiary, which is the
 /// operational colour on the same line, and legible on either surface.
 const _warningLight = Color(0xFF9A7B00);
@@ -73,7 +87,8 @@ const _warningDark = Color(0xFFFFC107);
 ///
 /// [keyer] hosts the radio's keyer line as its operational item (the Keying
 /// experiment); [phone], [digital] and [suppressed] are the keyer line's —
-/// see [KeyerLineModel].
+/// see [KeyerLineModel]. [suggestions] are the set's draft suggestions,
+/// another operational item, hidden by [suppressed] too.
 class FyiArea extends StatefulWidget {
   final HaLoServices services;
 
@@ -99,7 +114,18 @@ class FyiArea extends StatefulWidget {
   /// warning about the antenna is as true while a contact is corrected.
   final bool suppressed;
 
-  const FyiArea({super.key, required this.services, this.radio = 'A', this.keyer = false, this.phone = false, this.digital = false, this.suppressed = false});
+  final DraftSuggestions? suggestions;
+
+  const FyiArea({
+    super.key,
+    required this.services,
+    this.radio = 'A',
+    this.keyer = false,
+    this.phone = false,
+    this.digital = false,
+    this.suppressed = false,
+    this.suggestions,
+  });
 
   @override
   State<FyiArea> createState() => _FyiAreaState();
@@ -136,11 +162,24 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
   /// to tell what left.
   Map<String, FyiMessage> _shown = const {};
   bool _shownKeyer = false;
+  bool _shownSuggestions = false;
 
   /// Messages gone from the service and still on the line, shrinking out of
   /// their room; and whether the keyer line is.
   final _leaving = <String, FyiMessage>{};
   bool _keyerLeaving = false;
+
+  /// Whether the suggestions line is leaving, and what it showed last — what
+  /// it shrinks away with.
+  bool _suggestionsLeaving = false;
+
+  /// Runs while a list the typing moved past waits for the next one.
+  late final AnimationController _suggestionsHold;
+
+  /// Whether the area comes and goes by growing and fading rather than
+  /// sliding: while the suggestions are all it shows.
+  bool _revealByFade = false;
+  ({DraftSuggestionList list, int? picked, String call})? _lastSuggestions;
 
   /// The slots in the order last laid out, the leaving ones included: a
   /// slot shrinks where it was, among the ones that were around it.
@@ -152,11 +191,21 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _reveal = AnimationController(vsync: this, duration: _revealDuration);
+    _suggestionsHold = AnimationController(vsync: this, duration: _suggestionsHoldFor)
+      ..addStatusListener((status) {
+        if (status != AnimationStatus.completed || !mounted) return;
+        _shownSuggestions = false;
+        // Behind a message tapped open the slot has already shrunk away, and
+        // would never end a shrink to be let go.
+        _suggestionsLeaving = _builtExpanded == null;
+        _onChanged();
+      });
     _expandedHold = AnimationController(vsync: this, duration: _expandedFor)
       ..addStatusListener((status) {
         if (status == AnimationStatus.completed) _collapse();
       });
     _fyi.addListener(_onChanged);
+    widget.suggestions?.addListener(_onSuggestionsChanged);
     _syncKeyer();
     _onChanged();
   }
@@ -188,6 +237,10 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
       old.services.fyi.removeListener(_onChanged);
       _fyi.addListener(_onChanged);
     }
+    if (old.suggestions != widget.suggestions) {
+      old.suggestions?.removeListener(_onSuggestionsChanged);
+      widget.suggestions?.addListener(_onSuggestionsChanged);
+    }
     _syncKeyer();
     // Keyboard mode is the CW keyer's; the draft going to Phone or Digital
     // ends it the way Enter would.
@@ -198,9 +251,11 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
   @override
   void dispose() {
     _fyi.removeListener(_onChanged);
+    widget.suggestions?.removeListener(_onSuggestionsChanged);
     _keyer?.removeListener(_onChanged);
     _keyer?.dispose();
     _expandedHold.dispose();
+    _suggestionsHold.dispose();
     _reveal.dispose();
     super.dispose();
   }
@@ -208,6 +263,26 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
   List<FyiMessage> get _messages => _fyi.messagesFor(widget.radio);
 
   bool get _keyerActive => _keyer?.active ?? false;
+
+  bool get _suggestionsActive => !widget.suppressed && (widget.suggestions?.showing ?? false);
+
+  /// Whether a list that stopped showing was left behind by typing — a call
+  /// still in the field, no logged contact open — and is worth holding for
+  /// the next one.
+  bool get _suggestionsOutTyped => !widget.suppressed && (widget.suggestions?.call.isNotEmpty ?? false);
+
+  bool get _suggestionsHeld => _suggestionsHold.isAnimating;
+
+  /// The set feeds its suggestions the call field as it changes, which a
+  /// patch to the draft does inside a build: a rebuild asked for then waits
+  /// for the frame to end.
+  void _onSuggestionsChanged() {
+    if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _onChanged());
+    } else {
+      _onChanged();
+    }
+  }
 
   /// Slides the area in with its first message and away after its last;
   /// in between, every change redraws the line, what left shrinking away.
@@ -237,22 +312,53 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
     if (_shownKeyer && !keyerActive && _keyer != null && open == null) _keyerLeaving = true;
     if (keyerActive || _keyer == null) _keyerLeaving = false;
     _shownKeyer = keyerActive;
-    if (current.isNotEmpty || keyerActive) {
+    final suggestionsActive = _suggestionsActive;
+    if (suggestionsActive) {
+      _suggestionsHold.stop();
+      _suggestionsLeaving = false;
+      _lastSuggestions = (list: widget.suggestions!.list!, picked: widget.suggestions!.picked, call: widget.suggestions!.call);
+    } else if (_suggestionsHeld && !_suggestionsOutTyped) {
+      // The field emptied — a log, a wipe — or a logged contact opened:
+      // nothing is coming to take the held list's place.
+      _suggestionsHold.stop();
+      _suggestionsLeaving = true;
+    } else if (_shownSuggestions && !_suggestionsHeld && open == null) {
+      if (_suggestionsOutTyped) {
+        _suggestionsHold.forward(from: 0);
+      } else {
+        _suggestionsLeaving = true;
+      }
+    }
+    final suggestionsHeld = _suggestionsHeld;
+    _shownSuggestions = suggestionsActive || suggestionsHeld;
+    if (current.isNotEmpty || keyerActive || _shownSuggestions) {
+      if (!_visible || _reveal.status == AnimationStatus.reverse) _revealWith(fade: current.isEmpty && !keyerActive);
       _visible = true;
       _reveal.forward();
     } else if (_visible) {
+      if (_reveal.status != AnimationStatus.reverse) _revealWith(fade: _order.every((key) => key == _suggestionsKey));
       _reveal.reverse().whenComplete(() {
         if (mounted && _reveal.isDismissed) {
           setState(() {
             _visible = false;
             _leaving.clear();
             _keyerLeaving = false;
+            _suggestionsLeaving = false;
             _order = const [];
           });
         }
       });
     }
     setState(() {});
+  }
+
+  /// How the area comes and goes from here: by growing and fading, quickly,
+  /// when the suggestions are all it shows — a list comes with every pause
+  /// in typing, and a slide each time would make the line jump — and by its
+  /// slide otherwise.
+  void _revealWith({required bool fade}) {
+    _revealByFade = fade;
+    _reveal.duration = fade ? _suggestionsChange : _revealDuration;
   }
 
   /// A tap on a message cut short opens it: it takes the line, the rest
@@ -304,6 +410,8 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
     setState(() {
       if (key == _keyerKey) {
         _keyerLeaving = false;
+      } else if (key == _suggestionsKey) {
+        _suggestionsLeaving = false;
       } else {
         _leaving.remove(key);
       }
@@ -327,14 +435,22 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
         clipper: _LineClip(below: _reveal.isCompleted ? _hangBelow : 0),
         child: Align(alignment: AlignmentDirectional.bottomStart, heightFactor: _reveal.value, child: child),
       ),
-      child: SlideTransition(
-        position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(_reveal),
-        child: Padding(
-          // Inside the slide, so a hidden area costs nothing.
-          padding: const EdgeInsets.only(top: _gapAbove),
-          child: _line(context),
-        ),
-      ),
+      child: _revealByFade
+          ? FadeTransition(
+              opacity: _reveal,
+              child: Padding(
+                padding: const EdgeInsets.only(top: _gapAbove),
+                child: _line(context),
+              ),
+            )
+          : SlideTransition(
+              position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(_reveal),
+              child: Padding(
+                // Inside the slide, so a hidden area costs nothing.
+                padding: const EdgeInsets.only(top: _gapAbove),
+                child: _line(context),
+              ),
+            ),
     );
   }
 
@@ -356,7 +472,11 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
     // While something is still on the line, what leaves shrinks out of its
     // room; after the last, the whole line sinks away with its content as
     // it was.
-    final shrinking = messages.isNotEmpty || keyerActive;
+    // Drawn from what the last change cached, which a notification still on
+    // its way after this frame has not set yet.
+    final suggestionsActive = _suggestionsActive && _lastSuggestions != null;
+    final suggestionsHeld = _suggestionsHeld && !suggestionsActive && _lastSuggestions != null;
+    final shrinking = messages.isNotEmpty || keyerActive || suggestionsActive || suggestionsHeld;
     bool high(FyiMessage m, FyiCategory category) => m.category == category && m.priority == FyiPriority.high;
     final current = [
       for (final m in messages)
@@ -368,6 +488,8 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
       // What is under way outranks every warning and reading: a message
       // keying is read while it keys.
       if (keyer != null && keyerActive) _keyerKey,
+      // What the call being typed could be, read beside the call.
+      if (suggestionsActive || suggestionsHeld) _suggestionsKey,
       for (final m in messages)
         if (m.category == FyiCategory.operational && !high(m, FyiCategory.operational)) m.key,
       for (final m in messages)
@@ -380,13 +502,25 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
     _leaving.removeWhere((key, _) => !_order.contains(key));
     if (!_order.contains(_keyerKey)) _keyerLeaving = false;
     final leavingKeyer = _keyerLeaving && keyer != null;
-    final order = _order = _placeLeaving(current, {..._leaving.keys, if (leavingKeyer) _keyerKey});
+    if (!_order.contains(_suggestionsKey)) _suggestionsLeaving = false;
+    final leavingSuggestions = _suggestionsLeaving && _lastSuggestions != null;
+    final order = _order = _placeLeaving(current, {..._leaving.keys, if (leavingKeyer) _keyerKey, if (leavingSuggestions) _suggestionsKey});
     // A message tapped open has the line to itself: the rest make way.
     final expanded = _builtExpanded = _expanded;
     final items = <String, Widget>{
       for (final m in messages) m.key: _item(context, m, leaving: false, hidden: expanded != null && expanded != m.key),
       for (final MapEntry(:key, :value) in _leaving.entries) key: _item(context, value, leaving: shrinking, hidden: expanded != null),
       if (keyer != null && (keyerActive || leavingKeyer)) _keyerKey: _keyerItem(theme, keyer, leaving: leavingKeyer && shrinking, hidden: expanded != null),
+      if (_lastSuggestions case final last? when suggestionsActive || suggestionsHeld || leavingSuggestions)
+        _suggestionsKey: _suggestionsItem(
+          context,
+          last.list,
+          last.picked,
+          last.call,
+          held: suggestionsHeld,
+          leaving: leavingSuggestions && !suggestionsHeld && shrinking,
+          hidden: expanded != null,
+        ),
     };
     // Every slot hangs from the top of the one fixed height, its text at
     // the pill's inset — see [_lineHeight]. The clip is for what runs off
@@ -535,6 +669,143 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
     shown: !leaving && !hidden,
     onHidden: leaving ? () => _left(_keyerKey) : null,
   );
+
+  /// The suggestions line: an icon, then each suggestion's call with its
+  /// verdict as the spots list shows one — a duplicate struck through and
+  /// dimmed, a new multiplier in the multiplier colour, another alert in the
+  /// important one, each accent bold too, since colour alone is no signal —
+  /// the one the call field reads in the important green and bold, and the
+  /// one picked on a pill of the operational colour. A tap on a call
+  /// picks it. The calls past the room the line leaves are cut off: the
+  /// extension's order puts its least likely last. A list [held] for the
+  /// next is dimmed and takes no taps; the next fades in over it, the slot
+  /// resizing to its calls.
+  Widget _suggestionsItem(
+    BuildContext context,
+    DraftSuggestionList list,
+    int? picked,
+    String typed, {
+    required bool held,
+    required bool leaving,
+    required bool hidden,
+  }) {
+    final theme = Theme.of(context);
+    final colors = HaLoColors.of(context);
+    final style = theme.textTheme.bodyMedium ?? const TextStyle();
+    final shown = !leaving && !hidden;
+    final tertiary = theme.colorScheme.tertiary;
+    Widget call(int index, DraftSuggestion draft) {
+      final base = style.color ?? theme.colorScheme.onSurface;
+      final accent = draft.call == typed
+          ? colors.important
+          : draft.notices.contains('newMult') || draft.alerts.contains('newMult')
+          ? colors.spotMultiplier
+          : (draft.alerts.any((a) => a != 'duplicate') ? colors.important : null);
+      final text = Text(
+        draft.call,
+        maxLines: 1,
+        style: style.copyWith(
+          color: draft.isDuplicate && accent == null ? base.withValues(alpha: 0.6) : accent,
+          fontWeight: accent != null ? FontWeight.w700 : null,
+          decoration: draft.isDuplicate ? TextDecoration.lineThrough : null,
+        ),
+      );
+      final tap = shown && !held ? () => widget.suggestions?.tap(list, index) : null;
+      return Semantics(
+        label: draft.call,
+        button: true,
+        selected: index == picked,
+        onTap: tap,
+        child: ExcludeSemantics(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: tap,
+            child: Container(
+              padding: const EdgeInsets.only(left: Space.xs, right: Space.xs, top: _textInset, bottom: _textInset),
+              decoration: index == picked ? BoxDecoration(color: tertiary.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(3)) : null,
+              child: text,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return _slot(
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: Space.sm,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: _textInset),
+            child: Icon(MdiIcons.accountSearch, size: _iconSize, color: tertiary),
+          ),
+          Flexible(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final count = _suggestionsThatFit(context, list, style, constraints.maxWidth);
+                // What Alt-Y walks: the calls the operator can see. A plain
+                // field, read at the keypress — this runs in layout.
+                if (identical(list, widget.suggestions?.list)) widget.suggestions!.shownCount = count;
+                // The clip is for the list fading out, measured for the room
+                // it had.
+                return ClipRect(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: AnimatedSize(
+                      duration: _suggestionsChange,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: AnimatedSwitcher(
+                        duration: _suggestionsChange,
+                        layoutBuilder: (current, previous) => Stack(alignment: AlignmentDirectional.centerStart, children: [...previous, ?current]),
+                        // One child per list: a pick or a dimming redraws it in place.
+                        child: AnimatedOpacity(
+                          key: ValueKey(list),
+                          opacity: held ? 0.4 : 1,
+                          duration: _suggestionsChange,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [for (final (index, draft) in list.drafts.take(count).indexed) call(index, draft)],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      shown: shown,
+      onHidden: leaving ? () => _left(_suggestionsKey) : null,
+    );
+  }
+
+  /// How many of [list]'s calls fit whole in [room], from the first, and the
+  /// first whatever the room — cut short rather than leaving the line an
+  /// icon alone. Each is measured bold, as the call the field reads is
+  /// drawn: measured as drawn, the count would change as Alt-Y moves the
+  /// mark along the line.
+  static int _suggestionsThatFit(BuildContext context, DraftSuggestionList list, TextStyle style, double room) {
+    if (room.isInfinite) return list.drafts.length;
+    final painter = TextPainter(textDirection: Directionality.of(context), textScaler: MediaQuery.textScalerOf(context), maxLines: 1);
+    var used = 0.0;
+    var count = 0;
+    for (final draft in list.drafts) {
+      painter
+        ..text = TextSpan(
+          text: draft.call,
+          style: style.copyWith(fontWeight: FontWeight.w700),
+        )
+        ..layout();
+      used += painter.width + 2 * Space.xs;
+      if (used > room && count > 0) break;
+      count++;
+    }
+    painter.dispose();
+    return count;
+  }
 
   /// The colour a category's icon takes when the message names none.
   static Color _categoryColor(ThemeData theme, HaLoColors colors, FyiCategory category) => switch (category) {

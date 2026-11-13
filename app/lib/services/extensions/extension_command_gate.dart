@@ -31,6 +31,7 @@ mixin _ExtensionCommandGate on _ExtensionHookApi {
     'devNotice',
     'devStatus',
     'devFyi',
+    'devSuggest',
     'devProgress',
     'devHammer',
     'devSplash',

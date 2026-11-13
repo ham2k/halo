@@ -3593,6 +3593,8 @@ class _Translations$keyboardShortcuts$command$cw extends Translations$keyboardSh
 	@override String get ptt => '·——· ··— ··· ···· / — ——— / — ·— ·—·· —·—';
 	@override String get so2rStereo => '··· ——— ··——— ·—· ———··· / ···· · ·— ·—· / —··· ——— — ···· / ·—· ·— —·· ·· ——— ··· ——··—— / ——— ·—· / ——— —· ·—·· —·—— / — ···· · / ··—· ——— —·—· ··— ··· · —·· / ——— —· ·';
 	@override String get wipe => '—·—· ·—·· · ·— ·—· / — ···· · / —·—· ——— —· — ·— —·—· — / —··· · ·· —· ——· / ·—·· ——— ——· ——· · —··';
+	@override String get nextSuggestion => '—· · —··— — / ··· ··— ——· ——· · ··· — · —·· / —·—· ·— ·—·· ·—··';
+	@override String get previousSuggestion => '·——· ·—· · ···— ·· ——— ··— ··· / ··· ··— ——· ——· · ··· — · —·· / —·—· ·— ·—·· ·—··';
 	@override String get vfoFineUp => '···— ··—· ——— / ··— ·——· / ——— —· · / ··—· ·· —· · / ··· — · ·——·';
 	@override String get vfoFineDown => '···— ··—· ——— / —·· ——— ·—— —· / ——— —· · / ··—· ·· —· · / ··· — · ·——·';
 	@override String get vfoCoarseUp => '···— ··—· ——— / ··— ·——· / ——— —· · / —·—· ——— ·— ·—· ··· · / ··· — · ·——·';
@@ -7833,6 +7835,8 @@ extension on TranslationsCw {
 			'keyboardShortcuts.command.ptt' => '·——· ··— ··· ···· / — ——— / — ·— ·—·· —·—',
 			'keyboardShortcuts.command.so2rStereo' => '··· ——— ··——— ·—· ———··· / ···· · ·— ·—· / —··· ——— — ···· / ·—· ·— —·· ·· ——— ··· ——··—— / ——— ·—· / ——— —· ·—·· —·—— / — ···· · / ··—· ——— —·—· ··— ··· · —·· / ——— —· ·',
 			'keyboardShortcuts.command.wipe' => '—·—· ·—·· · ·— ·—· / — ···· · / —·—· ——— —· — ·— —·—· — / —··· · ·· —· ——· / ·—·· ——— ——· ——· · —··',
+			'keyboardShortcuts.command.nextSuggestion' => '—· · —··— — / ··· ··— ——· ——· · ··· — · —·· / —·—· ·— ·—·· ·—··',
+			'keyboardShortcuts.command.previousSuggestion' => '·——· ·—· · ···— ·· ——— ··— ··· / ··· ··— ——· ——· · ··· — · —·· / —·—· ·— ·—·· ·—··',
 			'keyboardShortcuts.command.vfoFineUp' => '···— ··—· ——— / ··— ·——· / ——— —· · / ··—· ·· —· · / ··· — · ·——·',
 			'keyboardShortcuts.command.vfoFineDown' => '···— ··—· ——— / —·· ——— ·—— —· / ——— —· · / ··—· ·· —· · / ··· — · ·——·',
 			'keyboardShortcuts.command.vfoCoarseUp' => '···— ··—· ——— / ··— ·——· / ——— —· · / —·—· ——— ·— ·—· ··· · / ··· — · ·——·',
@@ -8159,10 +8163,10 @@ extension on TranslationsCw {
 			'exportSettings.adifCommentTemplate' => '·— —·· ·· ··—· / ——·— ··· ——— / —·—· ——— —— —— · —· — ···',
 			'exportSettings.adifQslMessageTemplate' => '·— —·· ·· ··—· / ——·— ··· ·—·· / —— · ··· ··· ·— ——· ·',
 			'exportSettings.shared' => '··· · — — ·· —· ——· ··· / ·— ·——· ·——· ·—·· —·—— / — ——— / · ···— · ·—· —·—— / · —··— — · —· ··· ·· ——— —· / ··— ··· ·· —· ——· / — ···· ·· ··· / · —··— ·——· ——— ·—· — / — —·—— ·——· · ·—·—·—',
-			'exportSettings.defaultTemplates' => '— ··— ·—· —· / ——— —· / —·—· ··— ··· — ——— —— / — · —— ·——· ·—·· ·— — · ··· / — ——— / · —·· ·· — / — ···· ·· ··· / — —·—— ·——· · ’ ··· / — · —— ·——· ·—·· ·— — · ··· ·—·—·—',
-			'templateEditor.previewLabel' => '·——· ·—· · ···— ·· · ·—— ———···',
 			_ => null,
 		} ?? switch (path) {
+			'exportSettings.defaultTemplates' => '— ··— ·—· —· / ——— —· / —·—· ··— ··· — ——— —— / — · —— ·——· ·—·· ·— — · ··· / — ——— / · —·· ·· — / — ···· ·· ··· / — —·—— ·——· · ’ ··· / — · —— ·——· ·—·· ·— — · ··· ·—·—·—',
+			'templateEditor.previewLabel' => '·——· ·—· · ···— ·· · ·—— ———···',
 			'templateEditor.reset' => '·—· · ··· · —',
 			'templateEditor.docs' => '— · —— ·——· ·—·· ·— — ·· —· ——· / —·· ——— —·—· ···',
 			'templateEditor.preview' => '··· ·— —— ·——· ·—·· · / ·——· ·—· · ···— ·· · ·——',

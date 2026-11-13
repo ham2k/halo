@@ -14,6 +14,7 @@ import 'package:flutter/widgets.dart';
 import 'package:halo_core/halo_core.dart';
 
 import 'call_info_summary.dart';
+import 'draft_suggestions.dart';
 import 'inline_markdown.dart';
 import 'keyboard_accessory.dart';
 import 'logging_controls_controller.dart';
@@ -286,6 +287,7 @@ class LoggingSession {
     this.onLogRequestHeld,
     this.suggestedQsoIsTentative = false,
     this.draftPatch,
+    this.draftSuggestions,
     this.onCallEdited,
     this.onCallTyped,
     this.suggestionSettledSerial = 0,
@@ -385,6 +387,12 @@ class LoggingSession {
   /// not name — and the field the operator is in, caret and all — as it was.
   /// Ignored while an existing QSO is open for editing.
   final ({int serial, Map<String, dynamic> patch})? draftPatch;
+
+  /// The draft suggestions this set shows and picks from (logging-fields.md
+  /// § Draft suggestions): the set feeds it the call field's text, and picks
+  /// on Alt-Y, Shift-Alt-Y and a tap on the FYI line. Null where nothing
+  /// offers suggestions.
+  final DraftSuggestions? draftSuggestions;
 
   /// Bumped when the gesture behind a tentative [suggestedQso] comes to rest:
   /// the row is open and the finger is off it. A suggestion held back over

@@ -251,16 +251,20 @@ class StatusBarService extends ChangeNotifier {
   /// where the extension that posted one is about to be loaded again and
   /// will not post it twice. An "account expired" notice is the operator's to
   /// dismiss, not a side effect of toggling some other extension.
-  void clearNamespace(String ns, {bool notices = true}) {
-    final prefix = '$ns:';
-    final keys = _items.keys.where((k) => k.startsWith(prefix)).toList();
+  ///
+  /// With [owns], every namespace it answers for goes too: a bundle's
+  /// sub-extensions post under their own keys (`pota-all-parks`).
+  void clearNamespace(String ns, {bool notices = true, bool Function(String ns)? owns}) {
+    final ours = owns ?? (other) => other == ns;
+    bool under(String key) => key.contains(':') && ours(key.substring(0, key.indexOf(':')));
+    final keys = _items.keys.where(under).toList();
     for (final key in keys) {
       _items.remove(key);
     }
     var dismissed = false;
     for (var i = 0; notices && i < _notices.length; i++) {
       final notice = _notices[i];
-      if (notice.key.startsWith(prefix) && notice.dismissedAt == null) {
+      if (under(notice.key) && notice.dismissedAt == null) {
         _notices[i] = notice.copyWith(dismissedAt: nowLocal());
         dismissed = true;
       }

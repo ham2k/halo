@@ -3593,6 +3593,8 @@ class _Translations$keyboardShortcuts$command$qrp extends Translations$keyboardS
 	@override String get ptt => 'push to talk';
 	@override String get so2rStereo => 'so2r: hear both radios, or only the focused one';
 	@override String get wipe => 'clear the contact being logged';
+	@override String get nextSuggestion => 'next suggested call';
+	@override String get previousSuggestion => 'previous suggested call';
 	@override String get vfoFineUp => 'vfo up one fine step';
 	@override String get vfoFineDown => 'vfo down one fine step';
 	@override String get vfoCoarseUp => 'vfo up one coarse step';
@@ -7833,6 +7835,8 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.command.ptt' => 'push to talk',
 			'keyboardShortcuts.command.so2rStereo' => 'so2r: hear both radios, or only the focused one',
 			'keyboardShortcuts.command.wipe' => 'clear the contact being logged',
+			'keyboardShortcuts.command.nextSuggestion' => 'next suggested call',
+			'keyboardShortcuts.command.previousSuggestion' => 'previous suggested call',
 			'keyboardShortcuts.command.vfoFineUp' => 'vfo up one fine step',
 			'keyboardShortcuts.command.vfoFineDown' => 'vfo down one fine step',
 			'keyboardShortcuts.command.vfoCoarseUp' => 'vfo up one coarse step',
@@ -8159,10 +8163,10 @@ extension on TranslationsQrp {
 			'exportSettings.adifCommentTemplate' => 'adif qso comments',
 			'exportSettings.adifQslMessageTemplate' => 'adif qsl message',
 			'exportSettings.shared' => 'settings apply to every extension using this export type.',
-			'exportSettings.defaultTemplates' => 'turn on custom templates to edit this type’s templates.',
-			'templateEditor.previewLabel' => 'preview:',
 			_ => null,
 		} ?? switch (path) {
+			'exportSettings.defaultTemplates' => 'turn on custom templates to edit this type’s templates.',
+			'templateEditor.previewLabel' => 'preview:',
 			'templateEditor.reset' => 'reset',
 			'templateEditor.docs' => 'templating docs',
 			'templateEditor.preview' => 'sample preview',

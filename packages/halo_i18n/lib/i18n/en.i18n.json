@@ -3189,6 +3189,8 @@
       "ptt": "Push to talk",
       "so2rStereo": "SO2R: hear both radios, or only the focused one",
       "wipe": "Clear the contact being logged",
+      "nextSuggestion": "Next suggested call",
+      "previousSuggestion": "Previous suggested call",
       "vfoFineUp": "VFO up one fine step",
       "vfoFineDown": "VFO down one fine step",
       "vfoCoarseUp": "VFO up one coarse step",

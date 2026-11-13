@@ -86,6 +86,14 @@ extension _WipeAndUndo on _LoggingControlsState {
       }
       return KeyEventResult.handled;
     }
+    // Claimed whether or not a list shows, as Alt+W is: unclaimed, macOS
+    // types Option+Y into the focused field as "¥".
+    for (final (id, step) in const [('logging.nextSuggestion', 1), ('logging.previousSuggestion', -1)]) {
+      if (keyBindings.value.claim(id, event) != null) {
+        _cycleSuggestion(step);
+        return KeyEventResult.handled;
+      }
+    }
     final keyboard = HardwareKeyboard.instance;
     final command = keyboard.isMetaPressed || keyboard.isControlPressed;
     if (keyboard.isShiftPressed || keyboard.isAltPressed || !command) return KeyEventResult.ignored;

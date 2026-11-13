@@ -8176,6 +8176,12 @@ class Translations$keyboardShortcuts$command$en {
 	/// en: 'Clear the contact being logged'
 	String get wipe => 'Clear the contact being logged';
 
+	/// en: 'Next suggested call'
+	String get nextSuggestion => 'Next suggested call';
+
+	/// en: 'Previous suggested call'
+	String get previousSuggestion => 'Previous suggested call';
+
 	/// en: 'VFO up one fine step'
 	String get vfoFineUp => 'VFO up one fine step';
 
@@ -14067,6 +14073,8 @@ extension on Translations {
 			'keyboardShortcuts.command.ptt' => 'Push to talk',
 			'keyboardShortcuts.command.so2rStereo' => 'SO2R: hear both radios, or only the focused one',
 			'keyboardShortcuts.command.wipe' => 'Clear the contact being logged',
+			'keyboardShortcuts.command.nextSuggestion' => 'Next suggested call',
+			'keyboardShortcuts.command.previousSuggestion' => 'Previous suggested call',
 			'keyboardShortcuts.command.vfoFineUp' => 'VFO up one fine step',
 			'keyboardShortcuts.command.vfoFineDown' => 'VFO down one fine step',
 			'keyboardShortcuts.command.vfoCoarseUp' => 'VFO up one coarse step',
@@ -14393,10 +14401,10 @@ extension on Translations {
 			'exportSettings.adifCommentTemplate' => 'ADIF QSO Comments',
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL Message',
 			'exportSettings.shared' => 'Settings apply to every extension using this export type.',
-			'exportSettings.defaultTemplates' => 'Turn on Custom templates to edit this type’s templates.',
-			'templateEditor.previewLabel' => 'Preview:',
 			_ => null,
 		} ?? switch (path) {
+			'exportSettings.defaultTemplates' => 'Turn on Custom templates to edit this type’s templates.',
+			'templateEditor.previewLabel' => 'Preview:',
 			'templateEditor.reset' => 'Reset',
 			'templateEditor.docs' => 'Templating Docs',
 			'templateEditor.preview' => 'Sample preview',

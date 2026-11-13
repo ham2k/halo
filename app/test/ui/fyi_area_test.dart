@@ -9,7 +9,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
-import 'package:halo_widgets/halo_widgets.dart' show HaLoColors, MdiIcons;
+import 'package:halo_widgets/halo_widgets.dart' show DraftSuggestion, DraftSuggestionList, DraftSuggestions, HaLoColors, MdiIcons;
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/fyi_service.dart';
@@ -33,14 +33,14 @@ void main() {
   const width = 640.0;
 
   /// The area at a known width, as a set's info frame gives it one.
-  Widget host({String radio = 'A', bool keyer = false, bool suppressed = false}) => TranslationProvider(
+  Widget host({String radio = 'A', bool keyer = false, bool suppressed = false, DraftSuggestions? suggestions}) => TranslationProvider(
     child: MaterialApp(
       home: Scaffold(
         body: Center(
           child: SizedBox(
             width: width,
             child: Column(
-              children: [FyiArea(services: services, radio: radio, keyer: keyer, suppressed: suppressed)],
+              children: [FyiArea(services: services, radio: radio, keyer: keyer, suppressed: suppressed, suggestions: suggestions)],
             ),
           ),
         ),
@@ -462,5 +462,126 @@ void main() {
     );
     final onAlert = HaLoColors.of(tester.element(find.byType(FyiArea))).onAlert;
     expect(tester.widget<Icon>(find.byIcon(MdiIcons.run)).color, onAlert, reason: 'the icon in the colour that reads on a pill');
+  });
+
+  // logging-fields.md § Draft suggestions. The trap is a list shown for text
+  // the operator has typed past: its calls are what K1A could be, not what
+  // K1AB could, and a tap on one would replace the call they are typing.
+  group('the suggestions line', () {
+    const list = DraftSuggestionList(
+      forCall: 'K1A',
+      drafts: [
+        DraftSuggestion(
+          call: 'K1AB',
+          qso: {
+            'their': {'call': 'K1AB'},
+          },
+          notices: {'duplicate'},
+        ),
+        DraftSuggestion(
+          call: 'K1AC',
+          qso: {
+            'their': {'call': 'K1AC'},
+          },
+        ),
+      ],
+    );
+
+    testWidgets('shows the calls while the set reads the text they were offered for, a duplicate struck through', (tester) async {
+      final suggestions = DraftSuggestions()
+        ..list = list
+        ..call = 'k1a';
+      addTearDown(suggestions.dispose);
+      await tester.pumpWidget(host(suggestions: suggestions));
+      await settle(tester);
+      expect(find.text('K1AC'), findsOneWidget);
+      expect(tester.widget<Text>(find.text('K1AB')).style!.decoration, TextDecoration.lineThrough);
+
+      // Typed past: held a moment for the next list, but out of reach.
+      final tapped = <int>[];
+      suggestions
+        ..onTap = tapped.add
+        ..call = 'K1AX';
+      await settle(tester);
+      await tester.tap(find.text('K1AC'), warnIfMissed: false);
+      expect(tapped, isEmpty, reason: 'its calls are what K1A could be, not K1AX');
+
+      await tester.pump(const Duration(seconds: 1));
+      await settle(tester);
+      await settle(tester);
+      expect(find.text('K1AC'), findsNothing);
+      expect(areaHeight(tester), 0);
+    });
+
+    testWidgets('shows only the calls that fit whole, and tells the set how many', (tester) async {
+      final suggestions = DraftSuggestions()
+        ..list = DraftSuggestionList(
+          forCall: 'K1A',
+          drafts: [
+            for (var i = 0; i < 10; i++)
+              DraftSuggestion(
+                call: 'K1A$i',
+                qso: {
+                  'their': {'call': 'K1A$i'},
+                },
+              ),
+          ],
+        )
+        ..call = 'K1A';
+      addTearDown(suggestions.dispose);
+      await tester.pumpWidget(host(suggestions: suggestions));
+      await settle(tester);
+      final shown = suggestions.shownCount!;
+      expect(shown, inInclusiveRange(1, 9), reason: 'ten calls of four 14 px glyphs do not fit in $width px');
+      expect(find.text('K1A${shown - 1}'), findsOneWidget);
+      expect(find.text('K1A$shown'), findsNothing, reason: 'a call that does not fit whole is not drawn at all');
+    });
+
+    testWidgets('the next list fades in over the one typed past, the area staying up', (tester) async {
+      final suggestions = DraftSuggestions()
+        ..list = list
+        ..call = 'K1A';
+      addTearDown(suggestions.dispose);
+      await tester.pumpWidget(host(suggestions: suggestions));
+      await settle(tester);
+      final up = areaHeight(tester);
+
+      suggestions.call = 'K1AB';
+      await tester.pump(const Duration(milliseconds: 300));
+      suggestions.list = const DraftSuggestionList(
+        forCall: 'K1AB',
+        drafts: [
+          DraftSuggestion(
+            call: 'WK1AB',
+            qso: {
+              'their': {'call': 'WK1AB'},
+            },
+          ),
+        ],
+      );
+      await tester.pump();
+      expect(areaHeight(tester), up, reason: 'the line never went away between the two lists');
+      await settle(tester);
+      expect(find.text('WK1AB'), findsOneWidget);
+      expect(find.text('K1AC'), findsNothing);
+    });
+
+    testWidgets("a tap on a call is the set's to act on, and the line hides while a logged contact is open", (tester) async {
+      final tapped = <int>[];
+      final suggestions = DraftSuggestions()
+        ..list = list
+        ..call = 'K1A'
+        ..onTap = tapped.add;
+      addTearDown(suggestions.dispose);
+      await tester.pumpWidget(host(suggestions: suggestions));
+      await settle(tester);
+      await tester.tap(find.text('K1AC'));
+      expect(tapped, [1]);
+
+      await tester.pumpWidget(host(suggestions: suggestions, suppressed: true));
+      await settle(tester);
+      await settle(tester);
+      expect(find.text('K1AC'), findsNothing);
+    });
   });
 }

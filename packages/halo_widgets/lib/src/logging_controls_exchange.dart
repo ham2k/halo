@@ -196,6 +196,9 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   /// restored into it, which counts the same).
   bool isTouched(String key) => _touched.contains(key);
 
+  /// What the operator typed into each field they typed into.
+  Map<String, String> get typedValues => {for (final key in _touched) key: valueOf(key)};
+
   /// Whether any exchange field holds a value — part of what makes the draft
   /// worth an undo offer. A serial preview the operator hasn't touched is
   /// not one: a solo panel shows it while idle, and counting it would keep

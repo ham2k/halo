@@ -24,6 +24,7 @@ import 'catalog_service.dart';
 import '../connectivity_service.dart';
 import '../edition_keychain.dart';
 import '../error_reporting_service.dart';
+import '../draft_suggestions_service.dart';
 import '../fyi_service.dart';
 import 'export_type_registry.dart';
 import 'extension_account_cache.dart';
@@ -181,6 +182,28 @@ class ExtensionService
   StatusBarService? statusBar;
   @override
   FyiService? fyi;
+
+  /// What extensions offer as draft suggestions (`host.draftSuggestions`),
+  /// owned here: nothing but extensions and the developer's stand-in post
+  /// them.
+  @override
+  final draftSuggestions = DraftSuggestionsService();
+
+  /// Whether a namespace something was posted under — the key the kernel
+  /// stamped, a sub-extension's own (`pota-all-parks`) — is [bundle]'s, by
+  /// the grants' rule ([CapabilityGrant.ownerOf]): itself, or the longest
+  /// installed bundle key it extends. A separately installed `pota-tools` is
+  /// its own bundle and is not `pota`'s. [among] adds keys the installed
+  /// list may no longer hold — one just uninstalled, a generation going.
+  @override
+  bool Function(String ns) _ownedBy(String bundle, {Iterable<String> among = const []}) {
+    final grant = CapabilityGrant(bundles: {for (final info in availableExtensions) info.key, ...among, bundle});
+    return (ns) => grant.ownerOf(ns) == bundle;
+  }
+
+  /// The uuid of the operation open in front — the one a call that names
+  /// none is about.
+  String? Function()? frontOperationUuid;
 
   /// Back the `getOperation`/`getQsos` host calls (HookContext.getOperation/
   /// getQsos in the SDK). Optional like the other service references — a
@@ -874,7 +897,11 @@ class ExtensionService
             for (final info in availableExtensions)
               if (isExtensionActive(info)) info.key,
           },
+          owns: (key) => _ownedBy(key, among: dying),
         );
+        for (final key in dying) {
+          draftSuggestions.clearExtension(key, owns: _ownedBy(key, among: dying));
+        }
       } finally {
         // Whatever happened above: every caller that arrived meanwhile is
         // waiting on [next].

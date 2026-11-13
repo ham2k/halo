@@ -173,12 +173,14 @@ class FyiService extends ChangeNotifier {
   static String extensionPrefix(String extension) => 'ext:$extension:';
 
   /// Every message of [extension]'s taken down as [clear] takes one, as its
-  /// runtime goes (extension_messages.dart).
-  void clearExtension(String extension) {
-    final prefix = extensionPrefix(extension);
+  /// runtime goes (extension_messages.dart) — and with [owns], every one
+  /// posted under a namespace it answers for: a bundle's sub-extensions post
+  /// under their own keys (`pota-all-parks`), and go with it.
+  void clearExtension(String extension, {bool Function(String ns)? owns}) {
+    final ours = owns ?? (ns) => ns == extension;
     final keys = [
       for (final key in _messages.keys)
-        if (key.startsWith(prefix)) key,
+        if (key.startsWith('ext:') && ours(key.substring(4, key.indexOf(':', 4) < 0 ? key.length : key.indexOf(':', 4)))) key,
     ];
     for (final key in keys) {
       _expiry.remove(key)?.cancel();

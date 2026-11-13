@@ -47,6 +47,8 @@ String keyCommandTitle(Translations t, String id) {
     pttCommandId => c.ptt,
     so2rStereoCommandId => c.so2rStereo,
     'logging.wipe' => c.wipe,
+    'logging.nextSuggestion' => c.nextSuggestion,
+    'logging.previousSuggestion' => c.previousSuggestion,
     vfoFineUpCommandId => c.vfoFineUp,
     vfoFineDownCommandId => c.vfoFineDown,
     vfoCoarseUpCommandId => c.vfoCoarseUp,

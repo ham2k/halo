@@ -11,6 +11,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../config/dev_bridge.dart';
 import '../../services/hook_payloads.dart';
+import 'draft_suggestions_feed.dart';
 import '../../services/halo_services.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/cat/equipment.dart';
@@ -421,6 +422,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
     _suggestions[_so2r ? _suggestionSet : 'A'] = (qso: widget.suggestedQso, tentative: widget.suggestedQsoIsTentative, settled: widget.suggestionSettledSerial);
     if (widget.logRequest?.serial != oldWidget.logRequest?.serial) _logRequests[_so2r ? _so2rLink.active : 'A'] = widget.logRequest;
     if (widget.draftPatch?.serial != oldWidget.draftPatch?.serial) _draftPatches[_so2r ? _so2rLink.active : 'A'] = widget.draftPatch;
+    _draftSuggestions.operationUuid = widget.operation.uuid;
   }
 
   @override
@@ -438,6 +440,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
       DevBridge.instance.actionHandler = null;
     }
     _findTimer?.cancel();
+    _draftSuggestions.dispose();
     _findController.dispose();
     _findFocus.dispose();
     _lockedWalkFocus.dispose();
@@ -1067,6 +1070,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         suggestedQso: suggestion.qso,
         logRequest: _logRequests[radio],
         draftPatch: _draftPatches[radio],
+        draftSuggestions: _draftSuggestions.sets[radio],
         confirmLogOverwrite: widget.confirmLogOverwrite,
         onLogRequestHeld: widget.onLogRequestHeld,
         suggestedQsoIsTentative: suggestion.tentative,

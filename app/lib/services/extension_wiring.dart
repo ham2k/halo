@@ -82,6 +82,7 @@ void wireExtensions(HaLoServices services) {
     if (update == null || (operationUuid != null && front!.uuid != operationUuid)) return false;
     return update(patch, replace: replace);
   };
+  extensions.frontOperationUuid = () => services.frontOperationContext?.uuid;
   extensions.onScoreCandidates = (candidates, operationUuid) async {
     final front = services.frontOperationContext;
     final score = front?.scoreCandidates;

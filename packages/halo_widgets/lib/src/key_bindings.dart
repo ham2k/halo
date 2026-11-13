@@ -398,6 +398,8 @@ final List<KeyCommandSpec> keyCommandSpecs = [
   const KeyCommandSpec(styleToggleCommandId, KeyCommandContext.operation, ['alt+U']),
   const KeyCommandSpec(so2rStereoCommandId, KeyCommandContext.operation, [r'\']),
   const KeyCommandSpec('logging.wipe', KeyCommandContext.logging, ['alt+W']),
+  const KeyCommandSpec('logging.nextSuggestion', KeyCommandContext.logging, ['alt+Y']),
+  const KeyCommandSpec('logging.previousSuggestion', KeyCommandContext.logging, ['shift+alt+Y']),
   // Down raises the frequency: the arrow is read as turning a dial, not as
   // pointing at a spot on the band.
   const KeyCommandSpec(vfoFineUpCommandId, KeyCommandContext.station, ['alt+Down']),
@@ -771,6 +773,9 @@ class LegacyKeyBindings extends KeyBindings {
         return alt && !command && !shift && event.physicalKey == PhysicalKeyboardKey.keyK;
       case 'logging.wipe':
         return alt && !command && !shift && key == LogicalKeyboardKey.keyW;
+      // By position, as ⌥K: in a browser on a Mac ⌥Y arrives as '¥'.
+      case 'logging.nextSuggestion' || 'logging.previousSuggestion':
+        return alt && !command && shift == (id == 'logging.previousSuggestion') && event.physicalKey == PhysicalKeyboardKey.keyY;
       // By position: on a Mac ⌥U is the umlaut dead key.
       case styleToggleCommandId:
         return alt && !command && !shift && event.physicalKey == PhysicalKeyboardKey.keyU;

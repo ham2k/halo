@@ -12,7 +12,8 @@
 // synthetic error through the error-reporting pipeline to verify the
 // Sentry wiring. DEVFYIALERT, DEVFYIWARN and DEVFYIINFO post a message of
 // that category to the FYI area under the call info, to exercise how the
-// area shares its line. DEVLOGCAT records radio traffic for a field report. DEVPOPUP reopens the app in a standalone, phone-sized popup
+// area shares its line. DEVSUGGEST offers the log's matches as draft
+// suggestions on that line. DEVLOGCAT records radio traffic for a field report. DEVPOPUP reopens the app in a standalone, phone-sized popup
 // window (web only). RELOAD forces a data-file re-sync (bypassing the normal 30-day
 // staleness check), for both developers iterating on `csvToLookupEntry`
 // mapping logic and anyone troubleshooting stale/missing lookup data.
@@ -282,6 +283,27 @@ const DEV_FYI_KINDS = {
   WARN: { command: "DEVFYIWARN", category: "warning", noun: "warning", icon: "alert", text: "Sample *warning* from DEVFYIWARN" },
   INFO: { command: "DEVFYIINFO", category: "info", noun: "info message", icon: "information-outline", text: "Sample info from DEVFYIINFO" },
 } as const
+
+// DEVSUGGEST [OFF]: the stand-in for an extension offering draft
+// suggestions (docs/design/logging-fields.md § Draft suggestions), which
+// offers the log's own matches for each call typed, scored — to see the
+// line work before an extension offers it.
+const DEV_SUGGEST_MATCH = /^DEVSUGGEST(?:\s+(ON|OFF))?$/i
+
+const DevSuggestCommand = {
+  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+    const match = DEV_SUGGEST_MATCH.exec(input.trim())
+    if (!match) return null
+    const on = match[1]?.toUpperCase() !== "OFF"
+    return {
+      describe: on ? "Offer the log's matches as draft suggestions?" : "Stop offering draft suggestions?",
+      confirm: on ? "Offering the log's matches as draft suggestions" : "Stopped offering draft suggestions",
+      commands: [{ devSuggest: { on } }],
+    }
+  },
+
+  catalog: devCatalog("DEVSUGGEST", "Offer the log's own matches as draft suggestions (DEVSUGGEST OFF to stop)", { params: "[OFF]" }),
+}
 
 function devFyiCommand(kind: keyof typeof DEV_FYI_KINDS) {
   const { command, category, noun, icon, text: sample } = DEV_FYI_KINDS[kind]
@@ -699,6 +721,7 @@ defineExtension({
     registerHook("command", { key: "dev-commands-devfyialert", hook: devFyiCommand("ALERT"), priority: 100 })
     registerHook("command", { key: "dev-commands-devfyiwarn", hook: devFyiCommand("WARN"), priority: 100 })
     registerHook("command", { key: "dev-commands-devfyiinfo", hook: devFyiCommand("INFO"), priority: 100 })
+    registerHook("command", { key: "dev-commands-devsuggest", hook: DevSuggestCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-reload", hook: ReloadCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-seed", hook: SeedCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-exp", hook: ExpCommand, priority: 100 })

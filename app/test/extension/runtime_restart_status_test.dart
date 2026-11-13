@@ -8,7 +8,9 @@
 // socket is open.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_widgets/halo_widgets.dart' show DraftSuggestionList, MdiIcons;
 import 'package:ham2k_logger/services/extensions/extension_info.dart';
+import 'package:ham2k_logger/services/fyi_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -78,6 +80,32 @@ void main() {
 
     expect(statusBar.itemForKey('ham2k-pota:all-parks'), isNull);
     expect(backend.exceptions.map((e) => e.context), contains('extensions:dispose'));
+  });
+
+  // A bundle's sub-extensions post under their own keys (`ham2k-pota-all-parks`
+  // from `ham2k-pota`), and a sweep by the bundle's key alone left theirs on
+  // the line with nobody to take them down. The trap the other way is a
+  // separately installed extension that merely shares the prefix: it is its
+  // own bundle, and nothing of its may go with this one.
+  test("a restart takes what a bundle's sub-extensions posted, and leaves a separate bundle named like one", () async {
+    final (extensions, statusBar) = await serviceWithStatusBar(returning: const ['ham2k-pota', 'ham2k-pota-tools']);
+    final fyi = FyiService();
+    extensions.fyi = fyi;
+    for (final ns in ['ham2k-pota-all-parks', 'ham2k-pota-tools']) {
+      statusBar.setProgress(key: '$ns:sync', text: 'Syncing');
+      fyi.post(FyiMessage(key: FyiService.extensionKey(ns, 'hint'), category: FyiCategory.info, icon: MdiIcons.information, text: 'Hint'));
+      extensions.draftSuggestions.post(ns, 'op-1', const DraftSuggestionList(forCall: 'K1A', drafts: []));
+    }
+
+    await extensions.restartRuntime();
+
+    expect(statusBar.itemForKey('ham2k-pota-all-parks:sync'), isNull);
+    expect(fyi.messageFor(FyiService.extensionKey('ham2k-pota-all-parks', 'hint')), isNull);
+    expect(extensions.draftSuggestions.offers('op-1', 'ham2k-pota-all-parks'), isFalse);
+
+    expect(statusBar.itemForKey('ham2k-pota-tools:sync'), isNotNull, reason: 'its own bundle, not loaded in this generation');
+    expect(fyi.messageFor(FyiService.extensionKey('ham2k-pota-tools', 'hint')), isNotNull);
+    expect(extensions.draftSuggestions.offers('op-1', 'ham2k-pota-tools'), isTrue);
   });
 
   test('a restart takes the old generation\'s progress bar with it', () async {

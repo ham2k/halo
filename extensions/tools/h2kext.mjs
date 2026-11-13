@@ -83,7 +83,8 @@ import yazl from "yazl"
 /// holds every address the app fetches for an extension to its `domains`,
 /// and adds the `requiresAnyDataFileUrl` grant; 25 adds `ctx.findCalls`,
 /// `host.dbLookupFindCalls` and `ctx.scoreCandidates`, what a super check
-/// partial reads, and a scene's `map` control.
+/// partial reads, `host.draftSuggestions`, where it offers what it found,
+/// and a scene's `map` control.
 export const H2KEXT_API_VERSION = 25
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
