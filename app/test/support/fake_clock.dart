@@ -42,8 +42,13 @@ void runOnFakeClock(Future<void> Function(FakeAsync async) body, {Duration limit
       var done = false;
       Object? error;
       StackTrace? stack;
-      body(async).then(
-        (_) => done = true,
+      // Both handlers return nothing: `(_) => done = true` would make this a
+      // Future<bool>, and the error handler's null is then an error of its
+      // own, reported on top of the body's.
+      body(async).then<void>(
+        (_) {
+          done = true;
+        },
         onError: (Object e, StackTrace s) {
           error = e;
           stack = s;
