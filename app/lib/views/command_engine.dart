@@ -920,10 +920,7 @@ Future<void> dispatchCommandActions(
       // panel is mounted would show their "Operator: KI2D" confirmation and
       // write nothing. With no operation open there is no uuid, and the
       // action reports that rather than going quiet.
-      await runAction('updateOperation', {
-        ...(map['updateOperation'] as Map).cast<String, dynamic>(),
-        if (services.currentOperationContext?['uuid'] case final String uuid) 'uuid': uuid,
-      });
+      await runAction('updateOperation', {...(map['updateOperation'] as Map).cast<String, dynamic>(), 'uuid': services.currentOperationContext?['uuid']});
     } else if (map['markSegment'] is Map) {
       // Operation-scoped like updateOperation above: the uuid is the open
       // operation's, and the app owns the event rows and the location screen.

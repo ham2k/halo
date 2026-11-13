@@ -38,7 +38,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 25 | the map control (`map`), an event's `lat` and `lon`, and the `reset` gesture; an event answer's `patch` and `host.updateScene`, changing a scene in place; `image` layers and a map's `images` |
 | 26 | the map's `globe` projection, its `depth` and `atmosphere` |
 | 28 | the map's `dwell`, and its `dwell` and `dwellEnd` gestures; the band scope's `secondary` |
-| 31 | an event answer's `openUrl`, a page opened in the browser, and an event's `modifiers` |
+| 31 | an event answer's `openUrl` and `updateOperation`, and an event's `modifiers` |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -376,14 +376,35 @@ drag's `change` that names a page fails too. An
 answer with neither is a failure, and so is one that throws or runs out of
 time: the pane says the action failed and the control goes back to what the
 scene last reported. The app sends one event at a time, keeps only the
-newest of a control's queued changes, ignores an answer to an event a newer
-one has superseded, and requests a render after each. A text field's typing
-is sent before any action, and an action queued behind a value the extension
-refused is not sent. A control shows its pending value until the outcome is
-known. An `onEvent` that cannot read its panel's config is refused rather
-than run with an empty one, since a config is where a panel keeps which
-radio it commands; the app allows an event about ten seconds in all, config
-and hook together.
+newest of a control's queued changes, and requests a render after each.
+When a newer event supersedes an answer, the app discards that answer's
+`values` and `strings`. A text field's typing is sent before any action,
+and an action queued behind a value the extension refused is not sent.
+A control shows its pending value until the outcome is known. An `onEvent`
+that cannot read its panel's config is refused rather than run with an
+empty one, since a config is where a panel keeps which radio it commands;
+the app allows an event about ten seconds in all, config and hook together.
+
+An `onEvent` result can also carry `updateOperation` (extension API 31).
+Before applying the [operation patch](commands.md#updating-the-open-operation),
+the app checks that the operation that received the event is still open in
+the panel. Use `values: {}` when the event changes only the operation. An
+Apply button can use this result to set up a trailhead operation.
+
+```ts
+return {
+  values: {},
+  updateOperation: {
+    addActivationRefs: [
+      { activityKey: "pota", ref: "US-1234" },
+      { activityKey: "pota", ref: "US-5678" },
+      { activityKey: "wwff", ref: "KFF-0123" },
+    ],
+    location: { grid: "FM18ab" },
+    userTitle: "North Trailhead",
+  },
+}
+```
 
 ### Example
 
