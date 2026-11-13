@@ -129,10 +129,10 @@ test("a radio change folded into the call that opens an operation still comes", 
   )
 })
 
-// The operation trigger fires around every contact logged, as its counters
-// and status move; an agent told "the operation changed" three times per
-// contact learns nothing from any of them. Anything the operator sets does
-// count, the assistance switch as much as the title.
+// The first contact makes the operation active, and the observe call carries
+// its contacts' times beside its data; an agent told "the operation changed"
+// by a contact learns nothing it was not told as `qsoLogged`. Anything the
+// operator set does count, the assistance switch as much as the title.
 test("an operation changes when what the operator set on it does, and not as contacts are logged", async () => {
   const queue = new EventQueue(0)
   const assistant = eventsAssistant(queue, idle)

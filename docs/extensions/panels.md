@@ -110,8 +110,8 @@ costs a bridge call each time it fires.
 
 | Trigger | Fires |
 | --- | --- |
-| `operation` | when the operation's data changes |
-| `qsoLogged` | on every change to the log: a contact logged, edited or deleted, or one a sync brought in |
+| `operation` | when the operation's data or its `operatorCall` changes; never for the `startAtMillisMin`/`startAtMillisMax` a contact moves, which `qsoLogged` covers |
+| `qsoLogged` | on every change to the log: a contact logged, edited or deleted, or one a sync brought in; and when the operation's `startAtMillisMin`/`startAtMillisMax` move |
 | `spots` | whenever `ctx.getSpots()`'s answer may have moved: a refresh, new verdicts, the operator's filters or bands, the radio's band or mode; and whenever `ctx.getBandAnnotations()`'s may have |
 | `lookup` | when the panel is shown a callsign that **has** a lookup answer, including opening a QSO whose record already carries one; never when a lookup starts, fails or times out |
 | `qso` | as the draft contact changes, debounced to one wake per pause in typing |

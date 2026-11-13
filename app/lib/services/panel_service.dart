@@ -84,13 +84,38 @@ class PanelRenderContext {
   /// The triggers that fired between [previous] and this — empty means
   /// nothing this panel could have asked for actually changed.
   Set<String> changesFrom(PanelRenderContext previous) => {
-    if (operation?.uuid != previous.operation?.uuid || operation?.data != previous.operation?.data) 'operation',
+    if (_operationChanged(operation, previous.operation)) 'operation',
     if (qso != previous.qso) 'qso',
-    if (qsoCount != previous.qsoCount || _logChanged(log, previous.log)) 'qsoLogged',
+    if (qsoCount != previous.qsoCount || _logChanged(log, previous.log) || _timesChanged(operation, previous.operation)) 'qsoLogged',
     if (spotsRevision != previous.spotsRevision) 'spots',
     if (lookupRevision != previous.lookupRevision) 'lookup',
     if (equipmentRevision != previous.equipmentRevision) 'equipment',
   };
+
+  /// Whether what [operationHookArgs] sends moved, apart from the contacts'
+  /// times, which `qsoLogged` carries. Compared by content: every read of the
+  /// row builds a new map, and the row is read again around each contact
+  /// logged, as its count and times move, so by identity `operation` would
+  /// fire with every contact. Compared as sent, so a value from outside
+  /// `data` counts too — `operatorCall`, whose seat a POSITION change moves
+  /// without writing anything else.
+  static bool _operationChanged(Operation? operation, Operation? previous) {
+    if (identical(operation, previous)) return false;
+    if (operation == null || previous == null) return true;
+    Map<String, dynamic> sent(Operation operation) => operationHookArgs(operation)..removeWhere((key, _) => _timeKeys.contains(key));
+    return !const DeepCollectionEquality().equals(sent(operation), sent(previous));
+  }
+
+  static const _timeKeys = {'startAtMillisMin', 'startAtMillisMax'};
+
+  /// Whether the operation's first and last contact times moved: what a
+  /// contact logged changes on the operation, so `qsoLogged` carries it. The
+  /// row and the log come on separate streams; without this, a log that
+  /// arrives first fires `qsoLogged` while the old times are still held, and
+  /// the row arriving after fires nothing.
+  static bool _timesChanged(Operation? operation, Operation? previous) =>
+      operation?.uuid == previous?.uuid &&
+      (operation?.startAtMillisMin != previous?.startAtMillisMin || operation?.startAtMillisMax != previous?.startAtMillisMax);
 
   /// Whether the log moved between [previous] and [log]. The stream emits a
   /// new list for every write to the operation's rows — a contact logged,

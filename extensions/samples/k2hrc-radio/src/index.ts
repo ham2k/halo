@@ -80,7 +80,8 @@ const RadioPanel: PanelHook = {
         // the band and mode on that draft ARE the radio's, and they are what
         // this panel exists to show. A panel wanting only a resolved callsign
         // should declare 'lookup' instead and get far fewer renders.
-        on: ["qso", "operation"],
+        // 'qsoLogged' keeps the contact count it shows current.
+        on: ["qso", "qsoLogged", "operation"],
       },
     ]
   },

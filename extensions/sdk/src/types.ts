@@ -3878,9 +3878,12 @@ export interface FyiMessageParams {
 /// visible extension panel would cross the bridge for every callsign
 /// keystroke.
 ///
-///   'operation'  the operation's own data changed (activities, title, refs)
+///   'operation'  the operation's own data changed (activities, title, refs),
+///                or its operatorCall did; never for the contact times a
+///                logged QSO moves
 ///   'qso'        the in-progress QSO changed (throttled, not per keystroke)
-///   'qsoLogged'  a QSO was logged, deleted or edited
+///   'qsoLogged'  a QSO was logged, deleted or edited, or the operation's
+///                startAtMillisMin/startAtMillisMax moved
 ///   'lookup'     a callsign lookup resolved
 ///   'spots'      the spots board, or a band's annotations, changed (see
 ///                HookContext.getSpots and getBandAnnotations)
