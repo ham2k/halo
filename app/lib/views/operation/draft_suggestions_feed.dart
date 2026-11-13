@@ -15,6 +15,13 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../../services/draft_suggestions_service.dart';
 import '../../services/halo_services.dart';
 
+/// The calls [qsos] hold as the suggestions line reads them: a deleted
+/// contact and an event are no contact worked.
+Set<String> callsWorkedIn(Iterable<Qso> qsos) => {
+  for (final qso in qsos)
+    if (!qso.deleted && !qso.isEvent && qso.theirCall.isNotEmpty) suggestionCallText(qso.theirCall),
+};
+
 class DraftSuggestionsFeed {
   DraftSuggestionsFeed(this._operationUuid, {required this.services}) {
     _service.addListener(_onListsChanged);

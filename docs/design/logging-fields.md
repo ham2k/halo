@@ -273,13 +273,16 @@ line**, an operational item like the keyer line: not posted, never
 dismissed, with taps of its own (`DraftSuggestions`, `fyi_area.dart`).
 
 **What it shows.** An icon, then each suggestion's call, left to right in
-the extension's order, at most ten. Each call carries its verdict as the
-spots list shows one: a duplicate struck through and dimmed, a new
-multiplier in the multiplier colour and bold, any other alert in the
-important colour and bold — bold as well as coloured, since colour alone is
-no signal ([user-interface.md](user-interface.md)). The call the field
-reads, typed in full or picked, is in the important green and bold, struck
-through still when it is a duplicate. It sits after the
+the extension's order, at most ten. Each call carries its verdict: a
+duplicate in the error red and struck through, a new multiplier in the
+multiplier colour and bold, any other alert in the important colour and bold
+— bold as well as coloured, since colour alone is no signal
+([user-interface.md](user-interface.md)). A call this operation's log
+already holds is bold: on another band or mode it is no duplicate, and it is
+the likeliest station to be back. The call the field reads, typed in full or
+picked, is in the important green and bold — a duplicate in its red, struck
+through and bold, the one duplicate drawn bold, since every duplicate is in
+the log. It sits after the
 operating style and the keyer line — what is under way is read first — and
 before the other operational messages, taking the room the items before it
 leave, and shows as many calls as fit there whole, from the first — the

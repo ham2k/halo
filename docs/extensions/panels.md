@@ -29,7 +29,9 @@ renaming a `key` drops the panel out of every arrangement holding it.
 **`render`** is called when the panel appears and whenever one of its
 triggers fires. `operation` is the operation's data with its `uuid`, its
 `startAtMillisMin`/`startAtMillisMax`, and `operatorCall`, who is at the key
-on this device. `config` is the panel's own form values. `qso` is the draft
+on this device; each of its `refs` that a running contest extension (one
+whose manifest's `category` is `contest`) handles carries `contest: true`
+(API 25), the one way to tell a contest's operation from a park's. `config` is the panel's own form values. `qso` is the draft
 being composed, present when a trigger asked for it. `environment`,
 `clock` and `instanceId` (which placed pane this is, since a `multiple`
 panel may be placed several times) arrive on scene-capable hosts

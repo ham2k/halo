@@ -9,6 +9,7 @@
 // it back.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart' show Qso;
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/services/halo_services.dart';
 import 'package:ham2k_logger/views/operation/draft_suggestions_feed.dart';
@@ -99,5 +100,20 @@ void main() {
     final after = _list('K1A', ['K1AB']);
     services.extensions.draftSuggestions.post('scp', 'op-1', after);
     expect(set.list, same(after));
+  });
+
+  // A deleted contact or an event marker bolding a suggestion would call a
+  // station worked that never was.
+  test('the calls worked are the live contacts, read as the call field reads them', () {
+    Qso qso(String uuid, String call, {bool deleted = false, String band = '20m'}) => Qso(
+      uuid: uuid,
+      operationUuid: 'op-1',
+      deleted: deleted,
+      data: {
+        'their': {'call': call},
+        'band': band,
+      },
+    );
+    expect(callsWorkedIn([qso('a', ' k1ab '), qso('b', 'K1AC', deleted: true), qso('c', 'K1AD', band: 'event'), qso('d', '')]), {'K1AB'});
   });
 }

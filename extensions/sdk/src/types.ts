@@ -816,6 +816,12 @@ export interface Ref {
   /// sets nor clears it.
   largeArea?: boolean
 
+  /// Set by the app on the refs of an operation an assistant, a panel, a
+  /// template or `host.getOperation` is handed: `true` when a running `contest` extension (its manifest's
+  /// `category`) handles the ref's type, absent otherwise. Nothing else
+  /// tells a contest's ref from an activity's. Extension API 25.
+  contest?: true
+
   /// The program has RETIRED this reference — it still exists and still names
   /// itself, but it can no longer be activated. The app marks such a row
   /// rather than hiding it, so an operator who asked for it by name learns why
@@ -3822,7 +3828,7 @@ export interface DraftSuggestion {
   /// `notes`. Nothing else: a pick fills in the station, never the radio,
   /// the time or the record, and a draft carrying any other field rejects.
   qso: DraftPatch
-  /// The verdicts the line shows: `duplicate` struck through, `newMult` in
+  /// The verdicts the line shows: `duplicate` red and struck through, `newMult` in
   /// the multiplier colour, any other alert in the important one. At most
   /// 16 of each, each at most 64 characters.
   notices?: string[]

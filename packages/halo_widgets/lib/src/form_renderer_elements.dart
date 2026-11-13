@@ -110,19 +110,23 @@ mixin _Elements on State<FormRenderer> {
     // text only.
     final color = devModeColor ?? _toneColor(el, theme);
     final style = color == null ? null : (MarkdownStyleSheet base) => base.copyWith(p: base.p?.copyWith(color: color));
+    // Its links open as a `link` element's do: through the presenter, which
+    // decides what may open.
+    final open = widget.onOpenLink;
+    final onTapLink = open == null ? null : (String text, String? href, String title) => href == null ? null : open(href);
     if (el['collapsible'] == true) {
       return _CollapsibleMarkdown(
         title: el['title'] as String? ?? '',
         color: devModeColor,
         child: Padding(
           padding: _rowContentPadding,
-          child: HaloMarkdown(data: text, style: style),
+          child: HaloMarkdown(data: text, style: style, onTapLink: onTapLink),
         ),
       );
     }
     return Padding(
       padding: _rowContentPadding,
-      child: HaloMarkdown(data: text, style: style),
+      child: HaloMarkdown(data: text, style: style, onTapLink: onTapLink),
     );
   }
 

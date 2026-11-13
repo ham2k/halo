@@ -127,7 +127,21 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
     digital: widget.keyingSuperMode == 'Digital',
     suppressed: editingHere && _selectedQso != null,
     suggestions: _draftSuggestions.sets[radio],
+    worked: _isWorked,
   );
+
+  ({List<Qso> log, Set<String> calls})? _worked;
+
+  /// Whether the log holds [call], for the suggestions line: folded once per
+  /// log, which the stream emits as a new list on every change, and only
+  /// when the line asks.
+  bool _isWorked(String call) {
+    var worked = _worked;
+    if (worked == null || !identical(worked.log, widget.qsos)) {
+      _worked = worked = (log: widget.qsos, calls: callsWorkedIn(widget.qsos));
+    }
+    return worked.calls.contains(call);
+  }
 
   /// What [radio]'s set says its contact lacks of the radio state, said in
   /// that radio's FYI area (logging-fields.md § The FYI area): the band and

@@ -116,6 +116,10 @@ class FyiArea extends StatefulWidget {
 
   final DraftSuggestions? suggestions;
 
+  /// Whether this operation's log holds a call, as the suggestions line asks
+  /// of each it draws: those are bold. Asked only while the line shows.
+  final bool Function(String call)? worked;
+
   const FyiArea({
     super.key,
     required this.services,
@@ -125,6 +129,7 @@ class FyiArea extends StatefulWidget {
     this.digital = false,
     this.suppressed = false,
     this.suggestions,
+    this.worked,
   });
 
   @override
@@ -695,20 +700,21 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
     final shown = !leaving && !hidden;
     final tertiary = theme.colorScheme.tertiary;
     Widget call(int index, DraftSuggestion draft) {
-      final base = style.color ?? theme.colorScheme.onSurface;
-      final accent = draft.call == typed
+      final typedHere = draft.call == typed;
+      final accent = draft.isDuplicate
+          ? theme.colorScheme.error
+          : typedHere
           ? colors.important
           : draft.notices.contains('newMult') || draft.alerts.contains('newMult')
           ? colors.spotMultiplier
           : (draft.alerts.any((a) => a != 'duplicate') ? colors.important : null);
+      // Every duplicate is in the log: its red and its line say so, and bold
+      // is kept for the one the field reads.
+      final bold = draft.isDuplicate ? typedHere : accent != null || (widget.worked?.call(draft.call) ?? false);
       final text = Text(
         draft.call,
         maxLines: 1,
-        style: style.copyWith(
-          color: draft.isDuplicate && accent == null ? base.withValues(alpha: 0.6) : accent,
-          fontWeight: accent != null ? FontWeight.w700 : null,
-          decoration: draft.isDuplicate ? TextDecoration.lineThrough : null,
-        ),
+        style: style.copyWith(color: accent, fontWeight: bold ? FontWeight.w700 : null, decoration: draft.isDuplicate ? TextDecoration.lineThrough : null),
       );
       final tap = shown && !held ? () => widget.suggestions?.tap(list, index) : null;
       return Semantics(

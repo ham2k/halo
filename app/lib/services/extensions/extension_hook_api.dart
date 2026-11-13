@@ -766,7 +766,15 @@ mixin _ExtensionHookApi {
     final result = await host.invoke(
       Hooks.templateRender,
       key: 'templates',
-      args: {'template': template, 'operation': ?operation, 'qso': ?qso, 'next': ?next, 'qsoCount': ?qsoCount, 'log': ?log, 'keyer': ?keyer},
+      args: {
+        'template': template,
+        'operation': ?(operation == null ? null : markContestRefs(operation)),
+        'qso': ?qso,
+        'next': ?next,
+        'qsoCount': ?qsoCount,
+        'log': ?log,
+        'keyer': ?keyer,
+      },
       timeout: const Duration(seconds: 2),
     );
     if (result is! Map) return null;
@@ -790,7 +798,13 @@ mixin _ExtensionHookApi {
     final result = await host.invoke(
       Hooks.templateRenderMany,
       key: 'templates',
-      args: {'templates': templates, 'operation': ?operation, 'qso': ?qso, 'qsoCount': ?qsoCount, 'keyer': ?keyer},
+      args: {
+        'templates': templates,
+        'operation': ?(operation == null ? null : markContestRefs(operation)),
+        'qso': ?qso,
+        'qsoCount': ?qsoCount,
+        'keyer': ?keyer,
+      },
       timeout: const Duration(seconds: 2),
     );
     if (result is! Map || result['results'] is! List) return null;
@@ -1227,14 +1241,41 @@ mixin _ExtensionHookApi {
   /// The running extension whose manifest declares the `ref:<type>` hook
   /// [type] is handled by: the one whose answers are its own. One installed
   /// but not running answers nothing, and its grant is not the answer's.
-  String? _refTypeOwner(Object? type) {
+  String? _refTypeOwner(Object? type) => _refTypeOwnerInfo(type)?.key;
+
+  ExtensionInfo? _refTypeOwnerInfo(Object? type) {
     if (type is! String) return null;
     bool declares(String hook) {
       final declared = Hooks.refTypeOf(hook);
       return declared == type || (declared?.startsWith('$type/') ?? false);
     }
 
-    return availableExtensions.where((info) => _loadedExtensionKeys.contains(info.key) && info.hooks.any(declares)).firstOrNull?.key;
+    return availableExtensions.where((info) => _loadedExtensionKeys.contains(info.key) && info.hooks.any(declares)).firstOrNull;
+  }
+
+  /// [operation] with each ref whose type a running `contest` extension
+  /// handles marked `contest: true`: nothing else tells an extension a
+  /// contest's ref from an activity's. [operation] itself when none is.
+  Map<String, dynamic> markContestRefs(Map<String, dynamic> operation) {
+    final refs = operation['refs'];
+    if (refs is! List) return operation;
+    final marked = [for (final ref in refs) ref is Map && _refTypeOwnerInfo(ref['type'])?.category == 'contest'];
+    if (!marked.contains(true)) return operation;
+    return {
+      ...operation,
+      'refs': [
+        for (final (i, ref) in refs.indexed)
+          if (marked[i]) {...(ref as Map), 'contest': true} else ref,
+      ],
+    };
+  }
+
+  /// [args] with their `operation`'s contest refs marked ([markContestRefs]).
+  Map<String, dynamic> withContestRefs(Map<String, dynamic> args) {
+    final operation = args['operation'];
+    if (operation is! Map) return args;
+    final marked = markContestRefs(operation.cast<String, dynamic>());
+    return identical(marked, operation) ? args : {...args, 'operation': marked};
   }
 
   /// [method] on every ref's `ref:<type>` handler in one [ExtensionHost.invokeHookBatch],

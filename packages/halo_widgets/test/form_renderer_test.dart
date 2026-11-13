@@ -604,6 +604,34 @@ void main() {
       expect(openedUrl, 'https://example.com/privacy');
     });
 
+    // A link in prose is the one an author writes most; drawn as a link and
+    // left inert, it reads as broken.
+    testWidgets('a markdown block\'s links hand their URL to onOpenLink', (tester) async {
+      String? openedUrl;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: FormRenderer(
+                formDefinition: const {
+                  'elements': [
+                    {'type': 'markdown', 'text': '[Super Check Partial](https://www.supercheckpartial.com)'},
+                  ],
+                },
+                initialState: const {},
+                onOpenLink: (url) => openedUrl = url,
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.textContaining('Super Check Partial', findRichText: true));
+      expect(openedUrl, 'https://www.supercheckpartial.com');
+    });
+
     testWidgets('gathers input, runs async validation and transformation on submit', (tester) async {
       Map<String, dynamic>? submittedValues;
       var validatorCalled = false;

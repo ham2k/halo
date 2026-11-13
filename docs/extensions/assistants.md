@@ -47,7 +47,7 @@ change in one is a call about that one; a tick is a call about each.
 
 - `operation` is the operation's data with its `uuid`,
   `startAtMillisMin`/`startAtMillisMax` and `operatorCall`, as a panel is
-  handed it. `ctx.getQsos(operation.uuid)` reads its log.
+  handed it, a contest's refs marked `contest: true` (API 25). `ctx.getQsos(operation.uuid)` reads its log.
 - `qso` is the draft being composed in it, present when you declare `qso` or
   `lookup` and the logging panel has produced one.
 - `config` is the assistant's own settings.

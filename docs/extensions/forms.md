@@ -83,7 +83,7 @@ interface FormHeader {
 }
 interface FormSectionEnd { type: "sectionEnd" }   // ends the band above it; rows after it belong to no band and do not fold with it
 interface FormSectionDivider { type: "divider"; title?: string; devMode?: boolean; environment?: string | string[] }
-interface FormMarkdownBlock { type: "markdown"; text: string; collapsible?: boolean; title?: string; devMode?: boolean; environment?: string | string[] }   // collapsible starts folded behind `title`, which it requires
+interface FormMarkdownBlock { type: "markdown"; text: string; collapsible?: boolean; title?: string; devMode?: boolean; environment?: string | string[] }   // collapsible starts folded behind `title`, which it requires; its links open as a link element's do
 interface FormActionElement { type: "action"; key: string; label: string; method: string; style?: "row"; icon?: string; devMode?: boolean; common?: boolean; environment?: string | string[]; target?: string | string[] }   // style "row" is an icon row with a chevron; omit it for a button
 interface FormLinkElement { type: "link"; label: string; url: string; key?: string; icon?: string; description?: string; devMode?: boolean; common?: boolean; environment?: string | string[] }   // http, https and mailto only; how it opens is the app's; carries no value and never appears in form state
 

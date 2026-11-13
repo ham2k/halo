@@ -263,7 +263,7 @@ class _ExtensionHostCalls {
     final operation = await _service.operations?.get(uuid);
     // Same shape as qsonPayloadFor's `operation`: the QSON with `uuid`
     // folded in.
-    return operation == null ? null : {...operation.data, 'uuid': operation.uuid};
+    return operation == null ? null : _service.markContestRefs({...operation.data, 'uuid': operation.uuid});
   }
 
   /// How many operations one `listOperations` call answers at most.

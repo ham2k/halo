@@ -33,20 +33,21 @@ void main() {
   const width = 640.0;
 
   /// The area at a known width, as a set's info frame gives it one.
-  Widget host({String radio = 'A', bool keyer = false, bool suppressed = false, DraftSuggestions? suggestions}) => TranslationProvider(
-    child: MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: SizedBox(
-            width: width,
-            child: Column(
-              children: [FyiArea(services: services, radio: radio, keyer: keyer, suppressed: suppressed, suggestions: suggestions)],
+  Widget host({String radio = 'A', bool keyer = false, bool suppressed = false, DraftSuggestions? suggestions, bool Function(String call)? worked}) =>
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: width,
+                child: Column(
+                  children: [FyiArea(services: services, radio: radio, keyer: keyer, suppressed: suppressed, suggestions: suggestions, worked: worked)],
+                ),
+              ),
             ),
           ),
         ),
-      ),
-    ),
-  );
+      );
 
   FyiMessage message(String key, FyiCategory category, String text, {IconData icon = MdiIcons.antenna, String? radio, VoidCallback? onTap}) =>
       FyiMessage(key: key, category: category, icon: icon, text: text, radio: radio, onTap: onTap);
@@ -511,6 +512,32 @@ void main() {
       await settle(tester);
       expect(find.text('K1AC'), findsNothing);
       expect(areaHeight(tester), 0);
+    });
+
+    // A call worked here on another band or mode is no duplicate, so without
+    // the log's own say it reads like any call the extension guessed at. And
+    // every duplicate is in the log: bold on all of them, it would mark none.
+    testWidgets('a call the log holds is bold; a duplicate is red and struck through, bold only when the field reads it', (tester) async {
+      final suggestions = DraftSuggestions()
+        ..list = list
+        ..call = 'K1A';
+      addTearDown(suggestions.dispose);
+      await tester.pumpWidget(host(suggestions: suggestions, worked: {'K1AB', 'K1AC'}.contains));
+      await settle(tester);
+      TextStyle styleOf(String call) => tester.widget<Text>(find.text(call)).style!;
+      final error = Theme.of(tester.element(find.text('K1AB'))).colorScheme.error;
+      expect(styleOf('K1AC').fontWeight, FontWeight.w700, reason: 'worked on another band or mode');
+      expect(styleOf('K1AB').color, error);
+      expect(styleOf('K1AB').decoration, TextDecoration.lineThrough);
+      expect(styleOf('K1AB').fontWeight, isNot(FontWeight.w700), reason: 'a duplicate is in the log by definition');
+
+      suggestions
+        ..list = DraftSuggestionList(forCall: 'K1AB', drafts: [list.drafts.first])
+        ..call = 'K1AB';
+      await settle(tester);
+      await settle(tester);
+      expect(styleOf('K1AB').fontWeight, FontWeight.w700, reason: 'the call the field reads');
+      expect(styleOf('K1AB').color, error);
     });
 
     testWidgets('shows only the calls that fit whole, and tells the set how many', (tester) async {
