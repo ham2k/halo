@@ -25,7 +25,7 @@ void main() {
   final tabs = AppLocale.en.buildSync().operation.tabs;
   final common = AppLocale.en.buildSync().common;
   // Scoped to the header's button: "Save" alone is a word other controls use.
-  final headerSave = find.descendant(of: find.byType(AppBar), matching: find.widgetWithText(TextButton, common.save));
+  final headerSave = find.descendant(of: find.byType(AppBar), matching: find.widgetWithText(FilledButton, common.save));
 
   Future<HaLoServices> servicesWith(WidgetTester tester) async {
     final HaLoHarness(:services, :settings) = await makeHaLoServices();
@@ -329,7 +329,7 @@ void main() {
       findsWidgets,
       reason: 'the rows are listed, so the assertion above is not vacuous',
     );
-    expect(headerSave, findsOneWidget);
+    expect(find.widgetWithText(FilledButton, common.save), findsOneWidget, reason: "the sheet's copy still carries Save");
 
     // And the guard behind it still refuses, so no other caller can stack one.
     final view = tester.state(find.byType(OperationView));
@@ -503,15 +503,19 @@ void main() {
     await startEditing(tester);
     await dragToDelete(tester, tabs.info);
     await openAddSheet(tester);
-    // Under the sheet, a press on Save meets the route's barrier, which only
-    // closes the sheet. An edit that ended with the sheet still up would leave
-    // its adds writing straight to settings, with Discard gone from beside
-    // them.
-    await tester.tap(headerSave, warnIfMissed: false);
+    // The Save on screen under the sheet is the sheet's own copy, disabled,
+    // and a press on it reaches the route's header-strip dismiss layer, which
+    // only closes the sheet. An edit that ended with the sheet still up would
+    // leave its adds writing straight to settings; a press that did nothing
+    // at all would leave the operator pressing the accent button for nothing.
+    final save = find.widgetWithText(FilledButton, common.save);
+    expect(save, findsOneWidget);
+    await tester.tap(save, warnIfMissed: false);
     await tester.pumpAndSettle();
 
-    expect(find.byType(LayoutSheet), findsNothing);
+    expect(find.byType(LayoutSheet), findsNothing, reason: 'the press closed the sheet');
     expect(find.text(t.editingLayout), findsOneWidget, reason: 'still editing');
+    expect(tester.widget<FilledButton>(headerSave).onPressed, isNotNull, reason: "the header's Save is live again");
     expect(services.settings.layoutData(LayoutKeys.operationDock), isNull, reason: 'nothing was saved');
 
     await unmount(tester);
@@ -613,11 +617,12 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('editing names itself in the header, with Save and Discard beside the name through an added panel', (tester) async {
+  testWidgets('editing names itself in the header, and ends with the last control, Save, through an added panel', (tester) async {
     // Edit mode makes every pane ignore taps and keys, so a view in it looks
     // like a logger that stopped answering. The header is what says why, and
-    // the way out sits beside that, not among the trailing icons, where
-    // Discard's arrow reads as "back" and throws away the panel just added.
+    // the way out is the filled Save at its end: Discard's arrow, if it were
+    // the last thing there, reads as "back" and throws away the panel just
+    // added.
     final services = await servicesWith(tester);
     await pumpWide(tester, services);
     final header = find.byType(AppBar);
@@ -635,23 +640,29 @@ void main() {
     expect(inHeader(find.textContaining('KI2D')), findsNothing, reason: 'the operation is not what is being arranged');
     expect(save, findsOneWidget);
     expect(discard, findsOneWidget);
-    // Name, Discard, Save, and only then the rest of the edit's controls.
+    // The name, then the edit's controls, with Discard and Save last.
     final x = tester.getCenter;
-    expect(x(title).dx, lessThan(x(discard).dx));
-    expect(x(discard).dx, lessThan(x(save).dx));
     final viewOptions = inHeader(find.widgetWithIcon(IconButton, MdiIcons.viewDashboardEdit));
     final plus = inHeader(find.widgetWithIcon(IconButton, MdiIcons.plus));
     expect(viewOptions, findsOneWidget, reason: "the view's own options, the same glyph a pane's carry");
-    expect(x(save).dx, lessThan(x(viewOptions).dx));
-    expect(x(save).dx, lessThan(x(plus).dx));
+    expect(x(title).dx, lessThan(x(viewOptions).dx));
+    expect(x(viewOptions).dx, lessThan(x(plus).dx));
+    expect(x(plus).dx, lessThan(x(discard).dx));
+    expect(x(discard).dx, lessThan(x(save).dx));
+    expect(tester.widget<FilledButton>(save).style?.backgroundColor?.resolve({}), fabAccentColor, reason: "filled as the setup sheet's OK is");
+    final saveAt = x(save);
 
-    // Under the Add a Panel sheet the header takes no taps: they stay where
-    // they are, visibly disabled, and no second live copy appears.
+    // Under the Add a Panel sheet the header takes no taps: the sheet's copy
+    // of the controls stands in the same spot, Save and Discard visibly
+    // disabled, and no second live copy appears.
     await openAddSheet(tester);
-    expect(save, findsOneWidget);
-    expect(tester.widget<TextButton>(save).onPressed, isNull);
-    expect(tester.widget<IconButton>(discard).onPressed, isNull);
-    expect(find.widgetWithText(TextButton, common.save), findsOneWidget, reason: "the sheet's header carries no Save of its own");
+    final anySave = find.widgetWithText(FilledButton, common.save);
+    final anyDiscard = find.widgetWithIcon(IconButton, MdiIcons.undoVariant);
+    expect(anySave, findsOneWidget);
+    expect(x(anySave), saveAt, reason: 'Save does not move when the sheet opens');
+    expect(tester.widget<FilledButton>(anySave).onPressed, isNull);
+    expect(anyDiscard, findsOneWidget);
+    expect(tester.widget<IconButton>(anyDiscard).onPressed, isNull);
 
     final added = sheetOf(tester).available.first.id;
     sheetOf(tester).onAdd!(added);
@@ -659,7 +670,7 @@ void main() {
 
     expect(find.byType(LayoutSheet), findsNothing);
     expect(title, findsOneWidget, reason: 'adding a panel does not end the edit, so the header still says so');
-    expect(tester.widget<TextButton>(save).onPressed, isNotNull);
+    expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
 
     await tester.tap(save);
     await tester.pumpAndSettle();

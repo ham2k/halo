@@ -145,7 +145,7 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('editing: the same switcher, out with the trailing controls while Save stays by the title', (tester) async {
+  testWidgets('editing: the same switcher, among the trailing controls before Save', (tester) async {
     final services = await servicesWith(tester);
     final host = await pumpWide(tester, services);
     await host.duplicateLayout(ViewLayouts.defaultId, 'Other');
@@ -157,7 +157,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final l = AppLocale.en.buildSync().operation.layout;
-    final save = find.descendant(of: find.byType(AppBar), matching: find.widgetWithText(TextButton, AppLocale.en.buildSync().common.save));
+    final save = find.descendant(of: find.byType(AppBar), matching: find.widgetWithText(FilledButton, AppLocale.en.buildSync().common.save));
     final name = find.text('Contest Station');
     expect(save, findsOneWidget);
     expect(
@@ -166,10 +166,10 @@ void main() {
       reason: 'the edit says which layout it saves into',
     );
     expect(tester.getSize(find.byType(LayoutSwitcherButton)), outside, reason: 'the same control as outside the edit, not a label of its own');
-    // Save belongs to the "Editing Layout" title, not to the switcher: the way
-    // out of the mode sits beside the name of the mode.
-    expect(tester.getCenter(find.text(l.editingLayout)).dx, lessThan(tester.getCenter(save).dx));
-    expect(tester.getCenter(save).dx, lessThan(tester.getCenter(name).dx));
+    // Save stays the header's last control: the switcher joins the edit's
+    // controls before it, never between it and the edge.
+    expect(tester.getCenter(find.text(l.editingLayout)).dx, lessThan(tester.getCenter(name).dx));
+    expect(tester.getCenter(name).dx, lessThan(tester.getCenter(save).dx));
 
     await tester.tap(save);
     await tester.pumpAndSettle();
@@ -204,7 +204,7 @@ void main() {
     expect(find.text(l.editingLayoutShort), findsOneWidget);
     expect(find.text(l.editingLayout), findsNothing);
     expect(
-      find.descendant(of: find.byType(AppBar), matching: find.widgetWithText(TextButton, AppLocale.en.buildSync().common.save)).hitTestable(),
+      find.descendant(of: find.byType(AppBar), matching: find.widgetWithText(FilledButton, AppLocale.en.buildSync().common.save)).hitTestable(),
       findsOneWidget,
     );
     final switcher = find.bySemanticsLabel(AppLocale.en.buildSync().operation.layout.layouts.switcherLabel(name: 'A rather long layout name for a phone'));
@@ -263,7 +263,7 @@ void main() {
     expect(host.dockSpec!.collectModules(), isNot(contains(clock)));
     host.dockKey.currentState!.addModule(clock);
     await switchTo(l.operation.layout.layouts.defaultName);
-    await tester.tap(find.widgetWithText(FilledButton, l.common.save));
+    await tester.tap(find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(FilledButton, l.common.save)));
     await tester.pumpAndSettle();
     expect(storedModules(services, contestKey), contains(clock));
     expect(storedModules(services, LayoutKeys.operationDock), ['logging', '$clockPanelId#1']);
@@ -310,7 +310,7 @@ void main() {
     expect(hint.hintStyle?.color?.a, lessThan(0.5));
 
     await tester.enterText(fields.at(1), 'Sprint, with the bandmap');
-    await tester.tap(find.widgetWithText(FilledButton, AppLocale.en.buildSync().common.save));
+    await tester.tap(find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(FilledButton, AppLocale.en.buildSync().common.save)));
     await tester.pumpAndSettle();
     expect(host.layoutDescription(host.viewLayouts.activeLayout), 'Sprint, with the bandmap');
     expect(ViewLayouts.read(services.settings, 'operation').activeLayout.description, 'Sprint, with the bandmap');

@@ -98,9 +98,8 @@ arrives, rather than leaving a hole where it stood.
 **The railless header holds the product name and the cog, and nothing else.**
 The profile name and the layout button come with the rail, which is one tap on
 the logo away: a phone's header has no room to carry them beside the cog. The
-exception is an edit already in progress: the plus and the switcher stay
-through a rail toggled away mid-edit, and Save and Discard are in the title
-(see Edit mode), which the rail never touches.
+exception is an edit already in progress: the plus, the switcher, Discard and
+Save stay through a rail toggled away mid-edit.
 
 **Headers span the window and never answer to the rail.** Every destination's
 header runs the full width above it, holding the same leading gap for the mark
@@ -855,8 +854,8 @@ the setting is on — an operator who asked for a customizable layout has asked
 to see the way into it — and pressing it goes straight into editing, with no
 sheet in between: what they want when they reach for it is to move a pane.
 While editing it gives way to a **plus** (after the switcher, with named
-layouts), and the header's title becomes **Editing Layout**, with
-**Discard** and **Save** right beside it. While editing:
+layouts), followed by **Discard** and a filled **Save**, and the header's
+title becomes **Editing Layout**. While editing:
 
 - every tab is a grab handle, at full strength, on every tab in a group. The
   strip stops sharing evenly and starts squeezing: a strip too narrow to
@@ -876,14 +875,15 @@ layouts), and the header's title becomes **Editing Layout**, with
   mid-rearrange the tab scrolled out of sight is as likely as not the one
   being worked on;
 - the view's header names the MODE: its title reads **Editing Layout**, in
-  every view, with Discard and Save beside it, and it drops the dots and no
-  longer opens the operation's setup sheet — the operation is not what is
-  being arranged. Panes take no input while editing (below), the logger
-  included, so a header that went on naming the view would make edit mode
-  look like a logger that has stopped answering. The name says why; the way
-  out sits beside it rather than out among the trailing icons, where
-  Discard's arrow, alone, reads as a back button and throws away the edit.
-  The title is what gives way on a narrow header, never the two buttons;
+  every view, and it drops the dots and no longer opens the operation's setup
+  sheet — the operation is not what is being arranged. Panes take no input
+  while editing (below), the logger included, so a header that went on
+  naming the view would make edit mode look like a logger that has stopped
+  answering. The name says why; the way out is the header's last control,
+  Save, filled in `fabAccentColor` as the operation setup sheet's OK is, so
+  that it — not Discard's arrow beside it, which reads as a back button and
+  throws away the edit — is the one the eye lands on. The title is what gives
+  way on a narrow header, never the buttons;
 - each pane is **outlined as a folder** in `fabAccentColor` — every tab is a
   block with a rounded top, and the one that is showing is filled dark blue
   and leaves its bottom open, so the line runs down into the pane's body and
@@ -1070,10 +1070,11 @@ up — the route's barrier takes them wherever they land. So the trailing
 edit controls are built once by the view and rendered in *two* places, never
 both: the view's own header while no sheet is up, and the sheet's
 `TopModalPaneRoute.headerTrailing` while one is. A control left in the header
-under an open sheet is visible and dead. Save and Discard are the exception:
-they stay in the title under the sheet, disabled, and the sheet's own close is
-the way back to them. Removing them would shift the title each time the
-sheet opens and closes.
+under an open sheet is visible and dead. The sheet's copy carries Save and
+Discard in the same spot, disabled and transparent to the pointer: a press
+there reaches the route's dismiss layer and only closes the sheet, which
+leaves the view's live Save under the finger. Removing them would shift the
+row each time the sheet opens and closes.
 
 The plus is one of the controls the sheet's own header carries, so it is the
 obvious thing to press while the sheet is already up. It refuses: a second
@@ -1250,7 +1251,7 @@ for a name and whether to **duplicate the current layout** (the default) or
 **start from the default** arrangement.
 
 **While editing, the header keeps the switcher**, the same control as outside
-the edit, among the trailing controls left of the plus; Save is in the title.
+the edit, among the trailing controls left of the plus, Discard and Save.
 With several layouts, the header has to say which one a Save writes into.
 From the Add a Panel sheet's own header copy, the switcher takes that
 sheet down before opening the layouts sheet: what the layouts sheet does next

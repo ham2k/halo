@@ -1035,10 +1035,13 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
           // arrangement it ships with. Null unless editing.
           ?viewOptionsButton(context, editing: layoutEditing),
           // `layoutEditing` keeps them through a rail toggled away MID-EDIT:
-          // once editing these are the plus and the switcher, and an edit
-          // that loses them halfway through has lost the way to add a panel.
+          // once editing these are the plus, the switcher, Discard and Save,
+          // and an edit that loses them halfway through has lost the way to
+          // add a panel and the only way out.
           if (railPresent || layoutEditing) ...layoutHeaderControls(context),
-          const SizedBox(width: Space.md),
+          // Editing, the controls end in their own gap after Save, the same in
+          // the sheet's copy; a second one here would move Save when it opens.
+          if (!layoutEditing) const SizedBox(width: Space.md),
           windowsCaptionSpacer(context),
         ],
       ),

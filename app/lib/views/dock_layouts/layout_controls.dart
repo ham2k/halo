@@ -353,8 +353,14 @@ extension LayoutControls<T extends StatefulWidget> on DockHost<T> {
         ),
       ];
     }
-    // Save and Discard are not here: they are the title's (see
-    // [editingLayoutTitle]).
+    // Disabled rather than removed in the sheet's copy: the edit does not end
+    // under the sheet, and removing them would shift the row each time the
+    // sheet opens and closes. Disabled AND pointer-transparent: the sheet's
+    // copy sits above the route's header-strip dismiss layer, and a disabled
+    // button still takes the hit, so a press on Save there would do nothing
+    // at all instead of closing the sheet and leaving Save live.
+    final canEnd = !inSheet;
+    final dimmed = onHeader.withValues(alpha: 0.38);
     return [
       // With named layouts, the edit says WHICH layout it is saving into: the
       // same switcher as outside the edit.
@@ -370,61 +376,56 @@ extension LayoutControls<T extends StatefulWidget> on DockHost<T> {
           icon: Icon(MdiIcons.plus, color: onHeader, semanticLabel: _t.title),
           onPressed: () => unawaited(openAddPanelSheet()),
         ),
+      IgnorePointer(
+        ignoring: !canEnd,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              // An icon, not a second labelled button: saving is what the
+              // operator came here to do, and discarding is the way back out
+              // from a rearrangement they thought better of.
+              icon: Icon(MdiIcons.undoVariant, semanticLabel: _t.revertLayout),
+              color: onHeader,
+              disabledColor: dimmed,
+              onPressed: canEnd ? revertLayout : null,
+            ),
+            // Filled in the accent, as the operation setup sheet's OK is: the
+            // one control in the header that ends the mode by keeping what
+            // was done.
+            FilledButton.icon(
+              onPressed: canEnd ? saveLayout : null,
+              icon: const Icon(MdiIcons.contentSave, size: 18),
+              label: Text(context.t.common.save),
+              style: FilledButton.styleFrom(
+                backgroundColor: fabAccentColor,
+                foregroundColor: theme.colorScheme.onPrimary,
+                disabledBackgroundColor: fabAccentColor.withValues(alpha: 0.38),
+                disabledForegroundColor: dimmed,
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(width: Space.sm),
     ];
   }
 
   /// The view's header title while its layout is being edited: the mode, by
-  /// name, and right beside it the two ways out of it.
+  /// name.
   ///
   /// Edit mode makes every pane ignore taps and keys, so a view in it looks
   /// like a logger that has stopped answering. Naming the mode where the
-  /// view's own name was is what tells the operator why; Save and Discard
-  /// beside that name are what tell them how to get back. Left out among the
-  /// trailing icons, Discard's arrow reads as "back" — and leaving that way
-  /// throws away the panel they just added.
+  /// view's own name was is what tells the operator why; the filled Save at
+  /// the right is what tells them how to get back.
   ///
-  /// Disabled rather than removed while the Add a Panel sheet is up: the
-  /// header takes no taps under that route, and the sheet's own close is the
-  /// way back to them. Removing them would shift the title each time the sheet
-  /// opens and closes.
-  Widget editingLayoutTitle(BuildContext context) {
-    final theme = Theme.of(context);
-    final onHeader = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
-    final dimmed = onHeader.withValues(alpha: 0.38);
-    final enabled = !layoutSheetOpen;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // The text gives way, never the buttons: a title squeezed to an
-        // ellipsis still leaves the edit something to end it with. Before it
-        // squeezes, it drops to "Editing" — the word that says why the panes
-        // stopped answering — rather than cut "Editing Layout" mid-word.
-        Flexible(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final full = _t.editingLayout;
-              final fits = textWidth(context, full, DefaultTextStyle.of(context).style) <= constraints.maxWidth;
-              return shrinkToFitText(Text(fits ? full : _t.editingLayoutShort));
-            },
-          ),
-        ),
-        const SizedBox(width: Space.md),
-        IconButton(
-          // An icon, not a second labelled button: saving is what the
-          // operator came here to do, and discarding is the way back out from
-          // a rearrangement they thought better of.
-          icon: Icon(MdiIcons.undoVariant, semanticLabel: _t.revertLayout),
-          color: onHeader,
-          disabledColor: dimmed,
-          onPressed: enabled ? revertLayout : null,
-        ),
-        TextButton.icon(
-          onPressed: enabled ? saveLayout : null,
-          icon: const Icon(MdiIcons.contentSave, size: 18),
-          label: Text(context.t.common.save),
-          style: TextButton.styleFrom(foregroundColor: onHeader, disabledForegroundColor: dimmed),
-        ),
-      ],
-    );
-  }
+  /// Before it squeezes, it drops to "Editing" — the word that says why the
+  /// panes stopped answering — rather than cut "Editing Layout" mid-word.
+  Widget editingLayoutTitle(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final full = _t.editingLayout;
+      final fits = textWidth(context, full, DefaultTextStyle.of(context).style) <= constraints.maxWidth;
+      return shrinkToFitText(Text(fits ? full : _t.editingLayoutShort));
+    },
+  );
 }

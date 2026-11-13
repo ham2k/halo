@@ -175,6 +175,26 @@ void main() {
     await _endOfTest(tester);
   });
 
+  testWidgets('Save stays put as the Add a Panel sheet opens over the edit', (tester) async {
+    // The sheet draws its own copy of the edit controls against the header's
+    // right edge. A gap Home kept after the view's copy, and the sheet's copy
+    // lacks, moves Save sideways under the operator's eye as the sheet opens.
+    final services = await _services(tester);
+    await _pumpHome(tester, services, size: const Size(1000, 800));
+    await tester.tap(find.descendant(of: find.byType(AppBar), matching: find.byIcon(MdiIcons.viewDashboard)));
+    await _settle(tester);
+    final save = find.ancestor(of: find.byIcon(MdiIcons.contentSave), matching: find.byType(FilledButton));
+    expect(save, findsOneWidget);
+    final before = tester.getRect(save);
+
+    await tester.tap(find.descendant(of: find.byType(AppBar), matching: find.byIcon(MdiIcons.plus)));
+    await _settle(tester);
+    expect(save, findsOneWidget, reason: "the sheet's copy, not a second one");
+    expect(tester.widget<FilledButton>(save).onPressed, isNull, reason: 'it is the disabled copy');
+    expect(tester.getRect(save), before);
+    await _endOfTest(tester);
+  });
+
   testWidgets('the logo toggles the labels, and the choice survives a remount', (tester) async {
     final services = await _services(tester);
     await _pumpHome(tester, services, size: const Size(1000, 800));
