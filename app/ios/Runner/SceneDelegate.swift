@@ -3,6 +3,7 @@ import UIKit
 
 class SceneDelegate: FlutterSceneDelegate {
   override func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+    (UIApplication.shared.delegate as? AppDelegate)?.recordLinkSenders(connectionOptions.urlContexts)
     super.scene(scene, willConnectTo: session, options: connectionOptions)
     if let view = window?.rootViewController?.view { DisplayRegions.shared.watch(view) }
     // A document that cold-launches the app arrives here, not through
@@ -14,6 +15,7 @@ class SceneDelegate: FlutterSceneDelegate {
   // the scene; FlutterSceneDelegate passes them on to plugins only, so the
   // file ones are handed to AppDelegate here. Links go on to app_links.
   override func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+    (UIApplication.shared.delegate as? AppDelegate)?.recordLinkSenders(URLContexts)
     super.scene(scene, openURLContexts: URLContexts)
     openDocuments(URLContexts)
   }

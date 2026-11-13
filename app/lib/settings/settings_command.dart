@@ -382,17 +382,18 @@ Future<String?> _commitScanned(HaLoServices services, ScannedSetting target, {re
 /// take; a field that restarts the extensions when it changes, whose restart
 /// would end the very runtime waiting on this answer; and another
 /// extension's assistant, or its settings, which the operator turns on
-/// themselves, knowing it then watches every operation; and a connected
-/// agent app's access.
+/// themselves, knowing it then watches every operation; and anything under
+/// Integrations: a connected agent app's access, another app's links.
 Future<SettingWrite> writeSettingForExtension(HaLoServices services, {required String key, required Object? value, required String? callerKey}) async {
   const invalid = (reason: 'invalid', message: null, unchanged: false, label: null, valueLabel: null);
   final target = (await scanSettings(services)).where((scanned) => scanned.isField && scanned.key == key).firstOrNull;
   final entry = target == null ? null : catalogEntryOf(target, developerMode: services.settings.developerMode);
   if (target == null || entry == null || !entry.isSimple || entry.restartsExtensions || !_takes(entry, value)) return invalid;
   if (target.group?.key == 'assistants' && !_ownAssistantRow(services, key, callerKey)) return invalid;
-  // What an agent app may do is the operator's to say, never an extension's:
-  // the endpoint answering those apps is an extension too.
-  if (target.group?.key == 'connectedApps') return invalid;
+  // What an agent app or another app's links may do is the operator's to
+  // say, never an extension's: the endpoint answering agent apps is an
+  // extension too, and an extension can send a link.
+  if (target.group?.key == 'integrations') return invalid;
   // Exact, unlike [_isUnchanged]: an extension's own text field keeps its
   // case, and a URL differing in it is a different URL.
   if (entry.value == value) return (reason: null, message: null, unchanged: true, label: null, valueLabel: null);

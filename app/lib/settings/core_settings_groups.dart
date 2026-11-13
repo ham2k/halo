@@ -27,6 +27,7 @@ import 'cat_server_dialog.dart';
 import 'settings_registry.dart';
 
 export 'export_settings_group.dart';
+export 'integrations_settings_group.dart';
 
 // Where the Privacy panel's policy links point.
 const privacyPolicyUrl = 'https://ham2k.com/legal/privacy/';

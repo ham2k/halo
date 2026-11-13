@@ -44,6 +44,11 @@ class UdpTransport extends EquipmentTransport with UdpTransportConfig {
   @override
   String get key => transportKey;
 
+  /// Stands in for [replyAddresses] in a test, which has no host name with
+  /// two addresses to dial.
+  @visibleForTesting
+  static Future<Set<String>> Function(String host, InternetAddress dialled)? debugReplyAddresses;
+
   @override
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async {
     if (cancel.isCancelled) throw const CatCancelledException();
@@ -52,14 +57,38 @@ class UdpTransport extends EquipmentTransport with UdpTransportConfig {
     final replyPort = (target['replyPort'] as num?)?.toInt() ?? 0;
 
     final address = await lookupHost(host);
+    final peers = await (debugReplyAddresses ?? replyAddresses)(host, address);
     if (cancel.isCancelled) throw const CatCancelledException();
     final socket = await _bindReplyPort(replyPort);
     if (cancel.isCancelled) {
       socket.close();
       throw const CatCancelledException();
     }
-    return _UdpConnection(socket, replyPort, address, port);
+    return _UdpConnection(socket, replyPort, address, port, peers);
   }
+}
+
+/// The addresses a reply to [host] may come from: the one dialled, and every
+/// other IPv4 address the name has. A PC with two interfaces on one network
+/// answers from whichever its routing prefers, which is one of its own
+/// addresses but not necessarily the one dialled. Any other sender is
+/// someone else on the network, whose `AZ:` would be read as the rotator's.
+///
+/// A name the OS resolver cannot answer for — an mDNS-only one that
+/// `lookupHost` found without it, or one it is slow on — leaves the dialled
+/// address alone, which is what a host given as an address is anyway.
+@visibleForTesting
+Future<Set<String>> replyAddresses(String host, InternetAddress dialled) async {
+  final addresses = {dialled.address};
+  try {
+    final found = await InternetAddress.lookup(host, type: InternetAddressType.IPv4).timeout(const Duration(seconds: 2));
+    addresses.addAll(found.map((a) => a.address));
+  } on SocketException {
+    // No answer from the OS resolver: the dialled address alone.
+  } on TimeoutException {
+    // Nor in time.
+  }
+  return addresses;
 }
 
 /// Not shared: two listeners on one reply port each get only some of the
@@ -98,6 +127,15 @@ class _UdpConnection implements EquipmentConnection, ExplainsClose {
   final int _replyPort;
   final InternetAddress _address;
   final int _port;
+
+  /// See [replyAddresses].
+  final Set<String> _peers;
+
+  /// The senders whose replies were dropped, each said once: either someone
+  /// else on the network or a PC answering from an address its name does not
+  /// resolve to, and the second shows only as a rotator that never answers.
+  /// A few, so a chatty stranger arriving first does not hide the PC's own.
+  final _droppedFrom = <String>{};
   final _dataController = StreamController<Uint8List>();
   final _closedCompleter = Completer<void>();
   bool _open = true;
@@ -106,7 +144,7 @@ class _UdpConnection implements EquipmentConnection, ExplainsClose {
   @override
   String? closeReason;
 
-  _UdpConnection(this._socket, this._replyPort, this._address, this._port) {
+  _UdpConnection(this._socket, this._replyPort, this._address, this._port, this._peers) {
     _listen(_socket);
   }
 
@@ -114,12 +152,15 @@ class _UdpConnection implements EquipmentConnection, ExplainsClose {
     socket.listen(
       (event) {
         if (event != RawSocketEvent.read || !identical(socket, _socket)) return;
-        // From any address: a PC with two interfaces on one network answers
-        // from whichever its routing prefers, not necessarily the one
-        // dialled. The port is this node's alone, and the session reads
-        // nothing but its own protocol's answers.
         final datagram = socket.receive();
         if (datagram == null || _dataController.isClosed) return;
+        final from = datagram.address.address;
+        if (!_peers.contains(from)) {
+          if (_droppedFrom.length < 4 && _droppedFrom.add(from)) {
+            debugPrint('[cat] udp reply from $from dropped: not one of the host\'s addresses (${_peers.join(', ')})');
+          }
+          return;
+        }
         _dataController.add(datagram.data);
       },
       onError: (Object error) {

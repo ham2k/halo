@@ -11,7 +11,8 @@
 // suggests its own while it is on screen by wrapping its body in
 // [FileSuggestions] (an operation's ADIF import, a dock's layout import).
 // Where the file lands on the window makes no difference: what the views on
-// screen suggest does. A file with one place to go goes there; with several,
+// screen suggest does. A file with one place to go goes there, unless that
+// destination asks first ([FileDestination.asksFirst]); with several,
 // the router asks, the view's suggestion first and already focused.
 //
 // One `desktop_drop` target, at the root ([FileDropRoot]). The plugin hands a
@@ -34,7 +35,7 @@ import 'file_kind.dart';
 
 /// Somewhere a file can go.
 class FileDestination {
-  const FileDestination({required this.id, required this.label, this.kind, this.accepts, required this.open});
+  const FileDestination({required this.id, required this.label, this.kind, this.accepts, this.asksFirst = false, required this.open});
 
   /// Names the destination across its providers: a view's suggestion takes
   /// the place of an always-there destination with the same id — the Logs
@@ -49,6 +50,12 @@ class FileDestination {
 
   /// Which files this takes, for one that [kind] alone cannot say.
   final bool Function(HaloFileKind? kind, XFile file)? accepts;
+
+  /// Offered in the chooser even as the only place a file can go, for a
+  /// destination that writes on being chosen with no review of its own. On
+  /// Android any installed app can hand the router a file, and a file that
+  /// went straight in would be one the operator never saw.
+  final bool asksFirst;
 
   /// Completes when the destination is done with the file — consent given or
   /// refused, import written or cancelled — since the next file in the queue
@@ -131,7 +138,7 @@ class FileRouter {
       await _cannotOpen(context, file, t.fileOpen.cannotOpenDetail);
       return;
     }
-    final chosen = candidates.length == 1
+    final chosen = candidates.length == 1 && !candidates.values.single.destination.asksFirst
         ? candidates.values.single
         : await showHaloDialog<FileCandidate>(
             context: context,

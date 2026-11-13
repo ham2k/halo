@@ -177,6 +177,11 @@ fixes four rules it carries but never awards.
   frequency is authoritative where a spot's is not, so `/qso` writes the VFO
   and skips Avoid Zero-Beating; `/operation` reuses an operation only on an
   exact activation-ref set match within 48 hours, as PoLo does.
+  - Deliberate divergence: PoLo applies these three at once; HaLo asks first,
+    naming the sender where Android or iOS says who it is, since any web
+    page or installed app can send one. "Don't ask again" remembers Allow or
+    Deny per sender, listed under Settings › Integrations › Links from Other
+    Apps; links with no named sender can only be denied for good.
   - Registered on macOS, iOS, Android and **Windows** (HALO-178 — schemes in
     the installer, plus single-instance forwarding, since Windows answers a
     scheme by launching a second copy rather than delivering to the running

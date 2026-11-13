@@ -839,6 +839,8 @@ class _Translations$settings$qrp extends Translations$settings$en {
 	@override late final _Translations$settings$agentLink$qrp agentLink = _Translations$settings$agentLink$qrp._(_root);
 	@override late final _Translations$settings$extensionSections$qrp extensionSections = _Translations$settings$extensionSections$qrp._(_root);
 	@override late final _Translations$settings$map$qrp map = _Translations$settings$map$qrp._(_root);
+	@override late final _Translations$settings$integrations$qrp integrations = _Translations$settings$integrations$qrp._(_root);
+	@override late final _Translations$settings$linkSenders$qrp linkSenders = _Translations$settings$linkSenders$qrp._(_root);
 	@override late final _Translations$settings$privacy$qrp privacy = _Translations$settings$privacy$qrp._(_root);
 	@override String get operatorCall => 'operator callsign';
 	@override late final _Translations$settings$sync$qrp sync = _Translations$settings$sync$qrp._(_root);
@@ -1309,6 +1311,16 @@ class _Translations$deepLink$qrp extends Translations$deepLink$en {
 	@override String get waitingInOperation => 'that contact is waiting in the operation behind this screen';
 	@override String unknownActivities({required Object refs}) => 'this device has no activity for ${refs}, so those references were left off';
 	@override String activitiesUnavailable({required Object refs}) => 'could not reach your activities, so ${refs} was left off — try that link again';
+	@override String askTitle({required Object sender}) => 'link from ${sender}';
+	@override String get askTitleUnknown => 'link from another app';
+	@override String askTune({required Object where}) => 'tune the radio to ${where}?';
+	@override String askQso({required Object calls}) => 'fill in a contact with ${calls}?';
+	@override String askQsoTuned({required Object calls, required Object where}) => 'fill in a contact with ${calls} and tune the radio to ${where}?';
+	@override String askOperation({required Object refs}) => 'open the operation for ${refs}, starting one if needed?';
+	@override String askRemember({required Object sender}) => 'don’t ask again for links from ${sender}';
+	@override String get askRememberUnknown => 'don’t ask again for links from any other apps';
+	@override String get allow => 'allow';
+	@override String get deny => 'deny';
 }
 
 // Path: confirmDevice
@@ -2669,6 +2681,30 @@ class _Translations$settings$map$qrp extends Translations$settings$map$en {
 	@override late final _Translations$settings$map$showCallsigns$qrp showCallsigns = _Translations$settings$map$showCallsigns$qrp._(_root);
 	@override late final _Translations$settings$map$showGrayline$qrp showGrayline = _Translations$settings$map$showGrayline$qrp._(_root);
 	@override late final _Translations$settings$map$styleOpts$qrp styleOpts = _Translations$settings$map$styleOpts$qrp._(_root);
+}
+
+// Path: settings.integrations
+class _Translations$settings$integrations$qrp extends Translations$settings$integrations$en {
+	_Translations$settings$integrations$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'integrations';
+}
+
+// Path: settings.linkSenders
+class _Translations$settings$linkSenders$qrp extends Translations$settings$linkSenders$en {
+	_Translations$settings$linkSenders$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'links from other apps';
+	@override String get unknownSender => 'any other apps';
+	@override String get allowed => 'allowed';
+	@override String get denied => 'denied';
+	@override String get remove => 'remove';
 }
 
 // Path: settings.privacy
@@ -6779,6 +6815,12 @@ extension on TranslationsQrp {
 			'settings.map.styleOpts.positron' => 'positron',
 			'settings.map.styleOpts.voyager' => 'voyager',
 			'settings.map.styleOpts.darkMatter' => 'dark matter',
+			'settings.integrations.title' => 'integrations',
+			'settings.linkSenders.title' => 'links from other apps',
+			'settings.linkSenders.unknownSender' => 'any other apps',
+			'settings.linkSenders.allowed' => 'allowed',
+			'settings.linkSenders.denied' => 'denied',
+			'settings.linkSenders.remove' => 'remove',
 			'settings.privacy.title' => 'privacy',
 			'settings.privacy.shareAppData.title' => 'share app usage data',
 			'settings.privacy.shareAppData.descriptionOn' => 'helping us improve the app by sharing usage, configuration, crash and performance data',
@@ -7160,14 +7202,14 @@ extension on TranslationsQrp {
 			'settings.station.models.elecraftGeneric' => 'elecraft - generic',
 			'settings.station.models.kx2' => 'elecraft kx2',
 			'settings.station.models.kx3' => 'elecraft kx3',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.k4' => 'elecraft k4',
 			'settings.station.models.ic705' => 'icom ic-705',
 			'settings.station.models.ic7300' => 'icom ic-7300',
 			'settings.station.models.ic7300mk2' => 'icom ic-7300 mk2',
 			'settings.station.models.ic706mkiig' => 'icom ic-706mkiig',
 			'settings.station.models.ic7100' => 'icom ic-7100',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.ic7200' => 'icom ic-7200',
 			'settings.station.models.ic7610' => 'icom ic-7610',
 			'settings.station.models.ic7760' => 'icom ic-7760',
@@ -7674,14 +7716,14 @@ extension on TranslationsQrp {
 			'settings.developer.extDevServerConnect' => 'connect',
 			'settings.developer.extDevServerDisconnect' => 'disconnect',
 			'settings.developer.extDevServerConnecting' => 'connecting…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'serving ${count} extension: ${keys}', other: 'serving ${count} extensions: ${keys}', ), 
 			'settings.developer.extDevServerDisconnected' => 'not connected',
 			'settings.developer.extDevServerReconnect' => 'reconnect at launch',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'last reload: ${key} at ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
 			'settings.developer.catalog' => 'extension catalog',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.catalogSearchTracks' => 'catalog search tracks',
 			'settings.developer.catalogSearchStable' => 'only stable',
 			'settings.developer.catalogSearchUnstable' => 'unstable or better',
@@ -8081,6 +8123,16 @@ extension on TranslationsQrp {
 			'deepLink.waitingInOperation' => 'that contact is waiting in the operation behind this screen',
 			'deepLink.unknownActivities' => ({required Object refs}) => 'this device has no activity for ${refs}, so those references were left off',
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'could not reach your activities, so ${refs} was left off — try that link again',
+			'deepLink.askTitle' => ({required Object sender}) => 'link from ${sender}',
+			'deepLink.askTitleUnknown' => 'link from another app',
+			'deepLink.askTune' => ({required Object where}) => 'tune the radio to ${where}?',
+			'deepLink.askQso' => ({required Object calls}) => 'fill in a contact with ${calls}?',
+			'deepLink.askQsoTuned' => ({required Object calls, required Object where}) => 'fill in a contact with ${calls} and tune the radio to ${where}?',
+			'deepLink.askOperation' => ({required Object refs}) => 'open the operation for ${refs}, starting one if needed?',
+			'deepLink.askRemember' => ({required Object sender}) => 'don’t ask again for links from ${sender}',
+			'deepLink.askRememberUnknown' => 'don’t ask again for links from any other apps',
+			'deepLink.allow' => 'allow',
+			'deepLink.deny' => 'deny',
 			'confirmDevice.title' => 'confirm a device',
 			'confirmDevice.codePrompt' => 'enter the code shown on the device that wants to join this account.',
 			'confirmDevice.code' => 'code',
@@ -8178,6 +8230,8 @@ extension on TranslationsQrp {
 			'offline.servicesTitle' => 'services',
 			'offline.noServices' => 'no service has reported in yet.',
 			'offline.lastSuccess' => ({required Object when}) => 'last responded ${when} ago',
+			_ => null,
+		} ?? switch (path) {
 			'offline.neverSucceeded' => 'has not responded yet',
 			'offline.nextAttempt' => ({required Object when}) => 'next attempt in ${when}',
 			'offline.nextAttemptNow' => 'next attempt due',
@@ -8194,8 +8248,6 @@ extension on TranslationsQrp {
 			'exportSettings.referenceActivities' => 'reference activities',
 			'exportSettings.otherActivities' => 'other activities',
 			'exportSettings.adifFields' => 'adif fields',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.loadFailed' => 'export settings could not be loaded.',
 			'exportSettings.retry' => 'retry',
 			'exportSettings.compactFileNamesDescriptionOn' => 'compact filenames, such as n0call@us-1234-20260715.adi.',

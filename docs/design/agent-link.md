@@ -82,7 +82,7 @@ after the agent app gave up lets it in the next time it connects, and the
 dialog says so. An app that connects again with the same token while the
 question is up waits on that question rather than raising another.
 
-Connected Apps, in Settings › Application Preferences, lists the apps
+Connected Apps, in Settings › Integrations, lists the apps
 allowed; changing one's access takes effect on its next message, and
 removing one hangs it up and forgets its token, so its next connection asks
 again.

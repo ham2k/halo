@@ -2,7 +2,15 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:app_links/app_links.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart' show isModeName;
+
+/// Who sent a link, as the OS names them: an app's id (`android-app://<package>`
+/// on Android, a bundle id on iOS) or a web origin a browser passed along.
+/// [label] is what the operator reads: the app's name where the OS gives
+/// one.
+typedef LinkSender = ({String id, String label});
 
 /// Incoming `com.ham2k*://` deep links (registered per-platform: macOS/iOS
 /// Info.plist `CFBundleURLTypes`, Android manifest intent filters).
@@ -60,6 +68,37 @@ class DeepLinkService {
 
   /// All incoming deep links, including the one the app was launched with.
   Stream<Uri> get links => _appLinks.uriLinkStream;
+
+  static const _senders = MethodChannel('ham2k/link_sender');
+
+  /// Who sent [uri], where the OS says: Android's referrer and iOS's source
+  /// application, recorded natively as each link arrives. Null on every
+  /// other platform, and wherever the OS names nobody — on iOS, any app from
+  /// another developer.
+  ///
+  /// Matched by parsed URI, not by string: the native side keeps the raw
+  /// string, and parsing rewrites it (`%2f` as `%2F`, a space as `%20`).
+  ///
+  /// On Android the sender is the calling app as Android recorded it, never
+  /// a referrer the intent names (MainActivity.recordLinkSender). A browser
+  /// is the sender of every web page's link.
+  ///
+  /// Throws when the native side does not answer: a sender the operator
+  /// denied must not pass as "nobody named".
+  Future<LinkSender?> senderOf(Uri uri) async {
+    if (kIsWeb || !(defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) return null;
+    final recent = await _senders.invokeListMethod<Map<Object?, Object?>>('recentSenders') ?? const [];
+    for (final entry in recent.reversed) {
+      if (entry['uri'] case final String raw when Uri.tryParse(raw) == uri) {
+        final id = entry['id'];
+        if (id is! String || id.isEmpty) return null;
+        final label = entry['label'];
+        return (id: id, label: label is String && label.isNotEmpty ? label : id);
+      }
+    }
+    debugPrint('[deep-link] no sender recorded for $uri');
+    return null;
+  }
 
   /// Whether [uri] is an OAuth redirect callback (`com.ham2k.*.auth://…`).
   static bool isAuthCallback(Uri uri) => uri.scheme.startsWith('com.ham2k') && uri.scheme.endsWith('.auth');

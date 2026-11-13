@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The agent apps the operator allowed (docs/design/agent-link.md § Grants):
-// what each may do, and a way to remove it. Next to the assistants, since an
-// agent app is one more thing watching the operator.
+// what each may do, and a way to remove it. A section of Settings ›
+// Integrations (integrations_settings_group.dart), not a category of its
+// own: the agent link's wiring hands it over at boot.
 
 import 'package:flutter/foundation.dart';
 import 'package:halo_i18n/halo_i18n.dart';

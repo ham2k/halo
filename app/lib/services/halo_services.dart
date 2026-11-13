@@ -795,7 +795,7 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
     // Empty until an extension places a panel in one (docs/extensions/settings.md).
     ..registerAll(ExtensionSectionGroup.all())
     ..register(AssistantsSettingsGroup(assistants, extensions))
-    ..register(PrivacySettingsGroup(settings))
+    ..registerAll([IntegrationsSettingsGroup(settings), PrivacySettingsGroup(settings)])
     ..register(ExportsSettingsGroup(settings, extensions))
     ..register(SyncSettingsGroup(settings, onToggle: setSyncEnabled));
 

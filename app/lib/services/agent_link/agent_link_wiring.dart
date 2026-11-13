@@ -12,6 +12,7 @@ import 'package:halo_core/halo_core.dart' show realNowMillis;
 import '../../config/experiments.dart';
 import '../../config/version.dart' show kEdition;
 import '../../settings/connected_apps_settings_group.dart';
+import '../../settings/integrations_settings_group.dart';
 import '../halo_services.dart';
 import 'agent_link_model.dart';
 import 'agent_link_prompt.dart';
@@ -46,8 +47,10 @@ extension AgentLinkServices on HaLoServices {
 /// then stops watching; the link follows the setting from there. Nothing
 /// listens for an operator who never turns it on.
 void startAgentLinkWhenWanted(HaLoServices services) {
-  services.settingsRegistry.register(
-    ConnectedAppsSettingsGroup(link: () => services.agentLink, wanted: () => services.agentLinkWanted, changes: services.settings),
+  services.settingsRegistry.groups.whereType<IntegrationsSettingsGroup>().single.connectedApps = ConnectedAppsSettingsGroup(
+    link: () => services.agentLink,
+    wanted: () => services.agentLinkWanted,
+    changes: services.settings,
   );
   if (kIsWeb) return;
   void check() {

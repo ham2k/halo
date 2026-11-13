@@ -759,6 +759,8 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
                 FileDestination(
                   id: 'chase:claims',
                   label: () => t.fileOpen.importChaseClaims,
+                  // The import replaces the program's earlier claims as it runs.
+                  asksFirst: true,
                   accepts: (_, file) => widget.services.chase.programs.values.any((program) => program.imports.any((importer) => importer.takes(file.name))),
                   open: (context, file) => importDroppedChaseFile(context, widget.services, file, station: stationOfOperation(_operation)),
                 ),

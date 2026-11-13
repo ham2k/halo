@@ -36,6 +36,7 @@ FileDestination qsonFileDestination(HaLoServices services) => FileDestination(
   id: 'qson:operation',
   label: () => t.fileOpen.importAsOperation,
   kind: HaloFileKind.qson,
+  asksFirst: true,
   open: (context, file) => runQsonImport(context, services, file: file),
 );
 
@@ -79,18 +80,21 @@ List<FileDestination> _globals(HaLoServices services) => [
     id: 'sets:keys',
     label: () => t.fileOpen.importKeyboardShortcuts,
     kind: HaloFileKind.keyBindings,
+    asksFirst: true,
     open: (context, file) => importSetFile(context, keyboardShortcutSets(context, services), file),
   ),
   FileDestination(
     id: 'sets:cw',
     label: () => t.fileOpen.importCwMessages,
     kind: HaloFileKind.cwMessages,
+    asksFirst: true,
     open: (context, file) => importSetFile(context, CwMessageSetCategory(services.settings), file),
   ),
   FileDestination(
     id: 'sets:voice',
     label: () => t.fileOpen.importVoiceMessages,
     kind: HaloFileKind.voiceMessages,
+    asksFirst: true,
     open: (context, file) => importSetFile(context, VoiceMessageSetCategory(services.settings, services.cat), file),
   ),
   FileDestination(id: logsAdifDestinationId, label: () => t.fileOpen.importIntoLogs, kind: HaloFileKind.adif, open: (context, file) => _logsAdif(file)),

@@ -94,6 +94,14 @@ void main() {
     await unmount(tester);
   });
 
+  // The import writes an operation and its contacts as soon as it is chosen,
+  // and on Android any installed app can open a file into the router.
+  testWidgets('the list\'s QSON import is offered before it runs, even as the only place a file can go', (tester) async {
+    await pumpHome(tester);
+    expect(takingQson().single.asksFirst, isTrue);
+    await unmount(tester);
+  });
+
   testWidgets('an imported file opens as its own operation, and the next one imports too', (tester) async {
     // Two in a row: an in-flight claim never released would answer every
     // import after the first with "busy".

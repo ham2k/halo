@@ -1999,6 +1999,16 @@
         "darkMatter": "dark matter"
       }
     },
+    "integrations": {
+      "title": "integrations"
+    },
+    "linkSenders": {
+      "title": "links from other apps",
+      "unknownSender": "any other apps",
+      "allowed": "allowed",
+      "denied": "denied",
+      "remove": "remove"
+    },
     "privacy": {
       "title": "privacy",
       "shareAppData": {
@@ -3447,7 +3457,17 @@
     "needsAnOperation": "start an operation first, then send that contact again",
     "waitingInOperation": "that contact is waiting in the operation behind this screen",
     "unknownActivities": "this device has no activity for $refs, so those references were left off",
-    "activitiesUnavailable": "could not reach your activities, so $refs was left off — try that link again"
+    "activitiesUnavailable": "could not reach your activities, so $refs was left off — try that link again",
+    "askTitle": "link from ${sender}",
+    "askTitleUnknown": "link from another app",
+    "askTune": "tune the radio to ${where}?",
+    "askQso": "fill in a contact with ${calls}?",
+    "askQsoTuned": "fill in a contact with ${calls} and tune the radio to ${where}?",
+    "askOperation": "open the operation for ${refs}, starting one if needed?",
+    "askRemember": "don’t ask again for links from ${sender}",
+    "askRememberUnknown": "don’t ask again for links from any other apps",
+    "allow": "allow",
+    "deny": "deny"
   },
   "confirmDevice": {
     "title": "confirm a device",

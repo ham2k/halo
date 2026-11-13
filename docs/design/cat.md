@@ -3558,9 +3558,13 @@ network.
   (this node's own socket, on a reconnect) it is waited for; held for good
   it is a failed connect that names the port (`UdpReplyPortTaken`, a
   `CatUnreachable`, only for EADDRINUSE), not a node that silently never
-  hears. Answers are read from any address: a PC with two interfaces on one
-  network answers from whichever it routes by, not necessarily the one
-  dialled.
+  hears. Answers are read from any address the host has (`replyAddresses`):
+  a PC with two interfaces on one network answers from whichever it routes
+  by, not necessarily the one dialled. A datagram from anywhere else is
+  dropped, since its `AZ:` would be read as the rotator's heading and as
+  proof of life; a PC answering from an address its name does not resolve
+  to shows as not responding, and the console says which address was
+  dropped.
 - **"Connected" proves nothing about PstRotator, and nothing about it ends
   the connection.** UDP has no handshake: the connect binds the reply port
   and resolves the host. PstRotator says nothing while UDP Control is off or

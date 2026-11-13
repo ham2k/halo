@@ -56,6 +56,14 @@ class MainActivity : FlutterActivity() {
   // the copy's path is what crosses the channel.
   private var openFileChannel: MethodChannel? = null
 
+  // Who sent each recent com.ham2k link, for the question a /vfo, /qso or
+  // /operation link asks before it acts (views/deep_link_approval.dart).
+  // app_links hands Dart the URI alone, so Dart asks here for the recent
+  // ones and finds its link among them: Dart rewrites a URI as it parses it
+  // (%2f as %2F, a space as %20), so the raw string is no key to look up.
+  private var linkSenderChannel: MethodChannel? = null
+  private val linkSenders = LinkedHashMap<String, Map<String, String>>()
+
   // Anything that arrived before the engine existed. onCreate runs before
   // configureFlutterEngine, so a cold launch by opening a document always
   // lands here first.
@@ -80,6 +88,13 @@ class MainActivity : FlutterActivity() {
     photosChannel = PhotosChannel(this, flutterEngine.dartExecutor.binaryMessenger)
     openFileChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "ham2k/open_file")
     flushPendingOpenFiles()
+    linkSenderChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "ham2k/link_sender")
+    linkSenderChannel?.setMethodCallHandler { call, result ->
+      when (call.method) {
+        "recentSenders" -> result.success(linkSenders.map { (uri, sender) -> sender + ("uri" to uri) })
+        else -> result.notImplemented()
+      }
+    }
     val inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
     inputDeviceListener = object : InputManager.InputDeviceListener {
       override fun onInputDeviceAdded(deviceId: Int) = push()
@@ -113,6 +128,8 @@ class MainActivity : FlutterActivity() {
     photosChannel?.dispose()
     photosChannel = null
     openFileChannel = null
+    linkSenderChannel?.setMethodCallHandler(null)
+    linkSenderChannel = null
     super.cleanUpFlutterEngine(flutterEngine)
   }
 
@@ -123,6 +140,7 @@ class MainActivity : FlutterActivity() {
     // re-copies the file and puts the consent dialog up again every time the
     // activity is recreated.
     if (savedInstanceState == null) {
+      recordLinkSender(intent)
       // At launch and never per open: a file opened while the app runs waits
       // its turn in Dart, and a sweep then would delete it before it is read.
       sweepOldCopies()
@@ -134,15 +152,90 @@ class MainActivity : FlutterActivity() {
   // the app is up delivers here rather than through onCreate.
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
+    recordLinkSender(intent)
     handleOpenIntent(intent)
+  }
+
+  /// Notes who sent a com.ham2k link, by the URI Dart will ask about. Done
+  /// on the main thread before the link's own delivery to Dart has been
+  /// handled, so the answer is here by the time Dart asks.
+  ///
+  /// The sender is the calling app's package as Android recorded it, never
+  /// what the intent says: getReferrer() prefers an EXTRA_REFERRER or
+  /// EXTRA_REFERRER_NAME the sender put in, so any app could name one the
+  /// operator allowed. It reads them from getIntent(), which is pointed for
+  /// the call at a copy without them; Android keeps the calling package for
+  /// the intent being delivered, onNewIntent's included.
+  private fun recordLinkSender(intent: Intent?) {
+    if (intent?.action != Intent.ACTION_VIEW) return
+    val uri = intent.dataString ?: return
+    if (intent.data?.scheme?.startsWith("com.ham2k") != true) return
+    // Forgotten first: the same link sent again by someone unnamed is not
+    // the earlier sender's.
+    linkSenders.remove(uri)
+    val delivered = getIntent()
+    setIntent(Intent(intent).apply {
+      removeExtra(Intent.EXTRA_REFERRER)
+      removeExtra(Intent.EXTRA_REFERRER_NAME)
+    })
+    val caller = try {
+      referrer?.takeIf { it.scheme == "android-app" }?.authority
+    } finally {
+      setIntent(delivered)
+    }
+    if (caller.isNullOrEmpty()) return
+    val id = "android-app://$caller"
+    val label = appLabel(caller) ?: caller
+    linkSenders[uri] = mapOf("id" to id, "label" to label)
+    while (linkSenders.size > 16) linkSenders.remove(linkSenders.keys.first())
+  }
+
+  /// The app's own name for [packageName], or null when package visibility
+  /// hides it from this app.
+  private fun appLabel(packageName: String): String? = try {
+    packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
+  } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+    null
   }
 
   private fun handleOpenIntent(intent: Intent?) {
     if (intent?.action != Intent.ACTION_VIEW) return
     val uri = intent.data ?: return
+    if (!isOpenableDocument(uri)) return
     val path = copyToCache(uri, intent.type) ?: return
     pendingOpenFiles.add(path)
     flushPendingOpenFiles()
+  }
+
+  /// Whether [uri] names a document another app is handing over: a content://
+  /// URI, or a file:// path outside this app's own data. Any installed app can
+  /// send this activity a VIEW intent, and a file:// path into our private
+  /// storage would have the app read its own database or settings as if the
+  /// operator had opened them. Older file managers still send file:// for a
+  /// file in shared storage, which is why that scheme is kept at all.
+  ///
+  /// A content:// URI from one of this app's own providers is refused too:
+  /// the app reads those without a grant, so they would serve whatever they
+  /// expose as an opened file.
+  private fun isOpenableDocument(uri: Uri): Boolean = when (uri.scheme) {
+    "content" -> {
+      val owner = uri.authority?.let { packageManager.resolveContentProvider(it, 0)?.packageName }
+      (owner != packageName).also { if (!it) android.util.Log.w("ham2k", "refused opened file from this app's own provider: $uri") }
+    }
+    "file" -> {
+      val path = uri.path
+      val outside = path != null && try {
+        val target = java.io.File(path).canonicalPath
+        listOf(applicationInfo.dataDir, applicationInfo.deviceProtectedDataDir).none { root ->
+          val own = java.io.File(root).canonicalPath
+          target == own || target.startsWith(own + java.io.File.separator)
+        }
+      } catch (e: java.io.IOException) {
+        false
+      }
+      outside.also { if (!it) android.util.Log.w("ham2k", "refused opened file inside this app's data or unreadable: $uri") }
+    }
+    else -> false
   }
 
   /// Copies [uri]'s bytes into the cache, returning the path, or null if it

@@ -1999,6 +1999,16 @@
         "darkMatter": "DARK MATTER"
       }
     },
+    "integrations": {
+      "title": "INTEGRATIONS"
+    },
+    "linkSenders": {
+      "title": "LINKS FROM OTHER APPS",
+      "unknownSender": "ANY OTHER APPS",
+      "allowed": "ALLOWED",
+      "denied": "DENIED",
+      "remove": "REMOVE"
+    },
     "privacy": {
       "title": "PRIVACY",
       "shareAppData": {
@@ -3447,7 +3457,17 @@
     "needsAnOperation": "START AN OPERATION FIRST, THEN SEND THAT CONTACT AGAIN",
     "waitingInOperation": "THAT CONTACT IS WAITING IN THE OPERATION BEHIND THIS SCREEN",
     "unknownActivities": "THIS DEVICE HAS NO ACTIVITY FOR $refs, SO THOSE REFERENCES WERE LEFT OFF",
-    "activitiesUnavailable": "COULD NOT REACH YOUR ACTIVITIES, SO $refs WAS LEFT OFF — TRY THAT LINK AGAIN"
+    "activitiesUnavailable": "COULD NOT REACH YOUR ACTIVITIES, SO $refs WAS LEFT OFF — TRY THAT LINK AGAIN",
+    "askTitle": "LINK FROM ${sender}",
+    "askTitleUnknown": "LINK FROM ANOTHER APP",
+    "askTune": "TUNE THE RADIO TO ${where}?",
+    "askQso": "FILL IN A CONTACT WITH ${calls}?",
+    "askQsoTuned": "FILL IN A CONTACT WITH ${calls} AND TUNE THE RADIO TO ${where}?",
+    "askOperation": "OPEN THE OPERATION FOR ${refs}, STARTING ONE IF NEEDED?",
+    "askRemember": "DON’T ASK AGAIN FOR LINKS FROM ${sender}",
+    "askRememberUnknown": "DON’T ASK AGAIN FOR LINKS FROM ANY OTHER APPS",
+    "allow": "ALLOW",
+    "deny": "DENY"
   },
   "confirmDevice": {
     "title": "CONFIRM A DEVICE",

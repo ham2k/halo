@@ -839,6 +839,8 @@ class _Translations$settings$cw extends Translations$settings$en {
 	@override late final _Translations$settings$agentLink$cw agentLink = _Translations$settings$agentLink$cw._(_root);
 	@override late final _Translations$settings$extensionSections$cw extensionSections = _Translations$settings$extensionSections$cw._(_root);
 	@override late final _Translations$settings$map$cw map = _Translations$settings$map$cw._(_root);
+	@override late final _Translations$settings$integrations$cw integrations = _Translations$settings$integrations$cw._(_root);
+	@override late final _Translations$settings$linkSenders$cw linkSenders = _Translations$settings$linkSenders$cw._(_root);
 	@override late final _Translations$settings$privacy$cw privacy = _Translations$settings$privacy$cw._(_root);
 	@override String get operatorCall => '——— ·——· · ·—· ·— — ——— ·—· / —·—· ·— ·—·· ·—·· ··· ·· ——· —·';
 	@override late final _Translations$settings$sync$cw sync = _Translations$settings$sync$cw._(_root);
@@ -1309,6 +1311,16 @@ class _Translations$deepLink$cw extends Translations$deepLink$en {
 	@override String get waitingInOperation => '— ···· ·— — / —·—· ——— —· — ·— —·—· — / ·· ··· / ·—— ·— ·· — ·· —· ——· / ·· —· / — ···· · / ——— ·——· · ·—· ·— — ·· ——— —· / —··· · ···· ·· —· —·· / — ···· ·· ··· / ··· —·—· ·—· · · —·';
 	@override String unknownActivities({required Object refs}) => '— ···· ·· ··· / —·· · ···— ·· —·—· · / ···· ·— ··· / —· ——— / ·— —·—· — ·· ···— ·· — —·—— / ··—· ——— ·—· / ${refs} ——··—— / ··· ——— / — ···· ——— ··· · / ·—· · ··—· · ·—· · —· —·—· · ··· / ·—— · ·—· · / ·—·· · ··—· — / ——— ··—· ··—·';
 	@override String activitiesUnavailable({required Object refs}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—· · ·— —·—· ···· / —·—— ——— ··— ·—· / ·— —·—· — ·· ···— ·· — ·· · ··· ——··—— / ··· ——— / ${refs} / ·—— ·— ··· / ·—·· · ··—· — / ——— ··—· ··—· / — / — ·—· —·—— / — ···· ·— — / ·—·· ·· —· —·— / ·— ——· ·— ·· —·';
+	@override String askTitle({required Object sender}) => '·—·· ·· —· —·— / ··—· ·—· ——— —— / ${sender}';
+	@override String get askTitleUnknown => '·—·· ·· —· —·— / ··—· ·—· ——— —— / ·— —· ——— — ···· · ·—· / ·— ·——· ·——·';
+	@override String askTune({required Object where}) => '— ··— —· · / — ···· · / ·—· ·— —·· ·· ——— / — ——— / ${where} ··——··';
+	@override String askQso({required Object calls}) => '··—· ·· ·—·· ·—·· / ·· —· / ·— / —·—· ——— —· — ·— —·—· — / ·—— ·· — ···· / ${calls} ··——··';
+	@override String askQsoTuned({required Object calls, required Object where}) => '··—· ·· ·—·· ·—·· / ·· —· / ·— / —·—· ——— —· — ·— —·—· — / ·—— ·· — ···· / ${calls} / ·— —· —·· / — ··— —· · / — ···· · / ·—· ·— —·· ·· ——— / — ——— / ${where} ··——··';
+	@override String askOperation({required Object refs}) => '——— ·——· · —· / — ···· · / ——— ·——· · ·—· ·— — ·· ——— —· / ··—· ——— ·—· / ${refs} ——··—— / ··· — ·— ·—· — ·· —· ——· / ——— —· · / ·· ··—· / —· · · —·· · —·· ··——··';
+	@override String askRemember({required Object sender}) => '—·· ——— —· ’ — / ·— ··· —·— / ·— ——· ·— ·· —· / ··—· ——— ·—· / ·—·· ·· —· —·— ··· / ··—· ·—· ——— —— / ${sender}';
+	@override String get askRememberUnknown => '—·· ——— —· ’ — / ·— ··· —·— / ·— ——· ·— ·· —· / ··—· ——— ·—· / ·—·· ·· —· —·— ··· / ··—· ·—· ——— —— / ·— —· —·—— / ——— — ···· · ·—· / ·— ·——· ·——· ···';
+	@override String get allow => '·— ·—·· ·—·· ——— ·——';
+	@override String get deny => '—·· · —· —·——';
 }
 
 // Path: confirmDevice
@@ -2669,6 +2681,30 @@ class _Translations$settings$map$cw extends Translations$settings$map$en {
 	@override late final _Translations$settings$map$showCallsigns$cw showCallsigns = _Translations$settings$map$showCallsigns$cw._(_root);
 	@override late final _Translations$settings$map$showGrayline$cw showGrayline = _Translations$settings$map$showGrayline$cw._(_root);
 	@override late final _Translations$settings$map$styleOpts$cw styleOpts = _Translations$settings$map$styleOpts$cw._(_root);
+}
+
+// Path: settings.integrations
+class _Translations$settings$integrations$cw extends Translations$settings$integrations$en {
+	_Translations$settings$integrations$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '·· —· — · ——· ·—· ·— — ·· ——— —· ···';
+}
+
+// Path: settings.linkSenders
+class _Translations$settings$linkSenders$cw extends Translations$settings$linkSenders$en {
+	_Translations$settings$linkSenders$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '·—·· ·· —· —·— ··· / ··—· ·—· ——— —— / ——— — ···· · ·—· / ·— ·——· ·——· ···';
+	@override String get unknownSender => '·— —· —·—— / ——— — ···· · ·—· / ·— ·——· ·——· ···';
+	@override String get allowed => '·— ·—·· ·—·· ——— ·—— · —··';
+	@override String get denied => '—·· · —· ·· · —··';
+	@override String get remove => '·—· · —— ——— ···— ·';
 }
 
 // Path: settings.privacy
@@ -6779,6 +6815,12 @@ extension on TranslationsCw {
 			'settings.map.styleOpts.positron' => '·——· ——— ··· ·· — ·—· ——— —·',
 			'settings.map.styleOpts.voyager' => '···— ——— —·—— ·— ——· · ·—·',
 			'settings.map.styleOpts.darkMatter' => '—·· ·— ·—· —·— / —— ·— — — · ·—·',
+			'settings.integrations.title' => '·· —· — · ——· ·—· ·— — ·· ——— —· ···',
+			'settings.linkSenders.title' => '·—·· ·· —· —·— ··· / ··—· ·—· ——— —— / ——— — ···· · ·—· / ·— ·——· ·——· ···',
+			'settings.linkSenders.unknownSender' => '·— —· —·—— / ——— — ···· · ·—· / ·— ·——· ·——· ···',
+			'settings.linkSenders.allowed' => '·— ·—·· ·—·· ——— ·—— · —··',
+			'settings.linkSenders.denied' => '—·· · —· ·· · —··',
+			'settings.linkSenders.remove' => '·—· · —— ——— ···— ·',
 			'settings.privacy.title' => '·——· ·—· ·· ···— ·— —·—· —·——',
 			'settings.privacy.shareAppData.title' => '··· ···· ·— ·—· · / ·— ·——· ·——· / ··— ··· ·— ——· · / —·· ·— — ·—',
 			'settings.privacy.shareAppData.descriptionOn' => '···· · ·—·· ·——· ·· —· ——· / ··— ··· / ·· —— ·——· ·—· ——— ···— · / — ···· · / ·— ·——· ·——· / —··· —·—— / ··· ···· ·— ·—· ·· —· ——· / ··— ··· ·— ——· · ——··—— / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· ——··—— / —·—· ·—· ·— ··· ···· / ·— —· —·· / ·——· · ·—· ··—· ——— ·—· —— ·— —· —·—· · / —·· ·— — ·—',
@@ -7160,14 +7202,14 @@ extension on TranslationsCw {
 			'settings.station.models.elecraftGeneric' => '· ·—·· · —·—· ·—· ·— ··—· — / —····— / ——· · —· · ·—· ·· —·—·',
 			'settings.station.models.kx2' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ··———',
 			'settings.station.models.kx3' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ···——',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.k4' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ····—',
 			'settings.station.models.ic705' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ————— ·····',
 			'settings.station.models.ic7300' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ···—— ————— —————',
 			'settings.station.models.ic7300mk2' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ···—— ————— ————— / —— —·— ··———',
 			'settings.station.models.ic706mkiig' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ————— —···· —— —·— ·· ·· ——·',
 			'settings.station.models.ic7100' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ·———— ————— —————',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.ic7200' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ··——— ————— —————',
 			'settings.station.models.ic7610' => '·· —·—· ——— —— / ·· —·—· —····— ——··· —···· ·———— —————',
 			'settings.station.models.ic7760' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ——··· —···· —————',
@@ -7674,14 +7716,14 @@ extension on TranslationsCw {
 			'settings.developer.extDevServerConnect' => '—·—· ——— —· —· · —·—· —',
 			'settings.developer.extDevServerDisconnect' => '—·· ·· ··· —·—· ——— —· —· · —·—· —',
 			'settings.developer.extDevServerConnecting' => '—·—· ——— —· —· · —·—· — ·· —· ——· …',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '··· · ·—· ···— ·· —· ——· / ${count} / · —··— — · —· ··· ·· ——— —· ———··· / ${keys}', other: '··· · ·—· ···— ·· —· ——· / ${count} / · —··— — · —· ··· ·· ——— —· ··· ———··· / ${keys}', ), 
 			'settings.developer.extDevServerDisconnected' => '—· ——— — / —·—· ——— —· —· · —·—· — · —··',
 			'settings.developer.extDevServerReconnect' => '·—· · —·—· ——— —· —· · —·—· — / ·— — / ·—·· ·— ··— —· —·—· ····',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => '·—·· ·— ··· — / ·—· · ·—·· ——— ·— —·· ———··· / ${key} / ·— — / ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / · —··— — · —· ··· ·· ——— —· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', other: '${count} / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', ), 
 			'settings.developer.catalog' => '· —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.catalogSearchTracks' => '—·—· ·— — ·— ·—·· ——— ——· / ··· · ·— ·—· —·—· ···· / — ·—· ·— —·—· —·— ···',
 			'settings.developer.catalogSearchStable' => '——— —· ·—·· —·—— / ··· — ·— —··· ·—·· ·',
 			'settings.developer.catalogSearchUnstable' => '··— —· ··· — ·— —··· ·—·· · / ——— ·—· / —··· · — — · ·—·',
@@ -8081,6 +8123,16 @@ extension on TranslationsCw {
 			'deepLink.waitingInOperation' => '— ···· ·— — / —·—· ——— —· — ·— —·—· — / ·· ··· / ·—— ·— ·· — ·· —· ——· / ·· —· / — ···· · / ——— ·——· · ·—· ·— — ·· ——— —· / —··· · ···· ·· —· —·· / — ···· ·· ··· / ··· —·—· ·—· · · —·',
 			'deepLink.unknownActivities' => ({required Object refs}) => '— ···· ·· ··· / —·· · ···— ·· —·—· · / ···· ·— ··· / —· ——— / ·— —·—· — ·· ···— ·· — —·—— / ··—· ——— ·—· / ${refs} ——··—— / ··· ——— / — ···· ——— ··· · / ·—· · ··—· · ·—· · —· —·—· · ··· / ·—— · ·—· · / ·—·· · ··—· — / ——— ··—· ··—·',
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—· · ·— —·—· ···· / —·—— ——— ··— ·—· / ·— —·—· — ·· ···— ·· — ·· · ··· ——··—— / ··· ——— / ${refs} / ·—— ·— ··· / ·—·· · ··—· — / ——— ··—· ··—· / — / — ·—· —·—— / — ···· ·— — / ·—·· ·· —· —·— / ·— ——· ·— ·· —·',
+			'deepLink.askTitle' => ({required Object sender}) => '·—·· ·· —· —·— / ··—· ·—· ——— —— / ${sender}',
+			'deepLink.askTitleUnknown' => '·—·· ·· —· —·— / ··—· ·—· ——— —— / ·— —· ——— — ···· · ·—· / ·— ·——· ·——·',
+			'deepLink.askTune' => ({required Object where}) => '— ··— —· · / — ···· · / ·—· ·— —·· ·· ——— / — ——— / ${where} ··——··',
+			'deepLink.askQso' => ({required Object calls}) => '··—· ·· ·—·· ·—·· / ·· —· / ·— / —·—· ——— —· — ·— —·—· — / ·—— ·· — ···· / ${calls} ··——··',
+			'deepLink.askQsoTuned' => ({required Object calls, required Object where}) => '··—· ·· ·—·· ·—·· / ·· —· / ·— / —·—· ——— —· — ·— —·—· — / ·—— ·· — ···· / ${calls} / ·— —· —·· / — ··— —· · / — ···· · / ·—· ·— —·· ·· ——— / — ——— / ${where} ··——··',
+			'deepLink.askOperation' => ({required Object refs}) => '——— ·——· · —· / — ···· · / ——— ·——· · ·—· ·— — ·· ——— —· / ··—· ——— ·—· / ${refs} ——··—— / ··· — ·— ·—· — ·· —· ——· / ——— —· · / ·· ··—· / —· · · —·· · —·· ··——··',
+			'deepLink.askRemember' => ({required Object sender}) => '—·· ——— —· ’ — / ·— ··· —·— / ·— ——· ·— ·· —· / ··—· ——— ·—· / ·—·· ·· —· —·— ··· / ··—· ·—· ——— —— / ${sender}',
+			'deepLink.askRememberUnknown' => '—·· ——— —· ’ — / ·— ··· —·— / ·— ——· ·— ·· —· / ··—· ——— ·—· / ·—·· ·· —· —·— ··· / ··—· ·—· ——— —— / ·— —· —·—— / ——— — ···· · ·—· / ·— ·——· ·——· ···',
+			'deepLink.allow' => '·— ·—·· ·—·· ——— ·——',
+			'deepLink.deny' => '—·· · —· —·——',
 			'confirmDevice.title' => '—·—· ——— —· ··—· ·· ·—· —— / ·— / —·· · ···— ·· —·—· ·',
 			'confirmDevice.codePrompt' => '· —· — · ·—· / — ···· · / —·—· ——— —·· · / ··· ···· ——— ·—— —· / ——— —· / — ···· · / —·· · ···— ·· —·—· · / — ···· ·— — / ·—— ·— —· — ··· / — ——— / ·——— ——— ·· —· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· — ·—·—·—',
 			'confirmDevice.code' => '—·—· ——— —·· ·',
@@ -8178,6 +8230,8 @@ extension on TranslationsCw {
 			'offline.servicesTitle' => '··· · ·—· ···— ·· —·—· · ···',
 			'offline.noServices' => '—· ——— / ··· · ·—· ···— ·· —·—· · / ···· ·— ··· / ·—· · ·——· ——— ·—· — · —·· / ·· —· / —·—— · — ·—·—·—',
 			'offline.lastSuccess' => ({required Object when}) => '·—·· ·— ··· — / ·—· · ··· ·——· ——— —· —·· · —·· / ${when} / ·— ——· ———',
+			_ => null,
+		} ?? switch (path) {
 			'offline.neverSucceeded' => '···· ·— ··· / —· ——— — / ·—· · ··· ·——· ——— —· —·· · —·· / —·—— · —',
 			'offline.nextAttempt' => ({required Object when}) => '—· · —··— — / ·— — — · —— ·——· — / ·· —· / ${when}',
 			'offline.nextAttemptNow' => '—· · —··— — / ·— — — · —— ·——· — / —·· ··— ·',
@@ -8194,8 +8248,6 @@ extension on TranslationsCw {
 			'exportSettings.referenceActivities' => '·—· · ··—· · ·—· · —· —·—· · / ·— —·—· — ·· ···— ·· — ·· · ···',
 			'exportSettings.otherActivities' => '——— — ···· · ·—· / ·— —·—· — ·· ···— ·· — ·· · ···',
 			'exportSettings.adifFields' => '·— —·· ·· ··—· / ··—· ·· · ·—·· —·· ···',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.loadFailed' => '· —··— ·——· ——— ·—· — / ··· · — — ·· —· ——· ··· / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—·· ——— ·— —·· · —·· ·—·—·—',
 			'exportSettings.retry' => '·—· · — ·—· —·——',
 			'exportSettings.compactFileNamesDescriptionOn' => '—·—· ——— —— ·——· ·— —·—· — / ··—· ·· ·—·· · —· ·— —— · ··· ——··—— / ··· ··— —·—· ···· / ·— ··· / —· ————— —·—· ·— ·—·· ·—·· ·——·—· ··— ··· —····— ·———— ··——— ···—— ····— —····— ··——— ————— ··——— —···· ————— ——··· ·———— ····· ·—·—·— ·— —·· ·· ·—·—·—',

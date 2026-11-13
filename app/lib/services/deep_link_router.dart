@@ -14,6 +14,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart' show haloSnackBar;
 
 import '../views/confirm_device_dialog.dart';
+import '../views/deep_link_approval.dart';
 import '../views/operation_view.dart';
 import '../views/extension_install_flow.dart';
 import '../views/settings_view.dart';
@@ -51,19 +52,38 @@ void listenForDeepLinks(HaLoServices services) {
     }
     // The companion-app bridge, ahead of link_client only because these are
     // the links that arrive during an activation rather than during setup.
+    // Each asks first (deep_link_approval.dart): any page or app can send one.
     final vfo = DeepLinkService.vfoRequest(uri);
     if (vfo != null) {
-      _applyVfoDeepLink(services, vfo);
+      unawaited(
+        approveDeepLink(services, uri, t.deepLink.askTune(where: _radioWhere(vfo.freqKHz, vfo.band, vfo.mode))).then((ok) {
+          if (ok) _applyVfoDeepLink(services, vfo);
+        }),
+      );
       return;
     }
     final linkedQso = DeepLinkService.qsoRequest(uri);
     if (linkedQso != null) {
-      unawaited(_presentDeepLinkedQso(services, linkedQso));
+      final calls = linkedQso.calls.join(', ');
+      final tunes = linkedQso.freqKHz != null || linkedQso.band != null || linkedQso.mode != null;
+      final question = tunes
+          ? t.deepLink.askQsoTuned(calls: calls, where: _radioWhere(linkedQso.freqKHz, linkedQso.band, linkedQso.mode))
+          : t.deepLink.askQso(calls: calls);
+      unawaited(
+        approveDeepLink(services, uri, question).then((ok) async {
+          if (ok) await _presentDeepLinkedQso(services, linkedQso);
+        }),
+      );
       return;
     }
     final ourRefs = DeepLinkService.operationRequest(uri);
     if (ourRefs != null) {
-      unawaited(_openDeepLinkedOperation(services, ourRefs));
+      final refs = [for (final pair in ourRefs) '${pair.key}:${pair.ref}'].join(', ');
+      unawaited(
+        approveDeepLink(services, uri, t.deepLink.askOperation(refs: refs)).then((ok) async {
+          if (ok) await _openDeepLinkedOperation(services, ourRefs);
+        }),
+      );
       return;
     }
     final request = DeepLinkService.linkClientRequest(uri);
@@ -101,10 +121,11 @@ void listenForDeepLinks(HaLoServices services) {
 /// month is not.
 const _deepLinkRecentWindow = Duration(hours: 48);
 
+/// Where a link would tune the radio, as the question asking about it says
+/// it: the frequency when there is one, else the band, then the mode.
+String _radioWhere(double? freqKHz, String? band, String? mode) => [freqKHz != null ? fmtFreq(freqKHz) : band, mode].whereType<String>().join(' ');
+
 /// Puts the radio state a `/vfo` link reports into the app's own VFO.
-///
-/// Needs no navigator, and so is the one deep link that works during a cold
-/// launch: it writes a service, not a screen.
 void _applyVfoDeepLink(HaLoServices services, ({double? freqKHz, String? band, String? mode}) vfo) {
   services.radio.setVfo('vfoA', freq: vfo.freqKHz, band: vfo.band, mode: vfo.mode);
   services.track('deep_link_vfo', {});

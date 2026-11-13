@@ -1887,6 +1887,8 @@ class Translations$settings$en {
 	late final Translations$settings$agentLink$en agentLink = Translations$settings$agentLink$en.internal(_root);
 	late final Translations$settings$extensionSections$en extensionSections = Translations$settings$extensionSections$en.internal(_root);
 	late final Translations$settings$map$en map = Translations$settings$map$en.internal(_root);
+	late final Translations$settings$integrations$en integrations = Translations$settings$integrations$en.internal(_root);
+	late final Translations$settings$linkSenders$en linkSenders = Translations$settings$linkSenders$en.internal(_root);
 	late final Translations$settings$privacy$en privacy = Translations$settings$privacy$en.internal(_root);
 
 	/// en: 'Operator Callsign'
@@ -2940,6 +2942,36 @@ class Translations$deepLink$en {
 
 	/// en: 'Could not reach your activities, so $refs was left off — try that link again'
 	String activitiesUnavailable({required Object refs}) => 'Could not reach your activities, so ${refs} was left off — try that link again';
+
+	/// en: 'Link from ${sender}'
+	String askTitle({required Object sender}) => 'Link from ${sender}';
+
+	/// en: 'Link from another app'
+	String get askTitleUnknown => 'Link from another app';
+
+	/// en: 'Tune the radio to ${where}?'
+	String askTune({required Object where}) => 'Tune the radio to ${where}?';
+
+	/// en: 'Fill in a contact with ${calls}?'
+	String askQso({required Object calls}) => 'Fill in a contact with ${calls}?';
+
+	/// en: 'Fill in a contact with ${calls} and tune the radio to ${where}?'
+	String askQsoTuned({required Object calls, required Object where}) => 'Fill in a contact with ${calls} and tune the radio to ${where}?';
+
+	/// en: 'Open the operation for ${refs}, starting one if needed?'
+	String askOperation({required Object refs}) => 'Open the operation for ${refs}, starting one if needed?';
+
+	/// en: 'Don’t ask again for links from ${sender}'
+	String askRemember({required Object sender}) => 'Don’t ask again for links from ${sender}';
+
+	/// en: 'Don’t ask again for links from any other apps'
+	String get askRememberUnknown => 'Don’t ask again for links from any other apps';
+
+	/// en: 'Allow'
+	String get allow => 'Allow';
+
+	/// en: 'Deny'
+	String get deny => 'Deny';
 }
 
 // Path: confirmDevice
@@ -5760,6 +5792,42 @@ class Translations$settings$map$en {
 	late final Translations$settings$map$showCallsigns$en showCallsigns = Translations$settings$map$showCallsigns$en.internal(_root);
 	late final Translations$settings$map$showGrayline$en showGrayline = Translations$settings$map$showGrayline$en.internal(_root);
 	late final Translations$settings$map$styleOpts$en styleOpts = Translations$settings$map$styleOpts$en.internal(_root);
+}
+
+// Path: settings.integrations
+class Translations$settings$integrations$en {
+	Translations$settings$integrations$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Integrations'
+	String get title => 'Integrations';
+}
+
+// Path: settings.linkSenders
+class Translations$settings$linkSenders$en {
+	Translations$settings$linkSenders$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Links from Other Apps'
+	String get title => 'Links from Other Apps';
+
+	/// en: 'Any other apps'
+	String get unknownSender => 'Any other apps';
+
+	/// en: 'Allowed'
+	String get allowed => 'Allowed';
+
+	/// en: 'Denied'
+	String get denied => 'Denied';
+
+	/// en: 'Remove'
+	String get remove => 'Remove';
 }
 
 // Path: settings.privacy
@@ -13059,6 +13127,12 @@ extension on Translations {
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
+			'settings.integrations.title' => 'Integrations',
+			'settings.linkSenders.title' => 'Links from Other Apps',
+			'settings.linkSenders.unknownSender' => 'Any other apps',
+			'settings.linkSenders.allowed' => 'Allowed',
+			'settings.linkSenders.denied' => 'Denied',
+			'settings.linkSenders.remove' => 'Remove',
 			'settings.privacy.title' => 'Privacy',
 			'settings.privacy.shareAppData.title' => 'Share app usage data',
 			'settings.privacy.shareAppData.descriptionOn' => 'Helping us improve the app by sharing usage, configuration, crash and performance data',
@@ -13440,14 +13514,14 @@ extension on Translations {
 			'settings.station.models.elecraftGeneric' => 'Elecraft - Generic',
 			'settings.station.models.kx2' => 'Elecraft KX2',
 			'settings.station.models.kx3' => 'Elecraft KX3',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.k4' => 'Elecraft K4',
 			'settings.station.models.ic705' => 'Icom IC-705',
 			'settings.station.models.ic7300' => 'Icom IC-7300',
 			'settings.station.models.ic7300mk2' => 'Icom IC-7300 MK2',
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
 			'settings.station.models.ic7100' => 'Icom IC-7100',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.ic7200' => 'Icom IC-7200',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
@@ -13954,14 +14028,14 @@ extension on Translations {
 			'settings.developer.extDevServerConnect' => 'Connect',
 			'settings.developer.extDevServerDisconnect' => 'Disconnect',
 			'settings.developer.extDevServerConnecting' => 'Connecting…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Serving ${count} extension: ${keys}', other: 'Serving ${count} extensions: ${keys}', ), 
 			'settings.developer.extDevServerDisconnected' => 'Not connected',
 			'settings.developer.extDevServerReconnect' => 'Reconnect at launch',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Last reload: ${key} at ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
 			'settings.developer.catalog' => 'Extension Catalog',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.catalogSearchTracks' => 'Catalog Search Tracks',
 			'settings.developer.catalogSearchStable' => 'Only Stable',
 			'settings.developer.catalogSearchUnstable' => 'Unstable or better',
@@ -14361,6 +14435,16 @@ extension on Translations {
 			'deepLink.waitingInOperation' => 'That contact is waiting in the operation behind this screen',
 			'deepLink.unknownActivities' => ({required Object refs}) => 'This device has no activity for ${refs}, so those references were left off',
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'Could not reach your activities, so ${refs} was left off — try that link again',
+			'deepLink.askTitle' => ({required Object sender}) => 'Link from ${sender}',
+			'deepLink.askTitleUnknown' => 'Link from another app',
+			'deepLink.askTune' => ({required Object where}) => 'Tune the radio to ${where}?',
+			'deepLink.askQso' => ({required Object calls}) => 'Fill in a contact with ${calls}?',
+			'deepLink.askQsoTuned' => ({required Object calls, required Object where}) => 'Fill in a contact with ${calls} and tune the radio to ${where}?',
+			'deepLink.askOperation' => ({required Object refs}) => 'Open the operation for ${refs}, starting one if needed?',
+			'deepLink.askRemember' => ({required Object sender}) => 'Don’t ask again for links from ${sender}',
+			'deepLink.askRememberUnknown' => 'Don’t ask again for links from any other apps',
+			'deepLink.allow' => 'Allow',
+			'deepLink.deny' => 'Deny',
 			'confirmDevice.title' => 'Confirm a Device',
 			'confirmDevice.codePrompt' => 'Enter the code shown on the device that wants to join this account.',
 			'confirmDevice.code' => 'Code',
@@ -14458,6 +14542,8 @@ extension on Translations {
 			'offline.servicesTitle' => 'Services',
 			'offline.noServices' => 'No service has reported in yet.',
 			'offline.lastSuccess' => ({required Object when}) => 'Last responded ${when} ago',
+			_ => null,
+		} ?? switch (path) {
 			'offline.neverSucceeded' => 'Has not responded yet',
 			'offline.nextAttempt' => ({required Object when}) => 'Next attempt in ${when}',
 			'offline.nextAttemptNow' => 'Next attempt due',
@@ -14474,8 +14560,6 @@ extension on Translations {
 			'exportSettings.referenceActivities' => 'Reference Activities',
 			'exportSettings.otherActivities' => 'Other Activities',
 			'exportSettings.adifFields' => 'ADIF Fields',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.loadFailed' => 'Export settings could not be loaded.',
 			'exportSettings.retry' => 'Retry',
 			'exportSettings.compactFileNamesDescriptionOn' => 'Compact filenames, such as N0CALL@US-1234-20260715.adi.',

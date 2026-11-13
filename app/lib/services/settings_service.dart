@@ -73,6 +73,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   static const _postcardBandLegendKey = 'postcardBandLegend';
   static const _secondaryControlsOrderKey = 'secondaryControlsOrder';
   static const _hiddenSecondaryControlsKey = 'hiddenSecondaryControls';
+  static const _linkSenderDecisionsKey = 'linkSenderDecisions';
   static const _showRSTFieldsKey = 'showRSTFields';
   static const _showStateFieldKey = 'showStateField';
   static const _showGridFieldKey = 'showGridField';
@@ -980,6 +981,27 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
     await _prefs.setStringList(_hiddenSecondaryControlsKey, hidden.toList());
     notifyListeners();
   }
+
+  /// What the operator said once and for all about the `/vfo`, `/qso` and
+  /// `/operation` links from each sender (views/deep_link_approval.dart):
+  /// allowed without asking, or refused without asking. By `LinkSender` id,
+  /// each with the name it was remembered under. The empty id stands for
+  /// every link whose sender the OS does not name.
+  Map<String, ({String label, bool allow})> get linkSenderDecisions => {
+    for (final MapEntry(:key, :value) in jsonMapPref(_linkSenderDecisionsKey).entries)
+      if (value case {'label': final String label, 'allow': final bool allow}) key: (label: label, allow: allow),
+  };
+
+  Future<void> decideLinkSender(String id, {required String label, required bool allow}) => setJsonMapPref(_linkSenderDecisionsKey, {
+    for (final MapEntry(:key, :value) in linkSenderDecisions.entries) key: {'label': value.label, 'allow': value.allow},
+    id: {'label': label, 'allow': allow},
+  });
+
+  /// Has links from [id] ask again.
+  Future<void> forgetLinkSender(String id) => setJsonMapPref(_linkSenderDecisionsKey, {
+    for (final MapEntry(:key, :value) in linkSenderDecisions.entries)
+      if (key != id) key: {'label': value.label, 'allow': value.allow},
+  });
 
   /// Whether the Operation Details dialog offers the operator's own callsign
   /// as the operator of an operation running under a DIFFERENT station call —

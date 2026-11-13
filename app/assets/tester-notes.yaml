@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "Links from other apps ask before tuning the radio, filling in a contact or opening an operation"
+
 "193":
   changes:
     - "New UPDATE (or UPD) command: DATA, POTA, NOTES, APP or EXT"

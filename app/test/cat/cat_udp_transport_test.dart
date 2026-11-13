@@ -30,12 +30,18 @@ Future<int> _freePort() async {
 void main() {
   const transport = UdpTransport(portConfigKey: 'udpPort', replyPortOffset: 1);
 
+  tearDown(() => UdpTransport.debugReplyAddresses = null);
+
   // The SDK closes a datagram socket after any failed send — what a PC
   // asleep (no ARP answer) or a missing Local Network grant produces on
   // every poll. Closed for good, the node drops to "disconnected" with no
   // reason, and nothing reconnects a rotator.
   test('a send the OS refuses leaves the reply port listening', () async {
     final replyPort = await _freePort();
+    // A host that is also reachable on loopback, so the test can answer as
+    // it: a PC with two interfaces on one network answers from whichever it
+    // routes by.
+    UdpTransport.debugReplyAddresses = (_, dialled) async => {dialled.address, InternetAddress.loopbackIPv4.address};
     // A broadcast address on a socket without SO_BROADCAST: refused at
     // `sendto`, on every platform.
     final connection = await transport.connect({'host': '255.255.255.255', 'port': 9, 'replyPort': replyPort}, cancel: CatCancelToken());
@@ -48,8 +54,6 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 400));
       expect(closed, isFalse, reason: (connection as ExplainsClose).closeReason);
 
-      // From an address other than the one dialled, too: a PC with two
-      // interfaces on one network answers from whichever it routes by.
       final sender = await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
       sender.send(ascii.encode('AZ:12.0\r'), InternetAddress.loopbackIPv4, replyPort);
       await Future<void>.delayed(const Duration(milliseconds: 200));
@@ -59,6 +63,32 @@ void main() {
       await subscription.cancel();
       await connection.close();
     }
+  });
+
+  // Anyone who can reach the reply port could otherwise set the heading the
+  // operator reads, and keep a dead rotator link looking alive.
+  test('a reply from an address the host does not have is dropped', () async {
+    final replyPort = await _freePort();
+    UdpTransport.debugReplyAddresses = (_, dialled) async => {dialled.address};
+    final connection = await transport.connect({'host': '192.0.2.1', 'port': 9, 'replyPort': replyPort}, cancel: CatCancelToken());
+    final received = <String>[];
+    final subscription = connection.data.listen((chunk) => received.add(ascii.decode(chunk)));
+    try {
+      final sender = await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
+      sender.send(ascii.encode('AZ:123.0\r'), InternetAddress.loopbackIPv4, replyPort);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      sender.close();
+      expect(received, isEmpty);
+    } finally {
+      await subscription.cancel();
+      await connection.close();
+    }
+  });
+
+  test('a host given as an address answers from that address alone; a name, from any it has', () async {
+    expect(await replyAddresses('192.0.2.1', InternetAddress('192.0.2.1')), {'192.0.2.1'});
+    final dialled = InternetAddress('192.0.2.1');
+    expect(await replyAddresses('localhost', dialled), containsAll(['192.0.2.1', '127.0.0.1']));
   });
 
   test('a reply port held a moment longer is waited for', () async {

@@ -26,11 +26,12 @@ XFile _file(String name, [String content = '']) => XFile.fromData(Uint8List.from
 /// A destination that records what it was handed, and finishes when [done]
 /// does.
 class _Recorder {
-  _Recorder(this.id, {this.label, this.kind = HaloFileKind.adif});
+  _Recorder(this.id, {this.label, this.kind = HaloFileKind.adif, this.asksFirst = false});
 
   final String id;
   final String? label;
   final HaloFileKind kind;
+  final bool asksFirst;
   final opened = <String>[];
   Completer<void>? done;
 
@@ -38,6 +39,7 @@ class _Recorder {
     id: id,
     label: () => label ?? id,
     kind: kind,
+    asksFirst: asksFirst,
     open: (_, file) {
       opened.add(file.name);
       return done?.future ?? Future<void>.value();
@@ -86,6 +88,31 @@ void main() {
     expect(logsView.opened, ['log.adi']);
     expect(logsAnywhere.opened, isEmpty);
     expect(layouts.opened, isEmpty);
+  });
+
+  // On Android any installed app can hand the router a file. An import that
+  // writes on being chosen, gone straight to, puts in the log a file the
+  // operator never saw.
+  testWidgets('a destination that asks first is offered even as the only place to go, and a dismissal opens nothing', (tester) async {
+    final operations = _Recorder('qson', label: 'Import as a new operation', kind: HaloFileKind.qson, asksFirst: true);
+    await _pump(tester, const SizedBox.expand());
+    final router = FileRouter(globals: () => [operations.destination]);
+
+    router.open(_file('pota.qson'));
+    await _settle(tester);
+    expect(find.text('Open pota.qson'), findsOneWidget);
+    expect(operations.opened, isEmpty);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await _settle(tester);
+    expect(find.byType(SimpleDialog), findsNothing);
+    expect(operations.opened, isEmpty);
+
+    router.open(_file('pota.qson'));
+    await _settle(tester);
+    await tester.tap(find.text('Import as a new operation'));
+    await _settle(tester);
+    expect(operations.opened, ['pota.qson']);
   });
 
   testWidgets('with several places to go it asks, and Enter takes what the view suggested', (tester) async {

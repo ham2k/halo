@@ -14,6 +14,7 @@ import 'package:ham2k_logger/services/extensions/catalog_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/cat_traffic_log.dart';
+import 'package:ham2k_logger/services/deep_link_service.dart';
 import 'package:ham2k_logger/services/halo_services.dart';
 import 'package:ham2k_logger/services/outline_grid_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -54,7 +55,8 @@ class HaLoHarness {
 /// replaces the POTA outline bundles, which by default find nothing — the
 /// real ones reach services.ham2k.net. [location] replaces the device's
 /// location service (see `FakeGpsLocation`); the real one finds no OS in a
-/// test and settles on `unavailable`.
+/// test and settles on `unavailable`. [deepLinks] replaces the OS's incoming
+/// links, which `flutter test` has no channel for.
 Future<HaLoHarness> makeHaLoServices({
   Map<String, Object>? prefs = const {},
   Map<String, Object?> stubs = const {},
@@ -66,6 +68,7 @@ Future<HaLoHarness> makeHaLoServices({
   CatTrafficLog? catTrafficLog,
   OutlineGridService? outlineGrid,
   LocationService? location,
+  DeepLinkService? deepLinks,
 }) async {
   if (prefs != null) SharedPreferences.setMockInitialValues({...prefs});
   final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: secureStorage ?? FakeSecureStorage());
@@ -94,6 +97,7 @@ Future<HaLoHarness> makeHaLoServices({
       catTrafficLog: catTrafficLog,
       outlineGrid: outlineGrid ?? const NoOutlineGrid(),
       location: location,
+      deepLinks: deepLinks,
     ),
     db: database,
     settings: settings,

@@ -61,6 +61,15 @@ import UIKit
     didSet { flushPendingOpenFiles() }
   }
 
+  // Who sent each recent com.ham2k link, for the question a /vfo, /qso or
+  // /operation link asks before it acts (views/deep_link_approval.dart).
+  // app_links hands Dart the URL alone, so Dart asks here for the recent
+  // ones and finds its link among them: Dart rewrites a URL as it parses it,
+  // so the raw string is no key to look up. iOS names the source
+  // application only for an app from this app's developer.
+  private var linkSenderChannel: FlutterMethodChannel?
+  private var linkSenders: [(url: String, sender: [String: String])] = []
+
   // Files handed over before the engine existed — every cold launch by
   // opening a document.
   private var pendingOpenFiles: [String] = []
@@ -152,8 +161,33 @@ import UIKit
     channel.invokeMethod("openFiles", arguments: ["paths": paths])
   }
 
+  /// Notes who sent each com.ham2k link in [contexts], by the URL Dart will
+  /// ask about. Called by the scene before it hands the links to app_links.
+  func recordLinkSenders(_ contexts: Set<UIOpenURLContext>) {
+    for context in contexts where context.url.scheme?.hasPrefix("com.ham2k") == true {
+      let url = context.url.absoluteString
+      // Forgotten first: the same link sent again by someone unnamed is not
+      // the earlier sender's.
+      linkSenders.removeAll { $0.url == url }
+      guard let source = context.options.sourceApplication, !source.isEmpty else { continue }
+      linkSenders.append((url: url, sender: ["id": source, "label": source]))
+      if linkSenders.count > 16 { linkSenders.removeFirst(linkSenders.count - 16) }
+    }
+  }
+
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    linkSenderChannel = FlutterMethodChannel(
+      name: "ham2k/link_sender",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    linkSenderChannel?.setMethodCallHandler { [weak self] call, result in
+      guard call.method == "recentSenders" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      result((self?.linkSenders ?? []).map { $0.sender.merging(["uri": $0.url]) { _, url in url } })
+    }
     openFileChannel = FlutterMethodChannel(
       name: "ham2k/open_file",
       binaryMessenger: engineBridge.applicationRegistrar.messenger()

@@ -24,6 +24,7 @@ import 'package:ham2k_logger/services/extensions/extension_info.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:ham2k_logger/settings/connected_apps_settings_group.dart';
+import 'package:ham2k_logger/settings/integrations_settings_group.dart';
 import 'package:ham2k_logger/settings/settings_command.dart';
 import 'package:ham2k_logger/settings/settings_registry.dart';
 
@@ -348,10 +349,56 @@ void main() {
     });
     final link = AgentLinkService(store: store, endpoint: _NoEndpoint(), wanted: () => false, port: 0, now: () => 1);
     addTearDown(link.closeForExit);
-    services.settingsRegistry.register(ConnectedAppsSettingsGroup(link: () => link, wanted: () => true, changes: settings));
+    services.settingsRegistry.groups.whereType<IntegrationsSettingsGroup>().single.connectedApps = ConnectedAppsSettingsGroup(
+      link: () => link,
+      wanted: () => true,
+      changes: settings,
+    );
 
     expect((await writeSettingForExtension(services, callerKey: 'mcp', key: 'agentApp:g1', value: 'change')).reason, 'invalid');
     expect(link.grants.single.access, AgentAccess.watch);
+  });
+
+  // Connected Apps lives under Integrations: its rows must show there, and a
+  // change made there must still reach the link, or removing an app would
+  // leave it connected.
+  test('Integrations lists the connected agent apps and hands their changes to the link', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final store = _GrantStore({
+      'g1': AgentGrant(
+        id: 'g1',
+        client: const AgentClient(name: 'claude-code'),
+        access: AgentAccess.watch,
+        tokenHash: 'h',
+        grantedAt: 1,
+      ).toJson(),
+    });
+    final link = AgentLinkService(store: store, endpoint: _NoEndpoint(), wanted: () => false, port: 0, now: () => 1);
+    addTearDown(link.closeForExit);
+    final integrations = IntegrationsSettingsGroup(settings)
+      ..connectedApps = ConnectedAppsSettingsGroup(link: () => link, wanted: () => true, changes: settings);
+
+    final keys = (await integrations.buildElements()).map((e) => e['key']);
+    expect(keys, containsAllInOrder(['connectedApps', 'agentApp:g1']));
+
+    await integrations.commit('agentApp:g1', 'change');
+    expect(link.grants.single.access, AgentAccess.change);
+  });
+
+  // An extension can send a link, so one that could set its own sender to
+  // Allowed would never be asked again.
+  test('no extension may change what another app\'s links are allowed to do', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final services = HaLoServices(db, settings, extensions: ExtensionServiceWithFakeHost());
+    await settings.decideLinkSender('android-app://com.example.sender', label: 'Sender', allow: false);
+
+    final write = await writeSettingForExtension(services, callerKey: 'mcp', key: 'linkSender:android-app://com.example.sender', value: 'allow');
+    expect(write.reason, 'invalid');
+    expect(settings.linkSenderDecisions['android-app://com.example.sender']?.allow, isFalse);
   });
 
   // An operator who never allowed an agent app has nothing to manage there,
