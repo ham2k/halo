@@ -35,7 +35,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 20 | the band scope's `minWidthHz` and `maxWidthHz`, its `vfoLabel`'s `arrow`, up to 512 of its `layers` and 256 `annotations`, and an annotation's `collapsed` |
 | 22 | the band scope's `window` and `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed one's `width: 'box'`, a zoom's `commit` of its middle as a pan, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click; `radio.compression`; `cells`, the `grid` and `cell` layout nodes, and a layout up to 12 deep and 512 nodes; a slider's or knob's `invertScroll`; named `sources` for radios, rotators and antenna switches, a band scope's `radio` naming one; a layer's `clipX` and `clipY`, and a binding's `hold` |
 | 23 | the rotator map control (`rotatorMap`), a `nativeButton`'s `icon` variant, an event's `bearing` and `km`, and a binding's `offset` |
-| 25 | the map control (`map`), an event's `lat` and `lon`, and the `reset` gesture; an event answer's `patch` and `host.updateScene`, changing a scene in place |
+| 25 | the map control (`map`), an event's `lat` and `lon`, and the `reset` gesture; an event answer's `patch` and `host.updateScene`, changing a scene in place; `image` layers and a map's `images` |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -64,7 +64,7 @@ console names the rule.
 ## Layers and bindings
 
 A layer has an `id`, a rect (`x`, `y`, `width`, `height`) and one of `svg`,
-`text` or `icon`. A layer binds `rotation`, `translateX`/`translateY`,
+`text`, `icon` or `image` (API 25, [Images](#images)). A layer binds `rotation`, `translateX`/`translateY`,
 `scaleX`/`scaleY` and `opacity` to a scene value: `{ value, input: [lo, hi],
 output: [lo, hi] }` ramps, or `samples` equally spaced over the input range.
 Rotation and scale turn about the layer's `pivot`, so `scaleX` with
@@ -419,6 +419,32 @@ export const spotter: PanelHook = {
   },
 }
 ```
+
+## Images
+
+An `image` layer, and a map's `images`, show a PNG, JPEG, GIF or WebP, at
+most 4 MB and 4,096 pixels on a side, from one of three places:
+
+- **Your own files**: a path into your bundle's `assets/`,
+  `"assets/muf.png"`.
+- **`data:` URIs**, in base64.
+- **`https://` addresses on a host your `domains` declare**, downloaded by
+  the app under the rules every request it makes for you follows
+  ([manifest](manifest.md)), within 30 seconds. An address on any
+  other host is never requested: a pane would otherwise send it just by
+  being looked at. In a browser the host must also allow the app to read
+  it (CORS).
+
+An image layer fills its rect as `fit` says: `fill`, stretched to it as an
+`svg` is (the default), `contain` or `cover`. One that cannot be had shows
+a broken-image mark, and the console says why. An https one that timed
+out, or whose host answered busy or failing (408, 429, a 5xx), is asked
+for again a minute later while the scene still shows it; any other failure
+stands. The app keeps the pictures it has shown a while, so give a picture
+that changes a new address: the one before stays in its place until the new
+one has arrived, and nothing shows there if the new one cannot be had (a
+map's image is matched by its `id`). Extensions the app has built in, and bundles
+served by `h2kext-dev`, have no `assets/` at runtime.
 
 ## Changing a scene in place
 
@@ -1036,6 +1062,15 @@ like a native control, it takes:
   distance is. On most projections that is no circle, and one round a pole
   or past the far side of the Earth is filled the right way round. Drawn
   under the lines, a later one over an earlier.
+- `images` (API 25): up to 16 pictures laid on the world, each an `id`, an
+  `image` ([Images](#images)), and its `corners`, four places from the top
+  left round to the bottom left, the right edge east of the left; or its
+  `bounds`, `{ north, south, west, east }`, an `east` less than `west`
+  crossing the antimeridian. Its inside falls evenly in latitude and
+  longitude between them, so a plate carrée picture given its edges (a
+  propagation or weather map of the world) lands where it shows in every
+  projection, bent to fit. `opacity`, 0 to 1. Drawn over the world and its
+  night, under the circles, a later one over an earlier.
 - `zoomValue`, `hoverLat` and `hoverLon`: scene values the control writes,
   each named by the scene and declared in its `values`: the zoom, and the
   place under the pointer (the bottom of a binding's range off the world).

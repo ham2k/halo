@@ -3,6 +3,47 @@
 
 part of 'scene_model.dart';
 
+/// The values a scene that names a [PanelScene.radio] is given, live, by the
+/// host: its meters and whether it is transmitting (1 or 0). A missing reading
+/// is negative infinity, which a binding takes as the bottom of its range and
+/// a text shows as a dash. Reserved: a scene may not declare them itself.
+///
+/// `radio.swrAverage` is the SWR averaged over the transmission under way, or else the last one;
+/// `radio.secondsSinceTransmit` is 0 while transmitting, then counts up — a long time when there
+/// has been none, so a hold bound to it is over rather than pending.
+///
+/// The dial follows `readRadio`: `radio.frequencyHz` is where the app has the radio, a tune ahead
+/// of the radio's report while it is live and the last frequency reported otherwise, so a readout
+/// holds it as the built-in Radio panel does; `radio.reportedFrequencyHz` the radio's own last
+/// report. The passband and the power setting
+/// only while it is live, which `radio.connected` says as 1 or 0. `radio.ptt` (the app holding the
+/// radio's PTT, 1 or 0) only where `readRadio` gives `keying`.
+const sceneRadioValues = {
+  'radio.signalDbm',
+  'radio.powerOut',
+  'radio.swr',
+  'radio.alc',
+  'radio.supplyVolts',
+  'radio.compression',
+  'radio.transmitting',
+  'radio.swrAverage',
+  'radio.secondsSinceTransmit',
+  'radio.frequencyHz',
+  'radio.reportedFrequencyHz',
+  'radio.passbandLowHz',
+  'radio.passbandHighHz',
+  'radio.passbandWidthHz',
+  'radio.powerWatts',
+  'radio.ptt',
+  'radio.connected',
+};
+
+/// The host-fed words, beside [sceneRadioValues] and reserved the same way: the mode as the
+/// radio reports it (`USB`, `CW`…), last known like the frequency; the tuner (`inline`, `bypassed`,
+/// `tuning`, `failed`) while live; the connection's status (`connected`, `connecting`,
+/// `disconnected`…). One the radio has not given is empty.
+const sceneRadioStrings = {'radio.mode', 'radio.tuner', 'radio.status'};
+
 /// What a rotator source gives, as numbers: where it points, where it was told to turn, whether it
 /// is turning there (1 or 0), and whether it is connected (1 or 0).
 const sceneRotatorValues = {'azimuth', 'elevation', 'targetAzimuth', 'moving', 'connected'};

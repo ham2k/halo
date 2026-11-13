@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// One layer of a scene's artwork — SVG, text or an icon — with its bound
+// One layer of a scene's artwork — SVG, text, an icon or an image — with its bound
 // transforms, transitions and pulse.
 
 part of 'scene_view.dart';
@@ -141,6 +141,8 @@ class _SceneLayerViewState extends State<_SceneLayerView> with SingleTickerProvi
     final icon = layer.icon;
     Widget artwork = icon != null
         ? FittedBox(child: Icon(resolveIconName(icon.name), color: icon.color))
+        : layer.image != null
+        ? SceneImageView(source: layer.image!, fit: layer.imageFit)
         : layer.svg != null
         ? SvgPicture.string(layer.svg!, fit: BoxFit.fill, errorBuilder: (_, error, stack) => const Icon(MdiIcons.imageBroken))
         : Align(

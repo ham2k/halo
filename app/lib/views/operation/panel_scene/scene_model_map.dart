@@ -170,12 +170,57 @@ class SceneMapCircle extends SceneMapItem {
   }
 }
 
+/// A picture laid on the map by its corners — top left, top right, bottom
+/// right, bottom left — each a place; or by `bounds`, the box between two
+/// parallels and two meridians. The picture's inside falls evenly in
+/// latitude and longitude between them, so a picture of the world in plate
+/// carrée given its edges lands where it shows in every projection.
+class SceneMapOverlay {
+  /// The most overlays one map holds.
+  static const maxOverlays = 16;
+
+  final String id;
+  final String image;
+  final List<({double lat, double lon})> corners;
+  final double opacity;
+
+  /// The document's object this was read from.
+  final Map<dynamic, dynamic> source;
+
+  SceneMapOverlay(Map<dynamic, dynamic> json)
+    : source = json,
+      id = string(json, 'id'),
+      image = sceneImage(json, 'image'),
+      opacity = number(json, 'opacity', fallback: 1, min: 0, max: 1),
+      corners = _corners(json);
+
+  static List<({double lat, double lon})> _corners(Map<dynamic, dynamic> json) {
+    ({double lat, double lon}) place(Object? raw) => switch (raw) {
+      final Map<dynamic, dynamic> p => (lat: number(p, 'lat', min: -90, max: 90), lon: number(p, 'lon', min: -540, max: 540)),
+      _ => throw const FormatException('Invalid map overlay corner'),
+    };
+    final corners = json['corners'], bounds = json['bounds'];
+    if ((corners == null) == (bounds == null)) throw const FormatException('A map overlay is placed by its corners or its bounds');
+    if (corners != null) {
+      if (corners is! List || corners.length != 4) throw const FormatException('A map overlay has four corners');
+      return [for (final c in corners) place(c)];
+    }
+    if (bounds is! Map) throw const FormatException('Invalid map overlay bounds');
+    final north = number(bounds, 'north', min: -90, max: 90), south = number(bounds, 'south', min: -90, max: 90);
+    final west = number(bounds, 'west', min: -540, max: 540), east = number(bounds, 'east', min: -540, max: 540);
+    if (south >= north) throw const FormatException('A map overlay bounds south is past its north');
+    // An east less than the west crosses the antimeridian, as pan bounds do.
+    final right = east >= west ? east : east + 360;
+    return [(lat: north, lon: west), (lat: north, lon: right), (lat: south, lon: right), (lat: south, lon: west)];
+  }
+}
+
 /// A `map` control: the world in a projection, a view the operator zooms
 /// and pans within the scene's limits, and the markers and lines the scene
 /// places on it by latitude and longitude.
 class SceneMapSpec {
   static const keys = [
-    'projection', 'home', 'origin', 'map', 'zoom', 'pan', 'styles', 'markers', 'lines', 'circles', //
+    'projection', 'home', 'origin', 'map', 'zoom', 'pan', 'styles', 'markers', 'lines', 'circles', 'images', //
     'zoomValue', 'hoverLat', 'hoverLon', 'actions', 'gestures',
   ];
 
@@ -213,6 +258,10 @@ class SceneMapSpec {
   final List<SceneMapMarker> markers;
   final List<SceneMapLine> lines;
   final List<SceneMapCircle> circles;
+
+  /// Pictures laid on the world, under the circles, lines and markers, a
+  /// later one over an earlier.
+  final List<SceneMapOverlay> overlays;
 
   /// Scene values the control writes: its zoom, and the place under the pointer.
   final String? zoomValue, hoverLat, hoverLon;
@@ -273,6 +322,7 @@ class SceneMapSpec {
       lines = [
         for (final l in items(json['lines'] ?? const [], maxLines, what: 'map lines')) previous?._from[l] as SceneMapLine? ?? _item(l, SceneMapLine.new),
       ],
+      overlays = [for (final o in items(json['images'] ?? const [], SceneMapOverlay.maxOverlays, what: 'map images')) _item(o, SceneMapOverlay.new)],
       circles = [
         for (final c in items(json['circles'] ?? const [], maxCircles, what: 'map circles'))
           previous?._from[c] as SceneMapCircle? ?? _item(c, SceneMapCircle.new),
@@ -299,6 +349,7 @@ class SceneMapSpec {
     for (final circle in circles) {
       if (circle.at case final String id when !markerIds.contains(id)) throw FormatException('A map circle is round a marker it does not have: ${circle.id}');
     }
+    if (overlays.map((o) => o.id).toSet().length != overlays.length) throw const FormatException('Duplicate map image ID');
   }
 
   static Map<dynamic, dynamic> _part(Map<dynamic, dynamic> json, String key) => switch (json[key]) {

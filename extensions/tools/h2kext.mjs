@@ -84,8 +84,8 @@ import yazl from "yazl"
 /// and adds the `requiresAnyDataFileUrl` grant; 25 adds `ctx.findCalls`,
 /// `host.dbLookupFindCalls` and `ctx.scoreCandidates`, what a super check
 /// partial reads, `host.draftSuggestions`, where it offers what it found,
-/// a scene's `map` control, and scene patches: an event answer's `patch` and
-/// `host.updateScene`.
+/// a scene's `map` control, scene patches (an event answer's `patch` and
+/// `host.updateScene`), and scene images.
 export const H2KEXT_API_VERSION = 25
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`

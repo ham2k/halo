@@ -17,47 +17,7 @@ part 'scene_model_layout.dart';
 part 'scene_model_rotator.dart';
 part 'scene_model_map.dart';
 part 'scene_model_sources.dart';
-
-/// The values a scene that names a [PanelScene.radio] is given, live, by the
-/// host: its meters and whether it is transmitting (1 or 0). A missing reading
-/// is negative infinity, which a binding takes as the bottom of its range and
-/// a text shows as a dash. Reserved: a scene may not declare them itself.
-///
-/// `radio.swrAverage` is the SWR averaged over the transmission under way, or else the last one;
-/// `radio.secondsSinceTransmit` is 0 while transmitting, then counts up — a long time when there
-/// has been none, so a hold bound to it is over rather than pending.
-///
-/// The dial follows `readRadio`: `radio.frequencyHz` is where the app has the radio, a tune ahead
-/// of the radio's report while it is live and the last frequency reported otherwise, so a readout
-/// holds it as the built-in Radio panel does; `radio.reportedFrequencyHz` the radio's own last
-/// report. The passband and the power setting
-/// only while it is live, which `radio.connected` says as 1 or 0. `radio.ptt` (the app holding the
-/// radio's PTT, 1 or 0) only where `readRadio` gives `keying`.
-const sceneRadioValues = {
-  'radio.signalDbm',
-  'radio.powerOut',
-  'radio.swr',
-  'radio.alc',
-  'radio.supplyVolts',
-  'radio.compression',
-  'radio.transmitting',
-  'radio.swrAverage',
-  'radio.secondsSinceTransmit',
-  'radio.frequencyHz',
-  'radio.reportedFrequencyHz',
-  'radio.passbandLowHz',
-  'radio.passbandHighHz',
-  'radio.passbandWidthHz',
-  'radio.powerWatts',
-  'radio.ptt',
-  'radio.connected',
-};
-
-/// The host-fed words, beside [sceneRadioValues] and reserved the same way: the mode as the
-/// radio reports it (`USB`, `CW`…), last known like the frequency; the tuner (`inline`, `bypassed`,
-/// `tuning`, `failed`) while live; the connection's status (`connected`, `connecting`,
-/// `disconnected`…). One the radio has not given is empty.
-const sceneRadioStrings = {'radio.mode', 'radio.tuner', 'radio.status'};
+part 'scene_model_images.dart';
 
 /// Validate once at the document boundary, never in the frame callback.
 class PanelScene {
@@ -559,6 +519,11 @@ class SceneLayer {
   final String? svg;
   final Map<dynamic, dynamic>? text;
 
+  /// A raster image ([sceneImage]), and how it fills the rect: `fill`
+  /// (stretched to it, as an svg is), `contain` or `cover`.
+  final String? image;
+  final BoxFit imageFit;
+
   /// A named icon (`icon.name`, MDI or `fa-`), drawn by the app at the
   /// layer's size, in `icon.color` or the theme's.
   final ({String name, Color? color})? icon;
@@ -594,6 +559,12 @@ class SceneLayer {
       stretch = json['stretch'] == true,
       svg = json['svg'] == null ? null : string(json, 'svg'),
       text = json['text'] as Map<dynamic, dynamic>?,
+      image = json['image'] == null ? null : sceneImage(json, 'image'),
+      imageFit = switch (_oneOf(json, 'fit', const ['fill', 'contain', 'cover'])) {
+        'contain' => BoxFit.contain,
+        'cover' => BoxFit.cover,
+        _ => BoxFit.fill,
+      },
       icon = json['icon'] is Map ? _layerIcon(json['icon'] as Map<dynamic, dynamic>) : null,
       bindings = {
         for (final key in ['rotation', 'translateX', 'translateY', 'scaleX', 'scaleY', 'opacity', 'clipX', 'clipY'])
@@ -603,9 +574,10 @@ class SceneLayer {
       pivot = json['pivot'] == null ? Alignment.center : Alignment(pair(json['pivot'])[0] * 2 - 1, pair(json['pivot'])[1] * 2 - 1),
       transitionMs = number(json, 'transitionMs', fallback: 0, min: 0, max: 10000).round(),
       pulse = json['pulse'] as Map<dynamic, dynamic>? {
-    if ([svg, text, json['icon']].nonNulls.length != 1 || (json['icon'] != null && icon == null)) {
-      throw const FormatException('Expected SVG, text or an icon');
+    if ([svg, text, json['icon'], image].nonNulls.length != 1 || (json['icon'] != null && icon == null)) {
+      throw const FormatException('Expected SVG, text, an icon or an image');
     }
+    if (json['fit'] != null && image == null) throw const FormatException('Only an image layer takes a fit');
     if (svg != null) {
       final refusal = svgArtworkRefusal('scene artwork', svg!);
       if (refusal != null) throw refusal;

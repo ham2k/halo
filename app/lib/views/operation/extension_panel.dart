@@ -36,6 +36,7 @@ import '../../services/panel_content_budgets.dart';
 import '../../services/panel_service.dart';
 import 'panel_content_view.dart';
 import 'panel_environment.dart';
+import 'panel_scene/scene_images.dart';
 import 'panel_scene/scene_model.dart';
 import 'panel_scene/scene_rotator.dart';
 import 'panel_scene/scene_spectrum.dart';
@@ -67,6 +68,10 @@ class ExtensionPanel extends StatefulWidget {
   /// `extensionImagesFor`. Null draws each as its alt text.
   final MarkdownSizedImageBuilder? markdownImages;
 
+  /// Where a scene pane's images come from: the extension's own, from
+  /// `sceneImagesFor`. Null shows none.
+  final SceneImages? sceneImages;
+
   const ExtensionPanel({
     super.key,
     required this.panel,
@@ -77,6 +82,7 @@ class ExtensionPanel extends StatefulWidget {
     this.rotator,
     this.home,
     this.markdownImages,
+    this.sceneImages,
   });
 
   @override
@@ -843,7 +849,10 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         home: widget.home,
       );
       final images = widget.markdownImages;
-      return images == null ? view : MarkdownImages(builder: images, child: view);
+      return SceneImageScope(
+        images: widget.sceneImages,
+        child: images == null ? view : MarkdownImages(builder: images, child: view),
+      );
     },
   );
 }

@@ -159,8 +159,16 @@ export interface PanelSceneLayer {
   y: number
   width: number
   height: number
-  /** Supply exactly one of svg, text or icon. SVG must be self-contained. */
+  /** Supply exactly one of svg, text, icon or image. SVG must be self-contained. */
   svg?: string
+  /**
+   * A PNG, JPEG, GIF or WebP, at most 4 MB and 4,096 pixels on a side: one of your own `assets/` files
+   * (`"assets/muf.png"`), a `data:` URI, or an `https://` address on a host your `domains` declare.
+   * Extension API 25.
+   */
+  image?: string
+  /** How an `image` fills the layer's box: `fill` (stretched, the default), `contain` or `cover`. Extension API 25. */
+  fit?: "fill" | "contain" | "cover"
   /**
    * A named icon — MDI, or FontAwesome with `fa-` — drawn by the app to fit the layer, in `color`
    * (`#RRGGBB`) or the theme's. Extension API 12.
@@ -1104,6 +1112,25 @@ export interface PanelSceneMapLine extends PanelSceneMapItem {
 }
 
 /**
+ * A picture laid on the map by its `corners` (top left, top right, bottom right, bottom left, the right
+ * edge east of the left), or by `bounds`, the box between two parallels and two meridians. Its inside
+ * falls evenly in latitude and longitude between them, so a plate carrée picture given its edges lands
+ * where it shows, in every projection. `image` as a layer's.
+ */
+export interface PanelSceneMapImage {
+  id: string
+  image: string
+  corners?: [PanelSceneMapPlace, PanelSceneMapPlace, PanelSceneMapPlace, PanelSceneMapPlace]
+  /** An `east` less than `west` crosses the antimeridian. */
+  bounds?: { north: number; south: number; west: number; east: number }
+  /** 0 to 1; 1 by default. */
+  opacity?: number
+}
+
+/** A place on the map. */
+export type PanelSceneMapPlace = { lat: number; lon: number }
+
+/**
  * The places `km` round `at`, a marker's `id` or a place: a distance from it, drawn as its edge in
  * `color` and `width`, filled with `fill` when it has one. A click on the edge is the circle's.
  */
@@ -1138,6 +1165,8 @@ export interface PanelSceneMap {
   lines?: PanelSceneMapLine[]
   /** Up to 256, drawn under the lines, a later one over an earlier. */
   circles?: PanelSceneMapCircle[]
+  /** Up to 16 pictures laid on the world, under the circles, a later one over an earlier. Extension API 25. */
+  images?: PanelSceneMapImage[]
   /** Scene values the control writes: the place under the pointer. */
   hoverLat?: string
   hoverLon?: string

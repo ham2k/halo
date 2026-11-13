@@ -205,6 +205,60 @@ with JIT warm-up).
   which, and says so with a patch. A browser's JIT would walk it far
   faster, and is not measured here.
 
+## Images
+
+A scene shows raster pictures (extension API 25): an `image` layer, and a
+map's `images`, placed by their corners. The public contract is in [panel
+scenes](../extensions/scenes.md#images).
+
+- **Where from.** The extension's own `assets/` and `data:` URIs, as
+  markdown's images, and — unlike markdown — `https://` on a host the
+  extension's `domains` declare, fetched through `ExtensionClient` under its
+  network grant, so every hop is judged as `host.fetch`'s are. A host the
+  extension does not declare is never asked: the request would be made by
+  the operator looking, outside what the install screen said it reaches.
+  `scene_images.dart` loads them; `SceneImageScope` hands each pane its
+  extension's loader, from the dock.
+- **Held in bytes and pixels.** 4 MB, cut off as a download passes it,
+  and 30 seconds to arrive; 4,096 pixels on a side, read from the image's
+  header before it is decoded: a few kilobytes of PNG can decode to
+  gigabytes. The app reads the header itself on every platform, walking it
+  as a decoder does (a JPEG's markers with no length, a GIF's first frame
+  past its screen), which also holds every platform to the same four
+  formats; where the decoder says what it read, its size is held to the
+  cap too, so a file cannot show the check one size and the decoder
+  another. Decoded pictures are kept across every scene, the most recently
+  shown, to 256 MB of pixels and keys (a `data:` URI's key is the picture
+  again), so a render that names the same picture again, or a pane shown
+  again, draws it in its first frame without fetching or decoding it. A
+  download goes on while any pane wants it, and is dropped, its watchdog
+  with it, when the last lets go.
+- **A failure is the author's.** A picture that cannot be had draws
+  nothing on a map, or a broken-image mark on a layer, and is said on the
+  console once, naming the extension; nothing reaches the operator. An
+  https one that timed out, or whose host answered busy or failing, is
+  asked for again a minute later, as that may pass; any other fails the
+  same way every time — asked again, a refused picture is downloaded whole
+  for nothing — and is asked for again only when the extension's files or
+  grant change. A pane's loader holds only the pictures its scene names
+  now, by slot (the layer, a map image's `id`): a slot given a new address
+  shows its last picture until the new one arrives, so a radar frame that
+  moves on does not blink out, and nothing if the new one fails.
+- **A map image is a mesh.** Its corners' latitudes and longitudes are
+  spread evenly over a 32 by 32 grid, each point projected, and the picture
+  drawn on the triangles between them, so a plate carrée picture lands
+  where it shows in every projection, bent to fit. The grid is made once
+  for its corners and only placed again when a pan turns the projection,
+  as lines are. On a cylindrical projection it runs on past the edge in one
+  piece and is laid again a turn the other way, as land and lines are; on
+  the disc, a triangle with a corner not drawn, or a side reaching across
+  the rim, is halved along that side, up to five times, and what still
+  does is left out: the picture follows the rim to within a sliver rather
+  than stopping short of it in whole cells. A side is halved by its ends
+  alone, at one shared point, so the triangles either side of it agree and
+  no crack opens between them. The right edge runs east of the left
+  however far, so a picture of the whole world spans it from -180 to 180.
+
 ## Native controls and layout
 
 The drawn controls are hit areas over artwork the extension paints; the
@@ -895,7 +949,7 @@ it centers on only when the scene names no place.
 
 A scene with a `radio` block (extension API 7) is fed one radio's readings —
 its meters, `radio.transmitting`, `radio.swrAverage` and
-`radio.secondsSinceTransmit` (`sceneRadioValues` in `scene_model.dart`) — by
+`radio.secondsSinceTransmit` (`sceneRadioValues` in `scene_model_sources.dart`) — by
 the host, into values its bindings and text read like any other.
 
 - **Why the host feeds them.** An extension renders at most once a second, and

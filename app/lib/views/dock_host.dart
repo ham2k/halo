@@ -27,6 +27,7 @@ import '../services/cat/cat_service.dart';
 import '../services/cat/equipment.dart';
 import 'operation/panel_scene/cat_rotator_source.dart';
 import 'operation/panel_scene/cat_spectrum_source.dart';
+import 'operation/panel_scene/scene_images.dart' show sceneImagesFor;
 import '../services/error_reporting_service.dart';
 import '../services/extensions/app_control_host_calls.dart' show LayoutControl, LayoutWrite;
 import '../services/panel_service.dart';
@@ -1145,6 +1146,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                   onTitle: (title) => onPanelTitle(id, title),
                   renderContext: panelRenderContext,
                   markdownImages: extensionImagesFor(dockServices.extensions, dockServices.panels[id]!.hookKey),
+                  sceneImages: sceneImagesFor(dockServices.extensions, dockServices.panels[id]!.extensionKey),
                   spectrum: dockServices.extensions.radioCalls.canRead(dockServices.panels[id]!.hookKey)
                       ? CatSpectrumSource(
                           dockServices.cat,

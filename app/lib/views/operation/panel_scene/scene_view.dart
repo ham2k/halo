@@ -16,6 +16,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../panel_environment.dart';
 import 'scene_grid.dart';
+import 'scene_images.dart';
 import 'scene_map.dart';
 import 'scene_model.dart';
 import 'scene_rotator.dart';
