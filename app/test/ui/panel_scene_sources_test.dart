@@ -57,6 +57,8 @@ class _Station extends ChangeNotifier implements SceneSpectrumSource {
   @override
   List<Object?> dialState() => const [];
   @override
+  bool canRecenter(String uuid) => false;
+  @override
   bool recenter(String uuid, int centerHz) => false;
   @override
   void showWidth(String uuid, Object owner, int? widthHz) {}
