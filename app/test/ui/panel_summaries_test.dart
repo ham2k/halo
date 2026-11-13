@@ -162,6 +162,27 @@ void main() {
     expect(harness.extensions.configs['summaries#1']?.containsKey(summariesFoldedKey), isFalse, reason: 'nothing folded is nothing stored');
   });
 
+  testWidgets('a tally that sets summaryWithDetail keeps its score beside its title with the section open', (tester) async {
+    final operation = Operation(
+      uuid: 'op-2',
+      data: {'stationCall': 'N0DEV'},
+      localData: {
+        'scoring': {
+          'hrwbota': {
+            'operationSummary': {
+              'hrwbota': {'key': 'hrwbota', 'label': 'HRWBOTA', 'summary': '36 pts', 'summaryWithDetail': true, 'longSummary': 'You worked 9 hosts.'},
+            },
+          },
+        },
+      },
+    );
+    await tester.pumpWidget(_app(_pane(_Harness({}), 'summaries#1', operation: operation)));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('You worked 9 hosts.'), findsOneWidget);
+    expect(find.text('36 pts'), findsOneWidget, reason: 'a points total the detail breaks down, not restates');
+  });
+
   group('settings', () {
     Widget settings(_Harness harness, String panelId) => Builder(
       builder: (context) => OperationSummariesSettings(

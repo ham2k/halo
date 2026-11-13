@@ -85,13 +85,17 @@ class SummarySection {
   final Color? iconColor;
 
   /// A tally's short figure ("72"), beside the title whenever [body] is not
-  /// on screen to say it in full.
+  /// on screen to say it in full — or always, with [scoreWithDetail].
   final String? score;
+
+  /// The tally set `summaryWithDetail`: its [score] is a figure the detail
+  /// does not restate, so it stays beside the title with the section open.
+  final bool scoreWithDetail;
 
   /// Null for a section that is all heading — nothing to fold.
   final List<Widget> Function(BuildContext context)? body;
 
-  const SummarySection({required this.key, required this.title, this.icon, this.iconColor, this.score, this.body});
+  const SummarySection({required this.key, required this.title, this.icon, this.iconColor, this.score, this.scoreWithDetail = false, this.body});
 
   static const statsKey = 'stats';
   static const daysKey = 'days';
@@ -156,6 +160,7 @@ SummarySection _tallySection(String key, Map<dynamic, dynamic> tally, Color? ico
     icon: tally['icon'] is String ? tally['icon'] as String : null,
     iconColor: iconColor,
     score: score is String && score.isNotEmpty ? score : null,
+    scoreWithDetail: tally['summaryWithDetail'] == true,
     body: detail is String && detail.isNotEmpty ? (context) => [summaryTallyDetail(context, detail, isGrid: tally['grid'] == true, images: images)] : null,
   );
 }
@@ -303,7 +308,7 @@ class _OperationSummariesPanelState extends State<OperationSummariesPanel> {
       title: section.title,
       icon: section.icon,
       iconColor: section.iconColor,
-      score: body == null || folded ? section.score : null,
+      score: body == null || folded || section.scoreWithDetail ? section.score : null,
       trailing: body == null
           ? null
           : Padding(

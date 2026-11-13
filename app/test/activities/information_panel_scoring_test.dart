@@ -164,6 +164,26 @@ void main() {
     expect(find.text('42'), findsOneWidget);
   });
 
+  testWidgets('a tally that sets summaryWithDetail keeps its score badge above its detail', (tester) async {
+    // A points total the detail below breaks down rather than restates.
+    final operation = Operation(
+      uuid: 'op-4',
+      data: {'stationCall': 'N0DEV'},
+      localData: {
+        'scoring': {
+          'ki2d-hrwbota': {
+            'operationSummary': {
+              'hrwbota': {'key': 'hrwbota', 'label': 'HRWBOTA', 'summary': '36 pts', 'summaryWithDetail': true, 'longSummary': 'You worked 9 hosts.'},
+            },
+          },
+        },
+      },
+    );
+    await _pump(tester, operation);
+    expect(find.text('36 pts'), findsOneWidget);
+    expect(tester.widgetList<MarkdownBody>(find.byType(MarkdownBody)).any((m) => m.data.contains('You worked 9 hosts.')), isTrue);
+  });
+
   testWidgets('a tally icon is tinted with its own extension\'s accent color, not the QSO rows\' neutral foreground (APP-20)', (tester) async {
     await _pump(
       tester,

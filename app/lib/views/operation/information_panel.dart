@@ -273,12 +273,9 @@ List<Widget> summaryTallyRows(
   final widgets = <Widget>[];
   for (final (:key, :tally) in summaryTallies(summary)) {
     final label = tally['label'] as String;
-    final detail = tally['longSummary'] as String?;
-    // `summary` is a short number restating what `longSummary` already
-    // says in full ("5" beside "5 DXCC Entities" whose flags list is right
-    // below it) — only worth its own column when there's no detail to
-    // carry it instead.
-    final score = (detail == null || detail.isEmpty) ? tally['summary'] as String? : null;
+    final longSummary = tally['longSummary'];
+    final detail = longSummary is String ? longSummary : null;
+    final score = tallyScore(tally);
 
     widgets.add(summaryHeading(context, title: label, icon: tally['icon'] is String ? tally['icon'] as String : null, iconColor: iconColor, score: score));
 
@@ -292,6 +289,20 @@ List<Widget> summaryTallyRows(
     widgets.add(const SizedBox(height: Space.xl));
   }
   return widgets;
+}
+
+/// The short `summary` to stand beside a tally's label, or null. It usually
+/// restates what `longSummary` already says in full ("5" beside "5 DXCC
+/// Entities" whose flags list is right below it), so it only gets its own
+/// column when there's no detail to carry it — or when the tally sets
+/// `summaryWithDetail`, for a figure the label and detail don't spell out
+/// (a points total above the breakdown that earned it).
+String? tallyScore(Map<dynamic, dynamic> tally) {
+  final score = tally['summary'];
+  if (score is! String || score.isEmpty) return null;
+  final detail = tally['longSummary'];
+  final hasDetail = detail is String && detail.isNotEmpty;
+  return !hasDetail || tally['summaryWithDetail'] == true ? score : null;
 }
 
 /// A summary section's title row: the tally's icon, its label, and a score

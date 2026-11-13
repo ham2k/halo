@@ -188,16 +188,26 @@ void main() {
           'cqww': {'key': 'cqww', 'icon': 'earth', 'label': '18 × 4', 'summary': '72', 'longSummary': '**20m**: 4 QSOs'},
         },
       },
+      'hrwbota': {
+        'operationSummary': {
+          'hrwbota': {'key': 'hrwbota', 'label': 'HRWBOTA', 'summary': '36 pts', 'summaryWithDetail': true, 'longSummary': 'You worked 9 hosts.'},
+        },
+      },
     };
 
     testWidgets("are the Info pane's: the stats, then the contest, then core's own tallies", (tester) async {
       final sections = await sectionsFor(tester, Operation(uuid: 'op', data: const {}, localData: {'scoring': scoring}), const []);
-      expect([for (final s in sections) s.heading.title], ['Operation Stats', '18 × 4', '2 Bands', '3 States']);
-      expect([for (final s in sections) s.key], ['stats', 'cqww.cqww', 'core.bandsAndModes', 'core.states'], reason: 'the same from one operation to the next');
+      expect([for (final s in sections) s.heading.title], ['Operation Stats', '18 × 4', 'HRWBOTA', '2 Bands', '3 States']);
+      expect(
+        [for (final s in sections) s.key],
+        ['stats', 'cqww.cqww', 'hrwbota.hrwbota', 'core.bandsAndModes', 'core.states'],
+        reason: 'the same from one operation to the next',
+      );
       // A tally's detail says its number in full; the figure stands beside it
-      // only where there is none.
-      expect([for (final s in sections.skip(1)) s.heading.trailing], [null, null, '3']);
-      expect(sections[2].body.single, isA<PostcardParagraph>());
+      // only where there is none, or where the tally asks for it
+      // (`summaryWithDetail`).
+      expect([for (final s in sections.skip(1)) s.heading.trailing], [null, '36 pts', null, '3']);
+      expect(sections[3].body.single, isA<PostcardParagraph>());
     });
 
     testWidgets('leave out the now-relative "since last", and count the duplicates with the stats', (tester) async {

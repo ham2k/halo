@@ -1759,6 +1759,13 @@ export interface ScoreTally {
   /// activity's award grid) can opt into the same treatment core's own
   /// states-and-provinces checklist uses — set true, not the display detail.
   grid?: boolean
+  /// Keep `summary` beside the label even when there is a `longSummary`. The
+  /// Info pane, the Summaries pane (with the section open) and the postcard
+  /// leave it out by default, as a short number restating the detail below;
+  /// set this for a figure worth reading at a glance whatever the detail
+  /// says, such as a points total above the breakdown that earned it. An app
+  /// that predates it shows the detail without the figure.
+  summaryWithDetail?: boolean
   total: number
   [extra: string]: JSONValue | undefined
 }

@@ -27,7 +27,7 @@ import 'package:markdown/markdown.dart' as md;
 
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_summaries.dart';
-import 'information_panel.dart' show scorerIconColor, summaryTallies;
+import 'information_panel.dart' show scorerIconColor, summaryTallies, tallyScore;
 import 'operation_postcard.dart' show PostcardOverlay, PostcardShape, PostcardText, postcardFooterRoom;
 
 typedef PostcardRunStyle = ({bool bold, bool italic, bool struck, bool code});
@@ -204,16 +204,14 @@ List<PostcardSummarySection> postcardSummarySections(
   ];
 }
 
-/// A tally's short `summary` only stands beside it when there is no detail
-/// to say it in full.
+/// A tally's short `summary` stands beside it as the Info pane's does
+/// ([tallyScore]).
 PostcardHeading _tallyHeading(Map<dynamic, dynamic> tally, {Color? color, bool major = true}) {
-  final detail = tally['longSummary'];
-  final score = detail is String && detail.isNotEmpty ? null : tally['summary'];
   return PostcardHeading(
     tally['label'] as String,
     icon: tally['icon'] is String ? tally['icon'] as String : null,
     iconColor: color,
-    trailing: score is String && score.isNotEmpty ? score : null,
+    trailing: tallyScore(tally),
     major: major,
   );
 }
