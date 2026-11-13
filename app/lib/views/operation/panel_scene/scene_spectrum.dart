@@ -157,6 +157,16 @@ abstract class SceneSpectrumSource {
   bool fitSpan(String uuid, int widthHz, {int? centerHz, int offCenterHz = 0});
 }
 
+/// A source whose shared sweep can change width without moving its centre.
+abstract interface class SceneSpectrumHardwareSpan {
+  /// The widest sweep [uuid] can provide, in Hz, or null where unavailable.
+  int? hardwareMaxWidthHz(String uuid);
+
+  /// Fits the shared sweep to [owner]'s window, whose centre is [offCenterHz]
+  /// from the sweep's midpoint. [allowNarrowing] is set when a zoom in ends.
+  bool fitHardwareSpan(String uuid, Object owner, int widthHz, {required int offCenterHz, bool allowNarrowing = false});
+}
+
 /// How far, in pixels, from where the panadapter meets the waterfall the
 /// axis shows the cursor that resizes them.
 const _splitReach = 5.0;
@@ -271,6 +281,13 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   /// The operator's window: its width and its middle, in Hz. Null: the
   /// scene's `span`, and the sweep's middle.
   double? _viewWidth, _viewCenter;
+
+  /// An explicit pan or zoom can wait for a wider sweep while the view draws
+  /// only what has arrived. Follow takes over once the dial moves.
+  bool _coverGestureWindow = false;
+
+  /// The displayed width at the start of a hardware span zoom.
+  double? _zoomStartedAtWidth;
 
   /// The `span` the operator zoomed over: a scene that changes it takes its
   /// width back.
@@ -542,7 +559,10 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     }
     final was = old.control.spectrum!;
     // A scene that moves the window's middle takes it back from the operator's pan.
-    if (was.centerHz != _spec.centerHz) _viewCenter = null;
+    if (was.centerHz != _spec.centerHz) {
+      _viewCenter = null;
+      _coverGestureWindow = false;
+    }
     // A dial held for one radio is not another's.
     if (old.source != widget.source || old.radio != widget.radio) _heldVfo = null;
     if (was.palette != _spec.palette || !listEquals(was.waterfallColors, _spec.waterfallColors)) _palette = _paletteFor(_spec);
@@ -570,19 +590,6 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     _keepInView(realNowMillis());
     _tellReadouts();
     setState(() {});
-  }
-
-  /// A [SceneSpectrumSpec.secondary] control while a display that may move the
-  /// scope shows its radio: without one, it asks of the scope as any control
-  /// does, beside any other secondary one.
-  /// With no radio to ask, or a scope it could neither move nor size, it stays
-  /// secondary: asking would gain nothing, and its pan would be held to the sweep.
-  bool get _secondary {
-    final (source, uuid) = (widget.source, _uuid);
-    if (!_spec.secondary) return false;
-    if (source == null || uuid == null) return true;
-    if (!source.canRecenter(uuid) && source.maxWidthHz(uuid) == null) return true;
-    return source.ledElsewhere(uuid, this);
   }
 
   /// Subscribes to the radio this control names, while it is seen.
@@ -677,6 +684,8 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
       _sweepless = false;
       _sweep = null;
       _viewWidth = _viewCenter = _pannedAtVfo = _recenters = null;
+      _coverGestureWindow = false;
+      _zoomStartedAtWidth = null;
     }
     _sweep = _averaged(sweep);
     if (_releaseAt case final at?
@@ -869,6 +878,8 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     _frame = null;
     _viewWidth = null;
     _viewCenter = null;
+    _coverGestureWindow = false;
+    _zoomStartedAtWidth = null;
     _pannedAtVfo = null;
     _recenters = null;
     _sweepBeforeNarrowing = null;
@@ -1472,21 +1483,4 @@ class _PanPainter extends CustomPainter {
   // Rebuilt only when the tree is: a tuning, a scene value, a theme.
   @override
   bool shouldRepaint(_PanPainter old) => true;
-}
-
-/// The range a display shows over [sweep]: [widthHz] about [centerHz], each
-/// the sweep's own when null. [held] keeps it on the sweep — no wider, its
-/// middle within the sweep's edges — for a scope the app cannot move; up to
-/// [widestHz] wider, the sweep is held inside it instead. Otherwise it may
-/// run past them. Any width, any centre: not whole bins,
-/// so a pan or zoom moves the picture by the pixel, not the bin.
-@visibleForTesting
-(double, double) spectrumWindow(SpectrumFrame sweep, double? widthHz, {double? centerHz, bool held = true, double? widestHz}) {
-  final span = (sweep.highHz - sweep.lowHz).toDouble();
-  var width = widthHz ?? span, center = centerHz ?? sweep.lowHz + span / 2;
-  if (held) {
-    width = math.min(width, math.max(span, widestHz ?? 0));
-    center = width <= span ? center.clamp(sweep.lowHz.toDouble(), sweep.highHz.toDouble()) : center.clamp(sweep.highHz - width / 2, sweep.lowHz + width / 2);
-  }
-  return (center - width / 2, center + width / 2);
 }

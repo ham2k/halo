@@ -20,6 +20,25 @@ extension _SpectrumWindow on _SceneSpectrumViewState {
     _cropTimer = null;
   }
 
+  int? get _hardwareMaxWidthHz {
+    final (source, uuid) = (widget.source, _uuid);
+    if (source case final SceneSpectrumHardwareSpan hardware when uuid != null) return hardware.hardwareMaxWidthHz(uuid);
+    return null;
+  }
+
+  /// A [SceneSpectrumSpec.secondary] control while a display that may move the
+  /// scope shows its radio: without one, it asks of the scope as any control
+  /// does, beside any other secondary one.
+  /// With no radio to ask, or a scope it could neither move nor size, it stays
+  /// secondary: asking would gain nothing, and its pan would be held to the sweep.
+  bool get _secondary {
+    final (source, uuid) = (widget.source, _uuid);
+    if (!_spec.secondary) return false;
+    if (source == null || uuid == null) return true;
+    if (!source.canRecenter(uuid) && source.maxWidthHz(uuid) == null && _hardwareMaxWidthHz == null) return true;
+    return source.ledElsewhere(uuid, this);
+  }
+
   /// The scene's `window` over a live sweep: where the window shown stays.
   /// Null with none, and while it stands in for the sweep, which holds it.
   (double, double)? get _home => _sweepless ? null : _spec.window;
@@ -44,6 +63,8 @@ extension _SpectrumWindow on _SceneSpectrumViewState {
         _sweepless = false;
         _sweep = _frame = null;
         _viewWidth = _viewCenter = _pannedAtVfo = _recenters = null;
+        _coverGestureWindow = false;
+        _zoomStartedAtWidth = null;
       }
       return;
     }
@@ -52,6 +73,8 @@ extension _SpectrumWindow on _SceneSpectrumViewState {
     if (_sweepless && _sweep?.lowHz == low && _sweep?.highHz == high) return;
     _sweepless = true;
     _viewWidth = _viewCenter = _pannedAtVfo = null;
+    _coverGestureWindow = false;
+    _zoomStartedAtWidth = null;
     _recenters = false;
     _sweep = SpectrumFrame(lowHz: low, highHz: high, levels: Float32List(0), floorDb: 0, ceilingDb: 80, atMillis: nowMillis());
     _frame = _window(_sweep!);
@@ -68,15 +91,19 @@ extension _SpectrumWindow on _SceneSpectrumViewState {
   /// pace rather than waiting on the radio's.
   SpectrumFrame _window(SpectrumFrame sweep) {
     final span = _number(_spec.span);
-    if (_viewWidth != null && span != _zoomedOverSpan) _viewWidth = null;
+    if (_viewWidth case final width? when span != _zoomedOverSpan) {
+      if (span != width.round()) _coverGestureWindow = false;
+      _viewWidth = null;
+    }
+    final width = _viewWidth ?? span;
     // Over a sweep, a scene's own window is where it stays: unpanned, its middle; panned, within it,
     // whatever of it the sweep covers.
     if (_home case final home?) {
-      final width = math.min(_viewWidth ?? span ?? (sweep.highHz - sweep.lowHz).toDouble(), _spec.maxWidthHz ?? double.infinity);
-      final center = _homeCenter(_viewCenter ?? _spec.centerHz ?? (home.$1 + home.$2) / 2, width);
+      final homeWidth = math.min(width ?? (sweep.highHz - sweep.lowHz).toDouble(), _spec.maxWidthHz ?? double.infinity);
+      final center = _homeCenter(_viewCenter ?? _spec.centerHz ?? (home.$1 + home.$2) / 2, homeWidth);
       return SpectrumFrame(
-        lowHz: (center - width / 2).round(),
-        highHz: (center + width / 2).round(),
+        lowHz: (center - homeWidth / 2).round(),
+        highHz: (center + homeWidth / 2).round(),
         levels: Float32List(0),
         floorDb: sweep.floorDb,
         ceilingDb: sweep.ceilingDb,
@@ -86,11 +113,12 @@ extension _SpectrumWindow on _SceneSpectrumViewState {
     }
     final (low, high) = spectrumWindow(
       sweep,
-      _viewWidth ?? span,
+      width,
       centerHz: _viewCenter ?? _spec.centerHz,
       // A secondary scope's window is its own, past the sweep as within it.
       held: _recenters != true && !_secondary,
       widestHz: _spec.maxWidthHz,
+      covered: !_secondary && _coverGestureWindow && !_pastScope(width ?? (sweep.highHz - sweep.lowHz).toDouble()),
     );
     return SpectrumFrame(
       lowHz: low.round(),
@@ -161,4 +189,25 @@ extension _SpectrumWindow on _SceneSpectrumViewState {
       ),
     );
   }
+}
+
+/// The range a display shows over [sweep]: [widthHz] about [centerHz], each
+/// the sweep's own when null. [held] keeps it on the sweep — no wider, its
+/// middle within the sweep's edges — for a scope the app cannot move; up to
+/// [widestHz] wider, the sweep is held inside it instead. Otherwise it may
+/// run past them. [covered] keeps both edges within the available sweep
+/// while a wider sweep is on its way. Any width, any centre: not whole bins,
+/// so a pan or zoom moves the picture by the pixel, not the bin.
+@visibleForTesting
+(double, double) spectrumWindow(SpectrumFrame sweep, double? widthHz, {double? centerHz, bool held = true, double? widestHz, bool covered = false}) {
+  final span = (sweep.highHz - sweep.lowHz).toDouble();
+  var width = widthHz ?? span, center = centerHz ?? sweep.lowHz + span / 2;
+  if (covered) {
+    width = math.min(width, span);
+    center = center.clamp(sweep.lowHz + width / 2, sweep.highHz - width / 2);
+  } else if (held) {
+    width = math.min(width, math.max(span, widestHz ?? 0));
+    center = width <= span ? center.clamp(sweep.lowHz.toDouble(), sweep.highHz.toDouble()) : center.clamp(sweep.highHz - width / 2, sweep.lowHz + width / 2);
+  }
+  return (center - width / 2, center + width / 2);
 }
