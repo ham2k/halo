@@ -650,12 +650,15 @@ void main() {
     addTearDown(second.cancel);
     await pumpEventQueue();
     final beforePan = _commandsWithoutHeartbeat(secure);
+    expect(beforePan, contains('#REF;'));
+    secure.receive(_cat('#REF-140;'));
     secure.receive(File('test/cat/fixtures/k4-remote/k4-remote-9204-main-sub.bin').readAsBytesSync());
     await pumpEventQueue();
     expect(frames, hasLength(2), reason: 'only the captured Main frames feed this receiver');
     for (final frame in frames) {
       expect(frame.levels, hasLength(1024));
       expect((frame.lowHz, frame.highHz), (14222000, 14245977));
+      expect(frame.floorDb, -140);
     }
     expect(cat.stateFor(uuid).spectrum, isNotNull);
     final snapshot = panel.read(uuid)['spectrum'] as Map<String, dynamic>;

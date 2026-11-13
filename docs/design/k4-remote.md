@@ -130,6 +130,10 @@ each receiver's bins and publishes the full sweep by default. See
 [Spectrum](cat.md#elecraft-k4-lan-tcp-9201) for display zoom and explicit
 scope span requests.
 
+The secure CAT stream supplies `#REF` for Main and `#REF$` for Sub. Each
+pane uses its receiver's reference as the floor and applies local level
+adjustments to that floor.
+
 A1 leaves the PAN version, nested type and declared inner length ambiguous.
 Those fields are preserved without imposing guessed validity rules. Bin
 levels use the documented conversion above and are not calibrated dBm.

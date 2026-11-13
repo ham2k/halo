@@ -118,7 +118,7 @@ class KenwoodSession
 
   /// GPS sentences dropped for the TX-500 line: the LiNK500MP made for it
   /// can interleave its receiver's NMEA with the radio's CAT on one channel.
-  late final _framer = KenwoodFramer(dropsNmea: modeDialect == KenwoodModeDialect.lab599);
+  late final SemicolonCatFramer _framer = isK4 ? K4CatFramer() : KenwoodFramer(dropsNmea: modeDialect == KenwoodModeDialect.lab599);
 
   /// Auto-Information is the primary path; this covers what it can't — the
   /// radio's AI menu switched off, or a frame lost to line noise.
@@ -650,9 +650,6 @@ class KenwoodSession
 
   @override
   void handleData(Uint8List chunk) {
-    // Anything at all defers the next poll — the radio has just told us
-    // something, so asking now would repeat a question we have the answer to.
-    _poller.noteData();
     // ASCII, and `allowInvalid` because a line-noise byte on a serial link
     // must not throw out of a stream callback; the framer simply will not
     // match it as a command.
@@ -665,10 +662,15 @@ class KenwoodSession
       _passbandRead.heardRefusal();
       _antennaRead.heardRefusal();
     }
-    for (final command in _framer.add(text)) {
+    final commands = _framer.add(text);
+    if (_defersStatePoll(commands)) _poller.noteData();
+    for (final command in commands) {
       _handle(command);
     }
   }
+
+  /// Incoming data normally defers the next state poll.
+  bool _defersStatePoll(List<AsciiCatCommand> commands) => true;
 
   void _handle(AsciiCatCommand command) {
     switch (command.command) {

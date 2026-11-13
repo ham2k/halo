@@ -114,7 +114,7 @@ class _K4ReceiverSession
   void startSpectrum() {
     if (!_usable || _spectrumWanted) return;
     _spectrumWanted = true;
-    _presenter.start();
+    _presenter.start(readReference: () => owner._send('#REF${receiver.suffix};'));
     if (_usable && _spectrumWanted) owner._spectrumDemand();
   }
 

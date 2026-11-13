@@ -52,7 +52,7 @@ class K4SharedSession implements EquipmentSink {
     voiceMemoryCeiling: voiceCeilingFromConfig(_config),
     config: _config,
   );
-  final _framer = AsciiCatFramer();
+  final _framer = K4CatFramer();
   final _receivers = {for (final receiver in K4Receiver.values) receiver: _ReceiverState()};
   final _facades = <_K4ReceiverSession>{};
   final _global = <String, void Function(EquipmentSink)>{};
@@ -264,6 +264,13 @@ class K4SharedSession implements EquipmentSink {
         _cwPitchHz = pitch;
       case 'EM':
         _encoding.heard(params);
+        return;
+      case '#REF':
+        final reference = parseK4SpectrumReference(params);
+        if (reference == null) return;
+        for (final facade in _facades.toList()) {
+          if (facade.receiver == receiver) facade._presenter.heardReference(reference);
+        }
         return;
       case 'SM':
         final signal = parseK4Signal(command.params);
