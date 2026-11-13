@@ -2098,6 +2098,29 @@ export interface ChasingHook {
   ): Promise<{ claims: ImportedClaim[]; skipped?: number }> | { claims: ImportedClaim[]; skipped?: number }
 }
 
+/** A patch to the operation that received a command or a panel event. */
+export interface OperationSetupPatch {
+  /// An empty string clears the operator callsign. On a multi-operator
+  /// station the call is shared for this device's position.
+  operatorCall?: string
+  /// This device's station position, kept local. An empty string clears it.
+  multiIdentifier?: string
+  /// Add normalized activation references for installed activities, preserving
+  /// the existing entries. A conflicting single-reference activity refuses
+  /// the whole patch. Extension API 26.
+  addActivationRefs?: { activityKey: string; ref: string }[]
+  /// The station's stated location, which takes precedence over a location
+  /// derived from the activation references. Extension API 26.
+  location?: ({ grid: string; latitude?: never; longitude?: never } | { latitude: number; longitude: number; grid?: never }) & {
+    state?: string
+    county?: string
+  }
+  /// The operation title. Omit it to keep the current title. Extension API 26.
+  userTitle?: string
+  /// The operation notes. Omit them to keep the current notes. Extension API 26.
+  notes?: string
+}
+
 export interface CommandAction {
   setVfo?: {
     freq?: number
@@ -2181,18 +2204,14 @@ export interface CommandAction {
   /// when no value was given, or when the query matched several settings
   /// equally well — in which case every tied candidate is listed.
   openSettings?: { keys: string[]; title?: string }
-  /// OPER / POSITION (`operation-commands`): edits the OPEN operation. The
-  /// two go to different places: the operator is the operation's own shared
-  /// data — stored per position when this device is in one — while the
-  /// position, the `n` in the `/OP<n>` this device's self-spots carry, is
-  /// DEVICE-LOCAL and must not be shared with the other devices logging the
-  /// same operation. An empty string clears either. The logging panel
-  /// supplies the operation's `uuid`, since only it knows which one is open.
+  /// Edits the open operation. The app supplies its `uuid` from the command's
+  /// context. OPER and POSITION set `operatorCall` and `multiIdentifier`,
+  /// respectively. The position is the `n` in this device's `/OP<n>` self-spots.
   ///
   /// An export hook reads the operator back as `operation.operatorCall` (or
   /// `operation.local.operatorCall`); the app resolves it for this device's
   /// position first, so a hook never has to know which seat it is in.
-  updateOperation?: { operatorCall?: string; multiIdentifier?: string }
+  updateOperation?: OperationSetupPatch
   /// START / BREAK / STOP / ROVERQTH (`operation-commands`): marks a segment
   /// boundary on the OPEN operation (docs/design/contests.md §5.1.3). `start`
   /// is REFUSED when the log already has one, rather than moving it; `break`

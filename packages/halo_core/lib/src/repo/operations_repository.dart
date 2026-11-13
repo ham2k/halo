@@ -240,50 +240,90 @@ class OperationsRepository {
     // the two would be written back over with the one read here.
     final existing = await db.transaction(() async {
       final existing = await get(operation.uuid);
-      if (existing != null && !lifecycleOnly) {
-        for (final key in _lifecycleKeys) {
-          if (existing.data.containsKey(key)) {
-            data[key] = existing.data[key];
-          } else {
-            data.remove(key);
-          }
-        }
-      }
-      if (followRefs) locationFollowsRefs(existing?.data, data);
-      final refusal = WritePolicy.forOperation(existing) ?? WritePolicy.forOperationStayingTest(Operation(uuid: operation.uuid, data: data));
-      if (refusal != null) throw refusal;
-      var companion = OperationsCompanion(
-        data: Value(encodeOperationData(data, 'operations:saveData')),
-        synced: const Value(false),
-        updatedAtMillis: Value(now),
-        status: _mirroredStatus(data),
-      );
-      // A pending purge only makes sense while the operation still reads as a
-      // Test Operation. If the station call was just edited away from /T or
-      // /TEST — fixing a misclassification, or received an update via sync
-      // that no longer flags it — cancel the purge rather than let a now-real
-      // operation's QSOs get hard-deleted out from under the edit. Checked
-      // against the row rather than the in-memory [operation] snapshot: this
-      // must key off whatever `purged` state the DATABASE currently holds.
-      //
-      // Clears `deleted` too, not just `purged`/`purgedLocally`: a purged row
-      // is always also tombstoned (`_writeDeleted`, `mergeFromSync`), and
-      // `watchOperation` doesn't filter on `deleted` — an operation view left
-      // open on this uuid can still reach this save. Leaving `deleted: true`
-      // here would "fix" the misclassification while still losing the
-      // operation from every list that DOES filter on it, with no path back.
-      if (existing != null && existing.purged && !Operation(uuid: operation.uuid, data: data).isTestOperation) {
-        companion = companion.copyWith(deleted: const Value(false), purged: const Value(false), purgedLocally: const Value(false));
-      }
-      await (db.update(db.operations)..where((op) => op.uuid.equals(operation.uuid))).write(companion);
+      await _writeData(operation.uuid, data, existing, followRefs: followRefs, lifecycleOnly: lifecycleOnly);
       return existing;
     });
+    await _announceDataSave(
+      existing,
+      Operation(uuid: operation.uuid, data: data),
+      lifecycleOnly: lifecycleOnly,
+    );
+  }
+
+  /// Applies a patch built from the current row in the same transaction as
+  /// the write. Async work needed to prepare a patch belongs before this
+  /// call, so a slow caller cannot overwrite intervening edits or hold the
+  /// database open while it waits.
+  ///
+  /// Returns false if the operation is gone or deleted. An empty patch does
+  /// not write. Local fields can be patched in the same transaction without
+  /// making a local-only edit dirty or triggering the synced save callbacks.
+  Future<bool> patchData(String uuid, ({Map<String, dynamic> data, Map<String, dynamic> localData}) Function(Operation) buildPatch) async {
+    final saved = await db.transaction(() async {
+      final before = await get(uuid);
+      if (before == null || before.deleted) return null;
+      final patch = buildPatch(before);
+      if (patch.localData.isNotEmpty) {
+        await _writeLocalData(uuid, {...before.localData, ...patch.localData});
+      }
+      if (patch.data.isEmpty) return (before: before, after: null as Operation?);
+
+      final data = {...before.data, ...patch.data, 'updatedAtMillis': realNowMillis()};
+      await _writeData(uuid, data, before, followRefs: true, lifecycleOnly: false);
+      return (before: before, after: Operation(uuid: uuid, data: data));
+    });
+    if (saved == null) return false;
+    if (saved.after case final after?) await _announceDataSave(saved.before, after, lifecycleOnly: false);
+    return true;
+  }
+
+  Future<void> _writeData(String uuid, Map<String, dynamic> data, Operation? existing, {required bool followRefs, required bool lifecycleOnly}) async {
+    if (existing != null && !lifecycleOnly) {
+      for (final key in _lifecycleKeys) {
+        if (existing.data.containsKey(key)) {
+          data[key] = existing.data[key];
+        } else {
+          data.remove(key);
+        }
+      }
+    }
+    if (followRefs) locationFollowsRefs(existing?.data, data);
+    final operation = Operation(uuid: uuid, data: data);
+    final refusal = WritePolicy.forOperation(existing) ?? WritePolicy.forOperationStayingTest(operation);
+    if (refusal != null) throw refusal;
+    var companion = OperationsCompanion(
+      data: Value(encodeOperationData(data, 'operations:saveData')),
+      synced: const Value(false),
+      updatedAtMillis: Value(data['updatedAtMillis'] as int),
+      status: _mirroredStatus(data),
+    );
+    // A pending purge only makes sense while the operation still reads as a
+    // Test Operation. If the station call was just edited away from /T or
+    // /TEST — fixing a misclassification, or received an update via sync
+    // that no longer flags it — cancel the purge rather than let a now-real
+    // operation's QSOs get hard-deleted out from under the edit. Checked
+    // against the row rather than the in-memory [operation] snapshot: this
+    // must key off whatever `purged` state the DATABASE currently holds.
+    //
+    // Clears `deleted` too, not just `purged`/`purgedLocally`: a purged row
+    // is always also tombstoned (`_writeDeleted`, `mergeFromSync`), and
+    // `watchOperation` doesn't filter on `deleted` — an operation view left
+    // open on this uuid can still reach this save. Leaving `deleted: true`
+    // here would "fix" the misclassification while still losing the
+    // operation from every list that DOES filter on it, with no path back.
+    if (existing != null && existing.purged && !operation.isTestOperation) {
+      companion = companion.copyWith(deleted: const Value(false), purged: const Value(false), purgedLocally: const Value(false));
+    }
+    await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(companion);
+  }
+
+  Future<void> _announceDataSave(Operation? before, Operation after, {required bool lifecycleOnly}) async {
     // The row is already committed, so the change HAS to be announced —
     // without this, a throw out of the callback leaves the edit saved and
     // both the sync engine and the peer outbox unaware of it until some
     // later, unrelated write happens to wake them.
     try {
-      if (!lifecycleOnly) await onLocalSave?.call(existing, Operation(uuid: operation.uuid, data: data));
+      if (!lifecycleOnly) await onLocalSave?.call(before, after);
     } finally {
       onChange?.call();
     }
@@ -1160,8 +1200,12 @@ class OperationsRepository {
       final operation = await get(uuid);
       if (operation == null) return;
       final merged = {...operation.localData, ...patch};
-      await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(OperationsCompanion(localData: Value(jsonEncode(merged))));
+      await _writeLocalData(uuid, merged);
     });
+  }
+
+  Future<void> _writeLocalData(String uuid, Map<String, dynamic> localData) async {
+    await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(OperationsCompanion(localData: Value(jsonEncode(localData))));
   }
 }
 

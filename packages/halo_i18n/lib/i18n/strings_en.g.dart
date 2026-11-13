@@ -71,6 +71,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$dataFiles$en dataFiles = Translations$dataFiles$en.internal(_root);
 	late final Translations$updates$en updates = Translations$updates$en.internal(_root);
 	late final Translations$extensionService$en extensionService = Translations$extensionService$en.internal(_root);
+	late final Translations$operationSetupAction$en operationSetupAction = Translations$operationSetupAction$en.internal(_root);
 	late final Translations$operationLocationScreen$en operationLocationScreen = Translations$operationLocationScreen$en.internal(_root);
 	late final Translations$versionLabel$en versionLabel = Translations$versionLabel$en.internal(_root);
 	late final Translations$notices$en notices = Translations$notices$en.internal(_root);
@@ -2756,6 +2757,39 @@ class Translations$extensionService$en {
 
 	/// en: '${name} got stuck in a timer. Its timers are stopped until the extensions restart.'
 	String timersSuspendedInterrupted({required Object name}) => '${name} got stuck in a timer. Its timers are stopped until the extensions restart.';
+}
+
+// Path: operationSetupAction
+class Translations$operationSetupAction$en {
+	Translations$operationSetupAction$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'The operation update has an invalid value for ${field}.'
+	String invalidField({required Object field}) => 'The operation update has an invalid value for ${field}.';
+
+	/// en: 'Activation reference ${index} needs a program key and a reference code.'
+	String invalidRefEntry({required Object index}) => 'Activation reference ${index} needs a program key and a reference code.';
+
+	/// en: '${reference} is not a valid activation reference.'
+	String invalidReference({required Object reference}) => '${reference} is not a valid activation reference.';
+
+	/// en: 'Could not validate ${reference}. Check that its activity is available.'
+	String unavailableReference({required Object reference}) => 'Could not validate ${reference}. Check that its activity is available.';
+
+	/// en: 'Could not add ${reference}. This activity already has reference ${existing}.'
+	String conflictingReference({required Object reference, required Object existing}) => 'Could not add ${reference}. This activity already has reference ${existing}.';
+
+	/// en: 'An operation location needs either a grid locator or a latitude and longitude.'
+	String get invalidLocation => 'An operation location needs either a grid locator or a latitude and longitude.';
+
+	/// en: '"${grid}" is not a valid grid locator.'
+	String invalidGrid({required Object grid}) => '"${grid}" is not a valid grid locator.';
+
+	/// en: 'The operation update needs a valid latitude and longitude.'
+	String get invalidCoordinates => 'The operation update needs a valid latitude and longitude.';
 }
 
 // Path: operationLocationScreen
@@ -14222,6 +14256,14 @@ extension on Translations {
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} spent too much time in its timers. They\'re stopped until the extensions restart.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name}\'s timers kept failing. They\'re stopped until the extensions restart.',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} got stuck in a timer. Its timers are stopped until the extensions restart.',
+			'operationSetupAction.invalidField' => ({required Object field}) => 'The operation update has an invalid value for ${field}.',
+			'operationSetupAction.invalidRefEntry' => ({required Object index}) => 'Activation reference ${index} needs a program key and a reference code.',
+			'operationSetupAction.invalidReference' => ({required Object reference}) => '${reference} is not a valid activation reference.',
+			'operationSetupAction.unavailableReference' => ({required Object reference}) => 'Could not validate ${reference}. Check that its activity is available.',
+			'operationSetupAction.conflictingReference' => ({required Object reference, required Object existing}) => 'Could not add ${reference}. This activity already has reference ${existing}.',
+			'operationSetupAction.invalidLocation' => 'An operation location needs either a grid locator or a latitude and longitude.',
+			'operationSetupAction.invalidGrid' => ({required Object grid}) => '"${grid}" is not a valid grid locator.',
+			'operationSetupAction.invalidCoordinates' => 'The operation update needs a valid latitude and longitude.',
 			'operationLocationScreen.title' => 'Operation Location',
 			'operationLocationScreen.selectedLocation' => 'Selected Location',
 			'operationLocationScreen.gridSquare' => 'Maidenhead Grid Square Locator',
@@ -14393,6 +14435,8 @@ extension on Translations {
 			'exportSettings.type' => 'Export type',
 			'exportSettings.defaults' => 'Defaults',
 			'exportSettings.includeLookupData' => 'Include lookup data',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.customTemplates' => 'Custom templates',
 			'exportSettings.filenameTemplate' => 'File name template',
 			'exportSettings.compactFilenameTemplate' => 'Compact file name template',
@@ -14401,8 +14445,6 @@ extension on Translations {
 			'exportSettings.adifCommentTemplate' => 'ADIF QSO Comments',
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL Message',
 			'exportSettings.shared' => 'Settings apply to every extension using this export type.',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.defaultTemplates' => 'Turn on Custom templates to edit this type’s templates.',
 			'templateEditor.previewLabel' => 'Preview:',
 			'templateEditor.reset' => 'Reset',

@@ -69,6 +69,7 @@ class TranslationsCw extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$dataFiles$cw dataFiles = _Translations$dataFiles$cw._(_root);
 	@override late final _Translations$updates$cw updates = _Translations$updates$cw._(_root);
 	@override late final _Translations$extensionService$cw extensionService = _Translations$extensionService$cw._(_root);
+	@override late final _Translations$operationSetupAction$cw operationSetupAction = _Translations$operationSetupAction$cw._(_root);
 	@override late final _Translations$operationLocationScreen$cw operationLocationScreen = _Translations$operationLocationScreen$cw._(_root);
 	@override late final _Translations$versionLabel$cw versionLabel = _Translations$versionLabel$cw._(_root);
 	@override late final _Translations$notices$cw notices = _Translations$notices$cw._(_root);
@@ -1217,6 +1218,23 @@ class _Translations$extensionService$cw extends Translations$extensionService$en
 	@override String timersSuspendedBudget({required Object name}) => '${name} / ··· ·——· · —· — / — ——— ——— / —— ··— —·—· ···· / — ·· —— · / ·· —· / ·· — ··· / — ·· —— · ·—· ··· ·—·—·— / — ···· · —·—— ·————· ·—· · / ··· — ——— ·——· ·——· · —·· / ··— —· — ·· ·—·· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·—· · ··· — ·— ·—· — ·—·—·—';
 	@override String timersSuspendedFailures({required Object name}) => '${name} ·————· ··· / — ·· —— · ·—· ··· / —·— · ·——· — / ··—· ·— ·· ·—·· ·· —· ——· ·—·—·— / — ···· · —·—— ·————· ·—· · / ··· — ——— ·——· ·——· · —·· / ··— —· — ·· ·—·· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·—· · ··· — ·— ·—· — ·—·—·—';
 	@override String timersSuspendedInterrupted({required Object name}) => '${name} / ——· ——— — / ··· — ··— —·—· —·— / ·· —· / ·— / — ·· —— · ·—· ·—·—·— / ·· — ··· / — ·· —— · ·—· ··· / ·— ·—· · / ··· — ——— ·——· ·——· · —·· / ··— —· — ·· ·—·· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·—· · ··· — ·— ·—· — ·—·—·—';
+}
+
+// Path: operationSetupAction
+class _Translations$operationSetupAction$cw extends Translations$operationSetupAction$en {
+	_Translations$operationSetupAction$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String invalidField({required Object field}) => '— ···· · / ——— ·——· · ·—· ·— — ·· ——— —· / ··— ·——· —·· ·— — · / ···· ·— ··· / ·— —· / ·· —· ···— ·— ·—·· ·· —·· / ···— ·— ·—·· ··— · / ··—· ——— ·—· / ${field} ·—·—·—';
+	@override String invalidRefEntry({required Object index}) => '·— —·—· — ·· ···— ·— — ·· ——— —· / ·—· · ··—· · ·—· · —· —·—· · / ${index} / —· · · —·· ··· / ·— / ·——· ·—· ——— ——· ·—· ·— —— / —·— · —·—— / ·— —· —·· / ·— / ·—· · ··—· · ·—· · —· —·—· · / —·—· ——— —·· · ·—·—·—';
+	@override String invalidReference({required Object reference}) => '${reference} / ·· ··· / —· ——— — / ·— / ···— ·— ·—·· ·· —·· / ·— —·—· — ·· ···— ·— — ·· ——— —· / ·—· · ··—· · ·—· · —· —·—· · ·—·—·—';
+	@override String unavailableReference({required Object reference}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ···— ·— ·—·· ·· —·· ·— — · / ${reference} ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / ·· — ··· / ·— —·—· — ·· ···— ·· — —·—— / ·· ··· / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · ·—·—·—';
+	@override String conflictingReference({required Object reference, required Object existing}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·— —·· —·· / ${reference} ·—·—·— / — ···· ·· ··· / ·— —·—· — ·· ···— ·· — —·—— / ·— ·—·· ·—· · ·— —·· —·—— / ···· ·— ··· / ·—· · ··—· · ·—· · —· —·—· · / ${existing} ·—·—·—';
+	@override String get invalidLocation => '·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / ·—·· ——— —·—· ·— — ·· ——— —· / —· · · —·· ··· / · ·· — ···· · ·—· / ·— / ——· ·—· ·· —·· / ·—·· ——— —·—· ·— — ——— ·—· / ——— ·—· / ·— / ·—·· ·— — ·· — ··— —·· · / ·— —· —·· / ·—·· ——— —· ——· ·· — ··— —·· · ·—·—·—';
+	@override String invalidGrid({required Object grid}) => '·—··—· ${grid} ·—··—· / ·· ··· / —· ——— — / ·— / ···— ·— ·—·· ·· —·· / ——· ·—· ·· —·· / ·—·· ——— —·—· ·— — ——— ·—· ·—·—·—';
+	@override String get invalidCoordinates => '— ···· · / ——— ·——· · ·—· ·— — ·· ——— —· / ··— ·——· —·· ·— — · / —· · · —·· ··· / ·— / ···— ·— ·—·· ·· —·· / ·—·· ·— — ·· — ··— —·· · / ·— —· —·· / ·—·· ——— —· ——· ·· — ··— —·· · ·—·—·—';
 }
 
 // Path: operationLocationScreen
@@ -7984,6 +8002,14 @@ extension on TranslationsCw {
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} / ··· ·——· · —· — / — ——— ——— / —— ··— —·—· ···· / — ·· —— · / ·· —· / ·· — ··· / — ·· —— · ·—· ··· ·—·—·— / — ···· · —·—— ·————· ·—· · / ··· — ——— ·——· ·——· · —·· / ··— —· — ·· ·—·· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·—· · ··· — ·— ·—· — ·—·—·—',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name} ·————· ··· / — ·· —— · ·—· ··· / —·— · ·——· — / ··—· ·— ·· ·—·· ·· —· ——· ·—·—·— / — ···· · —·—— ·————· ·—· · / ··· — ——— ·——· ·——· · —·· / ··— —· — ·· ·—·· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·—· · ··· — ·— ·—· — ·—·—·—',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} / ——· ——— — / ··· — ··— —·—· —·— / ·· —· / ·— / — ·· —— · ·—· ·—·—·— / ·· — ··· / — ·· —— · ·—· ··· / ·— ·—· · / ··· — ——— ·——· ·——· · —·· / ··— —· — ·· ·—·· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·—· · ··· — ·— ·—· — ·—·—·—',
+			'operationSetupAction.invalidField' => ({required Object field}) => '— ···· · / ——— ·——· · ·—· ·— — ·· ——— —· / ··— ·——· —·· ·— — · / ···· ·— ··· / ·— —· / ·· —· ···— ·— ·—·· ·· —·· / ···— ·— ·—·· ··— · / ··—· ——— ·—· / ${field} ·—·—·—',
+			'operationSetupAction.invalidRefEntry' => ({required Object index}) => '·— —·—· — ·· ···— ·— — ·· ——— —· / ·—· · ··—· · ·—· · —· —·—· · / ${index} / —· · · —·· ··· / ·— / ·——· ·—· ——— ——· ·—· ·— —— / —·— · —·—— / ·— —· —·· / ·— / ·—· · ··—· · ·—· · —· —·—· · / —·—· ——— —·· · ·—·—·—',
+			'operationSetupAction.invalidReference' => ({required Object reference}) => '${reference} / ·· ··· / —· ——— — / ·— / ···— ·— ·—·· ·· —·· / ·— —·—· — ·· ···— ·— — ·· ——— —· / ·—· · ··—· · ·—· · —· —·—· · ·—·—·—',
+			'operationSetupAction.unavailableReference' => ({required Object reference}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ···— ·— ·—·· ·· —·· ·— — · / ${reference} ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / ·· — ··· / ·— —·—· — ·· ···— ·· — —·—— / ·· ··· / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · ·—·—·—',
+			'operationSetupAction.conflictingReference' => ({required Object reference, required Object existing}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·— —·· —·· / ${reference} ·—·—·— / — ···· ·· ··· / ·— —·—· — ·· ···— ·· — —·—— / ·— ·—·· ·—· · ·— —·· —·—— / ···· ·— ··· / ·—· · ··—· · ·—· · —· —·—· · / ${existing} ·—·—·—',
+			'operationSetupAction.invalidLocation' => '·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / ·—·· ——— —·—· ·— — ·· ——— —· / —· · · —·· ··· / · ·· — ···· · ·—· / ·— / ——· ·—· ·· —·· / ·—·· ——— —·—· ·— — ——— ·—· / ——— ·—· / ·— / ·—·· ·— — ·· — ··— —·· · / ·— —· —·· / ·—·· ——— —· ——· ·· — ··— —·· · ·—·—·—',
+			'operationSetupAction.invalidGrid' => ({required Object grid}) => '·—··—· ${grid} ·—··—· / ·· ··· / —· ——— — / ·— / ···— ·— ·—·· ·· —·· / ——· ·—· ·· —·· / ·—·· ——— —·—· ·— — ——— ·—· ·—·—·—',
+			'operationSetupAction.invalidCoordinates' => '— ···· · / ——— ·——· · ·—· ·— — ·· ——— —· / ··— ·——· —·· ·— — · / —· · · —·· ··· / ·— / ···— ·— ·—·· ·· —·· / ·—·· ·— — ·· — ··— —·· · / ·— —· —·· / ·—·· ——— —· ——· ·· — ··— —·· · ·—·—·—',
 			'operationLocationScreen.title' => '——— ·——· · ·—· ·— — ·· ——— —· / ·—·· ——— —·—· ·— — ·· ——— —·',
 			'operationLocationScreen.selectedLocation' => '··· · ·—·· · —·—· — · —·· / ·—·· ——— —·—· ·— — ·· ——— —·',
 			'operationLocationScreen.gridSquare' => '—— ·— ·· —·· · —· ···· · ·— —·· / ——· ·—· ·· —·· / ··· ——·— ··— ·— ·—· · / ·—·· ——— —·—· ·— — ——— ·—·',
@@ -8155,6 +8181,8 @@ extension on TranslationsCw {
 			'exportSettings.type' => '· —··— ·——· ——— ·—· — / — —·—— ·——· ·',
 			'exportSettings.defaults' => '—·· · ··—· ·— ··— ·—·· — ···',
 			'exportSettings.includeLookupData' => '·· —· —·—· ·—·· ··— —·· · / ·—·· ——— ——— —·— ··— ·——· / —·· ·— — ·—',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.customTemplates' => '—·—· ··— ··· — ——— —— / — · —— ·——· ·—·· ·— — · ···',
 			'exportSettings.filenameTemplate' => '··—· ·· ·—·· · / —· ·— —— · / — · —— ·——· ·—·· ·— — ·',
 			'exportSettings.compactFilenameTemplate' => '—·—· ——— —— ·——· ·— —·—· — / ··—· ·· ·—·· · / —· ·— —— · / — · —— ·——· ·—·· ·— — ·',
@@ -8163,8 +8191,6 @@ extension on TranslationsCw {
 			'exportSettings.adifCommentTemplate' => '·— —·· ·· ··—· / ——·— ··· ——— / —·—· ——— —— —— · —· — ···',
 			'exportSettings.adifQslMessageTemplate' => '·— —·· ·· ··—· / ——·— ··· ·—·· / —— · ··· ··· ·— ——· ·',
 			'exportSettings.shared' => '··· · — — ·· —· ——· ··· / ·— ·——· ·——· ·—·· —·—— / — ——— / · ···— · ·—· —·—— / · —··— — · —· ··· ·· ——— —· / ··— ··· ·· —· ——· / — ···· ·· ··· / · —··— ·——· ——— ·—· — / — —·—— ·——· · ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.defaultTemplates' => '— ··— ·—· —· / ——— —· / —·—· ··— ··· — ——— —— / — · —— ·——· ·—·· ·— — · ··· / — ——— / · —·· ·· — / — ···· ·· ··· / — —·—— ·——· · ’ ··· / — · —— ·——· ·—·· ·— — · ··· ·—·—·—',
 			'templateEditor.previewLabel' => '·——· ·—· · ···— ·· · ·—— ———···',
 			'templateEditor.reset' => '·—· · ··· · —',

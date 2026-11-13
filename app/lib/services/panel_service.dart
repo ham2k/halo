@@ -654,7 +654,11 @@ abstract interface class PanelEventSource {
 class PanelService extends ChangeNotifier {
   final PanelExtensionSource extensions;
 
-  PanelService(this.extensions) {
+  /// Applies a scene action to the operation the panel was acting on.
+  /// A non-null message is a refusal the panel shows to the operator.
+  final Future<String?> Function(String uuid, Map<String, dynamic> patch)? onUpdateOperation;
+
+  PanelService(this.extensions, {this.onUpdateOperation}) {
     extensions.runtimeGeneration.addListener(_onRuntimeReplaced);
   }
 

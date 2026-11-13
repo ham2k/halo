@@ -116,7 +116,7 @@ every problem at once rather than one per run:
 h2kext-pack: ./build is not ready to package:
 manifest.json: missing required field 'name'
 manifest.json: key 'my-clock' must start with your callsign — 'my' is not one (e.g. ki2d-my-clock)
-manifest.json: missing 'api' — declare the extension API this was built against (currently 13)
+manifest.json: missing 'api' — declare the extension API this was built against (currently 26)
 ```
 
 It refuses what would install cleanly and then misbehave where you cannot
@@ -142,7 +142,7 @@ The extension API is numbered, and your manifest's `api` is the **lowest**
 level that has everything you use. An app speaking an older level refuses
 the bundle at install and says so; the catalog offers each app the newest
 release it can run. The SDK's minor version is the level it describes
-(SDK 1.22 is API 22) and `API_VERSION` exports it.
+(SDK 1.26 is API 26) and `API_VERSION` exports it.
 
 | Level | Adds |
 | --- | --- |
@@ -171,6 +171,7 @@ release it can run. The SDK's minor version is the level it describes
 | 23 | antenna switches and rotators (`host.listEquipment`, `setAntenna`, `setRotator`, `stopRotator`) under the radio grants, and the `equipment` trigger; the `rotatorMap` scene control and a `nativeButton`'s `icon` variant, a form `row`'s `label` and a text field's `valueFormat`, `host.setEquipmentConnection`, a rotator's `beamWidth` in `host.listEquipment`, and a scene binding's `offset`; `host.updateSetting`; `host.layouts` and its `requiresLayoutControl` grant; a panel descriptor's `config`, `initialConfig` and `file`, a render result's `form` and `menu`, an event answer's `config`, the system lists `$core.radios`, `$core.rotators` and `$core.antennaSwitches`, and a system-list select's `none`; the `compression` meter, in `readRadio()`'s `meters` and as `radio.compression`; a scene's `cells`, drawn at their own size, the layout's `grid` and `cell` nodes, and a layout up to 12 deep and 512 nodes; a slider's or knob's `invertScroll`; a scene's named `sources` (radios, rotators and antenna switches) and a band scope naming one; a layer's `clipX` and `clipY` reveal, and a binding's peak `hold`; the band scope's `waterfallFloor` gesture, an Alt-drag along the waterfall's levels |
 | 24 | every address the app fetches for an extension held to its `domains`: its data files, outlines, lookup photos and OAuth sign-in; the `requiresAnyDataFileUrl` grant |
 | 25 | `ctx.findCalls`, the callsigns in the log the text being typed could be, and `host.dbLookupFindCalls`, the same over a dataset keyed by callsign; `ctx.scoreCandidates`, what logging a candidate contact would be in the operation in front; the `map` scene control: Web Mercator, equirectangular, Miller, Patterson, azimuthal equidistant and Robinson projections, markers, great-circle lines and distance circles in named styles, with radii and widths that follow the zoom; an event's `lat` and `lon`, and the `reset` gesture; `host.draftSuggestions`, those contacts offered on the line under the call info |
+| 26 | `updateOperation` on a panel event result, and the activation references, location, title and notes in the shared `OperationSetupPatch` for panel events and commands |
 
 The packer enforces the levels it can tell from the manifest alone:
 `webSockets` needs 2, `chasing` needs 9, a cluster grant or a `cluster` hook

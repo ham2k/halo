@@ -25,6 +25,7 @@ import '../../services/panel_service.dart';
 import '../dock_layouts/layout_menu.dart' show saveTextFile;
 import 'remote_screen/remote_screen_panel.dart';
 import 'remote_screen/remote_screen_picker.dart';
+import 'panel_scene/scene_events.dart';
 
 /// The `method` a panel's `type: 'action'` element names to reload whatever
 /// its pane is showing, without closing the sheet or saving anything.
@@ -216,6 +217,8 @@ Future<void> importPanelFile(BuildContext context, {required HaLoServices servic
 Future<void> sendPanelMenuEvent(HaLoServices services, PanelDefinition panel, Map<String, dynamic> event, {required String failed}) async {
   try {
     await services.panels.queueEvent(panel.id, event);
+  } on SceneEventRefusal catch (refusal) {
+    services.statusBar.setMessage(key: 'panel:menu:${panel.id}', text: refusal.message);
   } catch (e, stack) {
     ErrorReportingService.report(
       e,

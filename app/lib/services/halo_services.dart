@@ -85,6 +85,7 @@ import 'cat_server/cat_server_service.dart';
 import 'location_service.dart';
 import 'lookup_queue_service.dart';
 import 'operation_lifecycle_commands.dart';
+import 'operation_setup_service.dart';
 import 'metrics_service.dart';
 import 'assistant_service.dart';
 import 'panel_service.dart';
@@ -373,7 +374,7 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity {
   /// The panel catalog a customizable view arranges (docs/design/layouts.md).
   /// Lazy like the rest: nothing asks the extensions for panels until a view
   /// that can hold one is actually built.
-  late final PanelService panels = PanelService(extensions);
+  late final PanelService panels = PanelService(extensions, onUpdateOperation: (uuid, patch) async => (await updateOperationSetup(uuid, patch))?.text);
   late final AssistantService assistants = AssistantService.forApp(extensions, settings: settings, cat: cat);
   late final OperationTitleService operationTitles = OperationTitleService(extensions: extensions, operations: operations);
 
@@ -1766,7 +1767,7 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity {
         if (params?['developerMode'] case final bool on) await settings.setDeveloperMode(on);
         return null;
       case 'updateOperation':
-        return _updateOperation(params ?? const {});
+        return updateOperationSetup(asQsonString(params?['uuid']) ?? '', params ?? const {});
       case 'markSegment':
         return markSegment(params ?? const {});
       case 'setPower':
@@ -1811,46 +1812,6 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity {
       default:
         return null;
     }
-  }
-
-  /// OPER / POSITION: writes one edit to the open operation. The hook parsed
-  /// the text and its own `confirm` already told the operator what is
-  /// happening, so success returns null, exactly as `updateSetting` does —
-  /// a non-null return is a failure the hook could not have known about.
-  ///
-  /// The two fields deliberately go to different places: the operator
-  /// callsign is the operation's own data and syncs with it, while the
-  /// position names THIS device and must not (see `spotCallForSelfSpot`).
-  Future<CommandActionOutcome?> _updateOperation(Map<String, dynamic> params) async {
-    final uuid = asQsonString(params['uuid']) ?? '';
-    final operation = uuid.isEmpty ? null : await operations.get(uuid);
-    if (operation == null) return (text: t.commands.noOperationOpen, failed: true);
-
-    // The position lands first, and the operator goes into the slot it names.
-    // Both writes are guarded on the change — a local_data write rebuilds the
-    // Operation View (see the details dialog's own write), and a data write
-    // pushes a revision to every other device — and the operator's guard reads
-    // the DESTINATION seat, not the one this device is leaving: a command
-    // carrying both fields would otherwise compare against the old seat's
-    // operator and skip a write the new seat needs.
-    // Trimmed and uppercased at the boundary, like the details dialog: this
-    // is public SDK surface (`updateOperation`), and a value arriving with
-    // stray space would never equal the trimmed slot it is compared against —
-    // so every repeat of the same command would push another revision.
-    final operatorCall = params['operatorCall']?.toString().trim().toUpperCase();
-    final raw = params['multiIdentifier']?.toString();
-    final multiIdentifier = raw == null ? null : normalizedMultiIdentifier(raw);
-    if (multiIdentifier != null && multiIdentifier != multiIdentifierFor(operation)) {
-      await operations.updateLocalData(operation.uuid, {multiIdentifierKey: multiIdentifier});
-    }
-    if (operatorCall != null) {
-      final key = operatorCallKeyFor(multiIdentifier ?? multiIdentifierFor(operation));
-      final seatOperatorCall = (asQsonString(operation.data[key]) ?? '').trim();
-      if (operatorCall != seatOperatorCall) {
-        await operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, key: operatorCall}));
-      }
-    }
-    return null;
   }
 
   /// What a segment row says in the list — polo's `describeOperation`: each

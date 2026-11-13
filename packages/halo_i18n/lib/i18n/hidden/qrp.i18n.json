@@ -3371,6 +3371,16 @@
     "timersSuspendedFailures": "${name}'s timers kept failing. they're stopped until the extensions restart.",
     "timersSuspendedInterrupted": "${name} got stuck in a timer. its timers are stopped until the extensions restart."
   },
+  "operationSetupAction": {
+    "invalidField": "the operation update has an invalid value for ${field}.",
+    "invalidRefEntry": "activation reference ${index} needs a program key and a reference code.",
+    "invalidReference": "${reference} is not a valid activation reference.",
+    "unavailableReference": "could not validate ${reference}. check that its activity is available.",
+    "conflictingReference": "could not add ${reference}. this activity already has reference ${existing}.",
+    "invalidLocation": "an operation location needs either a grid locator or a latitude and longitude.",
+    "invalidGrid": "\"${grid}\" is not a valid grid locator.",
+    "invalidCoordinates": "the operation update needs a valid latitude and longitude."
+  },
   "operationLocationScreen": {
     "title": "operation location",
     "selectedLocation": "selected location",

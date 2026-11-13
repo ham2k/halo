@@ -41,7 +41,7 @@ never arbitrary state:
 | --- | --- | --- |
 | `setVfo`, `setPower`, `swapRadios` | tunes the radio, sets its power, trades SO2R's Radio A and Radio B (frequency, mode, Run or S&P, each set's entry, and on two slices of one radio their antennas) | `setPower`, `swapRadios`: `requiresRadioWrite` |
 | `updateQso`, `addQso` | changes the draft contact, adds a record to the log (an event row, `band: 'event'`, is how a note lands on the timeline) | |
-| `updateOperation`, `markSegment` | changes the operation, marks a break | |
+| `updateOperation`, `markSegment` | [changes the open operation](#updating-the-open-operation), marks a break | |
 | `setCallField`, `findInLog`, `navigate`, `openSettings` | moves the operator somewhere | |
 | `sendSpots`, `autoRespot`, `syncAll`, `setTime` | the app's own actions; `sendSpots` with a `source` posts only to the spot sources whose hook key carries that word (`pota` for `ham2k-pota`), the app's preview names them, and a word no source carries is refused | |
 | `updateSetting`, `updateSettings`, `toggleExperiment`, `setEnterSends`, `setOpStyle`, `setKeyerSpeed`, `showKeyer` | changes the app's own settings; `setOpStyle` (API 19) is `{ opStyle: 'run' \| 'normal' }`, the operating style of the set the operator is in | `requiresSettingsWrite` |
@@ -70,6 +70,38 @@ runs, and the command bar says so. The developer actions (`dev…`,
   to build must not build them unconditionally; `execute: true` marks the
   one call that is about to run, so a hook that reads the log through
   `ctx.getQsos` does so only then.
+
+### Updating the open operation
+
+Return `updateOperation` in a command action to edit the operation where
+the operator runs the command. The app supplies the target from the
+command's context. A [panel event](scenes.md#events-and-results) can return
+the same `OperationSetupPatch` (extension API 26).
+
+- `addActivationRefs` (extension API 26) takes `{ activityKey, ref }`
+  entries for activities with an activation `refList` control. Use an
+  activity's short key such as `pota` or its extension key such as
+  `ham2k-pota`, as in an `/operation?our.refs=` link. The app applies the
+  program's [reference rules](activities.md#controls), keeps the existing
+  activities and their settings, and skips a reference already on the
+  operation. A different reference for a single-reference program is a
+  conflict.
+- `location` (extension API 26) takes a Maidenhead `grid` or both `latitude`
+  and `longitude` in decimal degrees. The app measures from the center of
+  a supplied grid. A stated location takes precedence over the location
+  derived from activation references. Either form accepts optional `state`
+  and `county` strings.
+- `userTitle` and `notes` (extension API 26) set the operation's title and
+  notes. Omit these fields, `state`, or `county` to keep their current
+  values. An empty string clears the supplied field.
+- `operatorCall` sets the operator callsign, shared for the current station
+  position. `multiIdentifier` sets this device's station position locally.
+  If you supply both, the callsign applies to the supplied position. An
+  empty string clears either field.
+
+The app validates the whole patch before saving it. An invalid reference,
+unavailable program, or single-reference conflict identifies the entry in
+the error and leaves the operation as it was.
 
 ### Answering later
 
