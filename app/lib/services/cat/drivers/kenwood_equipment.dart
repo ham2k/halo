@@ -308,3 +308,37 @@ class KenwoodDriver extends EquipmentDriver {
     _ => null,
   };
 }
+
+extension _KenwoodAntennaParsing on KenwoodSession {
+  /// `AN`'s answer as ports, or null when it is not in [antennaDialect]'s
+  /// shape.
+  ///
+  /// The TS-590 transmits on ANT1 or ANT2 and receives there too unless its
+  /// RX ANT jack is switched in. So it is [RadioAntennas.separate], but its
+  /// receive choice is only ever the transmit port or RX ANT: offering the
+  /// other transmit port for receive would offer a pairing it cannot make.
+  RadioAntennas? _parseAntennas(String params) {
+    switch (antennaDialect) {
+      case KenwoodAntennaDialect.twoPort:
+        final port = parseKenwoodAntennaParams(params);
+        if (port == null) return null;
+        final name = kenwoodAntennaPorts[port - 1];
+        return RadioAntennas(rxPorts: kenwoodAntennaPorts, txPorts: kenwoodAntennaPorts, rx: name, tx: name);
+      case KenwoodAntennaDialect.ts590:
+        final answer = parseTs590AntennaParams(params);
+        if (answer == null) return null;
+        final tx = kenwoodAntennaPorts[answer.port - 1];
+        return RadioAntennas(
+          rxPorts: [tx, ts590RxAntennaPort],
+          txPorts: kenwoodAntennaPorts,
+          rx: answer.rxAntenna ? ts590RxAntennaPort : tx,
+          tx: tx,
+          separate: true,
+        );
+      case KenwoodAntennaDialect.k3:
+        return _parseK3Antennas(params);
+      case null:
+        return null;
+    }
+  }
+}

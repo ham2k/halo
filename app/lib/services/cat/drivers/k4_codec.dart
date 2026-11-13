@@ -7,7 +7,29 @@
 
 import 'package:halo_core/halo_core.dart';
 
+import 'cat_ascii_codec.dart';
 import 'kenwood_cat_codec.dart';
+
+/// K4 CAT adds display commands such as `#REF`. The receiver suffix in
+/// `#REF$` is part of the payload, just as it is for `MD$`.
+class K4CatFramer extends SemicolonCatFramer {
+  static final _commandPattern = RegExp(r'(#[A-Z]{2,}|[A-Z]{2})(.*);$');
+
+  @override
+  AsciiCatCommand? parseCommand(String frame) {
+    final match = _commandPattern.firstMatch(frame);
+    return match == null ? null : AsciiCatCommand(match.group(1)!, match.group(2)!);
+  }
+}
+
+final _spectrumReference = RegExp(r'^[+-]?\d{1,3}$');
+
+/// The panadapter's absolute reference in dBm, including any radio AutoRef offset.
+int? parseK4SpectrumReference(String params) {
+  if (!_spectrumReference.hasMatch(params)) return null;
+  final reference = int.parse(params);
+  return reference >= -200 && reference <= 60 ? reference : null;
+}
 
 /// BN selects the radio's band, including the coupled receiver transition.
 /// General coverage and configured transverter bands have no fixed mapping.

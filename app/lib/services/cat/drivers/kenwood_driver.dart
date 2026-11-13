@@ -121,7 +121,9 @@ class KenwoodSession
 
   /// GPS sentences dropped for the TX-500 line: the LiNK500MP made for it
   /// can interleave its receiver's NMEA with the radio's CAT on one channel.
-  late final _framer = KenwoodFramer(dropsNmea: modeDialect == KenwoodModeDialect.lab599, digitCommands: {if (k3) 'K3'});
+  late final SemicolonCatFramer _framer = isK4
+      ? K4CatFramer()
+      : KenwoodFramer(dropsNmea: modeDialect == KenwoodModeDialect.lab599, digitCommands: {if (k3) 'K3'});
 
   /// Auto-Information is the primary path; this covers what it can't — the
   /// radio's AI menu switched off, or a frame lost to line noise.
@@ -623,38 +625,6 @@ class KenwoodSession
     if (_sink case final RadioAntennaSink sink) sink.reportAntennas(antennas);
   }
 
-  /// `AN`'s answer as ports, or null when it is not in [antennaDialect]'s
-  /// shape.
-  ///
-  /// The TS-590 transmits on ANT1 or ANT2 and receives there too unless its
-  /// RX ANT jack is switched in. So it is [RadioAntennas.separate], but its
-  /// receive choice is only ever the transmit port or RX ANT: offering the
-  /// other transmit port for receive would offer a pairing it cannot make.
-  RadioAntennas? _parseAntennas(String params) {
-    switch (antennaDialect) {
-      case KenwoodAntennaDialect.twoPort:
-        final port = parseKenwoodAntennaParams(params);
-        if (port == null) return null;
-        final name = kenwoodAntennaPorts[port - 1];
-        return RadioAntennas(rxPorts: kenwoodAntennaPorts, txPorts: kenwoodAntennaPorts, rx: name, tx: name);
-      case KenwoodAntennaDialect.ts590:
-        final answer = parseTs590AntennaParams(params);
-        if (answer == null) return null;
-        final tx = kenwoodAntennaPorts[answer.port - 1];
-        return RadioAntennas(
-          rxPorts: [tx, ts590RxAntennaPort],
-          txPorts: kenwoodAntennaPorts,
-          rx: answer.rxAntenna ? ts590RxAntennaPort : tx,
-          tx: tx,
-          separate: true,
-        );
-      case KenwoodAntennaDialect.k3:
-        return _parseK3Antennas(params);
-      case null:
-        return null;
-    }
-  }
-
   /// Reports upward, and tells the poller whether the radio is moving.
   void _report(VfoReading reading) {
     if (isK4 && reading.freqKHz != null) _k4Band = k4BandNumber(reading.freqKHz!);
@@ -674,9 +644,6 @@ class KenwoodSession
 
   @override
   void handleData(Uint8List chunk) {
-    // Anything at all defers the next poll — the radio has just told us
-    // something, so asking now would repeat a question we have the answer to.
-    _poller.noteData();
     // ASCII, and `allowInvalid` because a line-noise byte on a serial link
     // must not throw out of a stream callback; the framer simply will not
     // match it as a command.
@@ -691,10 +658,15 @@ class KenwoodSession
       _passbandRead.heardRefusal();
       _antennaRead.heardRefusal();
     }
-    for (final command in _framer.add(text)) {
+    final commands = _framer.add(text);
+    if (_defersStatePoll(commands)) _poller.noteData();
+    for (final command in commands) {
       _handle(command);
     }
   }
+
+  /// Incoming data normally defers the next state poll.
+  bool _defersStatePoll(List<AsciiCatCommand> commands) => true;
 
   void _handle(AsciiCatCommand command) {
     switch (command.command) {

@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
@@ -257,9 +258,19 @@ void main() {
     final frame = sink.frames.single;
     expect(frame.levels, hasLength(2048));
     expect((frame.lowHz, frame.highHz), (13997000, 14092953));
+    expect(sink.sent, ['#REF;'], reason: 'the LAN spectrum reads the reference on the CAT connection');
+    session.handleData(Uint8List.fromList(ascii.encode(r'#REF$-100;#REF-')));
+    session.handleData(Uint8List.fromList(ascii.encode('132;')));
+    connection.receive(_capturedPans());
+    await pumpEventQueue();
+    expect(sink.frames.last.floorDb, -132);
+    expect(sink.frames.last.ceilingDb, -52);
     expect(session.setSpectrum(const SpectrumRequest(refLevelDb: 3)), isTrue);
     expect(sink.settings.last.refLevelDb, 3);
-    expect(sink.sent, isEmpty, reason: 'opening and adjusting the local scope must not write CAT settings');
+    connection.receive(_capturedPans());
+    await pumpEventQueue();
+    expect(sink.frames.last.floorDb, -135, reason: 'the operator can still adjust the reference locally');
+    expect(sink.sent, ['#REF;'], reason: 'adjusting the local scope must not write CAT settings');
     expect(connection.sent, isEmpty, reason: '9201 receives data without subscriptions, CAT, or keepalives');
 
     session.startUpdates();
@@ -291,6 +302,25 @@ void main() {
       isFalse,
       reason: 'CatService still counts the scope as started, so a stop made here is never undone and an open display stays blank',
     );
+  });
+
+  test('K4 scope reference reports do not delay the state poll', () {
+    fakeAsync((async) {
+      final sink = _Sink();
+      final session = K4SpectrumSession(
+        sink,
+        spectrum: K4Spectrum(host: '192.0.2.4', sink: sink, transport: _Transport()),
+      );
+      session.startUpdates();
+      sink.sent.clear();
+      async.elapse(const Duration(seconds: 2));
+      session.handleData(Uint8List.fromList(ascii.encode('#REF-')));
+      session.handleData(Uint8List.fromList(ascii.encode('132;')));
+      async.elapse(const Duration(seconds: 1));
+      expect(sink.sent, contains('IF;PCX;'), reason: 'state polling still runs on time while the scope receives REF');
+      session.teardown();
+      async.flushMicrotasks();
+    });
   });
 
   test('a disconnect cancels a pending spectrum connect and closes its late result', () async {
