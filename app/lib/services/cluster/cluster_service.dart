@@ -291,14 +291,60 @@ class ClusterService extends ChangeNotifier {
   Iterable<String> get subscribers => _subscribers.keys;
 
   /// The scrollback after [after], oldest first, at most [limit] of the
-  /// newest of those [filter] passes.
-  List<ClusterLine> lines({int? after, int? limit, ClusterLineFilter? filter}) {
+  /// newest.
+  List<ClusterLine> lines({int? after, int? limit}) {
     final picked = [
       for (final line in _lines)
-        if ((after == null || line.seq > after) && (filter == null || filter.matches(line.text))) line,
+        if (after == null || line.seq > after) line,
     ];
     if (limit == null || limit >= picked.length) return picked;
     return picked.sublist(picked.length - limit);
+  }
+
+  /// The longest the app's own work waits on a [search].
+  static const searchSlice = Duration(milliseconds: 8);
+
+  final _searches = <String, Future<void>>{};
+
+  /// [lines], of those [filter] passes. Its patterns may take up to a
+  /// line's budget on every line of a scrollback thousands long
+  /// ([ClusterLineFilter.maxLineSteps]), so the search runs [searchSlice] at
+  /// a time with the app's own work in between, and one [reader]'s searches
+  /// run one after another: run together, their slices would add up.
+  Future<List<ClusterLine>> search(ClusterLineFilter filter, {required String reader, int? after, int? limit}) {
+    final found = (_searches[reader] ?? Future<void>.value()).then((_) => _search(filter, after, limit));
+    final ended = _ended(found);
+    _searches[reader] = ended;
+    ended.whenComplete(() {
+      if (identical(_searches[reader], ended)) _searches.remove(reader);
+    });
+    return found;
+  }
+
+  /// When [search] ends, however it ends: its caller hears of a failure, and
+  /// the next search only waits for it.
+  static Future<void> _ended(Future<Object?> search) async {
+    try {
+      await search;
+    } catch (_) {}
+  }
+
+  Future<List<ClusterLine>> _search(ClusterLineFilter filter, int? after, int? limit) async {
+    final newestFirst = [
+      for (final line in _lines)
+        if (after == null || line.seq > after) line,
+    ].reversed;
+    final picked = <ClusterLine>[];
+    final slice = Stopwatch()..start();
+    for (final line in newestFirst) {
+      if (limit != null && picked.length >= limit) break;
+      if (slice.elapsed > searchSlice) {
+        await Future<void>.delayed(Duration.zero);
+        slice.reset();
+      }
+      if (filter.matches(line.text)) picked.add(line);
+    }
+    return picked.reversed.toList();
   }
 
   /// Starts sending [subscriber] every line from now on that [filter] passes

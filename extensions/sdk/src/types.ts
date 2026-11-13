@@ -719,9 +719,11 @@ export interface ClusterPostSpotRequest {
 /// regular expressions finds something in. A string is a pattern's source
 /// (`"^DX de "`); of a `RegExp`'s flags, `i`, `m`, `s` and `u` count. At most
 /// 20 patterns of at most 200 characters, each run on the first 256
-/// characters of every line the node sends. One that repeats without bound a
-/// group that itself repeats or alternates (`(a+)+`), or refers back to a
-/// group, is refused. Extension API 21.
+/// characters of every line the node sends. Patterns the app estimates
+/// could together take one line more than a few tenths of a second are
+/// refused: `.*foo.*bar` is admitted, `.*.*.*X`, `a*a*a*b` and `(.+){40}`
+/// are not, and neither is a reference back to a group or a modifier group
+/// such as `(?i:…)` (use the flags). Extension API 21.
 export type ClusterMatch = (string | RegExp)[]
 
 /// Lines from the node, for an extension that called

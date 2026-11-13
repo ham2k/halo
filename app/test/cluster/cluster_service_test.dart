@@ -536,7 +536,8 @@ void main() {
       await Future<void>.delayed(service.batchDelay * 2);
       expect(delivered['spots']!.last, ['To ALL de NC7J: hello']);
 
-      expect(service.lines(filter: ClusterLineFilter.fromJson(['^WWV'])).map((l) => l.text), ['WWV de W0MU <12>:   SFI=150, A=5, K=1']);
+      final wwv = await service.search(ClusterLineFilter.fromJson(['^WWV'])!, reader: 'spots');
+      expect(wwv.map((l) => l.text), ['WWV de W0MU <12>:   SFI=150, A=5, K=1']);
     });
   });
 
@@ -566,15 +567,80 @@ void main() {
       ['(a|ab)*c'],
       ['(x+){2,}y'],
       [r'(a)\1'],
+      // The same, under a bound: each pass multiplies the ways to split the line.
+      [r'(.+){40}\x01'],
+      [r'(.+){1,99}\x00'],
+      [r'(a+){1,3}b'],
+      // Repeat counts past any line's length, which a cost that overflows
+      // would wrap round to cheap.
+      [r'(?:(?:a|a)(?:a|a)){4611686018427387904}b'],
+      [r'(?:(?:a|a)*){17592186044416}b'],
+      // A run of repeats that could each continue the next: about n^k.
+      [r'.*.*.*.*.*.*.*.*.*.*.*.*\x01'],
+      [r'.*a.*a.*a.*X'],
+      // The last repeat in such a run still gives back what it took, one
+      // character at a time, though nothing after it can take any.
+      [r'a*a*a*b'],
+      [r'a*a*a*$'],
+      ['a?' * 20 + 'a' * 20],
+      ['(a|a)' * 39 + 'x'],
+      // Escapes and groups that read differently from how they look: a
+      // legacy octal `\041` is one character, `(?i:…)` changes what its atoms
+      // match, a lookahead after a repeat runs at every place it could stop.
+      ['\\041*' * 8 + 'X'],
+      [r'(?i:a*Aa*Aa*Aa*A)X'],
+      [r'.*(?=.*(?=.*(?=.*(?=\x01))))'],
+      [r'(?:\c|\\c)*X'],
+      // Each fine alone; together, more than a line may cost.
+      [r'.*.*\x01', r'.*.*\x02', r'.*.*\x03', r'.*.*\x04'],
     ]) {
       expect(() => ClusterLineFilter.fromJson(bad), throwsFormatException, reason: '$bad');
     }
-    // Repetition that cannot run away: bounded, or of a group that does not repeat.
-    for (final good in [r'^[\x00-\x20]*\d+(?:\.\d+)?\s+\S+\s+\d{1,2}-[A-Za-z]{3}-\d{4}', r'(ab)+c', r'(a+){1,3}b', r'[(a+)+]x']) {
+    // What extensions filter with: the catalog's spot lines, a mode anywhere on
+    // a line, two things both somewhere on it, and repeats that each stop at
+    // the first character they cannot take.
+    for (final good in [
+      r'^[\x00-\x20]*DX de ',
+      r'^[\x00-\x20]*\d+(?:\.\d+)?\s+\S+\s+\d{1,2}-[A-Za-z]{3}-\d{4}\s+\d{4}Z',
+      r'^DX de .*(?:FT8|FT4)',
+      r'^(?=.*K1)(?=.*FT8)',
+      r'.*foo.*bar',
+      r'(ab)+c',
+      r'\041\0',
+      r'(?:x)',
+      r'(?:\d+:){3}\d+',
+      r'[(a+)+]x',
+      // Not references back: no group to refer to, so the characters they spell.
+      r'\8',
+      r'(a)|\2x',
+      r'\k',
+    ]) {
       expect(ClusterLineFilter.fromJson([good]), isNotNull, reason: good);
     }
     final filter = ClusterLineFilter.fromJson([r'X$'])!;
     expect(filter.matches('${'.' * (ClusterLineFilter.maxMatchedLength + 10)}X'), isFalse, reason: 'past the length a pattern looks at');
+  });
+
+  // The admitted worst: shapes that run slowest for what the estimate says
+  // they cost, up to the budget, on the longest line a pattern sees, which
+  // they never match. These run on the app's main isolate, where a shape the
+  // estimate undercounts by a factor of n takes seconds.
+  test('the slowest patterns admitted still finish a line in well under a second', () {
+    final filter = ClusterLineFilter.fromJson([
+      r'(.+){2}\x01',
+      r'(.+){2}\x02',
+      r'a*.*\x03',
+      for (var i = 3; i < ClusterLineFilter.maxPatterns; i++) '.*\\x0${i % 8}',
+    ])!;
+    final watch = Stopwatch()..start();
+    expect(filter.matches('a' * ClusterLineFilter.maxMatchedLength), isFalse);
+    expect(watch.elapsed, lessThan(const Duration(seconds: 1)));
+  });
+
+  test('a pattern is judged at once, however deeply it nests', () {
+    final watch = Stopwatch()..start();
+    expect(() => ClusterLineFilter.fromJson(['${'(' * 66}a${')+' * 66}']), throwsFormatException);
+    expect(watch.elapsed, lessThan(const Duration(milliseconds: 100)));
   });
 
   test('line numbers keep counting across a reconnect, and the scrollback keeps its size', () {
@@ -595,6 +661,32 @@ void main() {
       final after = service.lines(after: before);
       expect(after, isNotEmpty);
       expect(after.first.seq, before + 1, reason: 'a reader asking for what came after the last line it saw must not miss one');
+    });
+  });
+
+  // A filter may take its whole per-line budget on every line of a
+  // scrollback thousands long: searched in one go, that is the app frozen
+  // for as long as the extension likes to ask.
+  test('searching the scrollback lets the app run while the patterns take their time', () {
+    runOnFakeClock((async) async {
+      await start(cluster: {ClusterSettings.scrollbackKey: 500});
+      await service.subscribe('reader');
+      for (var i = 0; i < 400; i++) {
+        nodes.single.broadcast('DX de W3LPL: ${'.' * 60} $i');
+      }
+      nodes.single.broadcast('DX de K1TTT: wanted');
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      final filter = ClusterLineFilter.fromJson([r'.*.*\x01', r'.*.*\x02', 'wanted'])!;
+
+      var searching = true;
+      final happened = <String>[];
+      final found = service.search(filter, reader: 'reader').whenComplete(() => searching = false);
+      final newest = service.search(filter, reader: 'reader', limit: 1).whenComplete(() => happened.add('newest'));
+      Timer.run(() => happened.add(searching ? 'app, mid-search' : 'app, after'));
+      expect((await found).map((l) => l.text), ['DX de K1TTT: wanted']);
+      expect((await newest).map((l) => l.text), ['DX de K1TTT: wanted']);
+      expect(happened.first, 'app, mid-search', reason: 'the app had work waiting the whole search');
+      expect(happened.last, 'newest', reason: "one reader's searches run one after another, or their slices add up");
     });
   });
 

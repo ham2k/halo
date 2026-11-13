@@ -177,10 +177,16 @@ second. With `match` (extension API 21), only the lines one of its regular
 expressions finds something in reach the hook, and a batch with none of
 them makes no call: `clusterSubscribe({ match: [/^DX de /, /^WWV de /i] })`.
 A string is a pattern's source; at most 20 patterns of 200 characters each,
-each run against the first 256 characters of every line. A pattern that
-repeats without bound a group that itself repeats or alternates (`(a+)+`,
-`(a|b)*`), or refers back to a group, is refused: the app runs them, and
-those can take one line forever. Subscribing again changes only the patterns, and
+each run against the first 256 characters of every line. The app runs
+them itself, so it estimates how long they could take on one line and
+refuses patterns it estimates at more than a few tenths of a second
+together; the estimate catches the usual slow shapes, not every one. A repeat followed by something that could continue it (`.*X`,
+`a*a`, `(a|ab)*`) tries the rest of the pattern at every place it could
+stop; two in a row cost about as much as the patterns may, so `.*foo.*bar`
+is admitted and `.*.*.*X`, `a*a*a*b` and `(.+){40}` are not. A repeat the
+next character stops (`\d+\s`) is cheap. A pattern that
+refers back to a group is refused too, and so is one with a modifier group
+such as `(?i:…)`; use the flags instead. Subscribing again changes only the patterns, and
 subscribing without them asks for every line again. `clusterLines` takes
 `match` too. Register the hook under your extension's own key (the default): that
 is the key the app delivers to. A subscription lasts until

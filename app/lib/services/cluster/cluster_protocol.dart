@@ -9,6 +9,8 @@
 
 import 'dart:convert';
 
+import 'pattern_cost.dart';
+
 /// Turns a node's bytes into lines: telnet negotiation dropped, `\r`
 /// dropped, split on `\n`. What follows the last `\n` is held as [partial],
 /// because a prompt — `login: `, `KI2D de K1TTT 15-Oct 0354Z arc6>` — is
@@ -174,6 +176,14 @@ class ClusterLineFilter {
   /// what it is run on.
   static const maxMatchedLength = 256;
 
+  /// The most steps a filter's patterns may take together on the longest
+  /// line, matching it nowhere ([clusterPatternSteps]): about a few tenths
+  /// of a second on the app's main isolate, a few milliseconds for a node's
+  /// 80 columns. The estimate catches the usual slow shapes, not every one;
+  /// a pattern it misses costs only the operator who installed the
+  /// extension, and catalog review is where it is caught.
+  static const maxLineSteps = 1.6e8;
+
   bool matches(String text) {
     if (patterns.isEmpty) return true;
     final line = text.length > maxMatchedLength ? text.substring(0, maxMatchedLength) : text;
@@ -191,10 +201,15 @@ class ClusterLineFilter {
     if (match is! List) throw const FormatException('cluster: `match` must be a list of patterns');
     if (match.length > maxPatterns) throw const FormatException('cluster: `match` takes at most $maxPatterns patterns');
     if (match.isEmpty) return null;
-    return ClusterLineFilter([for (final pattern in match) _pattern(pattern)]);
+    final patterns = [for (final pattern in match) _pattern(pattern)];
+    final steps = patterns.fold(0.0, (sum, p) => sum + p.steps);
+    if (steps > maxLineSteps) {
+      throw const FormatException('cluster: `match` patterns together could take too long on one line; use fewer that repeat `.*`');
+    }
+    return ClusterLineFilter([for (final p in patterns) p.regExp]);
   }
 
-  static RegExp _pattern(Object? pattern) {
+  static ({RegExp regExp, double steps}) _pattern(Object? pattern) {
     final (source, flags) = switch (pattern) {
       String source => (source, ''),
       {'source': String source, 'flags': String flags} => (source, flags),
@@ -204,65 +219,26 @@ class ClusterLineFilter {
     if (source.isEmpty || source.length > maxPatternLength) {
       throw const FormatException('cluster: a `match` pattern must be 1 to $maxPatternLength characters');
     }
-    final risk = _backtrackingRisk(source);
-    if (risk != null) throw FormatException('cluster: `match` pattern /$source/ $risk');
     final unknown = flags.split('').where((flag) => !'imsugy'.contains(flag));
     if (unknown.isNotEmpty) throw FormatException("cluster: unknown flag '${unknown.first}' on `match` pattern /$source/");
+    final RegExp compiled;
     try {
-      return RegExp(source, caseSensitive: !flags.contains('i'), multiLine: flags.contains('m'), dotAll: flags.contains('s'), unicode: flags.contains('u'));
+      compiled = RegExp(source, caseSensitive: !flags.contains('i'), multiLine: flags.contains('m'), dotAll: flags.contains('s'), unicode: flags.contains('u'));
     } on FormatException catch (e) {
       throw FormatException('cluster: `match` pattern /$source/ is not a regular expression: ${e.message}');
     }
-  }
-
-  /// Why [source] could take a regular expression engine without a time
-  /// limit — the app's, on its main isolate — exponentially long on one
-  /// line, or null. A group that itself repeats or alternates, repeated
-  /// without bound (`(a+)+`, `(a|ab)*`), and a backreference; anything else
-  /// is at worst polynomial in a line [maxMatchedLength] long.
-  static String? _backtrackingRisk(String source) {
-    // Per open group: whether something inside it repeats or alternates.
-    final groups = <bool>[];
-    var inClass = false;
-    for (var i = 0; i < source.length; i++) {
-      final c = source[i];
-      if (c == r'\') {
-        final next = i + 1 < source.length ? source[i + 1] : '';
-        if (!inClass && (RegExp(r'[1-9]').hasMatch(next) || next == 'k')) return 'refers back to a group, which can take a line forever';
-        i++;
-        continue;
-      }
-      if (inClass) {
-        if (c == ']') inClass = false;
-        continue;
-      }
-      switch (c) {
-        case '[':
-          inClass = true;
-        case '(':
-          groups.add(false);
-        case ')':
-          if (groups.isEmpty) continue;
-          final risky = groups.removeLast();
-          final unbounded = _unboundedAt(source, i + 1);
-          if (risky && unbounded) return 'repeats, without bound, a group that repeats or alternates, which can take a line forever';
-          if (groups.isNotEmpty && (risky || _quantifiedAt(source, i + 1))) groups[groups.length - 1] = true;
-        case '|':
-          if (groups.isNotEmpty) groups[groups.length - 1] = true;
-        case '*' || '+' || '{':
-          if (groups.isNotEmpty) groups[groups.length - 1] = true;
-      }
+    final double steps;
+    try {
+      steps = clusterPatternSteps(source, flags, maxMatchedLength);
+    } on FormatException catch (e) {
+      throw FormatException('cluster: `match` pattern /$source/ ${e.message}');
     }
-    return null;
+    if (steps > maxLineSteps) {
+      throw FormatException(
+        'cluster: `match` pattern /$source/ could take too long on one line: a repeat followed by something that could '
+        'continue it (`.*X`, `a*a`) tries every place it could stop, and repeats of those multiply',
+      );
+    }
+    return (regExp: compiled, steps: steps);
   }
-
-  /// Whether a quantifier with no upper bound — `*`, `+`, `{n,}` — starts at [i].
-  static bool _unboundedAt(String source, int i) {
-    if (i >= source.length) return false;
-    if (source[i] == '*' || source[i] == '+') return true;
-    return source[i] == '{' && RegExp(r'^\{\d+,\}').hasMatch(source.substring(i));
-  }
-
-  /// Whether any quantifier starts at [i].
-  static bool _quantifiedAt(String source, int i) => i < source.length && '*+?{'.contains(source[i]);
 }

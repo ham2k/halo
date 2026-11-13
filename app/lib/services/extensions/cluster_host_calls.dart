@@ -74,14 +74,7 @@ class ClusterHostCalls {
     if (service == null) return method == 'clusterLines' ? const [] : const {'ok': false, 'error': 'unsupported'};
     return switch (method) {
       'clusterStatus' => service.status.toJson(),
-      'clusterLines' => [
-        for (final line in service.lines(
-          after: (params['after'] as num?)?.toInt(),
-          limit: (params['limit'] as num?)?.toInt(),
-          filter: ClusterLineFilter.fromJson(params['match']),
-        ))
-          line.toJson(),
-      ],
+      'clusterLines' => [for (final line in await _scrollback(service, extensionKey!, params)) line.toJson()],
       'clusterSubscribe' => (await service.subscribe(extensionKey!, filter: ClusterLineFilter.fromJson(params['match']))).toJson(),
       'clusterUnsubscribe' => _unsubscribe(service, extensionKey!),
       'clusterPostSpot' => (await service.postSpot(
@@ -91,6 +84,14 @@ class ClusterHostCalls {
       )).toJson(),
       _ => (await service.send(params['command'] as String? ?? '')).toJson(),
     };
+  }
+
+  Future<List<ClusterLine>> _scrollback(ClusterService service, String extensionKey, Map<String, dynamic> params) async {
+    final after = (params['after'] as num?)?.toInt();
+    final limit = (params['limit'] as num?)?.toInt();
+    final filter = ClusterLineFilter.fromJson(params['match']);
+    if (filter == null) return service.lines(after: after, limit: limit);
+    return service.search(filter, reader: extensionKey, after: after, limit: limit);
   }
 
   Map<String, dynamic> _unsubscribe(ClusterService service, String extensionKey) {
