@@ -1,10 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The framing Yaesu CAT and Kenwood CAT share exactly: two upper-case letters,
-// a payload, and a `;`. Nothing else terminates a command, and nothing about
-// the payload is common between the two families — so this file knows about
-// the envelope and nothing about what is inside it.
+// Semicolon framing is common to several ASCII CAT dialects. Each framer
+// decides how to split a complete command into its prefix and payload.
 //
 // Not even the commands that LOOK common. Both families have `AI`, and they
 // disagree about it: Yaesu's useful level is 1 and Kenwood's is 2, so each
@@ -23,7 +21,7 @@
 
 /// One complete command off the wire.
 class AsciiCatCommand {
-  /// The two-letter command, e.g. `FA`.
+  /// The command prefix, e.g. `FA`.
   final String command;
 
   /// Everything between the command and the `;`.
@@ -46,8 +44,35 @@ class AsciiCatCommand {
 ///
 /// Serial delivers arbitrary chunks — a command can and does arrive split
 /// across two reads — so the residual is not an edge case.
-class AsciiCatFramer {
+abstract class SemicolonCatFramer {
+  String _residual = '';
+
+  /// Decodes one complete frame, including its terminating semicolon.
+  AsciiCatCommand? parseCommand(String frame);
+
+  /// Filters the buffered input before splitting and preserves any
+  /// unfinished out-of-band data to process with the next read.
+  (String, String) prepareInput(String text) => (text, '');
+
+  /// The complete commands in [incoming], with any partial tail retained.
+  List<AsciiCatCommand> add(String incoming) {
+    final (text, tail) = prepareInput(_residual + incoming);
+    final parts = text.split(';');
+    _residual = parts.removeLast() + tail;
+    return [for (final part in parts) ?parseCommand('$part;')];
+  }
+
+  /// Drops any partial command — for a fresh connection, so a truncated
+  /// tail from the previous one can't prefix the first real command.
+  void reset() => _residual = '';
+}
+
+/// The two-letter CAT grammar shared by Kenwood and Yaesu.
+class AsciiCatFramer extends SemicolonCatFramer {
   AsciiCatFramer({this.dropsNmea = false});
+
+  @override
+  AsciiCatCommand? parseCommand(String frame) => parseAsciiCatCommand(frame);
 
   /// Whether the stream interleaves GPS NMEA-0183 sentences with the CAT —
   /// a `$`, then everything up to its line end — and they are dropped
@@ -69,19 +94,8 @@ class AsciiCatFramer {
   /// to the next line end would swallow every CAT reply in between.
   static final _sentenceEnd = RegExp('[\r\n;]');
 
-  String _residual = '';
-
-  /// The complete commands in [incoming], with any partial tail retained.
-  List<AsciiCatCommand> add(String incoming) {
-    var text = _residual + incoming;
-    var sentence = '';
-    if (dropsNmea) (text, sentence) = _withoutNmea(text);
-    final parts = text.split(';');
-    // Whatever follows the last ';' is incomplete (or empty), as is a
-    // sentence whose line end has not arrived.
-    _residual = parts.removeLast() + sentence;
-    return [for (final part in parts) ?parseAsciiCatCommand('$part;')];
-  }
+  @override
+  (String, String) prepareInput(String text) => dropsNmea ? _withoutNmea(text) : super.prepareInput(text);
 
   /// [text] with every complete sentence cut out, and the incomplete one at
   /// its end — still waiting for its line end — split off. Every line end
@@ -108,10 +122,6 @@ class AsciiCatFramer {
     kept.write(text.substring(at));
     return ('$kept'.replaceAll(_lineEnd, ''), '');
   }
-
-  /// Drops any partial command — for a fresh connection, so a truncated
-  /// tail from the previous one can't prefix the first real command.
-  void reset() => _residual = '';
 }
 
 final _commandPattern = RegExp(r'^([A-Z]{2})(.*);$');

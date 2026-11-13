@@ -114,10 +114,14 @@ USB and the other Kenwood-family radios retain their existing capabilities.
 Main uses `A` packets. Each packet's own center and sample rate place its
 bins. The presenter supplies the full sweep to displays by default, as it
 does on the secure connection. Each display can zoom over those bins.
-Local reference adjustment and frame-rate limiting use the existing
-spectrum controls and noise-floor estimator. These are display controls,
-not claims about calibrated dBm or the K4's REF/SCALE settings. No spectrum
-CAT setters are sent.
+
+The main receiver's `#REF` sets the displayed floor. PoLo reads it over CAT
+when a display opens and refreshes it while sweeps arrive if the radio
+stops reporting it. The radio's reference already includes its AutoRef
+offset. PoLo estimates the floor from the bins until the radio reports
+a reference. PoLo's reference adjustment offsets the floor locally and its
+display keeps its own dB range and sweep speed. No spectrum CAT setters are
+sent.
 
 Verification covers the captured wire fixtures, crop coordinates, cancellation,
 reconnect and a stalled Main stream. The band scope
@@ -170,8 +174,8 @@ ascending, already centered bins with candidate bin-center frequencies
 `centerHz + (i - 1024) * sampleRateHz / 2048` for zero-based index `i`.
 Exact bin-edge conventions and small frequency offsets remain unverified.
 R39 captures confirm sampled width can differ from `#SPN`. `#SPN` denotes a full span;
-HaLo's `SpectrumSettings.spanHz` denotes a half-width. AutoRef's relationship
-to `#REF` and `#SCL`, and whether levels are calibrated dBm, remain unverified.
+HaLo's `SpectrumSettings.spanHz` denotes a half-width. The packet's noise field
+is a separate measurement from the display reference reported by CAT.
 Mini-pan scaling and behavior on other firmware releases remain unverified.
 This format is distinct from the remote-access stream on 9204/9205.
 

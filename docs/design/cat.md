@@ -4185,10 +4185,10 @@ edges. Each display can zoom and pan over that sweep. An explicit
 shared sweep around the packet center, bounded by the available samples.
 The K4 controls the source window independently of these local controls.
 
-Reference adjustment and sweep-speed controls are local to HaLo. The
-existing noise-floor estimator supplies a drawing range, without claiming
-to reproduce the radio's AutoRef or calibrated dBm. This pairing displays
-Main only; Sub and mini-pan packets do not keep a stalled Main stream alive.
+HaLo uses the radio's `#REF` readback as its display floor and estimates
+the floor from the bins until a reply arrives. Reference adjustment and
+sweep-speed controls are local to HaLo. This pairing displays Main only;
+Sub and mini-pan packets do not keep a stalled Main stream alive.
 USB spectrum and remote services on 9204/9205 are not part of this pairing.
 See [k4-cat.md](k4-cat.md) for wire fixtures and hardware evidence.
 

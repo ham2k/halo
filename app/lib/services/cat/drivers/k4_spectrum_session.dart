@@ -23,11 +23,24 @@ class K4SpectrumSession extends KenwoodSession implements SpectrumSession {
   @override
   SpectrumCapabilities get spectrumCapabilities => _spectrum.capabilities;
   @override
-  void startSpectrum() => _spectrum.start();
+  void startSpectrum() => _spectrum.start(readReference: () => _send('#REF;'));
   @override
   void stopSpectrum() => _spectrum.stop();
   @override
   bool setSpectrum(SpectrumRequest request) => _spectrum.set(request);
+
+  @override
+  // A scope read does not supply the frequency and mode the poller needs.
+  bool _defersStatePoll(List<AsciiCatCommand> commands) => commands.any((command) => command.command != '#REF');
+
+  @override
+  void _handle(AsciiCatCommand command) {
+    if (command.command == '#REF') {
+      if (parseK4SpectrumReference(command.params) case final reference?) _spectrum.heardReference(reference);
+      return;
+    }
+    super._handle(command);
+  }
 
   // Scope demand belongs to CatService; stopping CAT updates must not stop
   // a spectrum that the service still considers active.
