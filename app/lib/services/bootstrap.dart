@@ -55,6 +55,7 @@ import '../config/navigation.dart';
 import 'app_exit.dart';
 import 'halo_services.dart';
 import 'peer/peer_pairing_prompt.dart';
+import 'agent_link/agent_link_wiring.dart';
 import 'rotator_panel_migration.dart';
 
 /// Forces the bundled color-emoji font's glyph data to load AND shape now,
@@ -267,6 +268,7 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   services.maybeStartCatServer();
   services.maybeStartPeerSync();
   listenForPeerPairingRequests(services);
+  startAgentLinkWhenWanted(services);
   // Reads the flag rather than this branch: a null device key means storage
   // threw, but saying so out loud keeps the notice tied to the fact it reports
   // instead of to one caller's control flow.

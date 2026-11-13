@@ -2782,6 +2782,7 @@ export type Hook =
   | SettingsPanelHook
   | PanelHook
   | AssistantHook
+  | AgentLinkHook
   | Record<string, unknown>
 
 export interface RegisterHookParams {
@@ -4420,4 +4421,26 @@ export interface ObserveArgs {
 export interface AssistantHook {
   getAssistants(args: Record<string, never>, ctx: HookContext): Promise<AssistantDescriptor[]>
   observe(args: ObserveArgs, ctx: HookContext): Promise<void>
+}
+
+/// Who an agent link's message came from, and what the operator let it do.
+export interface AgentLinkArgs {
+  /// The connection, for as long as it stays open: a reply belongs to it.
+  connection: string
+  /// The app the operator allowed, as its MCP `initialize` named it.
+  client: { name: string; version?: string; launcher?: string }
+  /// `watch` reads and nothing else; `change` may act as an assistant does.
+  access: "watch" | "change"
+  /// One message from the agent, as it sent it: a JSON-RPC request or
+  /// notification.
+  message: Record<string, JSONValue>
+}
+
+/// Registered under category 'agentLink', by the app's own `mcp` extension
+/// alone. Answers what a local agent app sends over the app's agent link
+/// (docs/design/agent-link.md); the app delivers no message to any other
+/// extension.
+export interface AgentLinkHook {
+  /// The messages to send back, in order: none for a notification.
+  handle(args: AgentLinkArgs, ctx: HookContext): Promise<Record<string, JSONValue>[]>
 }

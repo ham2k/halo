@@ -6,17 +6,24 @@
 // against what the setting takes, and named on the status bar, since the
 // operator did not make the change.
 
+import 'dart:io';
+
 import 'package:drift/native.dart';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/agent_link/agent_link_model.dart';
+import 'package:ham2k_logger/services/agent_link/agent_link_service.dart';
 import 'package:ham2k_logger/services/extensions/app_control_host_calls.dart';
 import 'package:ham2k_logger/services/extensions/extension_info.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
+import 'package:ham2k_logger/settings/connected_apps_settings_group.dart';
 import 'package:ham2k_logger/settings/settings_command.dart';
 import 'package:ham2k_logger/settings/settings_registry.dart';
 
@@ -321,6 +328,79 @@ void main() {
     });
   });
 
+  // The endpoint that answers agent apps is an extension, and so is anything
+  // with requiresSettingsWrite: either raising an agent app from watching to
+  // making changes would be the operator's consent given by someone else.
+  test('no extension may change what a connected agent app is allowed to do', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final services = HaLoServices(db, settings, extensions: ExtensionServiceWithFakeHost());
+    final store = _GrantStore({
+      'g1': AgentGrant(
+        id: 'g1',
+        client: const AgentClient(name: 'claude-code'),
+        access: AgentAccess.watch,
+        tokenHash: 'h',
+        grantedAt: 1,
+      ).toJson(),
+    });
+    final link = AgentLinkService(store: store, endpoint: _NoEndpoint(), wanted: () => false, port: 0, now: () => 1);
+    addTearDown(link.closeForExit);
+    services.settingsRegistry.register(ConnectedAppsSettingsGroup(link: () => link, wanted: () => true, changes: settings));
+
+    expect((await writeSettingForExtension(services, callerKey: 'mcp', key: 'agentApp:g1', value: 'change')).reason, 'invalid');
+    expect(link.grants.single.access, AgentAccess.watch);
+  });
+
+  // An operator who never allowed an agent app has nothing to manage there,
+  // and the dialog that allows one comes to them wherever they are.
+  test('Connected Apps shows only once an agent app has been allowed', () async {
+    final store = _GrantStore({});
+    final link = AgentLinkService(store: store, endpoint: _NoEndpoint(), wanted: () => false, port: 0, now: () => 1);
+    addTearDown(link.closeForExit);
+    final group = ConnectedAppsSettingsGroup(link: () => link, wanted: () => true, changes: ChangeNotifier());
+    expect(await group.buildElements(), isEmpty);
+
+    await store.write({
+      'g1': AgentGrant(
+        id: 'g1',
+        client: const AgentClient(name: 'claude-code'),
+        access: AgentAccess.watch,
+        tokenHash: 'h',
+        grantedAt: 1,
+      ).toJson(),
+    });
+    expect((await group.buildElements()).map((e) => e['key']), contains('agentApp:g1'));
+  });
+
+  // A port the link cannot have is why no agent app ever reaches the
+  // dialog: hidden with the empty list, nothing would say so.
+  // A link that cannot listen is why no agent app ever reaches the dialog:
+  // hidden with the empty list, nothing would say so.
+  for (final (why, code, says) in [
+    ('a port the link cannot have', 48, 'holds port 47380'),
+    ('any other failure to listen', 9, 'could not listen on port 47380'),
+  ]) {
+    test('Connected Apps shows $why, even with no app allowed', () async {
+      final link = AgentLinkService(
+        store: _GrantStore({}),
+        endpoint: _NoEndpoint(),
+        wanted: () => true,
+        port: 47380,
+        now: () => 1,
+        bind: ({required port, required onPeer}) async => throw SocketException('bind', osError: OSError('failed', code)),
+      );
+      addTearDown(link.closeForExit);
+      for (var i = 0; i < 100 && link.failure == null; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      final group = ConnectedAppsSettingsGroup(link: () => link, wanted: () => true, changes: ChangeNotifier());
+      expect((await group.buildElements()).single['text'], contains(says));
+    });
+  }
+
   group('writing a setting for an extension', () {
     late _Group group;
 
@@ -423,4 +503,28 @@ void main() {
       expect(group.committed['note'], 'https://x/foo');
     });
   });
+}
+
+class _GrantStore implements AgentGrantStore {
+  Map<String, dynamic> grants;
+  _GrantStore(this.grants);
+
+  @override
+  Map<String, dynamic> read() => grants;
+
+  @override
+  Future<void> write(Map<String, dynamic> grants) async => this.grants = grants;
+}
+
+class _NoEndpoint implements AgentLinkEndpoint {
+  @override
+  bool get available => false;
+
+  @override
+  Future<List<Map<String, dynamic>>> handle({
+    required String connection,
+    required AgentClient client,
+    required AgentAccess access,
+    required Map<String, dynamic> message,
+  }) async => const [];
 }

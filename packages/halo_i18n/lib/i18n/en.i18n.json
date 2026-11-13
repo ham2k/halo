@@ -1946,7 +1946,29 @@
     "assistants": {
       "title": "Assistants",
       "on": "Watching while an operation is open",
-      "off": "Off"
+      "off": "Off",
+      "connectedApps": "Connected Apps",
+      "connectedAppsHint": "Agent apps on this computer, such as Claude or Gemini, can connect to Ham2K Logger using the halo-mcp command with your approval.",
+      "connectedAppsPortInUse": "Another program holds port ${port}, or the system reserves it, so agent apps cannot connect.",
+      "connectedAppsCannotListen": "Ham2K Logger could not listen on port ${port}, so agent apps cannot connect. It keeps trying.",
+      "appWatch": "Watch only",
+      "appChange": "Watch and make changes",
+      "appRemove": "Remove",
+      "appConnected": "${access} · connected now",
+      "appLauncher": "${name}, started by ${launcher}"
+    },
+    "agentLink": {
+      "title": "Allow ${name}?",
+      "body": "${name} is asking to use Ham2K Logger.",
+      "bodyLauncher": "${name}, started by ${launcher}, is asking to use Ham2K Logger.",
+      "watch": "Watch",
+      "watchDetail": "Read the operation, its QSOs, spots, the radio and your equipment, observe what you do as you log, and show messages.",
+      "change": "Make changes",
+      "changeDetail": "Fill in the QSO, mark spots, control the radio and equipment, and change settings and layouts.",
+      "stoppedWaiting": "${name} stopped waiting. If you allow it, it gets in the next time it connects.",
+      "warning": "Allow only an app you started yourself. The name is the app's own word, and you can change or remove what it may do in Settings, under Connected Apps.",
+      "deny": "Don't Allow",
+      "allow": "Allow"
     },
     "extensionSections": {
       "activities": "Activities",

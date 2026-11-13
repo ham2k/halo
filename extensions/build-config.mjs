@@ -133,6 +133,7 @@ export const bundles = [
   { key: "update-commands", entry: "core/update-commands/src/index.ts", kind: "extension" },
   { key: "templates", entry: "core/templates/src/index.ts", kind: "extension" },
   { key: "control-board", entry: "core/control-board/src/index.ts", kind: "extension" },
+  { key: "mcp", entry: "core/mcp/src/index.ts", kind: "extension" },
   // Built for the host's bridge tests, into [fixturesDir]; never shipped.
   { key: "k2hrc-panel-scenes", entry: "samples/k2hrc-panel-scenes/src/index.ts", kind: "fixture" },
   { key: "k2hrc-cqww", entry: "samples/k2hrc-cqww/src/index.ts", kind: "fixture" },

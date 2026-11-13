@@ -23,6 +23,8 @@ dependencies:
     path: ../packages/halo_widgets
   halo_build_tools:
     path: ../packages/halo_build_tools
+  halo_mcp:
+    path: ../packages/halo_mcp
   halo_audio:
     path: ../packages/halo_audio
   halo_sdr_usb:

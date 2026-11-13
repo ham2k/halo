@@ -717,6 +717,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  halo_mcp:
+    dependency: "direct main"
+    description:
+      path: "../packages/halo_mcp"
+      relative: true
+    source: path
+    version: "0.0.1"
   halo_quickjs:
     dependency: "direct dev"
     description:

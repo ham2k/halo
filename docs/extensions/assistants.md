@@ -126,3 +126,20 @@ const RateCoach: AssistantHook = {
 ```
 
 `k2hrc-coach` in the SDK's samples is the whole extension.
+
+## `agentLink`
+
+**For:** answering an agent app on the operator's computer (Claude, Gemini,
+an IDE's agent) over MCP. The app owns the connection, asks the operator
+about each new app, and keeps what they allowed; the hook answers one
+message at a time with the messages to send back. One endpoint exists, the
+app's own `mcp` extension, and the app delivers to it alone: the seam is
+documented so a reader knows what it is, not as a place to register.
+
+**Called:** the app's own hook, by key, once per message. `AgentLinkHook`
+in `dist/index.d.ts` is the contract: `handle(args, ctx)` gets the
+`connection`, the `client` as its `initialize` named itself, the `access`
+the operator gave it (`watch` or `change`) and the `message`, and returns
+the replies, none for a notification. An agent app that is only watching
+is offered nothing that makes changes.
+

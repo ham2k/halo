@@ -2630,6 +2630,54 @@ void main() {
       expect(submittedValues!['themeMode'], 'dark');
     });
 
+    // Removing the row's subject sits among the choices only at the cost of
+    // a mis-tap: a Remove one row below "Watch and make changes" forgets an
+    // app the operator meant to adjust.
+    testWidgets('an icon-row select\'s destructive option is the picker\'s footer button, not one of its rows', (tester) async {
+      Map<String, dynamic>? submittedValues;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'select',
+                    'key': 'app',
+                    'label': 'Agent',
+                    'icon': 'robot-outline',
+                    'value': 'watch',
+                    'options': [
+                      {'label': 'Watch', 'value': 'watch'},
+                      {'label': 'Change', 'value': 'change'},
+                    ],
+                    'destructiveOption': {'label': 'Remove', 'value': 'remove'},
+                  },
+                ],
+              },
+              initialState: const {},
+              onSubmit: (vals) => submittedValues = vals,
+              onCancel: () {},
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Agent'));
+      await tester.pumpAndSettle();
+      final remove = find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(TextButton, 'Remove'));
+      expect(remove, findsOneWidget);
+      expect(find.descendant(of: find.byType(HaloDialog), matching: find.byType(ListTile)), findsNWidgets(2));
+
+      await tester.tap(remove);
+      await tester.pumpAndSettle();
+      expect(find.byType(HaloDialog), findsNothing);
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(submittedValues!['app'], 'remove');
+    });
+
     testWidgets('an icon-row text field shows its value, and edits it in a dialog', (tester) async {
       final textFormDefinition = {
         'elements': [

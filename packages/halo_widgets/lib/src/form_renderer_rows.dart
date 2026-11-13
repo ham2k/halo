@@ -164,6 +164,10 @@ mixin _RowFields on State<FormRenderer> {
     final options = (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
     final current = _values[key];
     final hasDefault = el.containsKey('defaultValue');
+    // A value that undoes the row itself (forgetting an app the operator
+    // allowed) is no option among the others: it is the footer's destructive
+    // button, away from the choices and from Done.
+    final destructive = el['destructiveOption'] is Map ? (el['destructiveOption'] as Map).cast<String, dynamic>() : null;
 
     // Wrap the chosen value in a one-element list so a dismissed dialog
     // (null) is distinguishable from picking an option whose value is null.
@@ -178,6 +182,14 @@ mixin _RowFields on State<FormRenderer> {
         scrollable: false,
         content: _SelectDialogBody(options: options, current: current, searchHint: t.formChrome.search, clearLabel: t.formChrome.clear),
         secondary: hasDefault ? _defaultsButton(onPressed: _isSubmitting ? null : () => Navigator.of(dialogContext).pop([el['defaultValue']])) : null,
+        destructive: destructive == null
+            ? null
+            : TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: Theme.of(dialogContext).colorScheme.error),
+                onPressed: _isSubmitting ? null : () => Navigator.of(dialogContext).pop([destructive['value']]),
+                icon: const Icon(MdiIcons.trashCanOutline),
+                label: Text(destructive['label'] as String? ?? ''),
+              ),
         cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.done)),
       ),
     );

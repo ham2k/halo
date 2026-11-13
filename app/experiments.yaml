@@ -128,6 +128,14 @@ experiments:
     name: Named Layouts
     description: Keep several layouts per view, switch between them, and export or import them as files.
     aliases: [dashboards]
+  # The agent link (docs/design/agent-link.md): local agent apps reach the
+  # app over MCP through `halo-mcp`, each one allowed by the operator to
+  # watch, or to watch and make changes. Desktop only.
+  - key: mcp
+    name: Agent Apps
+    description: Let agent apps on this computer, such as Claude or Gemini, watch the operation and help, once you allow each one.
+    aliases: [agents]
+    private: true
   # Keyboard shortcuts as settings (docs/design/keyboard-shortcuts.md): the
   # Keyboard Shortcuts panel, keys bound to commands and to typed command
   # text, and `.h2kkey` files. Gated because it changes what keys do even

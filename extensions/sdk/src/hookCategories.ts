@@ -22,6 +22,7 @@ export const HOOK_CATEGORIES = [
   "activity",
   "adifFields",
   "adifImport",
+  "agentLink",
   "assistant",
   "bandAnnotations",
   "bench",

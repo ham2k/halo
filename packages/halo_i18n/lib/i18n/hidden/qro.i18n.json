@@ -1946,7 +1946,29 @@
     "assistants": {
       "title": "ASSISTANTS",
       "on": "WATCHING WHILE AN OPERATION IS OPEN",
-      "off": "OFF"
+      "off": "OFF",
+      "connectedApps": "CONNECTED APPS",
+      "connectedAppsHint": "AGENT APPS ON THIS COMPUTER, SUCH AS CLAUDE OR GEMINI, CAN CONNECT TO HAM2K LOGGER USING THE HALO-MCP COMMAND WITH YOUR APPROVAL.",
+      "connectedAppsPortInUse": "ANOTHER PROGRAM HOLDS PORT ${port}, OR THE SYSTEM RESERVES IT, SO AGENT APPS CANNOT CONNECT.",
+      "connectedAppsCannotListen": "HAM2K LOGGER COULD NOT LISTEN ON PORT ${port}, SO AGENT APPS CANNOT CONNECT. IT KEEPS TRYING.",
+      "appWatch": "WATCH ONLY",
+      "appChange": "WATCH AND MAKE CHANGES",
+      "appRemove": "REMOVE",
+      "appConnected": "${access} · CONNECTED NOW",
+      "appLauncher": "${name}, STARTED BY ${launcher}"
+    },
+    "agentLink": {
+      "title": "ALLOW ${name}?",
+      "body": "${name} IS ASKING TO USE HAM2K LOGGER.",
+      "bodyLauncher": "${name}, STARTED BY ${launcher}, IS ASKING TO USE HAM2K LOGGER.",
+      "watch": "WATCH",
+      "watchDetail": "READ THE OPERATION, ITS QSOS, SPOTS, THE RADIO AND YOUR EQUIPMENT, OBSERVE WHAT YOU DO AS YOU LOG, AND SHOW MESSAGES.",
+      "change": "MAKE CHANGES",
+      "changeDetail": "FILL IN THE QSO, MARK SPOTS, CONTROL THE RADIO AND EQUIPMENT, AND CHANGE SETTINGS AND LAYOUTS.",
+      "stoppedWaiting": "${name} STOPPED WAITING. IF YOU ALLOW IT, IT GETS IN THE NEXT TIME IT CONNECTS.",
+      "warning": "ALLOW ONLY AN APP YOU STARTED YOURSELF. THE NAME IS THE APP'S OWN WORD, AND YOU CAN CHANGE OR REMOVE WHAT IT MAY DO IN SETTINGS, UNDER CONNECTED APPS.",
+      "deny": "DON'T ALLOW",
+      "allow": "ALLOW"
     },
     "extensionSections": {
       "activities": "ACTIVITIES",

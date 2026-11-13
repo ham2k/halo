@@ -836,6 +836,7 @@ class _Translations$settings$qro extends Translations$settings$en {
 	@override late final _Translations$settings$help$qro help = _Translations$settings$help$qro._(_root);
 	@override late final _Translations$settings$exports$qro exports = _Translations$settings$exports$qro._(_root);
 	@override late final _Translations$settings$assistants$qro assistants = _Translations$settings$assistants$qro._(_root);
+	@override late final _Translations$settings$agentLink$qro agentLink = _Translations$settings$agentLink$qro._(_root);
 	@override late final _Translations$settings$extensionSections$qro extensionSections = _Translations$settings$extensionSections$qro._(_root);
 	@override late final _Translations$settings$map$qro map = _Translations$settings$map$qro._(_root);
 	@override late final _Translations$settings$privacy$qro privacy = _Translations$settings$privacy$qro._(_root);
@@ -2610,6 +2611,35 @@ class _Translations$settings$assistants$qro extends Translations$settings$assist
 	@override String get title => 'ASSISTANTS';
 	@override String get on => 'WATCHING WHILE AN OPERATION IS OPEN';
 	@override String get off => 'OFF';
+	@override String get connectedApps => 'CONNECTED APPS';
+	@override String get connectedAppsHint => 'AGENT APPS ON THIS COMPUTER, SUCH AS CLAUDE OR GEMINI, CAN CONNECT TO HAM2K LOGGER USING THE HALO-MCP COMMAND WITH YOUR APPROVAL.';
+	@override String connectedAppsPortInUse({required Object port}) => 'ANOTHER PROGRAM HOLDS PORT ${port}, OR THE SYSTEM RESERVES IT, SO AGENT APPS CANNOT CONNECT.';
+	@override String connectedAppsCannotListen({required Object port}) => 'HAM2K LOGGER COULD NOT LISTEN ON PORT ${port}, SO AGENT APPS CANNOT CONNECT. IT KEEPS TRYING.';
+	@override String get appWatch => 'WATCH ONLY';
+	@override String get appChange => 'WATCH AND MAKE CHANGES';
+	@override String get appRemove => 'REMOVE';
+	@override String appConnected({required Object access}) => '${access} · CONNECTED NOW';
+	@override String appLauncher({required Object name, required Object launcher}) => '${name}, STARTED BY ${launcher}';
+}
+
+// Path: settings.agentLink
+class _Translations$settings$agentLink$qro extends Translations$settings$agentLink$en {
+	_Translations$settings$agentLink$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String title({required Object name}) => 'ALLOW ${name}?';
+	@override String body({required Object name}) => '${name} IS ASKING TO USE HAM2K LOGGER.';
+	@override String bodyLauncher({required Object name, required Object launcher}) => '${name}, STARTED BY ${launcher}, IS ASKING TO USE HAM2K LOGGER.';
+	@override String get watch => 'WATCH';
+	@override String get watchDetail => 'READ THE OPERATION, ITS QSOS, SPOTS, THE RADIO AND YOUR EQUIPMENT, OBSERVE WHAT YOU DO AS YOU LOG, AND SHOW MESSAGES.';
+	@override String get change => 'MAKE CHANGES';
+	@override String get changeDetail => 'FILL IN THE QSO, MARK SPOTS, CONTROL THE RADIO AND EQUIPMENT, AND CHANGE SETTINGS AND LAYOUTS.';
+	@override String stoppedWaiting({required Object name}) => '${name} STOPPED WAITING. IF YOU ALLOW IT, IT GETS IN THE NEXT TIME IT CONNECTS.';
+	@override String get warning => 'ALLOW ONLY AN APP YOU STARTED YOURSELF. THE NAME IS THE APP\'S OWN WORD, AND YOU CAN CHANGE OR REMOVE WHAT IT MAY DO IN SETTINGS, UNDER CONNECTED APPS.';
+	@override String get deny => 'DON\'T ALLOW';
+	@override String get allow => 'ALLOW';
 }
 
 // Path: settings.extensionSections
@@ -6711,6 +6741,26 @@ extension on TranslationsQro {
 			'settings.assistants.title' => 'ASSISTANTS',
 			'settings.assistants.on' => 'WATCHING WHILE AN OPERATION IS OPEN',
 			'settings.assistants.off' => 'OFF',
+			'settings.assistants.connectedApps' => 'CONNECTED APPS',
+			'settings.assistants.connectedAppsHint' => 'AGENT APPS ON THIS COMPUTER, SUCH AS CLAUDE OR GEMINI, CAN CONNECT TO HAM2K LOGGER USING THE HALO-MCP COMMAND WITH YOUR APPROVAL.',
+			'settings.assistants.connectedAppsPortInUse' => ({required Object port}) => 'ANOTHER PROGRAM HOLDS PORT ${port}, OR THE SYSTEM RESERVES IT, SO AGENT APPS CANNOT CONNECT.',
+			'settings.assistants.connectedAppsCannotListen' => ({required Object port}) => 'HAM2K LOGGER COULD NOT LISTEN ON PORT ${port}, SO AGENT APPS CANNOT CONNECT. IT KEEPS TRYING.',
+			'settings.assistants.appWatch' => 'WATCH ONLY',
+			'settings.assistants.appChange' => 'WATCH AND MAKE CHANGES',
+			'settings.assistants.appRemove' => 'REMOVE',
+			'settings.assistants.appConnected' => ({required Object access}) => '${access} · CONNECTED NOW',
+			'settings.assistants.appLauncher' => ({required Object name, required Object launcher}) => '${name}, STARTED BY ${launcher}',
+			'settings.agentLink.title' => ({required Object name}) => 'ALLOW ${name}?',
+			'settings.agentLink.body' => ({required Object name}) => '${name} IS ASKING TO USE HAM2K LOGGER.',
+			'settings.agentLink.bodyLauncher' => ({required Object name, required Object launcher}) => '${name}, STARTED BY ${launcher}, IS ASKING TO USE HAM2K LOGGER.',
+			'settings.agentLink.watch' => 'WATCH',
+			'settings.agentLink.watchDetail' => 'READ THE OPERATION, ITS QSOS, SPOTS, THE RADIO AND YOUR EQUIPMENT, OBSERVE WHAT YOU DO AS YOU LOG, AND SHOW MESSAGES.',
+			'settings.agentLink.change' => 'MAKE CHANGES',
+			'settings.agentLink.changeDetail' => 'FILL IN THE QSO, MARK SPOTS, CONTROL THE RADIO AND EQUIPMENT, AND CHANGE SETTINGS AND LAYOUTS.',
+			'settings.agentLink.stoppedWaiting' => ({required Object name}) => '${name} STOPPED WAITING. IF YOU ALLOW IT, IT GETS IN THE NEXT TIME IT CONNECTS.',
+			'settings.agentLink.warning' => 'ALLOW ONLY AN APP YOU STARTED YOURSELF. THE NAME IS THE APP\'S OWN WORD, AND YOU CAN CHANGE OR REMOVE WHAT IT MAY DO IN SETTINGS, UNDER CONNECTED APPS.',
+			'settings.agentLink.deny' => 'DON\'T ALLOW',
+			'settings.agentLink.allow' => 'ALLOW',
 			'settings.extensionSections.activities' => 'ACTIVITIES',
 			'settings.extensionSections.hunting' => 'HUNTING',
 			'settings.extensionSections.contests' => 'CONTESTS',
@@ -7115,6 +7165,8 @@ extension on TranslationsQro {
 			'settings.station.models.ic7300mk2' => 'ICOM IC-7300 MK2',
 			'settings.station.models.ic706mkiig' => 'ICOM IC-706MKIIG',
 			'settings.station.models.ic7100' => 'ICOM IC-7100',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.ic7200' => 'ICOM IC-7200',
 			'settings.station.models.ic7610' => 'ICOM IC-7610',
 			'settings.station.models.ic7760' => 'ICOM IC-7760',
@@ -7135,8 +7187,6 @@ extension on TranslationsQro {
 			'settings.station.models.commander' => 'RADIO CONTROLLED VIA DXLAB COMMANDER',
 			'settings.station.models.commanderNodeName' => 'MY RADIO (VIA COMMANDER)',
 			'settings.station.models.antenna' => 'ANTENNA',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.key' => 'CW KEY',
 			'settings.station.models.midiController' => 'MIDI CONTROLLER',
 			'settings.station.models.winkeyer' => 'WINKEYER',
@@ -7629,6 +7679,8 @@ extension on TranslationsQro {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'LAST RELOAD: ${key} AT ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} EXTENSION FAILING TO BUILD', other: '${count} EXTENSIONS FAILING TO BUILD', ), 
 			'settings.developer.catalog' => 'EXTENSION CATALOG',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.catalogSearchTracks' => 'CATALOG SEARCH TRACKS',
 			'settings.developer.catalogSearchStable' => 'ONLY STABLE',
 			'settings.developer.catalogSearchUnstable' => 'UNSTABLE OR BETTER',
@@ -7649,8 +7701,6 @@ extension on TranslationsQro {
 			'settings.panels.developerSettings' => 'DEVELOPER SETTINGS',
 			'settings.panels.developerSettingsDescription' => 'DEBUGGING AND DEVELOPMENT TOOLS',
 			'settings.panels.about' => 'ABOUT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.aboutDescription' => 'VERSION, CREDITS, AND LEGAL INFORMATION',
 			'settings.panels.unavailableTitle' => 'SOME SETTINGS ARE UNAVAILABLE',
 			'settings.panels.unavailableText' => 'THE EXTENSION RUNTIME FAILED TO START, SO EXTENSION-CONTRIBUTED SETTINGS ARE MISSING.',
@@ -8143,6 +8193,8 @@ extension on TranslationsQro {
 			'exportSettings.otherActivities' => 'OTHER ACTIVITIES',
 			'exportSettings.adifFields' => 'ADIF FIELDS',
 			'exportSettings.loadFailed' => 'EXPORT SETTINGS COULD NOT BE LOADED.',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.retry' => 'RETRY',
 			'exportSettings.compactFileNamesDescriptionOn' => 'COMPACT FILENAMES, SUCH AS N0CALL@US-1234-20260715.ADI.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'DESCRIPTIVE FILENAMES, SUCH AS 2026-07-15 N0CALL AT US-1234.ADI.',
@@ -8163,8 +8215,6 @@ extension on TranslationsQro {
 			'exportSettings.adifCommentTemplate' => 'ADIF QSO COMMENTS',
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL MESSAGE',
 			'exportSettings.shared' => 'SETTINGS APPLY TO EVERY EXTENSION USING THIS EXPORT TYPE.',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.defaultTemplates' => 'TURN ON CUSTOM TEMPLATES TO EDIT THIS TYPE’S TEMPLATES.',
 			'templateEditor.previewLabel' => 'PREVIEW:',
 			'templateEditor.reset' => 'RESET',

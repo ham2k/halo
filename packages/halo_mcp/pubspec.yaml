@@ -1,0 +1,15 @@
+name: halo_mcp
+description: "halo-mcp: the command an agent app runs to reach Ham2K Logger over MCP, relaying stdio to the running app's agent link. Pure Dart."
+version: 0.0.1
+publish_to: 'none'
+homepage: https://ham2k.com
+
+environment:
+  sdk: ^3.12.2
+
+executables:
+  halo-mcp: halo_mcp
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

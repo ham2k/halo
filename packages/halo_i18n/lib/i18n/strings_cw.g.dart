@@ -836,6 +836,7 @@ class _Translations$settings$cw extends Translations$settings$en {
 	@override late final _Translations$settings$help$cw help = _Translations$settings$help$cw._(_root);
 	@override late final _Translations$settings$exports$cw exports = _Translations$settings$exports$cw._(_root);
 	@override late final _Translations$settings$assistants$cw assistants = _Translations$settings$assistants$cw._(_root);
+	@override late final _Translations$settings$agentLink$cw agentLink = _Translations$settings$agentLink$cw._(_root);
 	@override late final _Translations$settings$extensionSections$cw extensionSections = _Translations$settings$extensionSections$cw._(_root);
 	@override late final _Translations$settings$map$cw map = _Translations$settings$map$cw._(_root);
 	@override late final _Translations$settings$privacy$cw privacy = _Translations$settings$privacy$cw._(_root);
@@ -2610,6 +2611,35 @@ class _Translations$settings$assistants$cw extends Translations$settings$assista
 	@override String get title => '·— ··· ··· ·· ··· — ·— —· — ···';
 	@override String get on => '·—— ·— — —·—· ···· ·· —· ——· / ·—— ···· ·· ·—·· · / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / ·· ··· / ——— ·——· · —·';
 	@override String get off => '——— ··—· ··—·';
+	@override String get connectedApps => '—·—· ——— —· —· · —·—· — · —·· / ·— ·——· ·——· ···';
+	@override String get connectedAppsHint => '·— ——· · —· — / ·— ·——· ·——· ··· / ——— —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· ——··—— / ··· ··— —·—· ···· / ·— ··· / —·—· ·—·· ·— ··— —·· · / ——— ·—· / ——· · —— ·· —· ·· ——··—— / —·—· ·— —· / —·—· ——— —· —· · —·—· — / — ——— / ···· ·— —— ··——— —·— / ·—·· ——— ——· ——· · ·—· / ··— ··· ·· —· ——· / — ···· · / ···· ·— ·—·· ——— —····— —— —·—· ·——· / —·—· ——— —— —— ·— —· —·· / ·—— ·· — ···· / —·—— ——— ··— ·—· / ·— ·——· ·——· ·—· ——— ···— ·— ·—·· ·—·—·—';
+	@override String connectedAppsPortInUse({required Object port}) => '·— —· ——— — ···· · ·—· / ·——· ·—· ——— ——· ·—· ·— —— / ···· ——— ·—·· —·· ··· / ·——· ——— ·—· — / ${port} ——··—— / ——— ·—· / — ···· · / ··· —·—— ··· — · —— / ·—· · ··· · ·—· ···— · ··· / ·· — ——··—— / ··· ——— / ·— ——· · —· — / ·— ·——· ·——· ··· / —·—· ·— —· —· ——— — / —·—· ——— —· —· · —·—· — ·—·—·—';
+	@override String connectedAppsCannotListen({required Object port}) => '···· ·— —— ··——— —·— / ·—·· ——— ——· ——· · ·—· / —·—· ——— ··— ·—·· —·· / —· ——— — / ·—·· ·· ··· — · —· / ——— —· / ·——· ——— ·—· — / ${port} ——··—— / ··· ——— / ·— ——· · —· — / ·— ·——· ·——· ··· / —·—· ·— —· —· ——— — / —·—· ——— —· —· · —·—· — ·—·—·— / ·· — / —·— · · ·——· ··· / — ·—· —·—— ·· —· ——· ·—·—·—';
+	@override String get appWatch => '·—— ·— — —·—· ···· / ——— —· ·—·· —·——';
+	@override String get appChange => '·—— ·— — —·—· ···· / ·— —· —·· / —— ·— —·— · / —·—· ···· ·— —· ——· · ···';
+	@override String get appRemove => '·—· · —— ——— ···— ·';
+	@override String appConnected({required Object access}) => '${access} / · / —·—· ——— —· —· · —·—· — · —·· / —· ——— ·——';
+	@override String appLauncher({required Object name, required Object launcher}) => '${name} ——··—— / ··· — ·— ·—· — · —·· / —··· —·—— / ${launcher}';
+}
+
+// Path: settings.agentLink
+class _Translations$settings$agentLink$cw extends Translations$settings$agentLink$en {
+	_Translations$settings$agentLink$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String title({required Object name}) => '·— ·—·· ·—·· ——— ·—— / ${name} ··——··';
+	@override String body({required Object name}) => '${name} / ·· ··· / ·— ··· —·— ·· —· ——· / — ——— / ··— ··· · / ···· ·— —— ··——— —·— / ·—·· ——— ——· ——· · ·—· ·—·—·—';
+	@override String bodyLauncher({required Object name, required Object launcher}) => '${name} ——··—— / ··· — ·— ·—· — · —·· / —··· —·—— / ${launcher} ——··—— / ·· ··· / ·— ··· —·— ·· —· ——· / — ——— / ··— ··· · / ···· ·— —— ··——— —·— / ·—·· ——— ——· ——· · ·—· ·—·—·—';
+	@override String get watch => '·—— ·— — —·—· ····';
+	@override String get watchDetail => '·—· · ·— —·· / — ···· · / ——— ·——· · ·—· ·— — ·· ——— —· ——··—— / ·· — ··· / ——·— ··· ——— ··· ——··—— / ··· ·——· ——— — ··· ——··—— / — ···· · / ·—· ·— —·· ·· ——— / ·— —· —·· / —·—— ——— ··— ·—· / · ——·— ··— ·· ·——· —— · —· — ——··—— / ——— —··· ··· · ·—· ···— · / ·—— ···· ·— — / —·—— ——— ··— / —·· ——— / ·— ··· / —·—— ——— ··— / ·—·· ——— ——· ——··—— / ·— —· —·· / ··· ···· ——— ·—— / —— · ··· ··· ·— ——· · ··· ·—·—·—';
+	@override String get change => '—— ·— —·— · / —·—· ···· ·— —· ——· · ···';
+	@override String get changeDetail => '··—· ·· ·—·· ·—·· / ·· —· / — ···· · / ——·— ··· ——— ——··—— / —— ·— ·—· —·— / ··· ·——· ——— — ··· ——··—— / —·—· ——— —· — ·—· ——— ·—·· / — ···· · / ·—· ·— —·· ·· ——— / ·— —· —·· / · ——·— ··— ·· ·——· —— · —· — ——··—— / ·— —· —·· / —·—· ···· ·— —· ——· · / ··· · — — ·· —· ——· ··· / ·— —· —·· / ·—·· ·— —·—— ——— ··— — ··· ·—·—·—';
+	@override String stoppedWaiting({required Object name}) => '${name} / ··· — ——— ·——· ·——· · —·· / ·—— ·— ·· — ·· —· ——· ·—·—·— / ·· ··—· / —·—— ——— ··— / ·— ·—·· ·—·· ——— ·—— / ·· — ——··—— / ·· — / ——· · — ··· / ·· —· / — ···· · / —· · —··— — / — ·· —— · / ·· — / —·—· ——— —· —· · —·—· — ··· ·—·—·—';
+	@override String get warning => '·— ·—·· ·—·· ——— ·—— / ——— —· ·—·· —·—— / ·— —· / ·— ·——· ·——· / —·—— ——— ··— / ··· — ·— ·—· — · —·· / —·—— ——— ··— ·—· ··· · ·—·· ··—· ·—·—·— / — ···· · / —· ·— —— · / ·· ··· / — ···· · / ·— ·——· ·——· ·————· ··· / ——— ·—— —· / ·—— ——— ·—· —·· ——··—— / ·— —· —·· / —·—— ——— ··— / —·—· ·— —· / —·—· ···· ·— —· ——· · / ——— ·—· / ·—· · —— ——— ···— · / ·—— ···· ·— — / ·· — / —— ·— —·—— / —·· ——— / ·· —· / ··· · — — ·· —· ——· ··· ——··—— / ··— —· —·· · ·—· / —·—· ——— —· —· · —·—· — · —·· / ·— ·——· ·——· ··· ·—·—·—';
+	@override String get deny => '—·· ——— —· ·————· — / ·— ·—·· ·—·· ——— ·——';
+	@override String get allow => '·— ·—·· ·—·· ——— ·——';
 }
 
 // Path: settings.extensionSections
@@ -6711,6 +6741,26 @@ extension on TranslationsCw {
 			'settings.assistants.title' => '·— ··· ··· ·· ··· — ·— —· — ···',
 			'settings.assistants.on' => '·—— ·— — —·—· ···· ·· —· ——· / ·—— ···· ·· ·—·· · / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / ·· ··· / ——— ·——· · —·',
 			'settings.assistants.off' => '——— ··—· ··—·',
+			'settings.assistants.connectedApps' => '—·—· ——— —· —· · —·—· — · —·· / ·— ·——· ·——· ···',
+			'settings.assistants.connectedAppsHint' => '·— ——· · —· — / ·— ·——· ·——· ··· / ——— —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· ——··—— / ··· ··— —·—· ···· / ·— ··· / —·—· ·—·· ·— ··— —·· · / ——— ·—· / ——· · —— ·· —· ·· ——··—— / —·—· ·— —· / —·—· ——— —· —· · —·—· — / — ——— / ···· ·— —— ··——— —·— / ·—·· ——— ——· ——· · ·—· / ··— ··· ·· —· ——· / — ···· · / ···· ·— ·—·· ——— —····— —— —·—· ·——· / —·—· ——— —— —— ·— —· —·· / ·—— ·· — ···· / —·—— ——— ··— ·—· / ·— ·——· ·——· ·—· ——— ···— ·— ·—·· ·—·—·—',
+			'settings.assistants.connectedAppsPortInUse' => ({required Object port}) => '·— —· ——— — ···· · ·—· / ·——· ·—· ——— ——· ·—· ·— —— / ···· ——— ·—·· —·· ··· / ·——· ——— ·—· — / ${port} ——··—— / ——— ·—· / — ···· · / ··· —·—— ··· — · —— / ·—· · ··· · ·—· ···— · ··· / ·· — ——··—— / ··· ——— / ·— ——· · —· — / ·— ·——· ·——· ··· / —·—· ·— —· —· ——— — / —·—· ——— —· —· · —·—· — ·—·—·—',
+			'settings.assistants.connectedAppsCannotListen' => ({required Object port}) => '···· ·— —— ··——— —·— / ·—·· ——— ——· ——· · ·—· / —·—· ——— ··— ·—·· —·· / —· ——— — / ·—·· ·· ··· — · —· / ——— —· / ·——· ——— ·—· — / ${port} ——··—— / ··· ——— / ·— ——· · —· — / ·— ·——· ·——· ··· / —·—· ·— —· —· ——— — / —·—· ——— —· —· · —·—· — ·—·—·— / ·· — / —·— · · ·——· ··· / — ·—· —·—— ·· —· ——· ·—·—·—',
+			'settings.assistants.appWatch' => '·—— ·— — —·—· ···· / ——— —· ·—·· —·——',
+			'settings.assistants.appChange' => '·—— ·— — —·—· ···· / ·— —· —·· / —— ·— —·— · / —·—· ···· ·— —· ——· · ···',
+			'settings.assistants.appRemove' => '·—· · —— ——— ···— ·',
+			'settings.assistants.appConnected' => ({required Object access}) => '${access} / · / —·—· ——— —· —· · —·—· — · —·· / —· ——— ·——',
+			'settings.assistants.appLauncher' => ({required Object name, required Object launcher}) => '${name} ——··—— / ··· — ·— ·—· — · —·· / —··· —·—— / ${launcher}',
+			'settings.agentLink.title' => ({required Object name}) => '·— ·—·· ·—·· ——— ·—— / ${name} ··——··',
+			'settings.agentLink.body' => ({required Object name}) => '${name} / ·· ··· / ·— ··· —·— ·· —· ——· / — ——— / ··— ··· · / ···· ·— —— ··——— —·— / ·—·· ——— ——· ——· · ·—· ·—·—·—',
+			'settings.agentLink.bodyLauncher' => ({required Object name, required Object launcher}) => '${name} ——··—— / ··· — ·— ·—· — · —·· / —··· —·—— / ${launcher} ——··—— / ·· ··· / ·— ··· —·— ·· —· ——· / — ——— / ··— ··· · / ···· ·— —— ··——— —·— / ·—·· ——— ——· ——· · ·—· ·—·—·—',
+			'settings.agentLink.watch' => '·—— ·— — —·—· ····',
+			'settings.agentLink.watchDetail' => '·—· · ·— —·· / — ···· · / ——— ·——· · ·—· ·— — ·· ——— —· ——··—— / ·· — ··· / ——·— ··· ——— ··· ——··—— / ··· ·——· ——— — ··· ——··—— / — ···· · / ·—· ·— —·· ·· ——— / ·— —· —·· / —·—— ——— ··— ·—· / · ——·— ··— ·· ·——· —— · —· — ——··—— / ——— —··· ··· · ·—· ···— · / ·—— ···· ·— — / —·—— ——— ··— / —·· ——— / ·— ··· / —·—— ——— ··— / ·—·· ——— ——· ——··—— / ·— —· —·· / ··· ···· ——— ·—— / —— · ··· ··· ·— ——· · ··· ·—·—·—',
+			'settings.agentLink.change' => '—— ·— —·— · / —·—· ···· ·— —· ——· · ···',
+			'settings.agentLink.changeDetail' => '··—· ·· ·—·· ·—·· / ·· —· / — ···· · / ——·— ··· ——— ——··—— / —— ·— ·—· —·— / ··· ·——· ——— — ··· ——··—— / —·—· ——— —· — ·—· ——— ·—·· / — ···· · / ·—· ·— —·· ·· ——— / ·— —· —·· / · ——·— ··— ·· ·——· —— · —· — ——··—— / ·— —· —·· / —·—· ···· ·— —· ——· · / ··· · — — ·· —· ——· ··· / ·— —· —·· / ·—·· ·— —·—— ——— ··— — ··· ·—·—·—',
+			'settings.agentLink.stoppedWaiting' => ({required Object name}) => '${name} / ··· — ——— ·——· ·——· · —·· / ·—— ·— ·· — ·· —· ——· ·—·—·— / ·· ··—· / —·—— ——— ··— / ·— ·—·· ·—·· ——— ·—— / ·· — ——··—— / ·· — / ——· · — ··· / ·· —· / — ···· · / —· · —··— — / — ·· —— · / ·· — / —·—· ——— —· —· · —·—· — ··· ·—·—·—',
+			'settings.agentLink.warning' => '·— ·—·· ·—·· ——— ·—— / ——— —· ·—·· —·—— / ·— —· / ·— ·——· ·——· / —·—— ——— ··— / ··· — ·— ·—· — · —·· / —·—— ——— ··— ·—· ··· · ·—·· ··—· ·—·—·— / — ···· · / —· ·— —— · / ·· ··· / — ···· · / ·— ·——· ·——· ·————· ··· / ——— ·—— —· / ·—— ——— ·—· —·· ——··—— / ·— —· —·· / —·—— ——— ··— / —·—· ·— —· / —·—· ···· ·— —· ——· · / ——— ·—· / ·—· · —— ——— ···— · / ·—— ···· ·— — / ·· — / —— ·— —·—— / —·· ——— / ·· —· / ··· · — — ·· —· ——· ··· ——··—— / ··— —· —·· · ·—· / —·—· ——— —· —· · —·—· — · —·· / ·— ·——· ·——· ··· ·—·—·—',
+			'settings.agentLink.deny' => '—·· ——— —· ·————· — / ·— ·—·· ·—·· ——— ·——',
+			'settings.agentLink.allow' => '·— ·—·· ·—·· ——— ·——',
 			'settings.extensionSections.activities' => '·— —·—· — ·· ···— ·· — ·· · ···',
 			'settings.extensionSections.hunting' => '···· ··— —· — ·· —· ——·',
 			'settings.extensionSections.contests' => '—·—· ——— —· — · ··· — ···',
@@ -7115,6 +7165,8 @@ extension on TranslationsCw {
 			'settings.station.models.ic7300mk2' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ···—— ————— ————— / —— —·— ··———',
 			'settings.station.models.ic706mkiig' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ————— —···· —— —·— ·· ·· ——·',
 			'settings.station.models.ic7100' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ·———— ————— —————',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.ic7200' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ··——— ————— —————',
 			'settings.station.models.ic7610' => '·· —·—· ——— —— / ·· —·—· —····— ——··· —···· ·———— —————',
 			'settings.station.models.ic7760' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ——··· —···· —————',
@@ -7135,8 +7187,6 @@ extension on TranslationsCw {
 			'settings.station.models.commander' => '·—· ·— —·· ·· ——— / —·—· ——— —· — ·—· ——— ·—·· ·—·· · —·· / ···— ·· ·— / —·· —··— ·—·· ·— —··· / —·—· ——— —— —— ·— —· —·· · ·—·',
 			'settings.station.models.commanderNodeName' => '—— —·—— / ·—· ·— —·· ·· ——— / —·——· ···— ·· ·— / —·—· ——— —— —— ·— —· —·· · ·—· —·——·—',
 			'settings.station.models.antenna' => '·— —· — · —· —· ·—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.key' => '—·—· ·—— / —·— · —·——',
 			'settings.station.models.midiController' => '—— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·',
 			'settings.station.models.winkeyer' => '·—— ·· —· —·— · —·—— · ·—·',
@@ -7629,6 +7679,8 @@ extension on TranslationsCw {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => '·—·· ·— ··· — / ·—· · ·—·· ——— ·— —·· ———··· / ${key} / ·— — / ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / · —··— — · —· ··· ·· ——— —· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', other: '${count} / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', ), 
 			'settings.developer.catalog' => '· —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.catalogSearchTracks' => '—·—· ·— — ·— ·—·· ——— ——· / ··· · ·— ·—· —·—· ···· / — ·—· ·— —·—· —·— ···',
 			'settings.developer.catalogSearchStable' => '——— —· ·—·· —·—— / ··· — ·— —··· ·—·· ·',
 			'settings.developer.catalogSearchUnstable' => '··— —· ··· — ·— —··· ·—·· · / ——— ·—· / —··· · — — · ·—·',
@@ -7649,8 +7701,6 @@ extension on TranslationsCw {
 			'settings.panels.developerSettings' => '—·· · ···— · ·—·· ——— ·——· · ·—· / ··· · — — ·· —· ——· ···',
 			'settings.panels.developerSettingsDescription' => '—·· · —··· ··— ——· ——· ·· —· ——· / ·— —· —·· / —·· · ···— · ·—·· ——— ·——· —— · —· — / — ——— ——— ·—·· ···',
 			'settings.panels.about' => '·— —··· ——— ··— —',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.aboutDescription' => '···— · ·—· ··· ·· ——— —· ——··—— / —·—· ·—· · —·· ·· — ··· ——··—— / ·— —· —·· / ·—·· · ——· ·— ·—·· / ·· —· ··—· ——— ·—· —— ·— — ·· ——— —·',
 			'settings.panels.unavailableTitle' => '··· ——— —— · / ··· · — — ·· —· ——· ··· / ·— ·—· · / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'settings.panels.unavailableText' => '— ···· · / · —··— — · —· ··· ·· ——— —· / ·—· ··— —· — ·· —— · / ··—· ·— ·· ·—·· · —·· / — ——— / ··· — ·— ·—· — ——··—— / ··· ——— / · —··— — · —· ··· ·· ——— —· —····— —·—· ——— —· — ·—· ·· —··· ··— — · —·· / ··· · — — ·· —· ——· ··· / ·— ·—· · / —— ·· ··· ··· ·· —· ——· ·—·—·—',
@@ -8143,6 +8193,8 @@ extension on TranslationsCw {
 			'exportSettings.otherActivities' => '——— — ···· · ·—· / ·— —·—· — ·· ···— ·· — ·· · ···',
 			'exportSettings.adifFields' => '·— —·· ·· ··—· / ··—· ·· · ·—·· —·· ···',
 			'exportSettings.loadFailed' => '· —··— ·——· ——— ·—· — / ··· · — — ·· —· ——· ··· / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—·· ——— ·— —·· · —·· ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.retry' => '·—· · — ·—· —·——',
 			'exportSettings.compactFileNamesDescriptionOn' => '—·—· ——— —— ·——· ·— —·—· — / ··—· ·· ·—·· · —· ·— —— · ··· ——··—— / ··· ··— —·—· ···· / ·— ··· / —· ————— —·—· ·— ·—·· ·—·· ·——·—· ··— ··· —····— ·———— ··——— ···—— ····— —····— ··——— ————— ··——— —···· ————— ——··· ·———— ····· ·—·—·— ·— —·· ·· ·—·—·—',
 			'exportSettings.compactFileNamesDescriptionOff' => '—·· · ··· —·—· ·—· ·· ·——· — ·· ···— · / ··—· ·· ·—·· · —· ·— —— · ··· ——··—— / ··· ··— —·—· ···· / ·— ··· / ··——— ————— ··——— —···· —····— ————— ——··· —····— ·———— ····· / —· ————— —·—· ·— ·—·· ·—·· / ·— — / ··— ··· —····— ·———— ··——— ···—— ····— ·—·—·— ·— —·· ·· ·—·—·—',
@@ -8163,8 +8215,6 @@ extension on TranslationsCw {
 			'exportSettings.adifCommentTemplate' => '·— —·· ·· ··—· / ——·— ··· ——— / —·—· ——— —— —— · —· — ···',
 			'exportSettings.adifQslMessageTemplate' => '·— —·· ·· ··—· / ——·— ··· ·—·· / —— · ··· ··· ·— ——· ·',
 			'exportSettings.shared' => '··· · — — ·· —· ——· ··· / ·— ·——· ·——· ·—·· —·—— / — ——— / · ···— · ·—· —·—— / · —··— — · —· ··· ·· ——— —· / ··— ··· ·· —· ——· / — ···· ·· ··· / · —··— ·——· ——— ·—· — / — —·—— ·——· · ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.defaultTemplates' => '— ··— ·—· —· / ——— —· / —·—· ··— ··· — ——— —— / — · —— ·——· ·—·· ·— — · ··· / — ——— / · —·· ·· — / — ···· ·· ··· / — —·—— ·——· · ’ ··· / — · —— ·——· ·—·· ·— — · ··· ·—·—·—',
 			'templateEditor.previewLabel' => '·——· ·—· · ···— ·· · ·—— ———···',
 			'templateEditor.reset' => '·—· · ··· · —',

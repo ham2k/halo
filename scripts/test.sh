@@ -64,7 +64,7 @@ ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 # macOS ships bash 3.2, so no associative arrays: case functions instead.
 # ---------------------------------------------------------------------------
 
-PKG_GROUP_NAMES="extensions core build-tools extension-host quickjs audio sdr-usb tls-psk widgets i18n cli app dist"
+PKG_GROUP_NAMES="extensions core build-tools mcp extension-host quickjs audio sdr-usb tls-psk widgets i18n cli app dist"
 
 app_group_names() {
   local d
@@ -80,6 +80,7 @@ pkg_group_dir() {
   case "$1" in
     core) echo "packages/halo_core" ;;
     build-tools) echo "packages/halo_build_tools" ;;
+    mcp) echo "packages/halo_mcp" ;;
     extension-host) echo "packages/halo_extension_host" ;;
     quickjs) echo "packages/halo_quickjs" ;;
     audio) echo "packages/halo_audio" ;;
@@ -548,7 +549,7 @@ run_subset() {
       quickjs | audio | sdr-usb) need_hostlib=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
       tls-psk) pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
       extension-host) need_bundles=1; need_hostlib=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
-      core | build-tools) pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
+      core | build-tools | mcp) pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
       widgets | i18n) need_i18n=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
       # halo_cli boots the REAL QuickJS host against the built bundles
       # (runtime_test.dart, scoring_merge_test.dart), so it belongs with
@@ -704,6 +705,7 @@ changed_subset() {
       extensions/*) groups="$groups extensions extension-host extension" ;;
       packages/halo_core/*) groups="$groups core" ;;
       packages/halo_build_tools/*) groups="$groups build-tools" ;;
+      packages/halo_mcp/*) groups="$groups mcp extension" ;;
       packages/halo_extension_host/*) groups="$groups extension-host" ;;
       packages/halo_quickjs/*) groups="$groups quickjs" ;;
       packages/halo_audio/*) groups="$groups audio cat" ;;
@@ -965,7 +967,7 @@ ensure_secrets
 
 check_i18n_fresh
 
-PACKAGES=(packages/halo_core packages/halo_build_tools packages/halo_i18n packages/halo_extension_host packages/halo_quickjs packages/halo_audio packages/halo_sdr_usb packages/halo_tls_psk packages/halo_widgets packages/halo_cli app)
+PACKAGES=(packages/halo_core packages/halo_build_tools packages/halo_mcp packages/halo_i18n packages/halo_extension_host packages/halo_quickjs packages/halo_audio packages/halo_sdr_usb packages/halo_tls_psk packages/halo_widgets packages/halo_cli app)
 # The private distribution layer, present only in the halo-dist checkout — a
 # public checkout has no app_dist/ and must still pass everything above.
 if [[ -d "$ROOT_DIR/app_dist" ]]; then

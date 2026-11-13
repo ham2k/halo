@@ -16,6 +16,9 @@ import 'package:yaml/yaml.dart';
 /// The CAT server experiment's key in experiments.yaml.
 const kCatServerExperiment = 'server';
 
+/// The agent link and its `mcp` endpoint (docs/design/agent-link.md).
+const kAgentLinkExperiment = 'mcp';
+
 class ExperimentDefinition {
   final String key;
   final String name;
