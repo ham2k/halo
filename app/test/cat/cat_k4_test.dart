@@ -236,7 +236,7 @@ void main() {
         session.setMode('DATA-LSB');
         expect(sink.sent.sublist(sink.sent.length - 2), ['MD9;DT0;', 'IF;']);
         session.teardown();
-        expect(sink.sent.last, 'AI0;');
+        expect(sink.sent.sublist(sink.sent.length - 2), ['AI0;', 'TM0;']);
         final stopped = sink.sent.length;
         async.elapse(const Duration(seconds: 30));
         expect(sink.sent.length, stopped);

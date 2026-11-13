@@ -101,6 +101,23 @@ each connection:
 6. If using a transverter, verify X-range reads/writes and refusal of watt-range
    requests while the milliwatt output is selected.
 
+## Meters
+
+USB and direct Ethernet probe Main receiver `SMH` at idle-state pace until
+a signed answer, then read it on the receive status cadence within the
+serial link's byte budget. Secure Ethernet asks
+for an initial reading for each connected receiver and uses the K4's AI4
+meter updates thereafter. The app accepts signed dBm readings and ignores
+the legacy `SM` bar count.
+
+The CAT session requests `TM` updates once per physical connection. Both
+secure receivers see the same measured transmit power and SWR. The K4's
+`PCX` reply distinguishes tenths of a watt in QRP from whole watts in QRO.
+The app reports SWR only when the radio reports forward power. The
+transverter `TM` scale and ALC full scale are unspecified. Signed `SMH`
+readback in the app's CAT mode and `TM` delivery on all three connections
+still need a live radio check.
+
 ## LAN spectrum
 
 ### App integration
