@@ -260,6 +260,19 @@ void main() {
     expect(session.setSpectrum(const SpectrumRequest(refLevelDb: 3)), isTrue);
     expect(sink.settings.last.refLevelDb, 3);
     expect(sink.sent, isEmpty, reason: 'opening and adjusting the local scope must not write CAT settings');
+    expect(session.setSpectrum(const SpectrumRequest(hardwareWidthHz: 150000)), isTrue);
+    expect(sink.sent, ['#SPN100000;']);
+    expect(session.setSpectrum(const SpectrumRequest(hardwareWidthHz: 384000)), isTrue);
+    expect(sink.sent, ['#SPN100000;', '#SPN200000;']);
+    expect(session.setSpectrum(const SpectrumRequest(hardwareWidthHz: 200000)), isFalse, reason: 'the larger PAN tier is already requested');
+    expect(sink.settings.last.spanHz, 48000, reason: 'PAN settings follow received packet geometry');
+    connection.receive(_mainPanAtRate(384000));
+    expect(sink.settings.last.spanHz, 192000);
+    expect(session.setSpectrum(const SpectrumRequest(hardwareWidthHz: 20000, allowHardwareNarrowing: true)), isTrue);
+    expect(sink.sent.last, '#SPN15000;');
+    connection.receive(_mainPanAtRate(24000));
+    expect(sink.settings.last.spanHz, 12000);
+    expect(sink.frames.last.levels, hasLength(2048));
     expect(connection.sent, isEmpty, reason: '9201 receives data without subscriptions, CAT, or keepalives');
 
     session.startUpdates();

@@ -59,6 +59,8 @@ class _Scope implements TransceiverSession, SpectrumSession {
   SpectrumCapabilities get spectrumCapabilities => capabilities;
   final spans = <int?>[];
   final centers = <int?>[];
+  final hardwareWidths = <int?>[];
+  final hardwareNarrowing = <bool>[];
   @override
   void startSpectrum() => log.add('start');
   @override
@@ -69,6 +71,8 @@ class _Scope implements TransceiverSession, SpectrumSession {
     if (running) {
       spans.add(request.spanHz);
       centers.add(request.centerHz);
+      hardwareWidths.add(request.hardwareWidthHz);
+      hardwareNarrowing.add(request.allowHardwareNarrowing);
     }
     return running;
   }
@@ -345,6 +349,37 @@ void main() {
     scope.sink.reportSpectrumSettings(const SpectrumSettings(mode: SpectrumMode.fixed, lowHz: 14000000, highHz: 14060000));
     expect(source.fitSpan(uuid, 30000), isTrue);
     expect(scope.spans.last, 40000);
+  });
+
+  test('a writable display can widen a shared sweep, and narrow only while it is the sole display', () async {
+    final scope = driver.sessions.single
+      ..capabilities = const SpectrumCapabilities(spansHz: [10000], refMinDb: 0, refMaxDb: 1, refStepDb: 1, hardwareMaxWidthHz: 384000)
+      ..running = true;
+    final drawing = cat.spectrumFrames(uuid).listen((_) {});
+    addTearDown(drawing.cancel);
+    scope.sink.reportSpectrumSettings(const SpectrumSettings(mode: SpectrumMode.fixed, lowHz: 7000000, highHz: 7048000));
+    final source = CatSpectrumSource(cat, canCommand: true);
+    final readOnly = CatSpectrumSource(cat);
+    final owner = Object(), other = Object();
+    source.showWidth(uuid, owner, 30000);
+
+    expect(readOnly.hardwareMaxWidthHz(uuid), isNull);
+    expect(readOnly.fitHardwareSpan(uuid, owner, 30000, offCenterHz: 20000, allowNarrowing: true), isFalse);
+    expect(source.hardwareMaxWidthHz(uuid), 384000);
+    expect(source.fitHardwareSpan(uuid, owner, 30000, offCenterHz: 20000), isTrue);
+    expect(source.fitHardwareSpan(uuid, owner, 30000, offCenterHz: 200000), isTrue);
+    expect(source.fitHardwareSpan(uuid, owner, 10000, offCenterHz: 2000, allowNarrowing: true), isTrue);
+    source.showWidth(uuid, other, 5000);
+    expect(source.fitHardwareSpan(uuid, owner, 10000, offCenterHz: 2000, allowNarrowing: true), isTrue);
+    source.showWidth(uuid, other, 0);
+    expect(source.fitHardwareSpan(uuid, owner, 10000, offCenterHz: 2000, allowNarrowing: true), isTrue);
+    source.showWidth(uuid, other, null);
+    expect(source.fitHardwareSpan(uuid, owner, 10000, offCenterHz: 2000, allowNarrowing: true), isTrue);
+
+    expect(scope.hardwareWidths, [70000, 384000, 14000, 14000, 14000, 14000]);
+    expect(scope.hardwareNarrowing, [false, false, true, false, false, true], reason: 'another pane may need off-centre data or the whole sweep');
+    expect(scope.spans, everyElement(isNull));
+    expect(scope.centers, everyElement(isNull));
   });
 
   test('a zoom that ends off to one side moves edges the app places to the window, and widens one centred where it is', () async {

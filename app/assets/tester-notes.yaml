@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "Improved K4 Band Scope: zoom adjusts the radio's sweep for coverage and detail"
+
 "193":
   changes:
     - "New UPDATE (or UPD) command: DATA, POTA, NOTES, APP or EXT"

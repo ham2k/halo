@@ -77,6 +77,11 @@ extension _SpectrumFollow on _SceneSpectrumViewState {
     final width = (frame.highHz - frame.lowHz).toDouble();
     if (width <= 0) return;
     _noteDial(now, frame);
+    if (_coverGestureWindow &&
+        ((width - (_viewWidth ?? _number(_spec.span) ?? width)).abs() >= 1 ||
+            (_viewCenter != null && ((frame.lowHz + frame.highHz) / 2 - _viewCenter!).abs() >= 1))) {
+      return;
+    }
     if (_pastScope(width)) {
       _keepSweepOnDial(now, vfo, margin);
     } else if (_dialMove != null) {
@@ -261,6 +266,10 @@ extension _SpectrumFollow on _SceneSpectrumViewState {
     _followedVfo = vfo;
     // The dial first seen has not moved: a panel opened on a dial off the window brings it in at once.
     if (vfo == null || was == null) return;
+    if (_coverGestureWindow) {
+      _coverGestureWindow = false;
+      _viewCenter = (frame.lowHz + frame.highHz) / 2;
+    }
     _vfoMovedMillis = now;
     _spinning = (vfo - was).abs() <= _spinStepShare * width;
     _dialMove = !_spinning;

@@ -377,6 +377,8 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
         _toReport.add('zoom');
         _viewWidth = w;
         _zoomedOverSpan = _number(_spec.span);
+        _coverGestureWindow = !_sweepless && _home == null && _hardwareMaxWidthHz != null;
+        if (_coverGestureWindow) _zoomStartedAtWidth ??= grip.width;
         _moveTo(center, gesture: true);
         _showWidth();
         _fitSpan(w);
@@ -397,7 +399,14 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
         // The dial as drawn — what follow compares with — not the radio's last report, which a tune
         // just sent may not have reached: the pan would otherwise read as a dial moved, and be undone.
         _pannedAtVfo = uuid == null ? null : _vfo;
+        _coverGestureWindow = !_sweepless && _home == null && _hardwareMaxWidthHz != null;
+        // A pan moves the window without changing its width, even when a wider sweep arrives.
+        if (_frame case final frame? when _coverGestureWindow && _viewWidth == null && _number(_spec.span) == null) {
+          _viewWidth = (frame.highHz - frame.lowHz).toDouble();
+          _zoomedOverSpan = null;
+        }
         _moveTo(center, gesture: true);
+        if ((_viewWidth ?? _number(_spec.span)) case final width? when _coverGestureWindow) _fitSpan(width);
         _reframe();
     }
   }
@@ -413,6 +422,8 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
   /// move and the scene where it left the window.
   void _settle() {
     _settleTimer?.cancel();
+    final zoomStartedAtWidth = _zoomStartedAtWidth;
+    _zoomStartedAtWidth = null;
     if (_heard case (final gesture, final value)) {
       _heard = null;
       widget.onGesture?.call(gesture, 'commit', value);
@@ -420,9 +431,13 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
     }
     if (_viewCenter case final center?) _moveTo(center, last: true, gesture: true);
     final zoomed = _toReport.contains('zoom');
+    final panned = _toReport.contains('pan');
     // The scene told first: a driver throwing at the span would otherwise cost it where the zoom ended.
     _report();
-    if (_viewWidth case final width?) _fitSpan(width, last: true, narrow: zoomed);
+    final width = _viewWidth ?? (_coverGestureWindow && panned ? _number(_spec.span) : null);
+    if (width != null && (!_coverGestureWindow || zoomed || panned)) {
+      _fitSpan(width, last: true, narrow: zoomed, allowHardwareNarrowing: zoomed && zoomStartedAtWidth != null && width < zoomStartedAtWidth);
+    }
   }
 
   /// Tells the scene, as a `commit` naming the gesture, where a native zoom,
@@ -476,7 +491,8 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
   double _scopeWidest(SpectrumFrame sweep) {
     final uuid = _uuid;
     if (_sweepless) return (sweep.highHz - sweep.lowHz).toDouble();
-    return math.max((sweep.highHz - sweep.lowHz).toDouble(), (uuid == null ? null : widget.source?.maxWidthHz(uuid))?.toDouble() ?? 0);
+    final maxWidth = _hardwareMaxWidthHz ?? (uuid == null ? null : widget.source?.maxWidthHz(uuid));
+    return math.max((sweep.highHz - sweep.lowHz).toDouble(), maxWidth?.toDouble() ?? 0);
   }
 
   /// Whether a window [width] wide is past what the scope can be made to
@@ -510,6 +526,12 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
       _viewCenter = gesture || _recenters != true ? center.clamp(sweep.highHz - width / 2, sweep.lowHz + width / 2) : center;
       return;
     }
+    if (gesture && _coverGestureWindow) {
+      final middle = (sweep.lowHz + sweep.highHz) / 2;
+      final travel = (_scopeWidest(sweep) - width) / 2;
+      _viewCenter = center.clamp(middle - travel, middle + travel);
+      return;
+    }
     final half = math.min(width, sweepWidth) / 2;
     final (low, high) = (sweep.lowHz + half, sweep.highHz - half);
     if (center >= low && center <= high) {
@@ -533,22 +555,29 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
   /// zoom in would step the radio through every span on the way. Asked for
   /// the window where it sits, which a scope centred on the dial covers only
   /// with more than its width.
-  void _fitSpan(double width, {bool last = false, bool narrow = false}) {
+  void _fitSpan(double width, {bool last = false, bool narrow = false, bool allowHardwareNarrowing = false}) {
     final (sweep, uuid, source, now) = (_sweep, _uuid, widget.source, realNowMillis());
     if (sweep == null || uuid == null || source == null || _sweepless) return;
-    if (!narrow && width <= sweep.highHz - sweep.lowHz) return;
     if (!last && now - _lastFitMillis < 250) return;
     final (middle, swept) = ((sweep.lowHz + sweep.highHz) / 2, (sweep.highHz - sweep.lowHz).toDouble());
-    final center = _viewCenter ?? middle, covering = width + 2 * (center - middle).abs();
+    final center = _viewCenter ?? middle, offset = (center - middle).abs(), covering = width + 2 * offset;
+    if (source case final SceneSpectrumHardwareSpan hardware when _hardwareMaxWidthHz != null) {
+      if (_coverGestureWindow && hardware.fitHardwareSpan(uuid, this, width.ceil(), offCenterHz: offset.ceil(), allowNarrowing: allowHardwareNarrowing)) {
+        if (allowHardwareNarrowing && covering < swept) _sweepBeforeNarrowing ??= swept;
+        _lastFitMillis = now;
+      }
+      return;
+    }
+    if (!narrow && width <= swept) return;
     if (covering < swept && width / swept * sweep.levels.length >= _laidOut.width / _fitPixelsPerPoint) return;
     if (covering < swept) _sweepBeforeNarrowing ??= swept;
     if (source.fitSpan(uuid, width.round(), centerHz: center.round(), offCenterHz: (center - middle).abs().round())) _lastFitMillis = now;
   }
 
-  /// A double tap on the axis: the scene's width again, centred on the dial,
-  /// and the scene told so as a zoom to 0 — a scene keeping the operator's
-  /// width in its `span` puts its own back. A radio's scope this control's
-  /// zoom narrowed is widened back to what it swept before — left narrow, the
+  /// A double tap on the axis restores the scene's width and reports a zoom
+  /// to 0 so a scene keeping the operator's width in `span` puts its own back.
+  /// A radio's scope this control's zoom narrowed is widened back to what it
+  /// swept before — left narrow, the
   /// reset would only crop the narrowed sweep — and not fitted to the scene's
   /// `span`, which at this point may still be the zoom being undone.
   void _reset() {
@@ -556,16 +585,21 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
     if (widget.source?.nativeGestures ?? true) widget.onGesture?.call('zoom', 'commit', 0);
     _viewWidth = null;
     _viewCenter = null;
+    _coverGestureWindow = false;
+    _zoomStartedAtWidth = null;
     _pannedAtVfo = null;
     _showWidth();
+    final uuid = _uuid;
     if (_sweepBeforeNarrowing case final back?) {
       _sweepBeforeNarrowing = null;
-      _fitSpan(back, last: true, narrow: true);
+      if ((widget.source, uuid) case (final SceneSpectrumHardwareSpan hardware, final radio?) when _hardwareMaxWidthHz != null) {
+        hardware.fitHardwareSpan(radio, this, back.ceil(), offCenterHz: 0);
+      } else {
+        _fitSpan(back, last: true, narrow: true);
+      }
     }
-    // Within a scene's own window, its middle (or `centerHz`) again, rather than the dial's: the
-    // scene hears only the zoom, and its view is the one it gave.
-    final uuid = _uuid;
-    if (uuid != null && _home == null) {
+    // Within a scene's own window, its middle (or `centerHz`) again: the scene hears only the zoom.
+    if (uuid != null && _home == null && _hardwareMaxWidthHz == null) {
       if (_vfo case final vfo?) _moveTo(vfo, last: true);
     }
     _reframe();
@@ -815,7 +849,8 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
     if (does == SceneSpectrumScroll.tune) return _wheelBy(-higher);
     final frame = _frame;
     if (frame == null || _laidOut.width <= 0) return;
-    _pan((frame.lowHz + frame.highHz) / 2 + higher * (frame.highHz - frame.lowHz) / _laidOut.width);
+    final center = (_coverGestureWindow ? _viewCenter : null) ?? (frame.lowHz + frame.highHz) / 2;
+    _pan(center + higher * (frame.highHz - frame.lowHz) / _laidOut.width);
   }
 
   bool get _wheelTunes => _gestures.wheel && _tuneGoes;
@@ -874,6 +909,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
   void _glideTo(double hz, {bool jump = false, int? ms, Curve curve = Curves.easeOutCubic}) {
     final frame = _frame;
     if (frame == null) return;
+    _coverGestureWindow = false;
     final from = (frame.lowHz + frame.highHz) / 2;
     // A window that was the radio's sweep becomes the radio's again once the
     // sweeps reach where its scope was moved, so it goes on following the

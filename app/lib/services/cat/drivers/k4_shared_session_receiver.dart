@@ -128,7 +128,7 @@ class _K4ReceiverSession
   }
 
   @override
-  bool setSpectrum(SpectrumRequest request) => _usable && _presenter.set(request);
+  bool setSpectrum(SpectrumRequest request) => _usable && _presenter.set(request, writeHardwareSpan: (spanHz) => owner._send('#SPN${receiver.suffix}$spanHz;'));
 
   void _reportSpectrumProblem(String? message) {
     if (_spectrumProblem == message) return;

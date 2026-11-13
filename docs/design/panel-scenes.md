@@ -531,6 +531,11 @@ published panels name them; what API 17 added has the new names only.
   sample rate and retune; and the double click's reset widens back what
   that display's zoom narrowed, which would otherwise leave it cropping the
   narrowed sweep.
+- **The K4 controls the center of its shared sweep.** A pan
+  or zoom can ask for wider coverage, and the picture uses the frequencies
+  received so far while it waits. When a zoom in ends, a sole display can
+  ask for a narrower sweep that still covers its window, for finer bins.
+  See [K4 CAT](k4-cat.md#app-integration).
 - **A scene may zoom past the scope.** `minWidthHz`/`maxWidthHz` replace the
   radio's limits, so a band scope can show a whole band on a radio whose
   scope covers part of it. Past what the scope can be made to show, the

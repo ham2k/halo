@@ -22,17 +22,18 @@ import 'package:ham2k_logger/views/operation/panel_scene/scene_spectrum.dart';
 import 'package:ham2k_logger/views/operation/panel_scene/scene_view.dart';
 import '../support/fake_clock.dart';
 
-class _Radio extends ChangeNotifier implements SceneSpectrumSource {
-  _Radio({this.nativeGestures = true, this.commands = true, this.recenters = false, this.maxWidth, this.minWidth});
+class _Radio extends ChangeNotifier implements SceneSpectrumSource, SceneSpectrumHardwareSpan {
+  _Radio({this.nativeGestures = true, this.commands = true, this.recenters = false, this.maxWidth, this.minWidth, this.hardwareMaxWidth});
 
   @override
   final bool nativeGestures;
   final bool commands, recenters;
-  final int? maxWidth, minWidth;
+  final int? maxWidth, minWidth, hardwareMaxWidth;
   double vfo = 14050000;
   final tunes = <(double, bool)>[];
   final recentered = <int>[];
   final fitted = <int>[];
+  final hardwareFits = <({int width, bool allowNarrowing})>[];
   final widths = <int?>[];
   final controller = StreamController<SpectrumFrame>.broadcast();
 
@@ -80,6 +81,8 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   int? maxWidthHz(String uuid) => maxWidth;
   @override
+  int? hardwareMaxWidthHz(String uuid) => hardwareMaxWidth;
+  @override
   int? minWidthHz(String uuid) => minWidth;
   @override
   bool canTune(String uuid) => commands;
@@ -98,6 +101,14 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   /// What a scope centred where it sweeps must cover to show the window.
   bool fitSpan(String uuid, int widthHz, {int? centerHz, int offCenterHz = 0}) {
     if (commands) fitted.add(widthHz + 2 * offCenterHz);
+    return commands;
+  }
+
+  @override
+  bool fitHardwareSpan(String uuid, Object owner, int widthHz, {required int offCenterHz, bool allowNarrowing = false}) {
+    final width = widthHz + 2 * offCenterHz;
+    hardwareFits.add((width: width, allowNarrowing: allowNarrowing));
+    if (commands) fitted.add(width);
     return commands;
   }
 }
@@ -609,6 +620,107 @@ void main() {
     expect(narrow.widths.last, 100000, reason: 'a scope the panel cannot widen bounds the zoom at the sweep');
     expect(narrow.fitted, isEmpty);
     await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('a hardware span zoom waits for received coverage, and reset shows the whole new sweep', (tester) async {
+    final radio = _Radio(hardwareMaxWidth: 200000);
+    await _show(tester, radio);
+    expect(radio.fitted, isEmpty);
+
+    await _zoomTo(tester, 180000);
+    expect(radio.fitted.last, closeTo(180000, 1));
+    expect((_shownFrame(tester).lowHz, _shownFrame(tester).highHz), (14000000, 14100000));
+
+    radio.controller.add(_sweep(lowHz: 13950000, width: 200000));
+    await tester.pump();
+    expect(_shownFrame(tester).lowHz, closeTo(13960000, 1));
+    expect(_shownFrame(tester).highHz, closeTo(14140000, 1));
+    final writes = radio.fitted.length;
+
+    await tester.tapAt(_onAxis(tester, .9));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tapAt(_onAxis(tester, .9));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect((_shownFrame(tester).lowHz, _shownFrame(tester).highHz), (13950000, 14150000));
+    expect(radio.fitted, hasLength(writes));
+    expect(radio.recentered, isEmpty);
+  });
+
+  testWidgets('off-centre panning requests wider hardware coverage without widening the view', (tester) async {
+    final radio = _Radio(hardwareMaxWidth: 200000);
+    await _show(tester, radio);
+    await tester.dragFrom(_onPan(tester, .8), const Offset(-1000, 0));
+    await tester.pump();
+    expect(radio.fitted.last, 200000, reason: 'the viewport stops where the widest sweep can still cover both of its edges');
+    expect((_shownFrame(tester).lowHz, _shownFrame(tester).highHz), (14000000, 14100000));
+
+    radio.controller.add(_sweep(lowHz: 13950000, width: 200000));
+    await tester.pump();
+    expect((_shownFrame(tester).lowHz, _shownFrame(tester).highHz), (14050000, 14150000));
+    expect(radio.recentered, isEmpty);
+  });
+
+  testWidgets('hardware narrowing waits for a zoom in to end, and reset asks for the prior sweep', (tester) async {
+    final radio = _Radio(hardwareMaxWidth: 200000);
+    await _show(tester, radio);
+    final drag = await tester.startGesture(_onAxis(tester, .75));
+    await drag.moveBy(const Offset(150, 0));
+    await tester.pump();
+
+    expect(radio.hardwareFits, isNotEmpty);
+    expect(radio.hardwareFits.every((fit) => !fit.allowNarrowing), isTrue, reason: 'the K4 would change its shared span repeatedly during the zoom');
+    await drag.up();
+    await tester.pump();
+    expect(radio.hardwareFits.last, (width: 40000, allowNarrowing: true));
+    expect((_shownFrame(tester).lowHz, _shownFrame(tester).highHz), (14030000, 14070000));
+
+    radio.controller.add(_sweep(lowHz: 14026000, width: 48000));
+    await tester.pump();
+    expect((_shownFrame(tester).lowHz, _shownFrame(tester).highHz), (14030000, 14070000));
+
+    await tester.tapAt(_onAxis(tester, .9));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tapAt(_onAxis(tester, .9));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(radio.hardwareFits.last, (width: 100000, allowNarrowing: false));
+
+    radio.controller.add(_sweep());
+    await tester.pump();
+    expect((_shownFrame(tester).lowHz, _shownFrame(tester).highHz), (14000000, 14100000));
+  });
+
+  testWidgets('zooming out asks for coverage even if the current sweep still covers the view', (tester) async {
+    final radio = _Radio(hardwareMaxWidth: 200000);
+    await _show(tester, radio, spectrum: const {'span': 40000});
+    await tester.dragFrom(_onAxis(tester, .75), const Offset(-45, 0));
+    await tester.pump();
+
+    expect(radio.hardwareFits.last.width, closeTo(72728, 2), reason: 'a wider view must be able to supersede a pending narrower span');
+    expect(radio.hardwareFits.every((fit) => !fit.allowNarrowing), isTrue, reason: 'zooming out cannot narrow the shared span');
+  });
+
+  testWidgets('a spot tune takes over from a pending hardware widening', (tester) async {
+    final radio = _Radio(hardwareMaxWidth: 200000);
+    await _show(tester, radio, spectrum: const {'follow': .15, 'span': 20000});
+    await tester.dragFrom(_onPan(tester, .8), const Offset(-1000, 0));
+    await tester.pump();
+    expect(radio.fitted.last, closeTo(120000, 1));
+    expect(_shownFrame(tester).highHz, 14100000);
+    final writes = radio.fitted.length;
+
+    radio.vfo = 13998000;
+    radio.notifyListeners();
+    await tester.pump(const Duration(milliseconds: 210));
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(_shownFrame(tester).lowHz, 13995000, reason: 'the spot can remain visible before the sweep covers it');
+    expect(_drawnVfo(tester), 13998000);
+    expect(radio.fitted, hasLength(writes));
+
+    radio.controller.add(_sweep(lowHz: 13997000));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 350));
+    expect((_shownFrame(tester).lowHz, _shownFrame(tester).highHz), (13997000, 14017000));
+    expect(radio.fitted, hasLength(writes));
   });
 
   testWidgets('a zoom in narrows the radio\'s own scope once it ends, to cover the window where it sits', (tester) async {
@@ -1856,8 +1968,8 @@ void main() {
 
   testWidgets('in a scene\'s own window, a double tap on the axis after a zoom and a pan puts back its middle or centerHz, not the dial', (tester) async {
     // The sweep, 14.000–14.100 MHz, inside the window, 14.000–14.200 shown 100 kHz at a time; the dial well below its middle.
-    Future<double> reset(Map<String, dynamic> spectrum) async {
-      final radio = _Radio()..vfo = 14030000;
+    Future<double> reset(Map<String, dynamic> spectrum, {int? hardwareMaxWidth}) async {
+      final radio = _Radio(hardwareMaxWidth: hardwareMaxWidth)..vfo = 14030000;
       await _show(
         tester,
         radio,
@@ -1878,11 +1990,13 @@ void main() {
       await tester.tapAt(_onAxis(tester, .3));
       await tester.pump(const Duration(milliseconds: 400));
       expect(radio.tunes, isEmpty);
+      expect(radio.hardwareFits, isEmpty, reason: 'the scene can pan over its own frequencies without moving the radio scope');
       return _shownMiddle(tester);
     }
 
     expect(await reset(const {}), closeTo(14100000, 1));
     expect(await reset(const {'centerHz': 14060000}), closeTo(14060000, 1));
+    expect(await reset(const {'centerHz': 14060000}, hardwareMaxWidth: 200000), closeTo(14060000, 1));
     await tester.pump(const Duration(seconds: 1));
   });
 

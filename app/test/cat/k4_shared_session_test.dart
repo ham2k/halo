@@ -306,6 +306,28 @@ void main() {
     });
   });
 
+  test('secure hardware span fitting uses the CAT command for each receiver', () {
+    final f = _Fixture()
+      ..start()
+      ..ready();
+    addTearDown(f.close);
+    final main = f.main as SpectrumSession, sub = f.sub as SpectrumSession;
+    main.startSpectrum();
+    sub.startSpectrum();
+    f.pan.add(_packet(0, 14045000));
+    f.pan.add(_packet(1, 7045000));
+    f.sent.clear();
+
+    expect(main.setSpectrum(const SpectrumRequest(hardwareWidthHz: 50000)), isTrue);
+    expect(sub.setSpectrum(const SpectrumRequest(hardwareWidthHz: 100000)), isTrue);
+    expect(f.sent, ['#SPN40000;', r'#SPN$100000;']);
+    expect(f.mainSink.settings.last.spanHz, 24000);
+    expect(f.subSink.settings.last.spanHz, 24000);
+    sub.stopSpectrum();
+    expect(sub.setSpectrum(const SpectrumRequest(hardwareWidthHz: 200000)), isFalse);
+    expect(f.sent, hasLength(2));
+  });
+
   test('global TX state is shared but a sibling cannot release another facade PTT', () {
     final f = _Fixture()
       ..start()

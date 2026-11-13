@@ -27,7 +27,7 @@ class K4SpectrumSession extends KenwoodSession implements SpectrumSession {
   @override
   void stopSpectrum() => _spectrum.stop();
   @override
-  bool setSpectrum(SpectrumRequest request) => _spectrum.set(request);
+  bool setSpectrum(SpectrumRequest request) => _spectrum.set(request, writeHardwareSpan: (spanHz) => _send('#SPN$spanHz;'));
 
   // Scope demand belongs to CatService; stopping CAT updates must not stop
   // a spectrum that the service still considers active.

@@ -32,6 +32,8 @@ extension _SpectrumWindow on _SceneSpectrumViewState {
         _sweepless = false;
         _sweep = _frame = null;
         _viewWidth = _viewCenter = _pannedAtVfo = _recenters = null;
+        _coverGestureWindow = false;
+        _zoomStartedAtWidth = null;
       }
       return;
     }
@@ -40,6 +42,8 @@ extension _SpectrumWindow on _SceneSpectrumViewState {
     if (_sweepless && _sweep?.lowHz == low && _sweep?.highHz == high) return;
     _sweepless = true;
     _viewWidth = _viewCenter = _pannedAtVfo = null;
+    _coverGestureWindow = false;
+    _zoomStartedAtWidth = null;
     _recenters = false;
     _sweep = SpectrumFrame(lowHz: low, highHz: high, levels: Float32List(0), floorDb: 0, ceilingDb: 80, atMillis: nowMillis());
     _frame = _window(_sweep!);
@@ -56,15 +60,19 @@ extension _SpectrumWindow on _SceneSpectrumViewState {
   /// pace rather than waiting on the radio's.
   SpectrumFrame _window(SpectrumFrame sweep) {
     final span = _number(_spec.span);
-    if (_viewWidth != null && span != _zoomedOverSpan) _viewWidth = null;
+    if (_viewWidth case final width? when span != _zoomedOverSpan) {
+      if (span != width.round()) _coverGestureWindow = false;
+      _viewWidth = null;
+    }
+    final width = _viewWidth ?? span;
     // Over a sweep, a scene's own window is where it stays: unpanned, its middle; panned, within it,
     // whatever of it the sweep covers.
     if (_home case final home?) {
-      final width = math.min(_viewWidth ?? span ?? (sweep.highHz - sweep.lowHz).toDouble(), _spec.maxWidthHz ?? double.infinity);
-      final center = _homeCenter(_viewCenter ?? _spec.centerHz ?? (home.$1 + home.$2) / 2, width);
+      final homeWidth = math.min(width ?? (sweep.highHz - sweep.lowHz).toDouble(), _spec.maxWidthHz ?? double.infinity);
+      final center = _homeCenter(_viewCenter ?? _spec.centerHz ?? (home.$1 + home.$2) / 2, homeWidth);
       return SpectrumFrame(
-        lowHz: (center - width / 2).round(),
-        highHz: (center + width / 2).round(),
+        lowHz: (center - homeWidth / 2).round(),
+        highHz: (center + homeWidth / 2).round(),
         levels: Float32List(0),
         floorDb: sweep.floorDb,
         ceilingDb: sweep.ceilingDb,
@@ -74,10 +82,11 @@ extension _SpectrumWindow on _SceneSpectrumViewState {
     }
     final (low, high) = spectrumWindow(
       sweep,
-      _viewWidth ?? span,
+      width,
       centerHz: _viewCenter ?? _spec.centerHz,
       held: _recenters != true,
       widestHz: _spec.maxWidthHz,
+      covered: _coverGestureWindow && !_pastScope(width ?? (sweep.highHz - sweep.lowHz).toDouble()),
     );
     return SpectrumFrame(
       lowHz: low.round(),
