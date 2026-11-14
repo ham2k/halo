@@ -119,6 +119,24 @@ test("refLabels falls back per ref, and skips refs with nothing to show", () => 
   assert.equal(renderTemplate("[{{ missing | refLabels | sentence }}]", {}), "[]")
 })
 
+// A QSL message that names the park needs `label` or `name` first, and the
+// fallback still has to hold: an unresolved ref's `name` is "Unknown
+// reference", a contest's is its exchange even when it carries a code (Field
+// Day's is the year), and an activity's can be a status line. Trusting `name`
+// whenever it is present would print any of them on a card.
+test("refLabels: long and name put the reference's name first, and fall back like the default", () => {
+  const refs = [
+    { type: "pota", ref: "US-1234", name: "Some Park", shortLabel: "POTA US-1234", label: "POTA US-1234: Some Park" },
+    { type: "fd", ref: "2026", program: "Contest", name: "3A ENY", label: "Field Day 2026", shortLabel: "FD 2026" },
+    { type: "hrwbota", ref: "K2A", name: "Sending as K2A", label: "HRWBOTA Host", shortLabel: "HRWBOTA" },
+    { type: "wwff", ref: "KFF-9999", name: "Unknown reference" },
+    { type: "cqwpx", ourSerial: 12 },
+  ]
+  assert.equal(renderTemplate("{{ refs | refLabels: 'long' | sentence }}", { refs }), "POTA US-1234: Some Park, Field Day 2026, HRWBOTA Host & KFF-9999")
+  assert.equal(renderTemplate("{{ refs | refLabels: 'name' | sentence }}", { refs }), "Some Park, FD 2026, HRWBOTA & KFF-9999")
+  assert.equal(renderTemplate("{{ refs | refLabels: 'lng' | sentence }}", { refs }), "POTA US-1234, FD 2026, HRWBOTA & KFF-9999")
+})
+
 // app-polo's `{{#join refs separator=", " final=" & "}}`. The two-item case
 // is the one a plain `join` plus a suffix gets wrong, and the blank item is
 // what would otherwise leave a title ending in " & ".

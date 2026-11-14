@@ -112,11 +112,25 @@ function registerFilters(liquid: Liquid): void {
   // A ref with none of the three is skipped rather than rendered blank. That
   // is NOT a filter on contests: a contest's `decorateRef` labels its ref
   // ("CQ WPX CW"), so on `op.refs` it is listed with the rest.
-  liquid.registerFilter("refLabels", (value: unknown) =>
+  //
+  // `refLabels: "long"` puts `label` first ("POTA US-1234: Some Park"), and
+  // `refLabels: "name"` the reference's `name` ("Some Park"). `name` is
+  // trusted only where the label was built from it, `<shortLabel>: <name>`,
+  // as a place's decoration is: an unresolved ref keeps "Unknown reference"
+  // there with no label, a contest its exchange ("3A ENY") beside the event's
+  // label, and an activity may hold a status line — none of which names
+  // anything on a QSL card. Any other argument is the default, so a template
+  // written for this filter never fails over a typo.
+  liquid.registerFilter("refLabels", (value: unknown, form: unknown) =>
     (Array.isArray(value) ? value : []).flatMap((ref) => {
-      const label = [ref?.shortLabel, ref?.label, ref?.ref]
-        .map((text) => (typeof text === "string" || typeof text === "number" ? String(text).trim() : ""))
-        .find((text) => text !== "")
+      const named = typeof ref?.name === "string" && ref.name.trim() !== "" && ref?.label === `${ref?.shortLabel}: ${ref.name}`
+      const fields =
+        form === "long"
+          ? [ref?.label, ref?.shortLabel, ref?.ref]
+          : form === "name"
+            ? [named ? ref.name : undefined, ref?.shortLabel, ref?.label, ref?.ref]
+            : [ref?.shortLabel, ref?.label, ref?.ref]
+      const label = fields.map((text) => (typeof text === "string" || typeof text === "number" ? String(text).trim() : "")).find((text) => text !== "")
       return label === undefined ? [] : [label]
     }),
   )

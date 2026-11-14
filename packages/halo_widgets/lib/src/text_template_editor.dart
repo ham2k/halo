@@ -286,6 +286,7 @@ class _TextTemplateEditorState extends State<_TextTemplateEditor> {
                         '{{ log.ref | default: "log" }}',
                         '{{ op.refs | map: "ref" | compact | join: ", " }}',
                         '{{ op.refs | refLabels | sentence }}',
+                        '{{ op.refs | refLabels: "long" | sentence }}',
                         '{{ op.title | strip | replace: " ", "-" }}',
                       ], readOnly: true),
                       _examples(labels.flowControl, [

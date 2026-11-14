@@ -155,7 +155,7 @@ All of Liquid's own (`date`, `downcase`, `upcase`, `strip`, `default`,
 | `alnum` | strip to alphanumerics | `2026-07-27` → `20260727` |
 | `pad: n` | zero-pad on the left to `n` characters (default 3); **blank stays blank** | `7` → `007` |
 | `cut: "digits"` | CW cut numbers for the listed digits, from `0`→`T` `1`→`A` `5`→`E` `9`→`N`; default `"09"` | `599` → `5NN`; `{{ 9 \| pad: 3 \| cut }}` → `TTN` |
-| `refLabels` | a list of refs to each one's `shortLabel`, else `label`, else `ref`; a ref with none is skipped | `op.refs` → `POTA US-1234`, `KFF-9999` |
+| `refLabels: "form"` | a list of refs to each one's `shortLabel`, else `label`, else `ref`; a ref with none is skipped. `"long"` puts `label` first, `"name"` the reference's name (extension API 25) | `op.refs` → `POTA US-1234`, `KFF-9999`; with `"long"`, `POTA US-1234: Some Park`; with `"name"`, `Some Park` |
 | `sentence: "sep", "final"` | joins a list with a different last separator (defaults `", "` and `" & "`); blanks dropped | `A, B & C`, `A & B` |
 
 `pad` leaves a blank alone because a CW message can be keyed before the
@@ -163,6 +163,14 @@ serial field has a number, and `000` sent in that gap is a serial the log
 will never agree with. Pad before you cut, or the zeros go out uncut.
 `dash` keeps case because callsigns and references stop being legible
 flattened; `{{ x | downcase | dash }}` is the slug form for free text.
+`refLabels: "name"` uses a reference's name only where its `label` reads
+`<shortLabel>: <name>`, as a resolved place's does; anything else falls
+back as the default form does, so a reference that resolved to nothing
+keeps its code and a contest its short label rather than its exchange. Any
+other form is the default. One gap: a code picked from the search while
+missing from the program's list is stored with the search's placeholder as
+its label, "POTA US-99999: Unknown reference", until the reference is
+edited, and `"long"` and `"name"` show it as stored.
 
 ### Fallbacks
 
