@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // An operation handed to an extension marks the refs a contest extension
-// owns, however it is handed: an assistant's, a panel's, a template's, or
-// read back with `getOperation`. A ref's type alone (`cqww`, `potaActivation`) says nothing
+// owns, however it is handed: in any hook's args, or read back with
+// `getOperation` and `listOperations`. A ref's type alone (`cqww`, `potaActivation`) says nothing
 // of what it is, so without the mark an extension offering what suits a
 // contest only (Super Check Partial's suggestions) cannot tell a contest
 // from a park.
@@ -73,6 +73,114 @@ void main() {
     expect(many.first, {'type': 'cqww', 'contest': true});
   });
 
+  // A hook that marks its own args, rather than going through the host's one
+  // filter, hands every other hook the operation unmarked: a command, here.
+  test('any hook handed the operation sees them marked, a command among them', () async {
+    Object? args;
+    final extensions = _Installed(
+      FakeExtensionHost({
+        'command:*:interpret': (Object? a) {
+          args = a;
+          return const <Map<String, dynamic>>[];
+        },
+      }),
+    )..debugLoadedExtensionKeys = {'ham2k-cqww', 'ham2k-pota'};
+    await extensions.interpretCommand('CQ', operation);
+    expect((((args as Map)['operation'] as Map)['refs'] as List).first, {'type': 'cqww', 'contest': true});
+  });
+
+  // A scorer or an export of a segmented log reads each contact against its
+  // own segment's operation, and a rove's later segment may be the contest.
+  test("each segment's operation has them marked too", () async {
+    final extensions = _Installed(FakeExtensionHost())..debugLoadedExtensionKeys = {'ham2k-cqww', 'ham2k-pota'};
+    final args =
+        extensions.markOperationArgs({
+              'segments': [
+                {
+                  'fromMillis': 1,
+                  'operation': {
+                    'refs': [
+                      {'type': 'potaActivation', 'ref': 'US-0001'},
+                    ],
+                  },
+                },
+                {'fromMillis': 2, 'operation': operation},
+              ],
+            })
+            as Map;
+    final segments = args['segments'] as List;
+    expect(((segments[0] as Map)['operation'] as Map)['refs'], [
+      {'type': 'potaActivation', 'ref': 'US-0001'},
+    ]);
+    expect((((segments[1] as Map)['operation'] as Map)['refs'] as List).first, {'type': 'cqww', 'contest': true});
+  });
+
+  // Every hook call passes through the filter, a batch of lookups hundreds of
+  // times over: one marking nothing must hand the call its own args, not a copy.
+  test('args with nothing to mark come back as themselves', () {
+    final extensions = _Installed(FakeExtensionHost())..debugLoadedExtensionKeys = {'ham2k-pota'};
+    final args = <String, dynamic>{
+      'operation': operation,
+      'segments': [
+        {'fromMillis': 1, 'operation': operation},
+      ],
+    };
+    expect(identical(extensions.markOperationArgs(args), args), isTrue);
+  });
+
+  // Which types are a contest's is remembered between calls; an extension
+  // started since must not be answered from what was running before.
+  test('a contest extension started since is marked from then on', () {
+    final extensions = _Installed(FakeExtensionHost())..debugLoadedExtensionKeys = {'ham2k-cqww', 'ham2k-pota'};
+    List<Object?> refs() => ((extensions.markOperationArgs({'operation': operation}) as Map)['operation'] as Map)['refs'] as List;
+    expect(refs().last, {'type': 'naqp'});
+    extensions.debugLoadedExtensionKeys = {'ham2k-cqww', 'ham2k-pota', 'ham2k-naqp'};
+    expect(refs().last, {'type': 'naqp', 'contest': true});
+  });
+
+  // A record can keep a mark from before its contest extension stopped; read
+  // as it stands, it would call a contest what nothing running says is one.
+  test('a mark nothing running stands behind is taken away', () {
+    final extensions = _Installed(FakeExtensionHost())..debugLoadedExtensionKeys = {'ham2k-pota'};
+    final args =
+        extensions.markOperationArgs({
+              'operation': {
+                'refs': [
+                  {'type': 'naqp', 'contest': true},
+                  {'type': 'potaActivation', 'ref': 'US-0001'},
+                ],
+              },
+            })
+            as Map;
+    expect((args['operation'] as Map)['refs'], [
+      {'type': 'naqp'},
+      {'type': 'potaActivation', 'ref': 'US-0001'},
+    ]);
+  });
+
+  // An untyped map is cast to be read, and the cast is a new object: handed
+  // on, it would make every call with one a copy.
+  test('an untyped operation with nothing to mark comes back as itself', () {
+    final extensions = _Installed(FakeExtensionHost())..debugLoadedExtensionKeys = {'ham2k-pota'};
+    final args = <String, dynamic>{'operation': Map<dynamic, dynamic>.of(operation)};
+    expect(identical(extensions.markOperationArgs(args), args), isTrue);
+  });
+
+  // Every hook call passes through the filter: one that throws would cost
+  // the call, a whole batch of them with it.
+  test('an operation that cannot be marked is handed over as it was', () {
+    final extensions = _Installed(FakeExtensionHost())..debugLoadedExtensionKeys = {'ham2k-cqww'};
+    final args = <String, dynamic>{
+      'operation': <dynamic, dynamic>{
+        1: 'not a field name',
+        'refs': [
+          {'type': 'cqww'},
+        ],
+      },
+    };
+    expect(identical(extensions.markOperationArgs(args), args), isTrue);
+  });
+
   // An extension reading the operation back must not find a park where it was
   // just handed a contest.
   test('an operation read back with getOperation has them marked too', () async {
@@ -85,6 +193,22 @@ void main() {
       ..operations = operations;
     final read = await extensions.debugHandleHostCall('getOperation', {'uuid': created.uuid}) as Map;
     expect(read['refs'], [
+      {'type': 'cqww', 'contest': true},
+      {'type': 'potaActivation', 'ref': 'US-0001'},
+      {'type': 'naqp'},
+    ]);
+  });
+
+  test('the operations listOperations answers have them marked too', () async {
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final operations = OperationsRepository(db);
+    await operations.createFromData({'stationCall': 'N0DEV', 'refs': operation['refs']});
+    final extensions = _Installed(FakeExtensionHost())
+      ..debugLoadedExtensionKeys = {'ham2k-cqww', 'ham2k-pota'}
+      ..operations = operations;
+    final listed = await extensions.debugHandleHostCall('listOperations', {}) as List;
+    expect((listed.single as Map)['refs'], [
       {'type': 'cqww', 'contest': true},
       {'type': 'potaActivation', 'ref': 'US-0001'},
       {'type': 'naqp'},

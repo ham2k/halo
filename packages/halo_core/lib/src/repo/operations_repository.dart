@@ -138,7 +138,10 @@ class OperationsRepository {
   ///
   /// [data]'s own `createdAtMillis` is kept: an imported operation was
   /// created when its original was, not when it arrived here.
-  Future<Operation> createFromData(Map<String, dynamic> data) async {
+  Future<Operation> createFromData(Map<String, dynamic> marked) async {
+    // Unmarked here, not only where the row is encoded: the operation handed
+    // back must be the one stored.
+    final data = withoutContestMarks(marked);
     final operation = Operation(
       uuid: uuidGenerator.v4(),
       data: {
@@ -233,7 +236,9 @@ class OperationsRepository {
   /// would otherwise be written back over with the state the copy was read in.
   Future<void> saveData(Operation operation, {bool followRefs = true, bool lifecycleOnly = false}) async {
     final now = realNowMillis();
-    final data = {...operation.data, 'updatedAtMillis': now};
+    // Unmarked before anything reads it, not only where the row is encoded:
+    // the segments restamped from it after the write would store the mark.
+    final data = withoutContestMarks({...operation.data, 'updatedAtMillis': now});
     // Read before anything is written, and judged on the STORED row: an edit
     // that adds /TEST to a real operation must not be the thing that lets
     // itself through. One transaction with the write: a status set between

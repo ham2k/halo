@@ -296,7 +296,7 @@ class _ExtensionHostCalls {
         : await operations.watchAll().first;
     return [
       for (final operation in list.take(limit))
-        {
+        _service.markContestRefs({
           'uuid': operation.uuid,
           'stationCall': operation.stationCall,
           'title': operation.userTitle.isNotEmpty ? operation.userTitle : operation.title,
@@ -307,7 +307,7 @@ class _ExtensionHostCalls {
           'startAtMillisMax': operation.startAtMillisMax,
           'open': open.contains(operation.uuid),
           'front': operation.uuid == front,
-        },
+        }),
     ];
   }
 

@@ -94,6 +94,14 @@ class ExtensionHost {
   final int loadMillis;
   final HostCallHandler? onHostCall;
 
+  /// Applied to every hook call's `args` before it crosses — [invokeHook],
+  /// [invokeHookAll] and each call of [invokeHookBatch] — so what the app
+  /// adds to whatever an extension is handed is added in one place, for
+  /// every hook. Returns new args rather than changing them in place.
+  Object? Function(Object? args)? argsFilter;
+
+  Object? _filtered(Object? args) => argsFilter == null ? args : argsFilter!(args);
+
   /// Caps `samples`' growth over a long session (an all-day operation makes
   /// many debounced lookup/control calls) — this is diagnostic data for the
   /// spike screen, not something worth unbounded memory for.
@@ -450,7 +458,7 @@ class ExtensionHost {
       // path deep-copies at `send`, and the in-process path runs the core's
       // encode synchronously inside `_dispatch`. Neither may become lazy
       // without giving callers a snapshot of their own.
-      'args': args ?? const <String, Object?>{},
+      'args': _filtered(args) ?? const <String, Object?>{},
     }, timeout);
   }
 
@@ -493,7 +501,7 @@ class ExtensionHost {
           'category': category,
           'method': method,
           // Encoded by the core — see invokeHook.
-          'args': args ?? const <String, Object?>{},
+          'args': _filtered(args) ?? const <String, Object?>{},
           // Narration is not free — it puts every hook's result on the bridge a
           // second time — so it is requested only by a caller that will keep it.
           'wantsPartials': partialOnTimeout,
@@ -548,7 +556,8 @@ class ExtensionHost {
         {
           'calls': [
             // Encoded by the core — see invokeHook.
-            for (final call in calls) {'category': call.category, 'key': call.key, 'method': call.method, 'args': call.args ?? const <String, Object?>{}},
+            for (final call in calls)
+              {'category': call.category, 'key': call.key, 'method': call.method, 'args': _filtered(call.args) ?? const <String, Object?>{}},
           ],
           'wantsPartials': narrated,
         },

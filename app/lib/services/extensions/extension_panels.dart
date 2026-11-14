@@ -20,7 +20,6 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource, PanelC
   FlutterSecureStorage get _secureStorage;
   Future<Map<String, String>?> getAccountCredentials(String kvKey);
   List<ExtensionInfo> get availableExtensions;
-  Map<String, dynamic> withContestRefs(Map<String, dynamic> args);
 
   /// Every panel across every extension's `settingsPanel` registration, one
   /// entry per PANEL (not per registration — a Tier 2 hook's `getPanels()`
@@ -132,12 +131,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource, PanelC
     final host = this.host;
     if (host == null) return null;
     try {
-      final result = await host.invoke(
-        Hooks.panelRender,
-        key: hookKey,
-        args: {...withContestRefs(args), 'panelKey': panelKey},
-        timeout: const Duration(seconds: 5),
-      );
+      final result = await host.invoke(Hooks.panelRender, key: hookKey, args: {...args, 'panelKey': panelKey}, timeout: const Duration(seconds: 5));
       if (result is! Map) return null;
       return result.cast<String, dynamic>();
     } catch (e) {
@@ -150,12 +144,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource, PanelC
   Future<Map<String, dynamic>?> panelEvent({required String hookKey, required String panelKey, required Map<String, dynamic> args}) async {
     final host = this.host;
     if (host == null) throw StateError('Extension runtime unavailable');
-    final result = await host.invoke(
-      Hooks.panelOnEvent,
-      key: hookKey,
-      args: {...withContestRefs(args), 'panelKey': panelKey},
-      timeout: const Duration(seconds: 5),
-    );
+    final result = await host.invoke(Hooks.panelOnEvent, key: hookKey, args: {...args, 'panelKey': panelKey}, timeout: const Duration(seconds: 5));
     return result is Map ? result.cast<String, dynamic>() : null;
   }
 

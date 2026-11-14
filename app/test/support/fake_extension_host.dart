@@ -60,11 +60,19 @@ class FakeExtensionHost implements ExtensionHost {
     dead = true;
   }
 
+  /// Applied to every call's args as the real host applies it — a batch's
+  /// through [invokeHook]. [ExtensionServiceWithFakeHost] sets the one the
+  /// service sets on the host it starts.
+  @override
+  Object? Function(Object? args)? argsFilter;
+
+  Object? _filtered(Object? args) => argsFilter == null ? args : argsFilter!(args);
+
   @override
   Future<dynamic> invokeHook(String category, {String? key, required String method, Object? args, Duration timeout = const Duration(seconds: 10)}) async {
     final res = stubs['$category:$key:$method'];
     if (res is Exception) throw res;
-    if (res is Function) return res(args);
+    if (res is Function) return res(_filtered(args));
     return res;
   }
 
@@ -78,7 +86,7 @@ class FakeExtensionHost implements ExtensionHost {
   }) async {
     var res = stubs['$category:*:$method'];
     if (res is Exception) throw res;
-    if (res is Function) res = res(args);
+    if (res is Function) res = res(_filtered(args));
     if (res == null) return const [];
     final entries = (res as List).cast<Map<String, dynamic>>();
     if (category != HookCategories.dataFile || method != 'getDefinition') return entries;
@@ -155,7 +163,10 @@ class ExtensionServiceWithFakeHost extends ExtensionService {
   /// host passes that instead.
   final ExtensionHost fakeHost;
 
-  ExtensionServiceWithFakeHost([ExtensionHost? host]) : fakeHost = host ?? FakeExtensionHost();
+  ExtensionServiceWithFakeHost([ExtensionHost? host]) : fakeHost = host ?? FakeExtensionHost() {
+    // What the service sets on the host it starts.
+    if (fakeHost case final FakeExtensionHost fake) fake.argsFilter = markOperationArgs;
+  }
 
   @override
   ExtensionHost? get host => fakeHost;

@@ -34,11 +34,45 @@ import '../models/qson_values.dart';
 /// rolls back the whole `mergeFromSync` round, and the server serves the
 /// identical record again next round, forever.
 @internal
-String encodeQsoData(Map<String, dynamic> data, String context) => jsonEncode(_normalizedReporting(data, normalizeQsoQson, context));
+String encodeQsoData(Map<String, dynamic> data, String context) => jsonEncode(_normalizedReporting(withoutContestMarks(data), normalizeQsoQson, context));
 
 /// [encodeQsoData] for an operation.
 @internal
-String encodeOperationData(Map<String, dynamic> data, String context) => jsonEncode(_normalizedReporting(data, normalizeOperationQson, context));
+String encodeOperationData(Map<String, dynamic> data, String context) =>
+    jsonEncode(_normalizedReporting(withoutContestMarks(data), normalizeOperationQson, context));
+
+/// [data] with no ref marked `contest: true` — its own `refs`, and a
+/// segment's in `event.operation.refs`, where a start or break row keeps the
+/// operation it changes to. The app marks a contest's refs on every record it
+/// hands an extension, from the extensions running at that moment
+/// (`Ref.contest`, extensions/sdk/src/types.ts); a record an extension hands
+/// back carries the mark with it, and stored it would be synced to devices
+/// running other extensions and read there as the record's own. [data]
+/// itself when no ref is marked.
+@internal
+Map<String, dynamic> withoutContestMarks(Map<String, dynamic> data) {
+  final refs = _unmarkedRefs(data['refs']);
+  final event = data['event'];
+  final override = event is Map ? event['operation'] : null;
+  final overrideRefs = override is Map ? _unmarkedRefs(override['refs']) : null;
+  if (refs == null && overrideRefs == null) return data;
+  return {
+    ...data,
+    'refs': ?refs,
+    if (overrideRefs != null)
+      'event': {
+        ...(event as Map),
+        'operation': {...(override as Map), 'refs': overrideRefs},
+      },
+  };
+}
+
+/// [refs] without the mark, or null when none carries it.
+List<Object?>? _unmarkedRefs(Object? refs) {
+  bool marked(Object? ref) => ref is Map && ref['contest'] == true;
+  if (refs is! List || !refs.any(marked)) return null;
+  return [for (final ref in refs) marked(ref) ? (Map.of(ref as Map)..remove('contest')) : ref];
+}
 
 Map<String, dynamic> _normalizedReporting(
   Map<String, dynamic> data,

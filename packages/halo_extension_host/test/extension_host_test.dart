@@ -1412,6 +1412,22 @@ __halo.defineExtension({
       expect((updates.single['interpretation'] as Map)['confirm'], 'Solar flux: 120');
     }),
   );
+
+  // The app marks what every hook is handed through this one filter; a call
+  // path that skips it hands that hook's extension the record unmarked.
+  test('argsFilter reaches every hook call: one, all, and each of a batch', () async {
+    final host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: const [], useIsolate: false)
+      ..argsFilter = (args) => {...(args as Map), 'filtered': true};
+    addTearDown(host.dispose);
+
+    expect(await host.invokeHook('bench', key: 'kernel', method: 'echo', args: {'x': 1}), {'x': 1, 'filtered': true});
+    final all = await host.invokeHookAll('bench', method: 'echo', args: {'x': 2});
+    expect(all.single['value'], {'x': 2, 'filtered': true});
+    final batch = await host.invokeHookBatch([
+      (category: 'bench', key: 'kernel', method: 'echo', args: {'x': 3}),
+    ]);
+    expect(batch.single['value'], {'x': 3, 'filtered': true});
+  });
 }
 
 // Registers a `command` hook whose interpret() returns immediately with a

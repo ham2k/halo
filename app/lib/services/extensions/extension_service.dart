@@ -574,6 +574,9 @@ class ExtensionService
         clock: _clockTravelState(),
         developerMode: developerModeAtBoot,
       );
+      // Every hook call's operation, whichever hook it goes to, carries its
+      // contest refs marked.
+      host.argsFilter = markOperationArgs;
       // The quit began while this boot was in flight: install it now and the
       // VM's teardown gets a live isolate — and the exit's own wait for this
       // boot may already have timed out, so nothing else would dispose it.

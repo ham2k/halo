@@ -216,7 +216,9 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
   /// (docs/design/contests.md §5.8); each fills its field on the QSO's ref
   /// unless the operator typed a number themselves.
   Future<Qso> add(String operationUuid, Map<String, dynamic> qsoData, {List<SequenceDescriptor> serialSequences = const []}) async {
-    final data = Map<String, dynamic>.from(qsoData);
+    // Unmarked here, not only where the row is encoded: the contact handed
+    // back must be the one stored.
+    final data = Map<String, dynamic>.from(withoutContestMarks(qsoData));
     data['startAtMillis'] ??= nowMillis();
     data['uuid'] ??= uuidGenerator.v4();
     data['updatedAtMillis'] = realNowMillis();

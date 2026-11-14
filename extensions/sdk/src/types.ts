@@ -816,10 +816,13 @@ export interface Ref {
   /// sets nor clears it.
   largeArea?: boolean
 
-  /// Set by the app on the refs of an operation an assistant, a panel, a
-  /// template or `host.getOperation` is handed: `true` when a running `contest` extension (its manifest's
-  /// `category`) handles the ref's type, absent otherwise. Nothing else
-  /// tells a contest's ref from an activity's. Extension API 25.
+  /// Set by the app on the refs of the operation in a hook's args and of
+  /// each of its `segments`, and of the operations `getOperation` and
+  /// `listOperations` answer: `true` when a running `contest` extension (its
+  /// manifest's `category`) handles the ref's type, absent otherwise. A start
+  /// or break row's `event.operation`, in a contact, is not marked. Nothing else tells a contest's ref
+  /// from an activity's. Never stored: a record handed back is saved without
+  /// it. Extension API 25.
   contest?: true
 
   /// The program has RETIRED this reference — it still exists and still names

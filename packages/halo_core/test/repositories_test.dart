@@ -23,6 +23,80 @@ void main() {
     await db.close();
   });
 
+  // The app marks a contest's refs on what it hands an extension, from the
+  // extensions running then; one handing the record back must not store the
+  // mark, or it syncs to a device where it is not true.
+  test('a ref marked contest by the app is saved without the mark, on an operation and on a contact', () async {
+    final op = await operations.createFromData({
+      'stationCall': 'KI2D',
+      'refs': [
+        {'type': 'cqww', 'contest': true},
+        {'type': 'potaActivation', 'ref': 'US-0001'},
+      ],
+    });
+    expect(op.data['refs'], [
+      {'type': 'cqww'},
+      {'type': 'potaActivation', 'ref': 'US-0001'},
+    ], reason: 'the operation handed back is the one stored');
+    expect((await operations.get(op.uuid))!.data['refs'], [
+      {'type': 'cqww'},
+      {'type': 'potaActivation', 'ref': 'US-0001'},
+    ]);
+
+    final qso = await qsos.add(op.uuid, {
+      'their': {'call': 'K1AB'},
+      'refs': [
+        {'type': 'cqww', 'contest': true, 'zone': '5'},
+      ],
+    });
+    expect(qso.data['refs'], [
+      {'type': 'cqww', 'zone': '5'},
+    ], reason: 'the contact handed back is the one stored');
+    expect((await qsos.get(qso.uuid))!.data['refs'], [
+      {'type': 'cqww', 'zone': '5'},
+    ]);
+  });
+
+  // A segmented log keeps each segment's operation on its start or break
+  // row, rewritten from the operation as it is saved: the mark on either
+  // would be stored there, and synced.
+  test('a segment row and the save it is restamped from carry no contest mark', () async {
+    Operation? restampedFrom;
+    final watched = OperationsRepository(db, onLocalSave: (before, after) async => restampedFrom = after);
+    final op = await watched.create(stationCall: 'KI2D');
+    await watched.saveData(
+      Operation(
+        uuid: op.uuid,
+        data: {
+          ...op.data,
+          'refs': [
+            {'type': 'cqww', 'contest': true},
+          ],
+        },
+      ),
+    );
+    expect(restampedFrom!.data['refs'], [
+      {'type': 'cqww'},
+    ]);
+
+    final row = await qsos.add(op.uuid, {
+      'band': 'event',
+      'event': {
+        'event': 'start',
+        'operation': {
+          'refs': [
+            {'type': 'cqww', 'contest': true},
+          ],
+        },
+      },
+    });
+    expect(((await qsos.get(row.uuid))!.data['event'] as Map)['operation'], {
+      'refs': [
+        {'type': 'cqww'},
+      ],
+    });
+  });
+
   test('create and watch operations', () async {
     final op = await operations.create(stationCall: 'ki2d', userTitle: 'Test op');
     expect(op.stationCall, 'KI2D');
