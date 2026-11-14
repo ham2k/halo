@@ -344,7 +344,7 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
 
   void _syncProjection() {
     final home = _home;
-    _world.project(home == null || !_spec.map.world ? null : AzimuthalProjection(home));
+    _world.project(home == null || !_spec.map.world ? null : AzimuthalProjection(home), closeness: _zoomNow);
   }
 
   void _loadArt(String svg) {

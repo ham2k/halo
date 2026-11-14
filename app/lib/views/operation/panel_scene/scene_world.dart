@@ -19,6 +19,7 @@ import 'package:halo_widgets/halo_widgets.dart' show WallClock;
 import '../../../services/error_reporting_service.dart';
 import '../../map/map_grayline.dart' show antisolarPoint, capAround, graylineColor, graylineInstant;
 import '../world_map/map_projection.dart';
+import '../world_map/world_cells.dart';
 import '../world_map/world_geometry.dart';
 import 'scene_model.dart';
 
@@ -165,11 +166,22 @@ const _nightBlend = 1.5;
 const _nightBlurMost = 6.0;
 
 Future<WorldOutlines>? _outlinesLoad;
+Future<WorldOutlines>? _fineOutlinesLoad;
 Future<List<Float32List>>? _divisionsLoad;
 
+/// How many times the whole world a view is magnified (map zoom 3) from
+/// which it draws Natural Earth's 1:50m land and borders. Further out,
+/// 1:110m's are as fine as the pane can show, at a twelfth of the points.
+const double fineCloseness = 8;
+
+Future<WorldOutlines> _readOutlines(String asset) =>
+    rootBundle.loadString(asset).then((text) => WorldOutlines.fromJson(jsonDecode(text) as Map<String, dynamic>));
+
 /// Read once for the app's life: the assets never change under it.
-Future<WorldOutlines> _loadOutlines() =>
-    _outlinesLoad ??= rootBundle.loadString('assets/geo/world-110m.json').then((text) => WorldOutlines.fromJson(jsonDecode(text) as Map<String, dynamic>));
+Future<WorldOutlines> _loadOutlines() => _outlinesLoad ??= _readOutlines('assets/geo/world-110m.json');
+
+/// Read the first time a view closes in to [fineCloseness]: most maps never do.
+Future<WorldOutlines> _loadFineOutlines() => _fineOutlinesLoad ??= _readOutlines('assets/geo/world-50m.json');
 
 /// The lines between the states and provinces of the largest countries
 /// (scripts/admin1-outlines.py), drawn as the view closes in.
@@ -180,48 +192,121 @@ Future<List<Float32List>> _loadDivisions() => _divisionsLoad ??= rootBundle.load
   ];
 });
 
-/// The outlines projected once per projection, in its own units.
+/// The land, coasts, borders and divisions drawn, in the projection's units.
+typedef WorldLayers = ({Path land, Path coast, Path borders, Path divisions});
+
+/// The outlines in one projection, in its own units: cut into cells
+/// (world_cells.dart), each projected the first time a view takes it in,
+/// and only the cells a view reaches drawn.
 class WorldPaths {
   final MapProjection projection;
   final WorldOutlines? world;
   final List<Float32List>? divisionsSource;
-  final Path land, coast, borders, graticule, divisions;
+  final List<WorldCell> cells;
+  final Path graticule;
 
-  /// On a cylindrical projection, the outlines made ready for any meridian,
+  /// On a cylindrical projection, the cells made ready for any meridian,
   /// for the next turn of it to take up.
   final WorldTurning? turning;
 
-  WorldPaths._(this.projection, this.world, this.divisionsSource, this.land, this.coast, this.borders, this.graticule, this.divisions, this.turning);
+  /// Each cell's paths and how far they reach, once projected.
+  final List<WorldLayers?> _projected;
+  final List<Rect?> _reach;
+
+  /// What [within] gave for the last few views: a repeating world is
+  /// painted once a copy, each through its own view.
+  final List<(Rect, WorldLayers)> _given = [];
+
+  WorldPaths._(this.projection, this.world, this.divisionsSource, this.cells, this.graticule, this.turning)
+    : _projected = List.filled(cells.length, null),
+      _reach = List.filled(cells.length, null);
 
   /// [turning], when it was made for this projection's type and these
-  /// outlines, places them at its meridian rather than projecting them again.
+  /// outlines, places them at its meridian rather than making them ready
+  /// again.
   factory WorldPaths(MapProjection projection, WorldOutlines? world, List<Float32List>? divisionsSource, {WorldTurning? turning}) {
     if (projection is CylindricalProjection) {
       final t = turning != null && turning.fits(projection, world, divisionsSource) ? turning : WorldTurning(projection, world, divisionsSource);
-      final m = projection.meridian;
-      return WorldPaths._(
-        projection,
-        world,
-        divisionsSource,
-        t.land?.fill(m) ?? Path(),
-        t.coast?.stroke(m) ?? Path(),
-        t.borders?.stroke(m) ?? Path(),
-        t.graticule.stroke(m),
-        t.divisions?.stroke(m) ?? Path(),
-        t,
-      );
+      return WorldPaths._(projection, world, divisionsSource, t.cells, t.graticule.stroke(projection.meridian), t);
     }
-    return WorldPaths._(
-      projection,
-      world,
-      divisionsSource,
-      world == null ? Path() : fillRings(projection, world.land),
-      world == null ? Path() : projectLines(projection, world.land),
-      world == null ? Path() : projectLines(projection, world.borders),
-      projectLines(projection, _graticule()),
-      divisionsSource == null ? Path() : projectLines(projection, divisionsSource),
-      null,
+    return WorldPaths._(projection, world, divisionsSource, worldCells(world, divisionsSource), projectLines(projection, _graticule()), null);
+  }
+
+  /// The land, coasts, borders and divisions of the cells that reach into
+  /// [view], in the projection's units. The land is one path, filled
+  /// even-odd, so the edges where its cells meet cancel rather than show.
+  WorldLayers within(Rect view) {
+    for (final (at, layers) in _given) {
+      if (at == view) return layers;
+    }
+    final land = Path()..fillType = PathFillType.evenOdd;
+    final coast = Path(), borders = Path(), divisions = Path();
+    for (var i = 0; i < cells.length; i++) {
+      if (!_reaches(i, view)) continue;
+      final cell = _projected[i] ??= _project(cells[i]);
+      land.addPath(cell.land, Offset.zero);
+      coast.addPath(cell.coast, Offset.zero);
+      borders.addPath(cell.borders, Offset.zero);
+      divisions.addPath(cell.divisions, Offset.zero);
+    }
+    final layers = (land: land, coast: coast, borders: borders, divisions: divisions);
+    if (_given.length >= 4) _given.removeAt(0);
+    _given.add((view, layers));
+    return layers;
+  }
+
+  WorldLayers _project(WorldCell cell) {
+    final projection = this.projection;
+    if (projection is CylindricalProjection) {
+      final shapes = turning!.shapesOf(cell);
+      final m = projection.meridian;
+      return (land: shapes.land.fill(m), coast: shapes.coast.stroke(m), borders: shapes.borders.stroke(m), divisions: shapes.divisions.stroke(m));
+    }
+    return (
+      land: fillRings(projection, cell.land),
+      coast: projectLines(projection, cell.coast),
+      borders: projectLines(projection, cell.borders),
+      divisions: projectLines(projection, cell.divisions),
     );
+  }
+
+  /// Whether cell [i] reaches into [view]. On a cylindrical projection its
+  /// reach comes from its corners, without projecting it: x is the
+  /// longitude east of the meridian times a factor that shrinks away from
+  /// the equator, which is always a cell edge, so the cell is widest at a
+  /// corner; and where it reaches 180° it is laid a turn round too. On
+  /// the disc a cell is projected to know its reach.
+  bool _reaches(int i, Rect view) {
+    final projection = this.projection;
+    if (projection is! CylindricalProjection) {
+      final reach = _reach[i] ??= () {
+        final cell = _projected[i] ??= _project(cells[i]);
+        // An empty path's bounds are a point at the station, not nothing.
+        final bounds = [
+          for (final p in [cell.land, cell.coast, cell.borders, cell.divisions]) p.getBounds(),
+        ].where((b) => b != Rect.zero);
+        return bounds.isEmpty ? Rect.zero : bounds.reduce((a, b) => a.expandToInclude(b));
+      }();
+      return reach.overlaps(view);
+    }
+    if ((_reach[i] ??= _cylindricalReach(projection, cells[i])).overlaps(view)) return true;
+    // Laid at the far edge too where it reaches 180°, as TurningShapes lays it.
+    final west = wrapLongitude(cells[i].west - projection.meridian);
+    if (west + cellDegrees >= 180 && _cylindricalReach(projection, cells[i], turn: -360).overlaps(view)) return true;
+    return west <= -180 && _cylindricalReach(projection, cells[i], turn: 360).overlaps(view);
+  }
+
+  static Rect _cylindricalReach(CylindricalProjection projection, WorldCell cell, {double turn = 0}) {
+    final west = wrapLongitude(cell.west - projection.meridian) + turn;
+    final (south, north) = (math.max(cell.south, -89.9), math.min(cell.south + cellDegrees, 89.9));
+    Rect? reach;
+    for (final lat in [south, north]) {
+      for (final east in [west, west + cellDegrees]) {
+        final p = projection.place(lat, east);
+        reach = reach == null ? Rect.fromPoints(p, p) : reach.expandToInclude(Rect.fromPoints(p, p));
+      }
+    }
+    return reach!;
   }
 
   /// Parallels and meridians every 30°.
@@ -276,22 +361,31 @@ Path nightCap(MapProjection projection, GridLocation center, double radius, {Tur
   return cap;
 }
 
-/// The world's outlines made ready for one cylindrical projection at any
-/// meridian (TurningShapes).
+/// One cell's outlines made ready for a cylindrical projection at any meridian.
+typedef CellShapes = ({TurningShapes land, TurningShapes coast, TurningShapes borders, TurningShapes divisions});
+
+/// The world's cells made ready for one cylindrical projection at any
+/// meridian (TurningShapes), each the first time a view takes it in.
 class WorldTurning {
-  final Type family;
+  final CylindricalProjection projection;
   final WorldOutlines? world;
   final List<Float32List>? divisionsSource;
-  final TurningShapes? land, coast, borders, divisions;
+  final List<WorldCell> cells;
   final TurningShapes graticule;
+  final Map<WorldCell, CellShapes> _shapes = Map.identity();
 
-  WorldTurning(CylindricalProjection projection, this.world, this.divisionsSource)
-    : family = projection.runtimeType,
-      land = world == null ? null : TurningShapes.rings(projection, world.land),
-      coast = world == null ? null : TurningShapes.lines(projection, world.land),
-      borders = world == null ? null : TurningShapes.lines(projection, world.borders),
-      graticule = TurningShapes.lines(projection, WorldPaths._graticule()),
-      divisions = divisionsSource == null ? null : TurningShapes.lines(projection, divisionsSource);
+  WorldTurning(this.projection, this.world, this.divisionsSource)
+    : cells = worldCells(world, divisionsSource),
+      graticule = TurningShapes.lines(projection, WorldPaths._graticule());
+
+  Type get family => projection.runtimeType;
+
+  CellShapes shapesOf(WorldCell cell) => _shapes[cell] ??= (
+    land: TurningShapes.rings(projection, cell.land),
+    coast: TurningShapes.lines(projection, cell.coast),
+    borders: TurningShapes.lines(projection, cell.borders),
+    divisions: TurningShapes.lines(projection, cell.divisions),
+  );
 
   bool fits(CylindricalProjection projection, WorldOutlines? world, List<Float32List>? divisionsSource) =>
       family == projection.runtimeType && identical(this.world, world) && identical(this.divisionsSource, divisionsSource);
@@ -343,8 +437,13 @@ class WorldMapBase {
 
   bool _disposed = false;
   WorldOutlines? _outlines;
+  WorldOutlines? _fineOutlines;
+  bool _fineAsked = false;
   List<Float32List>? _divisions;
   MapProjection? _projection;
+
+  /// Whether the view is close enough for the 1:50m outlines.
+  bool _fine = false;
   WorldPaths? paths;
 
   /// The night's caps, deepest last, in [_nightIn] at [_nightAt].
@@ -386,10 +485,21 @@ class WorldMapBase {
 
   /// The projection to draw in; null draws no world at all. Called from
   /// build, so it says nothing to [onChanged]: the frame being built draws
-  /// what it set.
-  void project(MapProjection? projection) {
-    if (_projection == projection) return;
+  /// what it set. [closeness] is the view's magnification, as [paint] takes
+  /// it: from [fineCloseness] the 1:50m outlines are drawn, once read.
+  void project(MapProjection? projection, {double closeness = 1}) {
+    final fine = closeness >= fineCloseness;
+    if (fine && projection != null && !_fineAsked) {
+      _fineAsked = true;
+      _loadFineOutlines().then((outlines) {
+        if (_disposed) return;
+        _fineOutlines = outlines;
+        _reproject();
+      }, onError: (Object error, StackTrace stack) => ErrorReportingService.report(error, stack, context: '$errorContext:fine outlines'));
+    }
+    if (_projection == projection && _fine == fine) return;
     _projection = projection;
+    _fine = fine;
     if (projection == null) {
       paths = null;
       _night = null;
@@ -401,8 +511,9 @@ class WorldMapBase {
   void _reproject({bool notify = true}) {
     final projection = _projection;
     if (projection == null) return;
-    if (paths?.projection != projection || paths?.world != _outlines || paths?.divisionsSource != _divisions) {
-      paths = WorldPaths(projection, _outlines, _divisions, turning: paths?.turning);
+    final world = _fine ? _fineOutlines ?? _outlines : _outlines;
+    if (paths?.projection != projection || paths?.world != world || paths?.divisionsSource != _divisions) {
+      paths = WorldPaths(projection, world, _divisions, turning: paths?.turning);
       if (notify) onChanged();
     }
   }
@@ -443,7 +554,11 @@ class WorldMapBase {
     canvas.save();
     canvas.translate(origin.dx, origin.dy);
     canvas.scale(scale);
-    canvas.drawPath(paths.land, Paint()..color = colors.land);
+    // Borders thicken as the view closes in, up to many pixels.
+    final borderWidth = 0.5 + math.max(0, closeness - 2) * 0.15;
+    // Only the cells the pane shows, and the widest stroke's half past them.
+    final layers = paths.within(canvas.getLocalClipBounds().inflate((math.max(0.8, borderWidth) / 2 + 1) / scale));
+    canvas.drawPath(layers.land, Paint()..color = colors.land);
     if (style.grayline) {
       // Blurred across the blend, in the projection's units as the canvas
       // is scaled: a degree is the world's breadth over 360 at the equator.
@@ -465,9 +580,9 @@ class WorldMapBase {
     // From 2.5x they fade in, fully from 4x: on the whole world they are a smudge.
     final divisions = ((closeness - 2.5) / 1.5).clamp(0.0, 1.0);
     final borders = style.borders ?? palette.borders ?? coast.withValues(alpha: 0.6);
-    if (divisions > 0) canvas.drawPath(paths.divisions, line((style.divisions ?? borders).withValues(alpha: divisions * 0.6), 0.5));
-    canvas.drawPath(paths.borders, line(borders, 0.5 + math.max(0, closeness - 2) * 0.15));
-    canvas.drawPath(paths.coast, line(coast, 0.8));
+    if (divisions > 0) canvas.drawPath(layers.divisions, line((style.divisions ?? borders).withValues(alpha: divisions * 0.6), 0.5));
+    canvas.drawPath(layers.borders, line(borders, borderWidth));
+    canvas.drawPath(layers.coast, line(coast, 0.8));
     canvas.restore();
   }
 }

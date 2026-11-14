@@ -19,9 +19,9 @@ import 'dart:ui' show Offset, Path, PathFillType;
 
 import 'map_projection.dart';
 
-/// Natural Earth's land and borders, as `assets/geo/world-110m.json` holds
-/// them — see scripts/world-outlines.py for the shape, and why a ring can
-/// reach past +180.
+/// Natural Earth's land and borders, as `assets/geo/world-110m.json` and
+/// `world-50m.json` hold them — see scripts/world-outlines.py for the shape,
+/// and why a ring can reach past +180.
 class WorldOutlines {
   /// Each ring as flat longitude, latitude pairs, in degrees.
   final List<Float32List> land;
@@ -188,9 +188,13 @@ class _Piece {
 
   double _start(double meridian) => wrapLongitude(firstLon - meridian);
 
+  /// A piece that reaches an edge exactly is laid at the other too: two
+  /// copies of a repeating world are each cut on whole pixels, and a shape
+  /// that stopped at the edge would leave the pixel the cut falls in part
+  /// uncovered, a hairline down 180°.
   Iterable<double> turns(double meridian) {
     final start = _start(meridian);
-    return [0.0, if (start + high > 180) -360.0, if (start + low < -180) 360.0];
+    return [0.0, if (start + high >= 180) -360.0, if (start + low <= -180) 360.0];
   }
 
   List<Offset> at(double meridian, double turn) {

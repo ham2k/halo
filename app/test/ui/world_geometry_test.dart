@@ -11,12 +11,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui' show Offset, Rect;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/views/map/map_grayline.dart' show antisolarPoint, capAround;
 import 'package:ham2k_logger/views/operation/panel_scene/scene_map.dart' show mapCircleFill;
-import 'package:ham2k_logger/views/operation/panel_scene/scene_world.dart' show WorldPaths, nightCap;
+import 'package:ham2k_logger/views/operation/panel_scene/scene_world.dart' show WorldMapBase, WorldPaths, fineCloseness, nightCap;
 import 'package:ham2k_logger/views/operation/world_map/map_projection.dart';
 import 'package:ham2k_logger/views/operation/world_map/world_geometry.dart';
 
@@ -63,106 +64,154 @@ void main() {
     expect(AzimuthalProjection(gridToLocation('FN31pr')!).locate(0.8, 0.8), isNull, reason: 'outside the disc');
   });
 
-  group('the land', () {
-    late WorldOutlines world;
-    setUpAll(() {
-      final json = jsonDecode(File('assets/geo/world-110m.json').readAsStringSync()) as Map<String, dynamic>;
-      world = WorldOutlines.fromJson(json);
-    });
+  WorldOutlines outlinesIn(String asset) => WorldOutlines.fromJson(jsonDecode(File('assets/geo/$asset.json').readAsStringSync()) as Map<String, dynamic>);
 
-    test('holds land and leaves the sea', () {
-      expect(ringsHold(world.land, 38.5, -98), isTrue, reason: 'Kansas');
-      expect(ringsHold(world.land, -15, 25), isTrue, reason: 'Zambia');
-      expect(ringsHold(world.land, 30, -40), isFalse, reason: 'the North Atlantic');
-      expect(ringsHold(world.land, 0, -150), isFalse, reason: 'the Pacific');
-    });
+  // Both details are drawn as the same polygons; a regenerated set whose
+  // rings lost the antimeridian or pole handling floods the sea only once
+  // the view closes in.
+  for (final asset in ['world-110m', 'world-50m']) {
+    group('the land, $asset', () {
+      late WorldOutlines world;
+      setUpAll(() => world = outlinesIn(asset));
 
-    // A ring that crosses the antimeridian runs on past +180, and only the
-    // copy laid a turn west holds its far side; Antarctica goes the whole
-    // way round, and only its closure along the pole makes it a polygon.
-    test('holds land across the antimeridian and round the South Pole', () {
-      expect(ringsHold(world.land, 66, -173), isTrue, reason: 'Chukotka, east of 180');
-      expect(ringsHold(world.land, 66, 175), isTrue, reason: 'Chukotka, west of 180');
-      expect(ringsHold(world.land, -85, 0), isTrue, reason: 'Antarctica');
-      expect(ringsHold(world.land, -89.9, 120), isTrue, reason: 'the pole itself');
-      expect(ringsHold(world.land, -50, 0), isFalse, reason: 'the Southern Ocean, north of it');
-    });
+      test('holds land and leaves the sea', () {
+        expect(ringsHold(world.land, 38.5, -98), isTrue, reason: 'Kansas');
+        expect(ringsHold(world.land, -15, 25), isTrue, reason: 'Zambia');
+        expect(ringsHold(world.land, 30, -40), isFalse, reason: 'the North Atlantic');
+        expect(ringsHold(world.land, 0, -150), isFalse, reason: 'the Pacific');
+      });
 
-    // The fill is what the operator sees as land: a projection that lays a
-    // ring across its seam wrongly floods the sea along that meridian, and an
-    // azimuthal map whose antipode is on land turns every continent into sea
-    // and the sea into land, while every coastline stays where it belongs.
-    test('is filled where it is in every projection, across the seam and round the antipode', () {
-      for (final projection in <MapProjection>[
-        const MercatorProjection(0),
-        const MercatorProjection(-74),
-        const EquirectangularProjection(-74),
-        const PattersonProjection(0),
-        const RobinsonProjection(150),
-        AzimuthalProjection(gridToLocation('FN31pr')!),
-        AzimuthalProjection(gridToLocation('IN80do')!), // Spain: its antipode is in New Zealand
-      ]) {
-        final land = fillRings(projection, world.land);
-        bool filled(double lat, double lon) => land.contains(switch (projection) {
-          // The whole disc, up to the antipode the map leaves undrawn.
-          final AzimuthalProjection disc => Offset(disc.project(lat, lon).x, disc.project(lat, lon).y),
-          _ => projection.toMap(lat, lon)!,
-        });
-        final name = '${projection.runtimeType} ${projection is AzimuthalProjection ? projection.center : ''}';
-        expect(filled(38.5, -98), isTrue, reason: 'Kansas, $name');
-        expect(filled(-15, 25), isTrue, reason: 'Zambia, $name');
-        expect(filled(30, -40), isFalse, reason: 'the North Atlantic, $name');
-        expect(filled(-30, -120), isFalse, reason: 'the South Pacific, $name');
-        expect(filled(66, -173), isTrue, reason: 'Chukotka, east of 180, $name');
-        expect(filled(66, 175), isTrue, reason: 'Chukotka, west of 180, $name');
-        expect(filled(-80, 0), isTrue, reason: 'Antarctica, $name');
+      // A ring that crosses the antimeridian runs on past +180, and only the
+      // copy laid a turn west holds its far side; Antarctica goes the whole
+      // way round, and only its closure along the pole makes it a polygon.
+      test('holds land across the antimeridian and round the South Pole', () {
+        expect(ringsHold(world.land, 66, -173), isTrue, reason: 'Chukotka, east of 180');
+        expect(ringsHold(world.land, 66, 175), isTrue, reason: 'Chukotka, west of 180');
+        expect(ringsHold(world.land, -85, 0), isTrue, reason: 'Antarctica');
+        expect(ringsHold(world.land, -89.9, 120), isTrue, reason: 'the pole itself');
+        expect(ringsHold(world.land, -50, 0), isFalse, reason: 'the Southern Ocean, north of it');
+      });
+
+      // The fill is what the operator sees as land: a projection that lays a
+      // ring across its seam wrongly floods the sea along that meridian, and an
+      // azimuthal map whose antipode is on land turns every continent into sea
+      // and the sea into land, while every coastline stays where it belongs.
+      test('is filled where it is in every projection, across the seam and round the antipode', () {
+        for (final projection in <MapProjection>[
+          const MercatorProjection(0),
+          const MercatorProjection(-74),
+          const EquirectangularProjection(-74),
+          const PattersonProjection(0),
+          const RobinsonProjection(150),
+          AzimuthalProjection(gridToLocation('FN31pr')!),
+          AzimuthalProjection(gridToLocation('IN80do')!), // Spain: its antipode is in New Zealand
+        ]) {
+          final land = fillRings(projection, world.land);
+          bool filled(double lat, double lon) => land.contains(switch (projection) {
+            // The whole disc, up to the antipode the map leaves undrawn.
+            final AzimuthalProjection disc => Offset(disc.project(lat, lon).x, disc.project(lat, lon).y),
+            _ => projection.toMap(lat, lon)!,
+          });
+          final name = '${projection.runtimeType} ${projection is AzimuthalProjection ? projection.center : ''}';
+          expect(filled(38.5, -98), isTrue, reason: 'Kansas, $name');
+          expect(filled(-15, 25), isTrue, reason: 'Zambia, $name');
+          expect(filled(30, -40), isFalse, reason: 'the North Atlantic, $name');
+          expect(filled(-30, -120), isFalse, reason: 'the South Pacific, $name');
+          expect(filled(66, -173), isTrue, reason: 'Chukotka, east of 180, $name');
+          expect(filled(66, 175), isTrue, reason: 'Chukotka, west of 180, $name');
+          expect(filled(-80, 0), isTrue, reason: 'Antarctica, $name');
+        }
+        final spain = AzimuthalProjection(gridToLocation('IN80do')!);
+        final north = spain.project(-38, 176); // the North Island, a few degrees off the antipode
+        expect(fillRings(spain, world.land).contains(Offset(north.x, north.y)), isTrue, reason: 'the land round the antipode, which projects inside out');
+      });
+
+      // The night's caps go through the same fill: one round a pole has no
+      // edge of its own there, and filled as the ring alone it would shade the
+      // day side of the world and leave the polar night lit.
+      test('a night that holds a pole is filled up to the pole, not round the other side', () {
+        final midwinter = DateTime.utc(2026, 12, 21, 12);
+        final cap = capAround(antisolarPoint(midwinter), 90 - 0.833);
+        final ring = Float32List.fromList([
+          for (final p in cap) ...[p.longitude, p.latitude],
+        ]);
+        for (final projection in <MapProjection>[
+          const MercatorProjection(0),
+          const MillerProjection(0),
+          const RobinsonProjection(0),
+          AzimuthalProjection(const GridLocation(40, -74)),
+        ]) {
+          final night = fillRings(projection, [ring]);
+          expect(night.contains(projection.toMap(80, 0)!), isTrue, reason: 'the Arctic in December, ${projection.runtimeType}');
+          expect(night.contains(projection.toMap(-60, 0)!), isFalse, reason: 'the Antarctic in December, ${projection.runtimeType}');
+          expect(night.contains(projection.toMap(0, 180)!), isTrue, reason: 'midnight at noon UTC, ${projection.runtimeType}');
+          expect(night.contains(projection.toMap(0, 0)!), isFalse, reason: 'noon, ${projection.runtimeType}');
+        }
+      });
+
+      // The rim clips a fill round the antipode, and the night is blurred:
+      // ended at the rim, it would fade there, where the antipode, the middle
+      // of the night when it is in night, is.
+      test('round the antipode, the fill runs on past the rim', () {
+        final spain = AzimuthalProjection(gridToLocation('IN80do')!);
+        expect(fillRings(spain, world.land).contains(const Offset(1.03, 0)), isTrue);
+      });
+
+      // The outlines made ready for one cylindrical projection are reused as
+      // it turns; taken up by another, they would draw its world in the first
+      // one's shape.
+      test('the outlines made ready for one projection are not taken up by another', () {
+        final robinson = WorldPaths(const RobinsonProjection(0), world, null);
+        final turned = WorldPaths(const RobinsonProjection(40), world, null, turning: robinson.turning);
+        expect(identical(turned.turning, robinson.turning), isTrue, reason: 'a turn of the same projection takes them up');
+        final mercator = WorldPaths(const MercatorProjection(0), world, null, turning: robinson.turning);
+        expect(mercator.within(Rect.largest).land.getBounds(), WorldPaths(const MercatorProjection(0), world, null).within(Rect.largest).land.getBounds());
+      });
+    });
+  }
+
+  // The finer set is what a view closing in on a coast is drawn from: a
+  // world-50m.json that is 1:110m again under another name passes every
+  // test above.
+  test('1:50m holds the islands 1:110m leaves out', () {
+    final (coarse, fine) = (outlinesIn('world-110m'), outlinesIn('world-50m'));
+    for (final (name, lat, lon) in [('Mallorca', 39.6, 2.95), ('Mauritius', -20.25, 57.55), ('Bermuda', 32.3, -64.78)]) {
+      expect(ringsHold(coarse.land, lat, lon), isFalse, reason: '$name, 1:110m');
+      expect(ringsHold(fine.land, lat, lon), isTrue, reason: '$name, 1:50m');
+    }
+  });
+
+  // 1:50m is twelve times 1:110m's points, and drawn for the whole world
+  // shows nothing more. Once read it is drawn at once, without waiting for
+  // the view to move; and a turn of the map, every frame of a Robinson drag,
+  // takes up the cells made ready rather than making them again.
+  testWidgets('the world sharpens to 1:50m close in, and turns without being made ready again', (tester) async {
+    final world = WorldMapBase(onChanged: () {}, errorContext: 'test');
+    int? drawn() => world.paths?.world?.land.length;
+    Future<void> until(bool Function() done) async {
+      for (var i = 0; i < 200 && !done(); i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
       }
-      final spain = AzimuthalProjection(gridToLocation('IN80do')!);
-      final north = spain.project(-38, 176); // the North Island, a few degrees off the antipode
-      expect(fillRings(spain, world.land).contains(Offset(north.x, north.y)), isTrue, reason: 'the land round the antipode, which projects inside out');
-    });
+      expect(done(), isTrue);
+    }
 
-    // The night's caps go through the same fill: one round a pole has no
-    // edge of its own there, and filled as the ring alone it would shade the
-    // day side of the world and leave the polar night lit.
-    test('a night that holds a pole is filled up to the pole, not round the other side', () {
-      final midwinter = DateTime.utc(2026, 12, 21, 12);
-      final cap = capAround(antisolarPoint(midwinter), 90 - 0.833);
-      final ring = Float32List.fromList([
-        for (final p in cap) ...[p.longitude, p.latitude],
-      ]);
-      for (final projection in <MapProjection>[
-        const MercatorProjection(0),
-        const MillerProjection(0),
-        const RobinsonProjection(0),
-        AzimuthalProjection(const GridLocation(40, -74)),
-      ]) {
-        final night = fillRings(projection, [ring]);
-        expect(night.contains(projection.toMap(80, 0)!), isTrue, reason: 'the Arctic in December, ${projection.runtimeType}');
-        expect(night.contains(projection.toMap(-60, 0)!), isFalse, reason: 'the Antarctic in December, ${projection.runtimeType}');
-        expect(night.contains(projection.toMap(0, 180)!), isTrue, reason: 'midnight at noon UTC, ${projection.runtimeType}');
-        expect(night.contains(projection.toMap(0, 0)!), isFalse, reason: 'noon, ${projection.runtimeType}');
-      }
-    });
+    final coarse = outlinesIn('world-110m').land.length, fine = outlinesIn('world-50m').land.length;
+    world.start();
+    world.project(const RobinsonProjection(0), closeness: 4);
+    await until(() => drawn() == coarse);
 
-    // The rim clips a fill round the antipode, and the night is blurred:
-    // ended at the rim, it would fade there, where the antipode, the middle
-    // of the night when it is in night, is.
-    test('round the antipode, the fill runs on past the rim', () {
-      final spain = AzimuthalProjection(gridToLocation('IN80do')!);
-      expect(fillRings(spain, world.land).contains(const Offset(1.03, 0)), isTrue);
-    });
+    world.project(const RobinsonProjection(0), closeness: fineCloseness);
+    expect(drawn(), coarse, reason: '1:110m until 1:50m is read');
+    await until(() => drawn() == fine);
+    final made = world.paths!.turning;
 
-    // The outlines made ready for one cylindrical projection are reused as
-    // it turns; taken up by another, they would draw its world in the first
-    // one's shape.
-    test('the outlines made ready for one projection are not taken up by another', () {
-      final robinson = WorldPaths(const RobinsonProjection(0), world, null);
-      final turned = WorldPaths(const RobinsonProjection(40), world, null, turning: robinson.turning);
-      expect(identical(turned.turning, robinson.turning), isTrue, reason: 'a turn of the same projection takes them up');
-      final mercator = WorldPaths(const MercatorProjection(0), world, null, turning: robinson.turning);
-      expect(mercator.land.getBounds(), WorldPaths(const MercatorProjection(0), world, null).land.getBounds());
-    });
+    world.project(const RobinsonProjection(30), closeness: fineCloseness);
+    expect(world.paths!.projection, const RobinsonProjection(30));
+    expect(identical(world.paths!.turning, made), isTrue, reason: 'turned');
+
+    world.project(const RobinsonProjection(30), closeness: fineCloseness - 1);
+    expect(drawn(), coarse, reason: 'zoomed out');
+    world.dispose();
   });
 
   // A blurred night that ends at the pole's edge fades along it, a lighter

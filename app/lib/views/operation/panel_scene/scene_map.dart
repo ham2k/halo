@@ -473,7 +473,7 @@ class _SceneMapViewState extends State<SceneMapView> {
     _noteScene(sceneCenter);
     if (_drawnAs != _drawing) _carryOver(sceneCenter);
     final projection = _projectionFor(sceneCenter);
-    _world.project(_spec.map.world ? projection : null);
+    _world.project(_spec.map.world ? projection : null, closeness: math.pow(2, _zoomNow).toDouble());
     _overlayImages.want(SceneImageScope.of(context), {for (final o in _spec.overlays) o.id: o.image});
     if (_placed?.spec != _spec || _placed?.projection != projection) {
       if (_placed?.spec != _spec) {

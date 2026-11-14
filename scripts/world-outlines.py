@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Writes app/assets/geo/world-110m.json, the outlines the rotator map draws.
+"""Writes app/assets/geo/world-110m.json and world-50m.json, the outlines a
+scene's maps draw: 1:110m for the whole world, 1:50m from zoom 3.
 
   curl -sSfLO https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-110m.json
   curl -sSfLO https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json
   python3 scripts/world-outlines.py land-110m.json countries-110m.json > app/assets/geo/world-110m.json
 
-world-atlas is Natural Earth's 1:110m set (public domain) as TopoJSON. The
-output is plain JSON the app reads without a TopoJSON decoder:
+and the same with 50m for world-50m.json.
+
+world-atlas is Natural Earth's 1:110m and 1:50m sets (public domain) as
+TopoJSON. The output is plain JSON the app reads without a TopoJSON decoder:
 
   land     the land polygons' rings, for the fill
   borders  every edge two countries share, for the lines between them

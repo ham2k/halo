@@ -877,14 +877,33 @@ grant: it shows nothing of the station but the operation's location, which
 it centers on only when the scene names no place.
 
 - **One world under both maps.** The rotator map and this one draw the same
-  world (`scene_world.dart`): the palettes, and Natural Earth's land,
-  outlines and the night projected once per projection as paths. Each
+  world (`scene_world.dart`): the palettes, Natural Earth's land and
+  outlines projected as paths a cell at a time as a view takes them in,
+  and the night projected once per projection. Each
   projection (`world_map/map_projection.dart`) turns a place into a point in
   its own units and back, and says how far its world reaches. The
   cylinder-like ones also place a point east of their meridian without
   wrapping, so a ring or a line across the antimeridian is laid in one
   piece past the edge, and again a turn the other way to reach in from the
   far one; the azimuthal breaks a line where a step jumps across the rim.
+- **Coasts and borders sharpen as the view closes in.** Both maps draw
+  Natural Earth's 1:110m land and borders (`assets/geo/world-110m.json`)
+  until the view is magnified 8 times (map zoom 3), and its 1:50m ones
+  (`world-50m.json`, by the same `scripts/world-outlines.py`) from there,
+  read the first time a view gets that close. Further out, 1:110m is as
+  fine as the pane can show, at a twelfth of the points.
+- **Only what the view shows is drawn.** The outlines are cut into cells
+  10° on a side (`world_map/world_cells.dart`), once per set, in latitude
+  and longitude, so they are the same cells in every projection. A frame
+  projects and draws only the cells that reach into the pane, so its cost
+  follows what the pane shows rather than the whole world's detail: a
+  frame of a 1:50m Robinson drag at zoom 3 costs less than drawing
+  1:110m's whole world. Land is clipped to each cell as a polygon, and all the cells
+  in view are filled together, even-odd, as one path, so where two meet
+  their cut edges, the same points once each way, cancel rather than show
+  as a seam. Coasts are the land rings clipped as lines, so a cut is never
+  stroked. A cylindrical cell's reach comes from its corners without
+  projecting it; on the disc it is projected to know.
 - **The map goes round the world.** The rectangular worlds — Web
   Mercator, plate carrée, Miller's and Patterson's, which differ only in
   how high each latitude is drawn — repeat east and west, each copy drawn
