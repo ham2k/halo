@@ -2737,11 +2737,8 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get k4TcpNotes => 'Koble K4-ens Ethernet-kontakt til det lokale nettverket. Oppgi vertsnavnet eller IP-adressen og CAT-port 9200. HaLo bruker samme vert på fast port 9201 når en panadapter eller et vannfall vises; å endre CAT-porten endrer ikke spektrumporten.\n\nSpekteret viser hovedmottakeren. Zoom, referansejustering og hastighetskontrollene påvirker bare HaLos visning. Lydstrømming støttes ikke.';
 	@override String get k4PowerTimeout => 'K4-effekten ble ikke endret fordi radioen ikke bekreftet utgangsområdet sitt. Prøv igjen.';
 	@override String get k4RemoteNotes => 'Aktiver fjerntilgang på K4-en og oppgi nettverkspassordet dens. Main og Sub deler én kryptert tilkobling for radiostyring og spektrum. Standardporten er 9204; oppgi den videresendte porten din når du kobler til eksternt.\n\nLydavspilling og mikrofonstrømming støttes ikke.';
-	@override String get k4Receiver => 'Mottaker';
 	@override String get k4ReceiverMain => 'Main';
 	@override String get k4ReceiverSub => 'Sub';
-	@override String get k4ReceiverInvalid => 'Velg Main eller Sub';
-	@override String get k4ReceiverAlreadyConfigured => 'Den mottakeren er allerede satt opp for denne K4-en';
 	@override String get k4SubReceiverOff => 'K4-ens submottaker er av';
 	@override String get k4RemotePasswordRequired => 'Oppgi K4-ens nettverkspassord for å koble til sikkert.';
 	@override String get k4RemoteHandshakeFailed => 'K4-en kunne ikke opprette en sikker tilkobling. Sjekk nettverkspassordet og innstillingene for fjerntilgang.';
@@ -6354,11 +6351,8 @@ extension on TranslationsNb {
 			'settings.station.k4TcpNotes' => 'Koble K4-ens Ethernet-kontakt til det lokale nettverket. Oppgi vertsnavnet eller IP-adressen og CAT-port 9200. HaLo bruker samme vert på fast port 9201 når en panadapter eller et vannfall vises; å endre CAT-porten endrer ikke spektrumporten.\n\nSpekteret viser hovedmottakeren. Zoom, referansejustering og hastighetskontrollene påvirker bare HaLos visning. Lydstrømming støttes ikke.',
 			'settings.station.k4PowerTimeout' => 'K4-effekten ble ikke endret fordi radioen ikke bekreftet utgangsområdet sitt. Prøv igjen.',
 			'settings.station.k4RemoteNotes' => 'Aktiver fjerntilgang på K4-en og oppgi nettverkspassordet dens. Main og Sub deler én kryptert tilkobling for radiostyring og spektrum. Standardporten er 9204; oppgi den videresendte porten din når du kobler til eksternt.\n\nLydavspilling og mikrofonstrømming støttes ikke.',
-			'settings.station.k4Receiver' => 'Mottaker',
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
-			'settings.station.k4ReceiverInvalid' => 'Velg Main eller Sub',
-			'settings.station.k4ReceiverAlreadyConfigured' => 'Den mottakeren er allerede satt opp for denne K4-en',
 			'settings.station.k4SubReceiverOff' => 'K4-ens submottaker er av',
 			'settings.station.k4RemotePasswordRequired' => 'Oppgi K4-ens nettverkspassord for å koble til sikkert.',
 			'settings.station.k4RemoteHandshakeFailed' => 'K4-en kunne ikke opprette en sikker tilkobling. Sjekk nettverkspassordet og innstillingene for fjerntilgang.',
@@ -6501,11 +6495,11 @@ extension on TranslationsNb {
 			'settings.station.telemetryIntervalDescription' => 'Hvor ofte radioens målere leses mens den sender. La stå tomt for det raskeste denne tilkoblingen klarer, opptil 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Et helt antall millisekunder, ${min} til ${max}',
 			'settings.station.pollInterval' => 'Spørreintervall i hvile (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Hvor ofte radioen spørres om frekvens og modus når ingen av dem endres. La stå tomt for ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Et helt antall millisekunder, ${min} til ${max}',
 			'settings.station.advancedSettings' => 'Avanserte innstillinger',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWR-verdi',
 			'settings.station.placeholderSwrDescription' => 'Hva denne radioen rapporterer på SWR-måleren under sending. Over 1,8 gir panelet en advarsel.',
 			'settings.station.placeholderSwrInvalid' => 'Et tall, 1 eller mer',
@@ -7015,11 +7009,11 @@ extension on TranslationsNb {
 			'adifImport.confirm' => 'Importer',
 			'adifImport.importing' => ({required Object filename}) => 'Importerer ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Importerte ${count} kontakt fra ${filename}', other: 'Importerte ${formatted} kontakter fra ${filename}', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Kunne ikke importere ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} ser ikke ut som en ADIF-fil',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Advarsel: denne ADIF-filen har QSOer fra ${calls}, men de blir importert som ${station} hvis du fortsetter.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' og ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} mangler dato og kan ikke importeres', other: '${formatted} mangler dato og kan ikke importeres', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Denne filen registrerer en aktivering av ${refs}.',

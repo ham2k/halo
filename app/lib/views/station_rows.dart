@@ -429,7 +429,7 @@ class EquipmentTile extends StatelessWidget {
     }
 
     // Equipment with nothing to connect to — an antenna, a CW key. No plug
-    // toggle, no VFO reading, no status pill: every one of those describes a
+    // toggle, no VFO reading, no status: every one of those describes a
     // live session, and this equipment never has one.
     //
     // Asked of the transport rather than the category. "Not a transceiver"
@@ -624,13 +624,14 @@ class EquipmentTile extends StatelessWidget {
                   if (connected)
                     Padding(
                       padding: const EdgeInsets.only(left: Space.lg),
-                      child: StationPill(
+                      child: Text(
+                        equipmentStatusLabel(context, state),
+                        maxLines: 1,
+                        softWrap: false,
                         // A link that is up but silent must not wear the same
                         // confident green as one that is working: the
                         // frequency shown may be minutes old.
-                        label: equipmentStatusLabel(context, state),
-                        background: state.stale ? theme.colorScheme.error : connectedGreen(theme),
-                        foreground: Colors.white,
+                        style: theme.textTheme.labelMedium?.copyWith(color: state.stale ? theme.colorScheme.error : connectedGreen(theme)),
                       ),
                     ),
                 ],

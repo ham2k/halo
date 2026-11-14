@@ -141,7 +141,9 @@ Addresses are persisted wherever a slot holds one, so a key that changes follows
 `renamedTypeKeys`'s rule: a forwarding entry, applied on read, permanent.
 
 *Status: built — `CapabilityAddress` in `app/lib/services/cat/capability.dart`, resolved by
-`CatService.resolveCapability`. Nothing stores one yet.*
+`CatService.resolveCapability`. A remote K4's Sub and an Everyware server's rotors and switches
+are entries keyed by their address (`<K4>/rx:sub`, `<server>/rotator:Tower 1`), which slots
+hold like any node id; every other entry is still its device's bare id.*
 
 These are **physical** addresses: which piece of which device. Slots and wiring hold them, and
 nothing else should. The rest of the app asks by role (§ 8).
@@ -418,7 +420,15 @@ Every list the app hands out is in that order: a picker, an extension's `listEqu
 `$core.rotators`. So a panel that shows "the rotators, in order" needs nothing set up for it, and
 `rotator#1` is the first of them. Positions have an order of their own, which `position:1` reads.
 
+*Status: the order is the station's list as configured: what was added first comes first, and a
+device's entries sit together, a K4's Sub right after its Main and an Everyware server's rotors
+and switches after the server. Every picker and `listEquipment` read that list. An order the owner
+sets apart from it is not built.*
+
 ### 8.2 Tags
+
+*Status: not built. Tags come with the by-tag addresses that read them, in the extension
+surface (§ 11, phase 10).*
 
 An order says first and second. A tag says **which**, where the role matters more than the place:
 the tower's rotator, the receive loop's switch.
@@ -466,7 +476,7 @@ Station Configuration is in every release, so every step here runs on real stati
 | `so2rSwitch` set to the radio's own | The arrangement's `audioMixer`: that Flex's |
 | An SDR's `sdrRadio` | The `scope` slot of the position holding that radio; "Main" becomes set A's |
 | Several Flex nodes at one address | One device. Each old uuid forwards to that device's `rx:<slice>` |
-| K4 nodes with `receiver: main` and `sub` | One device. Each old uuid forwards to its `rx:main` or `rx:sub` |
+| K4 nodes with `receiver: main` and `sub` | One device, under Main's uuid, which as a bare id is its `rx:main`. The Sub's uuid forwards to `rx:sub` |
 | An Everyware device node | A capability of its server. The old uuid forwards to it |
 
 *Status: positions and sets are built, as blob version 4 (`StationPositions` in
@@ -481,6 +491,16 @@ builds are out of testers' hands. What the move to one `scope` per position give
 that named one radio leave the second nobody's scope, and one that followed "the Main radio" while
 that was a peer's or none is nobody's. A build from before positions cannot show an SDR linked to
 nothing, so saving that SDR's editor there makes it follow the Main radio again.*
+
+*Status: the K4 and Everyware rows are built (`cat_devices.dart`): each old id that names
+another entry now is stored under `forwarded`, applied on load to everything in the blob that
+names a node, and by `CatService.nodeFor` to an id held anywhere else, a layout or an
+extension's settings. Not a node's own settings: a K4's `k4ConnectionId` can be the old id of
+a Sub configured first, and keeps naming its keychain entry. A build from before this reads
+every entry under its new id, as a node of its own, but saves without `forwarded`, so an old id
+held outside the blob then names nothing. A peer that picked a K4's Sub by its old id finds it
+gone, since what it holds is the id this station offered then. The Flex row is phase 4's
+second stage.*
 
 A forwarding entry from an old node uuid to a capability address is permanent, for
 `renamedTypeKeys`'s reason: the record being read was written by a build with no upper bound on
@@ -532,10 +552,12 @@ Each is a full task. Nothing is visible to the operator before phase 3.
    *Status: the stored positions and sets (§ 9), and the band as one block per set, with the
    SDR link as a position's `scope` slot, are built. Every view logs from set A, and under SO2R
    from A and B, as before; a view choosing its own set is not built.*
-4. **Devices with several capabilities.** One Flex connection for all its slices; Flex, K4 and
-   Everyware nodes merged with forwarding; pickers list capabilities across devices, in the
-   owner's order, and capabilities take tags (§ 8.1, § 8.2). Needs each of
-   the three verified on hardware, not only against fakes.
+4. **Devices with several capabilities**, in two stages. The first: K4 and Everyware nodes
+   merged with forwarding, and pickers listing capabilities across devices in the owner's order
+   (§ 8.1). The second: one Flex connection for all its slices, its nodes merged the same way,
+   and the radio picker listing the slices the radio has. The Flex and Everyware are verified on
+   hardware, the K4 against fakes and captures only.
+   *Status: the first stage is built, with the owner's order being the configured one (§ 8.1).*
 5. **Split, a second receiver, diversity** (§ 5.2). New in the app's VFO, the drivers and the
    logging fields; nothing reads or sets split today.
 6. **Owned receivers and scopes.** The Flex as its own GUI client (HALO-766).
@@ -545,7 +567,7 @@ Each is a full task. Nothing is visible to the operator before phase 3.
 8. **An SO2R controller's transmit side**: routing the key, the PTT and the microphone (§ 6.1).
 9. **The antenna graph and its solver** (§ 7).
 10. **Extension surface** for capabilities, positions and sets, and logical addresses wherever an
-    id is taken today (§ 8.4).
+    id is taken today (§ 8.4), with tags (§ 8.2).
 
 Phases 5 to 10 do not depend on each other and can be reordered.
 

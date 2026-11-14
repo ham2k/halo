@@ -47,6 +47,8 @@ import 'drivers/everyware_server.dart';
 import 'transports/k4_remote_transport.dart';
 import 'transports/sdr_usb_transport.dart' show SdrUsbConnection, SdrUsbTransport;
 import 'drivers/kenwood_driver.dart' show KenwoodDriver;
+import 'drivers/k4_receiver_codec.dart' show K4Receiver;
+import 'drivers/k4_shared_session_config.dart' show k4ReceiverConfigKey;
 import 'discovery.dart';
 import 'driver.dart';
 import 'so2r_audio.dart';
@@ -92,6 +94,7 @@ part 'cat_so2r_audio.dart';
 part 'cat_k4.dart';
 part 'cat_credentials.dart';
 part 'cat_everyware.dart';
+part 'cat_devices.dart';
 
 /// Bump when the stored shape changes in a way a reader has to know about.
 ///
@@ -430,14 +433,20 @@ class CatService extends ChangeNotifier
     };
   }
 
+  /// The entry [uuid] names, or named before it was a capability of a
+  /// device ([_forwardTo]): a layout or an extension may hold an old id, and
+  /// its node's own uuid is then the one to go on with.
   @override
-  EquipmentNode? nodeFor(String uuid) => _nodes[uuid];
+  EquipmentNode? nodeFor(String uuid) => _nodes[uuid] ?? _nodes[_forwarded[uuid]];
 
   /// The physical radio shared by logical receiver nodes, when applicable.
   @override
   String? logicalDeviceIdFor(String uuid) {
     final node = _nodes[uuid];
-    return node != null && _isK4Remote(node) ? _k4Identity(node) : null;
+    if (node == null || !_isK4Remote(node)) return null;
+    // The device's id, its Main's, rather than the connection id: that can
+    // be the old id of a Sub configured first, which names the Sub now.
+    return _k4DeviceOf(_k4Identity(node)) ?? _k4Identity(node);
   }
 
   Map<String, String>? logicalChannelFor(String uuid) => _k4LogicalChannelFor(uuid);
@@ -478,6 +487,11 @@ class CatService extends ChangeNotifier
   /// shape of [radio1], Radio B and every radio's picks.
   @override
   StationPositions _positions = StationPositions(uuidGenerator.v4);
+
+  /// An id this station once used → the entry it names now ([_forwardTo]).
+  /// Kept for good: what holds an old id — a layout, an extension's
+  /// settings — was written by a build of any age.
+  final Map<String, String> _forwarded = {};
 
   @override
   String? get _radio2 => switch (_positions.radioOf(kSetB)) {
@@ -814,7 +828,13 @@ class CatService extends ChangeNotifier
   /// type's name, or — a record written by a newer build, or by a driver
   /// that has since been removed — its bare stored typeKey. One place, so
   /// the Station Configuration list and the Radio control agree on it.
+  ///
+  /// A device's entries share its name: a K4's Sub is called what the K4 is.
   String displayNameFor(EquipmentNode node) {
+    final device = deviceEntryFor(node.uuid);
+    if (device != node.uuid) {
+      if (_nodes[device] case final listed?) return displayNameFor(listed);
+    }
     if (node.name.isNotEmpty) return node.name;
     return typeFor(node)?.name ?? node.typeKey;
   }
@@ -826,6 +846,7 @@ class CatService extends ChangeNotifier
     ..._legacyKeys(),
     'so2rSwitch': _so2rSwitch,
     'nodes': {for (final node in _nodes.values) node.uuid: _storedNode(node)},
+    if (_forwarded.isNotEmpty) 'forwarded': _forwarded,
   });
 
   /// What to call a new node of [typeKey] — the radio's own name, numbered
@@ -853,7 +874,7 @@ class CatService extends ChangeNotifier
     /// not usable.
     String via = 'manual',
   }) async {
-    final node = EquipmentNode(
+    final made = EquipmentNode(
       uuid: uuidGenerator.v4(),
       typeKey: typeKey,
       // Named here rather than only in the editor, because the editor is not
@@ -863,7 +884,12 @@ class CatService extends ChangeNotifier
       name: name.trim().isEmpty ? suggestedNameFor(typeKey) : name,
       config: config,
     );
-    final stored = await _stashSecrets(await _prepareK4Node(node));
+    final prepared = await _prepareK4Node(made);
+    final node = switch (_capabilityIdOf(prepared)) {
+      final id? when !_nodes.containsKey(id) => EquipmentNode(uuid: id, typeKey: prepared.typeKey, name: prepared.name, config: prepared.config),
+      _ => prepared,
+    };
+    final stored = await _stashSecrets(node);
     final category = registry.typeFor(stored.typeKey)?.category;
     // Taking the VFO moves the key in use with it, so the whole block is
     // wrapped: a rig added mid-message would otherwise leave the outgoing
@@ -878,9 +904,7 @@ class CatService extends ChangeNotifier
       // where `vfoA` comes from, and configuring a rig — which is not the same
       // as reaching for it — must not silently take the panel back off the
       // radio they are working through.
-      final sibling =
-          _isK4Remote(stored) && _nodes.values.any((other) => other.uuid != stored.uuid && _isK4Remote(other) && _k4Identity(other) == _k4Identity(stored));
-      if (category == kCategoryTransceiver && _radio1 is! PeerRadio && !sibling) _radio1 = LocalRadio(stored.uuid);
+      if (category == kCategoryTransceiver && _radio1 is! PeerRadio) _radio1 = LocalRadio(stored.uuid);
       // Same rule as radio1, for antenna/key, and for the radio in use: the
       // newest one designated, so adding the antenna this rig runs needs no
       // separate picker visit. Only this rig's, since the picks are per
@@ -899,6 +923,8 @@ class CatService extends ChangeNotifier
       // antenna's reason: only a radio of this station's, since neither a
       // peer's nor "no radio" has a spectrum here for it to stand in for.
       if (category == kCategorySdr && _radio1 is LocalRadio) _designateNow(kCapabilityScope, stored.uuid);
+      // A remote K4 is both its receivers.
+      if (_isK4Remote(stored)) _settleDeviceIds();
     });
     await _save();
     await _everywareNodeSaved(stored.uuid);
@@ -916,9 +942,22 @@ class CatService extends ChangeNotifier
     if (previous == null) return;
     if (_isK4Remote(node)) {
       await _updateK4Node(previous, node);
+      // Back on the secure link, which is the one that reaches the Sub.
+      if (!_isK4Remote(previous)) {
+        _settleDeviceIds();
+        await _save();
+      }
       notifyListeners();
       return;
     }
+    // Off it, the K4 is a one-receiver radio: its Sub goes, rather than
+    // stay listed on a link its device no longer uses. Only once the edit
+    // is saved, so an edit the keychain refuses leaves the K4 whole.
+    final leavingSubs = [
+      if (_isK4Remote(previous))
+        for (final sub in _k4SiblingIds(previous.uuid))
+          if (sub != previous.uuid && sub != deviceEntryFor(previous.uuid)) sub,
+    ];
     // Re-typing a node — the operator switching the same radio from WiFi to
     // USB — replaces both its transport and its driver, and a live runtime
     // holds a session the OLD driver built over a connection the OLD
@@ -951,6 +990,9 @@ class CatService extends ChangeNotifier
       _nodes[node.uuid] = _everywareKeepAnnounced(_nodes[node.uuid] ?? previous, stored);
       await _save();
       await _everywareNodeSaved(node.uuid);
+      for (final sub in leavingSubs) {
+        await _removeOne(sub);
+      }
     } finally {
       if (sdr != null) sdr.sdrBusy--;
     }
@@ -965,7 +1007,19 @@ class CatService extends ChangeNotifier
     }
   }
 
+  /// Removes [uuid], and a remote K4's receivers together: they are one
+  /// device. The Main goes last, so a removal that fails part-way leaves the
+  /// Main, which the next load gives its Sub back, never a Sub that load
+  /// would make a new K4 for.
   Future<void> removeNode(String uuid) async {
+    final device = deviceEntryFor(uuid);
+    for (final receiver in {..._k4SiblingIds(uuid), uuid}) {
+      if (receiver != device && _nodes.containsKey(receiver)) await _removeOne(receiver);
+    }
+    await _removeOne(device);
+  }
+
+  Future<void> _removeOne(String uuid) async {
     await _everywareNodeRemoving(uuid);
     await disconnect(uuid, byUser: _everywareServerOf(uuid) == null);
     // The keychain entry outlives the prefs blob unless we say otherwise —

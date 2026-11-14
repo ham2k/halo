@@ -101,7 +101,7 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
     return (
       configured: node != null,
       connected: node != null && cat.stateFor(node.uuid).status == EquipmentStatus.connected,
-      name: node == null ? null : cat.displayNameFor(node),
+      name: node == null ? null : cat.radioNameFor(node),
     );
   }
 

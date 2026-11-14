@@ -3142,11 +3142,8 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get k4TcpNotes => 'connect the k4’s ethernet socket to your local network. enter its hostname or ip address and cat port 9200. halo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the cat port does not change the spectrum port.\n\nthe spectrum shows the main receiver. its zoom, reference adjustment and speed controls affect only halo’s display. audio streaming is not supported.';
 	@override String get k4PowerTimeout => 'k4 power was not changed because the radio did not confirm its output range. try again.';
 	@override String get k4RemoteNotes => 'enable remote access on your k4 and enter its network password. main and sub share one encrypted connection for radio control and spectrum. the default port is 9204; enter your forwarded port when connecting remotely.\n\naudio playback and microphone streaming are not supported.';
-	@override String get k4Receiver => 'receiver';
 	@override String get k4ReceiverMain => 'main';
 	@override String get k4ReceiverSub => 'sub';
-	@override String get k4ReceiverInvalid => 'choose main or sub';
-	@override String get k4ReceiverAlreadyConfigured => 'that receiver is already configured for this k4';
 	@override String get k4SubReceiverOff => 'the k4 sub receiver is off';
 	@override String get k4RemotePasswordRequired => 'enter the k4’s network password to connect securely.';
 	@override String get k4RemoteHandshakeFailed => 'the k4 could not establish a secure connection. check its network password and remote access settings.';
@@ -7303,11 +7300,8 @@ extension on TranslationsQrp {
 			'settings.station.k4TcpNotes' => 'connect the k4’s ethernet socket to your local network. enter its hostname or ip address and cat port 9200. halo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the cat port does not change the spectrum port.\n\nthe spectrum shows the main receiver. its zoom, reference adjustment and speed controls affect only halo’s display. audio streaming is not supported.',
 			'settings.station.k4PowerTimeout' => 'k4 power was not changed because the radio did not confirm its output range. try again.',
 			'settings.station.k4RemoteNotes' => 'enable remote access on your k4 and enter its network password. main and sub share one encrypted connection for radio control and spectrum. the default port is 9204; enter your forwarded port when connecting remotely.\n\naudio playback and microphone streaming are not supported.',
-			'settings.station.k4Receiver' => 'receiver',
 			'settings.station.k4ReceiverMain' => 'main',
 			'settings.station.k4ReceiverSub' => 'sub',
-			'settings.station.k4ReceiverInvalid' => 'choose main or sub',
-			'settings.station.k4ReceiverAlreadyConfigured' => 'that receiver is already configured for this k4',
 			'settings.station.k4SubReceiverOff' => 'the k4 sub receiver is off',
 			'settings.station.k4RemotePasswordRequired' => 'enter the k4’s network password to connect securely.',
 			'settings.station.k4RemoteHandshakeFailed' => 'the k4 could not establish a secure connection. check its network password and remote access settings.',
@@ -7726,11 +7720,11 @@ extension on TranslationsQrp {
 			'settings.developer.dataFolder' => 'data folder',
 			'settings.developer.worktree' => 'worktree',
 			'settings.developer.launchedAt' => 'started',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.loading' => '(loading…)',
 			'settings.developer.panelLoadFailed' => 'could not load this settings panel.',
 			'settings.developer.extDevServer' => 'extension dev server',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.extensionSettings' => 'extension settings',
 			'settings.developer.extDevServerDescription' => 'load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.',
 			'settings.developer.extDevServerAddress' => 'server address',
@@ -8240,11 +8234,11 @@ extension on TranslationsQrp {
 			'adifImport.busy' => 'an import is already running. wait for it to finish before starting another.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos, the most an operation can import at a time.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos. importing an adif into an operation is meant to add a few qsos, not to bring in a large log — use the logs view for that. developer mode lets you import it anyway, if you are sure.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.importAnyway' => 'import anyway',
 			'offline.statusOffline' => 'internet: offline',
 			'offline.statusOnline' => 'internet: connected',
+			_ => null,
+		} ?? switch (path) {
 			'offline.noRoute' => 'no network connection at all.',
 			'offline.unreachable' => 'the network is up, but no server is responding — often a sign-in page waiting in a browser.',
 			'offline.reachable' => 'all services responding as expected.',

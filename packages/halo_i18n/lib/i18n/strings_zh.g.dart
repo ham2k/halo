@@ -2737,11 +2737,8 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get k4TcpNotes => '将 K4 的以太网插座连接到您的本地网络。输入其主机名或 IP 地址，以及 CAT 端口 9200。当显示全景或瀑布图时，HaLo 会使用同一主机上的固定端口 9201；更改 CAT 端口不会改变频谱端口。\n\n频谱显示的是主接收机。其缩放、参考电平调整和速度控制只影响 HaLo 的显示。不支持音频流。';
 	@override String get k4PowerTimeout => 'K4 功率未更改，因为电台没有确认其输出范围。请重试。';
 	@override String get k4RemoteNotes => '在您的 K4 上启用远程访问，并输入其网络密码。主接收机和副接收机共用一条加密连接，用于电台控制和频谱。默认端口为 9204；远程连接时请输入您转发的端口。\n\n不支持音频播放和麦克风流。';
-	@override String get k4Receiver => '接收机';
 	@override String get k4ReceiverMain => '主';
 	@override String get k4ReceiverSub => '副';
-	@override String get k4ReceiverInvalid => '请选择主或副';
-	@override String get k4ReceiverAlreadyConfigured => '此 K4 已配置了该接收机';
 	@override String get k4SubReceiverOff => 'K4 副接收机已关闭';
 	@override String get k4RemotePasswordRequired => '请输入 K4 的网络密码以安全连接。';
 	@override String get k4RemoteHandshakeFailed => 'K4 无法建立安全连接。请检查其网络密码和远程访问设置。';
@@ -6354,11 +6351,8 @@ extension on TranslationsZh {
 			'settings.station.k4TcpNotes' => '将 K4 的以太网插座连接到您的本地网络。输入其主机名或 IP 地址，以及 CAT 端口 9200。当显示全景或瀑布图时，HaLo 会使用同一主机上的固定端口 9201；更改 CAT 端口不会改变频谱端口。\n\n频谱显示的是主接收机。其缩放、参考电平调整和速度控制只影响 HaLo 的显示。不支持音频流。',
 			'settings.station.k4PowerTimeout' => 'K4 功率未更改，因为电台没有确认其输出范围。请重试。',
 			'settings.station.k4RemoteNotes' => '在您的 K4 上启用远程访问，并输入其网络密码。主接收机和副接收机共用一条加密连接，用于电台控制和频谱。默认端口为 9204；远程连接时请输入您转发的端口。\n\n不支持音频播放和麦克风流。',
-			'settings.station.k4Receiver' => '接收机',
 			'settings.station.k4ReceiverMain' => '主',
 			'settings.station.k4ReceiverSub' => '副',
-			'settings.station.k4ReceiverInvalid' => '请选择主或副',
-			'settings.station.k4ReceiverAlreadyConfigured' => '此 K4 已配置了该接收机',
 			'settings.station.k4SubReceiverOff' => 'K4 副接收机已关闭',
 			'settings.station.k4RemotePasswordRequired' => '请输入 K4 的网络密码以安全连接。',
 			'settings.station.k4RemoteHandshakeFailed' => 'K4 无法建立安全连接。请检查其网络密码和远程访问设置。',
@@ -6501,11 +6495,11 @@ extension on TranslationsZh {
 			'settings.station.telemetryIntervalDescription' => '电台发射时多久读取一次表头。留空则使用此连接能承受的最快速度，上限 200 ms。',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '整数毫秒，${min} 到 ${max}',
 			'settings.station.pollInterval' => '空闲轮询间隔（ms）',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '在频率和模式都没有变化时，多久向电台查询一次频率和模式。留空则为 ${fallback} ms。',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '整数毫秒，${min} 到 ${max}',
 			'settings.station.advancedSettings' => '高级设置',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWR 读数',
 			'settings.station.placeholderSwrDescription' => '此电台在发射时 SWR 表上报告的数值。高于 1.8 时面板会警告。',
 			'settings.station.placeholderSwrInvalid' => '数字，1 或更大',
@@ -7015,11 +7009,11 @@ extension on TranslationsZh {
 			'adifImport.confirm' => '导入',
 			'adifImport.importing' => ({required Object filename}) => '正在导入 ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已从 ${filename} 导入 ${count} 个通联', other: '已从 ${filename} 导入 ${formatted} 个通联', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '无法导入 ${filename}：${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} 看起来不是 ADIF 文件',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '警告：此 ADIF 包含来自 ${calls} 的 QSO，但如果继续，它们将作为 ${station} 导入。',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' 和 ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个没有日期，无法导入', other: '${formatted} 个没有日期，无法导入', ), 
 			'adifImport.activationFound' => ({required Object refs}) => '此文件记录了 ${refs} 的一次激活。',

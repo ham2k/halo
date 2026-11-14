@@ -13,6 +13,7 @@ import '../settings/spotting_settings_group.dart';
 import '../views/dock_host.dart' show DockLayoutControl;
 import '../views/settings/accounts_panel.dart';
 import 'cat/equipment.dart';
+import 'cat/cat_service.dart' show CatDevices;
 import 'cluster/cluster_service.dart';
 import 'cluster/cluster_settings.dart';
 import 'extensions/extension_catalog_migration.dart';
@@ -48,7 +49,7 @@ void wireExtensions(HaLoServices services) {
     };
     return [
       for (final node in services.cat.nodes)
-        if (services.cat.typeFor(node)?.category == category) {'label': services.cat.displayNameFor(node), 'value': node.uuid},
+        if (services.cat.typeFor(node)?.category == category) {'label': services.cat.radioNameFor(node), 'value': node.uuid},
     ];
   };
   _wireOpStyle(services);

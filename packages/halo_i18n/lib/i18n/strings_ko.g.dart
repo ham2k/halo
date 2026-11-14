@@ -2737,11 +2737,8 @@ class _Translations$settings$station$ko extends Translations$settings$station$en
 	@override String get k4TcpNotes => 'K4의 이더넷 소켓을 로컬 네트워크에 연결하세요. 호스트 이름 또는 IP 주소와 CAT 포트 9200을 입력하세요. 팬어댑터나 워터폴이 표시될 때 HaLo는 같은 호스트의 고정 포트 9201을 사용하며, CAT 포트를 바꿔도 스펙트럼 포트는 바뀌지 않습니다.\n\n스펙트럼은 메인 수신기를 표시합니다. 줌, 기준 조정, 속도 컨트롤은 HaLo의 표시에만 영향을 줍니다. 오디오 스트리밍은 지원되지 않습니다.';
 	@override String get k4PowerTimeout => '무전기가 출력 범위를 확인해 주지 않아 K4 출력을 변경하지 않았습니다. 다시 시도하세요.';
 	@override String get k4RemoteNotes => 'K4에서 원격 접근을 활성화하고 네트워크 비밀번호를 입력하세요. 메인과 서브는 무전기 제어와 스펙트럼을 위해 하나의 암호화된 연결을 공유합니다. 기본 포트는 9204이며, 원격으로 연결할 때는 포워딩한 포트를 입력하세요.\n\n오디오 재생과 마이크 스트리밍은 지원되지 않습니다.';
-	@override String get k4Receiver => '수신기';
 	@override String get k4ReceiverMain => '메인';
 	@override String get k4ReceiverSub => '서브';
-	@override String get k4ReceiverInvalid => '메인 또는 서브를 선택하세요';
-	@override String get k4ReceiverAlreadyConfigured => '이 K4에는 해당 수신기가 이미 구성되어 있습니다';
 	@override String get k4SubReceiverOff => 'K4 서브 수신기가 꺼져 있습니다';
 	@override String get k4RemotePasswordRequired => '안전하게 연결하려면 K4의 네트워크 비밀번호를 입력하세요.';
 	@override String get k4RemoteHandshakeFailed => 'K4가 보안 연결을 수립할 수 없습니다. 네트워크 비밀번호와 원격 접근 설정을 확인하세요.';
@@ -6354,11 +6351,8 @@ extension on TranslationsKo {
 			'settings.station.k4TcpNotes' => 'K4의 이더넷 소켓을 로컬 네트워크에 연결하세요. 호스트 이름 또는 IP 주소와 CAT 포트 9200을 입력하세요. 팬어댑터나 워터폴이 표시될 때 HaLo는 같은 호스트의 고정 포트 9201을 사용하며, CAT 포트를 바꿔도 스펙트럼 포트는 바뀌지 않습니다.\n\n스펙트럼은 메인 수신기를 표시합니다. 줌, 기준 조정, 속도 컨트롤은 HaLo의 표시에만 영향을 줍니다. 오디오 스트리밍은 지원되지 않습니다.',
 			'settings.station.k4PowerTimeout' => '무전기가 출력 범위를 확인해 주지 않아 K4 출력을 변경하지 않았습니다. 다시 시도하세요.',
 			'settings.station.k4RemoteNotes' => 'K4에서 원격 접근을 활성화하고 네트워크 비밀번호를 입력하세요. 메인과 서브는 무전기 제어와 스펙트럼을 위해 하나의 암호화된 연결을 공유합니다. 기본 포트는 9204이며, 원격으로 연결할 때는 포워딩한 포트를 입력하세요.\n\n오디오 재생과 마이크 스트리밍은 지원되지 않습니다.',
-			'settings.station.k4Receiver' => '수신기',
 			'settings.station.k4ReceiverMain' => '메인',
 			'settings.station.k4ReceiverSub' => '서브',
-			'settings.station.k4ReceiverInvalid' => '메인 또는 서브를 선택하세요',
-			'settings.station.k4ReceiverAlreadyConfigured' => '이 K4에는 해당 수신기가 이미 구성되어 있습니다',
 			'settings.station.k4SubReceiverOff' => 'K4 서브 수신기가 꺼져 있습니다',
 			'settings.station.k4RemotePasswordRequired' => '안전하게 연결하려면 K4의 네트워크 비밀번호를 입력하세요.',
 			'settings.station.k4RemoteHandshakeFailed' => 'K4가 보안 연결을 수립할 수 없습니다. 네트워크 비밀번호와 원격 접근 설정을 확인하세요.',
@@ -6501,11 +6495,11 @@ extension on TranslationsKo {
 			'settings.station.telemetryIntervalDescription' => '송신 중 무전기의 미터를 읽는 간격. 비워 두면 이 연결이 처리할 수 있는 가장 빠른 간격(최대 200 ms)을 사용합니다.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '${min}에서 ${max} 사이의 정수 밀리초',
 			'settings.station.pollInterval' => '유휴 폴링 간격 (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '주파수와 모드가 바뀌지 않는 동안 무전기에 이를 묻는 간격. 비워 두면 ${fallback} ms입니다.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '${min}에서 ${max} 사이의 정수 밀리초',
 			'settings.station.advancedSettings' => '고급 설정',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWR 값',
 			'settings.station.placeholderSwrDescription' => '송신 중 이 무전기가 SWR 미터에 보고하는 값. 1.8을 넘으면 패널이 경고합니다.',
 			'settings.station.placeholderSwrInvalid' => '1 이상의 숫자',
@@ -7015,11 +7009,11 @@ extension on TranslationsKo {
 			'adifImport.confirm' => '가져오기',
 			'adifImport.importing' => ({required Object filename}) => '${filename} 가져오는 중…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${filename}에서 교신 ${count}개를 가져왔습니다', other: '${filename}에서 교신 ${formatted}개를 가져왔습니다', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename}을(를) 가져올 수 없습니다: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename}은(는) ADIF 파일이 아닌 것 같습니다',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '경고: 이 ADIF에는 ${calls}의 QSO가 있지만, 계속하면 ${station}(으)로 가져옵니다.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' 및 ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count}개는 날짜가 없어 가져올 수 없습니다', other: '${formatted}개는 날짜가 없어 가져올 수 없습니다', ), 
 			'adifImport.activationFound' => ({required Object refs}) => '이 파일에는 ${refs}의 활성화 기록이 있습니다.',

@@ -241,7 +241,6 @@ class KenwoodDriver extends EquipmentDriver {
   /// entry exists (docs/design/cat.md § Voice keying).
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
-    if (remote && !overrides.containsKey(k4ReceiverConfigKey)) k4ReceiverConfigElement(),
     if (!overrides.containsKey(cwDialectKey))
       {
         'type': 'field',
@@ -289,7 +288,6 @@ class KenwoodDriver extends EquipmentDriver {
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
-    k4ReceiverConfigKey when remote => validateK4Receiver(value),
     voiceMemoriesKey => validateVoiceMemories(value),
     telemetryIntervalConfigKey => validateTelemetryInterval(value),
     pollIntervalConfigKey => validatePollInterval(value),

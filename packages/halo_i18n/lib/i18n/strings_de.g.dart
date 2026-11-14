@@ -2737,11 +2737,8 @@ class _Translations$settings$station$de extends Translations$settings$station$en
 	@override String get k4TcpNotes => 'Verbinde die Ethernet-Buchse des K4 mit deinem lokalen Netzwerk. Gib Hostname oder IP-Adresse und den CAT-Port 9200 ein. HaLo nutzt denselben Host auf dem festen Port 9201, sobald ein Panadapter oder Wasserfall sichtbar ist; eine Änderung des CAT-Ports ändert den Spektrum-Port nicht.\n\nDas Spektrum zeigt den Hauptempfänger. Zoom, Referenzeinstellung und Geschwindigkeit wirken nur auf HaLos Anzeige. Audio-Streaming wird nicht unterstützt.';
 	@override String get k4PowerTimeout => 'Die Leistung des K4 wurde nicht geändert, weil das Funkgerät seinen Ausgangsbereich nicht bestätigt hat. Versuche es erneut.';
 	@override String get k4RemoteNotes => 'Aktiviere den Fernzugriff an deinem K4 und gib sein Netzwerkpasswort ein. Main und Sub teilen sich eine verschlüsselte Verbindung für Steuerung und Spektrum. Der Standardport ist 9204; gib bei einer Verbindung von außen deinen weitergeleiteten Port ein.\n\nAudiowiedergabe und Mikrofon-Streaming werden nicht unterstützt.';
-	@override String get k4Receiver => 'Empfänger';
 	@override String get k4ReceiverMain => 'Main';
 	@override String get k4ReceiverSub => 'Sub';
-	@override String get k4ReceiverInvalid => 'Wähle Main oder Sub';
-	@override String get k4ReceiverAlreadyConfigured => 'Dieser Empfänger ist für diesen K4 bereits konfiguriert';
 	@override String get k4SubReceiverOff => 'Der Sub-Empfänger des K4 ist aus';
 	@override String get k4RemotePasswordRequired => 'Gib das Netzwerkpasswort des K4 ein, um sicher zu verbinden.';
 	@override String get k4RemoteHandshakeFailed => 'Der K4 konnte keine sichere Verbindung aufbauen. Prüfe sein Netzwerkpasswort und die Einstellungen für den Fernzugriff.';
@@ -6354,11 +6351,8 @@ extension on TranslationsDe {
 			'settings.station.k4TcpNotes' => 'Verbinde die Ethernet-Buchse des K4 mit deinem lokalen Netzwerk. Gib Hostname oder IP-Adresse und den CAT-Port 9200 ein. HaLo nutzt denselben Host auf dem festen Port 9201, sobald ein Panadapter oder Wasserfall sichtbar ist; eine Änderung des CAT-Ports ändert den Spektrum-Port nicht.\n\nDas Spektrum zeigt den Hauptempfänger. Zoom, Referenzeinstellung und Geschwindigkeit wirken nur auf HaLos Anzeige. Audio-Streaming wird nicht unterstützt.',
 			'settings.station.k4PowerTimeout' => 'Die Leistung des K4 wurde nicht geändert, weil das Funkgerät seinen Ausgangsbereich nicht bestätigt hat. Versuche es erneut.',
 			'settings.station.k4RemoteNotes' => 'Aktiviere den Fernzugriff an deinem K4 und gib sein Netzwerkpasswort ein. Main und Sub teilen sich eine verschlüsselte Verbindung für Steuerung und Spektrum. Der Standardport ist 9204; gib bei einer Verbindung von außen deinen weitergeleiteten Port ein.\n\nAudiowiedergabe und Mikrofon-Streaming werden nicht unterstützt.',
-			'settings.station.k4Receiver' => 'Empfänger',
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
-			'settings.station.k4ReceiverInvalid' => 'Wähle Main oder Sub',
-			'settings.station.k4ReceiverAlreadyConfigured' => 'Dieser Empfänger ist für diesen K4 bereits konfiguriert',
 			'settings.station.k4SubReceiverOff' => 'Der Sub-Empfänger des K4 ist aus',
 			'settings.station.k4RemotePasswordRequired' => 'Gib das Netzwerkpasswort des K4 ein, um sicher zu verbinden.',
 			'settings.station.k4RemoteHandshakeFailed' => 'Der K4 konnte keine sichere Verbindung aufbauen. Prüfe sein Netzwerkpasswort und die Einstellungen für den Fernzugriff.',
@@ -6501,11 +6495,11 @@ extension on TranslationsDe {
 			'settings.station.telemetryIntervalDescription' => 'Wie oft die Meter des Funkgeräts beim Senden gelesen werden. Leer lassen für das Schnellste, was diese Verbindung schafft, bis 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Eine ganze Zahl in Millisekunden, ${min} bis ${max}',
 			'settings.station.pollInterval' => 'Abfrageintervall im Leerlauf (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Wie oft das Funkgerät nach Frequenz und Modus gefragt wird, solange sich keines davon ändert. Leer lassen für ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Eine ganze Zahl in Millisekunden, ${min} bis ${max}',
 			'settings.station.advancedSettings' => 'Erweiterte Einstellungen',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWR-Wert',
 			'settings.station.placeholderSwrDescription' => 'Was dieses Funkgerät beim Senden auf seinem SWR-Meter meldet. Über 1,8 warnt das Panel.',
 			'settings.station.placeholderSwrInvalid' => 'Eine Zahl, 1 oder mehr',
@@ -7015,11 +7009,11 @@ extension on TranslationsDe {
 			'adifImport.confirm' => 'Importieren',
 			'adifImport.importing' => ({required Object filename}) => 'Importiere ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} Kontakt aus ${filename} importiert', other: '${formatted} Kontakte aus ${filename} importiert', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} konnte nicht importiert werden: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} sieht nicht wie eine ADIF-Datei aus',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Warnung: Diese ADIF enthält QSOs von ${calls}, sie werden aber als ${station} importiert, wenn du fortfährst.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' und ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} hat kein Datum und kann nicht importiert werden', other: '${formatted} haben kein Datum und können nicht importiert werden', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Diese Datei enthält eine Aktivierung von ${refs}.',

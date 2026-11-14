@@ -1,9 +1,10 @@
 # K4 remote connection
 
 The **Elecraft K4 → Secure Network/WiFi** pairing carries CAT and both
-panadapters over one TLS connection, on port 9204 by default. Main and Sub
-appear as separate radios in HaLo while sharing the physical connection and
-transmitter. The serial and local Ethernet 9200/9201 pairings remain separate.
+panadapters over one TLS connection, on port 9204 by default. It is one
+device with two receivers ([station-model.md § 3](station-model.md#3-devices)):
+Main and Sub are picked as separate radios, and share the physical connection
+and the transmitter. The serial and local Ethernet 9200/9201 pairings remain separate.
 The secure transport uses a native backend on macOS, Windows, Linux, iOS and
 Android; it is unavailable in browsers.
 
@@ -17,13 +18,26 @@ Enter the radio's host and network password, and use port 9204 unless a
 forwarded port is required. The `remotePort` configuration key is separate
 from the local CAT port, so switching pairings preserves both values.
 
-Main is the default receiver. To expose Sub, add another secure K4 entry with
-the same connection settings and **Receiver: Sub**. Leave its password blank
-to reuse the existing entry's saved password, or enter the same password.
-Matching connection settings and credentials join a persisted device identity;
-different credentials or ports identify separate connections. Editing shared
-connection settings updates both entries. Removing either entry preserves the
-remaining entry's credentials. Adding Sub does not change the logging radio.
+Station Configuration lists the K4 once. Adding it adds both receivers: Main
+under the device's id, which takes the logging radio as any new transceiver
+does, and Sub under `<device>/rx:sub`, which the radio pickers list as
+"K4 · Sub". Neither has a receiver setting, since which receiver an entry
+tracks is part of its id. Editing it from any row edits the K4, Sub in use
+or not, and the connection settings it edits are both receivers', the
+row's plug connects and disconnects both, and removing the K4 removes both and
+its saved password. Moving the K4 to its serial or Ethernet pairing removes
+the Sub, with its picks, since only the secure link reaches it; moving it back
+adds the Sub again under the same id.
+
+A station stored before this had Main and Sub as two entries with ids of
+their own, joined by a shared connection id (`k4ConnectionId`), which also
+names the keychain entry and keeps doing so. On load, the Sub takes the id
+`<Main's id>/rx:sub`, and a K4 stored with one receiver gets the other; a
+K4 stored with only a Sub gets a Main under an id made from its connection id,
+never the Sub's old one, and the same one at every load, so a layout that
+picked it finds it again whether or not the station was saved in between.
+Each old id is forwarded to the entry it named
+([station-model.md § 9](station-model.md#9-persistence-and-migration)).
 
 The panel's **Main / Sub / Both** selection addresses those radio IDs. Each
 pane has independent local zoom, reference, averaging, speed and waterfall

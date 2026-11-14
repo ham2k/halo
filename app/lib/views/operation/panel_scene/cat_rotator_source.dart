@@ -37,7 +37,7 @@ class CatRotatorSource implements SceneRotatorSource {
       return null;
     }
     final node = cat.nodeFor(rotator);
-    return node != null && cat.typeFor(node)?.category == kCategoryRotator ? rotator : null;
+    return node != null && cat.typeFor(node)?.category == kCategoryRotator ? node.uuid : null;
   }
 
   @override

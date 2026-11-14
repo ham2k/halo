@@ -2737,11 +2737,8 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get k4TcpNotes => 'K4\'ün Ethernet soketini yerel ağınıza bağlayın. Ana makine adını veya IP adresini ve CAT portu 9200\'ü girin. Bir panadapter veya şelale görünürken HaLo aynı ana makineyi sabit 9201 portunda kullanır; CAT portunu değiştirmek spektrum portunu değiştirmez.\n\nSpektrum ana alıcıyı gösterir. Yakınlaştırma, referans ayarı ve hız kontrolleri yalnızca HaLo\'nun görüntüsünü etkiler. Ses akışı desteklenmez.';
 	@override String get k4PowerTimeout => 'Radyo çıkış aralığını onaylamadığı için K4 gücü değiştirilmedi. Tekrar deneyin.';
 	@override String get k4RemoteNotes => 'K4\'ünüzde uzak erişimi etkinleştirin ve ağ şifresini girin. Main ve Sub, radyo kontrolü ve spektrum için tek bir şifreli bağlantıyı paylaşır. Varsayılan port 9204\'tür; uzaktan bağlanırken yönlendirdiğiniz portu girin.\n\nSes çalma ve mikrofon akışı desteklenmez.';
-	@override String get k4Receiver => 'Alıcı';
 	@override String get k4ReceiverMain => 'Main';
 	@override String get k4ReceiverSub => 'Sub';
-	@override String get k4ReceiverInvalid => 'Main veya Sub seçin';
-	@override String get k4ReceiverAlreadyConfigured => 'Bu alıcı bu K4 için zaten yapılandırılmış';
 	@override String get k4SubReceiverOff => 'K4\'ün Sub alıcısı kapalı';
 	@override String get k4RemotePasswordRequired => 'Güvenli bağlanmak için K4\'ün ağ şifresini girin.';
 	@override String get k4RemoteHandshakeFailed => 'K4 güvenli bir bağlantı kuramadı. Ağ şifresini ve uzak erişim ayarlarını kontrol edin.';
@@ -6354,11 +6351,8 @@ extension on TranslationsTr {
 			'settings.station.k4TcpNotes' => 'K4\'ün Ethernet soketini yerel ağınıza bağlayın. Ana makine adını veya IP adresini ve CAT portu 9200\'ü girin. Bir panadapter veya şelale görünürken HaLo aynı ana makineyi sabit 9201 portunda kullanır; CAT portunu değiştirmek spektrum portunu değiştirmez.\n\nSpektrum ana alıcıyı gösterir. Yakınlaştırma, referans ayarı ve hız kontrolleri yalnızca HaLo\'nun görüntüsünü etkiler. Ses akışı desteklenmez.',
 			'settings.station.k4PowerTimeout' => 'Radyo çıkış aralığını onaylamadığı için K4 gücü değiştirilmedi. Tekrar deneyin.',
 			'settings.station.k4RemoteNotes' => 'K4\'ünüzde uzak erişimi etkinleştirin ve ağ şifresini girin. Main ve Sub, radyo kontrolü ve spektrum için tek bir şifreli bağlantıyı paylaşır. Varsayılan port 9204\'tür; uzaktan bağlanırken yönlendirdiğiniz portu girin.\n\nSes çalma ve mikrofon akışı desteklenmez.',
-			'settings.station.k4Receiver' => 'Alıcı',
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
-			'settings.station.k4ReceiverInvalid' => 'Main veya Sub seçin',
-			'settings.station.k4ReceiverAlreadyConfigured' => 'Bu alıcı bu K4 için zaten yapılandırılmış',
 			'settings.station.k4SubReceiverOff' => 'K4\'ün Sub alıcısı kapalı',
 			'settings.station.k4RemotePasswordRequired' => 'Güvenli bağlanmak için K4\'ün ağ şifresini girin.',
 			'settings.station.k4RemoteHandshakeFailed' => 'K4 güvenli bir bağlantı kuramadı. Ağ şifresini ve uzak erişim ayarlarını kontrol edin.',
@@ -6501,11 +6495,11 @@ extension on TranslationsTr {
 			'settings.station.telemetryIntervalDescription' => 'Radyo yayındayken ölçerlerinin ne sıklıkla okunacağı. Bu bağlantının kaldırabileceği en hızlı değer için boş bırakın, en fazla 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '${min} ile ${max} arasında tam sayı milisaniye',
 			'settings.station.pollInterval' => 'Boşta sorgulama aralığı (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Frekans ve mod değişmezken radyoya ne sıklıkla sorulacağı. ${fallback} ms için boş bırakın.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '${min} ile ${max} arasında tam sayı milisaniye',
 			'settings.station.advancedSettings' => 'Gelişmiş Ayarlar',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWR değeri',
 			'settings.station.placeholderSwrDescription' => 'Bu radyonun yayın sırasında SWR ölçerinde bildirdiği değer. 1.8\'in üzerinde panel uyarır.',
 			'settings.station.placeholderSwrInvalid' => '1 veya daha büyük bir sayı',
@@ -7015,11 +7009,11 @@ extension on TranslationsTr {
 			'adifImport.confirm' => 'İçe Aktar',
 			'adifImport.importing' => ({required Object filename}) => '${filename} içe aktarılıyor…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${filename} dosyasından ${count} QSO içe aktarıldı', other: '${filename} dosyasından ${formatted} QSO içe aktarıldı', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} içe aktarılamadı: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} bir ADIF dosyasına benzemiyor',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Uyarı: bu ADIF\'te ${calls} çağrılarına ait QSO\'lar var, ancak devam ederseniz ${station} olarak içe aktarılacaklar.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' ve ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} tanesinin tarihi yok ve içe aktarılamaz', other: '${formatted} tanesinin tarihi yok ve içe aktarılamaz', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Bu dosya ${refs} aktivasyonunu kaydediyor.',

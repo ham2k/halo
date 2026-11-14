@@ -2737,11 +2737,8 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get k4TcpNotes => 'K4のEthernetソケットをローカルネットワークに接続してください。ホスト名またはIPアドレスと、CATポート9200を入力します。パンアダプターやウォーターフォールの表示中、HaLoは同じホストの固定ポート9201を使います。CATポートを変更してもスペクトラムのポートは変わりません。\n\nスペクトラムはメイン受信機を表示します。そのズーム、リファレンス調整、速度の操作はHaLoの表示にのみ影響します。音声ストリーミングには対応していません。';
 	@override String get k4PowerTimeout => '無線機が出力範囲を確認しなかったため、K4の出力は変更されませんでした。再試行してください。';
 	@override String get k4RemoteNotes => 'K4でリモートアクセスを有効にし、そのネットワークパスワードを入力してください。MainとSubは、無線機制御とスペクトラムのために1つの暗号化接続を共有します。デフォルトのポートは9204です。リモートから接続する場合は転送先のポートを入力してください。\n\n音声の再生とマイクのストリーミングには対応していません。';
-	@override String get k4Receiver => '受信機';
 	@override String get k4ReceiverMain => 'Main';
 	@override String get k4ReceiverSub => 'Sub';
-	@override String get k4ReceiverInvalid => 'MainまたはSubを選んでください';
-	@override String get k4ReceiverAlreadyConfigured => 'その受信機はこのK4ですでに設定済みです';
 	@override String get k4SubReceiverOff => 'K4のサブ受信機がオフです';
 	@override String get k4RemotePasswordRequired => '安全に接続するにはK4のネットワークパスワードを入力してください。';
 	@override String get k4RemoteHandshakeFailed => 'K4とのセキュアな接続を確立できませんでした。ネットワークパスワードとリモートアクセスの設定を確認してください。';
@@ -6354,11 +6351,8 @@ extension on TranslationsJa {
 			'settings.station.k4TcpNotes' => 'K4のEthernetソケットをローカルネットワークに接続してください。ホスト名またはIPアドレスと、CATポート9200を入力します。パンアダプターやウォーターフォールの表示中、HaLoは同じホストの固定ポート9201を使います。CATポートを変更してもスペクトラムのポートは変わりません。\n\nスペクトラムはメイン受信機を表示します。そのズーム、リファレンス調整、速度の操作はHaLoの表示にのみ影響します。音声ストリーミングには対応していません。',
 			'settings.station.k4PowerTimeout' => '無線機が出力範囲を確認しなかったため、K4の出力は変更されませんでした。再試行してください。',
 			'settings.station.k4RemoteNotes' => 'K4でリモートアクセスを有効にし、そのネットワークパスワードを入力してください。MainとSubは、無線機制御とスペクトラムのために1つの暗号化接続を共有します。デフォルトのポートは9204です。リモートから接続する場合は転送先のポートを入力してください。\n\n音声の再生とマイクのストリーミングには対応していません。',
-			'settings.station.k4Receiver' => '受信機',
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
-			'settings.station.k4ReceiverInvalid' => 'MainまたはSubを選んでください',
-			'settings.station.k4ReceiverAlreadyConfigured' => 'その受信機はこのK4ですでに設定済みです',
 			'settings.station.k4SubReceiverOff' => 'K4のサブ受信機がオフです',
 			'settings.station.k4RemotePasswordRequired' => '安全に接続するにはK4のネットワークパスワードを入力してください。',
 			'settings.station.k4RemoteHandshakeFailed' => 'K4とのセキュアな接続を確立できませんでした。ネットワークパスワードとリモートアクセスの設定を確認してください。',
@@ -6501,11 +6495,11 @@ extension on TranslationsJa {
 			'settings.station.telemetryIntervalDescription' => '送信中に無線機のメーターを読み取る頻度。空欄にすると、この接続で可能な最速（最大200 ms）になります。',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '${min}〜${max}のミリ秒単位の整数',
 			'settings.station.pollInterval' => 'アイドル時のポーリング間隔（ms）',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '周波数とモードが変化していない間に、無線機に問い合わせる頻度。空欄の場合は${fallback} msです。',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '${min}〜${max}のミリ秒単位の整数',
 			'settings.station.advancedSettings' => '詳細設定',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWRの値',
 			'settings.station.placeholderSwrDescription' => '送信中にこの無線機がSWRメーターで報告する値。1.8を超えるとパネルが警告します。',
 			'settings.station.placeholderSwrInvalid' => '1以上の数値',
@@ -7015,11 +7009,11 @@ extension on TranslationsJa {
 			'adifImport.confirm' => 'インポート',
 			'adifImport.importing' => ({required Object filename}) => '${filename}をインポート中…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${filename}から${count}件のコンタクトをインポートしました', other: '${filename}から${formatted}件のコンタクトをインポートしました', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename}をインポートできませんでした：${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename}はADIFファイルではないようです',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '警告：このADIFには${calls}のQSOが含まれていますが、続行すると${station}としてインポートされます。',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationCallJoin' => 'と',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件は日付がないためインポートできません', other: '${formatted}件は日付がないためインポートできません', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'このファイルには${refs}のアクティベーションが記録されています。',

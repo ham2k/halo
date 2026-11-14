@@ -2737,11 +2737,8 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get k4TcpNotes => 'Sluit de Ethernet-aansluiting van de K4 aan op je lokale netwerk. Voer de hostnaam of het IP-adres in en CAT-poort 9200. HaLo gebruikt dezelfde host op de vaste poort 9201 wanneer een panadapter of waterval zichtbaar is; de CAT-poort wijzigen verandert de spectrumpoort niet.\n\nHet spectrum toont de hoofdontvanger. De zoom, referentie-instelling en snelheid ervan beïnvloeden alleen de weergave in HaLo. Audiostreaming wordt niet ondersteund.';
 	@override String get k4PowerTimeout => 'Het K4-vermogen is niet gewijzigd omdat de radio zijn uitgangsbereik niet bevestigde. Probeer het opnieuw.';
 	@override String get k4RemoteNotes => 'Schakel toegang op afstand in op je K4 en voer het netwerkwachtwoord in. Main en Sub delen één versleutelde verbinding voor radiobesturing en spectrum. De standaardpoort is 9204; voer je doorgestuurde poort in als je op afstand verbindt.\n\nAudio afspelen en microfoonstreaming worden niet ondersteund.';
-	@override String get k4Receiver => 'Ontvanger';
 	@override String get k4ReceiverMain => 'Main';
 	@override String get k4ReceiverSub => 'Sub';
-	@override String get k4ReceiverInvalid => 'Kies Main of Sub';
-	@override String get k4ReceiverAlreadyConfigured => 'Die ontvanger is al geconfigureerd voor deze K4';
 	@override String get k4SubReceiverOff => 'De subontvanger van de K4 staat uit';
 	@override String get k4RemotePasswordRequired => 'Voer het netwerkwachtwoord van de K4 in om beveiligd te verbinden.';
 	@override String get k4RemoteHandshakeFailed => 'De K4 kon geen beveiligde verbinding opzetten. Controleer het netwerkwachtwoord en de instellingen voor toegang op afstand.';
@@ -6354,11 +6351,8 @@ extension on TranslationsNl {
 			'settings.station.k4TcpNotes' => 'Sluit de Ethernet-aansluiting van de K4 aan op je lokale netwerk. Voer de hostnaam of het IP-adres in en CAT-poort 9200. HaLo gebruikt dezelfde host op de vaste poort 9201 wanneer een panadapter of waterval zichtbaar is; de CAT-poort wijzigen verandert de spectrumpoort niet.\n\nHet spectrum toont de hoofdontvanger. De zoom, referentie-instelling en snelheid ervan beïnvloeden alleen de weergave in HaLo. Audiostreaming wordt niet ondersteund.',
 			'settings.station.k4PowerTimeout' => 'Het K4-vermogen is niet gewijzigd omdat de radio zijn uitgangsbereik niet bevestigde. Probeer het opnieuw.',
 			'settings.station.k4RemoteNotes' => 'Schakel toegang op afstand in op je K4 en voer het netwerkwachtwoord in. Main en Sub delen één versleutelde verbinding voor radiobesturing en spectrum. De standaardpoort is 9204; voer je doorgestuurde poort in als je op afstand verbindt.\n\nAudio afspelen en microfoonstreaming worden niet ondersteund.',
-			'settings.station.k4Receiver' => 'Ontvanger',
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
-			'settings.station.k4ReceiverInvalid' => 'Kies Main of Sub',
-			'settings.station.k4ReceiverAlreadyConfigured' => 'Die ontvanger is al geconfigureerd voor deze K4',
 			'settings.station.k4SubReceiverOff' => 'De subontvanger van de K4 staat uit',
 			'settings.station.k4RemotePasswordRequired' => 'Voer het netwerkwachtwoord van de K4 in om beveiligd te verbinden.',
 			'settings.station.k4RemoteHandshakeFailed' => 'De K4 kon geen beveiligde verbinding opzetten. Controleer het netwerkwachtwoord en de instellingen voor toegang op afstand.',
@@ -6501,11 +6495,11 @@ extension on TranslationsNl {
 			'settings.station.telemetryIntervalDescription' => 'Hoe vaak de meters van de radio tijdens het zenden worden uitgelezen. Laat leeg voor het snelste wat deze verbinding aankan, tot 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Een geheel aantal milliseconden, ${min} tot ${max}',
 			'settings.station.pollInterval' => 'Pollinginterval in rust (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Hoe vaak de radio om frequentie en mode wordt gevraagd zolang geen van beide verandert. Laat leeg voor ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Een geheel aantal milliseconden, ${min} tot ${max}',
 			'settings.station.advancedSettings' => 'Geavanceerde instellingen',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWR-waarde',
 			'settings.station.placeholderSwrDescription' => 'Wat deze radio tijdens het zenden op zijn SWR-meter meldt. Boven 1,8 waarschuwt het paneel.',
 			'settings.station.placeholderSwrInvalid' => 'Een getal, 1 of meer',
@@ -7015,11 +7009,11 @@ extension on TranslationsNl {
 			'adifImport.confirm' => 'Importeren',
 			'adifImport.importing' => ({required Object filename}) => '${filename} importeren…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO geïmporteerd uit ${filename}', other: '${formatted} QSO\'s geïmporteerd uit ${filename}', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Kon ${filename} niet importeren: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} lijkt geen ADIF-bestand',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Waarschuwing: deze ADIF bevat QSO\'s van ${calls}, maar ze worden geïmporteerd als ${station} als je doorgaat.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' en ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} heeft geen datum en kan niet worden geïmporteerd', other: '${formatted} hebben geen datum en kunnen niet worden geïmporteerd', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Dit bestand bevat een activatie van ${refs}.',

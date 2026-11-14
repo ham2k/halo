@@ -2737,11 +2737,8 @@ class _Translations$settings$station$ca extends Translations$settings$station$en
 	@override String get k4TcpNotes => 'Connecta la presa Ethernet de la K4 a la teva xarxa local. Introdueix el nom de l\'amfitrió o l\'adreça IP i el port CAT 9200. HaLo fa servir el mateix amfitrió al port fix 9201 quan es mostra un panadaptador o una cascada; canviar el port CAT no canvia el port de l\'espectre.\n\nL\'espectre mostra el receptor principal. Els seus controls de zoom, ajust de referència i velocitat només afecten la visualització de HaLo. La transmissió d\'àudio no s\'admet.';
 	@override String get k4PowerTimeout => 'No s\'ha canviat la potència de la K4 perquè la ràdio no ha confirmat el seu rang de sortida. Torna-ho a provar.';
 	@override String get k4RemoteNotes => 'Activa l\'accés remot a la K4 i introdueix la seva contrasenya de xarxa. Main i Sub comparteixen una sola connexió xifrada per al control de la ràdio i l\'espectre. El port per defecte és el 9204; introdueix el teu port redirigit quan et connectis remotament.\n\nLa reproducció d\'àudio i la transmissió del micròfon no s\'admeten.';
-	@override String get k4Receiver => 'Receptor';
 	@override String get k4ReceiverMain => 'Main';
 	@override String get k4ReceiverSub => 'Sub';
-	@override String get k4ReceiverInvalid => 'Tria Main o Sub';
-	@override String get k4ReceiverAlreadyConfigured => 'Aquest receptor ja està configurat per a aquesta K4';
 	@override String get k4SubReceiverOff => 'El receptor Sub de la K4 està apagat';
 	@override String get k4RemotePasswordRequired => 'Introdueix la contrasenya de xarxa de la K4 per connectar-te de manera segura.';
 	@override String get k4RemoteHandshakeFailed => 'La K4 no ha pogut establir una connexió segura. Comprova la seva contrasenya de xarxa i la configuració d\'accés remot.';
@@ -6354,11 +6351,8 @@ extension on TranslationsCa {
 			'settings.station.k4TcpNotes' => 'Connecta la presa Ethernet de la K4 a la teva xarxa local. Introdueix el nom de l\'amfitrió o l\'adreça IP i el port CAT 9200. HaLo fa servir el mateix amfitrió al port fix 9201 quan es mostra un panadaptador o una cascada; canviar el port CAT no canvia el port de l\'espectre.\n\nL\'espectre mostra el receptor principal. Els seus controls de zoom, ajust de referència i velocitat només afecten la visualització de HaLo. La transmissió d\'àudio no s\'admet.',
 			'settings.station.k4PowerTimeout' => 'No s\'ha canviat la potència de la K4 perquè la ràdio no ha confirmat el seu rang de sortida. Torna-ho a provar.',
 			'settings.station.k4RemoteNotes' => 'Activa l\'accés remot a la K4 i introdueix la seva contrasenya de xarxa. Main i Sub comparteixen una sola connexió xifrada per al control de la ràdio i l\'espectre. El port per defecte és el 9204; introdueix el teu port redirigit quan et connectis remotament.\n\nLa reproducció d\'àudio i la transmissió del micròfon no s\'admeten.',
-			'settings.station.k4Receiver' => 'Receptor',
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
-			'settings.station.k4ReceiverInvalid' => 'Tria Main o Sub',
-			'settings.station.k4ReceiverAlreadyConfigured' => 'Aquest receptor ja està configurat per a aquesta K4',
 			'settings.station.k4SubReceiverOff' => 'El receptor Sub de la K4 està apagat',
 			'settings.station.k4RemotePasswordRequired' => 'Introdueix la contrasenya de xarxa de la K4 per connectar-te de manera segura.',
 			'settings.station.k4RemoteHandshakeFailed' => 'La K4 no ha pogut establir una connexió segura. Comprova la seva contrasenya de xarxa i la configuració d\'accés remot.',
@@ -6501,11 +6495,11 @@ extension on TranslationsCa {
 			'settings.station.telemetryIntervalDescription' => 'Cada quant es llegeixen els mesuradors de la ràdio mentre transmet. Deixa-ho en blanc per al més ràpid que admeti aquesta connexió, fins a 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Un nombre enter de mil·lisegons, de ${min} a ${max}',
 			'settings.station.pollInterval' => 'Interval de consulta en repòs (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Cada quant es demana a la ràdio la freqüència i el mode mentre cap dels dos canvia. Deixa-ho en blanc per a ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Un nombre enter de mil·lisegons, de ${min} a ${max}',
 			'settings.station.advancedSettings' => 'Configuració avançada',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'Lectura de ROE',
 			'settings.station.placeholderSwrDescription' => 'El que indica el mesurador de ROE d\'aquesta ràdio mentre transmet. Per sobre d\'1,8 el panell avisa.',
 			'settings.station.placeholderSwrInvalid' => 'Un nombre, 1 o més',
@@ -7015,11 +7009,11 @@ extension on TranslationsCa {
 			'adifImport.confirm' => 'Importa',
 			'adifImport.importing' => ({required Object filename}) => 'Important ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'S\'ha importat ${count} contacte de ${filename}', other: 'S\'han importat ${formatted} contactes de ${filename}', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'No s\'ha pogut importar ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} no sembla un fitxer ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Avís: aquest ADIF té QSOs de ${calls}, però s\'importaran com a ${station} si continues.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' i ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} no té data i no es pot importar', other: '${formatted} no tenen data i no es poden importar', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Aquest fitxer registra una activació de ${refs}.',

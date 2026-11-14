@@ -2738,11 +2738,8 @@ class _Translations$settings$station$pt_BR extends Translations$settings$station
 	@override String get k4TcpNotes => 'Conecte a entrada Ethernet do K4 à sua rede local. Insira o nome de host ou endereço IP e a porta CAT 9200. O HaLo usa o mesmo host na porta fixa 9201 quando um panadapter ou waterfall está visível; mudar a porta CAT não muda a porta do espectro.\n\nO espectro mostra o receptor principal. Os controles de zoom, ajuste de referência e velocidade afetam só a exibição do HaLo. Streaming de áudio não é suportado.';
 	@override String get k4PowerTimeout => 'A potência do K4 não foi alterada porque o rádio não confirmou sua faixa de saída. Tente novamente.';
 	@override String get k4RemoteNotes => 'Habilite o acesso remoto no seu K4 e insira a senha de rede dele. Main e Sub compartilham uma única conexão criptografada para controle do rádio e espectro. A porta padrão é 9204; insira a porta redirecionada ao conectar remotamente.\n\nReprodução de áudio e streaming de microfone não são suportados.';
-	@override String get k4Receiver => 'Receptor';
 	@override String get k4ReceiverMain => 'Main';
 	@override String get k4ReceiverSub => 'Sub';
-	@override String get k4ReceiverInvalid => 'Escolha Main ou Sub';
-	@override String get k4ReceiverAlreadyConfigured => 'Esse receptor já está configurado para este K4';
 	@override String get k4SubReceiverOff => 'O receptor Sub do K4 está desligado';
 	@override String get k4RemotePasswordRequired => 'Insira a senha de rede do K4 para conectar com segurança.';
 	@override String get k4RemoteHandshakeFailed => 'O K4 não conseguiu estabelecer uma conexão segura. Verifique a senha de rede e as configurações de acesso remoto dele.';
@@ -6355,11 +6352,8 @@ extension on TranslationsPtBr {
 			'settings.station.k4TcpNotes' => 'Conecte a entrada Ethernet do K4 à sua rede local. Insira o nome de host ou endereço IP e a porta CAT 9200. O HaLo usa o mesmo host na porta fixa 9201 quando um panadapter ou waterfall está visível; mudar a porta CAT não muda a porta do espectro.\n\nO espectro mostra o receptor principal. Os controles de zoom, ajuste de referência e velocidade afetam só a exibição do HaLo. Streaming de áudio não é suportado.',
 			'settings.station.k4PowerTimeout' => 'A potência do K4 não foi alterada porque o rádio não confirmou sua faixa de saída. Tente novamente.',
 			'settings.station.k4RemoteNotes' => 'Habilite o acesso remoto no seu K4 e insira a senha de rede dele. Main e Sub compartilham uma única conexão criptografada para controle do rádio e espectro. A porta padrão é 9204; insira a porta redirecionada ao conectar remotamente.\n\nReprodução de áudio e streaming de microfone não são suportados.',
-			'settings.station.k4Receiver' => 'Receptor',
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
-			'settings.station.k4ReceiverInvalid' => 'Escolha Main ou Sub',
-			'settings.station.k4ReceiverAlreadyConfigured' => 'Esse receptor já está configurado para este K4',
 			'settings.station.k4SubReceiverOff' => 'O receptor Sub do K4 está desligado',
 			'settings.station.k4RemotePasswordRequired' => 'Insira a senha de rede do K4 para conectar com segurança.',
 			'settings.station.k4RemoteHandshakeFailed' => 'O K4 não conseguiu estabelecer uma conexão segura. Verifique a senha de rede e as configurações de acesso remoto dele.',
@@ -6502,11 +6496,11 @@ extension on TranslationsPtBr {
 			'settings.station.telemetryIntervalDescription' => 'Com que frequência ler os medidores do rádio enquanto ele transmite. Deixe vazio para o mais rápido que esta conexão suporta, até 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Um número inteiro de milissegundos, de ${min} a ${max}',
 			'settings.station.pollInterval' => 'Intervalo de consulta em repouso (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Com que frequência perguntar ao rádio a frequência e o modo enquanto nenhum dos dois muda. Deixe vazio para ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Um número inteiro de milissegundos, de ${min} a ${max}',
 			'settings.station.advancedSettings' => 'Configurações avançadas',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'Leitura de ROE',
 			'settings.station.placeholderSwrDescription' => 'O que este rádio informa no medidor de ROE durante a transmissão. Acima de 1.8, o painel avisa.',
 			'settings.station.placeholderSwrInvalid' => 'Um número, 1 ou mais',
@@ -7016,11 +7010,11 @@ extension on TranslationsPtBr {
 			'adifImport.confirm' => 'Importar',
 			'adifImport.importing' => ({required Object filename}) => 'Importando ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} contato importado de ${filename}', other: '${formatted} contatos importados de ${filename}', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Não foi possível importar ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} não parece ser um arquivo ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Aviso: este ADIF tem QSOs de ${calls}, mas eles serão importados como ${station} se você continuar.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' e ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} não tem data e não pode ser importado', other: '${formatted} não têm data e não podem ser importados', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Este arquivo registra uma ativação de ${refs}.',

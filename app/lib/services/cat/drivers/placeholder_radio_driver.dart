@@ -320,7 +320,7 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
   @override
   void startUpdates() {
     // One word, in the equipment row's developer-mode slot between the
-    // frequency and the status pill: a green row moving through frequencies
+    // frequency and the status: a green row moving through frequencies
     // is exactly what a real rig looks like. It is the developer's tell only
     // — the slot is hidden outside developer mode, and what says "no rig" to
     // everyone else is the catalogue name. A sentence would crowd out the

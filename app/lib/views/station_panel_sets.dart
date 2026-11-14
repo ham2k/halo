@@ -89,7 +89,7 @@ extension _SetRows on StationPanel {
           );
         }
         return CurrentTransceiverTile(
-          displayName: st.so2rRadioName(radio: 'B', name: _displayName(node)),
+          displayName: st.so2rRadioName(radio: 'B', name: _cat.radioNameFor(node)),
           connection: connectionTextFor(context, _cat.typeFor(node), node.config),
           transportType: _cat.typeFor(node),
           state: _cat.stateFor(node.uuid),

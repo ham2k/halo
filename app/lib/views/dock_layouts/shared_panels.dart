@@ -282,11 +282,11 @@ extension SharedDashboardPanels<T extends StatefulWidget> on DockHost<T> {
                 // settings row reads "Radio: VFO A — Left Radio" and the
                 // operator can see which rig Automatic currently means
                 // without opening Station Configuration to find out.
-                'label': designated == null ? t.layout.panels.radioAutoNone : t.layout.panels.radioAutoNamed(name: cat.displayNameFor(designated)),
+                'label': designated == null ? t.layout.panels.radioAutoNone : t.layout.panels.radioAutoNamed(name: cat.radioNameFor(designated)),
                 'value': radioNodeAuto,
               },
               for (final node in cat.nodes)
-                if (cat.typeFor(node)?.category == kCategoryTransceiver) {'label': cat.displayNameFor(node), 'value': node.uuid},
+                if (cat.typeFor(node)?.category == kCategoryTransceiver) {'label': cat.radioNameFor(node), 'value': node.uuid},
             ],
           },
           {

@@ -37,8 +37,10 @@ extension _K4Nodes on CatService {
     return type?.transportKey == K4RemoteTransport.transportKey && type?.driver is KenwoodDriver && (type!.driver as KenwoodDriver).remote;
   }
 
-  // The identity outlives the original Main node: removing Main must leave
-  // Sub's credentials usable, including after a restart or a transport edit.
+  // The connection id, apart from the entry's own: it names the shared
+  // connection and the keychain entry both receivers use, and for a K4
+  // whose Sub was configured first it is that Sub's old id, which now
+  // forwards to the Sub ([_Devices._settleDeviceIds]).
   String _k4Identity(EquipmentNode node) {
     final stored = node.config[_k4ConnectionId];
     return stored is String && stored.isNotEmpty ? stored : node.uuid;
@@ -51,44 +53,26 @@ extension _K4Nodes on CatService {
       if (entry.key != 'receiver' && entry.key != _k4ConnectionId && !registry.allSecretFields.contains(entry.key)) entry.key: entry.value,
   };
 
+  /// A remote K4 added is a device of its own, made as its Main
+  /// ([_settleDeviceIds] gives it its Sub): its connection is its own, and
+  /// so is the keychain entry its password goes in.
   Future<EquipmentNode> _prepareK4Node(EquipmentNode node) async {
     if (!_isK4Remote(node)) return node;
-    final type = typeFor(node)!;
-    final receiver = _k4Receiver(node);
-    final shared = _k4SharedConfig(type.driverConfig(node.config));
-    for (final other in _nodes.values) {
-      if (!_isK4Remote(other) || _k4Receiver(other) == receiver) continue;
-      if (!const DeepCollectionEquality().equals(shared, _k4SharedConfig(typeFor(other)!.driverConfig(other.config)))) continue;
-      final identity = _k4Identity(other);
-      // An address alone cannot prove that two entries use the same account.
-      // Blank means reuse the saved password, exactly as in the editor.
-      final entered = node.config['password'];
-      if (entered is String && entered.isNotEmpty && entered != await _settings.equipmentSecret(identity, 'password')) continue;
-      // Do not put two logical nodes for one receiver in the same group.
-      if (_nodes.values.any((candidate) => _isK4Remote(candidate) && _k4Identity(candidate) == identity && _k4Receiver(candidate) == receiver)) continue;
-      return node.copyWith(config: {...node.config, _k4ConnectionId: identity, 'receiver': receiver});
-    }
-    return node.copyWith(config: {...node.config, _k4ConnectionId: node.uuid, 'receiver': receiver});
+    return node.copyWith(config: {...node.config, _k4ConnectionId: node.uuid, k4ReceiverConfigKey: K4Receiver.main.name});
   }
 
   Future<void> _updateK4Node(EquipmentNode previous, EquipmentNode edited) async {
     final identity = _k4Identity(previous);
-    final node = edited.copyWith(config: {...edited.config, _k4ConnectionId: identity});
+    // Which receiver an entry is never changes: it is part of its id.
+    final node = edited.copyWith(config: {...edited.config, _k4ConnectionId: identity, k4ReceiverConfigKey: _k4Receiver(previous)});
     final group = _nodes.values.where((other) => other.uuid == previous.uuid || (_isK4Remote(other) && _k4Identity(other) == identity)).toList();
     final sharedChanged = group.any((other) => !const DeepCollectionEquality().equals(_k4SharedConfig(other.config), _k4SharedConfig(node.config)));
     final secretChanged = registry.allSecretFields.any((key) => node.config[key] is String && (node.config[key] as String).isNotEmpty);
-    final receiverChanged = _k4Receiver(previous) != _k4Receiver(node);
     final typeChanged = previous.typeKey != node.typeKey;
-    final receiverError = _validateReceiverSelection(node);
-    if (receiverError != null) throw ArgumentError(receiverError);
     // Save secrets before disrupting working sessions: a locked keychain
     // cannot turn a failed form save into a radio disconnect.
     final stored = await _stashSecrets(node);
-    final affected = sharedChanged || secretChanged || typeChanged
-        ? group
-        : receiverChanged
-        ? [previous]
-        : <EquipmentNode>[];
+    final affected = sharedChanged || secretChanged || typeChanged ? group : <EquipmentNode>[];
     final reconnect = <String>[];
     for (final other in affected) {
       final status = stateFor(other.uuid).status;
@@ -107,26 +91,8 @@ extension _K4Nodes on CatService {
   }
 }
 
-/// Station-editor validation that depends on the configured radio inventory.
+/// Station-editor validation that depends on the configured equipment.
 extension CatEquipmentValidation on CatService {
-  String? validateEquipmentEditorField(EquipmentType type, EquipmentNode? node, String key, dynamic value, Map<String, dynamic> values) {
-    final error = type.validateEditorField(key, value, values);
-    if (error != null) return error;
-    if (node == null || key != type.driver.channelKey) return null;
-    return _validateReceiverSelection(node.copyWith(typeKey: type.key, config: values));
-  }
-
-  /// A receiver already represented by a sibling cannot be selected again.
-  /// The editor checks this before closing so the operator can correct it.
-  String? _validateReceiverSelection(EquipmentNode edited) {
-    final previous = _nodes[edited.uuid];
-    if (previous == null || !_isK4Remote(edited)) return null;
-    if (previous.typeKey == edited.typeKey && _k4Receiver(previous) == _k4Receiver(edited)) return null;
-    final identity = _k4Identity(previous);
-    return _nodes.values.any(
-          (other) => other.uuid != edited.uuid && _isK4Remote(other) && _k4Identity(other) == identity && _k4Receiver(other) == _k4Receiver(edited),
-        )
-        ? t.settings.station.k4ReceiverAlreadyConfigured
-        : null;
-  }
+  String? validateEquipmentEditorField(EquipmentType type, EquipmentNode? node, String key, dynamic value, Map<String, dynamic> values) =>
+      type.validateEditorField(key, value, values);
 }

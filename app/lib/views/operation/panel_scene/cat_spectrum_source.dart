@@ -54,7 +54,7 @@ class CatSpectrumSource implements SceneSpectrumSource {
           }
         // A node that is not a radio — a keyer, a switch — has no scope to name.
         : switch (cat.nodeFor(radio)) {
-            final node? when cat.typeFor(node)?.category == kCategoryTransceiver => radio,
+            final node? when cat.typeFor(node)?.category == kCategoryTransceiver => node.uuid,
             _ => null,
           };
     if (uuid == null || !(settings?.experimentEnabled('fall') /* stored key, see experiments.yaml */ ?? false)) return uuid;
@@ -165,7 +165,7 @@ class CatSpectrumSource implements SceneSpectrumSource {
     final category = node == null ? null : cat.typeFor(node)?.category;
     final wanted = kind == 'rotator' ? kCategoryRotator : kCategoryAntennaSwitch;
     if (category != wanted) return (numbers: const {}, words: const {});
-    final state = cat.stateFor(id);
+    final state = cat.stateFor(node!.uuid);
     final connected = state.status == EquipmentStatus.connected ? 1 : 0;
     if (category == kCategoryRotator) {
       final target = state.rotatorTarget;

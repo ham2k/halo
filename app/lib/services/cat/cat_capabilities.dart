@@ -20,7 +20,7 @@ mixin _Capabilities on ChangeNotifier {
   List<Capability> capabilitiesOf(String uuid) {
     final node = nodeFor(uuid);
     final type = node == null ? null : typeFor(node);
-    return node == null || type == null ? const [] : type.offersWith(node.config, stateFor(uuid));
+    return node == null || type == null ? const [] : type.offersWith(node.config, stateFor(node.uuid));
   }
 
   /// The node and capability [address] names, or null when this station has

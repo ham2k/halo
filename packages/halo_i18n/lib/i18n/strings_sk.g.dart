@@ -2737,11 +2737,8 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String get k4TcpNotes => 'Pripojte ethernetový konektor K4 do lokálnej siete. Zadajte jeho názov hostiteľa alebo IP adresu a port CAT 9200. Keď je viditeľný panadapter alebo vodopád, HaLo používa toho istého hostiteľa na pevnom porte 9201; zmena portu CAT nemení port spektra.\n\nSpektrum zobrazuje hlavný prijímač. Jeho zoom, nastavenie referencie a rýchlosti ovplyvňujú iba zobrazenie v HaLo. Streamovanie zvuku nie je podporované.';
 	@override String get k4PowerTimeout => 'Výkon K4 sa nezmenil, pretože rádiostanica nepotvrdila svoj výstupný rozsah. Skúste to znova.';
 	@override String get k4RemoteNotes => 'Zapnite na K4 vzdialený prístup a zadajte jeho sieťové heslo. Main a Sub zdieľajú jedno šifrované spojenie pre ovládanie rádiostanice a spektrum. Predvolený port je 9204; pri vzdialenom pripojení zadajte svoj presmerovaný port.\n\nPrehrávanie zvuku a streamovanie mikrofónu nie sú podporované.';
-	@override String get k4Receiver => 'Prijímač';
 	@override String get k4ReceiverMain => 'Main';
 	@override String get k4ReceiverSub => 'Sub';
-	@override String get k4ReceiverInvalid => 'Vyberte Main alebo Sub';
-	@override String get k4ReceiverAlreadyConfigured => 'Tento prijímač je pre tento K4 už nakonfigurovaný';
 	@override String get k4SubReceiverOff => 'Prijímač Sub na K4 je vypnutý';
 	@override String get k4RemotePasswordRequired => 'Na zabezpečené pripojenie zadajte sieťové heslo K4.';
 	@override String get k4RemoteHandshakeFailed => 'K4 nedokázal vytvoriť zabezpečené spojenie. Skontrolujte jeho sieťové heslo a nastavenia vzdialeného prístupu.';
@@ -6354,11 +6351,8 @@ extension on TranslationsSk {
 			'settings.station.k4TcpNotes' => 'Pripojte ethernetový konektor K4 do lokálnej siete. Zadajte jeho názov hostiteľa alebo IP adresu a port CAT 9200. Keď je viditeľný panadapter alebo vodopád, HaLo používa toho istého hostiteľa na pevnom porte 9201; zmena portu CAT nemení port spektra.\n\nSpektrum zobrazuje hlavný prijímač. Jeho zoom, nastavenie referencie a rýchlosti ovplyvňujú iba zobrazenie v HaLo. Streamovanie zvuku nie je podporované.',
 			'settings.station.k4PowerTimeout' => 'Výkon K4 sa nezmenil, pretože rádiostanica nepotvrdila svoj výstupný rozsah. Skúste to znova.',
 			'settings.station.k4RemoteNotes' => 'Zapnite na K4 vzdialený prístup a zadajte jeho sieťové heslo. Main a Sub zdieľajú jedno šifrované spojenie pre ovládanie rádiostanice a spektrum. Predvolený port je 9204; pri vzdialenom pripojení zadajte svoj presmerovaný port.\n\nPrehrávanie zvuku a streamovanie mikrofónu nie sú podporované.',
-			'settings.station.k4Receiver' => 'Prijímač',
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
-			'settings.station.k4ReceiverInvalid' => 'Vyberte Main alebo Sub',
-			'settings.station.k4ReceiverAlreadyConfigured' => 'Tento prijímač je pre tento K4 už nakonfigurovaný',
 			'settings.station.k4SubReceiverOff' => 'Prijímač Sub na K4 je vypnutý',
 			'settings.station.k4RemotePasswordRequired' => 'Na zabezpečené pripojenie zadajte sieťové heslo K4.',
 			'settings.station.k4RemoteHandshakeFailed' => 'K4 nedokázal vytvoriť zabezpečené spojenie. Skontrolujte jeho sieťové heslo a nastavenia vzdialeného prístupu.',
@@ -6501,11 +6495,11 @@ extension on TranslationsSk {
 			'settings.station.telemetryIntervalDescription' => 'Ako často čítať merače rádiostanice počas vysielania. Nechajte prázdne pre najrýchlejšie, čo toto pripojenie zvládne, až do 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Celý počet milisekúnd, ${min} až ${max}',
 			'settings.station.pollInterval' => 'Interval dopytovania v nečinnosti (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Ako často sa pýtať rádiostanice na frekvenciu a mód, keď sa nemenia. Nechajte prázdne pre ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Celý počet milisekúnd, ${min} až ${max}',
 			'settings.station.advancedSettings' => 'Rozšírené nastavenia',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'Hodnota SWR',
 			'settings.station.placeholderSwrDescription' => 'Čo táto rádiostanica hlási na merači SWR počas vysielania. Nad 1,8 panel upozorní.',
 			'settings.station.placeholderSwrInvalid' => 'Číslo, 1 alebo viac',
@@ -7015,11 +7009,11 @@ extension on TranslationsSk {
 			'adifImport.confirm' => 'Importovať',
 			'adifImport.importing' => ({required Object filename}) => 'Importuje sa ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Importované ${count} spojenie z ${filename}', other: 'Importovaných ${formatted} spojení z ${filename}', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} sa nepodarilo importovať: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} nevyzerá ako súbor ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Upozornenie: tento ADIF obsahuje QSO od ${calls}, ale ak budete pokračovať, importujú sa ako ${station}.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' a ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} nemá dátum a nedá sa importovať', other: '${formatted} nemá dátum a nedá sa importovať', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Tento súbor zaznamenáva aktiváciu ${refs}.',

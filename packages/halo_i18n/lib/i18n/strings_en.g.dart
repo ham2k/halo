@@ -6990,20 +6990,11 @@ class Translations$settings$station$en {
 	/// en: 'Enable remote access on your K4 and enter its network password. Main and Sub share one encrypted connection for radio control and spectrum. The default port is 9204; enter your forwarded port when connecting remotely. Audio playback and microphone streaming are not supported.'
 	String get k4RemoteNotes => 'Enable remote access on your K4 and enter its network password. Main and Sub share one encrypted connection for radio control and spectrum. The default port is 9204; enter your forwarded port when connecting remotely.\n\nAudio playback and microphone streaming are not supported.';
 
-	/// en: 'Receiver'
-	String get k4Receiver => 'Receiver';
-
 	/// en: 'Main'
 	String get k4ReceiverMain => 'Main';
 
 	/// en: 'Sub'
 	String get k4ReceiverSub => 'Sub';
-
-	/// en: 'Choose Main or Sub'
-	String get k4ReceiverInvalid => 'Choose Main or Sub';
-
-	/// en: 'That receiver is already configured for this K4'
-	String get k4ReceiverAlreadyConfigured => 'That receiver is already configured for this K4';
 
 	/// en: 'The K4 sub receiver is off'
 	String get k4SubReceiverOff => 'The K4 sub receiver is off';
@@ -13635,11 +13626,8 @@ extension on Translations {
 			'settings.station.k4TcpNotes' => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. HaLo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the CAT port does not change the spectrum port.\n\nThe spectrum shows the main receiver. Its zoom, reference adjustment and speed controls affect only HaLo’s display. Audio streaming is not supported.',
 			'settings.station.k4PowerTimeout' => 'K4 power was not changed because the radio did not confirm its output range. Try again.',
 			'settings.station.k4RemoteNotes' => 'Enable remote access on your K4 and enter its network password. Main and Sub share one encrypted connection for radio control and spectrum. The default port is 9204; enter your forwarded port when connecting remotely.\n\nAudio playback and microphone streaming are not supported.',
-			'settings.station.k4Receiver' => 'Receiver',
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
-			'settings.station.k4ReceiverInvalid' => 'Choose Main or Sub',
-			'settings.station.k4ReceiverAlreadyConfigured' => 'That receiver is already configured for this K4',
 			'settings.station.k4SubReceiverOff' => 'The K4 sub receiver is off',
 			'settings.station.k4RemotePasswordRequired' => 'Enter the K4’s network password to connect securely.',
 			'settings.station.k4RemoteHandshakeFailed' => 'The K4 could not establish a secure connection. Check its network password and remote access settings.',
@@ -14058,11 +14046,11 @@ extension on Translations {
 			'settings.developer.dataFolder' => 'Data Folder',
 			'settings.developer.worktree' => 'Worktree',
 			'settings.developer.launchedAt' => 'Started',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.loading' => '(loading…)',
 			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',
 			'settings.developer.extDevServer' => 'Extension Dev Server',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.extensionSettings' => 'Extension Settings',
 			'settings.developer.extDevServerDescription' => 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.',
 			'settings.developer.extDevServerAddress' => 'Server address',
@@ -14572,11 +14560,11 @@ extension on Translations {
 			'adifImport.busy' => 'An import is already running. Wait for it to finish before starting another.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs, the most an operation can import at a time.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs. Importing an ADIF into an operation is meant to add a few QSOs, not to bring in a large log — use the Logs view for that. Developer mode lets you import it anyway, if you are sure.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.importAnyway' => 'Import anyway',
 			'offline.statusOffline' => 'Internet: OFFLINE',
 			'offline.statusOnline' => 'Internet: connected',
+			_ => null,
+		} ?? switch (path) {
 			'offline.noRoute' => 'No network connection at all.',
 			'offline.unreachable' => 'The network is up, but no server is responding — often a sign-in page waiting in a browser.',
 			'offline.reachable' => 'All services responding as expected.',

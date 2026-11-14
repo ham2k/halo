@@ -8,8 +8,8 @@ part of 'cat_service.dart';
 
 extension _EquipmentStore on CatService {
   void _load() {
-    final stored = _settings.stationEquipment;
-    final nodes = stored['nodes'];
+    final raw = _settings.stationEquipment;
+    final nodes = raw['nodes'];
     if (nodes is Map) {
       for (final entry in nodes.entries) {
         final node = EquipmentNode.fromJson('${entry.key}', entry.value);
@@ -17,6 +17,18 @@ extension _EquipmentStore on CatService {
         if (node != null) _nodes[node.uuid] = node;
       }
     }
+    if (raw['forwarded'] case final Map<dynamic, dynamic> forwarded) {
+      for (final MapEntry(:key, :value) in forwarded.entries) {
+        if (key is String && value is String) _forwarded[key] = value;
+      }
+    }
+    _settleDeviceIds();
+    // Everything that names a node by id, read as naming what it is now.
+    // Not the nodes' own settings: a K4's connection id is the old id of a
+    // Sub configured first, and keeps naming its keychain entry.
+    final stored = {
+      for (final MapEntry(:key, :value) in raw.entries) key: key == 'nodes' || key == 'forwarded' || _peerKeys.contains(key) ? value : _forwardIds(value),
+    };
     final storedVersion = stored['version'];
     if (storedVersion is int && storedVersion >= 4) {
       _positions = StationPositions.fromJson(stored, hasNode: _nodes.containsKey, newId: uuidGenerator.v4);
@@ -172,7 +184,7 @@ extension _EquipmentStore on CatService {
     final radioA = _positions.radioOf(kSetA);
     for (final node in [..._nodes.values]) {
       if (!_isSdr(node)) continue;
-      final link = node.config[_legacySdrRadioKey];
+      final link = _forwardIds(node.config[_legacySdrRadioKey]);
       _nodes[node.uuid] = node.copyWith(config: {...node.config}..remove(_legacySdrRadioKey));
       final radio = switch (link) {
         null || '' || 'main' => radioA,

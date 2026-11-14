@@ -1093,7 +1093,7 @@ void main() {
     expect(tester.widget<TextField>(field).controller!.text, 'My Radio');
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
-  testWidgets('an occupied K4 receiver stays in the editor with a field validation message', (tester) async {
+  testWidgets('a remote K4 stored as a Main and a Sub is one row, and its editor asks for no receiver', (tester) async {
     final services = await pumpSettings(
       tester,
       secureStorage: FakeSecureStorage(),
@@ -1102,7 +1102,7 @@ void main() {
         'nodes': {
           'k4-main': {
             'typeKey': 'k4-remote',
-            'name': 'My K4 Main',
+            'name': 'My K4',
             'config': {'host': '192.0.2.4', 'remotePort': 9204, 'receiver': 'main', 'k4ConnectionId': 'k4-main'},
           },
           'k4-sub': {
@@ -1115,21 +1115,48 @@ void main() {
     );
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('2 transceivers'));
+    await tester.tap(find.text('1 transceiver'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('My K4 Main').last);
+    expect(find.text('My K4 Sub'), findsNothing, reason: 'the Sub is a receiver of the K4, not equipment of its own');
+    await tester.tap(find.text('My K4').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(DropdownButtonFormField<dynamic>, t.settings.station.k4Receiver));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text(t.settings.station.k4ReceiverSub).last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Save').last);
-    await tester.pumpAndSettle();
+    expect(find.text('Receiver'), findsNothing, reason: 'which receiver an entry tracks is part of its id, never edited');
+    expect(services.cat.nodeFor('k4-main/rx:sub'), isNotNull);
+    expect(tester.takeException(), isNull);
+  });
 
-    expect(find.text(t.settings.station.k4ReceiverAlreadyConfigured), findsOneWidget);
-    expect(find.text('Save'), findsWidgets, reason: 'validation must keep the editor open for correction');
-    expect(services.cat.nodeFor('k4-main')!.config['receiver'], 'main');
-    expect(tester.takeException(), isNull, reason: 'an occupied receiver is a form error, not an unhandled exception');
+  testWidgets('the K4\'s Sub in use is shown as the Sub, and editing it edits the K4', (tester) async {
+    await pumpSettings(
+      tester,
+      secureStorage: FakeSecureStorage(),
+      equipment: {
+        'version': 3,
+        'mainVfo': {'radio': 'k4-sub'},
+        'nodes': {
+          'k4-main': {
+            'typeKey': 'k4-remote',
+            'name': 'My K4',
+            'config': {'host': '192.0.2.4', 'remotePort': 9204, 'receiver': 'main', 'k4ConnectionId': 'k4-main'},
+          },
+          'k4-sub': {
+            'typeKey': 'k4-remote',
+            'name': 'Old Sub Name',
+            'config': {'host': '192.0.2.4', 'remotePort': 9204, 'receiver': 'sub', 'k4ConnectionId': 'k4-main'},
+          },
+        },
+      },
+    );
+    await tester.tap(find.text('Station Configuration'));
+    await tester.pumpAndSettle();
+    // The row where the operator checks which receiver logs must say which.
+    expect(find.text('My K4 · Sub'), findsOneWidget);
+    await tester.tap(find.text('My K4 · Sub'));
+    await tester.pumpAndSettle();
+    // The Sub's own editor would offer a name nothing shows, and retyping it
+    // off the secure link would take the K4's Main with it.
+    expect(find.widgetWithText(TextField, 'My K4'), findsOneWidget);
+    expect(find.text('Old Sub Name'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('a radio with two ways in asks which, and only that one has to validate', (tester) async {

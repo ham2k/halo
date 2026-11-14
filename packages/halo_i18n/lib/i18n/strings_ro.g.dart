@@ -2737,11 +2737,8 @@ class _Translations$settings$station$ro extends Translations$settings$station$en
 	@override String get k4TcpNotes => 'Conectați mufa Ethernet a K4 la rețeaua locală. Introduceți numele de gazdă sau adresa IP și portul CAT 9200. HaLo folosește același host pe portul fix 9201 când este vizibil un panadapter sau un waterfall; schimbarea portului CAT nu schimbă portul de spectru.\n\nSpectrul arată receptorul principal. Controalele lui de zoom, de ajustare a referinței și de viteză afectează doar afișarea din HaLo. Transmisia audio nu este acceptată.';
 	@override String get k4PowerTimeout => 'Puterea K4 nu a fost schimbată deoarece stația nu a confirmat intervalul de ieșire. Încercați din nou.';
 	@override String get k4RemoteNotes => 'Activați accesul la distanță pe K4 și introduceți parola lui de rețea. Main și Sub folosesc o singură conexiune criptată pentru controlul stației și spectru. Portul implicit este 9204; introduceți portul redirecționat când vă conectați de la distanță.\n\nRedarea audio și transmisia microfonului nu sunt acceptate.';
-	@override String get k4Receiver => 'Receptor';
 	@override String get k4ReceiverMain => 'Main';
 	@override String get k4ReceiverSub => 'Sub';
-	@override String get k4ReceiverInvalid => 'Alegeți Main sau Sub';
-	@override String get k4ReceiverAlreadyConfigured => 'Acel receptor este deja configurat pentru acest K4';
 	@override String get k4SubReceiverOff => 'Receptorul Sub al K4 este oprit';
 	@override String get k4RemotePasswordRequired => 'Introduceți parola de rețea a K4 pentru o conexiune securizată.';
 	@override String get k4RemoteHandshakeFailed => 'K4 nu a putut stabili o conexiune securizată. Verificați parola de rețea și setările de acces la distanță.';
@@ -6354,11 +6351,8 @@ extension on TranslationsRo {
 			'settings.station.k4TcpNotes' => 'Conectați mufa Ethernet a K4 la rețeaua locală. Introduceți numele de gazdă sau adresa IP și portul CAT 9200. HaLo folosește același host pe portul fix 9201 când este vizibil un panadapter sau un waterfall; schimbarea portului CAT nu schimbă portul de spectru.\n\nSpectrul arată receptorul principal. Controalele lui de zoom, de ajustare a referinței și de viteză afectează doar afișarea din HaLo. Transmisia audio nu este acceptată.',
 			'settings.station.k4PowerTimeout' => 'Puterea K4 nu a fost schimbată deoarece stația nu a confirmat intervalul de ieșire. Încercați din nou.',
 			'settings.station.k4RemoteNotes' => 'Activați accesul la distanță pe K4 și introduceți parola lui de rețea. Main și Sub folosesc o singură conexiune criptată pentru controlul stației și spectru. Portul implicit este 9204; introduceți portul redirecționat când vă conectați de la distanță.\n\nRedarea audio și transmisia microfonului nu sunt acceptate.',
-			'settings.station.k4Receiver' => 'Receptor',
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
-			'settings.station.k4ReceiverInvalid' => 'Alegeți Main sau Sub',
-			'settings.station.k4ReceiverAlreadyConfigured' => 'Acel receptor este deja configurat pentru acest K4',
 			'settings.station.k4SubReceiverOff' => 'Receptorul Sub al K4 este oprit',
 			'settings.station.k4RemotePasswordRequired' => 'Introduceți parola de rețea a K4 pentru o conexiune securizată.',
 			'settings.station.k4RemoteHandshakeFailed' => 'K4 nu a putut stabili o conexiune securizată. Verificați parola de rețea și setările de acces la distanță.',
@@ -6501,11 +6495,11 @@ extension on TranslationsRo {
 			'settings.station.telemetryIntervalDescription' => 'Cât de des se citesc instrumentele stației în timpul emisiei. Lăsați gol pentru cea mai mare viteză suportată de conexiune, până la 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Un număr întreg de milisecunde, de la ${min} la ${max}',
 			'settings.station.pollInterval' => 'Interval de interogare în repaus (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Cât de des se cer stației frecvența și modul cât timp niciunul nu se schimbă. Lăsați gol pentru ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Un număr întreg de milisecunde, de la ${min} la ${max}',
 			'settings.station.advancedSettings' => 'Setări avansate',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'Valoare SWR',
 			'settings.station.placeholderSwrDescription' => 'Ce raportează această stație pe instrumentul SWR în timpul emisiei. Peste 1.8 panoul avertizează.',
 			'settings.station.placeholderSwrInvalid' => 'Un număr, 1 sau mai mare',
@@ -7015,11 +7009,11 @@ extension on TranslationsRo {
 			'adifImport.confirm' => 'Importă',
 			'adifImport.importing' => ({required Object filename}) => 'Se importă ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'S-a importat ${count} contact din ${filename}', other: 'S-au importat ${formatted} contacte din ${filename}', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} nu a putut fi importat: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} nu pare a fi un fișier ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Atenție: acest ADIF are QSO-uri de la ${calls}, dar vor fi importate ca ${station} dacă continuați.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' și ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} nu are dată și nu poate fi importat', other: '${formatted} nu au dată și nu pot fi importate', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Acest fișier înregistrează o activare a ${refs}.',

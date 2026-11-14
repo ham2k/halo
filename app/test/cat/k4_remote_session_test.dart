@@ -701,7 +701,7 @@ void main() {
   for (final keySub in [false, true]) {
     test('shared TX reports recover the app PTT key owned by ${keySub ? 'Sub' : 'Main'}', () async {
       final f = await _connectedRemote();
-      final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
+      final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
       await f.cat.connect(sub.uuid);
       final target = keySub ? sub.uuid : f.uuid;
       final sibling = keySub ? f.uuid : sub.uuid;
@@ -734,7 +734,7 @@ void main() {
   for (final logSub in [false, true]) {
     test('external keying updates the CAT indicator when logging on ${logSub ? 'Sub' : 'Main'}', () async {
       final f = await _connectedRemote();
-      final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
+      final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
       await f.cat.connect(sub.uuid);
       await f.cat.setRadio1(LocalRadio(logSub ? sub.uuid : f.uuid));
       final secure = f.transport.secureConnections.single;
@@ -758,7 +758,7 @@ void main() {
 
   test('logical Main and Sub share one concurrent open while retaining independent CAT and spectrum state', () async {
     final f = await _connectedRemote(connect: false);
-    final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
+    final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
     expect(f.cat.radio1, LocalRadio(f.uuid), reason: 'adding a sibling must not take over logging');
     expect(f.cat.logicalDeviceIdFor(sub.uuid), f.cat.logicalDeviceIdFor(f.uuid));
     expect(f.cat.logicalChannelFor(sub.uuid)?['key'], 'sub');
@@ -813,7 +813,7 @@ void main() {
 
   test('shared CAT is recorded once while both receivers observe it', () async {
     final f = await _connectedRemote();
-    final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
+    final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
     await f.cat.connect(sub.uuid);
     final log = _TrafficLog();
     f.cat.trafficLog = log;
@@ -828,7 +828,7 @@ void main() {
   for (final designatedMain in [true, false]) {
     test('both logical receivers reconnect after a physical drop (designated Main: $designatedMain)', () async {
       final f = await _connectedRemote();
-      final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
+      final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
       await f.cat.connect(sub.uuid);
       await f.cat.setRadio1(LocalRadio(designatedMain ? f.uuid : sub.uuid));
       final old = f.transport.secureConnections.single;
@@ -854,7 +854,7 @@ void main() {
     test('logical siblings preserve one CW queue and voice playback (SO2R: $useSo2r)', () async {
       final f = await _connectedRemote();
       await f.settings.setExperimentEnabled('keyer', true);
-      final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
+      final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
       await f.cat.connect(sub.uuid);
       await f.cat.setDesignated(kCategoryKey, f.uuid);
       if (useSo2r) {
@@ -906,7 +906,7 @@ void main() {
         await f.settings.setExperimentEnabled('keyer', true);
         await f.settings.setExperimentEnabled('so2r', true);
         await f.settings.setSo2rQueueMessages(queued);
-        final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
+        final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
         await f.cat.connect(sub.uuid);
         await f.cat.setRadio2(sub.uuid);
         final secure = f.transport.secureConnections.single;
@@ -951,7 +951,7 @@ void main() {
     final f = await _connectedRemote();
     await f.settings.setExperimentEnabled('keyer', true);
     await f.settings.setExperimentEnabled('so2r', true);
-    final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
+    final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
     await f.cat.connect(sub.uuid);
     await f.cat.setRadio2(sub.uuid);
     final secure = f.transport.secureConnections.single;
@@ -971,7 +971,7 @@ void main() {
       await f.settings.setExperimentEnabled('keyer', true);
       await f.settings.setExperimentEnabled('so2r', true);
       await f.settings.setSo2rQueueMessages(true);
-      final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
+      final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
       await f.cat.connect(sub.uuid);
       await f.cat.setRadio2(sub.uuid);
       final secure = f.transport.secureConnections.single;
@@ -1003,7 +1003,7 @@ void main() {
   test('disconnecting the CW initiator cancels queued chunks while its sibling stays connected', () async {
     final f = await _connectedRemote();
     await f.settings.setExperimentEnabled('keyer', true);
-    final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
+    final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
     await f.cat.connect(sub.uuid);
     await f.cat.setDesignated(kCategoryKey, f.uuid);
     final secure = f.transport.secureConnections.single;
@@ -1023,7 +1023,7 @@ void main() {
     final f = await _connectedRemote();
     await f.settings.setExperimentEnabled('keyer', true);
     await f.settings.setVoiceMessageDuration(1, 9000);
-    final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
+    final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
     await f.cat.connect(sub.uuid);
     final secure = f.transport.secureConnections.single;
     secure.receive(_cat(r'FA00014250000;FB00007150000;MD2;MD$2;DV0;SB1;'));
@@ -1045,7 +1045,7 @@ void main() {
   for (final subConnected in [false, true]) {
     test('shared connection edits update both receivers and reconnect only prior connections (Sub connected: $subConnected)', () async {
       final f = await _connectedRemote();
-      final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
+      final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
       if (subConnected) await f.cat.connect(sub.uuid);
       final oldConnection = f.transport.secureConnections.single;
       await f.cat.updateNode(sub.copyWith(config: {...sub.config, 'host': 'changed.invalid', 'remotePort': 19204, 'password': 'replacement-private-key'}));
@@ -1073,79 +1073,64 @@ void main() {
   }
 
   for (final passwordOnly in [false, true]) {
-    test('returning from local CAT reconciles shared edits (password only: $passwordOnly)', () async {
-      final f = await _connectedRemote();
-      final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
-      await f.cat.connect(sub.uuid);
-      final identity = f.cat.logicalDeviceIdFor(f.uuid);
-      final originalConnection = f.transport.secureConnections.single;
+    test(
+      'off the secure link a K4 has no Sub, and back on it the Sub returns under its id with what was edited meanwhile (password only: $passwordOnly)',
+      () async {
+        final f = await _connectedRemote();
+        final subId = '${f.uuid}/rx:sub';
+        await f.cat.connect(subId);
+        final identity = f.cat.logicalDeviceIdFor(f.uuid);
+        final originalConnection = f.transport.secureConnections.single;
 
-      await f.cat.updateNode(f.cat.nodeFor(f.uuid)!.copyWith(typeKey: 'k4-local-test'));
-      expect(f.cat.stateFor(f.uuid).status, EquipmentStatus.disconnected);
-      expect(f.cat.stateFor(sub.uuid).status, EquipmentStatus.connected);
-      expect(originalConnection.closeCalls, 0, reason: 'the sibling still owns the remote link');
-      final host = passwordOnly ? 'synthetic.invalid' : 'returned.invalid';
-      final port = passwordOnly ? 9204 : 19204;
-      final local = f.cat.nodeFor(f.uuid)!;
-      await f.cat.updateNode(local.copyWith(config: {...local.config, 'host': host, 'remotePort': port, 'password': 'returned-private-key'}));
+        await f.cat.updateNode(f.cat.nodeFor(f.uuid)!.copyWith(typeKey: 'k4-local-test'));
+        // Left behind, the Sub would be listed as a K4 of its own, and the next
+        // load would make it a Main.
+        expect(f.cat.nodeFor(subId), isNull);
+        expect(originalConnection.closeCalls, 1, reason: 'nothing is left on the secure link');
+        expect(await f.settings.equipmentSecret(identity!, 'password'), 'test-private-key', reason: 'the Sub going leaves the K4 its password');
+        final host = passwordOnly ? 'synthetic.invalid' : 'returned.invalid';
+        final port = passwordOnly ? 9204 : 19204;
+        final local = f.cat.nodeFor(f.uuid)!;
+        await f.cat.updateNode(local.copyWith(config: {...local.config, 'host': host, 'remotePort': port, 'password': 'returned-private-key'}));
 
-      // The returning receiver has newer shared settings than its still-live
-      // sibling. Joining the old socket would either reject or ignore them.
-      await f.cat.updateNode(f.cat.nodeFor(f.uuid)!.copyWith(typeKey: 'k4-remote-test'));
-      expect(originalConnection.closeCalls, 1);
-      expect(f.transport.targets, hasLength(2));
-      expect(f.transport.targets.last, {'host': host, 'port': port, 'password': 'returned-private-key'});
-      for (final id in [f.uuid, sub.uuid]) {
-        expect(f.cat.logicalDeviceIdFor(id), identity);
-        expect(f.cat.nodeFor(id)!.config['host'], host);
-        expect(f.cat.nodeFor(id)!.config['remotePort'], port);
-        expect(f.cat.nodeFor(id)!.config.containsKey('password'), isFalse);
-        expect(await f.cat.storedSecretFields(id), {'password'});
-      }
-      expect(f.cat.stateFor(f.uuid).status, EquipmentStatus.disconnected);
-      expect(f.cat.stateFor(sub.uuid).status, EquipmentStatus.connected);
-      await f.cat.connect(f.uuid);
-      expect(f.cat.stateFor(f.uuid).status, EquipmentStatus.connected);
-      expect(f.transport.targets, hasLength(2), reason: 'Main joins the updated shared link rather than opening a third connection');
-      expect(f.cat.logicalChannelFor(f.uuid)?['key'], 'main');
-      expect(f.cat.logicalChannelFor(sub.uuid)?['key'], 'sub');
-      for (final key in f.prefs.getKeys()) {
-        expect(f.prefs.get(key).toString(), isNot(contains('returned-private-key')));
-      }
-      await f.cat.disconnect(f.uuid);
-      await f.cat.disconnect(sub.uuid);
-    });
+        await f.cat.updateNode(f.cat.nodeFor(f.uuid)!.copyWith(typeKey: 'k4-remote-test'));
+        for (final id in [f.uuid, subId]) {
+          expect(f.cat.logicalDeviceIdFor(id), identity);
+          expect(f.cat.nodeFor(id)!.config['host'], host);
+          expect(f.cat.nodeFor(id)!.config['remotePort'], port);
+          expect(f.cat.nodeFor(id)!.config.containsKey('password'), isFalse);
+          expect(await f.cat.storedSecretFields(id), {'password'});
+        }
+        await Future.wait([f.cat.connect(f.uuid), f.cat.connect(subId)]);
+        expect(f.transport.targets, hasLength(2), reason: 'both receivers share the one new link');
+        expect(f.transport.targets.last, {'host': host, 'port': port, 'password': 'returned-private-key'});
+        expect(f.cat.logicalChannelFor(f.uuid)?['key'], 'main');
+        expect(f.cat.logicalChannelFor(subId)?['key'], 'sub');
+        for (final key in f.prefs.getKeys()) {
+          expect(f.prefs.get(key).toString(), isNot(contains('returned-private-key')));
+        }
+        await f.cat.disconnect(f.uuid);
+        await f.cat.disconnect(subId);
+      },
+    );
   }
 
-  test('receiver-only edits preserve identity and refuse taking an occupied sibling', () async {
+  test('an edit naming the other receiver keeps the entry on its own, so no two entries ever track one receiver', () async {
     final f = await _connectedRemote();
     final main = f.cat.nodeFor(f.uuid)!;
     await f.cat.updateNode(main.copyWith(config: {...main.config, 'receiver': 'sub'}));
-    expect(f.cat.nodeFor(f.uuid)!.uuid, main.uuid);
-    expect(f.cat.logicalDeviceIdFor(f.uuid), main.uuid);
-    expect(f.cat.logicalChannelFor(f.uuid)?['key'], 'sub');
-    expect(f.transport.targets, hasLength(2));
-    final peer = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'main'});
-    await f.cat.connect(peer.uuid);
-    expect(f.transport.targets, hasLength(2));
-    final current = f.cat.nodeFor(f.uuid)!;
-    await expectLater(f.cat.updateNode(current.copyWith(config: {...current.config, 'receiver': 'main'})), throwsArgumentError);
-    expect(f.cat.logicalChannelFor(f.uuid)?['key'], 'sub');
-    expect(f.cat.stateFor(peer.uuid).status, EquipmentStatus.connected);
-    expect(f.transport.secureConnections.last.closeCalls, 0);
+    expect(f.cat.logicalChannelFor(f.uuid)?['key'], 'main');
+    expect(f.cat.logicalChannelFor('${f.uuid}/rx:sub')?['key'], 'sub');
+    expect(f.transport.targets, hasLength(1), reason: 'nothing about the connection changed, so it stays up');
     await f.cat.disconnect(f.uuid);
-    await f.cat.disconnect(peer.uuid);
   });
 
-  test('different remote ports or passwords never silently join a physical connection group', () async {
+  test('a K4 added at another port, or with another password, is a device of its own', () async {
     final f = await _connectedRemote(connect: false);
-    final portPeer = await f.cat.addNode(
-      typeKey: 'k4-remote-test',
-      config: {'host': 'synthetic.invalid', 'remotePort': 9205, 'receiver': 'sub', 'password': 'test-private-key'},
-    );
+    final portPeer = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9205, 'password': 'test-private-key'});
     final passwordPeer = await f.cat.addNode(
       typeKey: 'k4-remote-test',
-      config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub', 'password': 'different-private-key'},
+      config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'password': 'different-private-key'},
     );
     final ids = [f.uuid, portPeer.uuid, passwordPeer.uuid];
     expect(ids.map(f.cat.logicalDeviceIdFor).toSet(), hasLength(3));
@@ -1157,9 +1142,9 @@ void main() {
     await Future.wait(ids.map(f.cat.disconnect));
   });
 
-  test('logical IDs and shared credentials survive reload and removing Main until the last receiver is removed', () async {
+  test('a reload keeps both receivers under their ids, and removing the K4 takes both and its credential', () async {
     final f = await _connectedRemote(connect: false);
-    final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
+    final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
     final restored = CatService(f.settings, registry: f.cat.registry, reconnectDelay: Duration.zero, idleRetryFirst: const Duration(minutes: 5));
     addTearDown(restored.dispose);
     expect(restored.nodes.map((node) => node.uuid), [f.uuid, sub.uuid]);
@@ -1168,20 +1153,11 @@ void main() {
     expect(restored.logicalChannelFor(sub.uuid)?['key'], 'sub');
     await Future.wait([restored.connect(f.uuid), restored.connect(sub.uuid)]);
     expect(f.transport.targets, hasLength(1));
-    final secure = f.transport.secureConnections.single;
+    // Removing the Main alone would leave a Sub with no device to be part of.
     await restored.removeNode(f.uuid);
-    expect(restored.radio1, isNull, reason: 'removing the logging receiver does not silently designate its sibling');
-    expect(restored.nodeFor(sub.uuid), isNotNull);
-    expect(restored.logicalDeviceIdFor(sub.uuid), f.uuid);
-    expect(restored.stateFor(sub.uuid).status, EquipmentStatus.connected);
-    expect(secure.closeCalls, 0);
-    expect(await f.settings.equipmentSecret(f.uuid, 'password'), 'test-private-key');
-    await restored.disconnect(sub.uuid);
-    await restored.connect(sub.uuid);
-    expect(f.transport.targets.last['password'], 'test-private-key', reason: 'Sub can reopen after the original Main node is gone');
-    await restored.removeNode(sub.uuid);
-    expect(await f.settings.equipmentSecret(f.uuid, 'password'), isNull);
     expect(restored.nodes, isEmpty);
+    expect(restored.radio1, isNull);
+    expect(await f.settings.equipmentSecret(f.uuid, 'password'), isNull);
     expect(f.transport.secureConnections.every((connection) => connection.closeCalls == 1), true);
   });
 }

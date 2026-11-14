@@ -124,8 +124,8 @@ void main() {
     expect(remote.channelKey, 'receiver');
     expect(remote.channelValues, ['main', 'sub']);
     expect(remote.describeChannel({}), remote.describeChannel({'receiver': 'main'}));
-    expect(remote.validateField('receiver', 'wrong', {}), isNotNull);
-    expect(remote.validateField('receiver', null, {}), isNull);
+    // Which receiver an entry tracks is part of its id: never a field to edit.
+    expect(remote.configElements().map((element) => element['key']), isNot(contains('receiver')));
     expect(const KenwoodDriver.k4(lanSpectrum: true).channelKey, isNull);
     expect(const KenwoodDriver.k4().channelValues, isEmpty);
   });

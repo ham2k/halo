@@ -2737,11 +2737,8 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get k4TcpNotes => 'Conecta el puerto Ethernet del K4 a tu red local. Ingresa su nombre de host o dirección IP y el puerto CAT 9200. HaLo usa el mismo host en el puerto fijo 9201 cuando hay un panadaptador o una cascada visible; cambiar el puerto CAT no cambia el puerto del espectro.\n\nEl espectro muestra el receptor principal. Sus controles de zoom, ajuste de referencia y velocidad afectan solo a la visualización de HaLo. La transmisión de audio no está soportada.';
 	@override String get k4PowerTimeout => 'No se cambió la potencia del K4 porque la radio no confirmó su rango de salida. Inténtalo de nuevo.';
 	@override String get k4RemoteNotes => 'Habilita el acceso remoto en tu K4 e ingresa su contraseña de red. Main y Sub comparten una sola conexión cifrada para el control de la radio y el espectro. El puerto por defecto es 9204; ingresa tu puerto redirigido al conectarte de forma remota.\n\nLa reproducción de audio y la transmisión del micrófono no están soportadas.';
-	@override String get k4Receiver => 'Receptor';
 	@override String get k4ReceiverMain => 'Main';
 	@override String get k4ReceiverSub => 'Sub';
-	@override String get k4ReceiverInvalid => 'Elige Main o Sub';
-	@override String get k4ReceiverAlreadyConfigured => 'Ese receptor ya está configurado para este K4';
 	@override String get k4SubReceiverOff => 'El receptor Sub del K4 está apagado';
 	@override String get k4RemotePasswordRequired => 'Ingresa la contraseña de red del K4 para conectarte de forma segura.';
 	@override String get k4RemoteHandshakeFailed => 'El K4 no pudo establecer una conexión segura. Revisa su contraseña de red y la configuración de acceso remoto.';
@@ -6354,11 +6351,8 @@ extension on TranslationsEs {
 			'settings.station.k4TcpNotes' => 'Conecta el puerto Ethernet del K4 a tu red local. Ingresa su nombre de host o dirección IP y el puerto CAT 9200. HaLo usa el mismo host en el puerto fijo 9201 cuando hay un panadaptador o una cascada visible; cambiar el puerto CAT no cambia el puerto del espectro.\n\nEl espectro muestra el receptor principal. Sus controles de zoom, ajuste de referencia y velocidad afectan solo a la visualización de HaLo. La transmisión de audio no está soportada.',
 			'settings.station.k4PowerTimeout' => 'No se cambió la potencia del K4 porque la radio no confirmó su rango de salida. Inténtalo de nuevo.',
 			'settings.station.k4RemoteNotes' => 'Habilita el acceso remoto en tu K4 e ingresa su contraseña de red. Main y Sub comparten una sola conexión cifrada para el control de la radio y el espectro. El puerto por defecto es 9204; ingresa tu puerto redirigido al conectarte de forma remota.\n\nLa reproducción de audio y la transmisión del micrófono no están soportadas.',
-			'settings.station.k4Receiver' => 'Receptor',
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
-			'settings.station.k4ReceiverInvalid' => 'Elige Main o Sub',
-			'settings.station.k4ReceiverAlreadyConfigured' => 'Ese receptor ya está configurado para este K4',
 			'settings.station.k4SubReceiverOff' => 'El receptor Sub del K4 está apagado',
 			'settings.station.k4RemotePasswordRequired' => 'Ingresa la contraseña de red del K4 para conectarte de forma segura.',
 			'settings.station.k4RemoteHandshakeFailed' => 'El K4 no pudo establecer una conexión segura. Revisa su contraseña de red y la configuración de acceso remoto.',
@@ -6501,11 +6495,11 @@ extension on TranslationsEs {
 			'settings.station.telemetryIntervalDescription' => 'Cada cuánto se leen los medidores de la radio mientras transmite. Déjalo en blanco para lo más rápido que admita esta conexión, hasta 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Un número entero de milisegundos, de ${min} a ${max}',
 			'settings.station.pollInterval' => 'Intervalo de consulta en reposo (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Cada cuánto se pide a la radio su frecuencia y modo mientras no cambian. Déjalo en blanco para ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Un número entero de milisegundos, de ${min} a ${max}',
 			'settings.station.advancedSettings' => 'Configuración avanzada',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'Lectura de ROE',
 			'settings.station.placeholderSwrDescription' => 'Qué ROE indica esta radio mientras transmite. Por encima de 1,8 el panel avisa.',
 			'settings.station.placeholderSwrInvalid' => 'Un número, 1 o más',
@@ -7015,11 +7009,11 @@ extension on TranslationsEs {
 			'adifImport.confirm' => 'Importar',
 			'adifImport.importing' => ({required Object filename}) => 'Importando ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se importó ${count} contacto desde ${filename}', other: 'Se importaron ${formatted} contactos desde ${filename}', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'No se pudo importar ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} no parece un archivo ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Atención: este ADIF tiene QSOs de ${calls}, pero se importarán como ${station} si continúas.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' y ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} no tiene fecha y no se puede importar', other: '${formatted} no tienen fecha y no se pueden importar', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Este archivo registra una activación de ${refs}.',

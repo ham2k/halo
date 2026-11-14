@@ -184,7 +184,7 @@ class _RadioPanelState extends State<RadioPanel> {
     final onTitle = widget.onTitle;
     if (onTitle == null) return;
     final node = _selectedNode();
-    final title = node == null ? null : _cat.displayNameFor(node);
+    final title = node == null ? null : _cat.radioNameFor(node);
     if (title == _announcedTitle) return;
     _announcedTitle = title;
     onTitle(title);

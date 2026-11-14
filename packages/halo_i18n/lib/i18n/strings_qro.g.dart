@@ -3142,11 +3142,8 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get k4TcpNotes => 'CONNECT THE K4’S ETHERNET SOCKET TO YOUR LOCAL NETWORK. ENTER ITS HOSTNAME OR IP ADDRESS AND CAT PORT 9200. HALO USES THE SAME HOST ON FIXED PORT 9201 WHEN A PANADAPTER OR WATERFALL IS VISIBLE; CHANGING THE CAT PORT DOES NOT CHANGE THE SPECTRUM PORT.\n\nTHE SPECTRUM SHOWS THE MAIN RECEIVER. ITS ZOOM, REFERENCE ADJUSTMENT AND SPEED CONTROLS AFFECT ONLY HALO’S DISPLAY. AUDIO STREAMING IS NOT SUPPORTED.';
 	@override String get k4PowerTimeout => 'K4 POWER WAS NOT CHANGED BECAUSE THE RADIO DID NOT CONFIRM ITS OUTPUT RANGE. TRY AGAIN.';
 	@override String get k4RemoteNotes => 'ENABLE REMOTE ACCESS ON YOUR K4 AND ENTER ITS NETWORK PASSWORD. MAIN AND SUB SHARE ONE ENCRYPTED CONNECTION FOR RADIO CONTROL AND SPECTRUM. THE DEFAULT PORT IS 9204; ENTER YOUR FORWARDED PORT WHEN CONNECTING REMOTELY.\n\nAUDIO PLAYBACK AND MICROPHONE STREAMING ARE NOT SUPPORTED.';
-	@override String get k4Receiver => 'RECEIVER';
 	@override String get k4ReceiverMain => 'MAIN';
 	@override String get k4ReceiverSub => 'SUB';
-	@override String get k4ReceiverInvalid => 'CHOOSE MAIN OR SUB';
-	@override String get k4ReceiverAlreadyConfigured => 'THAT RECEIVER IS ALREADY CONFIGURED FOR THIS K4';
 	@override String get k4SubReceiverOff => 'THE K4 SUB RECEIVER IS OFF';
 	@override String get k4RemotePasswordRequired => 'ENTER THE K4’S NETWORK PASSWORD TO CONNECT SECURELY.';
 	@override String get k4RemoteHandshakeFailed => 'THE K4 COULD NOT ESTABLISH A SECURE CONNECTION. CHECK ITS NETWORK PASSWORD AND REMOTE ACCESS SETTINGS.';
@@ -7303,11 +7300,8 @@ extension on TranslationsQro {
 			'settings.station.k4TcpNotes' => 'CONNECT THE K4’S ETHERNET SOCKET TO YOUR LOCAL NETWORK. ENTER ITS HOSTNAME OR IP ADDRESS AND CAT PORT 9200. HALO USES THE SAME HOST ON FIXED PORT 9201 WHEN A PANADAPTER OR WATERFALL IS VISIBLE; CHANGING THE CAT PORT DOES NOT CHANGE THE SPECTRUM PORT.\n\nTHE SPECTRUM SHOWS THE MAIN RECEIVER. ITS ZOOM, REFERENCE ADJUSTMENT AND SPEED CONTROLS AFFECT ONLY HALO’S DISPLAY. AUDIO STREAMING IS NOT SUPPORTED.',
 			'settings.station.k4PowerTimeout' => 'K4 POWER WAS NOT CHANGED BECAUSE THE RADIO DID NOT CONFIRM ITS OUTPUT RANGE. TRY AGAIN.',
 			'settings.station.k4RemoteNotes' => 'ENABLE REMOTE ACCESS ON YOUR K4 AND ENTER ITS NETWORK PASSWORD. MAIN AND SUB SHARE ONE ENCRYPTED CONNECTION FOR RADIO CONTROL AND SPECTRUM. THE DEFAULT PORT IS 9204; ENTER YOUR FORWARDED PORT WHEN CONNECTING REMOTELY.\n\nAUDIO PLAYBACK AND MICROPHONE STREAMING ARE NOT SUPPORTED.',
-			'settings.station.k4Receiver' => 'RECEIVER',
 			'settings.station.k4ReceiverMain' => 'MAIN',
 			'settings.station.k4ReceiverSub' => 'SUB',
-			'settings.station.k4ReceiverInvalid' => 'CHOOSE MAIN OR SUB',
-			'settings.station.k4ReceiverAlreadyConfigured' => 'THAT RECEIVER IS ALREADY CONFIGURED FOR THIS K4',
 			'settings.station.k4SubReceiverOff' => 'THE K4 SUB RECEIVER IS OFF',
 			'settings.station.k4RemotePasswordRequired' => 'ENTER THE K4’S NETWORK PASSWORD TO CONNECT SECURELY.',
 			'settings.station.k4RemoteHandshakeFailed' => 'THE K4 COULD NOT ESTABLISH A SECURE CONNECTION. CHECK ITS NETWORK PASSWORD AND REMOTE ACCESS SETTINGS.',
@@ -7726,11 +7720,11 @@ extension on TranslationsQro {
 			'settings.developer.dataFolder' => 'DATA FOLDER',
 			'settings.developer.worktree' => 'WORKTREE',
 			'settings.developer.launchedAt' => 'STARTED',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.loading' => '(LOADING…)',
 			'settings.developer.panelLoadFailed' => 'COULD NOT LOAD THIS SETTINGS PANEL.',
 			'settings.developer.extDevServer' => 'EXTENSION DEV SERVER',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.extensionSettings' => 'EXTENSION SETTINGS',
 			'settings.developer.extDevServerDescription' => 'LOAD EXTENSIONS FROM A DEV SERVER ON YOUR NETWORK INSTEAD OF THE ONES BUILT INTO THE APP, AND RELOAD THEM AS YOU SAVE.',
 			'settings.developer.extDevServerAddress' => 'SERVER ADDRESS',
@@ -8240,11 +8234,11 @@ extension on TranslationsQro {
 			'adifImport.busy' => 'AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS, THE MOST AN OPERATION CAN IMPORT AT A TIME.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS. IMPORTING AN ADIF INTO AN OPERATION IS MEANT TO ADD A FEW QSOS, NOT TO BRING IN A LARGE LOG — USE THE LOGS VIEW FOR THAT. DEVELOPER MODE LETS YOU IMPORT IT ANYWAY, IF YOU ARE SURE.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.importAnyway' => 'IMPORT ANYWAY',
 			'offline.statusOffline' => 'INTERNET: OFFLINE',
 			'offline.statusOnline' => 'INTERNET: CONNECTED',
+			_ => null,
+		} ?? switch (path) {
 			'offline.noRoute' => 'NO NETWORK CONNECTION AT ALL.',
 			'offline.unreachable' => 'THE NETWORK IS UP, BUT NO SERVER IS RESPONDING — OFTEN A SIGN-IN PAGE WAITING IN A BROWSER.',
 			'offline.reachable' => 'ALL SERVICES RESPONDING AS EXPECTED.',

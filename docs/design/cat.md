@@ -3694,8 +3694,13 @@ seconds, moving or not. A client turns a rotor with `TURN␟name␟heading` and
 
 **The first equipment that has equipment under it.** The server node holds
 the address and the login and owns the one connection; each rotor or switch
-the operator switches on in its editor is a node of its own, which every
-panel takes for an ordinary rotator or antenna switch. **Devices** lists
+the operator switches on in its editor is an entry of its own, under the
+server's id as `<server>/rotator:<name>` or `<server>/switch:<name>`
+([station-model.md § 4.2](station-model.md#42-addresses)), which every panel
+takes for an ordinary rotator or antenna switch. The kind in that id is the
+device's on the wire, so a map switch, picked as a rotator, is a `switch:`
+and keeps its id when it is retyped. An entry stored before had an id of its
+own, forwarded to this one on load. **Devices** lists
 every device the server announced, a row each with its kind and a switch on
 the right — what the server reports live while it is connected, and what it
 last reported (kept on the server node, `everywareKnownDevices`) while it is

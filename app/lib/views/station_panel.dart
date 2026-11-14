@@ -82,14 +82,14 @@ const _portRefresh = Duration(seconds: 3);
 EdgeInsets _rowInset(BuildContext context) => (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero).resolve(Directionality.of(context));
 
 /// What a piece of equipment is doing, in the panel's own vocabulary — shared
-/// so the status bar's line and the panel's pill cannot come to word the same
+/// so the status bar's line and the panel's row cannot come to word the same
 /// state differently.
 String equipmentStatusLabel(BuildContext context, EquipmentState state) {
   final st = context.t.settings.station;
   return switch (state.status) {
     // Connected but silent is not the same as connected: the reading on
     // screen may be minutes old, which is the whole point of the panel's
-    // own two-colour pill.
+    // own two-colour status.
     EquipmentStatus.connected => state.stale ? st.statusStale : st.statusConnected,
     EquipmentStatus.connecting => st.statusConnecting,
     EquipmentStatus.disconnecting => st.statusDisconnecting,
@@ -216,9 +216,10 @@ class StationPanel extends StatelessWidget {
   /// and a heading apiece would be more heading than list.
   List<({String title, String category, List<EquipmentNode> nodes})> _inventorySections(BuildContext context, List<EquipmentNode> nodes) {
     final st = context.t.settings.station;
+    // A device is one row, however many receivers it has.
     List<EquipmentNode> inCategory(bool Function(String?) matches) => [
       for (final node in nodes)
-        if (matches(_cat.typeFor(node)?.category)) node,
+        if (matches(_cat.typeFor(node)?.category) && _cat.deviceEntryFor(node.uuid) == node.uuid) node,
     ];
 
     final transceivers = inCategory((category) => category == kCategoryTransceiver);
@@ -241,7 +242,10 @@ class StationPanel extends StatelessWidget {
     current: current,
   );
 
-  Future<void> _editEquipment(BuildContext context, EquipmentNode node) async {
+  Future<void> _editEquipment(BuildContext context, EquipmentNode entry) async {
+    // A device is edited as a whole, from its listed entry: a K4's Sub has no
+    // name or settings of its own to edit.
+    final node = _cat.nodeFor(_cat.deviceEntryFor(entry.uuid)) ?? entry;
     final type = _cat.typeFor(node);
     if (type == null) return;
     if (type.category == kCategoryMidi) return _editMidiController(context, node);
@@ -722,16 +726,20 @@ class StationPanel extends StatelessWidget {
 
   /// [node]'s plug on its inventory row — disabled, not absent, while it has
   /// nowhere to connect to, so the row keeps its shape.
+  /// The row's plug is its device's: a K4's plugs both its receivers in and
+  /// pulls both out, and reads as in while either is, since either holds the
+  /// link.
   RowPlug _plugFor(EquipmentNode node) {
-    final state = _cat.stateFor(node.uuid);
+    final entries = _cat.entriesOf(node.uuid);
+    final states = [for (final entry in entries) _cat.stateFor(entry)];
     final unconfigured = _cat.typeFor(node)?.isUnconfigured(node.config) ?? false;
     return RowPlug(
-      busy: state.status == EquipmentStatus.connecting || state.status == EquipmentStatus.disconnecting,
+      busy: states.any((state) => state.status == EquipmentStatus.connecting || state.status == EquipmentStatus.disconnecting),
       // A radio that has stopped answering reads as the loss it is, as on
       // the current transceiver's row: the plug pulled, its tap reconnecting.
-      connected: state.status == EquipmentStatus.connected && !state.stale,
-      onConnect: unconfigured ? null : () => _cat.connect(node.uuid),
-      onDisconnect: () => _cat.disconnect(node.uuid),
+      connected: states.any((state) => state.status == EquipmentStatus.connected && !state.stale),
+      onConnect: unconfigured ? null : () => entries.forEach(_cat.connect),
+      onDisconnect: () => entries.forEach(_cat.disconnect),
     );
   }
 
@@ -828,7 +836,7 @@ class StationPanel extends StatelessWidget {
           );
         }
         return CurrentTransceiverTile(
-          displayName: so2r ? st.so2rRadioName(radio: 'A', name: _displayName(node)) : _displayName(node),
+          displayName: so2r ? st.so2rRadioName(radio: 'A', name: _cat.radioNameFor(node)) : _cat.radioNameFor(node),
           connection: connectionTextFor(context, _cat.typeFor(node), node.config),
           transportType: _cat.typeFor(node),
           state: _cat.stateFor(node.uuid),

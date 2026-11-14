@@ -2737,11 +2737,8 @@ class _Translations$settings$station$it extends Translations$settings$station$en
 	@override String get k4TcpNotes => 'Collega la presa Ethernet del K4 alla tua rete locale. Inserisci il suo hostname o indirizzo IP e la porta CAT 9200. HaLo usa lo stesso host sulla porta fissa 9201 quando è visibile un panadapter o un waterfall; cambiare la porta CAT non cambia la porta dello spettro.\n\nLo spettro mostra il ricevitore principale. I suoi controlli di zoom, regolazione del riferimento e velocità influiscono solo sulla visualizzazione di HaLo. Lo streaming audio non è supportato.';
 	@override String get k4PowerTimeout => 'La potenza del K4 non è stata cambiata perché la radio non ha confermato il suo intervallo di uscita. Riprova.';
 	@override String get k4RemoteNotes => 'Abilita l\'accesso remoto sul tuo K4 e inserisci la sua password di rete. Main e Sub condividono un\'unica connessione cifrata per il controllo della radio e lo spettro. La porta predefinita è 9204; inserisci la porta reindirizzata quando ti connetti da remoto.\n\nLa riproduzione audio e lo streaming del microfono non sono supportati.';
-	@override String get k4Receiver => 'Ricevitore';
 	@override String get k4ReceiverMain => 'Main';
 	@override String get k4ReceiverSub => 'Sub';
-	@override String get k4ReceiverInvalid => 'Scegli Main o Sub';
-	@override String get k4ReceiverAlreadyConfigured => 'Quel ricevitore è già configurato per questo K4';
 	@override String get k4SubReceiverOff => 'Il ricevitore Sub del K4 è spento';
 	@override String get k4RemotePasswordRequired => 'Inserisci la password di rete del K4 per connetterti in modo sicuro.';
 	@override String get k4RemoteHandshakeFailed => 'Il K4 non è riuscito a stabilire una connessione sicura. Controlla la sua password di rete e le impostazioni di accesso remoto.';
@@ -6354,11 +6351,8 @@ extension on TranslationsIt {
 			'settings.station.k4TcpNotes' => 'Collega la presa Ethernet del K4 alla tua rete locale. Inserisci il suo hostname o indirizzo IP e la porta CAT 9200. HaLo usa lo stesso host sulla porta fissa 9201 quando è visibile un panadapter o un waterfall; cambiare la porta CAT non cambia la porta dello spettro.\n\nLo spettro mostra il ricevitore principale. I suoi controlli di zoom, regolazione del riferimento e velocità influiscono solo sulla visualizzazione di HaLo. Lo streaming audio non è supportato.',
 			'settings.station.k4PowerTimeout' => 'La potenza del K4 non è stata cambiata perché la radio non ha confermato il suo intervallo di uscita. Riprova.',
 			'settings.station.k4RemoteNotes' => 'Abilita l\'accesso remoto sul tuo K4 e inserisci la sua password di rete. Main e Sub condividono un\'unica connessione cifrata per il controllo della radio e lo spettro. La porta predefinita è 9204; inserisci la porta reindirizzata quando ti connetti da remoto.\n\nLa riproduzione audio e lo streaming del microfono non sono supportati.',
-			'settings.station.k4Receiver' => 'Ricevitore',
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
-			'settings.station.k4ReceiverInvalid' => 'Scegli Main o Sub',
-			'settings.station.k4ReceiverAlreadyConfigured' => 'Quel ricevitore è già configurato per questo K4',
 			'settings.station.k4SubReceiverOff' => 'Il ricevitore Sub del K4 è spento',
 			'settings.station.k4RemotePasswordRequired' => 'Inserisci la password di rete del K4 per connetterti in modo sicuro.',
 			'settings.station.k4RemoteHandshakeFailed' => 'Il K4 non è riuscito a stabilire una connessione sicura. Controlla la sua password di rete e le impostazioni di accesso remoto.',
@@ -6501,11 +6495,11 @@ extension on TranslationsIt {
 			'settings.station.telemetryIntervalDescription' => 'Ogni quanto leggere gli strumenti della radio durante la trasmissione. Lascia vuoto per la velocità massima che questa connessione può gestire, fino a 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Un numero intero di millisecondi, da ${min} a ${max}',
 			'settings.station.pollInterval' => 'Intervallo di interrogazione a riposo (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Ogni quanto chiedere alla radio frequenza e modo quando nessuno dei due cambia. Lascia vuoto per ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Un numero intero di millisecondi, da ${min} a ${max}',
 			'settings.station.advancedSettings' => 'Impostazioni avanzate',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'Lettura dell\'SWR',
 			'settings.station.placeholderSwrDescription' => 'Cosa riporta questa radio sul suo strumento dell\'SWR durante la trasmissione. Sopra 1,8 il pannello avvisa.',
 			'settings.station.placeholderSwrInvalid' => 'Un numero, 1 o più',
@@ -7015,11 +7009,11 @@ extension on TranslationsIt {
 			'adifImport.confirm' => 'Importa',
 			'adifImport.importing' => ({required Object filename}) => 'Importazione di ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count, one: 'Importato ${count} contatto da ${filename}', other: 'Importati ${formatted} contatti da ${filename}', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Impossibile importare ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} non sembra un file ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Attenzione: questo ADIF contiene QSO di ${calls}, ma se continui verranno importati come ${station}.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' e ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count, one: '${count} non ha data e non può essere importato', other: '${formatted} non hanno data e non possono essere importati', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Questo file registra un\'attivazione di ${refs}.',

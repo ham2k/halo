@@ -125,8 +125,9 @@ is available in radio panels, Ham2K's own Band Scope (`ham2k-band-scope`) among
 them. Its reference
 control adjusts HaLo's display range; the width is the operator's zoom.
 
-The separate [secure network pairing](k4-remote.md) exposes Main and Sub as
-logical radios with receiver-aware controls and independent spectra. Physical
+The separate [secure network pairing](k4-remote.md) is one device whose Main
+and Sub are picked as separate radios, with receiver-aware controls and
+independent spectra. Physical
 LAN link-loss recovery and absolute level calibration remain unverified.
 Capture provenance, observed frequency
 comparisons and validation procedures are recorded in the
