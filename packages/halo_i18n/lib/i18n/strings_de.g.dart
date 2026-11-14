@@ -2670,9 +2670,6 @@ class _Translations$settings$station$de extends Translations$settings$station$en
 	@override String get spectrumSdrNoRadio => 'Warte auf die Frequenz des verknüpften Funkgeräts…';
 	@override String get spectrumSdrNotConnected => 'Der SDR ist nicht verbunden';
 	@override String get spectrumSdrNoIf => 'Stelle die ZF-Frequenz des Funkgeräts in den Einstellungen dieses SDR ein';
-	@override String get sdrRadio => 'Zeigt das Spektrum für';
-	@override String get sdrRadioDescription => 'Eine Spektrumanzeige an diesem Funkgerät bezieht ihre Daten von diesem Empfänger statt vom eigenen Scope des Funkgeräts.';
-	@override String get sdrRadioMain => 'Das Hauptfunkgerät';
 	@override String get sdrTuning => 'Antenneneingang';
 	@override String get sdrTuningDescription => 'Woher das Signal des Empfängers kommt. An einer eigenen Antenne stimmt er sich selbst ab und folgt dem Funkgerät; am ZF-Ausgang des Funkgeräts bleibt er auf der ZF.';
 	@override String get sdrTuningIndependent => 'Eigene Antenne';
@@ -2761,8 +2758,6 @@ class _Translations$settings$station$de extends Translations$settings$station$en
 	@override String get statusLost => 'Getrennt';
 	@override String get notConfigured => 'Nicht konfiguriert';
 	@override String get currentConfiguration => 'Aktuelle Konfiguration';
-	@override String get currentTransceiver => 'Aktueller Transceiver';
-	@override String get currentTransceivers => 'Aktuelle Transceiver';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
 	@override String get so2rQueueMessages => 'Nachrichten werden eingereiht statt zu unterbrechen';
 	@override String get noRadioBSelected => 'Kein Funkgerät B ausgewählt';
@@ -6216,9 +6211,6 @@ extension on TranslationsDe {
 			'settings.station.spectrumSdrNoRadio' => 'Warte auf die Frequenz des verknüpften Funkgeräts…',
 			'settings.station.spectrumSdrNotConnected' => 'Der SDR ist nicht verbunden',
 			'settings.station.spectrumSdrNoIf' => 'Stelle die ZF-Frequenz des Funkgeräts in den Einstellungen dieses SDR ein',
-			'settings.station.sdrRadio' => 'Zeigt das Spektrum für',
-			'settings.station.sdrRadioDescription' => 'Eine Spektrumanzeige an diesem Funkgerät bezieht ihre Daten von diesem Empfänger statt vom eigenen Scope des Funkgeräts.',
-			'settings.station.sdrRadioMain' => 'Das Hauptfunkgerät',
 			'settings.station.sdrTuning' => 'Antenneneingang',
 			'settings.station.sdrTuningDescription' => 'Woher das Signal des Empfängers kommt. An einer eigenen Antenne stimmt er sich selbst ab und folgt dem Funkgerät; am ZF-Ausgang des Funkgeräts bleibt er auf der ZF.',
 			'settings.station.sdrTuningIndependent' => 'Eigene Antenne',
@@ -6383,8 +6375,6 @@ extension on TranslationsDe {
 			'settings.station.statusLost' => 'Getrennt',
 			'settings.station.notConfigured' => 'Nicht konfiguriert',
 			'settings.station.currentConfiguration' => 'Aktuelle Konfiguration',
-			'settings.station.currentTransceiver' => 'Aktueller Transceiver',
-			'settings.station.currentTransceivers' => 'Aktuelle Transceiver',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
 			'settings.station.so2rQueueMessages' => 'Nachrichten werden eingereiht statt zu unterbrechen',
 			'settings.station.noRadioBSelected' => 'Kein Funkgerät B ausgewählt',
@@ -6506,13 +6496,13 @@ extension on TranslationsDe {
 			'settings.station.voiceMemoriesInvalid' => 'Eine ganze Zahl, 0 oder mehr',
 			'settings.station.yaesuMeterCapture' => 'Messwerte aufzeichnen',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Liest beim Senden das Ausgangsleistungs-Meter und das High-SWR-Flag des Funkgeräts und schreibt die Rohwerte ins Protokoll. Dient zum Erstellen der Skala, die Yaesu nicht veröffentlicht — die Werte werden nicht als Anzeigen dargestellt.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Liest beim Senden die PO-, SWR- und ALC-Meter des Funkgeräts und schreibt die Rohwerte ins Protokoll. Dient zum Erstellen der Skala, die Yaesu nicht veröffentlicht — die Werte werden nicht als Anzeigen dargestellt.',
 			'settings.station.telemetryInterval' => 'Intervall für Messwerte (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Wie oft die Meter des Funkgeräts beim Senden gelesen werden. Leer lassen für das Schnellste, was diese Verbindung schafft, bis 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Eine ganze Zahl in Millisekunden, ${min} bis ${max}',
 			'settings.station.pollInterval' => 'Abfrageintervall im Leerlauf (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Wie oft das Funkgerät nach Frequenz und Modus gefragt wird, solange sich keines davon ändert. Leer lassen für ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Eine ganze Zahl in Millisekunden, ${min} bis ${max}',
 			'settings.station.advancedSettings' => 'Erweiterte Einstellungen',
@@ -7020,13 +7010,13 @@ extension on TranslationsDe {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} sollte genauer geprüft werden', other: '${formatted} sollten genauer geprüft werden', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: 'Referenzen konnten für ${count} Kontakt nicht wiederhergestellt werden', other: 'Referenzen konnten für ${formatted} Kontakte nicht wiederhergestellt werden', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${programs}-Referenzen sind für ${count} Kontakt evtl. unvollständig', other: '${programs}-Referenzen sind für ${formatted} Kontakte evtl. unvollständig', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Zusammengeführte Kontakte können eine Referenz verlieren — die Aktivitäten konnten nicht sagen, welche Typen sich kombinieren lassen. Brich ab und versuche es erneut, um das zu vermeiden.',
 			'adifImport.nothingToImport' => 'Nichts in dieser Datei kann importiert werden',
 			'adifImport.confirm' => 'Importieren',
 			'adifImport.importing' => ({required Object filename}) => 'Importiere ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} Kontakt aus ${filename} importiert', other: '${formatted} Kontakte aus ${filename} importiert', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} konnte nicht importiert werden: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} sieht nicht wie eine ADIF-Datei aus',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Warnung: Diese ADIF enthält QSOs von ${calls}, sie werden aber als ${station} importiert, wenn du fortfährst.',

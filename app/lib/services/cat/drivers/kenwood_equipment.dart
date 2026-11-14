@@ -23,6 +23,8 @@ class KenwoodDriver extends EquipmentDriver {
   @override
   List<String> get channelValues => remote ? k4ReceiverValues : const [];
   @override
+  bool offersScopeWith(Map<String, dynamic> config) => remote || (lanSpectrum && trimmedHost(config).isNotEmpty);
+  @override
   String? describeChannel(Map<String, dynamic> config, {Map<String, dynamic> overrides = const {}}) => remote ? describeK4Receiver(config, overrides) : null;
   @override
   String? describeSuffix(Map<String, dynamic> config, {Map<String, dynamic> overrides = const {}}) =>

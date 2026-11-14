@@ -28,7 +28,7 @@ import 'tci_spectrum.dart';
 /// Well inside `catStaleAfter` (30 s), with room for a lost answer.
 const _resyncEvery = Duration(seconds: 10);
 
-class TciDriver extends EquipmentDriver {
+class TciDriver extends EquipmentDriver with AlwaysOffersScope {
   const TciDriver();
 
   static const defaultPort = tciDefaultPort;

@@ -94,9 +94,11 @@ mixin _So2r on _KeyingSurface {
     notifyListeners();
   }
 
-  /// SO2R's second radio — the local transceiver whose VFO is `vfoB`.
-  /// Plain stored state, like [radio1], and only ever a local rig.
-  String? _radio2;
+  /// SO2R's second radio — the local transceiver whose VFO is `vfoB`, set
+  /// B's position's radio. Plain stored state, like [radio1], and only ever a
+  /// local rig.
+  String? get _radio2;
+  set _radio2(String? uuid);
 
   /// [_radio2] while the SO2R experiment is on, and null otherwise: a stored
   /// pick neither drives `vfoB` nor auto-connects for an operator who has

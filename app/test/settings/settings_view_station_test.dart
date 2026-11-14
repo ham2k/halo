@@ -189,7 +189,7 @@ void main() {
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
 
-    // Once, in the Current Transceiver band: the inventory's sections start
+    // Once, in the Current Configuration band: the inventory's sections start
     // closed, so a panel opened to check the rig is not a list to scroll.
     expect(find.text('Left Radio'), findsOneWidget);
     expect(find.text('flex.local:4992'), findsOneWidget);
@@ -258,7 +258,7 @@ void main() {
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
 
-    for (final title in ['Current Transceiver', 'Equipment Inventory', 'CAT Control Preferences']) {
+    for (final title in ['Current Configuration', 'Equipment Inventory', 'CAT Control Preferences']) {
       expect(find.widgetWithText(CategoryBand, title), findsOneWidget, reason: '"$title" is a category');
     }
     // The inventory's own kinds, as sections under it, counted.
@@ -1340,7 +1340,7 @@ void main() {
 
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
-    expect(find.text('Current Transceiver'), findsOneWidget);
+    expect(find.text('Current Configuration'), findsOneWidget);
 
     // The menu under the current transceiver's row.
     await tester.tap(find.byIcon(MdiIcons.menuDown));

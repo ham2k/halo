@@ -2670,9 +2670,6 @@ class _Translations$settings$station$ro extends Translations$settings$station$en
 	@override String get spectrumSdrNoRadio => 'Se așteaptă frecvența stației radio asociate…';
 	@override String get spectrumSdrNotConnected => 'SDR-ul nu este conectat';
 	@override String get spectrumSdrNoIf => 'Setați frecvența IF a stației radio în setările acestui SDR';
-	@override String get sdrRadio => 'Afișează spectrul pentru';
-	@override String get sdrRadioDescription => 'O afișare de spectru pe această stație radio folosește acest receptor în locul scope-ului propriu al stației.';
-	@override String get sdrRadioMain => 'Stația radio principală';
 	@override String get sdrTuning => 'Intrare de antenă';
 	@override String get sdrTuningDescription => 'De unde vine semnalul receptorului. Pe propria antenă se acordă singur pentru a urmări stația radio; pe ieșirea IF a stației rămâne pe IF.';
 	@override String get sdrTuningIndependent => 'Propria antenă';
@@ -2761,8 +2758,6 @@ class _Translations$settings$station$ro extends Translations$settings$station$en
 	@override String get statusLost => 'Deconectat';
 	@override String get notConfigured => 'Neconfigurat';
 	@override String get currentConfiguration => 'Configurația curentă';
-	@override String get currentTransceiver => 'Transceiver curent';
-	@override String get currentTransceivers => 'Transceivere curente';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
 	@override String get so2rQueueMessages => 'Mesajele se pun în coadă în loc să întrerupă';
 	@override String get noRadioBSelected => 'Niciun Radio B selectat';
@@ -6216,9 +6211,6 @@ extension on TranslationsRo {
 			'settings.station.spectrumSdrNoRadio' => 'Se așteaptă frecvența stației radio asociate…',
 			'settings.station.spectrumSdrNotConnected' => 'SDR-ul nu este conectat',
 			'settings.station.spectrumSdrNoIf' => 'Setați frecvența IF a stației radio în setările acestui SDR',
-			'settings.station.sdrRadio' => 'Afișează spectrul pentru',
-			'settings.station.sdrRadioDescription' => 'O afișare de spectru pe această stație radio folosește acest receptor în locul scope-ului propriu al stației.',
-			'settings.station.sdrRadioMain' => 'Stația radio principală',
 			'settings.station.sdrTuning' => 'Intrare de antenă',
 			'settings.station.sdrTuningDescription' => 'De unde vine semnalul receptorului. Pe propria antenă se acordă singur pentru a urmări stația radio; pe ieșirea IF a stației rămâne pe IF.',
 			'settings.station.sdrTuningIndependent' => 'Propria antenă',
@@ -6383,8 +6375,6 @@ extension on TranslationsRo {
 			'settings.station.statusLost' => 'Deconectat',
 			'settings.station.notConfigured' => 'Neconfigurat',
 			'settings.station.currentConfiguration' => 'Configurația curentă',
-			'settings.station.currentTransceiver' => 'Transceiver curent',
-			'settings.station.currentTransceivers' => 'Transceivere curente',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
 			'settings.station.so2rQueueMessages' => 'Mesajele se pun în coadă în loc să întrerupă',
 			'settings.station.noRadioBSelected' => 'Niciun Radio B selectat',
@@ -6506,13 +6496,13 @@ extension on TranslationsRo {
 			'settings.station.voiceMemoriesInvalid' => 'Un număr întreg, 0 sau mai mare',
 			'settings.station.yaesuMeterCapture' => 'Capturează citirile instrumentelor',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Citește instrumentul de putere de ieșire și indicatorul de SWR ridicat în timpul emisiei și scrie valorile brute în jurnalul de diagnostic. Pentru construirea scalei pe care Yaesu nu o publică — valorile nu sunt afișate ca instrumente.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Citește instrumentele PO, SWR și ALC ale stației în timpul emisiei și scrie valorile brute în jurnalul de diagnostic. Pentru construirea scalei pe care Yaesu nu o publică — valorile nu sunt afișate ca instrumente.',
 			'settings.station.telemetryInterval' => 'Interval de citire a instrumentelor (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Cât de des se citesc instrumentele stației în timpul emisiei. Lăsați gol pentru cea mai mare viteză suportată de conexiune, până la 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Un număr întreg de milisecunde, de la ${min} la ${max}',
 			'settings.station.pollInterval' => 'Interval de interogare în repaus (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Cât de des se cer stației frecvența și modul cât timp niciunul nu se schimbă. Lăsați gol pentru ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Un număr întreg de milisecunde, de la ${min} la ${max}',
 			'settings.station.advancedSettings' => 'Setări avansate',
@@ -7020,13 +7010,13 @@ extension on TranslationsRo {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} necesită o verificare atentă', other: '${formatted} necesită o verificare atentă', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Referințele nu au putut fi recuperate pentru ${count} contact', other: 'Referințele nu au putut fi recuperate pentru ${formatted} contacte', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Referințele ${programs} pot fi incomplete pentru ${count} contact', other: 'Referințele ${programs} pot fi incomplete pentru ${formatted} contacte', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Contactele combinate pot pierde o referință — activitățile nu au putut indica ce tipuri se cumulează. Anulați și reîncercați pentru a evita acest lucru.',
 			'adifImport.nothingToImport' => 'Nimic din acest fișier nu poate fi importat',
 			'adifImport.confirm' => 'Importă',
 			'adifImport.importing' => ({required Object filename}) => 'Se importă ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'S-a importat ${count} contact din ${filename}', other: 'S-au importat ${formatted} contacte din ${filename}', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} nu a putut fi importat: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} nu pare a fi un fișier ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Atenție: acest ADIF are QSO-uri de la ${calls}, dar vor fi importate ca ${station} dacă continuați.',

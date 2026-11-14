@@ -282,6 +282,27 @@ void main() {
     expect(checked(tester, t.settings.station.serialRtsHigh), isTrue);
   });
 
+  testWidgets('a device editor says what the device provides, by what it does for the operator', (tester) async {
+    // The app's own reading of an entry: what a position can pick from this
+    // device. Named as the operator knows the things, never by address, and
+    // without the receiver and transmitter every radio has, which would bury
+    // what sets this one apart.
+    final node = await services.cat.addNode(typeKey: 'flexradio-tcp', name: 'Shack Flex', config: {'host': '10.0.0.5'});
+    final provides = find.text(t.settings.station.provides);
+
+    await showPanel(tester);
+    await tester.tap(find.text('Shack Flex').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.ensureVisible(provides);
+    expect(provides, findsOneWidget);
+    for (final name in ['CW Keyer', 'Voice Keyer', 'Band Scope', 'Audio Mixer']) {
+      expect(find.text(name), findsOneWidget, reason: name);
+    }
+    expect(find.byType(TagPill), findsNWidgets(4), reason: 'and nothing else: no receiver, no transmitter');
+    expect(find.textContaining(node.uuid, findRichText: true), findsNothing);
+  });
+
   testWidgets('the troubleshooting notes close the form, under More', (tester) async {
     // The notes arrive among the connection's own fields, so a form that
     // only pulls the advanced ones out leaves them sitting between the

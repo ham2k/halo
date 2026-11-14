@@ -2670,9 +2670,6 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get spectrumSdrNoRadio => 'リンクした無線機の周波数を待っています…';
 	@override String get spectrumSdrNotConnected => 'SDRが接続されていません';
 	@override String get spectrumSdrNoIf => 'このSDRの設定で無線機のIF周波数を設定してください';
-	@override String get sdrRadio => 'スペクトラムの表示対象';
-	@override String get sdrRadioDescription => 'この無線機のスペクトラム表示は、無線機自身のスコープの代わりにこの受信機から描画されます。';
-	@override String get sdrRadioMain => 'メインの無線機';
 	@override String get sdrTuning => 'アンテナ入力';
 	@override String get sdrTuningDescription => '受信機の信号の入力元。独自のアンテナなら無線機に追従して自ら同調し、無線機のIF出力ならIFに留まります。';
 	@override String get sdrTuningIndependent => '独自のアンテナ';
@@ -2761,8 +2758,6 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get statusLost => '切断';
 	@override String get notConfigured => '未設定';
 	@override String get currentConfiguration => '現在の構成';
-	@override String get currentTransceiver => '現在のトランシーバー';
-	@override String get currentTransceivers => '現在のトランシーバー';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}：${name}';
 	@override String get so2rQueueMessages => 'メッセージを割り込ませずにキューに入れる';
 	@override String get noRadioBSelected => 'Radio Bが選択されていません';
@@ -6216,9 +6211,6 @@ extension on TranslationsJa {
 			'settings.station.spectrumSdrNoRadio' => 'リンクした無線機の周波数を待っています…',
 			'settings.station.spectrumSdrNotConnected' => 'SDRが接続されていません',
 			'settings.station.spectrumSdrNoIf' => 'このSDRの設定で無線機のIF周波数を設定してください',
-			'settings.station.sdrRadio' => 'スペクトラムの表示対象',
-			'settings.station.sdrRadioDescription' => 'この無線機のスペクトラム表示は、無線機自身のスコープの代わりにこの受信機から描画されます。',
-			'settings.station.sdrRadioMain' => 'メインの無線機',
 			'settings.station.sdrTuning' => 'アンテナ入力',
 			'settings.station.sdrTuningDescription' => '受信機の信号の入力元。独自のアンテナなら無線機に追従して自ら同調し、無線機のIF出力ならIFに留まります。',
 			'settings.station.sdrTuningIndependent' => '独自のアンテナ',
@@ -6383,8 +6375,6 @@ extension on TranslationsJa {
 			'settings.station.statusLost' => '切断',
 			'settings.station.notConfigured' => '未設定',
 			'settings.station.currentConfiguration' => '現在の構成',
-			'settings.station.currentTransceiver' => '現在のトランシーバー',
-			'settings.station.currentTransceivers' => '現在のトランシーバー',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}：${name}',
 			'settings.station.so2rQueueMessages' => 'メッセージを割り込ませずにキューに入れる',
 			'settings.station.noRadioBSelected' => 'Radio Bが選択されていません',
@@ -6506,13 +6496,13 @@ extension on TranslationsJa {
 			'settings.station.voiceMemoriesInvalid' => '0以上の整数',
 			'settings.station.yaesuMeterCapture' => 'メーターの値を記録',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => '送信中に無線機の出力メーターと高SWRフラグを読み取り、生の値をログに出力します。Yaesuが公開していない目盛りを作成するためのもので、値はメーターとして表示されません。',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => '送信中に無線機のPO、SWR、ALCメーターを読み取り、生の値をログに出力します。Yaesuが公開していない目盛りを作成するためのもので、値はメーターとして表示されません。',
 			'settings.station.telemetryInterval' => 'メーター読み取り間隔（ms）',
 			'settings.station.telemetryIntervalDescription' => '送信中に無線機のメーターを読み取る頻度。空欄にすると、この接続で可能な最速（最大200 ms）になります。',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '${min}〜${max}のミリ秒単位の整数',
 			'settings.station.pollInterval' => 'アイドル時のポーリング間隔（ms）',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '周波数とモードが変化していない間に、無線機に問い合わせる頻度。空欄の場合は${fallback} msです。',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '${min}〜${max}のミリ秒単位の整数',
 			'settings.station.advancedSettings' => '詳細設定',
@@ -7020,13 +7010,13 @@ extension on TranslationsJa {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件は確認が必要です', other: '${formatted}件は確認が必要です', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のコンタクトのリファレンスを復元できませんでした', other: '${formatted}件のコンタクトのリファレンスを復元できませんでした', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のコンタクトの${programs}リファレンスが不完全な可能性があります', other: '${formatted}件のコンタクトの${programs}リファレンスが不完全な可能性があります', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => '統合されたコンタクトでリファレンスが失われる可能性があります。どの種類が重ねられるかをアクティビティが示せませんでした。これを避けるには、キャンセルして再試行してください。',
 			'adifImport.nothingToImport' => 'このファイルにはインポートできるものがありません',
 			'adifImport.confirm' => 'インポート',
 			'adifImport.importing' => ({required Object filename}) => '${filename}をインポート中…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${filename}から${count}件のコンタクトをインポートしました', other: '${filename}から${formatted}件のコンタクトをインポートしました', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename}をインポートできませんでした：${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename}はADIFファイルではないようです',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '警告：このADIFには${calls}のQSOが含まれていますが、続行すると${station}としてインポートされます。',

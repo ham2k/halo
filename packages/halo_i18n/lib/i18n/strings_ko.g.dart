@@ -2670,9 +2670,6 @@ class _Translations$settings$station$ko extends Translations$settings$station$en
 	@override String get spectrumSdrNoRadio => '연결된 무전기의 주파수 대기 중…';
 	@override String get spectrumSdrNotConnected => 'SDR이 연결되어 있지 않습니다';
 	@override String get spectrumSdrNoIf => '이 SDR의 설정에서 무전기의 IF 주파수를 설정하세요';
-	@override String get sdrRadio => '스펙트럼 표시 대상';
-	@override String get sdrRadioDescription => '이 무전기의 스펙트럼 표시는 무전기 자체 스코프 대신 이 수신기에서 데이터를 가져옵니다.';
-	@override String get sdrRadioMain => '메인 무전기';
 	@override String get sdrTuning => '안테나 입력';
 	@override String get sdrTuningDescription => '수신기 신호의 출처. 자체 안테나를 쓰면 무전기를 따라 스스로 튜닝하고, 무전기의 IF 출력에서는 IF에 고정됩니다.';
 	@override String get sdrTuningIndependent => '자체 안테나';
@@ -2761,8 +2758,6 @@ class _Translations$settings$station$ko extends Translations$settings$station$en
 	@override String get statusLost => '연결 끊김';
 	@override String get notConfigured => '구성되지 않음';
 	@override String get currentConfiguration => '현재 구성';
-	@override String get currentTransceiver => '현재 트랜시버';
-	@override String get currentTransceivers => '현재 트랜시버';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
 	@override String get so2rQueueMessages => '메시지를 중단하지 않고 대기열에 넣음';
 	@override String get noRadioBSelected => '무전기 B가 선택되지 않음';
@@ -6216,9 +6211,6 @@ extension on TranslationsKo {
 			'settings.station.spectrumSdrNoRadio' => '연결된 무전기의 주파수 대기 중…',
 			'settings.station.spectrumSdrNotConnected' => 'SDR이 연결되어 있지 않습니다',
 			'settings.station.spectrumSdrNoIf' => '이 SDR의 설정에서 무전기의 IF 주파수를 설정하세요',
-			'settings.station.sdrRadio' => '스펙트럼 표시 대상',
-			'settings.station.sdrRadioDescription' => '이 무전기의 스펙트럼 표시는 무전기 자체 스코프 대신 이 수신기에서 데이터를 가져옵니다.',
-			'settings.station.sdrRadioMain' => '메인 무전기',
 			'settings.station.sdrTuning' => '안테나 입력',
 			'settings.station.sdrTuningDescription' => '수신기 신호의 출처. 자체 안테나를 쓰면 무전기를 따라 스스로 튜닝하고, 무전기의 IF 출력에서는 IF에 고정됩니다.',
 			'settings.station.sdrTuningIndependent' => '자체 안테나',
@@ -6383,8 +6375,6 @@ extension on TranslationsKo {
 			'settings.station.statusLost' => '연결 끊김',
 			'settings.station.notConfigured' => '구성되지 않음',
 			'settings.station.currentConfiguration' => '현재 구성',
-			'settings.station.currentTransceiver' => '현재 트랜시버',
-			'settings.station.currentTransceivers' => '현재 트랜시버',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
 			'settings.station.so2rQueueMessages' => '메시지를 중단하지 않고 대기열에 넣음',
 			'settings.station.noRadioBSelected' => '무전기 B가 선택되지 않음',
@@ -6506,13 +6496,13 @@ extension on TranslationsKo {
 			'settings.station.voiceMemoriesInvalid' => '0 이상의 정수',
 			'settings.station.yaesuMeterCapture' => '미터 값 캡처',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => '송신 중 무전기의 출력 미터와 높은 SWR 플래그를 읽어 원시 값을 로그에 기록합니다. Yaesu가 공개하지 않은 눈금을 만들기 위한 것이며, 값은 미터로 표시되지 않습니다.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => '송신 중 무전기의 PO, SWR, ALC 미터를 읽어 원시 값을 로그에 기록합니다. Yaesu가 공개하지 않은 눈금을 만들기 위한 것이며, 값은 미터로 표시되지 않습니다.',
 			'settings.station.telemetryInterval' => '미터 읽기 간격 (ms)',
 			'settings.station.telemetryIntervalDescription' => '송신 중 무전기의 미터를 읽는 간격. 비워 두면 이 연결이 처리할 수 있는 가장 빠른 간격(최대 200 ms)을 사용합니다.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '${min}에서 ${max} 사이의 정수 밀리초',
 			'settings.station.pollInterval' => '유휴 폴링 간격 (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '주파수와 모드가 바뀌지 않는 동안 무전기에 이를 묻는 간격. 비워 두면 ${fallback} ms입니다.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '${min}에서 ${max} 사이의 정수 밀리초',
 			'settings.station.advancedSettings' => '고급 설정',
@@ -7020,13 +7010,13 @@ extension on TranslationsKo {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count}개는 자세히 확인해야 합니다', other: '${formatted}개는 자세히 확인해야 합니다', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '교신 ${count}개의 레퍼런스를 복구할 수 없습니다', other: '교신 ${formatted}개의 레퍼런스를 복구할 수 없습니다', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '교신 ${count}개의 ${programs} 레퍼런스가 불완전할 수 있습니다', other: '교신 ${formatted}개의 ${programs} 레퍼런스가 불완전할 수 있습니다', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => '합쳐진 교신에서 레퍼런스가 빠질 수 있습니다. 활동이 어떤 유형을 함께 쓸 수 있는지 알려주지 못했습니다. 이를 피하려면 취소하고 다시 시도하세요.',
 			'adifImport.nothingToImport' => '이 파일에서 가져올 수 있는 것이 없습니다',
 			'adifImport.confirm' => '가져오기',
 			'adifImport.importing' => ({required Object filename}) => '${filename} 가져오는 중…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${filename}에서 교신 ${count}개를 가져왔습니다', other: '${filename}에서 교신 ${formatted}개를 가져왔습니다', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename}을(를) 가져올 수 없습니다: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename}은(는) ADIF 파일이 아닌 것 같습니다',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '경고: 이 ADIF에는 ${calls}의 QSO가 있지만, 계속하면 ${station}(으)로 가져옵니다.',

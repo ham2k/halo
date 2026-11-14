@@ -2670,9 +2670,6 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get spectrumSdrNoRadio => 'Venter på frekvensen til den tilknyttede radioen…';
 	@override String get spectrumSdrNotConnected => 'SDR-en er ikke tilkoblet';
 	@override String get spectrumSdrNoIf => 'Angi radioens IF-frekvens i innstillingene for denne SDR-en';
-	@override String get sdrRadio => 'Viser spekteret for';
-	@override String get sdrRadioDescription => 'En spektrumvisning på denne radioen hentes fra denne mottakeren i stedet for radioens eget scope.';
-	@override String get sdrRadioMain => 'Hovedradioen';
 	@override String get sdrTuning => 'Antenneinngang';
 	@override String get sdrTuningDescription => 'Hvor mottakerens signal kommer fra. På egen antenne stiller den seg selv inn for å følge radioen; på radioens IF-utgang blir den stående på IF.';
 	@override String get sdrTuningIndependent => 'Egen antenne';
@@ -2761,8 +2758,6 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get statusLost => 'Frakoblet';
 	@override String get notConfigured => 'Ikke satt opp';
 	@override String get currentConfiguration => 'Gjeldende oppsett';
-	@override String get currentTransceiver => 'Gjeldende transceiver';
-	@override String get currentTransceivers => 'Gjeldende transceivere';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
 	@override String get so2rQueueMessages => 'Meldinger settes i kø i stedet for å avbryte';
 	@override String get noRadioBSelected => 'Ingen Radio B valgt';
@@ -6216,9 +6211,6 @@ extension on TranslationsNb {
 			'settings.station.spectrumSdrNoRadio' => 'Venter på frekvensen til den tilknyttede radioen…',
 			'settings.station.spectrumSdrNotConnected' => 'SDR-en er ikke tilkoblet',
 			'settings.station.spectrumSdrNoIf' => 'Angi radioens IF-frekvens i innstillingene for denne SDR-en',
-			'settings.station.sdrRadio' => 'Viser spekteret for',
-			'settings.station.sdrRadioDescription' => 'En spektrumvisning på denne radioen hentes fra denne mottakeren i stedet for radioens eget scope.',
-			'settings.station.sdrRadioMain' => 'Hovedradioen',
 			'settings.station.sdrTuning' => 'Antenneinngang',
 			'settings.station.sdrTuningDescription' => 'Hvor mottakerens signal kommer fra. På egen antenne stiller den seg selv inn for å følge radioen; på radioens IF-utgang blir den stående på IF.',
 			'settings.station.sdrTuningIndependent' => 'Egen antenne',
@@ -6383,8 +6375,6 @@ extension on TranslationsNb {
 			'settings.station.statusLost' => 'Frakoblet',
 			'settings.station.notConfigured' => 'Ikke satt opp',
 			'settings.station.currentConfiguration' => 'Gjeldende oppsett',
-			'settings.station.currentTransceiver' => 'Gjeldende transceiver',
-			'settings.station.currentTransceivers' => 'Gjeldende transceivere',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
 			'settings.station.so2rQueueMessages' => 'Meldinger settes i kø i stedet for å avbryte',
 			'settings.station.noRadioBSelected' => 'Ingen Radio B valgt',
@@ -6506,13 +6496,13 @@ extension on TranslationsNb {
 			'settings.station.voiceMemoriesInvalid' => 'Et heltall, 0 eller mer',
 			'settings.station.yaesuMeterCapture' => 'Registrer måleravlesninger',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Leser radioens måler for utgangseffekt og flagg for høy SWR under sending og skriver råverdiene til loggen. For å bygge skalaen Yaesu ikke publiserer — verdiene vises ikke som målere.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Leser radioens PO-, SWR- og ALC-målere under sending og skriver råverdiene til loggen. For å bygge skalaen Yaesu ikke publiserer — verdiene vises ikke som målere.',
 			'settings.station.telemetryInterval' => 'Intervall for måleravlesning (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Hvor ofte radioens målere leses mens den sender. La stå tomt for det raskeste denne tilkoblingen klarer, opptil 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Et helt antall millisekunder, ${min} til ${max}',
 			'settings.station.pollInterval' => 'Spørreintervall i hvile (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Hvor ofte radioen spørres om frekvens og modus når ingen av dem endres. La stå tomt for ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Et helt antall millisekunder, ${min} til ${max}',
 			'settings.station.advancedSettings' => 'Avanserte innstillinger',
@@ -7020,13 +7010,13 @@ extension on TranslationsNb {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} bør sees nærmere på', other: '${formatted} bør sees nærmere på', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Referanser kunne ikke gjenopprettes for ${count} kontakt', other: 'Referanser kunne ikke gjenopprettes for ${formatted} kontakter', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${programs}-referanser kan være ufullstendige for ${count} kontakt', other: '${programs}-referanser kan være ufullstendige for ${formatted} kontakter', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Sammenslåtte kontakter kan miste en referanse — aktivitetene kunne ikke si hvilke typer som kan kombineres. Avbryt og prøv igjen for å unngå dette.',
 			'adifImport.nothingToImport' => 'Ingenting i denne filen kan importeres',
 			'adifImport.confirm' => 'Importer',
 			'adifImport.importing' => ({required Object filename}) => 'Importerer ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Importerte ${count} kontakt fra ${filename}', other: 'Importerte ${formatted} kontakter fra ${filename}', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Kunne ikke importere ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} ser ikke ut som en ADIF-fil',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Advarsel: denne ADIF-filen har QSOer fra ${calls}, men de blir importert som ${station} hvis du fortsetter.',

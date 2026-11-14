@@ -204,6 +204,13 @@ abstract class SpectrumSession implements EquipmentSession {
   bool setSpectrum(SpectrumRequest request);
 }
 
+/// For a driver whose every session is a [SpectrumSession], whatever the
+/// node's configuration.
+mixin AlwaysOffersScope on EquipmentDriver {
+  @override
+  bool offersScopeWith(Map<String, dynamic> config) => true;
+}
+
 /// The sink calls a spectrum session reports through. Separate from
 /// [EquipmentSink] so the drivers without a scope implement nothing new.
 abstract class SpectrumSink {

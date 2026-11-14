@@ -3047,9 +3047,6 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get spectrumSdrNoIf => '··· · — / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·· ··—· / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·· —· / — ···· ·· ··· / ··· —·· ·—· ·————· ··· / ··· · — — ·· —· ——· ···';
 	@override String get spectrumSdrUnreachable => '— ···· · / ··· —·· ·—· / —·—· ·— —· —· ——— — / — ··— —· · / — ——— / ·—— ···· · ·—· · / — ···· · / ·—· ·— —·· ·· ——— / ·· ··· ——··—— / ——— ·—· / ·— —· ——— — ···· · ·—· / ·——· ·—· ——— ——· ·—· ·— —— / ···· ·— ··· / ·· — / — ··— —· · —·· / · ·—·· ··· · ·—— ···· · ·—· ·';
 	@override String get spectrumSdrServerClosed => '— ···· · / —·—· ——— —· —· · —·—· — ·· ——— —· / — ——— / — ···· · / ··· —·· ·—· / ··· · ·—· ···— · ·—· / · —· —·· · —·· ·—·—·— / ·· — / —— ·— —·—— / —··· · / —··· ··— ··· —·—— ——··—— / ···· ·— ···— · / —· ——— / ·—· · —·—· · ·· ···— · ·—· / ·— — — ·— —·—· ···· · —·· ——··—— / ——— ·—· / —··· · / ——— ··— — / ——— ··—· / ·—· · ·— —·—· ····';
-	@override String get sdrRadio => '··· ···· ——— ·—— ··· / — ···· · / ··· ·——· · —·—· — ·—· ··— —— / ··—· ——— ·—·';
-	@override String get sdrRadioDescription => '·— / ··· ·——· · —·—· — ·—· ··— —— / —·· ·· ··· ·——· ·—·· ·— —·—— / ——— —· / — ···· ·· ··· / ·—· ·— —·· ·· ——— / —·· ·—· ·— ·—— ··· / ··—· ·—· ——— —— / — ···· ·· ··· / ·—· · —·—· · ·· ···— · ·—· / ·· —· ··· — · ·— —·· / ——— ··—· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ——— ·—— —· / ··· —·—· ——— ·——· · ·—·—·—';
-	@override String get sdrRadioMain => '— ···· · / —— ·— ·· —· / ·—· ·— —·· ·· ———';
 	@override String get sdrTuning => '·— —· — · —· —· ·— / ·· —· ·——· ··— —';
 	@override String get sdrTuningDescription => '·—— ···· · ·—· · / — ···· · / ·—· · —·—· · ·· ···— · ·—· ·————· ··· / ··· ·· ——· —· ·— ·—·· / —·—· ——— —— · ··· / ··—· ·—· ——— —— ·—·—·— / ——— —· / ·· — ··· / ——— ·—— —· / ·— —· — · —· —· ·— / ·· — / — ··— —· · ··· / ·· — ··· · ·—·· ··—· / — ——— / ··—· ——— ·—·· ·—·· ——— ·—— / — ···· · / ·—· ·— —·· ·· ——— —·—·—· / ——— —· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·· ··—· / ——— ··— — ·——· ··— — / ·· — / ··· — ·— —·—— ··· / ——— —· / — ···· · / ·· ··—· ·—·—·—';
 	@override String get sdrTuningIndependent => '·· — ··· / ——— ·—— —· / ·— —· — · —· —· ·—';
@@ -3164,10 +3161,9 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get statusLost => '—·· ·· ··· —·—· ——— —· —· · —·—· — · —··';
 	@override String get notConfigured => '—· ——— — / —·—· ——— —· ··—· ·· ——· ··— ·—· · —··';
 	@override String get currentConfiguration => '—·—· ··— ·—· ·—· · —· — / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —·';
-	@override String get currentTransceiver => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—·';
-	@override String get currentTransceivers => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio} ———··· / ${name}';
 	@override String get so2rQueueMessages => '—— · ··· ··· ·— ——· · ··· / ——·— ··— · ··— · —·· / ·· —· ··· — · ·— —·· / ——— ··—· / ·· —· — · ·—· ·—· ··— ·——· — ·· —· ——·';
+	@override String get so2rQueueMessagesDescription => '·—— ·· — ···· / — ·—— ——— / ·—· ·— —·· ·· ——— ··· ——··—— / ·— / —— · ··· ··· ·— ——· · / ··—· ——— ·—· / ——— —· · / ·—— ·— ·· — ··· / ·—— ···· ·· ·—·· · / — ···· · / ——— — ···· · ·—· / ·· ··· / ··· · —· —·· ·· —· ——· ——··—— / ·· —· ··· — · ·— —·· / ——— ··—· / ··· — ——— ·——· ·——· ·· —· ——· / ·· — ·—·—·—';
 	@override String get so2rSwitch => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—·';
 	@override String so2rSwitchBuiltIn({required Object radio}) => '—··· ··— ·· ·—·· — / ·· —· — ——— / ${radio}';
 	@override String get so2rSwitchSettings => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—· / ··· · — — ·· —· ——· ···';
@@ -3202,6 +3198,8 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} / ·· ··· / ——— —· / ·— —· ——— — ···· · ·—· / —·· · ···— ·· —·—· ·';
 	@override String peerRadioElsewhereMessage({required Object device}) => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ·· ··· / —·—· ——— —· —· · —·—· — · —·· / — ——— / ${device} ·—·—·— / ·· — ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— —· —·· / ··· · — — ·· —· ——· ··· / ·— ·—· · / —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· / ——— —· / — ···· ·— — / —·· · ···— ·· —·—· · ·—·—·—';
 	@override String get antennaInUse => '·— —· — · —· —· ·— / ·· —· / ··— ··· ·';
+	@override String get scopeInUse => '··· ·——· · —·—· — ·—· ··— —— / ··—· ·—· ——— ——';
+	@override String get scopeRadiosOwn => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ——— ·—— —· / ··· —·—· ——— ·——· ·';
 	@override String get keyInUse => '—·—· ·—— / —·— · —·—— ·· —· ——·';
 	@override String get phoneKeying => '·——· ···· ——— —· · / —·— · —·—— ·· —· ——·';
 	@override String get phoneKeyingNone => '—· ——— —· ·';
@@ -3291,6 +3289,16 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get voiceMemories => '···— ——— ·· —·—· · / —— · —— ——— ·—· ·· · ···';
 	@override String get voiceMemoriesDescription => '···· ——— ·—— / —— ·— —· —·—— / ···— ——— ·· —·—· · / —— · —— ——— ·—· ·· · ··· / — ···· · / ·—· ·— —·· ·· ——— / ·——· ·—·· ·— —·—— ··· / ——— ···— · ·—· / —·—· ·— — ·—·—·— / ————— / ··—· ——— ·—· / —· ——— —· · ·—·—·—';
 	@override String get voiceMemoriesInvalid => '·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· ——··—— / ————— / ——— ·—· / —— ——— ·—· ·';
+	@override String get provides => '·——· ·—· ——— ···— ·· —·· · ···';
+	@override String get providesScope => '—··· ·— —· —·· / ··· —·—· ——— ·——· ·';
+	@override String get providesKeyer => '—·—· ·—— / —·— · —·—— · ·—·';
+	@override String get providesVoice => '···— ——— ·· —·—· · / —·— · —·—— · ·—·';
+	@override String get providesSwitch => '·— —· — · —· —· ·— / ··· ·—— ·· — —·—· ····';
+	@override String get providesRotator => '·—· ——— — ·— — ——— ·—·';
+	@override String get providesAudioMixer => '·— ··— —·· ·· ——— / —— ·· —··— · ·—·';
+	@override String get providesSo2rController => '··· ——— ··——— ·—· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·';
+	@override String get providesAntenna => '·— —· — · —· —· ·—';
+	@override String get providesKey => '—·—· ·—— / —·— · —·——';
 	@override String get yaesuMeterCapture => '—·—· ·— ·——· — ··— ·—· · / —— · — · ·—· / ·—· · ·— —·· ·· —· ——· ···';
 	@override String get yaesuBinaryMeterCaptureDescription => '·—· · ·— —·· ··· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·——· ——— ·—— · ·—· —····— ——— ··— — ·——· ··— — / —— · — · ·—· / ·— —· —·· / ···· ·· ——· ···· —····— ··· ·—— ·—· / ··—· ·—·· ·— ——· / ·—— ···· ·· ·—·· · / — ·—· ·— —· ··· —— ·· — — ·· —· ——· / ·— —· —·· / ·——· ·—· ·· —· — ··· / — ···· · / ·—· ·— ·—— / ···— ·— ·—·· ··— · ··· / — ——— / — ···· · / ·—·· ——— ——· ·—·—·— / ··—· ——— ·—· / —··· ··— ·· ·—·· —·· ·· —· ——· / — ···· · / ··· —·—· ·— ·—·· · / —·—— ·— · ··· ··— / —·· ——— · ··· / —· ——— — / ·——· ··— —··· ·—·· ·· ··· ···· / — / — ···· · / ···— ·— ·—·· ··— · ··· / ·— ·—· · / —· ——— — / ··· ···· ——— ·—— —· / ·— ··· / —— · — · ·—· ··· ·—·—·—';
 	@override String get kenwoodMeterCaptureDescription => '·—· · ·— —·· ··· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ··· —····— —— · — · ·—· / ·—— ···· ·· ·—·· · / ·—· · —·—· · ·· ···— ·· —· ——· / ·— —· —·· / ·· — ··· / ·——· ——— ·—— · ·—· ——··—— / ··· ·—— ·—· ——··—— / —·—· ——— —— ·——· / ·— —· —·· / ·— ·—·· —·—· / —— · — · ·—· ··· / ·—— ···· ·· ·—·· · / — ·—· ·— —· ··· —— ·· — — ·· —· ——· ——··—— / ·— —· —·· / ·——· ·—· ·· —· — ··· / — ···· · / ·—· ·— ·—— / ···— ·— ·—·· ··— · ··· / — ——— / — ···· · / ·—·· ——— ——· ·—·—·— / ··—· ——— ·—· / —··· ··— ·· ·—·· —·· ·· —· ——· / — ···· · / ··· —·—· ·— ·—·· · ··· / —·— · —· ·—— ——— ——— —·· / —·· ——— · ··· / —· ——— — / ·——· ··— —··· ·—·· ·· ··· ···· ·—·—·—';
@@ -7097,9 +7105,6 @@ extension on TranslationsCw {
 			'settings.station.spectrumSdrNoIf' => '··· · — / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·· ··—· / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·· —· / — ···· ·· ··· / ··· —·· ·—· ·————· ··· / ··· · — — ·· —· ——· ···',
 			'settings.station.spectrumSdrUnreachable' => '— ···· · / ··· —·· ·—· / —·—· ·— —· —· ——— — / — ··— —· · / — ——— / ·—— ···· · ·—· · / — ···· · / ·—· ·— —·· ·· ——— / ·· ··· ——··—— / ——— ·—· / ·— —· ——— — ···· · ·—· / ·——· ·—· ——— ——· ·—· ·— —— / ···· ·— ··· / ·· — / — ··— —· · —·· / · ·—·· ··· · ·—— ···· · ·—· ·',
 			'settings.station.spectrumSdrServerClosed' => '— ···· · / —·—· ——— —· —· · —·—· — ·· ——— —· / — ——— / — ···· · / ··· —·· ·—· / ··· · ·—· ···— · ·—· / · —· —·· · —·· ·—·—·— / ·· — / —— ·— —·—— / —··· · / —··· ··— ··· —·—— ——··—— / ···· ·— ···— · / —· ——— / ·—· · —·—· · ·· ···— · ·—· / ·— — — ·— —·—· ···· · —·· ——··—— / ——— ·—· / —··· · / ——— ··— — / ——— ··—· / ·—· · ·— —·—· ····',
-			'settings.station.sdrRadio' => '··· ···· ——— ·—— ··· / — ···· · / ··· ·——· · —·—· — ·—· ··— —— / ··—· ——— ·—·',
-			'settings.station.sdrRadioDescription' => '·— / ··· ·——· · —·—· — ·—· ··— —— / —·· ·· ··· ·——· ·—·· ·— —·—— / ——— —· / — ···· ·· ··· / ·—· ·— —·· ·· ——— / —·· ·—· ·— ·—— ··· / ··—· ·—· ——— —— / — ···· ·· ··· / ·—· · —·—· · ·· ···— · ·—· / ·· —· ··· — · ·— —·· / ——— ··—· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ——— ·—— —· / ··· —·—· ——— ·——· · ·—·—·—',
-			'settings.station.sdrRadioMain' => '— ···· · / —— ·— ·· —· / ·—· ·— —·· ·· ———',
 			'settings.station.sdrTuning' => '·— —· — · —· —· ·— / ·· —· ·——· ··— —',
 			'settings.station.sdrTuningDescription' => '·—— ···· · ·—· · / — ···· · / ·—· · —·—· · ·· ···— · ·—· ·————· ··· / ··· ·· ——· —· ·— ·—·· / —·—· ——— —— · ··· / ··—· ·—· ——— —— ·—·—·— / ——— —· / ·· — ··· / ——— ·—— —· / ·— —· — · —· —· ·— / ·· — / — ··— —· · ··· / ·· — ··· · ·—·· ··—· / — ——— / ··—· ——— ·—·· ·—·· ——— ·—— / — ···· · / ·—· ·— —·· ·· ——— —·—·—· / ——— —· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·· ··—· / ——— ··— — ·——· ··— — / ·· — / ··· — ·— —·—— ··· / ——— —· / — ···· · / ·· ··—· ·—·—·—',
 			'settings.station.sdrTuningIndependent' => '·· — ··· / ——— ·—— —· / ·— —· — · —· —· ·—',
@@ -7202,11 +7207,11 @@ extension on TranslationsCw {
 			'settings.station.models.elecraftGeneric' => '· ·—·· · —·—· ·—· ·— ··—· — / —····— / ——· · —· · ·—· ·· —·—·',
 			'settings.station.models.kx2' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ··———',
 			'settings.station.models.kx3' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ···——',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.k4' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ····—',
 			'settings.station.models.ic705' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ————— ·····',
 			'settings.station.models.ic7300' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ···—— ————— —————',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.ic7300mk2' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ···—— ————— ————— / —— —·— ··———',
 			'settings.station.models.ic706mkiig' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ————— —···· —— —·— ·· ·· ——·',
 			'settings.station.models.ic7100' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ·———— ————— —————',
@@ -7315,10 +7320,9 @@ extension on TranslationsCw {
 			'settings.station.statusLost' => '—·· ·· ··· —·—· ——— —· —· · —·—· — · —··',
 			'settings.station.notConfigured' => '—· ——— — / —·—· ——— —· ··—· ·· ——· ··— ·—· · —··',
 			'settings.station.currentConfiguration' => '—·—· ··— ·—· ·—· · —· — / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —·',
-			'settings.station.currentTransceiver' => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—·',
-			'settings.station.currentTransceivers' => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio} ———··· / ${name}',
 			'settings.station.so2rQueueMessages' => '—— · ··· ··· ·— ——· · ··· / ——·— ··— · ··— · —·· / ·· —· ··· — · ·— —·· / ——— ··—· / ·· —· — · ·—· ·—· ··— ·——· — ·· —· ——·',
+			'settings.station.so2rQueueMessagesDescription' => '·—— ·· — ···· / — ·—— ——— / ·—· ·— —·· ·· ——— ··· ——··—— / ·— / —— · ··· ··· ·— ——· · / ··—· ——— ·—· / ——— —· · / ·—— ·— ·· — ··· / ·—— ···· ·· ·—·· · / — ···· · / ——— — ···· · ·—· / ·· ··· / ··· · —· —·· ·· —· ——· ——··—— / ·· —· ··· — · ·— —·· / ——— ··—· / ··· — ——— ·——· ·——· ·· —· ——· / ·· — ·—·—·—',
 			'settings.station.so2rSwitch' => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—·',
 			'settings.station.so2rSwitchBuiltIn' => ({required Object radio}) => '—··· ··— ·· ·—·· — / ·· —· — ——— / ${radio}',
 			'settings.station.so2rSwitchSettings' => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—· / ··· · — — ·· —· ——· ···',
@@ -7343,6 +7347,8 @@ extension on TranslationsCw {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} / ·· ··· / ——— —· / ·— —· ——— — ···· · ·—· / —·· · ···— ·· —·—· ·',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ·· ··· / —·—· ——— —· —· · —·—· — · —·· / — ——— / ${device} ·—·—·— / ·· — ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— —· —·· / ··· · — — ·· —· ——· ··· / ·— ·—· · / —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· / ——— —· / — ···· ·— — / —·· · ···— ·· —·—· · ·—·—·—',
 			'settings.station.antennaInUse' => '·— —· — · —· —· ·— / ·· —· / ··— ··· ·',
+			'settings.station.scopeInUse' => '··· ·——· · —·—· — ·—· ··— —— / ··—· ·—· ——— ——',
+			'settings.station.scopeRadiosOwn' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ——— ·—— —· / ··· —·—· ——— ·——· ·',
 			'settings.station.keyInUse' => '—·—· ·—— / —·— · —·—— ·· —· ——·',
 			'settings.station.phoneKeying' => '·——· ···· ——— —· · / —·— · —·—— ·· —· ——·',
 			'settings.station.phoneKeyingNone' => '—· ——— —· ·',
@@ -7510,6 +7516,16 @@ extension on TranslationsCw {
 			'settings.station.voiceMemories' => '···— ——— ·· —·—· · / —— · —— ——— ·—· ·· · ···',
 			'settings.station.voiceMemoriesDescription' => '···· ——— ·—— / —— ·— —· —·—— / ···— ——— ·· —·—· · / —— · —— ——— ·—· ·· · ··· / — ···· · / ·—· ·— —·· ·· ——— / ·——· ·—·· ·— —·—— ··· / ——— ···— · ·—· / —·—· ·— — ·—·—·— / ————— / ··—· ——— ·—· / —· ——— —· · ·—·—·—',
 			'settings.station.voiceMemoriesInvalid' => '·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· ——··—— / ————— / ——— ·—· / —— ——— ·—· ·',
+			'settings.station.provides' => '·——· ·—· ——— ···— ·· —·· · ···',
+			'settings.station.providesScope' => '—··· ·— —· —·· / ··· —·—· ——— ·——· ·',
+			'settings.station.providesKeyer' => '—·—· ·—— / —·— · —·—— · ·—·',
+			'settings.station.providesVoice' => '···— ——— ·· —·—· · / —·— · —·—— · ·—·',
+			'settings.station.providesSwitch' => '·— —· — · —· —· ·— / ··· ·—— ·· — —·—· ····',
+			'settings.station.providesRotator' => '·—· ——— — ·— — ——— ·—·',
+			'settings.station.providesAudioMixer' => '·— ··— —·· ·· ——— / —— ·· —··— · ·—·',
+			'settings.station.providesSo2rController' => '··· ——— ··——— ·—· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·',
+			'settings.station.providesAntenna' => '·— —· — · —· —· ·—',
+			'settings.station.providesKey' => '—·—· ·—— / —·— · —·——',
 			'settings.station.yaesuMeterCapture' => '—·—· ·— ·——· — ··— ·—· · / —— · — · ·—· / ·—· · ·— —·· ·· —· ——· ···',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => '·—· · ·— —·· ··· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·——· ——— ·—— · ·—· —····— ——— ··— — ·——· ··— — / —— · — · ·—· / ·— —· —·· / ···· ·· ——· ···· —····— ··· ·—— ·—· / ··—· ·—·· ·— ——· / ·—— ···· ·· ·—·· · / — ·—· ·— —· ··· —— ·· — — ·· —· ——· / ·— —· —·· / ·——· ·—· ·· —· — ··· / — ···· · / ·—· ·— ·—— / ···— ·— ·—·· ··— · ··· / — ——— / — ···· · / ·—·· ——— ——· ·—·—·— / ··—· ——— ·—· / —··· ··— ·· ·—·· —·· ·· —· ——· / — ···· · / ··· —·—· ·— ·—·· · / —·—— ·— · ··· ··— / —·· ——— · ··· / —· ——— — / ·——· ··— —··· ·—·· ·· ··· ···· / — / — ···· · / ···— ·— ·—·· ··— · ··· / ·— ·—· · / —· ——— — / ··· ···· ——— ·—— —· / ·— ··· / —— · — · ·—· ··· ·—·—·—',
 			'settings.station.kenwoodMeterCaptureDescription' => '·—· · ·— —·· ··· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ··· —····— —— · — · ·—· / ·—— ···· ·· ·—·· · / ·—· · —·—· · ·· ···— ·· —· ——· / ·— —· —·· / ·· — ··· / ·——· ——— ·—— · ·—· ——··—— / ··· ·—— ·—· ——··—— / —·—· ——— —— ·——· / ·— —· —·· / ·— ·—·· —·—· / —— · — · ·—· ··· / ·—— ···· ·· ·—·· · / — ·—· ·— —· ··· —— ·· — — ·· —· ——· ——··—— / ·— —· —·· / ·——· ·—· ·· —· — ··· / — ···· · / ·—· ·— ·—— / ···— ·— ·—·· ··— · ··· / — ——— / — ···· · / ·—·· ——— ——· ·—·—·— / ··—· ——— ·—· / —··· ··— ·· ·—·· —·· ·· —· ——· / — ···· · / ··· —·—· ·— ·—·· · ··· / —·— · —· ·—— ——— ——— —·· / —·· ——— · ··· / —· ——— — / ·——· ··— —··· ·—·· ·· ··· ···· ·—·—·—',
@@ -7708,6 +7724,8 @@ extension on TranslationsCw {
 			'settings.developer.launchedAt' => '··· — ·— ·—· — · —··',
 			'settings.developer.loading' => '—·——· ·—·· ——— ·— —·· ·· —· ——· … —·——·—',
 			'settings.developer.panelLoadFailed' => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—·· ——— ·— —·· / — ···· ·· ··· / ··· · — — ·· —· ——· ··· / ·——· ·— —· · ·—·· ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.extDevServer' => '· —··— — · —· ··· ·· ——— —· / —·· · ···— / ··· · ·—· ···— · ·—·',
 			'settings.developer.extensionSettings' => '· —··— — · —· ··· ·· ——— —· / ··· · — — ·· —· ——· ···',
 			'settings.developer.extDevServerDescription' => '·—·· ——— ·— —·· / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·—· ——— —— / ·— / —·· · ···— / ··· · ·—· ···— · ·—· / ——— —· / —·—— ——— ··— ·—· / —· · — ·—— ——— ·—· —·— / ·· —· ··· — · ·— —·· / ——— ··—· / — ···· · / ——— —· · ··· / —··· ··— ·· ·—·· — / ·· —· — ——— / — ···· · / ·— ·——· ·——· ——··—— / ·— —· —·· / ·—· · ·—·· ——— ·— —·· / — ···· · —— / ·— ··· / —·—— ——— ··— / ··· ·— ···— · ·—·—·—',
@@ -7716,8 +7734,6 @@ extension on TranslationsCw {
 			'settings.developer.extDevServerConnect' => '—·—· ——— —· —· · —·—· —',
 			'settings.developer.extDevServerDisconnect' => '—·· ·· ··· —·—· ——— —· —· · —·—· —',
 			'settings.developer.extDevServerConnecting' => '—·—· ——— —· —· · —·—· — ·· —· ——· …',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '··· · ·—· ···— ·· —· ——· / ${count} / · —··— — · —· ··· ·· ——— —· ———··· / ${keys}', other: '··· · ·—· ···— ·· —· ——· / ${count} / · —··— — · —· ··· ·· ——— —· ··· ———··· / ${keys}', ), 
 			'settings.developer.extDevServerDisconnected' => '—· ——— — / —·—· ——— —· —· · —·—· — · —··',
 			'settings.developer.extDevServerReconnect' => '·—· · —·—· ——— —· —· · —·—· — / ·— — / ·—·· ·— ··— —· —·—· ····',
@@ -8222,6 +8238,8 @@ extension on TranslationsCw {
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${limit} / ——·— ··· ——— ··· ·—·—·— / ·· —— ·——· ——— ·—· — ·· —· ——· / ·— —· / ·— —·· ·· ··—· / ·· —· — ——— / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / ·· ··· / —— · ·— —· — / — ——— / ·— —·· —·· / ·— / ··—· · ·—— / ——·— ··· ——— ··· ——··—— / —· ——— — / — ——— / —··· ·—· ·· —· ——· / ·· —· / ·— / ·—·· ·— ·—· ——· · / ·—·· ——— ——· / — / ··— ··· · / — ···· · / ·—·· ——— ——· ··· / ···— ·· · ·—— / ··—· ——— ·—· / — ···· ·— — ·—·—·— / —·· · ···— · ·—·· ——— ·——· · ·—· / —— ——— —·· · / ·—·· · — ··· / —·—— ——— ··— / ·· —— ·——· ——— ·—· — / ·· — / ·— —· —·—— ·—— ·— —·—— ——··—— / ·· ··—· / —·—— ——— ··— / ·— ·—· · / ··· ··— ·—· · ·—·—·—',
 			'adifImport.importAnyway' => '·· —— ·——· ——— ·—· — / ·— —· —·—— ·—— ·— —·——',
 			'offline.statusOffline' => '·· —· — · ·—· —· · — ———··· / ——— ··—· ··—· ·—·· ·· —· ·',
+			_ => null,
+		} ?? switch (path) {
 			'offline.statusOnline' => '·· —· — · ·—· —· · — ———··· / —·—· ——— —· —· · —·—· — · —··',
 			'offline.noRoute' => '—· ——— / —· · — ·—— ——— ·—· —·— / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— — / ·— ·—·· ·—·· ·—·—·—',
 			'offline.unreachable' => '— ···· · / —· · — ·—— ——— ·—· —·— / ·· ··· / ··— ·——· ——··—— / —··· ··— — / —· ——— / ··· · ·—· ···— · ·—· / ·· ··· / ·—· · ··· ·——· ——— —· —·· ·· —· ——· / — / ——— ··—· — · —· / ·— / ··· ·· ——· —· —····— ·· —· / ·——· ·— ——· · / ·—— ·— ·· — ·· —· ——· / ·· —· / ·— / —··· ·—· ——— ·—— ··· · ·—· ·—·—·—',
@@ -8230,8 +8248,6 @@ extension on TranslationsCw {
 			'offline.servicesTitle' => '··· · ·—· ···— ·· —·—· · ···',
 			'offline.noServices' => '—· ——— / ··· · ·—· ···— ·· —·—· · / ···· ·— ··· / ·—· · ·——· ——— ·—· — · —·· / ·· —· / —·—— · — ·—·—·—',
 			'offline.lastSuccess' => ({required Object when}) => '·—·· ·— ··· — / ·—· · ··· ·——· ——— —· —·· · —·· / ${when} / ·— ——· ———',
-			_ => null,
-		} ?? switch (path) {
 			'offline.neverSucceeded' => '···· ·— ··· / —· ——— — / ·—· · ··· ·——· ——— —· —·· · —·· / —·—— · —',
 			'offline.nextAttempt' => ({required Object when}) => '—· · —··— — / ·— — — · —— ·——· — / ·· —· / ${when}',
 			'offline.nextAttemptNow' => '—· · —··— — / ·— — — · —— ·——· — / —·· ··— ·',

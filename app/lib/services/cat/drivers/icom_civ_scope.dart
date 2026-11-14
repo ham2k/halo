@@ -64,6 +64,13 @@ const _narrowestEdgesHz = 5000;
 /// or a clipped reading would count as on target and the screen stay black.
 const _autoRefLowestDb = 5.0;
 
+/// The driver's half of [civScopeConfigKey]: an entry offers a scope where
+/// its session will run one.
+mixin _CivScopeOffer on EquipmentDriver {
+  @override
+  bool offersScopeWith(Map<String, dynamic> config) => config[civScopeConfigKey] == true;
+}
+
 mixin _CivScope implements SpectrumSession {
   EquipmentSink get _sink;
   int get radioAddress;

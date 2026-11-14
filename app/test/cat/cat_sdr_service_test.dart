@@ -7,12 +7,14 @@
 // draws it is megabytes a second of waste and another program locked out.
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show SocketException;
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/cat/auto_connect_guard.dart';
+import 'package:ham2k_logger/services/cat/capability.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/sdr_spectrum.dart';
@@ -216,22 +218,32 @@ void main() {
     }
   }
 
-  test("an SDR linked to Main draws Main's spectrum, and moves with the Main pick", () async {
+  test('an SDR added is the scope of the radio in use, and stays its scope when another radio is picked', () async {
+    // The scope is a pick of the radio's position, as its antenna is: an SDR
+    // on one rig's IF tap shows that rig's band whichever rig is Main.
     final left = (await cat.addNode(typeKey: 'left-type', name: 'Left', config: const {})).uuid;
     final right = (await cat.addNode(typeKey: 'right-type', name: 'Right', config: const {})).uuid;
-    final sdr = (await cat.addNode(typeKey: 'sdr-type', name: 'SDR', config: const {sdrRadioConfigKey: sdrRadioMain})).uuid;
+    final sdr = (await cat.addNode(typeKey: 'sdr-type', name: 'SDR', config: const {})).uuid;
     // The newest radio is Main.
     expect(cat.spectrumNodeFor(right), sdr);
     expect(cat.spectrumNodeFor(left), left, reason: 'a radio with no SDR keeps its own scope');
 
     await cat.setRadio1(LocalRadio(left));
+    expect(cat.spectrumNodeFor(right), sdr);
+    expect(cat.spectrumNodeFor(left), left);
+    expect(cat.linkedRadioFor(sdr), right);
+
+    // Picked for Left too, it follows the radio set A logs from.
+    await cat.setDesignated(kCapabilityScope, sdr);
     expect(cat.spectrumNodeFor(left), sdr);
-    expect(cat.spectrumNodeFor(right), right);
+    expect(cat.linkedRadioFor(sdr), left);
+    await cat.setDesignated(kCapabilityScope, null);
+    expect(cat.spectrumNodeFor(left), left, reason: "None is the radio's own scope");
   });
 
   test("with SDR receivers off, a linked SDR stands in for the radio's scope neither in the panel nor in readRadio", () async {
     final left = (await cat.addNode(typeKey: 'left-type', name: 'Left', config: const {})).uuid;
-    final sdr = (await cat.addNode(typeKey: 'sdr-type', name: 'SDR', config: const {sdrRadioConfigKey: sdrRadioMain})).uuid;
+    final sdr = (await cat.addNode(typeKey: 'sdr-type', name: 'SDR', config: const {})).uuid;
     await cat.connect(left);
     await settle();
     final scene = CatSpectrumSource(cat, settings: settings);
@@ -252,18 +264,146 @@ void main() {
     expect(panel.read(left)['spectrum'], isNotNull);
   });
 
-  test('an SDR linked to one radio stays with it whichever radio is Main', () async {
+  test('an SDR added with no radio in use is no radio\'s scope', () async {
+    // "No radio" has no spectrum for it to stand in for: a pick there would
+    // be saved and never draw anything.
+    final sdr = (await cat.addNode(typeKey: 'sdr-type', name: 'SDR', config: const {})).uuid;
+    expect(cat.designatedFor(kCapabilityScope), isNull);
     final left = (await cat.addNode(typeKey: 'left-type', name: 'Left', config: const {})).uuid;
-    final sdr = (await cat.addNode(typeKey: 'sdr-type', name: 'SDR', config: {sdrRadioConfigKey: left})).uuid;
+    expect(cat.spectrumNodeFor(left), left);
+    expect(cat.linkedRadioFor(sdr), isNull);
+  });
+
+  test('under SO2R one SDR is never both radios\' scope, and survives a trip through an older build', () async {
+    // It follows one dial: as both radios' scope, the other radio would draw
+    // the wrong band under its own.
+    await settings.setExperimentEnabled('so2r', true);
+    final left = (await cat.addNode(typeKey: 'left-type', name: 'Left', config: const {})).uuid;
+    final sdr = (await cat.addNode(typeKey: 'sdr-type', name: 'SDR', config: const {})).uuid;
     final right = (await cat.addNode(typeKey: 'right-type', name: 'Right', config: const {})).uuid;
-    expect(cat.spectrumNodeFor(right), right, reason: 'Main moved to Right; the SDR did not');
+    await cat.setRadio1(LocalRadio(left));
+    await cat.setRadio2(right);
     expect(cat.spectrumNodeFor(left), sdr);
+
+    await cat.setDesignated(kCapabilityScope, sdr, radio: right);
+    expect(cat.spectrumNodeFor(right), right, reason: "refused: it is set A's");
+    // Set A taking set B's leaves set B its own scope.
+    await cat.setDesignated(kCapabilityScope, null);
+    await cat.setDesignated(kCapabilityScope, sdr, radio: right);
+    expect(cat.spectrumNodeFor(right), sdr);
+    await cat.setDesignated(kCapabilityScope, sdr);
+    expect(cat.spectrumNodeFor(left), sdr);
+    expect(cat.spectrumNodeFor(right), right);
     expect(cat.linkedRadioFor(sdr), left);
+
+    // An older build reads the SDR's own setting, and saves without the
+    // positions: the link comes back from that.
+    final saved = jsonDecode(prefs.getString('stationEquipment')!) as Map<String, dynamic>;
+    expect(((saved['nodes'] as Map)[sdr] as Map)['config'], containsPair('sdrRadio', left));
+    await prefs.setString(
+      'stationEquipment',
+      jsonEncode(
+        {...saved, 'version': 3}
+          ..remove('positions')
+          ..remove('sets'),
+      ),
+    );
+    cat = build();
+    expect(cat.spectrumNodeFor(left), sdr);
+    expect(cat.nodeFor(sdr)!.config.containsKey('sdrRadio'), isFalse);
+  });
+
+  test('an SDR moved in an older build is moved here too, and one left alone keeps every radio that picked it', () async {
+    // That build saves the scope picks this one wrote, and the SDR's own
+    // setting beside them: where they disagree, the setting is the operator's
+    // newer choice.
+    Future<void> throughAnOlderBuild(String? relinkTo, String sdr, {String? mainThere}) async {
+      final saved = jsonDecode(prefs.getString('stationEquipment')!) as Map<String, dynamic>;
+      if (mainThere != null) saved['mainVfo'] = {'radio': mainThere};
+      final nodes = {...saved['nodes'] as Map};
+      if (relinkTo != null) {
+        final record = {...nodes[sdr] as Map};
+        nodes[sdr] = {
+          ...record,
+          'config': {...record['config'] as Map, 'sdrRadio': relinkTo},
+        };
+      }
+      await prefs.setString(
+        'stationEquipment',
+        jsonEncode(
+          {...saved, 'version': 3, 'nodes': nodes}
+            ..remove('positions')
+            ..remove('sets'),
+        ),
+      );
+      cat = build();
+    }
+
+    final left = (await cat.addNode(typeKey: 'left-type', name: 'Left', config: const {})).uuid;
+    final sdr = (await cat.addNode(typeKey: 'sdr-type', name: 'SDR', config: const {})).uuid;
+    final right = (await cat.addNode(typeKey: 'right-type', name: 'Right', config: const {})).uuid;
+    await cat.setDesignated(kCapabilityScope, sdr);
+    await cat.setRadio1(LocalRadio(left));
+
+    await throughAnOlderBuild(null, sdr);
+    expect(cat.spectrumNodeFor(left), sdr);
+    expect(cat.spectrumNodeFor(right), sdr, reason: 'the older build names one radio, and the other pick is not lost by it');
+
+    // Only Main changed there: the setting still names a radio that picks
+    // the SDR, so nothing moved, though it is no longer set A's.
+    await throughAnOlderBuild(null, sdr, mainThere: right);
+    expect(cat.radio1, LocalRadio(right));
+    expect(cat.spectrumNodeFor(left), sdr);
+    expect(cat.spectrumNodeFor(right), sdr);
+
+    await cat.setDesignated(kCapabilityScope, null, radio: right);
+    await throughAnOlderBuild(right, sdr);
+    expect(cat.spectrumNodeFor(left), left);
+    expect(cat.spectrumNodeFor(right), sdr, reason: "pointed there over the radio's own scope, which this build had picked");
+    expect(cat.linkedRadioFor(sdr), right);
+
+    // Nobody's scope here, and pointed at a radio whose own scope was picked.
+    await cat.setDesignated(kCapabilityScope, null, radio: right);
+    expect(cat.linkedRadioFor(sdr), isNull, reason: 'sanity');
+    await throughAnOlderBuild(right, sdr);
+    expect(cat.spectrumNodeFor(right), sdr);
+  });
+
+  test('a station stored before positions keeps each SDR on the radio it showed', () async {
+    // Version 3 kept the link on the SDR: a radio's id, or "main" (also what
+    // no link meant), which was whichever radio drove vfoA when stored.
+    await prefs.setString(
+      'stationEquipment',
+      jsonEncode({
+        'version': 3,
+        'mainVfo': {'radio': 'right'},
+        'nodes': {
+          'left': {'typeKey': 'left-type', 'name': 'Left'},
+          'right': {'typeKey': 'right-type', 'name': 'Right'},
+          'on-left': {
+            'typeKey': 'sdr-type',
+            'name': 'On Left',
+            'config': {'sdrRadio': 'left'},
+          },
+          'on-main': {'typeKey': 'sdr-type', 'name': 'On Main', 'config': <String, dynamic>{}},
+          'also-left': {
+            'typeKey': 'sdr-type',
+            'name': 'Also Left',
+            'config': {'sdrRadio': 'left'},
+          },
+        },
+      }),
+    );
+    cat = build();
+    expect(cat.spectrumNodeFor('left'), 'on-left', reason: 'the first SDR in station order took a radio two named');
+    expect(cat.spectrumNodeFor('right'), 'on-main');
+    expect(cat.linkedRadioFor('also-left'), isNull);
+    expect(cat.nodeFor('on-left')!.config.containsKey('sdrRadio'), isFalse, reason: 'the position holds it now');
   });
 
   test("the SDR reads its linked radio's dial through its sink", () async {
     final left = (await cat.addNode(typeKey: 'left-type', name: 'Left', config: const {})).uuid;
-    final sdr = (await cat.addNode(typeKey: 'sdr-type', name: 'SDR', config: {sdrRadioConfigKey: left})).uuid;
+    final sdr = (await cat.addNode(typeKey: 'sdr-type', name: 'SDR', config: const {})).uuid;
     await cat.connect(sdr);
     final sink = sdrDriver.sessions.single.sink as SdrSink;
     expect(sink.linkedVfoHz, isNull, reason: 'the radio is not connected, so it has no dial to follow');

@@ -18,6 +18,7 @@ import 'package:halo_audio/halo_audio.dart' show AudioOutput;
 import 'package:halo_core/halo_core.dart' show realNowMillis;
 
 import 'drivers/cw_send_queue.dart' show CwSendProgress;
+import 'capability.dart';
 import 'equipment.dart';
 import 'drivers/meter_calibration.dart';
 import 'so2r_audio.dart';
@@ -983,6 +984,29 @@ abstract class EquipmentDriver {
   /// Declared rather than read back out of [configElements] so the service
   /// can reason about free channels without parsing form definitions.
   List<String> get channelValues => const [];
+
+  /// The equipment's own name for what a node configured like [config] is
+  /// on it — the key of the receiver, rotator or switch the node offers
+  /// (docs/design/station-model.md § 4.2). The [channelKey] value for
+  /// equipment with several, [capabilityDefaultKey] for everything with one.
+  ///
+  /// As the SESSION will read it, not as stored: two spellings of one slice
+  /// are one key, since an address holding it outlives the spelling, and a
+  /// value that is no channel is the first one, as a record naming none is.
+  String offerKeyWith(Map<String, dynamic> config) {
+    final channelKey = this.channelKey;
+    if (channelKey == null) return capabilityDefaultKey;
+    final stored = '${config[channelKey] ?? ''}';
+    return channelValues.contains(stored) ? stored : channelValues.first;
+  }
+
+  /// Whether the equipment behind a node configured like [config] has a
+  /// scope — known without a session, the way [canKeyCwWith] is. A driver
+  /// answering true must create sessions that are `SpectrumSession`s. It is
+  /// not a claim that this connection can run it: a link too slow for the
+  /// sweeps still offers the scope, and its session says why it cannot
+  /// (`SpectrumSession.spectrumUnavailable`).
+  bool offersScopeWith(Map<String, dynamic> config) => false;
 
   /// How many antenna ports this equipment has when nobody has asked it yet.
   ///

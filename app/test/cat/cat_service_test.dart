@@ -1564,7 +1564,7 @@ void main() {
       expect((loaded.radio1 as PeerRadio).selection.radioName, 'IC-705');
     });
 
-    test('what a version 2 blob is read as is written back as one key', () async {
+    test('what a version 2 blob is read as is written back as set A\'s position', () async {
       SharedPreferences.setMockInitialValues({
         'stationEquipment': jsonEncode({
           'version': 2,
@@ -1579,12 +1579,19 @@ void main() {
       await loaded.setRadio1(null);
       await loaded.setRadio1(const PeerRadio(pick));
 
-      final blob = jsonDecode((await SharedPreferences.getInstance()).getString('stationEquipment')!);
-      expect(blob['mainVfo'], {
+      final blob = jsonDecode((await SharedPreferences.getInstance()).getString('stationEquipment')!) as Map<String, dynamic>;
+      final positionA = (blob['positions'] as Map)[(blob['sets'] as Map)['A']] as Map;
+      // The name kept along with the ids: it is what the picker shows while
+      // the peer is away.
+      expect(positionA['radio'], {
         'peer': {'deviceId': 'device-a', 'radioId': 'rig-1', 'radioName': 'IC-705'},
       });
-      expect(blob.containsKey('radio1'), isFalse, reason: 'one slot on disk too, or the pair can disagree again');
-      expect(blob.containsKey('remoteRadio1'), isFalse);
+      // Version 2's two keys are gone: a version 3 build reads `mainVfo`,
+      // written beside the position for it, and the two could disagree.
+      for (final old in ['radio1', 'remoteRadio1']) {
+        expect(blob.containsKey(old), isFalse, reason: old);
+      }
+      expect(blob['mainVfo'], {'peer': positionA['radio']['peer']});
     });
 
     test('a stored blob naming BOTH keeps only the local radio', () async {

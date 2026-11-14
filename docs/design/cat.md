@@ -1203,8 +1203,8 @@ fills radio1's or Radio B's role.
 
 Behind the `so2r` experiment, a second role: **`radio2`** (`CatService.radio2`), the transceiver
 providing `vfoB`, which set B of the logging panel follows ([logging-fields.md](logging-fields.md)
-§ SO2R). Stored beside `mainVfo` and picked in Station Configuration's Current Transceivers band,
-under the Main VFO's row. It is the same wiring as `radio1`, narrowed:
+§ SO2R). Stored as set B's position ([station-model.md](station-model.md) § 9) and picked in
+Station Configuration's Current Configuration band, as set B's block under set A's. It is the same wiring as `radio1`, narrowed:
 
 - **Local rigs only.** A peer's radio is never Radio B.
 - **Never radio1's rig.** `setRadio2` refuses it, and taking Radio B's rig as radio1 clears Radio
@@ -1285,8 +1285,8 @@ and a polled rig is asked at its meter cadence (`telemetryInterval`), as fast as
   overlap, and on two slices of one Flex the stopped slice's unkey lands after the new key and
   drops it. What the operator keyed on the other radio and is still waiting there goes too. That
   holds unless the station's setting *Messages queued
-  instead of interrupting* (`SettingsService.so2rQueueMessages`, off by default, in Station
-  Configuration under Radio B) is on: then it waits its turn like a repeat. A message that reaches
+  instead of interrupting* (`SettingsService.so2rQueueMessages`, off by default, in the
+  preferences' Keyer section) is on: then it waits its turn like a repeat. A message that reaches
   its keyer after its keypress — rendered, or a thanks waiting on its contact's log — is dropped
   when the other radio was keyed in between (`keyMark`, `keyedOverSince`): going at once it would
   have been stopped, and going now it would stop the newer one. Queued, it waits its turn.
@@ -1395,7 +1395,7 @@ exchange record, the store's no-op dropping, Smart VFO Snap — where a
 registry node would need a live session injected into a const-constructed
 transport map and the radio1 reconnect loops taught about session lifetimes.
 The accepted cost: a remote radio has no equipment record and no settings of
-its own — it is named in the Station panel's Current Transceiver band, as
+its own — it is named in the Station panel's Current Configuration band, as
 the thing driving the VFO, but there is nothing there to connect or edit.
 
 **A remote radio is picked, never inferred.** A device offers every
@@ -4369,12 +4369,16 @@ own scope; the scene's source reads the experiment live, as `readRadio` does,
 so both follow a toggle together. It exists to be a spectrum source: it has no
 VFO, nothing logs from it, and nothing tunes it but the app.
 
-**It draws a radio's spectrum, not its own.** Its config links it to a radio —
-a specific node, or whichever is Main (`sdrRadio`). `CatService.spectrumNodeFor`
+**It draws a radio's spectrum, not its own.** A radio's position picks it as
+its `scope` ([station-model.md](station-model.md) § 5), in that set's Spectrum
+From line, and it stays that radio's when another radio is Main. A new SDR is
+the scope of the local radio in use. Under SO2R one SDR is never both sets'
+scope: it follows one dial (`CatService.linkedRadioFor`), and the other radio
+would draw the wrong band under its own. `CatService.spectrumNodeFor`
 answers "where does this radio's spectrum come from" in one place, for the
 scene control (`CatSpectrumSource`) and for `readRadio().spectrum` and
-`setRadioSpectrum` alike: a linked SDR when there is one — it wins over the
-radio's own scope, since linking it is the operator saying which picture they
+`setRadioSpectrum` alike: the picked SDR when there is one — it wins over the
+radio's own scope, since picking it is the operator saying which picture they
 want — otherwise the radio. An SDR the operator disconnected hands the radio
 its own scope back; one that failed to connect does not, and says why, so the
 picture does not swap each time a server comes and goes. The dial marker, overlays and a scene's `radio.`

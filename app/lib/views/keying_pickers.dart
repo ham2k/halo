@@ -72,8 +72,15 @@ Widget cwKeyingOptionsButton(BuildContext context) =>
 /// button to its sound devices and delays. A source that is not on offer
 /// here reads as None, not as a choice the menu cannot show. A peer's radio
 /// plays what its own station picked, so the pick is shown and not offered.
-/// Under SO2R each radio's pick is its own, and the label says whose.
-({Widget picker, List<Widget> controls}) phoneKeyingParts(BuildContext context, HaLoServices services, {String radio = 'A', bool filled = false}) {
+/// Under SO2R each radio's pick is its own, and the label says whose, unless
+/// [namesRadio] is false for a line already under its set's radio.
+({Widget picker, List<Widget> controls}) phoneKeyingParts(
+  BuildContext context,
+  HaLoServices services, {
+  String radio = 'A',
+  bool filled = false,
+  bool namesRadio = true,
+}) {
   final st = context.t.settings.station;
   final cat = services.cat;
   final keyer = cat.keyer(radio);
@@ -92,7 +99,7 @@ Widget cwKeyingOptionsButton(BuildContext context) =>
     _ => VoiceKeyingSource.none,
   };
   final radioName = !local ? peerDeviceLabel(cat.followedPeerRadio) : (node == null ? null : cat.displayNameFor(node));
-  final decoration = poloFieldDecoration(context, so2r ? st.so2rRadioName(radio: radio, name: st.phoneKeying) : st.phoneKeying);
+  final decoration = poloFieldDecoration(context, so2r && namesRadio ? st.so2rRadioName(radio: radio, name: st.phoneKeying) : st.phoneKeying);
   return (
     picker: DropdownButtonFormField<VoiceKeyingSource>(
       key: ValueKey('phoneKeying:$radio:$shown:$local'),

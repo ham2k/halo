@@ -2670,9 +2670,6 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get spectrumSdrNoRadio => 'Wachten op de frequentie van de gekoppelde radio…';
 	@override String get spectrumSdrNotConnected => 'De SDR is niet verbonden';
 	@override String get spectrumSdrNoIf => 'Stel de IF-frequentie van de radio in bij de instellingen van deze SDR';
-	@override String get sdrRadio => 'Toont het spectrum voor';
-	@override String get sdrRadioDescription => 'Een spectrumweergave op deze radio gebruikt deze ontvanger in plaats van de eigen scope van de radio.';
-	@override String get sdrRadioMain => 'De hoofdradio';
 	@override String get sdrTuning => 'Antenne-ingang';
 	@override String get sdrTuningDescription => 'Waar het signaal van de ontvanger vandaan komt. Op een eigen antenne stemt hij zichzelf af om de radio te volgen; op de IF-uitgang van de radio blijft hij op de IF staan.';
 	@override String get sdrTuningIndependent => 'Eigen antenne';
@@ -2761,8 +2758,6 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get statusLost => 'Verbinding verbroken';
 	@override String get notConfigured => 'Niet geconfigureerd';
 	@override String get currentConfiguration => 'Huidige configuratie';
-	@override String get currentTransceiver => 'Huidige transceiver';
-	@override String get currentTransceivers => 'Huidige transceivers';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
 	@override String get so2rQueueMessages => 'Berichten in de wachtrij in plaats van onderbreken';
 	@override String get noRadioBSelected => 'Geen Radio B geselecteerd';
@@ -6216,9 +6211,6 @@ extension on TranslationsNl {
 			'settings.station.spectrumSdrNoRadio' => 'Wachten op de frequentie van de gekoppelde radio…',
 			'settings.station.spectrumSdrNotConnected' => 'De SDR is niet verbonden',
 			'settings.station.spectrumSdrNoIf' => 'Stel de IF-frequentie van de radio in bij de instellingen van deze SDR',
-			'settings.station.sdrRadio' => 'Toont het spectrum voor',
-			'settings.station.sdrRadioDescription' => 'Een spectrumweergave op deze radio gebruikt deze ontvanger in plaats van de eigen scope van de radio.',
-			'settings.station.sdrRadioMain' => 'De hoofdradio',
 			'settings.station.sdrTuning' => 'Antenne-ingang',
 			'settings.station.sdrTuningDescription' => 'Waar het signaal van de ontvanger vandaan komt. Op een eigen antenne stemt hij zichzelf af om de radio te volgen; op de IF-uitgang van de radio blijft hij op de IF staan.',
 			'settings.station.sdrTuningIndependent' => 'Eigen antenne',
@@ -6383,8 +6375,6 @@ extension on TranslationsNl {
 			'settings.station.statusLost' => 'Verbinding verbroken',
 			'settings.station.notConfigured' => 'Niet geconfigureerd',
 			'settings.station.currentConfiguration' => 'Huidige configuratie',
-			'settings.station.currentTransceiver' => 'Huidige transceiver',
-			'settings.station.currentTransceivers' => 'Huidige transceivers',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
 			'settings.station.so2rQueueMessages' => 'Berichten in de wachtrij in plaats van onderbreken',
 			'settings.station.noRadioBSelected' => 'Geen Radio B geselecteerd',
@@ -6506,13 +6496,13 @@ extension on TranslationsNl {
 			'settings.station.voiceMemoriesInvalid' => 'Een geheel getal, 0 of meer',
 			'settings.station.yaesuMeterCapture' => 'Meteruitlezingen vastleggen',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Leest tijdens het zenden de vermogensmeter en de hoge-SWR-vlag van de radio uit en schrijft de ruwe waarden naar het log. Bedoeld om de schaal op te bouwen die Yaesu niet publiceert — de waarden worden niet als meters getoond.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Leest tijdens het zenden de PO-, SWR- en ALC-meters van de radio uit en schrijft de ruwe waarden naar het log. Bedoeld om de schaal op te bouwen die Yaesu niet publiceert — de waarden worden niet als meters getoond.',
 			'settings.station.telemetryInterval' => 'Interval meteruitlezing (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Hoe vaak de meters van de radio tijdens het zenden worden uitgelezen. Laat leeg voor het snelste wat deze verbinding aankan, tot 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Een geheel aantal milliseconden, ${min} tot ${max}',
 			'settings.station.pollInterval' => 'Pollinginterval in rust (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Hoe vaak de radio om frequentie en mode wordt gevraagd zolang geen van beide verandert. Laat leeg voor ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Een geheel aantal milliseconden, ${min} tot ${max}',
 			'settings.station.advancedSettings' => 'Geavanceerde instellingen',
@@ -7020,13 +7010,13 @@ extension on TranslationsNl {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} verdient een nadere blik', other: '${formatted} verdienen een nadere blik', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: 'Referenties konden niet worden achterhaald voor ${count} QSO', other: 'Referenties konden niet worden achterhaald voor ${formatted} QSO\'s', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${programs}-referenties zijn mogelijk onvolledig voor ${count} QSO', other: '${programs}-referenties zijn mogelijk onvolledig voor ${formatted} QSO\'s', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Samengevoegde QSO\'s kunnen een referentie verliezen — de activiteiten konden niet zeggen welke typen stapelen. Annuleer en probeer opnieuw om dit te voorkomen.',
 			'adifImport.nothingToImport' => 'Niets in dit bestand kan worden geïmporteerd',
 			'adifImport.confirm' => 'Importeren',
 			'adifImport.importing' => ({required Object filename}) => '${filename} importeren…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO geïmporteerd uit ${filename}', other: '${formatted} QSO\'s geïmporteerd uit ${filename}', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Kon ${filename} niet importeren: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} lijkt geen ADIF-bestand',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Waarschuwing: deze ADIF bevat QSO\'s van ${calls}, maar ze worden geïmporteerd als ${station} als je doorgaat.',

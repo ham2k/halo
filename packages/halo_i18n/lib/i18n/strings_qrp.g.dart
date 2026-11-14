@@ -3047,9 +3047,6 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get spectrumSdrNoIf => 'set the radio\'s if frequency in this sdr\'s settings';
 	@override String get spectrumSdrUnreachable => 'the sdr cannot tune to where the radio is, or another program has it tuned elsewhere';
 	@override String get spectrumSdrServerClosed => 'the connection to the sdr server ended. it may be busy, have no receiver attached, or be out of reach';
-	@override String get sdrRadio => 'shows the spectrum for';
-	@override String get sdrRadioDescription => 'a spectrum display on this radio draws from this receiver instead of the radio\'s own scope.';
-	@override String get sdrRadioMain => 'the main radio';
 	@override String get sdrTuning => 'antenna input';
 	@override String get sdrTuningDescription => 'where the receiver\'s signal comes from. on its own antenna it tunes itself to follow the radio; on the radio\'s if output it stays on the if.';
 	@override String get sdrTuningIndependent => 'its own antenna';
@@ -3164,10 +3161,9 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get statusLost => 'disconnected';
 	@override String get notConfigured => 'not configured';
 	@override String get currentConfiguration => 'current configuration';
-	@override String get currentTransceiver => 'current transceiver';
-	@override String get currentTransceivers => 'current transceivers';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
 	@override String get so2rQueueMessages => 'messages queued instead of interrupting';
+	@override String get so2rQueueMessagesDescription => 'with two radios, a message for one waits while the other is sending, instead of stopping it.';
 	@override String get so2rSwitch => 'so2r switcher';
 	@override String so2rSwitchBuiltIn({required Object radio}) => 'built into ${radio}';
 	@override String get so2rSwitchSettings => 'so2r switcher settings';
@@ -3202,6 +3198,8 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} is on another device';
 	@override String peerRadioElsewhereMessage({required Object device}) => 'this radio is connected to ${device}. its connection and settings are configured on that device.';
 	@override String get antennaInUse => 'antenna in use';
+	@override String get scopeInUse => 'spectrum from';
+	@override String get scopeRadiosOwn => 'the radio\'s own scope';
 	@override String get keyInUse => 'cw keying';
 	@override String get phoneKeying => 'phone keying';
 	@override String get phoneKeyingNone => 'none';
@@ -3291,6 +3289,16 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get voiceMemories => 'voice memories';
 	@override String get voiceMemoriesDescription => 'how many voice memories the radio plays over cat. 0 for none.';
 	@override String get voiceMemoriesInvalid => 'a whole number, 0 or more';
+	@override String get provides => 'provides';
+	@override String get providesScope => 'band scope';
+	@override String get providesKeyer => 'cw keyer';
+	@override String get providesVoice => 'voice keyer';
+	@override String get providesSwitch => 'antenna switch';
+	@override String get providesRotator => 'rotator';
+	@override String get providesAudioMixer => 'audio mixer';
+	@override String get providesSo2rController => 'so2r controller';
+	@override String get providesAntenna => 'antenna';
+	@override String get providesKey => 'cw key';
 	@override String get yaesuMeterCapture => 'capture meter readings';
 	@override String get yaesuBinaryMeterCaptureDescription => 'reads the radio\'s power-output meter and high-swr flag while transmitting and prints the raw values to the log. for building the scale yaesu does not publish — the values are not shown as meters.';
 	@override String get kenwoodMeterCaptureDescription => 'reads the radio\'s s-meter while receiving and its power, swr, comp and alc meters while transmitting, and prints the raw values to the log. for building the scales kenwood does not publish.';
@@ -7097,9 +7105,6 @@ extension on TranslationsQrp {
 			'settings.station.spectrumSdrNoIf' => 'set the radio\'s if frequency in this sdr\'s settings',
 			'settings.station.spectrumSdrUnreachable' => 'the sdr cannot tune to where the radio is, or another program has it tuned elsewhere',
 			'settings.station.spectrumSdrServerClosed' => 'the connection to the sdr server ended. it may be busy, have no receiver attached, or be out of reach',
-			'settings.station.sdrRadio' => 'shows the spectrum for',
-			'settings.station.sdrRadioDescription' => 'a spectrum display on this radio draws from this receiver instead of the radio\'s own scope.',
-			'settings.station.sdrRadioMain' => 'the main radio',
 			'settings.station.sdrTuning' => 'antenna input',
 			'settings.station.sdrTuningDescription' => 'where the receiver\'s signal comes from. on its own antenna it tunes itself to follow the radio; on the radio\'s if output it stays on the if.',
 			'settings.station.sdrTuningIndependent' => 'its own antenna',
@@ -7202,11 +7207,11 @@ extension on TranslationsQrp {
 			'settings.station.models.elecraftGeneric' => 'elecraft - generic',
 			'settings.station.models.kx2' => 'elecraft kx2',
 			'settings.station.models.kx3' => 'elecraft kx3',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.k4' => 'elecraft k4',
 			'settings.station.models.ic705' => 'icom ic-705',
 			'settings.station.models.ic7300' => 'icom ic-7300',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.ic7300mk2' => 'icom ic-7300 mk2',
 			'settings.station.models.ic706mkiig' => 'icom ic-706mkiig',
 			'settings.station.models.ic7100' => 'icom ic-7100',
@@ -7315,10 +7320,9 @@ extension on TranslationsQrp {
 			'settings.station.statusLost' => 'disconnected',
 			'settings.station.notConfigured' => 'not configured',
 			'settings.station.currentConfiguration' => 'current configuration',
-			'settings.station.currentTransceiver' => 'current transceiver',
-			'settings.station.currentTransceivers' => 'current transceivers',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
 			'settings.station.so2rQueueMessages' => 'messages queued instead of interrupting',
+			'settings.station.so2rQueueMessagesDescription' => 'with two radios, a message for one waits while the other is sending, instead of stopping it.',
 			'settings.station.so2rSwitch' => 'so2r switcher',
 			'settings.station.so2rSwitchBuiltIn' => ({required Object radio}) => 'built into ${radio}',
 			'settings.station.so2rSwitchSettings' => 'so2r switcher settings',
@@ -7343,6 +7347,8 @@ extension on TranslationsQrp {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'this radio is connected to ${device}. its connection and settings are configured on that device.',
 			'settings.station.antennaInUse' => 'antenna in use',
+			'settings.station.scopeInUse' => 'spectrum from',
+			'settings.station.scopeRadiosOwn' => 'the radio\'s own scope',
 			'settings.station.keyInUse' => 'cw keying',
 			'settings.station.phoneKeying' => 'phone keying',
 			'settings.station.phoneKeyingNone' => 'none',
@@ -7510,6 +7516,16 @@ extension on TranslationsQrp {
 			'settings.station.voiceMemories' => 'voice memories',
 			'settings.station.voiceMemoriesDescription' => 'how many voice memories the radio plays over cat. 0 for none.',
 			'settings.station.voiceMemoriesInvalid' => 'a whole number, 0 or more',
+			'settings.station.provides' => 'provides',
+			'settings.station.providesScope' => 'band scope',
+			'settings.station.providesKeyer' => 'cw keyer',
+			'settings.station.providesVoice' => 'voice keyer',
+			'settings.station.providesSwitch' => 'antenna switch',
+			'settings.station.providesRotator' => 'rotator',
+			'settings.station.providesAudioMixer' => 'audio mixer',
+			'settings.station.providesSo2rController' => 'so2r controller',
+			'settings.station.providesAntenna' => 'antenna',
+			'settings.station.providesKey' => 'cw key',
 			'settings.station.yaesuMeterCapture' => 'capture meter readings',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'reads the radio\'s power-output meter and high-swr flag while transmitting and prints the raw values to the log. for building the scale yaesu does not publish — the values are not shown as meters.',
 			'settings.station.kenwoodMeterCaptureDescription' => 'reads the radio\'s s-meter while receiving and its power, swr, comp and alc meters while transmitting, and prints the raw values to the log. for building the scales kenwood does not publish.',
@@ -7708,6 +7724,8 @@ extension on TranslationsQrp {
 			'settings.developer.launchedAt' => 'started',
 			'settings.developer.loading' => '(loading…)',
 			'settings.developer.panelLoadFailed' => 'could not load this settings panel.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.extDevServer' => 'extension dev server',
 			'settings.developer.extensionSettings' => 'extension settings',
 			'settings.developer.extDevServerDescription' => 'load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.',
@@ -7716,8 +7734,6 @@ extension on TranslationsQrp {
 			'settings.developer.extDevServerConnect' => 'connect',
 			'settings.developer.extDevServerDisconnect' => 'disconnect',
 			'settings.developer.extDevServerConnecting' => 'connecting…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'serving ${count} extension: ${keys}', other: 'serving ${count} extensions: ${keys}', ), 
 			'settings.developer.extDevServerDisconnected' => 'not connected',
 			'settings.developer.extDevServerReconnect' => 'reconnect at launch',
@@ -8222,6 +8238,8 @@ extension on TranslationsQrp {
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos. importing an adif into an operation is meant to add a few qsos, not to bring in a large log — use the logs view for that. developer mode lets you import it anyway, if you are sure.',
 			'adifImport.importAnyway' => 'import anyway',
 			'offline.statusOffline' => 'internet: offline',
+			_ => null,
+		} ?? switch (path) {
 			'offline.statusOnline' => 'internet: connected',
 			'offline.noRoute' => 'no network connection at all.',
 			'offline.unreachable' => 'the network is up, but no server is responding — often a sign-in page waiting in a browser.',
@@ -8230,8 +8248,6 @@ extension on TranslationsQrp {
 			'offline.servicesTitle' => 'services',
 			'offline.noServices' => 'no service has reported in yet.',
 			'offline.lastSuccess' => ({required Object when}) => 'last responded ${when} ago',
-			_ => null,
-		} ?? switch (path) {
 			'offline.neverSucceeded' => 'has not responded yet',
 			'offline.nextAttempt' => ({required Object when}) => 'next attempt in ${when}',
 			'offline.nextAttemptNow' => 'next attempt due',

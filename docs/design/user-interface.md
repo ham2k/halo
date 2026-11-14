@@ -998,7 +998,7 @@ and these rules are what keep it one:
   and the `SectionHeader`s after it are gathered into it, so their bands pin
   UNDER the category's rather than pushing it off — the two-deep stack the
   Settings panel gets from its accordion, for a surface whose categories do
-  not fold (the Station panel's Current Transceiver, Equipment Inventory
+  not fold (the Station panel's Current Configuration, Equipment Inventory
   and CAT Control Preferences). The band is
   a `PinnedHeaderSliver`, so it is as tall as it lays out to — a title that
   wraps at a large font scale takes the room it needs rather than a stated

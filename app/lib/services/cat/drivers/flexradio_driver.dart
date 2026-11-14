@@ -28,6 +28,7 @@ import 'line_framer.dart';
 import 'flex_so2r_audio.dart';
 import '../so2r_audio.dart';
 import 'flex_meter_codec.dart';
+import 'flex_slice_config.dart';
 import 'voice_activity_tracker.dart';
 import 'flex_spectrum.dart';
 import 'flex_dax_switch.dart';
@@ -68,7 +69,7 @@ const flexRadioPingInterval = Duration(seconds: 25);
 /// at a blank row wondering.
 const _sliceRefreshSettle = Duration(seconds: 3);
 
-class FlexRadioDriver extends EquipmentDriver {
+class FlexRadioDriver extends EquipmentDriver with AlwaysOffersScope {
   const FlexRadioDriver();
 
   static const defaultPort = 4992;
@@ -88,7 +89,7 @@ class FlexRadioDriver extends EquipmentDriver {
   /// exists, and a slice the radio does not have is reported as missing once
   /// connected (see [FlexRadioSession._reportProblem]) rather than being
   /// silently unofferable.
-  static const sliceLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+  static const sliceLabels = flexSliceLabels;
 
   static const sliceConfigKey = 'slice';
 
@@ -97,6 +98,9 @@ class FlexRadioDriver extends EquipmentDriver {
 
   @override
   List<String> get channelValues => [for (var i = 0; i < sliceLabels.length; i++) '$i'];
+
+  @override
+  String offerKeyWith(Map<String, dynamic> config) => '${sliceFromConfig(config)}';
 
   @override
   bool get canKeyCw => true;
@@ -147,7 +151,7 @@ class FlexRadioDriver extends EquipmentDriver {
     // setting existed carries no `slice` at all, and failing it here would
     // stop a radio that has been connecting fine from connecting at all.
     if (value == null || '$value'.trim().isEmpty) return null;
-    return _parseSlice(value) == null ? t.settings.station.flexSliceInvalid : null;
+    return parseFlexSlice(value) == null ? t.settings.station.flexSliceInvalid : null;
   }
 
   @override
@@ -165,20 +169,11 @@ class FlexRadioDriver extends EquipmentDriver {
   /// The configured slice, defaulting to 0 — a node stored before this
   /// setting existed has no `slice` key at all, and slice A is what it was
   /// tracking.
-  static int sliceFromConfig(Map<String, dynamic> config) => _parseSlice(config[sliceConfigKey]) ?? 0;
+  static int sliceFromConfig(Map<String, dynamic> config) => parseFlexSlice(config[sliceConfigKey]) ?? 0;
 
   /// The radio's own letter for a slice index; the index itself for one
   /// past the letters we name, which the radio would have to have invented.
   static String sliceLabel(int slice) => slice >= 0 && slice < sliceLabels.length ? sliceLabels[slice] : '$slice';
-
-  /// Null for anything that isn't a slice this driver offers. A value
-  /// round-tripped through JSON (or a form) arrives as a String or a num
-  /// depending on the path, so both are read.
-  static int? _parseSlice(dynamic raw) {
-    final value = raw is num ? raw.toInt() : int.tryParse('${raw ?? ''}'.trim());
-    if (value == null) return null;
-    return (value >= 0 && value < sliceLabels.length) ? value : null;
-  }
 }
 
 String? _nonEmpty(String? value) => (value == null || value.isEmpty) ? null : value;

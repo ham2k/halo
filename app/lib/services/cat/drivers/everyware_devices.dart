@@ -54,6 +54,13 @@ const everywareAnnounceWait = Duration(seconds: 10);
 
 String _deviceName(Map<String, dynamic> config) => config[everywareDeviceConfigKey] as String? ?? '';
 
+/// The server's own identity for the device, kind included. Keys are stored
+/// in addresses, and they outlast a server's devices becoming capabilities of
+/// the server itself, under its one device id
+/// (docs/design/station-model.md § 11, phase 4): there a rotor and a
+/// directional switch may share a name, and both are offered as rotators.
+String _offerKey(EverywareDeviceKind kind, Map<String, dynamic> config) => everywareDeviceKey(kind, _deviceName(config));
+
 /// Says the server no longer has the device when [everywareAnnounceWait]
 /// passes without an announcement of it.
 mixin _AwaitsAnnouncement {
@@ -85,6 +92,9 @@ class EverywareRotorDriver extends EquipmentDriver {
 
   @override
   String get name => 'GH Everyware rotor';
+
+  @override
+  String offerKeyWith(Map<String, dynamic> config) => _offerKey(EverywareDeviceKind.rotor, config);
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => EverywareRotorSession(sink, _deviceName(config));
@@ -192,6 +202,9 @@ class EverywareDirectionalDriver extends EquipmentDriver {
 
   @override
   String get name => 'GH Everyware directional switch';
+
+  @override
+  String offerKeyWith(Map<String, dynamic> config) => _offerKey(EverywareDeviceKind.switchBox, config);
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
@@ -303,6 +316,9 @@ class EverywareSwitchDriver extends EquipmentDriver {
 
   @override
   String get name => 'GH Everyware switch';
+
+  @override
+  String offerKeyWith(Map<String, dynamic> config) => _offerKey(EverywareDeviceKind.switchBox, config);
 
   @override
   int get devicePortCount => 1;

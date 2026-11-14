@@ -19,7 +19,7 @@ import 'transports/sdr_usb_transport.dart';
 import 'transports/tcp_transport.dart';
 
 /// A new receiver follows whichever radio is Main, on its own antenna.
-const _sdrDefaults = {'port': rtlTcpDefaultPort, sdrRadioConfigKey: sdrRadioMain, sdrTuningConfigKey: 'independent'};
+const _sdrDefaults = {'port': rtlTcpDefaultPort, sdrTuningConfigKey: 'independent'};
 
 /// SDRplay's RSPs reach the network through rsp_tcp, which speaks rtl_tcp's
 /// protocol. Its rates are the RSP's own; the RTL2832U's direct sampling
@@ -73,7 +73,7 @@ String _sdrplayName() => t.settings.station.models.sdrplay;
 /// also serves an RTL-SDR — so a model of its own covers every other
 /// receiver behind one. One model each, as a model has one variant a
 /// transport.
-const _spyServerDefaults = {'port': spyServerDefaultPort, sdrRadioConfigKey: sdrRadioMain, sdrTuningConfigKey: 'independent'};
+const _spyServerDefaults = {'port': spyServerDefaultPort, sdrTuningConfigKey: 'independent'};
 
 const airspyModel = EquipmentModel(
   key: 'airspy',
@@ -148,7 +148,7 @@ List<Map<String, dynamic>> _rspTcpNotes() => [
 
 /// A receiver on USB follows Main on its own antenna, like one on the
 /// network.
-const _usbDefaults = {sdrRadioConfigKey: sdrRadioMain, sdrTuningConfigKey: 'independent'};
+const _usbDefaults = {sdrTuningConfigKey: 'independent'};
 
 List<Map<String, dynamic>> _usbNotes() => [
   {'type': 'markdown', 'collapsible': true, 'title': t.settings.station.troubleshootingNotes, 'text': t.settings.station.sdrUsbNotes},

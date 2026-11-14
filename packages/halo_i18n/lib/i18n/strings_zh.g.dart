@@ -2670,9 +2670,6 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get spectrumSdrNoRadio => '等待所链接电台的频率…';
 	@override String get spectrumSdrNotConnected => 'SDR 未连接';
 	@override String get spectrumSdrNoIf => '请在此 SDR 的设置中设置电台的中频频率';
-	@override String get sdrRadio => '为以下电台显示频谱';
-	@override String get sdrRadioDescription => '此电台上的频谱显示取自此接收机，而不是电台自带的频谱仪。';
-	@override String get sdrRadioMain => '主电台';
 	@override String get sdrTuning => '天线输入';
 	@override String get sdrTuningDescription => '接收机的信号来源。接在自己的天线上时，它会自行调谐以跟随电台；接在电台的中频输出上时，它停留在中频上。';
 	@override String get sdrTuningIndependent => '自己的天线';
@@ -2761,8 +2758,6 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get statusLost => '已断开';
 	@override String get notConfigured => '未配置';
 	@override String get currentConfiguration => '当前配置';
-	@override String get currentTransceiver => '当前收发信机';
-	@override String get currentTransceivers => '当前收发信机';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}：${name}';
 	@override String get so2rQueueMessages => '消息排队而不打断';
 	@override String get noRadioBSelected => '未选择电台 B';
@@ -6216,9 +6211,6 @@ extension on TranslationsZh {
 			'settings.station.spectrumSdrNoRadio' => '等待所链接电台的频率…',
 			'settings.station.spectrumSdrNotConnected' => 'SDR 未连接',
 			'settings.station.spectrumSdrNoIf' => '请在此 SDR 的设置中设置电台的中频频率',
-			'settings.station.sdrRadio' => '为以下电台显示频谱',
-			'settings.station.sdrRadioDescription' => '此电台上的频谱显示取自此接收机，而不是电台自带的频谱仪。',
-			'settings.station.sdrRadioMain' => '主电台',
 			'settings.station.sdrTuning' => '天线输入',
 			'settings.station.sdrTuningDescription' => '接收机的信号来源。接在自己的天线上时，它会自行调谐以跟随电台；接在电台的中频输出上时，它停留在中频上。',
 			'settings.station.sdrTuningIndependent' => '自己的天线',
@@ -6383,8 +6375,6 @@ extension on TranslationsZh {
 			'settings.station.statusLost' => '已断开',
 			'settings.station.notConfigured' => '未配置',
 			'settings.station.currentConfiguration' => '当前配置',
-			'settings.station.currentTransceiver' => '当前收发信机',
-			'settings.station.currentTransceivers' => '当前收发信机',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}：${name}',
 			'settings.station.so2rQueueMessages' => '消息排队而不打断',
 			'settings.station.noRadioBSelected' => '未选择电台 B',
@@ -6506,13 +6496,13 @@ extension on TranslationsZh {
 			'settings.station.voiceMemoriesInvalid' => '整数，0 或更大',
 			'settings.station.yaesuMeterCapture' => '捕获表头读数',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => '在发射时读取电台的输出功率表和 SWR 过高标志，并将原始值输出到日志。用于建立 Yaesu 未公布的刻度——这些值不会以表头形式显示。',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => '在发射时读取电台的 PO、SWR 和 ALC 表头，并将原始值输出到日志。用于建立 Yaesu 未公布的刻度——这些值不会以表头形式显示。',
 			'settings.station.telemetryInterval' => '表头读取间隔（ms）',
 			'settings.station.telemetryIntervalDescription' => '电台发射时多久读取一次表头。留空则使用此连接能承受的最快速度，上限 200 ms。',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '整数毫秒，${min} 到 ${max}',
 			'settings.station.pollInterval' => '空闲轮询间隔（ms）',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '在频率和模式都没有变化时，多久向电台查询一次频率和模式。留空则为 ${fallback} ms。',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '整数毫秒，${min} 到 ${max}',
 			'settings.station.advancedSettings' => '高级设置',
@@ -7020,13 +7010,13 @@ extension on TranslationsZh {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个需要仔细检查', other: '${formatted} 个需要仔细检查', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个通联的参考无法恢复', other: '${formatted} 个通联的参考无法恢复', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个通联的 ${programs} 参考可能不完整', other: '${formatted} 个通联的 ${programs} 参考可能不完整', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => '合并的通联可能会丢失一个参考——活动无法说明哪些类型可以叠加。取消并重试可避免此问题。',
 			'adifImport.nothingToImport' => '此文件中没有可导入的内容',
 			'adifImport.confirm' => '导入',
 			'adifImport.importing' => ({required Object filename}) => '正在导入 ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已从 ${filename} 导入 ${count} 个通联', other: '已从 ${filename} 导入 ${formatted} 个通联', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '无法导入 ${filename}：${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} 看起来不是 ADIF 文件',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '警告：此 ADIF 包含来自 ${calls} 的 QSO，但如果继续，它们将作为 ${station} 导入。',

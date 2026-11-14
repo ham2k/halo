@@ -2670,9 +2670,6 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get spectrumSdrNoRadio => 'Bağlı radyonun frekansı bekleniyor…';
 	@override String get spectrumSdrNotConnected => 'SDR bağlı değil';
 	@override String get spectrumSdrNoIf => 'Bu SDR\'ın ayarlarında radyonun IF frekansını belirleyin';
-	@override String get sdrRadio => 'Spektrumunu gösterdiği radyo';
-	@override String get sdrRadioDescription => 'Bu radyodaki spektrum görüntüsü, radyonun kendi skopu yerine bu alıcıdan beslenir.';
-	@override String get sdrRadioMain => 'Ana radyo';
 	@override String get sdrTuning => 'Anten girişi';
 	@override String get sdrTuningDescription => 'Alıcının sinyali nereden geliyor. Kendi anteninde radyoyu izlemek için kendini ayarlar; radyonun IF çıkışında IF\'te kalır.';
 	@override String get sdrTuningIndependent => 'Kendi anteni';
@@ -2761,8 +2758,6 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get statusLost => 'Bağlantı kesildi';
 	@override String get notConfigured => 'Yapılandırılmadı';
 	@override String get currentConfiguration => 'Mevcut Yapılandırma';
-	@override String get currentTransceiver => 'Mevcut Telsiz';
-	@override String get currentTransceivers => 'Mevcut Telsizler';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
 	@override String get so2rQueueMessages => 'Mesajlar araya girmek yerine sıraya alınır';
 	@override String get noRadioBSelected => 'Radyo B seçilmedi';
@@ -6216,9 +6211,6 @@ extension on TranslationsTr {
 			'settings.station.spectrumSdrNoRadio' => 'Bağlı radyonun frekansı bekleniyor…',
 			'settings.station.spectrumSdrNotConnected' => 'SDR bağlı değil',
 			'settings.station.spectrumSdrNoIf' => 'Bu SDR\'ın ayarlarında radyonun IF frekansını belirleyin',
-			'settings.station.sdrRadio' => 'Spektrumunu gösterdiği radyo',
-			'settings.station.sdrRadioDescription' => 'Bu radyodaki spektrum görüntüsü, radyonun kendi skopu yerine bu alıcıdan beslenir.',
-			'settings.station.sdrRadioMain' => 'Ana radyo',
 			'settings.station.sdrTuning' => 'Anten girişi',
 			'settings.station.sdrTuningDescription' => 'Alıcının sinyali nereden geliyor. Kendi anteninde radyoyu izlemek için kendini ayarlar; radyonun IF çıkışında IF\'te kalır.',
 			'settings.station.sdrTuningIndependent' => 'Kendi anteni',
@@ -6383,8 +6375,6 @@ extension on TranslationsTr {
 			'settings.station.statusLost' => 'Bağlantı kesildi',
 			'settings.station.notConfigured' => 'Yapılandırılmadı',
 			'settings.station.currentConfiguration' => 'Mevcut Yapılandırma',
-			'settings.station.currentTransceiver' => 'Mevcut Telsiz',
-			'settings.station.currentTransceivers' => 'Mevcut Telsizler',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
 			'settings.station.so2rQueueMessages' => 'Mesajlar araya girmek yerine sıraya alınır',
 			'settings.station.noRadioBSelected' => 'Radyo B seçilmedi',
@@ -6506,13 +6496,13 @@ extension on TranslationsTr {
 			'settings.station.voiceMemoriesInvalid' => '0 veya daha büyük bir tam sayı',
 			'settings.station.yaesuMeterCapture' => 'Ölçer değerlerini yakala',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Yayın sırasında radyonun çıkış gücü ölçerini ve yüksek SWR bayrağını okur, ham değerleri günlüğe yazar. Yaesu\'nun yayımlamadığı ölçeği oluşturmak içindir — değerler ölçer olarak gösterilmez.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Yayın sırasında radyonun PO, SWR ve ALC ölçerlerini okur, ham değerleri günlüğe yazar. Yaesu\'nun yayımlamadığı ölçeği oluşturmak içindir — değerler ölçer olarak gösterilmez.',
 			'settings.station.telemetryInterval' => 'Ölçer okuma aralığı (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Radyo yayındayken ölçerlerinin ne sıklıkla okunacağı. Bu bağlantının kaldırabileceği en hızlı değer için boş bırakın, en fazla 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '${min} ile ${max} arasında tam sayı milisaniye',
 			'settings.station.pollInterval' => 'Boşta sorgulama aralığı (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Frekans ve mod değişmezken radyoya ne sıklıkla sorulacağı. ${fallback} ms için boş bırakın.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '${min} ile ${max} arasında tam sayı milisaniye',
 			'settings.station.advancedSettings' => 'Gelişmiş Ayarlar',
@@ -7020,13 +7010,13 @@ extension on TranslationsTr {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} tanesinin daha yakından incelenmesi gerekiyor', other: '${formatted} tanesinin daha yakından incelenmesi gerekiyor', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} QSO için referanslar kurtarılamadı', other: '${formatted} QSO için referanslar kurtarılamadı', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} QSO için ${programs} referansları eksik olabilir', other: '${formatted} QSO için ${programs} referansları eksik olabilir', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Birleştirilen QSO\'lar bir referansı kaybedebilir — aktiviteler hangi türlerin üst üste eklenebildiğini bildiremedi. Bunu önlemek için iptal edip yeniden deneyin.',
 			'adifImport.nothingToImport' => 'Bu dosyada içe aktarılabilecek bir şey yok',
 			'adifImport.confirm' => 'İçe Aktar',
 			'adifImport.importing' => ({required Object filename}) => '${filename} içe aktarılıyor…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${filename} dosyasından ${count} QSO içe aktarıldı', other: '${filename} dosyasından ${formatted} QSO içe aktarıldı', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} içe aktarılamadı: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} bir ADIF dosyasına benzemiyor',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Uyarı: bu ADIF\'te ${calls} çağrılarına ait QSO\'lar var, ancak devam ederseniz ${station} olarak içe aktarılacaklar.',

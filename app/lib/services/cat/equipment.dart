@@ -71,13 +71,6 @@ const kCategoryStationController = 'stationController';
 /// controllers). Nothing in CAT connects to it: MidiService binds its device.
 const kCategoryMidi = 'midiController';
 
-/// The config key naming the radio an SDR shows the spectrum for: a node's
-/// uuid, or [sdrRadioMain] (also what an absent value means).
-const sdrRadioConfigKey = 'sdrRadio';
-
-/// [sdrRadioConfigKey]'s value for whichever radio is Main at the time.
-const sdrRadioMain = 'main';
-
 /// Old [EquipmentNode.typeKey] values, mapped to what the catalogue calls
 /// them now.
 ///

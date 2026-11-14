@@ -138,7 +138,7 @@ const _tablesByMeterId = <int, MeterTable>{
   civMeterDcInputVoltage: MeterTable.voltage,
 };
 
-class IcomCivDriver extends EquipmentDriver {
+class IcomCivDriver extends EquipmentDriver with _CivScopeOffer {
   const IcomCivDriver();
 
   @override

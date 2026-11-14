@@ -2670,9 +2670,6 @@ class _Translations$settings$station$fr extends Translations$settings$station$en
 	@override String get spectrumSdrNoRadio => 'En attente de la fréquence de la radio liée…';
 	@override String get spectrumSdrNotConnected => 'Le SDR n\'est pas connecté';
 	@override String get spectrumSdrNoIf => 'Réglez la fréquence FI de la radio dans les paramètres de ce SDR';
-	@override String get sdrRadio => 'Affiche le spectre de';
-	@override String get sdrRadioDescription => 'Un affichage de spectre sur cette radio provient de ce récepteur au lieu du scope de la radio elle-même.';
-	@override String get sdrRadioMain => 'La radio principale';
 	@override String get sdrTuning => 'Entrée antenne';
 	@override String get sdrTuningDescription => 'D\'où vient le signal du récepteur. Sur sa propre antenne, il s\'accorde lui-même pour suivre la radio ; sur la sortie FI de la radio, il reste sur la FI.';
 	@override String get sdrTuningIndependent => 'Sa propre antenne';
@@ -2761,8 +2758,6 @@ class _Translations$settings$station$fr extends Translations$settings$station$en
 	@override String get statusLost => 'Déconnecté';
 	@override String get notConfigured => 'Non configuré';
 	@override String get currentConfiguration => 'Configuration actuelle';
-	@override String get currentTransceiver => 'Transceiver actuel';
-	@override String get currentTransceivers => 'Transceivers actuels';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio} : ${name}';
 	@override String get so2rQueueMessages => 'Messages mis en file d\'attente au lieu d\'interrompre';
 	@override String get noRadioBSelected => 'Aucune Radio B sélectionnée';
@@ -6216,9 +6211,6 @@ extension on TranslationsFr {
 			'settings.station.spectrumSdrNoRadio' => 'En attente de la fréquence de la radio liée…',
 			'settings.station.spectrumSdrNotConnected' => 'Le SDR n\'est pas connecté',
 			'settings.station.spectrumSdrNoIf' => 'Réglez la fréquence FI de la radio dans les paramètres de ce SDR',
-			'settings.station.sdrRadio' => 'Affiche le spectre de',
-			'settings.station.sdrRadioDescription' => 'Un affichage de spectre sur cette radio provient de ce récepteur au lieu du scope de la radio elle-même.',
-			'settings.station.sdrRadioMain' => 'La radio principale',
 			'settings.station.sdrTuning' => 'Entrée antenne',
 			'settings.station.sdrTuningDescription' => 'D\'où vient le signal du récepteur. Sur sa propre antenne, il s\'accorde lui-même pour suivre la radio ; sur la sortie FI de la radio, il reste sur la FI.',
 			'settings.station.sdrTuningIndependent' => 'Sa propre antenne',
@@ -6383,8 +6375,6 @@ extension on TranslationsFr {
 			'settings.station.statusLost' => 'Déconnecté',
 			'settings.station.notConfigured' => 'Non configuré',
 			'settings.station.currentConfiguration' => 'Configuration actuelle',
-			'settings.station.currentTransceiver' => 'Transceiver actuel',
-			'settings.station.currentTransceivers' => 'Transceivers actuels',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio} : ${name}',
 			'settings.station.so2rQueueMessages' => 'Messages mis en file d\'attente au lieu d\'interrompre',
 			'settings.station.noRadioBSelected' => 'Aucune Radio B sélectionnée',
@@ -6506,13 +6496,13 @@ extension on TranslationsFr {
 			'settings.station.voiceMemoriesInvalid' => 'Un nombre entier, 0 ou plus',
 			'settings.station.yaesuMeterCapture' => 'Capturer les mesures des indicateurs',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Lit l\'indicateur de puissance de sortie et le signal de ROS élevé de la radio pendant l\'émission, et écrit les valeurs brutes dans le log. Sert à établir l\'échelle que Yaesu ne publie pas — les valeurs ne sont pas affichées sous forme d\'indicateurs.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Lit les indicateurs PO, SWR et ALC de la radio pendant l\'émission, et écrit les valeurs brutes dans le log. Sert à établir l\'échelle que Yaesu ne publie pas — les valeurs ne sont pas affichées sous forme d\'indicateurs.',
 			'settings.station.telemetryInterval' => 'Intervalle de lecture des indicateurs (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Fréquence de lecture des indicateurs de la radio pendant l\'émission. Laissez vide pour le plus rapide que cette connexion supporte, jusqu\'à 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Un nombre entier de millisecondes, de ${min} à ${max}',
 			'settings.station.pollInterval' => 'Intervalle d\'interrogation au repos (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Fréquence à laquelle demander à la radio sa fréquence et son mode quand rien ne change. Laissez vide pour ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Un nombre entier de millisecondes, de ${min} à ${max}',
 			'settings.station.advancedSettings' => 'Paramètres avancés',
@@ -7020,13 +7010,13 @@ extension on TranslationsFr {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} mérite un examen plus attentif', other: '${formatted} méritent un examen plus attentif', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Les références n\'ont pas pu être récupérées pour ${count} contact', other: 'Les références n\'ont pas pu être récupérées pour ${formatted} contacts', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Les références ${programs} sont peut-être incomplètes pour ${count} contact', other: 'Les références ${programs} sont peut-être incomplètes pour ${formatted} contacts', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Les contacts combinés risquent de perdre une référence — les activités n\'ont pas pu indiquer quels types se cumulent. Annulez et réessayez pour éviter cela.',
 			'adifImport.nothingToImport' => 'Rien dans ce fichier ne peut être importé',
 			'adifImport.confirm' => 'Importer',
 			'adifImport.importing' => ({required Object filename}) => 'Importation de ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} contact importé depuis ${filename}', other: '${formatted} contacts importés depuis ${filename}', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Impossible d\'importer ${filename} : ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} ne ressemble pas à un fichier ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Attention : cet ADIF contient des QSOs de ${calls}, mais ils seront importés comme ${station} si vous continuez.',

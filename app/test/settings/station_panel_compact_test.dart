@@ -41,11 +41,16 @@ void main() {
     child: MaterialApp(home: Scaffold(body: child)),
   );
 
-  // The keying lines sit under More details, folded until it is opened: a
-  // finder that skips offstage widgets sees none of them before this.
+  // The keying lines sit under each set's More details, folded until it is
+  // opened: a finder that skips offstage widgets sees none of them before
+  // this.
   Future<void> openMoreDetails(WidgetTester tester) async {
-    await tester.tap(find.text('More details'));
-    await tester.pumpAndSettle();
+    final count = find.text('More details').evaluate().length;
+    for (var i = 0; i < count; i++) {
+      await tester.ensureVisible(find.text('More details').at(i));
+      await tester.tap(find.text('More details').at(i));
+      await tester.pumpAndSettle();
+    }
   }
 
   testWidgets('shows only the current rig, not other radios, and no Add Equipment', (tester) async {
@@ -57,7 +62,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Main Radio'), findsNothing, reason: 'radio1 is Second Radio, the newest added');
-    // Once, in the Current Transceiver band: the compact dialog lists no
+    // Once, in the Current Configuration band: the compact dialog lists no
     // inventory, and the band is where the rig in use is named.
     expect(find.text('Second Radio'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Add'), findsNothing);
@@ -94,7 +99,7 @@ void main() {
   group("a peer's radio driving the main VFO", () {
     const pick = PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-1', deviceName: "VE1SK's iPad", radioName: 'FTDX10');
 
-    testWidgets('heads the dialog as the Current Transceiver', (tester) async {
+    testWidgets('heads the dialog as the Current Configuration', (tester) async {
       await services.cat.setRadio1(const PeerRadio(pick));
 
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
@@ -102,7 +107,7 @@ void main() {
 
       // The trap: a peer's rig listed nowhere, while the logging panel
       // follows it, reads as no rig at all.
-      expect(find.text('Current Transceiver'), findsOneWidget);
+      expect(find.text('Current Configuration'), findsOneWidget);
       expect(find.text('FTDX10'), findsOneWidget);
       expect(find.text("On VE1SK's iPad"), findsOneWidget);
       // It drives vfoA, so it wears the pill a local rig in that role wears.
@@ -236,8 +241,8 @@ void main() {
     await tester.pumpAndSettle();
     await openMoreDetails(tester);
 
-    expect(find.text('A: Phone Keying'), findsOneWidget);
-    expect(find.text('B: Phone Keying'), findsOneWidget);
+    // One per set, each under its own radio, which names the set.
+    expect(find.text('Phone Keying'), findsNWidgets(2));
     expect(find.text('Memories in Left Rig'), findsOneWidget, reason: "radio1's pick: its own memories");
     expect(find.text('Audio in this computer'), findsOneWidget, reason: "Radio B's pick: the computer");
     expect(find.bySemanticsLabel('Computer Audio'), findsOneWidget, reason: "the way to Radio B's sound devices, and only Radio B's");
@@ -308,7 +313,7 @@ void main() {
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
 
-      // Once, in the Current Transceiver band — the key pick names it as
+      // Once, in the Current Configuration band — the key pick names it as
       // 'CAT Keyer in Bench Rig', not a bare match.
       expect(find.text('Bench Rig'), findsOneWidget);
     });
@@ -385,8 +390,10 @@ void main() {
       await tester.pumpAndSettle();
       await openMoreDetails(tester);
 
-      expect(find.text('B: Automatically adjust bandscope'), findsOneWidget);
-      expect(find.text('A: Automatically adjust bandscope'), findsNothing, reason: 'the placeholder has no scope of its own');
+      // Under set B's radio, after set A's: the placeholder has no scope of
+      // its own, so the one adjustment is B's.
+      expect(find.text('Automatically adjust bandscope'), findsOneWidget);
+      expect(tester.getTopLeft(find.text('Automatically adjust bandscope')).dy, greaterThan(tester.getTopLeft(find.text('B: Shack 7300')).dy));
     });
 
     testWidgets('a radio with a scope of its own has no bandscope adjustment, nor an empty More details', (tester) async {

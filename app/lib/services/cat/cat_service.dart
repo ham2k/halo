@@ -27,6 +27,8 @@ import '../peer/peer_station_radios.dart';
 import '../radio_service.dart';
 import '../settings_service.dart';
 import 'auto_connect_guard.dart';
+import 'capability.dart';
+import 'capability_offers.dart';
 import 'cat_keying.dart';
 import 'cat_ptt.dart';
 import 'computer_voice_keyer.dart';
@@ -36,6 +38,7 @@ import 'cw_live_typing.dart';
 import 'equipment_tag.dart';
 import 'radio_proof.dart';
 import 'spectrum.dart';
+import 'station_positions.dart';
 import 'transports/k4_shared_connection.dart';
 import 'transports/everyware_transport.dart';
 import 'drivers/everyware_devices.dart' show BearingFollower, EverywareDirectionalSession, FrequencyFollower;
@@ -78,9 +81,11 @@ part 'cat_connection.dart';
 part 'cat_readings.dart';
 part 'cat_node_vfos.dart';
 part 'cat_band_pick.dart';
+part 'cat_capabilities.dart';
 part 'cat_equipment_store.dart';
 part 'cat_tracking.dart';
 part 'cat_peer_offers.dart';
+part 'cat_positions.dart';
 part 'cat_keying_surface.dart';
 part 'cat_so2r.dart';
 part 'cat_so2r_audio.dart';
@@ -97,7 +102,12 @@ part 'cat_everyware.dart';
 /// 3 — the two `radio1` / `remoteRadio1` keys became one `mainVfo`, holding
 /// whichever kind of radio was picked. Older blobs are read from the old
 /// pair by `_load` (cat_equipment_store.dart).
-const _storageVersion = 3;
+///
+/// 4 — `mainVfo`, `radio2` and `designated` became `positions` and `sets`
+/// (station_positions.dart): each radio's picks are its position's, and each
+/// logging set names the position it logs from. Older blobs are migrated by
+/// `_load`.
+const _storageVersion = 4;
 
 /// How long a connected node may say NOTHING before the row stops
 /// presenting its last reading as current ([EquipmentState.stale]).
@@ -213,7 +223,7 @@ String uniqueEquipmentName(String base, Iterable<String> taken) {
 }
 
 class CatService extends ChangeNotifier
-    with _NodeVfos, _RadioControls, _Discovery, _VfoSnap, _PeerOffers, _KeyingSurface, _So2r, _So2rAudio
+    with _NodeVfos, _RadioControls, _Discovery, _VfoSnap, _PeerOffers, _KeyingSurface, _So2r, _So2rAudio, _Positions, _Capabilities
     implements PeerStationRadios, KeyingStation {
   @override
   final SettingsService _settings;
@@ -458,9 +468,24 @@ class CatService extends ChangeNotifier
   /// between launches if a node's driver key stopped resolving. Storing the
   /// value outright removes that whole class of question.
   @override
-  MainVfo? _radio1;
+  MainVfo? get _radio1 => _positions.radioOf(kSetA);
+  @override
+  set _radio1(MainVfo? radio) => _positions.setRadio(kSetA, radio);
 
   MainVfo? get radio1 => _radio1;
+
+  /// Every position, and which one each logging set logs from — the stored
+  /// shape of [radio1], Radio B and every radio's picks.
+  @override
+  StationPositions _positions = StationPositions(uuidGenerator.v4);
+
+  @override
+  String? get _radio2 => switch (_positions.radioOf(kSetB)) {
+    LocalRadio(:final uuid) => uuid,
+    _ => null,
+  };
+  @override
+  set _radio2(String? uuid) => _positions.setRadio(kSetB, uuid == null ? null : LocalRadio(uuid));
 
   /// The LOCAL node filling the role, or null — which a peer pick also
   /// answers with null, since this app holds no session to a peer's rig.
@@ -537,119 +562,6 @@ class CatService extends ChangeNotifier
     notifyListeners();
   }
 
-  // ------------------------------------------------------ antenna1 / key1
-
-  /// Which antenna/key node is "in use", PER RADIO — keyed by the radio the
-  /// picks belong to and then by category ([kCategoryAntenna]/
-  /// [kCategoryKey]). The outer key is the same value the main-VFO picker
-  /// carries: a local node's uuid, `peer:…` for a peer's radio,
-  /// [_noRadioKey] for None.
-  ///
-  /// Per radio because that is what an antenna and a key are physically
-  /// attached to. A shack whose second rig runs a different wire and its own
-  /// paddle states that once; switching radio1 restores what that radio was
-  /// last set to, and switching back restores the first one's.
-  ///
-  /// An ABSENT category means never decided, and [designatedFor] answers it
-  /// with [_defaultDesignation]. A category stored as null is the operator
-  /// having answered None, and stays None. The two are not the same, which
-  /// is why the inner map holds explicit nulls rather than dropping them.
-  final Map<String, Map<String, String?>> _designated = {};
-
-  /// Stands in for "no radio selected" — a real key, since None is a state
-  /// an operator can sit in and configure a station from.
-  static const _noRadioKey = 'none';
-
-  /// Whose picks [designatedFor] and [setDesignated] are talking about:
-  /// whatever is driving `vfoA` right now.
-  String _designationKey() => switch (_radio1) {
-    LocalRadio(:final uuid) => uuid,
-    PeerRadio(:final selection) => peerRadioValue(selection),
-    null => _noRadioKey,
-  };
-
-  /// [category]'s pick for [radio] — a local transceiver's uuid, SO2R's
-  /// Radio B being the one caller that names one — or for radio1.
-  ///
-  /// Never one key for both SO2R radios: a key keys one message at a time,
-  /// and two keyers sharing it stop each other's. Radio B's key answers
-  /// None while it is radio1's — which a change of radio1 can make it,
-  /// restoring that radio's own picks.
-  @override
-  String? designatedFor(String category, {String? radio}) {
-    final pick = _pickFor(category, radio);
-    if (category == kCategoryKey && radio != null && radio == radio2 && pick != null && pick == _pickFor(category, null)) return null;
-    return pick;
-  }
-
-  String? _pickFor(String category, String? radio) {
-    final picks = _designated[radio ?? _designationKey()];
-    if (picks != null && picks.containsKey(category)) return picks[category];
-    return _defaultDesignation(category, radio ?? _localRadio1);
-  }
-
-  /// What a radio that has never been asked keys through: itself, when its
-  /// own CAT can key. Computed rather than written, so it follows the radio
-  /// without an operator ever confirming it — and only a default, which is
-  /// what [setDesignated]'s stored entry then outranks, None included.
-  ///
-  /// Antennas have no equivalent: nothing about a radio says which wire is
-  /// on it. Neither does a peer's radio, whose keying is the other device's
-  /// key in use — that default is [peerKeyIsInUse] rather than an answer
-  /// here, because what keys there is not a node of this station to name.
-  String? _defaultDesignation(String category, String? uuid) {
-    if (category != kCategoryKey) return null;
-    if (!_settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return null;
-    if (uuid == null) return null;
-    final node = _nodes[uuid];
-    if (node == null) return null;
-    return _radioKeysCw(node) ? uuid : null;
-  }
-
-  /// Whether [node]'s CAT keys CW — the driver's answer for THIS node's
-  /// merged config, since on a generic entry that is a per-node fact.
-  bool _radioKeysCw(EquipmentNode node) {
-    final type = registry.typeFor(node.typeKey);
-    return type != null && type.driver.canKeyCwWith(type.driverConfig(node.config));
-  }
-
-  bool isDesignated(String category, String uuid) => designatedFor(category) == uuid;
-
-  /// Writes a pick for the radio in use without saving or notifying — the
-  /// shared half of [setDesignated] and the rules [addNode] applies.
-  void _designateNow(String category, String? uuid) => (_designated[_designationKey()] ??= {})[category] = uuid;
-
-  /// Picks [uuid] as [category] for [radio] — see [designatedFor].
-  @override
-  Future<void> setDesignated(String category, String? uuid, {String? radio}) async {
-    final key = radio ?? _designationKey();
-    final previousUuid = designatedFor(category, radio: radio);
-    // An ANSWER is stored even when it matches the default it replaces:
-    // "nothing chosen" and "chose None" resolve alike right now but are not
-    // the same state, and the difference decides whether a default can take
-    // over later — a peer radio whose operator said None keys nothing, and
-    // one whose operator said nothing keys through that peer.
-    final answered = _designated[key]?.containsKey(category) ?? false;
-    if (answered && previousUuid == uuid) return;
-    // One key per SO2R radio, as one rig per role: Radio B is refused
-    // radio1's key, and radio1 taking Radio B's leaves Radio B with None.
-    final b = radio2;
-    final isKey = category == kCategoryKey && uuid != null && b != null;
-    if (isKey && radio == b && uuid == designatedFor(category)) return;
-    final takesB = isKey && radio == null && uuid == designatedFor(category, radio: b);
-    // Only a real CHANGE of the key IN USE owes the outgoing one anything. A
-    // dropdown reports the already-selected item being tapped, and abandoning
-    // the message going out because the operator re-picked the key that is
-    // keying it would stop a CQ mid-word — and under SO2R the radio being
-    // edited may not be the one keying at all.
-    _withKeyInUseTidied(() {
-      (_designated[key] ??= {})[category] = uuid;
-      if (takesB) (_designated[b] ??= {})[category] = null;
-    });
-    await _save();
-    notifyListeners();
-  }
-
   /// Runs [mutate], then pays the outgoing key whatever a change owes it.
   ///
   /// EVERY path that moves the key in use goes through this, and most of them
@@ -721,7 +633,7 @@ class CatService extends ChangeNotifier
   bool get peerKeyIsInUse {
     final selection = followedPeerRadio;
     if (selection == null) return false;
-    final picks = _designated[_designationKey()];
+    final picks = _positions.slotsOf(_radio1);
     if (picks == null || !picks.containsKey(kCategoryKey)) return true;
     return picks[kCategoryKey] == peerRadioValue(selection);
   }
@@ -910,22 +822,10 @@ class CatService extends ChangeNotifier
   @override
   Future<void> _save() => _settings.setStationEquipment({
     'version': _storageVersion,
-    // Always, null included, so the blob states what is true rather than
-    // leaving None to be inferred from a missing key.
-    //
-    // NOT load-bearing, and worth saying so: nothing derives the main
-    // VFO, so an absent key and a stored null both read as None —
-    // writing `if (_radio1 != null)` would behave identically and fail
-    // no test, and that is correct rather than a hole in the tests.
-    'mainVfo': switch (_radio1) {
-      LocalRadio(:final uuid) => {'radio': uuid},
-      PeerRadio(:final selection) => {'peer': selection.toJson()},
-      null => null,
-    },
-    'radio2': _radio2,
+    ..._positions.toJson(),
+    ..._legacyKeys(),
     'so2rSwitch': _so2rSwitch,
-    'designated': _designated,
-    'nodes': {for (final node in _nodes.values) node.uuid: node.toJson()},
+    'nodes': {for (final node in _nodes.values) node.uuid: _storedNode(node)},
   });
 
   /// What to call a new node of [typeKey] — the radio's own name, numbered
@@ -995,6 +895,10 @@ class CatService extends ChangeNotifier
       // default key ([_defaultDesignation]), computed rather than written.
       if (category == kCategoryKeyer) _designateNow(kCategoryKey, stored.uuid);
       if (category == kCategoryKey && !designatedKeyIsKeyer) _designateNow(kCategoryKey, stored.uuid);
+      // And the newest SDR is the scope of the radio in use, for the
+      // antenna's reason: only a radio of this station's, since neither a
+      // peer's nor "no radio" has a spectrum here for it to stand in for.
+      if (category == kCategorySdr && _radio1 is LocalRadio) _designateNow(kCapabilityScope, stored.uuid);
     });
     await _save();
     await _everywareNodeSaved(stored.uuid);
@@ -1093,14 +997,8 @@ class CatService extends ChangeNotifier
       if (_localRadio1 == uuid) _radio1 = null;
       if (_radio2 == uuid) _forgetRadio2();
       if (_so2rSwitch == uuid) _so2rSwitch = null;
-      // Same rule for antenna/key designations — across EVERY radio's picks,
-      // not just the selected one's, and the removed radio's own set of picks
-      // goes with it. A pick that disappears this way is "never decided"
-      // again, so a radio that keys goes back to keying for itself.
-      _designated.remove(uuid);
-      for (final picks in _designated.values) {
-        picks.removeWhere((_, designatedUuid) => designatedUuid == uuid);
-      }
+      // And from every radio's picks, its own position going with it.
+      _positions.forgetNode(uuid);
     });
     await _save();
     notifyListeners();

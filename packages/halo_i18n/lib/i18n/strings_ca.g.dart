@@ -2670,9 +2670,6 @@ class _Translations$settings$station$ca extends Translations$settings$station$en
 	@override String get spectrumSdrNoRadio => 'Esperant la freqüència de la ràdio vinculada…';
 	@override String get spectrumSdrNotConnected => 'L\'SDR no està connectat';
 	@override String get spectrumSdrNoIf => 'Defineix la freqüència de FI de la ràdio a la configuració d\'aquest SDR';
-	@override String get sdrRadio => 'Mostra l\'espectre de';
-	@override String get sdrRadioDescription => 'Una visualització d\'espectre en aquesta ràdio es dibuixa a partir d\'aquest receptor en lloc de l\'espectroscopi de la mateixa ràdio.';
-	@override String get sdrRadioMain => 'La ràdio principal';
 	@override String get sdrTuning => 'Entrada d\'antena';
 	@override String get sdrTuningDescription => 'D\'on ve el senyal del receptor. Amb la seva pròpia antena, se sintonitza sol per seguir la ràdio; a la sortida de FI de la ràdio, es queda a la FI.';
 	@override String get sdrTuningIndependent => 'La seva pròpia antena';
@@ -2761,8 +2758,6 @@ class _Translations$settings$station$ca extends Translations$settings$station$en
 	@override String get statusLost => 'Desconnectat';
 	@override String get notConfigured => 'No configurat';
 	@override String get currentConfiguration => 'Configuració actual';
-	@override String get currentTransceiver => 'Transceptor actual';
-	@override String get currentTransceivers => 'Transceptors actuals';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
 	@override String get so2rQueueMessages => 'Els missatges s\'encuen en lloc d\'interrompre';
 	@override String get noRadioBSelected => 'No s\'ha seleccionat cap Ràdio B';
@@ -6216,9 +6211,6 @@ extension on TranslationsCa {
 			'settings.station.spectrumSdrNoRadio' => 'Esperant la freqüència de la ràdio vinculada…',
 			'settings.station.spectrumSdrNotConnected' => 'L\'SDR no està connectat',
 			'settings.station.spectrumSdrNoIf' => 'Defineix la freqüència de FI de la ràdio a la configuració d\'aquest SDR',
-			'settings.station.sdrRadio' => 'Mostra l\'espectre de',
-			'settings.station.sdrRadioDescription' => 'Una visualització d\'espectre en aquesta ràdio es dibuixa a partir d\'aquest receptor en lloc de l\'espectroscopi de la mateixa ràdio.',
-			'settings.station.sdrRadioMain' => 'La ràdio principal',
 			'settings.station.sdrTuning' => 'Entrada d\'antena',
 			'settings.station.sdrTuningDescription' => 'D\'on ve el senyal del receptor. Amb la seva pròpia antena, se sintonitza sol per seguir la ràdio; a la sortida de FI de la ràdio, es queda a la FI.',
 			'settings.station.sdrTuningIndependent' => 'La seva pròpia antena',
@@ -6383,8 +6375,6 @@ extension on TranslationsCa {
 			'settings.station.statusLost' => 'Desconnectat',
 			'settings.station.notConfigured' => 'No configurat',
 			'settings.station.currentConfiguration' => 'Configuració actual',
-			'settings.station.currentTransceiver' => 'Transceptor actual',
-			'settings.station.currentTransceivers' => 'Transceptors actuals',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
 			'settings.station.so2rQueueMessages' => 'Els missatges s\'encuen en lloc d\'interrompre',
 			'settings.station.noRadioBSelected' => 'No s\'ha seleccionat cap Ràdio B',
@@ -6506,13 +6496,13 @@ extension on TranslationsCa {
 			'settings.station.voiceMemoriesInvalid' => 'Un nombre enter, 0 o més',
 			'settings.station.yaesuMeterCapture' => 'Captura les lectures dels mesuradors',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Llegeix el mesurador de potència de sortida i l\'indicador de ROE alta de la ràdio mentre transmet i escriu els valors en brut al registre. Serveix per construir l\'escala que Yaesu no publica — els valors no es mostren com a mesuradors.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Llegeix els mesuradors PO, SWR i ALC de la ràdio mentre transmet i escriu els valors en brut al registre. Serveix per construir l\'escala que Yaesu no publica — els valors no es mostren com a mesuradors.',
 			'settings.station.telemetryInterval' => 'Interval de lectura dels mesuradors (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Cada quant es llegeixen els mesuradors de la ràdio mentre transmet. Deixa-ho en blanc per al més ràpid que admeti aquesta connexió, fins a 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Un nombre enter de mil·lisegons, de ${min} a ${max}',
 			'settings.station.pollInterval' => 'Interval de consulta en repòs (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Cada quant es demana a la ràdio la freqüència i el mode mentre cap dels dos canvia. Deixa-ho en blanc per a ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Un nombre enter de mil·lisegons, de ${min} a ${max}',
 			'settings.station.advancedSettings' => 'Configuració avançada',
@@ -7020,13 +7010,13 @@ extension on TranslationsCa {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} necessita una ullada més atenta', other: '${formatted} necessiten una ullada més atenta', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'No s\'han pogut recuperar les referències de ${count} contacte', other: 'No s\'han pogut recuperar les referències de ${formatted} contactes', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Les referències ${programs} poden estar incompletes per a ${count} contacte', other: 'Les referències ${programs} poden estar incompletes per a ${formatted} contactes', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Els contactes combinats poden perdre una referència — les activitats no han pogut indicar quins tipus s\'acumulen. Cancel·la i torna-ho a provar per evitar-ho.',
 			'adifImport.nothingToImport' => 'No hi ha res en aquest fitxer que es pugui importar',
 			'adifImport.confirm' => 'Importa',
 			'adifImport.importing' => ({required Object filename}) => 'Important ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'S\'ha importat ${count} contacte de ${filename}', other: 'S\'han importat ${formatted} contactes de ${filename}', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'No s\'ha pogut importar ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} no sembla un fitxer ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Avís: aquest ADIF té QSOs de ${calls}, però s\'importaran com a ${station} si continues.',

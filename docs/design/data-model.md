@@ -93,7 +93,8 @@ Finally, some of these ports connect to specific "operating positions", each wit
 
 *Status: not built. A contact records the operator and position it was
 logged from (`our.operatorCall`, `our.multiIdentifier`); nothing models a
-position's controls.*
+position's controls. [station-model.md](station-model.md) is the proposal
+for ports, positions and what links them.*
 
 The app has a global list of known equipment that has been configured, or automatically detected. There's also a global list of Station Configurations, which is where the user can define which equipment is active, and how each piece connects with each other.
 

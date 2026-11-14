@@ -2670,9 +2670,6 @@ class _Translations$settings$station$cs extends Translations$settings$station$en
 	@override String get spectrumSdrNoRadio => 'Čeká se na frekvenci propojeného rádia…';
 	@override String get spectrumSdrNotConnected => 'SDR není připojeno';
 	@override String get spectrumSdrNoIf => 'Nastavte mezifrekvenci rádia v nastavení tohoto SDR';
-	@override String get sdrRadio => 'Zobrazuje spektrum pro';
-	@override String get sdrRadioDescription => 'Zobrazení spektra u tohoto rádia čerpá z tohoto přijímače místo z vlastního scope rádia.';
-	@override String get sdrRadioMain => 'Hlavní rádio';
 	@override String get sdrTuning => 'Anténní vstup';
 	@override String get sdrTuningDescription => 'Odkud přijímač bere signál. Na vlastní anténě se ladí sám podle rádia; na mezifrekvenčním výstupu rádia zůstává na mezifrekvenci.';
 	@override String get sdrTuningIndependent => 'Vlastní anténa';
@@ -2761,8 +2758,6 @@ class _Translations$settings$station$cs extends Translations$settings$station$en
 	@override String get statusLost => 'Odpojeno';
 	@override String get notConfigured => 'Nenakonfigurováno';
 	@override String get currentConfiguration => 'Aktuální konfigurace';
-	@override String get currentTransceiver => 'Aktuální transceiver';
-	@override String get currentTransceivers => 'Aktuální transceivery';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
 	@override String get so2rQueueMessages => 'Zprávy se řadí do fronty místo přerušování';
 	@override String get noRadioBSelected => 'Není vybráno rádio B';
@@ -6216,9 +6211,6 @@ extension on TranslationsCs {
 			'settings.station.spectrumSdrNoRadio' => 'Čeká se na frekvenci propojeného rádia…',
 			'settings.station.spectrumSdrNotConnected' => 'SDR není připojeno',
 			'settings.station.spectrumSdrNoIf' => 'Nastavte mezifrekvenci rádia v nastavení tohoto SDR',
-			'settings.station.sdrRadio' => 'Zobrazuje spektrum pro',
-			'settings.station.sdrRadioDescription' => 'Zobrazení spektra u tohoto rádia čerpá z tohoto přijímače místo z vlastního scope rádia.',
-			'settings.station.sdrRadioMain' => 'Hlavní rádio',
 			'settings.station.sdrTuning' => 'Anténní vstup',
 			'settings.station.sdrTuningDescription' => 'Odkud přijímač bere signál. Na vlastní anténě se ladí sám podle rádia; na mezifrekvenčním výstupu rádia zůstává na mezifrekvenci.',
 			'settings.station.sdrTuningIndependent' => 'Vlastní anténa',
@@ -6383,8 +6375,6 @@ extension on TranslationsCs {
 			'settings.station.statusLost' => 'Odpojeno',
 			'settings.station.notConfigured' => 'Nenakonfigurováno',
 			'settings.station.currentConfiguration' => 'Aktuální konfigurace',
-			'settings.station.currentTransceiver' => 'Aktuální transceiver',
-			'settings.station.currentTransceivers' => 'Aktuální transceivery',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
 			'settings.station.so2rQueueMessages' => 'Zprávy se řadí do fronty místo přerušování',
 			'settings.station.noRadioBSelected' => 'Není vybráno rádio B',
@@ -6506,13 +6496,13 @@ extension on TranslationsCs {
 			'settings.station.voiceMemoriesInvalid' => 'Celé číslo, 0 nebo více',
 			'settings.station.yaesuMeterCapture' => 'Zachytávat hodnoty měřidel',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Při vysílání čte měřidlo výstupního výkonu rádia a příznak vysokého PSV a zapisuje surové hodnoty do logu. Slouží k sestavení stupnice, kterou Yaesu nepublikuje — hodnoty se nezobrazují jako měřidla.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuMeterCaptureDescription' => 'Při vysílání čte měřidla PO, SWR a ALC rádia a zapisuje surové hodnoty do logu. Slouží k sestavení stupnice, kterou Yaesu nepublikuje — hodnoty se nezobrazují jako měřidla.',
 			'settings.station.telemetryInterval' => 'Interval čtení měřidel (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Jak často číst měřidla rádia během vysílání. Ponechte prázdné pro nejrychlejší, co toto připojení zvládne, až 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Celé číslo milisekund, ${min} až ${max}',
 			'settings.station.pollInterval' => 'Interval dotazování v klidu (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Jak často se ptát rádia na frekvenci a mód, když se ani jedno nemění. Ponechte prázdné pro ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Celé číslo milisekund, ${min} až ${max}',
 			'settings.station.advancedSettings' => 'Pokročilé nastavení',
@@ -7020,13 +7010,13 @@ extension on TranslationsCs {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} je třeba zkontrolovat', other: '${formatted} je třeba zkontrolovat', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Reference nelze obnovit u ${count} spojení', other: 'Reference nelze obnovit u ${formatted} spojení', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Reference ${programs} mohou být neúplné u ${count} spojení', other: 'Reference ${programs} mohou být neúplné u ${formatted} spojení', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stackingTypesUnknown' => 'Sloučená spojení mohou přijít o referenci — aktivity nedokázaly říct, které typy se kombinují. Abyste tomu předešli, zrušte a zkuste to znovu.',
 			'adifImport.nothingToImport' => 'Z tohoto souboru nelze nic importovat',
 			'adifImport.confirm' => 'Importovat',
 			'adifImport.importing' => ({required Object filename}) => 'Importování ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Importováno ${count} spojení z ${filename}', other: 'Importováno ${formatted} spojení z ${filename}', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} nelze importovat: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} nevypadá jako soubor ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Upozornění: tento ADIF obsahuje QSO od ${calls}, ale pokud budete pokračovat, budou importována jako ${station}.',

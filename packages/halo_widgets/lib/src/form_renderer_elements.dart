@@ -103,6 +103,29 @@ mixin _Elements on State<FormRenderer> {
     );
   }
 
+  /// A `label`, then its `items` beside it, each a [TagPill]: read-only,
+  /// the short names of what something is or has. The app's own, like
+  /// `row`: no extension form declares one.
+  Widget _buildPills(Map<String, dynamic> el, ThemeData theme) {
+    final label = el['label'] as String?;
+    return Padding(
+      padding: _rowContentPadding,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (label != null) ...[Text(label, style: theme.textTheme.labelLarge), const SizedBox(width: Space.md)],
+          Expanded(
+            child: Wrap(
+              spacing: Space.sm,
+              runSpacing: Space.sm,
+              children: [for (final item in ((el['items'] as List?) ?? const []).cast<String>()) TagPill(text: item)],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMarkdown(Map<String, dynamic> el, ThemeData theme) {
     final text = el['text'] as String? ?? '';
     final devModeColor = _devModeColor(el);

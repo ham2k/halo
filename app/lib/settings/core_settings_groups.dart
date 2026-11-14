@@ -874,6 +874,17 @@ class RadioSettingsGroup extends SettingsGroup {
               'esm',
             ],
           },
+          // How SO2R's two radios take the air (docs/design/cat.md § Radio B,
+          // for SO2R): a message keyed for one while the other is sending
+          // waits for it, or stops it.
+          if (settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */ )
+            _toggle(
+              key: 'so2rQueueMessages',
+              label: t.settings.station.so2rQueueMessages,
+              description: t.settings.station.so2rQueueMessagesDescription,
+              icon: 'timer-sand',
+              value: settings.so2rQueueMessages,
+            ),
           for (final el in _keyerElements()) {...el, 'listed': false},
         ],
         if (_catServer case final server?) ...[

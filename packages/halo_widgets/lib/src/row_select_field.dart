@@ -131,7 +131,7 @@ class _RowSelectFieldState extends State<RowSelectField> {
       if (name > nameWidth) nameWidth = name;
       var tags = 0.0;
       for (final tag in row.tags) {
-        tags += textWidth(context, tag, _TagPill.textStyle(theme)) + _TagPill.padding + Space.sm;
+        tags += textWidth(context, tag, TagPill.textStyle(theme)) + TagPill.padding + Space.sm;
       }
       if (tags > tagsWidth) tagsWidth = tags;
     }
@@ -261,7 +261,7 @@ class _SelectRowLayout extends StatelessWidget {
       ],
     );
 
-    final tags = [for (final tag in row.tags) _TagPill(text: tag)];
+    final tags = [for (final tag in row.tags) TagPill(text: tag)];
 
     final trailing = row.trailing == null ? null : Text(row.trailing!, textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, style: detailStyle(theme));
 
@@ -325,10 +325,12 @@ const _menuItemPadding = 24.0;
 
 /// A tag as a pill rather than as bracketed words: `[suggested]` in running
 /// text is read as part of the name, which is the one thing it is not.
-class _TagPill extends StatelessWidget {
+/// A short word in a pill: a [SelectRow]'s tag, or one item of a form's
+/// `pills` element.
+class TagPill extends StatelessWidget {
   final String text;
 
-  const _TagPill({required this.text});
+  const TagPill({super.key, required this.text});
 
   /// The horizontal room the pill adds around its own text.
   static const padding = 2 * Space.sm;

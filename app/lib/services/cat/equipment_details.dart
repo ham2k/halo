@@ -16,6 +16,7 @@
 
 import 'package:flutter/foundation.dart';
 
+import 'capability_offers.dart';
 import 'drivers/poll_config.dart';
 import 'equipment.dart';
 import 'equipment_registry.dart';
@@ -50,6 +51,9 @@ List<String> equipmentSetupLines({
     // operator, which is why it is normally hidden, and exactly what a
     // report about that rig is for.
     if (state.diagnostic != null) '- Diagnostic: ${state.diagnostic}',
+    // What the app took this entry to be able to do, which is where a rig
+    // that keys but was offered no keyer shows.
+    if (type.offersWith(node.config, state) case final offered when offered.isNotEmpty) '- Offers: ${describeOffers(offered)}',
   ];
   // Hoisted: this enumerates ports, and libserialport opens each one to read
   // its descriptors. Inside the comprehension it would do that per LINE.

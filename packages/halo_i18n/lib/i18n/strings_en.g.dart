@@ -6708,15 +6708,6 @@ class Translations$settings$station$en {
 	/// en: 'The connection to the SDR server ended. It may be busy, have no receiver attached, or be out of reach'
 	String get spectrumSdrServerClosed => 'The connection to the SDR server ended. It may be busy, have no receiver attached, or be out of reach';
 
-	/// en: 'Shows the spectrum for'
-	String get sdrRadio => 'Shows the spectrum for';
-
-	/// en: 'A spectrum display on this radio draws from this receiver instead of the radio's own scope.'
-	String get sdrRadioDescription => 'A spectrum display on this radio draws from this receiver instead of the radio\'s own scope.';
-
-	/// en: 'The Main radio'
-	String get sdrRadioMain => 'The Main radio';
-
 	/// en: 'Antenna input'
 	String get sdrTuning => 'Antenna input';
 
@@ -7056,17 +7047,14 @@ class Translations$settings$station$en {
 	/// en: 'Current Configuration'
 	String get currentConfiguration => 'Current Configuration';
 
-	/// en: 'Current Transceiver'
-	String get currentTransceiver => 'Current Transceiver';
-
-	/// en: 'Current Transceivers'
-	String get currentTransceivers => 'Current Transceivers';
-
 	/// en: '${radio}: ${name}'
 	String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
 
 	/// en: 'Messages queued instead of interrupting'
 	String get so2rQueueMessages => 'Messages queued instead of interrupting';
+
+	/// en: 'With two radios, a message for one waits while the other is sending, instead of stopping it.'
+	String get so2rQueueMessagesDescription => 'With two radios, a message for one waits while the other is sending, instead of stopping it.';
 
 	/// en: 'SO2R Switcher'
 	String get so2rSwitch => 'SO2R Switcher';
@@ -7149,6 +7137,12 @@ class Translations$settings$station$en {
 
 	/// en: 'Antenna in Use'
 	String get antennaInUse => 'Antenna in Use';
+
+	/// en: 'Spectrum From'
+	String get scopeInUse => 'Spectrum From';
+
+	/// en: 'The radio's own scope'
+	String get scopeRadiosOwn => 'The radio\'s own scope';
 
 	/// en: 'CW Keying'
 	String get keyInUse => 'CW Keying';
@@ -7413,6 +7407,36 @@ class Translations$settings$station$en {
 
 	/// en: 'A whole number, 0 or more'
 	String get voiceMemoriesInvalid => 'A whole number, 0 or more';
+
+	/// en: 'Provides'
+	String get provides => 'Provides';
+
+	/// en: 'Band Scope'
+	String get providesScope => 'Band Scope';
+
+	/// en: 'CW Keyer'
+	String get providesKeyer => 'CW Keyer';
+
+	/// en: 'Voice Keyer'
+	String get providesVoice => 'Voice Keyer';
+
+	/// en: 'Antenna Switch'
+	String get providesSwitch => 'Antenna Switch';
+
+	/// en: 'Rotator'
+	String get providesRotator => 'Rotator';
+
+	/// en: 'Audio Mixer'
+	String get providesAudioMixer => 'Audio Mixer';
+
+	/// en: 'SO2R Controller'
+	String get providesSo2rController => 'SO2R Controller';
+
+	/// en: 'Antenna'
+	String get providesAntenna => 'Antenna';
+
+	/// en: 'CW Key'
+	String get providesKey => 'CW Key';
 
 	/// en: 'Capture meter readings'
 	String get yaesuMeterCapture => 'Capture meter readings';
@@ -13409,9 +13433,6 @@ extension on Translations {
 			'settings.station.spectrumSdrNoIf' => 'Set the radio\'s IF frequency in this SDR\'s settings',
 			'settings.station.spectrumSdrUnreachable' => 'The SDR cannot tune to where the radio is, or another program has it tuned elsewhere',
 			'settings.station.spectrumSdrServerClosed' => 'The connection to the SDR server ended. It may be busy, have no receiver attached, or be out of reach',
-			'settings.station.sdrRadio' => 'Shows the spectrum for',
-			'settings.station.sdrRadioDescription' => 'A spectrum display on this radio draws from this receiver instead of the radio\'s own scope.',
-			'settings.station.sdrRadioMain' => 'The Main radio',
 			'settings.station.sdrTuning' => 'Antenna input',
 			'settings.station.sdrTuningDescription' => 'Where the receiver\'s signal comes from. On its own antenna it tunes itself to follow the radio; on the radio\'s IF output it stays on the IF.',
 			'settings.station.sdrTuningIndependent' => 'Its own antenna',
@@ -13514,11 +13535,11 @@ extension on Translations {
 			'settings.station.models.elecraftGeneric' => 'Elecraft - Generic',
 			'settings.station.models.kx2' => 'Elecraft KX2',
 			'settings.station.models.kx3' => 'Elecraft KX3',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.k4' => 'Elecraft K4',
 			'settings.station.models.ic705' => 'Icom IC-705',
 			'settings.station.models.ic7300' => 'Icom IC-7300',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.ic7300mk2' => 'Icom IC-7300 MK2',
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
 			'settings.station.models.ic7100' => 'Icom IC-7100',
@@ -13627,10 +13648,9 @@ extension on Translations {
 			'settings.station.statusLost' => 'Disconnected',
 			'settings.station.notConfigured' => 'Not configured',
 			'settings.station.currentConfiguration' => 'Current Configuration',
-			'settings.station.currentTransceiver' => 'Current Transceiver',
-			'settings.station.currentTransceivers' => 'Current Transceivers',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
 			'settings.station.so2rQueueMessages' => 'Messages queued instead of interrupting',
+			'settings.station.so2rQueueMessagesDescription' => 'With two radios, a message for one waits while the other is sending, instead of stopping it.',
 			'settings.station.so2rSwitch' => 'SO2R Switcher',
 			'settings.station.so2rSwitchBuiltIn' => ({required Object radio}) => 'Built into ${radio}',
 			'settings.station.so2rSwitchSettings' => 'SO2R Switcher settings',
@@ -13655,6 +13675,8 @@ extension on Translations {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'This radio is connected to ${device}. Its connection and settings are configured on that device.',
 			'settings.station.antennaInUse' => 'Antenna in Use',
+			'settings.station.scopeInUse' => 'Spectrum From',
+			'settings.station.scopeRadiosOwn' => 'The radio\'s own scope',
 			'settings.station.keyInUse' => 'CW Keying',
 			'settings.station.phoneKeying' => 'Phone Keying',
 			'settings.station.phoneKeyingNone' => 'None',
@@ -13822,6 +13844,16 @@ extension on Translations {
 			'settings.station.voiceMemories' => 'Voice memories',
 			'settings.station.voiceMemoriesDescription' => 'How many voice memories the radio plays over CAT. 0 for none.',
 			'settings.station.voiceMemoriesInvalid' => 'A whole number, 0 or more',
+			'settings.station.provides' => 'Provides',
+			'settings.station.providesScope' => 'Band Scope',
+			'settings.station.providesKeyer' => 'CW Keyer',
+			'settings.station.providesVoice' => 'Voice Keyer',
+			'settings.station.providesSwitch' => 'Antenna Switch',
+			'settings.station.providesRotator' => 'Rotator',
+			'settings.station.providesAudioMixer' => 'Audio Mixer',
+			'settings.station.providesSo2rController' => 'SO2R Controller',
+			'settings.station.providesAntenna' => 'Antenna',
+			'settings.station.providesKey' => 'CW Key',
 			'settings.station.yaesuMeterCapture' => 'Capture meter readings',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Reads the radio\'s power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.kenwoodMeterCaptureDescription' => 'Reads the radio\'s S-meter while receiving and its power, SWR, COMP and ALC meters while transmitting, and prints the raw values to the log. For building the scales Kenwood does not publish.',
@@ -14020,6 +14052,8 @@ extension on Translations {
 			'settings.developer.launchedAt' => 'Started',
 			'settings.developer.loading' => '(loading…)',
 			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.extDevServer' => 'Extension Dev Server',
 			'settings.developer.extensionSettings' => 'Extension Settings',
 			'settings.developer.extDevServerDescription' => 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.',
@@ -14028,8 +14062,6 @@ extension on Translations {
 			'settings.developer.extDevServerConnect' => 'Connect',
 			'settings.developer.extDevServerDisconnect' => 'Disconnect',
 			'settings.developer.extDevServerConnecting' => 'Connecting…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Serving ${count} extension: ${keys}', other: 'Serving ${count} extensions: ${keys}', ), 
 			'settings.developer.extDevServerDisconnected' => 'Not connected',
 			'settings.developer.extDevServerReconnect' => 'Reconnect at launch',
@@ -14534,6 +14566,8 @@ extension on Translations {
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs. Importing an ADIF into an operation is meant to add a few QSOs, not to bring in a large log — use the Logs view for that. Developer mode lets you import it anyway, if you are sure.',
 			'adifImport.importAnyway' => 'Import anyway',
 			'offline.statusOffline' => 'Internet: OFFLINE',
+			_ => null,
+		} ?? switch (path) {
 			'offline.statusOnline' => 'Internet: connected',
 			'offline.noRoute' => 'No network connection at all.',
 			'offline.unreachable' => 'The network is up, but no server is responding — often a sign-in page waiting in a browser.',
@@ -14542,8 +14576,6 @@ extension on Translations {
 			'offline.servicesTitle' => 'Services',
 			'offline.noServices' => 'No service has reported in yet.',
 			'offline.lastSuccess' => ({required Object when}) => 'Last responded ${when} ago',
-			_ => null,
-		} ?? switch (path) {
 			'offline.neverSucceeded' => 'Has not responded yet',
 			'offline.nextAttempt' => ({required Object when}) => 'Next attempt in ${when}',
 			'offline.nextAttemptNow' => 'Next attempt due',

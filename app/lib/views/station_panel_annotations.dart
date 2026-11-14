@@ -10,6 +10,35 @@
 part of 'station_panel.dart';
 
 extension _EditorAnnotations on StationPanel {
+  /// What [node] provides, as the operator knows the things: the app's own
+  /// reading of the entry and of what the equipment has said, which is what
+  /// a position can pick from it.
+  List<Map<String, dynamic>> _offersElements(BuildContext context, EquipmentNode node) {
+    final st = context.t.settings.station;
+    // Once each: a radio's receivers and transmitter are what makes it a
+    // radio, and two of one kind read as one thing it can do.
+    final names = <String>{
+      for (final capability in _cat.capabilitiesOf(node.uuid))
+        ?switch (capability.kind) {
+          kCapabilityReceiver || kCapabilityTransmitter => null,
+          kCapabilityScope => st.providesScope,
+          kCapabilityKeyer => st.providesKeyer,
+          kCapabilityVoice => st.providesVoice,
+          kCapabilitySwitch => st.providesSwitch,
+          kCapabilityRotator => st.providesRotator,
+          kCapabilityAudioMixer => st.providesAudioMixer,
+          kCapabilitySo2rController => st.providesSo2rController,
+          kCapabilityAntenna => st.providesAntenna,
+          kCapabilityKey => st.providesKey,
+          final kind => kind,
+        },
+    };
+    if (names.isEmpty) return const [];
+    return [
+      {'type': 'pills', 'label': st.provides, 'items': names.toList()},
+    ];
+  }
+
   /// [variant]'s config fields, with the channel picker's options saying
   /// what each channel is doing right now.
   ///

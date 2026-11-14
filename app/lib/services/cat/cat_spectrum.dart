@@ -91,26 +91,30 @@ extension CatServiceSpectrum on CatService {
       } ??
       false;
 
-  /// The radio SDR [sdrUuid] shows the spectrum for — the one its config
-  /// names, or whichever is Main. Null when that is no local radio.
+  /// The radio SDR [sdrUuid] shows the spectrum for, and whose dial it
+  /// follows: the local radio whose position picked it as its scope. Several
+  /// can, since a scope can be watched from more than one position; then the
+  /// one set A logs from, then set B's, since those are the radios in use.
+  /// Null when no local radio picked it.
   String? linkedRadioFor(String sdrUuid) {
-    final link = nodeFor(sdrUuid)?.config[sdrRadioConfigKey];
-    if (link is String && link.isNotEmpty && link != sdrRadioMain) return _nodes.containsKey(link) ? link : null;
-    return _localRadio1;
+    final picking = [
+      for (final position in _positions.all)
+        if (position.radio case LocalRadio(:final uuid) when position.slots[kCapabilityScope] == sdrUuid && _nodes.containsKey(uuid)) uuid,
+    ];
+    for (final set in [kSetA, kSetB]) {
+      if (_positions.radioOf(set) case LocalRadio(:final uuid) when picking.contains(uuid)) return uuid;
+    }
+    return picking.firstOrNull;
   }
 
-  /// Where [radioUuid]'s spectrum comes from: an SDR linked to it, or the
-  /// radio itself. A linked SDR wins over the radio's own scope — linking
-  /// one is the operator saying which picture they want — until they
-  /// Disconnect it. One that failed to connect still wins, and says why:
-  /// falling back would swap pictures each time a server came and went. The
-  /// first such SDR in station order, when several are.
+  /// Where [radioUuid]'s spectrum comes from: the SDR its position picked as
+  /// its scope, or the radio itself. A picked SDR wins over the radio's own
+  /// scope until the operator Disconnects it. One that failed to connect
+  /// still wins, and says why: falling back would swap pictures each time a
+  /// server came and went.
   String spectrumNodeFor(String radioUuid) {
-    for (final node in nodes) {
-      if (typeFor(node)?.category == kCategorySdr && linkedRadioFor(node.uuid) == radioUuid && !(_runtimes[node.uuid]?.userDisconnected ?? false)) {
-        return node.uuid;
-      }
-    }
+    final picked = designatedFor(kCapabilityScope, radio: radioUuid);
+    if (picked != null && isSdr(picked) && !(_runtimes[picked]?.userDisconnected ?? false)) return picked;
     return radioUuid;
   }
 
