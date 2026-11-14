@@ -195,6 +195,13 @@ class _AccountExtensionService extends ExtensionServiceWithFakeHost {
     registrationRefreshes.add(refreshWebhookToken);
     return (pushChannelName: 'client-test-channel', webhookClientToken: 'signed--token');
   }
+
+  /// What LoFi's relay holds for this device: every provider's answer, as
+  /// the provider's redirect carried it.
+  final relayEvents = <Map<String, dynamic>>[];
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchLofiWebhookEvents() async => [...relayEvents];
 }
 
 final _accountDefinition = {
@@ -406,6 +413,7 @@ void main() {
 
       expect(overrides.tokenExchanges, 0);
       expect(find.byType(OAuthBrowserLoginBody), findsNothing, reason: 'the attempt is over, not left waiting');
+      expect(h.services.statusBar.itemForKey('accounts:login')?.text, contains(t.settings.accounts.oauthAnsweredByAnother(extension: 'Test SSO')));
       await h.links.dispose();
     }, createHttpClient: (c) => _FakeHttpClient(overrides));
   });
@@ -428,6 +436,7 @@ void main() {
 
       expect(overrides.tokenExchanges, 0);
       expect(find.byType(OAuthBrowserLoginBody), findsNothing);
+      expect(h.services.statusBar.itemForKey('accounts:login')?.text, contains(t.settings.accounts.oauthAnsweredByAnother(extension: 'Test SSO')));
       await h.links.dispose();
     }, createHttpClient: (c) => _FakeHttpClient(overrides));
   });
@@ -495,6 +504,61 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     }
   });
+
+  // On the relay every provider's code comes home at one URL, so the
+  // redirect says nothing about who issued it: an issuer of the extension's
+  // own can pass the browser on to a registered client's service, and that
+  // service's code arrives with this attempt's state. Its `iss` is all that
+  // tells it apart.
+  for (final (label, Object issuedBy, exchanged) in [
+    ('a code the relay brings from another issuer is not exchanged', 'https://spotterbot.ham2k.net', 0),
+    ('a code the relay brings from its own issuer is exchanged', _issuer, 1),
+    // Taken as absent, a malformed `iss` would skip the check altogether.
+    ('a code the relay brings with an iss that is not text is not exchanged', [_issuer], 0),
+  ]) {
+    testWidgets(label, (tester) async {
+      // Windows takes the relay (`oauthUsesWebhookRelay`); restored in a
+      // `finally` for the reason the fresh-token test gives.
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      final backend = FakeErrorReportingBackend();
+      try {
+        final overrides = _OAuthHttpOverrides();
+        await withErrorHooks(
+          backend: backend,
+          () => HttpOverrides.runZoned(() async {
+            final h = await _openPane(tester, overrides);
+            await tester.tap(_connect);
+            await _pump(tester);
+            final state = tester.widget<OAuthBrowserLoginBody>(find.byType(OAuthBrowserLoginBody)).expectedState!;
+
+            h.extensions.relayEvents.add({
+              'id': 1,
+              'provider': 'testsso',
+              'payload': {'code': 'RELAYED', 'state': state, 'iss': issuedBy},
+            });
+            await tester.pump(const Duration(seconds: 5));
+            await _flush(tester);
+
+            expect(overrides.tokenExchanges, exchanged);
+            expect(find.byType(OAuthBrowserLoginBody), findsNothing, reason: 'either way the attempt is over');
+            // A cancel also ends with nothing exchanged; a refusal says so in
+            // the operator's words, with no "Exception:" in front, and is
+            // reported, since a retry ends the same way every time.
+            expect(
+              h.services.statusBar.itemForKey('accounts:login')?.text,
+              exchanged == 0 ? t.settings.accounts.loginFailed(error: t.settings.accounts.oauthAnsweredByAnother(extension: 'Test SSO')) : isNull,
+            );
+            expect(backend.exceptions.where((e) => e.context == 'oauth:answeredByAnother').map((e) => '${e.error}'), [
+              if (exchanged == 0) contains('[testsso]'),
+            ]);
+            await h.links.dispose();
+          }, createHttpClient: (c) => _FakeHttpClient(overrides)),
+        );
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+  }
 
   testWidgets('while waiting, the pane offers nothing but the wait', (tester) async {
     // Save would persist the credentials the login is replacing; "Connected

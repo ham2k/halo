@@ -2169,6 +2169,7 @@
       "connect": "CONNECT",
       "signsInAt": "SIGNS IN AT ${host}, FOR ${extension}",
       "oauthClientRegisteredTo": "THIS SIGN-IN IS REGISTERED TO ${owner}, SO ${extension} CAN'T USE IT",
+      "oauthAnsweredByAnother": "ANOTHER SERVICE ANSWERED ${extension}'S SIGN-IN, SO IT WAS STOPPED",
       "disconnect": "DISCONNECT",
       "connectedAs": "CONNECTED AS",
       "test": "TEST",

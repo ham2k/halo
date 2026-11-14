@@ -13,7 +13,10 @@
 // to is the redirect its client is registered with, so that is bound too: a
 // sign-in accepts a code only on the redirect it sent (`_doOAuth`,
 // settings/accounts_panel.dart), and a registered client's redirects are its
-// extension's alone.
+// extension's alone. LoFi's relay is the one redirect every service shares,
+// so there the code's `iss` (RFC 9207) is the binding: every service below
+// sends it, and a sign-in refuses a code another issuer gave. A client added
+// here for a service that sends no `iss` is open on Web, Linux and Windows.
 
 import '../deep_link_service.dart';
 

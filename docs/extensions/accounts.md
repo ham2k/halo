@@ -72,7 +72,11 @@ registerHook("account", {
   endpoint is that client's host, or when `redirectUrl` or
   `webhookRedirectUrl` is one of that extension's own custom-scheme
   redirects. The app takes a code only on the custom-scheme redirect the
-  login sent, and not when the provider says another issuer gave it.
+  login sent, and not when the provider says another issuer gave it. On Web,
+  Linux and Windows every provider's code reaches the app at the same relay
+  URL, so only that `iss` (RFC 9207) tells your provider's code from
+  another's: a provider that sends it keeps its codes out of other
+  extensions' logins.
 - **`synchronizable: true`** syncs the stored credentials across the
   operator's Apple devices through iCloud Keychain; false keeps them on the
   device. No effect elsewhere. Set it only for a login that is genuinely the

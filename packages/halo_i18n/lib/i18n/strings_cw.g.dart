@@ -2898,6 +2898,7 @@ class _Translations$settings$accounts$cw extends Translations$settings$accounts$
 	@override String get connect => '—·—· ——— —· —· · —·—· —';
 	@override String signsInAt({required Object host, required Object extension}) => '··· ·· ——· —· ··· / ·· —· / ·— — / ${host} ——··—— / ··—· ——— ·—· / ${extension}';
 	@override String oauthClientRegisteredTo({required Object owner, required Object extension}) => '— ···· ·· ··· / ··· ·· ——· —· —····— ·· —· / ·· ··· / ·—· · ——· ·· ··· — · ·—· · —·· / — ——— / ${owner} ——··—— / ··· ——— / ${extension} / —·—· ·— —· ·————· — / ··— ··· · / ·· —';
+	@override String oauthAnsweredByAnother({required Object extension}) => '·— —· ——— — ···· · ·—· / ··· · ·—· ···— ·· —·—· · / ·— —· ··· ·—— · ·—· · —·· / ${extension} ·————· ··· / ··· ·· ——· —· —····— ·· —· ——··—— / ··· ——— / ·· — / ·—— ·— ··· / ··· — ——— ·——· ·——· · —··';
 	@override String get disconnect => '—·· ·· ··· —·—· ——— —· —· · —·—· —';
 	@override String get connectedAs => '—·—· ——— —· —· · —·—· — · —·· / ·— ···';
 	@override String get test => '— · ··· —';
@@ -6966,6 +6967,7 @@ extension on TranslationsCw {
 			'settings.accounts.connect' => '—·—· ——— —· —· · —·—· —',
 			'settings.accounts.signsInAt' => ({required Object host, required Object extension}) => '··· ·· ——· —· ··· / ·· —· / ·— — / ${host} ——··—— / ··—· ——— ·—· / ${extension}',
 			'settings.accounts.oauthClientRegisteredTo' => ({required Object owner, required Object extension}) => '— ···· ·· ··· / ··· ·· ——· —· —····— ·· —· / ·· ··· / ·—· · ——· ·· ··· — · ·—· · —·· / — ——— / ${owner} ——··—— / ··· ——— / ${extension} / —·—· ·— —· ·————· — / ··— ··· · / ·· —',
+			'settings.accounts.oauthAnsweredByAnother' => ({required Object extension}) => '·— —· ——— — ···· · ·—· / ··· · ·—· ···— ·· —·—· · / ·— —· ··· ·—— · ·—· · —·· / ${extension} ·————· ··· / ··· ·· ——· —· —····— ·· —· ——··—— / ··· ——— / ·· — / ·—— ·— ··· / ··· — ——— ·——· ·——· · —··',
 			'settings.accounts.disconnect' => '—·· ·· ··· —·—· ——— —· —· · —·—· —',
 			'settings.accounts.connectedAs' => '—·—· ——— —· —· · —·—· — · —·· / ·— ···',
 			'settings.accounts.test' => '— · ··· —',
@@ -7210,9 +7212,9 @@ extension on TranslationsCw {
 			'settings.station.models.kx2' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ··———',
 			'settings.station.models.kx3' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ···——',
 			'settings.station.models.k4' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ····—',
-			'settings.station.models.ic705' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ————— ·····',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.ic705' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ————— ·····',
 			'settings.station.models.ic7300' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ···—— ————— —————',
 			'settings.station.models.ic7300mk2' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ···—— ————— ————— / —— —·— ··———',
 			'settings.station.models.ic706mkiig' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ————— —···· —— —·— ·· ·· ——·',
@@ -7724,9 +7726,9 @@ extension on TranslationsCw {
 			'settings.developer.dataFolder' => '—·· ·— — ·— / ··—· ——— ·—·· —·· · ·—·',
 			'settings.developer.worktree' => '·—— ——— ·—· —·— — ·—· · ·',
 			'settings.developer.launchedAt' => '··· — ·— ·—· — · —··',
-			'settings.developer.loading' => '—·——· ·—·· ——— ·— —·· ·· —· ——· … —·——·—',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.loading' => '—·——· ·—·· ——— ·— —·· ·· —· ——· … —·——·—',
 			'settings.developer.panelLoadFailed' => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—·· ——— ·— —·· / — ···· ·· ··· / ··· · — — ·· —· ——· ··· / ·——· ·— —· · ·—·· ·—·—·—',
 			'settings.developer.extDevServer' => '· —··— — · —· ··· ·· ——— —· / —·· · ···— / ··· · ·—· ···— · ·—·',
 			'settings.developer.extensionSettings' => '· —··— — · —· ··· ·· ——— —· / ··· · — — ·· —· ——· ···',
@@ -8238,9 +8240,9 @@ extension on TranslationsCw {
 			'adifImport.busy' => '·— —· / ·· —— ·——· ——— ·—· — / ·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / ·—· ··— —· —· ·· —· ——· ·—·—·— / ·—— ·— ·· — / ··—· ——— ·—· / ·· — / — ——— / ··—· ·· —· ·· ··· ···· / —··· · ··—· ——— ·—· · / ··· — ·— ·—· — ·· —· ——· / ·— —· ——— — ···· · ·—· ·—·—·—',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${limit} / ——·— ··· ——— ··· ——··—— / — ···· · / —— ——— ··· — / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / —·—· ·— —· / ·· —— ·——· ——— ·—· — / ·— — / ·— / — ·· —— · ·—·—·—',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${limit} / ——·— ··· ——— ··· ·—·—·— / ·· —— ·——· ——— ·—· — ·· —· ——· / ·— —· / ·— —·· ·· ··—· / ·· —· — ——— / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / ·· ··· / —— · ·— —· — / — ——— / ·— —·· —·· / ·— / ··—· · ·—— / ——·— ··· ——— ··· ——··—— / —· ——— — / — ——— / —··· ·—· ·· —· ——· / ·· —· / ·— / ·—·· ·— ·—· ——· · / ·—·· ——— ——· / — / ··— ··· · / — ···· · / ·—·· ——— ——· ··· / ···— ·· · ·—— / ··—· ——— ·—· / — ···· ·— — ·—·—·— / —·· · ···— · ·—·· ——— ·——· · ·—· / —— ——— —·· · / ·—·· · — ··· / —·—— ——— ··— / ·· —— ·——· ——— ·—· — / ·· — / ·— —· —·—— ·—— ·— —·—— ——··—— / ·· ··—· / —·—— ——— ··— / ·— ·—· · / ··· ··— ·—· · ·—·—·—',
-			'adifImport.importAnyway' => '·· —— ·——· ——— ·—· — / ·— —· —·—— ·—— ·— —·——',
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.importAnyway' => '·· —— ·——· ——— ·—· — / ·— —· —·—— ·—— ·— —·——',
 			'offline.statusOffline' => '·· —· — · ·—· —· · — ———··· / ——— ··—· ··—· ·—·· ·· —· ·',
 			'offline.statusOnline' => '·· —· — · ·—· —· · — ———··· / —·—· ——— —· —· · —·—· — · —··',
 			'offline.noRoute' => '—· ——— / —· · — ·—— ——— ·—· —·— / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— — / ·— ·—·· ·—·· ·—·—·—',

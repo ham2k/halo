@@ -2898,6 +2898,7 @@ class _Translations$settings$accounts$qrp extends Translations$settings$accounts
 	@override String get connect => 'connect';
 	@override String signsInAt({required Object host, required Object extension}) => 'signs in at ${host}, for ${extension}';
 	@override String oauthClientRegisteredTo({required Object owner, required Object extension}) => 'this sign-in is registered to ${owner}, so ${extension} can\'t use it';
+	@override String oauthAnsweredByAnother({required Object extension}) => 'another service answered ${extension}\'s sign-in, so it was stopped';
 	@override String get disconnect => 'disconnect';
 	@override String get connectedAs => 'connected as';
 	@override String get test => 'test';
@@ -6966,6 +6967,7 @@ extension on TranslationsQrp {
 			'settings.accounts.connect' => 'connect',
 			'settings.accounts.signsInAt' => ({required Object host, required Object extension}) => 'signs in at ${host}, for ${extension}',
 			'settings.accounts.oauthClientRegisteredTo' => ({required Object owner, required Object extension}) => 'this sign-in is registered to ${owner}, so ${extension} can\'t use it',
+			'settings.accounts.oauthAnsweredByAnother' => ({required Object extension}) => 'another service answered ${extension}\'s sign-in, so it was stopped',
 			'settings.accounts.disconnect' => 'disconnect',
 			'settings.accounts.connectedAs' => 'connected as',
 			'settings.accounts.test' => 'test',
@@ -7210,9 +7212,9 @@ extension on TranslationsQrp {
 			'settings.station.models.kx2' => 'elecraft kx2',
 			'settings.station.models.kx3' => 'elecraft kx3',
 			'settings.station.models.k4' => 'elecraft k4',
-			'settings.station.models.ic705' => 'icom ic-705',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.ic705' => 'icom ic-705',
 			'settings.station.models.ic7300' => 'icom ic-7300',
 			'settings.station.models.ic7300mk2' => 'icom ic-7300 mk2',
 			'settings.station.models.ic706mkiig' => 'icom ic-706mkiig',
@@ -7724,9 +7726,9 @@ extension on TranslationsQrp {
 			'settings.developer.dataFolder' => 'data folder',
 			'settings.developer.worktree' => 'worktree',
 			'settings.developer.launchedAt' => 'started',
-			'settings.developer.loading' => '(loading…)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.loading' => '(loading…)',
 			'settings.developer.panelLoadFailed' => 'could not load this settings panel.',
 			'settings.developer.extDevServer' => 'extension dev server',
 			'settings.developer.extensionSettings' => 'extension settings',
@@ -8238,9 +8240,9 @@ extension on TranslationsQrp {
 			'adifImport.busy' => 'an import is already running. wait for it to finish before starting another.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos, the most an operation can import at a time.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos. importing an adif into an operation is meant to add a few qsos, not to bring in a large log — use the logs view for that. developer mode lets you import it anyway, if you are sure.',
-			'adifImport.importAnyway' => 'import anyway',
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.importAnyway' => 'import anyway',
 			'offline.statusOffline' => 'internet: offline',
 			'offline.statusOnline' => 'internet: connected',
 			'offline.noRoute' => 'no network connection at all.',

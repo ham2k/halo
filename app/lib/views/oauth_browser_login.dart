@@ -263,8 +263,11 @@ class _OAuthBrowserLoginBodyState extends State<OAuthBrowserLoginBody> {
         final error = payload['error_description'] ?? payload['error'];
         final code = payload['code'];
         if (code is String && code.isNotEmpty) {
+          // A malformed `iss` is not an absent one: as text it names no
+          // issuer, so the sign-in refuses the code rather than skipping the
+          // check that only an absent `iss` skips.
           final issuedBy = payload['iss'];
-          widget.onCode(code, issuedBy is String ? issuedBy : null);
+          widget.onCode(code, issuedBy?.toString());
         } else {
           // Either the provider's own `error`, or — no `code` and no
           // `error` — a malformed/incomplete relay payload. Both end the

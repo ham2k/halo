@@ -200,11 +200,20 @@ Future<void> showAccountDialogByKey(HaLoServices services, String accountKey, {S
   );
 }
 
+String _withoutTrailingSlash(String url) => url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+
+/// Why a sign-in ended, in the operator's words: the status bar shows it as
+/// it is, where an [Exception]'s text would lead with "Exception:".
+class _LoginFailure implements Exception {
+  final String message;
+  const _LoginFailure(this.message);
+  @override
+  String toString() => message;
+}
+
 /// A sign-in the account pane is waiting on: what the waiting body needs to
 /// render, and the completer `_doOAuth` is parked on until something — the
 /// relay, a deep link, the operator, or the pane's own disposal — ends it.
-String _withoutTrailingSlash(String url) => url.endsWith('/') ? url.substring(0, url.length - 1) : url;
-
 class _PendingOAuthLogin {
   final Uri authUri;
 
@@ -284,9 +293,8 @@ class _AccountPaneState extends State<AccountPane> {
     if (code != null && issuedBy != null && _withoutTrailingSlash(issuedBy) != _withoutTrailingSlash(login.issuer)) {
       // An issuer of the extension's own that sent the browser on to another
       // service: the code is that service's, for its client.
-      debugPrint('[oauth] a code issued by "$issuedBy" refused for a sign-in at "${login.issuer}"');
       code = null;
-      error = t.settings.accounts.loginIncompleteResponse;
+      error = _answeredByAnother('a code issued by "$issuedBy" for a sign-in at "${login.issuer}"');
     }
     login.error = error;
     login.completer.complete(code);
@@ -304,13 +312,25 @@ class _AccountPaneState extends State<AccountPane> {
   String? _signInLine(BuildContext context) {
     final host = Uri.tryParse(_oauth2?['issuer'] as String? ?? '')?.host;
     if (host == null || host.isEmpty) return null;
-    final locale = LocaleSettings.currentLocale.languageCode;
-    final owner = widget.services.extensions.owningExtensionOf(_ownerKey);
-    return context.t.settings.accounts.signsInAt(host: host, extension: owner?.nameFor(locale) ?? '${widget.account['label']}');
+    return context.t.settings.accounts.signsInAt(host: host, extension: _ownerName);
   }
 
   /// The extension that declared this account.
   String? get _ownerKey => widget.account['extensionKey'] as String? ?? widget.account['key'] as String?;
+
+  /// That extension's name, as the operator knows it.
+  String get _ownerName =>
+      widget.services.extensions.owningExtensionOf(_ownerKey)?.nameFor(LocaleSettings.currentLocale.languageCode) ?? '${widget.account['label']}';
+
+  /// What the operator is told when another service answered this sign-in,
+  /// reported as well: the extension's issuer passed the browser on, by
+  /// mistake or on purpose, and a retry ends the same way every time.
+  /// [detail] names what came back, and is cut short: the provider wrote it.
+  String _answeredByAnother(String detail) {
+    final clipped = detail.length > 300 ? '${detail.substring(0, 300)}…' : detail;
+    ErrorReportingService.report(StateError('[$_ownerKey] $clipped'), StackTrace.current, context: 'oauth:answeredByAnother', told: true);
+    return t.settings.accounts.oauthAnsweredByAnother(extension: _ownerName);
+  }
 
   /// Markdown the account's extension wrote, drawing its own images.
   Widget _markdown(String data) => ExtensionMarkdownImages.owning(widget.services.extensions, _ownerKey, child: HaloMarkdown(data: data));
@@ -464,7 +484,7 @@ class _AccountPaneState extends State<AccountPane> {
         key: 'accounts:login',
         text: t.settings.accounts.oauthClientRegisteredTo(
           owner: widget.services.extensions.owningExtensionOf(registeredTo)?.nameFor(locale) ?? registeredTo,
-          extension: widget.services.extensions.owningExtensionOf(_ownerKey)?.nameFor(locale) ?? '${widget.account['label']}',
+          extension: _ownerName,
         ),
       );
       return true;
@@ -482,7 +502,7 @@ class _AccountPaneState extends State<AccountPane> {
         // Only reachable if some future OAuth2 hook doesn't declare
         // webhookRedirectUrl — SOTA always does. Fail with the same relay
         // message rather than a null-check crash three lines down.
-        throw Exception(t.settings.accounts.relayLoginUnavailable);
+        throw _LoginFailure(t.settings.accounts.relayLoginUnavailable);
       }
 
       // Only the relay path needs this device's LoFi identity — the native
@@ -499,7 +519,7 @@ class _AccountPaneState extends State<AccountPane> {
         // message the operator cannot act on.
         registration = await widget.services.connectLofiRealtime(refreshWebhookToken: true);
         if (registration == null) {
-          throw Exception(t.settings.accounts.relayLoginUnavailable);
+          throw _LoginFailure(t.settings.accounts.relayLoginUnavailable);
         }
       }
 
@@ -517,7 +537,7 @@ class _AccountPaneState extends State<AccountPane> {
       } finally {
         discoveryClient.close();
       }
-      if (response.statusCode != 200) throw Exception('Failed to load OIDC discovery: ${response.statusCode}');
+      if (response.statusCode != 200) throw _LoginFailure('Failed to load OIDC discovery: ${response.statusCode}');
       final endpoints = oauthEndpointsFrom(issuer: issuer, discovery: jsonDecode(response.body) as Map<String, dynamic>, grant: grant);
       if (registeredToAnother(registeredOAuthClientOwner([endpoints.authorization, endpoints.token], clientId))) return;
 
@@ -585,8 +605,7 @@ class _AccountPaneState extends State<AccountPane> {
             // This attempt's state on another redirect: the service sent
             // another client's code home, after an issuer of the extension's
             // own passed the browser on to it.
-            debugPrint('[oauth] refusing an auth callback on ${uri.replace(query: '')}, not the redirect this sign-in sent');
-            _resolveOAuth(login, null, error: t.settings.accounts.loginIncompleteResponse);
+            _resolveOAuth(login, null, error: _answeredByAnother('a callback on ${uri.replace(query: '')}, not the redirect "$redirectUrl" this sign-in sent'));
             return;
           }
           final callbackCode = uri.queryParameters['code'];
@@ -627,7 +646,7 @@ class _AccountPaneState extends State<AccountPane> {
       final authError = login.error;
 
       if (code == null) {
-        if (authError != null) throw Exception(authError);
+        if (authError != null) throw _LoginFailure(authError);
         return;
       }
 
@@ -662,7 +681,7 @@ class _AccountPaneState extends State<AccountPane> {
         // and a status bar showing `<!DOCTYPE html>…` buries the one fact
         // that identifies which hop refused.
         final detail = tokenResponse.body.length > 200 ? '${tokenResponse.body.substring(0, 200)}…' : tokenResponse.body;
-        throw Exception('Failed to exchange code (HTTP ${tokenResponse.statusCode}): $detail');
+        throw _LoginFailure('Failed to exchange code (HTTP ${tokenResponse.statusCode}): $detail');
       }
 
       final tokens = jsonDecode(tokenResponse.body) as Map<String, dynamic>;

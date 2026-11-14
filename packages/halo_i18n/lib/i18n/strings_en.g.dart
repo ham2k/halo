@@ -6279,6 +6279,9 @@ class Translations$settings$accounts$en {
 	/// en: 'This sign-in is registered to ${owner}, so ${extension} can't use it'
 	String oauthClientRegisteredTo({required Object owner, required Object extension}) => 'This sign-in is registered to ${owner}, so ${extension} can\'t use it';
 
+	/// en: 'Another service answered ${extension}'s sign-in, so it was stopped'
+	String oauthAnsweredByAnother({required Object extension}) => 'Another service answered ${extension}\'s sign-in, so it was stopped';
+
 	/// en: 'Disconnect'
 	String get disconnect => 'Disconnect';
 
@@ -13296,6 +13299,7 @@ extension on Translations {
 			'settings.accounts.connect' => 'Connect',
 			'settings.accounts.signsInAt' => ({required Object host, required Object extension}) => 'Signs in at ${host}, for ${extension}',
 			'settings.accounts.oauthClientRegisteredTo' => ({required Object owner, required Object extension}) => 'This sign-in is registered to ${owner}, so ${extension} can\'t use it',
+			'settings.accounts.oauthAnsweredByAnother' => ({required Object extension}) => 'Another service answered ${extension}\'s sign-in, so it was stopped',
 			'settings.accounts.disconnect' => 'Disconnect',
 			'settings.accounts.connectedAs' => 'Connected as',
 			'settings.accounts.test' => 'Test',
@@ -13540,9 +13544,9 @@ extension on Translations {
 			'settings.station.models.kx2' => 'Elecraft KX2',
 			'settings.station.models.kx3' => 'Elecraft KX3',
 			'settings.station.models.k4' => 'Elecraft K4',
-			'settings.station.models.ic705' => 'Icom IC-705',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.ic705' => 'Icom IC-705',
 			'settings.station.models.ic7300' => 'Icom IC-7300',
 			'settings.station.models.ic7300mk2' => 'Icom IC-7300 MK2',
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
@@ -14054,9 +14058,9 @@ extension on Translations {
 			'settings.developer.dataFolder' => 'Data Folder',
 			'settings.developer.worktree' => 'Worktree',
 			'settings.developer.launchedAt' => 'Started',
-			'settings.developer.loading' => '(loading…)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.loading' => '(loading…)',
 			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',
 			'settings.developer.extDevServer' => 'Extension Dev Server',
 			'settings.developer.extensionSettings' => 'Extension Settings',
@@ -14568,9 +14572,9 @@ extension on Translations {
 			'adifImport.busy' => 'An import is already running. Wait for it to finish before starting another.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs, the most an operation can import at a time.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs. Importing an ADIF into an operation is meant to add a few QSOs, not to bring in a large log — use the Logs view for that. Developer mode lets you import it anyway, if you are sure.',
-			'adifImport.importAnyway' => 'Import anyway',
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.importAnyway' => 'Import anyway',
 			'offline.statusOffline' => 'Internet: OFFLINE',
 			'offline.statusOnline' => 'Internet: connected',
 			'offline.noRoute' => 'No network connection at all.',
