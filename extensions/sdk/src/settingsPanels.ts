@@ -42,13 +42,17 @@ export interface SettingsPanelEntry {
 /// Checked by hand, never with `startsWith` or a RegExp: both are intrinsics a
 /// bundle can rewrite to answer yes.
 export function isValidHookKey(category: string, extensionKey: string, resolvedKey: string): boolean {
+  // A string, never an object that only reads like one: `hasPrefix` accepts
+  // anything with a length and indexed characters, and an object's own
+  // `toJSON` would then name another extension's key on its way to the host.
+  if (typeof resolvedKey !== "string") return false
   if (category === "dataFile") {
     return (
       isPlainDataFileKey(resolvedKey) &&
       (resolvedKey === extensionKey || hasPrefix(resolvedKey, extensionKey + "-") || hasPrefix(resolvedKey, extensionKey + "_"))
     )
   }
-  if (category !== "settingsPanel" && category !== "account") return true
+  if (category !== "settingsPanel" && category !== "account" && category !== "assistant") return true
   return resolvedKey === extensionKey || hasPrefix(resolvedKey, extensionKey + "_")
 }
 

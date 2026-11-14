@@ -236,6 +236,11 @@ class ExtensionHost {
     String? userAgent,
     Set<String> userAgentOverrides = const {},
 
+    /// The keys of extensions the app has but is not loading — switched off,
+    /// or behind an experiment — which no loaded bundle may define under:
+    /// such a key keeps its grants and its stored credentials while off.
+    Iterable<String> reservedKeys = const [],
+
     /// The app clock's travel state at boot. Passed in rather than pushed
     /// afterwards so extensions ACTIVATE on the app's clock — see
     /// [ClockTravelState] and [setClockTravel].
@@ -263,6 +268,7 @@ class ExtensionHost {
           webSocketAllowlists,
           userAgent,
           userAgentOverrides,
+          reservedKeys,
           secrets,
           clock,
           developerMode,
@@ -278,6 +284,7 @@ class ExtensionHost {
           webSocketAllowlists,
           userAgent,
           userAgentOverrides,
+          reservedKeys,
           secrets,
           clock,
           httpClient,
@@ -295,6 +302,7 @@ class ExtensionHost {
       webSocketAllowlists,
       userAgent,
       userAgentOverrides,
+      reservedKeys,
       secrets,
       clock,
       httpClient,
@@ -310,6 +318,7 @@ class ExtensionHost {
     Map<String, List<String>> webSocketAllowlists,
     String? userAgent,
     Set<String> userAgentOverrides,
+    Iterable<String> reservedKeys,
     Map<String, Map<String, String>> secrets,
     ClockTravelState clock,
     bool developerMode,
@@ -348,6 +357,7 @@ class ExtensionHost {
         mainPort: fromIsolate.sendPort,
         kernelSource: kernelSource,
         bundles: [for (final p in extensions) (key: p.key, source: p.source, api: p.api)],
+        reservedKeys: reservedKeys.toList(),
         fetchAllowlists: fetchAllowlists,
         webSocketAllowlists: webSocketAllowlists,
         secrets: secrets,
@@ -410,6 +420,7 @@ class ExtensionHost {
     Map<String, List<String>> webSocketAllowlists,
     String? userAgent,
     Set<String> userAgentOverrides,
+    Iterable<String> reservedKeys,
     Map<String, Map<String, String>> secrets,
     ClockTravelState clock, [
     http.Client? httpClient,
@@ -433,7 +444,7 @@ class ExtensionHost {
         }
       },
     );
-    final loadMillis = await core.init(kernelSource, extensions, clock: clock);
+    final loadMillis = await core.init(kernelSource, extensions, clock: clock, reservedKeys: reservedKeys);
     host = ExtensionHost._(runningInIsolate: false, engine: core.engineDescription, loadMillis: loadMillis, onHostCall: onHostCall);
     host._inProcessCore = core;
     earlyMessages.forEach(host._onCoreMessage);

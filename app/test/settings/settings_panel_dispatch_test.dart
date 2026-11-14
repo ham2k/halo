@@ -46,6 +46,51 @@ void main() {
     expect(panels[1]['panelKey'], 'pota_spots');
   });
 
+  // A panel's key names the stored secrets its form is filled from, and its
+  // hook key the extension the form goes to: one naming another extension's
+  // would hand that extension's secrets to the one that registered it.
+  test('getSettingsPanels drops a panel keyed outside its own extension', () async {
+    final mockHost = FakeExtensionHost({
+      'settingsPanel:*:getPanels': [
+        {
+          'key': 'qrz',
+          'ok': true,
+          'value': {'panelKey': 'qrz', 'hookKey': 'evil', 'extensionKey': 'evil', 'title': 'QRZ', 'kind': 'simple'},
+        },
+        {
+          'key': 'evil',
+          'ok': true,
+          'value': {'panelKey': 'evil', 'hookKey': 'evil', 'extensionKey': 'evil', 'title': 'Evil', 'kind': 'simple'},
+        },
+      ],
+    });
+    final extensions = MockExtensionService(mockHost)..settings = settings;
+
+    expect([for (final p in await extensions.getSettingsPanels()) p['panelKey']], ['evil']);
+  });
+
+  // The account pane reads and tests the login stored under `kvKey`: an
+  // account naming another extension's would read that extension's login.
+  test('getAccounts drops an account keyed outside the extension that registered it', () async {
+    final mockHost = FakeExtensionHost({
+      'account:*:getDefinition': [
+        {
+          'key': 'evil',
+          'ok': true,
+          'value': {'key': 'evil', 'extensionKey': 'evil', 'kvKey': 'qrz', 'label': 'QRZ'},
+        },
+        {
+          'key': 'evil',
+          'ok': true,
+          'value': {'key': 'evil', 'extensionKey': 'evil', 'kvKey': 'evil', 'label': 'Evil'},
+        },
+      ],
+    });
+    final extensions = MockExtensionService(mockHost)..settings = settings;
+
+    expect([for (final a in (await extensions.getAccounts())!) a['kvKey']], ['evil']);
+  });
+
   test('getSettingsPanelDefinition overlays stored values for a Tier 1 (simple) panel', () async {
     final mockHost = FakeExtensionHost({
       'settingsPanel:pota:getDefinition': {
@@ -58,12 +103,12 @@ void main() {
     final extensions = MockExtensionService(mockHost)..settings = settings;
 
     // Nothing stored yet: the static default from the definition survives.
-    final firstLoad = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: 'simple');
+    final firstLoad = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: 'simple', extensionKey: 'pota');
     expect((firstLoad!['elements'] as List).first['value'], 'default');
 
     // Commit a new value, then re-fetch: the overlay now wins over the static default.
     await extensions.commitSettingsFieldValue(kind: 'simple', hookKey: 'pota', panelKey: 'pota', fieldKey: 'apiKey', value: 'committed-value', state: const {});
-    final secondLoad = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: 'simple');
+    final secondLoad = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: 'simple', extensionKey: 'pota');
     expect((secondLoad!['elements'] as List).first['value'], 'committed-value');
   });
 
@@ -90,7 +135,7 @@ void main() {
       state: const {},
     );
 
-    final definition = await extensions.getSettingsPanelDefinition(hookKey: 'lofi', panelKey: 'lofi', kind: 'dynamic');
+    final definition = await extensions.getSettingsPanelDefinition(hookKey: 'lofi', panelKey: 'lofi', kind: 'dynamic', extensionKey: 'lofi');
     expect((definition!['elements'] as List).first['value'], 'from-extension');
   });
 
@@ -103,8 +148,8 @@ void main() {
             'type': 'field',
             'fieldType': 'account',
             'key': 'qrzStatus',
-            'label': 'QRZ.com Account',
-            'account': {'key': 'qrz'},
+            'label': 'POTA Account',
+            'account': {'key': 'pota'},
           },
         ],
       },
@@ -126,11 +171,13 @@ void main() {
       state: const {},
     );
 
-    final definition = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: 'simple');
+    final definition = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: 'simple', extensionKey: 'pota');
     expect((definition!['elements'] as List).first['value'], {'connected': false, 'unavailable': true});
   });
 
-  test('getSettingsPanelDefinition resolves fieldType account to {connected: true, label} from account credentials, for either tier', () async {
+  // A panel names the account its field shows; one naming another extension's
+  // account would read who is signed in there, and hand it back with the form.
+  test('getSettingsPanelDefinition leaves out a field naming another extension\'s account', () async {
     final mockHost = FakeExtensionHost({
       'settingsPanel:pota:getDefinition': {
         'title': 'POTA',
@@ -141,6 +188,9 @@ void main() {
             'key': 'qrzStatus',
             'label': 'QRZ.com Account',
             'account': {'key': 'qrz'},
+            // What the panel says about it is not shown either: the row reads
+            // as the app's own word.
+            'value': {'connected': true, 'label': 'Connected as K1ABC'},
           },
         ],
       },
@@ -152,8 +202,34 @@ void main() {
       },
     )..settings = settings;
 
+    final definition = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: 'simple', extensionKey: 'pota');
+    expect(definition!['elements'], isEmpty, reason: 'the field is left out: its row would show, and its button open, the QRZ account');
+  });
+
+  test('getSettingsPanelDefinition resolves fieldType account to {connected: true, label} from account credentials, for either tier', () async {
+    final mockHost = FakeExtensionHost({
+      'settingsPanel:pota:getDefinition': {
+        'title': 'POTA',
+        'elements': [
+          {
+            'type': 'field',
+            'fieldType': 'account',
+            'key': 'qrzStatus',
+            'label': 'POTA Account',
+            'account': {'key': 'pota'},
+          },
+        ],
+      },
+    });
+    final extensions = AccountStubExtensionService(
+      mockHost,
+      credentials: {
+        'pota': {'username': 'KI2D'},
+      },
+    )..settings = settings;
+
     for (final kind in ['simple', 'dynamic']) {
-      final definition = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: kind);
+      final definition = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: kind, extensionKey: 'pota');
       expect((definition!['elements'] as List).first['value'], {'connected': true, 'label': 'Connected as KI2D'});
     }
   });

@@ -83,6 +83,7 @@ class _FlakyAccountHost implements ExtensionHost {
           'ok': true,
           'value': {
             'key': 'myext',
+            'extensionKey': 'myext',
             'kvKey': 'myext',
             'label': 'My Account',
             'fields': [

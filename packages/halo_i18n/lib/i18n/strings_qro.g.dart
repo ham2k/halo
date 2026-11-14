@@ -2897,6 +2897,7 @@ class _Translations$settings$accounts$qro extends Translations$settings$accounts
 	@override String connectedTo({required Object label}) => 'CONNECTED TO ${label}';
 	@override String get connect => 'CONNECT';
 	@override String signsInAt({required Object host, required Object extension}) => 'SIGNS IN AT ${host}, FOR ${extension}';
+	@override String oauthClientRegisteredTo({required Object owner, required Object extension}) => 'THIS SIGN-IN IS REGISTERED TO ${owner}, SO ${extension} CAN\'T USE IT';
 	@override String get disconnect => 'DISCONNECT';
 	@override String get connectedAs => 'CONNECTED AS';
 	@override String get test => 'TEST';
@@ -6964,6 +6965,7 @@ extension on TranslationsQro {
 			'settings.accounts.connectedTo' => ({required Object label}) => 'CONNECTED TO ${label}',
 			'settings.accounts.connect' => 'CONNECT',
 			'settings.accounts.signsInAt' => ({required Object host, required Object extension}) => 'SIGNS IN AT ${host}, FOR ${extension}',
+			'settings.accounts.oauthClientRegisteredTo' => ({required Object owner, required Object extension}) => 'THIS SIGN-IN IS REGISTERED TO ${owner}, SO ${extension} CAN\'T USE IT',
 			'settings.accounts.disconnect' => 'DISCONNECT',
 			'settings.accounts.connectedAs' => 'CONNECTED AS',
 			'settings.accounts.test' => 'TEST',
@@ -7209,9 +7211,9 @@ extension on TranslationsQro {
 			'settings.station.models.kx3' => 'ELECRAFT KX3',
 			'settings.station.models.k4' => 'ELECRAFT K4',
 			'settings.station.models.ic705' => 'ICOM IC-705',
-			'settings.station.models.ic7300' => 'ICOM IC-7300',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.ic7300' => 'ICOM IC-7300',
 			'settings.station.models.ic7300mk2' => 'ICOM IC-7300 MK2',
 			'settings.station.models.ic706mkiig' => 'ICOM IC-706MKIIG',
 			'settings.station.models.ic7100' => 'ICOM IC-7100',
@@ -7723,9 +7725,9 @@ extension on TranslationsQro {
 			'settings.developer.worktree' => 'WORKTREE',
 			'settings.developer.launchedAt' => 'STARTED',
 			'settings.developer.loading' => '(LOADING…)',
-			'settings.developer.panelLoadFailed' => 'COULD NOT LOAD THIS SETTINGS PANEL.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.panelLoadFailed' => 'COULD NOT LOAD THIS SETTINGS PANEL.',
 			'settings.developer.extDevServer' => 'EXTENSION DEV SERVER',
 			'settings.developer.extensionSettings' => 'EXTENSION SETTINGS',
 			'settings.developer.extDevServerDescription' => 'LOAD EXTENSIONS FROM A DEV SERVER ON YOUR NETWORK INSTEAD OF THE ONES BUILT INTO THE APP, AND RELOAD THEM AS YOU SAVE.',
@@ -8237,9 +8239,9 @@ extension on TranslationsQro {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS, THE MOST AN OPERATION CAN IMPORT AT A TIME.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS. IMPORTING AN ADIF INTO AN OPERATION IS MEANT TO ADD A FEW QSOS, NOT TO BRING IN A LARGE LOG — USE THE LOGS VIEW FOR THAT. DEVELOPER MODE LETS YOU IMPORT IT ANYWAY, IF YOU ARE SURE.',
 			'adifImport.importAnyway' => 'IMPORT ANYWAY',
-			'offline.statusOffline' => 'INTERNET: OFFLINE',
 			_ => null,
 		} ?? switch (path) {
+			'offline.statusOffline' => 'INTERNET: OFFLINE',
 			'offline.statusOnline' => 'INTERNET: CONNECTED',
 			'offline.noRoute' => 'NO NETWORK CONNECTION AT ALL.',
 			'offline.unreachable' => 'THE NETWORK IS UP, BUT NO SERVER IS RESPONDING — OFTEN A SIGN-IN PAGE WAITING IN A BROWSER.',

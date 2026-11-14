@@ -60,7 +60,7 @@ class _AccountsHost extends FakeExtensionHost {
       {
         'key': 'acct',
         'ok': true,
-        'value': {'key': 'acct', 'kvKey': 'acct', 'label': label, 'fields': const []},
+        'value': {'key': 'acct', 'extensionKey': 'acct', 'kvKey': 'acct', 'label': label, 'fields': const []},
       },
     ];
     return held?.future ?? Future.value(answer);

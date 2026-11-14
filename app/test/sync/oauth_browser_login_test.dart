@@ -88,7 +88,7 @@ void main() {
                 expectedState: _state,
                 webhookEvents: pings ?? const Stream.empty(),
                 fetchWebhookEvents: () async => fetch?.call() ?? const [],
-                onCode: codes.add,
+                onCode: (code, _) => codes.add(code),
                 onError: errors.add,
                 onCancel: () => cancels.add(null),
                 launcher: (uri) async {
@@ -272,7 +272,7 @@ void main() {
             home: Scaffold(
               body: OAuthBrowserLoginBody(
                 authUri: Uri.parse('https://sso.example.org/auth?state=$_state'),
-                onCode: codes.add,
+                onCode: (code, _) => codes.add(code),
                 onError: (_) {},
                 onCancel: () {},
                 launcher: (uri) async {
@@ -330,7 +330,7 @@ void main() {
             home: Scaffold(
               body: OAuthBrowserLoginBody(
                 authUri: Uri.parse('https://sso.example.org/auth?state=$_state'),
-                onCode: (_) {},
+                onCode: (_, _) {},
                 onError: (_) {},
                 onCancel: () {},
                 launcher: (uri) async => true,

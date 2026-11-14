@@ -10,6 +10,8 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 import 'support/bundles.dart';
 
@@ -53,8 +55,14 @@ __halo.defineExtension({
 ''',
 );
 
-Future<ExtensionHost> _start(List<ExtensionBundle> bundles) async {
-  final host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: bundles, useIsolate: false, secrets: _secrets);
+Future<ExtensionHost> _start(List<ExtensionBundle> bundles, {Iterable<String> reservedKeys = const []}) async {
+  final host = await ExtensionHost.start(
+    kernelSource: bundleSource('kernel'),
+    extensions: bundles,
+    useIsolate: false,
+    secrets: _secrets,
+    reservedKeys: reservedKeys,
+  );
   addTearDown(host.dispose);
   return host;
 }
@@ -171,6 +179,108 @@ defined = true
     ]);
     expect(await _probe(host, key: 'outer-inner'), 'inner');
     await expectLater(_probe(host, key: 'call-notes'), throwsA(_noHook));
+  });
+
+  test("a bundle defines nothing under the key of an extension that is installed but switched off", () async {
+    // A switched-off extension keeps its grants and its stored credentials;
+    // `outer` defining `outer-off` while it is off would be handed both.
+    final host = await _start(
+      [_attacker("return 'outer'", key: 'outer', prelude: _defineProbe('outer-off', 'outer'))],
+      reservedKeys: const ['outer-off'],
+    );
+    await expectLater(_probe(host, key: 'outer-off'), throwsA(_noHook));
+  });
+
+  test('a hook key that only reads like a string registers nothing', () async {
+    // An array-like key passes the namespace check character by character,
+    // then its own toJSON names another extension's account on the way out:
+    // the account pane would read and test that extension's stored login.
+    final host = await _start([
+      _attacker(
+        'return true',
+        prelude: '''
+          __halo.defineExtension({ key: 'attacker-x', name: 'x', version: '0.0.1', onActivation: function (api) {
+            const key = { length: 11, toJSON: function () { return 'victim' } }
+            for (let i = 0; i < 11; i++) key[i] = 'attacker-x_'[i]
+            api.registerHook('account', { key: key, hook: { label: 'Victim' } })
+          } })
+        ''',
+      ),
+    ]);
+    final accounts = await host.invokeHookAll('account', method: 'getDefinition');
+    expect(accounts, isEmpty);
+  });
+
+  test("a sync transport from anyone but ham2k-lofi is never called", () async {
+    // The sync engine sends the whole log, and the account and device links,
+    // through the one transport it finds.
+    final host = await _start([
+      _attacker(
+        'return true',
+        prelude: '''
+          __halo.defineExtension({ key: 'attacker-x', name: 'x', version: '0.0.1', onActivation: function (api) {
+            api.registerHook('syncTransport', { priority: 1000, hook: { getAccountData: async function () { return { taken: true } } } })
+          } })
+        ''',
+      ),
+    ]);
+    await expectLater(host.invokeHook('syncTransport', method: 'getAccountData'), throwsA(_noHook));
+  });
+
+  test("a bundle names no data file under another installed extension's key", () async {
+    // `outer` naming `outer-inner-cache` would read and replace the cached
+    // files of the installed `outer-inner`.
+    final host = await _start(
+      [
+        _attacker(
+          'return true',
+          key: 'outer',
+          prelude: '''
+          __halo.defineExtension({ key: 'outer', name: 'x', version: '0.0.1', onActivation: function (api) {
+            api.registerHook('dataFile', { key: 'outer-inner-cache', hook: { name: 'x', fetch: async function () { return '' } } })
+          } })
+        ''',
+        ),
+      ],
+      reservedKeys: const ['outer-inner'],
+    );
+    final files = await host.invokeHookAll('dataFile', method: 'getDefinition');
+    expect([for (final f in files) f['key']], isNot(contains('outer-inner-cache')));
+  });
+
+  test("a sub-extension's requests are held to its own bundle's domains, not a shorter one's", () async {
+    // `wide-x` is a bundle of its own beside `wide`, and the kernel let it
+    // define `wide-x-y`: that one's requests answer to `wide-x`'s domains.
+    final sent = <Uri>[];
+    final host = await ExtensionHost.start(
+      kernelSource: bundleSource('kernel'),
+      extensions: [
+        _attacker('return true', key: 'wide'),
+        _attacker(
+          'return true',
+          key: 'wide-x',
+          prelude: '''
+            __halo.defineExtension({ key: 'wide-x-y', name: 'x', version: '0.0.1', onActivation: function (api) {
+              api.registerHook('probe', { key: 'wide-x-y', hook: { run: async function () {
+                try { await api.hostCall('fetch', { url: 'https://wide.example/secret' }); return 'fetched' } catch (e) { return 'refused' }
+              } } })
+            } })
+          ''',
+        ),
+      ],
+      useIsolate: false,
+      fetchAllowlists: const {
+        'wide': ['wide.example'],
+        'wide-x': ['narrow.example'],
+      },
+      httpClient: MockClient((request) async {
+        sent.add(request.url);
+        return http.Response('ok', 200);
+      }),
+    );
+    addTearDown(host.dispose);
+    expect(await _probe(host, key: 'wide-x-y'), 'refused');
+    expect(sent, isEmpty);
   });
 
   test("invokeLocal refuses a method every object has", () async {

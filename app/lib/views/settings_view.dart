@@ -799,6 +799,7 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
         hookKey: panel['hookKey'] as String,
         panelKey: panelKey,
         kind: panel['kind'] as String,
+        extensionKey: panel['extensionKey'] as String,
       );
       // One that failed to load keeps its row: the dialog says it failed,
       // where a missing row would say nothing at all.

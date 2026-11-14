@@ -50,7 +50,7 @@ void main() {
       'text': 'Kp **7**',
       'textColor': '#80FF8800',
       'radio': 'B',
-      'action': {'type': 'account', 'label': 'Open', 'key': 'wx', 'subkey': 'noaa'},
+      'action': {'type': 'account', 'label': 'Open', 'key': 'a_wx', 'subkey': 'noaa'},
     });
     final message = fyi.messageFor('ext:a:kp')!;
     expect(
@@ -58,7 +58,23 @@ void main() {
       (FyiCategory.warning, FyiPriority.high, MdiIcons.antenna, const Color(0xFFFF8800), 'Kp **7**', const Color(0x80FF8800), 'B'),
     );
     message.onTap!();
-    expect(opened, ['wx/noaa']);
+    expect(opened, ['a_wx/noaa']);
+  });
+
+  // An extension's action button reads as part of its own flow: one naming
+  // another extension's account would open that account's sign-in and
+  // disconnect there.
+  test("an account action opens the posting extension's own accounts and no other's", () async {
+    var opened = <String>[];
+    for (final key in ['a', 'b', 'ab']) {
+      final (extensions, fyi) = harness();
+      extensions.onOpenAccount = (key, {subkey}) => opened.add(key);
+      await post(extensions, 'a', 'k', {
+        'action': {'type': 'account', 'label': 'Open', 'key': key},
+      });
+      fyi.messageFor('ext:a:k')!.onTap!();
+    }
+    expect(opened, ['a']);
   });
 
   test("every extension message is the operator's to dismiss, whatever the call says; what the call leaves out has its default", () async {

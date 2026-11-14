@@ -315,10 +315,26 @@ abstract class AccountCommandBase extends ExtCommand {
 
   Future<List<AccountDefinition>> definitions(ExtRuntime runtime) async {
     final entries = await invokeAll(runtime, Hooks.accountGetDefinition);
-    return [
-      for (final entry in entries)
-        if (entry['ok'] == true && entry['value'] is Map) AccountDefinition.fromJson((entry['value'] as Map).cast<String, Object?>()),
-    ];
+    final accounts = <AccountDefinition>[];
+    for (final entry in entries) {
+      if (entry['ok'] != true || entry['value'] is! Map) continue;
+      final value = (entry['value'] as Map).cast<String, Object?>();
+      if (!_ownKeys(value)) {
+        stderr.writeln('halo-ext: account "${value['key']}" (kvKey "${value['kvKey']}") ignored: not in the namespace of "${value['extensionKey']}"');
+        continue;
+      }
+      accounts.add(AccountDefinition.fromJson(value));
+    }
+    return accounts;
+  }
+
+  /// Whether a definition's `key` and `kvKey` are the registering extension's
+  /// own (its key, or `<key>_…`), as the app checks: `account test` reads the
+  /// login stored under `kvKey` and hands it to the hook named `key`.
+  static bool _ownKeys(Map<String, Object?> value) {
+    final owner = value['extensionKey'];
+    bool own(Object? key) => owner is String && key is String && (key == owner || key.startsWith('${owner}_'));
+    return own(value['key']) && own(value['kvKey']);
   }
 
   Future<AccountDefinition> resolve(ExtRuntime runtime, String wanted) async {

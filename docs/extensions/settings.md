@@ -78,9 +78,11 @@ the extension's key and, if overridden, must equal it or be prefixed
 `<key>_`: `w7abc-lakes` may register panels keyed `w7abc-lakes` and
 `w7abc-lakes_spots`, never bare `spots`. It applies to a panel's `key`, a
 descriptor's `key` (checked when `getPanels` answers, not only at
-registration) and an account's `kvKey`, and keeps every panel's storage
+registration), an account's `kvKey` and an assistant's `key`, and keeps every panel's storage
 under its owning extension. A `dataFile` key may also continue with `-`
-(`w7abc-lakes-all`) and holds only lowercase letters, digits, `-` and `_`.
+(`w7abc-lakes-all`), except into the key of another extension the operator
+has installed, and holds only lowercase letters, digits, `-` and `_`. Every
+key is a string; anything else is refused at registration.
 
 ## Tier 1: `SimpleSettingsPanel`
 
@@ -238,11 +240,14 @@ A read-only reference into the account system: a row showing "Connected as
 …" or "Not connected", with a button that opens that account's own dialog.
 It never defines or stores the account. `subkey` is an opaque discriminator
 for an extension that exposes more than one account-like entity under one
-key; most accounts need none.
+key; most accounts need none. The account must be your extension's own: a
+field naming another extension's is left out of the panel.
 
 ```ts
 { type: "field", fieldType: "account", key: "hamqthStatus", label: "HamQTH account", account: { key: "w7abc-hamqth" } }
 ```
+
+(in a panel of the `w7abc-hamqth` extension)
 
 ### The `action` element
 

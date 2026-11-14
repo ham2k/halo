@@ -37,7 +37,7 @@ import 'package:ham2k_logger/views/settings/accounts_panel.dart';
 import '../support/halo_test_support.dart';
 
 const _issuer = 'https://sso.example.org/auth/realms/TEST';
-const _redirect = 'com.ham2k.logger.test.auth://sota';
+const _redirect = 'com.ham2k.logger.test.auth://testsso';
 
 /// A JWT whose payload names an identity — the pane has no username to show
 /// for an OAuth account, so this is what "logged in as" reads out of.
@@ -49,6 +49,10 @@ final _idToken = 'x.${base64Url.encode(utf8.encode(jsonEncode({'preferred_userna
 class _OAuthHttpOverrides extends HttpOverrides {
   int discoveryFetches = 0;
   int tokenExchanges = 0;
+
+  /// Where the discovery document points the endpoints; the issuer's own
+  /// realm when null.
+  String? endpointBase;
 
   @override
   HttpClient createHttpClient(SecurityContext? context) => _FakeHttpClient(this);
@@ -66,8 +70,8 @@ class _FakeHttpClient implements HttpClient {
         method,
         jsonEncode({
           'issuer': _issuer,
-          'authorization_endpoint': '$_issuer/protocol/openid-connect/auth',
-          'token_endpoint': '$_issuer/protocol/openid-connect/token',
+          'authorization_endpoint': '${owner.endpointBase ?? _issuer}/protocol/openid-connect/auth',
+          'token_endpoint': '${owner.endpointBase ?? _issuer}/protocol/openid-connect/token',
         }),
       );
     }
@@ -198,6 +202,7 @@ final _accountDefinition = {
   'ok': true,
   'value': {
     'key': 'testsso',
+    'extensionKey': 'testsso',
     'kvKey': 'testsso',
     'label': 'Test SSO',
     'oauth2': {
@@ -214,12 +219,12 @@ typedef _Harness = ({HaLoServices services, _FakeDeepLinkService links, _OAuthHt
 
 /// The extension behind the account, declaring [domains]: the sign-in's
 /// issuer and endpoints are requests it causes, held to them.
-Future<_Harness> _harness(_OAuthHttpOverrides overrides, {List<String> domains = const ['sso.example.org']}) async {
+Future<_Harness> _harness(_OAuthHttpOverrides overrides, {List<String> domains = const ['sso.example.org'], Map<String, dynamic>? account}) async {
   SharedPreferences.setMockInitialValues({});
   final settings = SettingsService(await SharedPreferences.getInstance());
   final extensions = _AccountExtensionService(
     FakeExtensionHost({
-      'account:*:getDefinition': [_accountDefinition],
+      'account:*:getDefinition': [account ?? _accountDefinition],
     }),
   );
   extensions.settings = settings;
@@ -263,8 +268,13 @@ Future<void> _deliver(WidgetTester tester, _FakeDeepLinkService links, String ur
   await _flush(tester);
 }
 
-Future<_Harness> _openPane(WidgetTester tester, _OAuthHttpOverrides overrides, {List<String> domains = const ['sso.example.org']}) async {
-  final h = await _harness(overrides, domains: domains);
+Future<_Harness> _openPane(
+  WidgetTester tester,
+  _OAuthHttpOverrides overrides, {
+  List<String> domains = const ['sso.example.org'],
+  Map<String, dynamic>? account,
+}) async {
+  final h = await _harness(overrides, domains: domains, account: account);
   await tester.pumpWidget(
     TranslationProvider(
       // showAccountDialogByKey opens on the app's root navigator, so it needs
@@ -379,6 +389,64 @@ void main() {
     }, createHttpClient: (c) => _FakeHttpClient(overrides));
   });
 
+  // An issuer of the extension's own can pass the browser on to another
+  // service's sign-in as that service's registered client; the service then
+  // sends its code home on that client's redirect, carrying this attempt's
+  // state, which the issuer passed along. Exchanged at the extension's token
+  // endpoint, the code would be the operator's account there.
+  testWidgets("this attempt's state on another redirect ends the sign-in with nothing exchanged", (tester) async {
+    final overrides = _OAuthHttpOverrides();
+    await HttpOverrides.runZoned(() async {
+      final h = await _openPane(tester, overrides);
+      await tester.tap(_connect);
+      await _pump(tester);
+      final state = tester.widget<OAuthBrowserLoginBody>(find.byType(OAuthBrowserLoginBody)).authUri.queryParameters['state']!;
+
+      await _deliver(tester, h.links, 'com.ham2k.logger.test.auth://sota?code=SOTAS&state=${Uri.encodeQueryComponent(state)}');
+
+      expect(overrides.tokenExchanges, 0);
+      expect(find.byType(OAuthBrowserLoginBody), findsNothing, reason: 'the attempt is over, not left waiting');
+      await h.links.dispose();
+    }, createHttpClient: (c) => _FakeHttpClient(overrides));
+  });
+
+  // The same pass-along, told by the service itself (RFC 9207): a code it
+  // says another issuer gave is not this sign-in's.
+  testWidgets('a code another issuer says it gave is not exchanged', (tester) async {
+    final overrides = _OAuthHttpOverrides();
+    await HttpOverrides.runZoned(() async {
+      final h = await _openPane(tester, overrides);
+      await tester.tap(_connect);
+      await _pump(tester);
+      final state = tester.widget<OAuthBrowserLoginBody>(find.byType(OAuthBrowserLoginBody)).authUri.queryParameters['state']!;
+
+      await _deliver(
+        tester,
+        h.links,
+        '$_redirect?code=SOTAS&state=${Uri.encodeQueryComponent(state)}&iss=${Uri.encodeQueryComponent('https://sso.sota.org.uk/auth/realms/SOTA')}',
+      );
+
+      expect(overrides.tokenExchanges, 0);
+      expect(find.byType(OAuthBrowserLoginBody), findsNothing);
+      await h.links.dispose();
+    }, createHttpClient: (c) => _FakeHttpClient(overrides));
+  });
+
+  testWidgets('a code its own issuer says it gave is exchanged', (tester) async {
+    final overrides = _OAuthHttpOverrides();
+    await HttpOverrides.runZoned(() async {
+      final h = await _openPane(tester, overrides);
+      await tester.tap(_connect);
+      await _pump(tester);
+      final state = tester.widget<OAuthBrowserLoginBody>(find.byType(OAuthBrowserLoginBody)).authUri.queryParameters['state']!;
+
+      await _deliver(tester, h.links, '$_redirect?code=THE_CODE&state=${Uri.encodeQueryComponent(state)}&iss=${Uri.encodeQueryComponent('$_issuer/')}');
+
+      expect(overrides.tokenExchanges, 1);
+      await h.links.dispose();
+    }, createHttpClient: (c) => _FakeHttpClient(overrides));
+  });
+
   testWidgets('a redirect whose state merely starts the same way is ignored', (tester) async {
     // Guards the comparison itself, against a live listener — the case the
     // cancel test above cannot reach. Loosened to a prefix or a `contains`,
@@ -484,6 +552,82 @@ void main() {
 
       expect(overrides.discoveryFetches, 0);
       expect(find.byType(OAuthBrowserLoginBody), findsNothing);
+      await h.links.dispose();
+    }, createHttpClient: (c) => _FakeHttpClient(overrides));
+  });
+
+  // SOTA's client is public: its id and redirect are in the SOTA extension
+  // for anyone to copy. Another extension that declares SOTA's sign-in host
+  // and copies them would be handed the operator's SOTA tokens.
+  testWidgets('a sign-in Ham2K registered for another extension starts nowhere', (tester) async {
+    const sotaRealm = 'https://sso.sota.org.uk/auth/realms/SOTA';
+    final value = (_accountDefinition['value'] as Map).cast<String, dynamic>();
+    final borrowed = <String, dynamic>{
+      ..._accountDefinition,
+      'value': <String, dynamic>{
+        ...value,
+        'oauth2': <String, dynamic>{...(value['oauth2'] as Map).cast<String, dynamic>(), 'issuer': sotaRealm, 'clientId': 'polo'},
+      },
+    };
+    final overrides = _OAuthHttpOverrides();
+    await HttpOverrides.runZoned(() async {
+      final h = await _openPane(tester, overrides, domains: const ['sso.sota.org.uk'], account: borrowed);
+      await tester.tap(_connect);
+      await _flush(tester);
+
+      expect(overrides.discoveryFetches, 0);
+      expect(find.byType(OAuthBrowserLoginBody), findsNothing);
+      expect(h.services.statusBar.itemForKey('accounts:login')?.text, contains("can't use it"));
+      await h.links.dispose();
+    }, createHttpClient: (c) => _FakeHttpClient(overrides));
+  });
+
+  // The issuer is the extension's to name, and its discovery document says
+  // where the sign-in really goes: an issuer of its own whose document points
+  // at SOTA's endpoints would otherwise slip past a binding read off the
+  // issuer alone.
+  testWidgets("a registered client stays its extension's when another issuer's discovery points at its endpoints", (tester) async {
+    final value = (_accountDefinition['value'] as Map).cast<String, dynamic>();
+    final borrowed = <String, dynamic>{
+      ..._accountDefinition,
+      'value': <String, dynamic>{
+        ...value,
+        'oauth2': <String, dynamic>{...(value['oauth2'] as Map).cast<String, dynamic>(), 'clientId': 'polo'},
+      },
+    };
+    final overrides = _OAuthHttpOverrides()..endpointBase = 'https://sso.sota.org.uk/auth/realms/SOTA';
+    await HttpOverrides.runZoned(() async {
+      final h = await _openPane(tester, overrides, domains: const ['sso.example.org', 'sso.sota.org.uk'], account: borrowed);
+      await tester.tap(_connect);
+      await _flush(tester);
+
+      expect(overrides.discoveryFetches, 1, reason: 'the issuer is not the registered one, so its document is read');
+      expect(find.byType(OAuthBrowserLoginBody), findsNothing);
+      expect(h.services.statusBar.itemForKey('accounts:login')?.text, contains("can't use it"));
+      await h.links.dispose();
+    }, createHttpClient: (c) => _FakeHttpClient(overrides));
+  });
+
+  // SOTA answers its client on the redirects registered for it: another
+  // extension that names one would have SOTA's code come home to it.
+  testWidgets("a sign-in naming a registered client's redirect starts nowhere", (tester) async {
+    final value = (_accountDefinition['value'] as Map).cast<String, dynamic>();
+    final borrowed = <String, dynamic>{
+      ..._accountDefinition,
+      'value': <String, dynamic>{
+        ...value,
+        'oauth2': <String, dynamic>{...(value['oauth2'] as Map).cast<String, dynamic>(), 'redirectUrl': 'com.ham2k.logger.test.auth://sota'},
+      },
+    };
+    final overrides = _OAuthHttpOverrides();
+    await HttpOverrides.runZoned(() async {
+      final h = await _openPane(tester, overrides, account: borrowed);
+      await tester.tap(_connect);
+      await _flush(tester);
+
+      expect(overrides.discoveryFetches, 0);
+      expect(find.byType(OAuthBrowserLoginBody), findsNothing);
+      expect(h.services.statusBar.itemForKey('accounts:login')?.text, contains("can't use it"));
       await h.links.dispose();
     }, createHttpClient: (c) => _FakeHttpClient(overrides));
   });

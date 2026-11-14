@@ -103,7 +103,12 @@ class _IoEngineRuntime implements EngineRuntime {
   }
 
   @override
-  Future<void> load(String kernelSource, List<ExtensionBundle> bundles, {ClockTravelState clock = const ClockTravelState.real()}) async {
+  Future<void> load(
+    String kernelSource,
+    List<ExtensionBundle> bundles, {
+    ClockTravelState clock = const ClockTravelState.real(),
+    Iterable<String> reservedKeys = const [],
+  }) async {
     final js = _createRuntime();
     _js = js;
     js.onSend((channel, message) {
@@ -128,7 +133,7 @@ class _IoEngineRuntime implements EngineRuntime {
     // Date, and every bundle (and the activateAll below) must already see the
     // app's clock through it.
     if (!clock.isReal) setClockTravel(clock.anchorRealMillis, clock.anchorVirtualMillis, clock.speed);
-    _evaluate(_bridge('declareBundles', [declaredBundleKeys(bundles)]), name: 'declareBundles');
+    _evaluate(_bridge('declareBundles', [declaredBundleKeys(bundles, reservedKeys)]), name: 'declareBundles');
     for (final bundle in bundles) {
       // The begin/end bracket is what makes extension identity
       // host-declared: the kernel only accepts defineExtension keys matching

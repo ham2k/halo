@@ -304,6 +304,16 @@ function bundleMayDefine(bundleKey: string, extensionKey: string): boolean {
   return true
 }
 
+// The most specific declared key [key] falls under, or null for none.
+function declaredOwnerOf(key: string): string | null {
+  let owner: string | null = null
+  for (let i = 0; i < declaredKeys.length; i++) {
+    const declared = declaredKeys[i]
+    if (isUnder(key, declared) && (owner === null || declared.length > owner.length)) owner = declared
+  }
+  return owner
+}
+
 function post(message: Record<string, unknown>) {
   rawSendMessage("polo", JSON.stringify(message))
 }
@@ -1264,10 +1274,31 @@ async function activateExtension(def: ExtensionDefinition): Promise<string | nul
           }
         }
         const resolvedKey = params.key ?? def.key
+        // A string, whatever the category: every key reaches the host by name,
+        // and an object standing in for one serialises as whatever its own
+        // `toJSON` says.
+        if (typeof resolvedKey !== "string") {
+          log(`ERROR registerHook(${category}) in extension ${def.key}: a hook key must be a string — hook not registered`)
+          return
+        }
+        // The sync engine sends the operator's whole log, account and device
+        // links through the one transport it finds: only the app's own LoFi
+        // extension may be it.
+        if (category === "syncTransport" && def.key !== "ham2k-lofi") {
+          log(`ERROR registerHook(syncTransport) in extension ${def.key}: only ham2k-lofi provides the sync transport — hook not registered`)
+          return
+        }
         // Key namespacing (docs/extensions/settings.md; rule itself lives
         // in settingsPanels.ts so it has its own unit tests). Logged and
         // skipped rather than thrown: one bad key shouldn't take down the
         // rest of the extension's hook registrations.
+        // A data file may be named `<key>-…`, which can fall under another
+        // extension's key: `k2hrc` naming `k2hrc-foo` would read and replace
+        // the installed `k2hrc-foo`'s cached files.
+        if (category === "dataFile" && declaredOwnerOf(resolvedKey) !== declaredOwnerOf(def.key)) {
+          log(`ERROR registerHook(dataFile) in extension ${def.key}: key '${resolvedKey}' belongs to another extension — hook not registered`)
+          return
+        }
         if (!isValidHookKey(category, def.key, resolvedKey)) {
           log(
             `ERROR registerHook(${category}) in extension ${def.key}: key '${resolvedKey}' is not one this extension may register under (docs/extensions/settings.md, "Key namespacing") — hook not registered`,

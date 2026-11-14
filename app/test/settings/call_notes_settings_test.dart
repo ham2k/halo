@@ -97,7 +97,12 @@ void main() {
     expect(panel['sidebar'], false);
     expect(panel['dataFilesSection'], true, reason: 'this is what makes it show up under the data sources');
 
-    final definition = await extensions.getSettingsPanelDefinition(hookKey: 'ham2k-call-notes', panelKey: 'ham2k-call-notes', kind: 'dynamic');
+    final definition = await extensions.getSettingsPanelDefinition(
+      hookKey: 'ham2k-call-notes',
+      panelKey: 'ham2k-call-notes',
+      kind: 'dynamic',
+      extensionKey: 'ham2k-call-notes',
+    );
     expect(definition!['title'], isNull, reason: "the panel's own title (above) already labels the modal — no in-body title to double it");
     final elements = (definition['elements'] as List).cast<Map<String, dynamic>>();
 
@@ -140,7 +145,12 @@ void main() {
 
     expect(extensions.host, same(hostBefore), reason: 'a plain enable/disable toggle needs no restart');
 
-    final definition = await extensions.getSettingsPanelDefinition(hookKey: 'ham2k-call-notes', panelKey: 'ham2k-call-notes', kind: 'dynamic');
+    final definition = await extensions.getSettingsPanelDefinition(
+      hookKey: 'ham2k-call-notes',
+      panelKey: 'ham2k-call-notes',
+      kind: 'dynamic',
+      extensionKey: 'ham2k-call-notes',
+    );
     final checkbox = (definition!['elements'] as List).cast<Map<String, dynamic>>().firstWhere((el) => el['key'] == 'enabled.hams-of-note');
     expect(checkbox['value'], false);
   });

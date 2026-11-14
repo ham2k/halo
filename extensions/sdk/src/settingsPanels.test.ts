@@ -26,6 +26,18 @@ test("isValidHookKey: a key that merely starts with the extension key without th
   assert.equal(isValidHookKey("settingsPanel", "pota", "potassium"), false)
 })
 
+test("isValidHookKey: an assistant's key is its own extension's", () => {
+  // The key names the assistant's id and switch, and the extension whose
+  // radio grant and spot marks it acts under.
+  assert.equal(isValidHookKey("assistant", "k2hrc-coach", "k2hrc-coach"), true)
+  assert.equal(isValidHookKey("assistant", "evil", "k2hrc-radio"), false)
+})
+
+test("isValidHookKey: a key that only reads like a string is refused", () => {
+  const key = { length: 5, 0: "p", 1: "o", 2: "t", 3: "a", 4: "_", toJSON: () => "qrz" }
+  assert.equal(isValidHookKey("settingsPanel", "pota", key as unknown as string), false)
+})
+
 test("isValidHookKey: categories outside the rule are always valid, any key", () => {
   assert.equal(isValidHookKey("form", "pota", "spots"), true)
   assert.equal(isValidHookKey("lookup", "pota", "anything"), true)

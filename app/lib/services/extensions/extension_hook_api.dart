@@ -293,7 +293,7 @@ mixin _ExtensionHookApi {
   Set<String> get _loadedExtensionKeys;
   ValueNotifier<int> get runtimeGeneration;
   void invalidateHookContext();
-  Future<void> presentResultMessage(Map<String, dynamic> message, {String ns});
+  Future<void> presentResultMessage(Map<String, dynamic> message, {String ns, String? accountsOf});
 
   /// Fans a call out to every hook in `category` via `invokeHookAll`,
   /// flattens each hook's returned list, and tags every item with
@@ -438,7 +438,7 @@ mixin _ExtensionHookApi {
         if (entry['ok'] != true || entry['value'] is! Map) continue;
         final value = (entry['value'] as Map).cast<String, dynamic>();
         if (value['enabled'] != true) continue;
-        sources.add({...value, 'hookKey': entry['key']});
+        sources.add({...value, 'hookKey': entry['key'], 'extensionKey': entry['extensionKey']});
       }
       if (sources.isEmpty) return sources;
       // What the Spotting control names each source's icon with.
@@ -730,11 +730,16 @@ mixin _ExtensionHookApi {
         }
       }),
     );
+    // Whose each source is, as [suggestSpotSources] recorded it from the
+    // kernel: the account a result's action opens must be that extension's.
+    final registeredBy = {for (final source in sources) source['hookKey']: source['extensionKey']};
     for (final entry in entries) {
       debugPrint('[spots] ${hook.method} via ${entry.key}: ${entry.value}');
       final userMessage = entry.value['userMessage'];
       if (userMessage is Map) {
-        unawaited(presentResultMessage(userMessage.cast<String, dynamic>(), ns: entry.key)); // the result is the caller's at once; a dialog stays up on its own
+        final owner = registeredBy[entry.key];
+        // the result is the caller's at once; a dialog stays up on its own
+        unawaited(presentResultMessage(userMessage.cast<String, dynamic>(), ns: entry.key, accountsOf: owner is String ? owner : null));
       }
     }
     return {for (final entry in entries) entry.key: entry.value};

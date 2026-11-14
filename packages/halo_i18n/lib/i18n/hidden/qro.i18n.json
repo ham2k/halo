@@ -2168,6 +2168,7 @@
       "connectedTo": "CONNECTED TO ${label}",
       "connect": "CONNECT",
       "signsInAt": "SIGNS IN AT ${host}, FOR ${extension}",
+      "oauthClientRegisteredTo": "THIS SIGN-IN IS REGISTERED TO ${owner}, SO ${extension} CAN'T USE IT",
       "disconnect": "DISCONNECT",
       "connectedAs": "CONNECTED AS",
       "test": "TEST",

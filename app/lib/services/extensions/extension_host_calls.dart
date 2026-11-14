@@ -1016,7 +1016,7 @@ class _ExtensionHostCalls {
           title: message.title,
           text: message.text,
           actions: message.actions,
-          onOpenAccount: _service.onOpenAccount,
+          onOpenAccount: _service.accountOpenerFor(ns),
           images: extensionImagesFor(_service, ns),
         ),
       );
@@ -1095,7 +1095,7 @@ class _ExtensionHostCalls {
       icon: params['icon'] as String?,
       title: params['title'] as String?,
       text: params['text'] as String? ?? '',
-      actions: noticeActionsFromJson(params['actions'], onOpenAccount: _service.onOpenAccount, images: extensionImagesFor(_service, ns)),
+      actions: noticeActionsFromJson(params['actions'], onOpenAccount: _service.accountOpenerFor(ns), images: extensionImagesFor(_service, ns)),
       extensionKey: ns,
     );
     return null;
@@ -1243,7 +1243,7 @@ class _ExtensionHostCalls {
         ? null
         : declarativeActionHandler(
             (action as Map<dynamic, dynamic>).cast<String, dynamic>(),
-            onOpenAccount: _service.onOpenAccount,
+            onOpenAccount: _service.accountOpenerFor(params['ns'] as String?),
             images: extensionImagesFor(_service, params['ns'] as String?),
           );
     if (action != null && onTap == null) throw ExtensionHostException("fyi refused: 'action' is not a link, dialog or account action");

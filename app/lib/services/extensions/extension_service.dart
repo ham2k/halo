@@ -566,6 +566,14 @@ class ExtensionService
         // not throw here and leave every extension dark.
         userAgent: await ham2kUserAgentOrFallback(),
         userAgentOverrides: userAgentOverrides,
+        // The extensions not loading still own their keys: the app resolves a
+        // key's owner among every available extension (owningExtensionOf,
+        // networkGrantFor), and a switched-off one keeps its stored
+        // credentials, so no loaded bundle may define under one of them.
+        reservedKeys: [
+          for (final info in available)
+            if (!loaded.contains(info.key)) info.key,
+        ],
         // Handed to the boot itself, not pushed after it returns: `start`
         // evaluates every bundle AND runs their activations, so a clock that
         // arrives afterwards has already missed them and an extension reading a
@@ -963,14 +971,27 @@ class ExtensionService
   /// actions (an extension's "reconnect your account" button).
   OpenAccount? onOpenAccount;
 
+  /// [onOpenAccount] for an action [extensionKey] put in front of the
+  /// operator: it opens that extension's own accounts and no other's, whose
+  /// sign-in and disconnect would otherwise appear as part of its flow. An
+  /// action no extension is known to have sent opens nothing.
+  OpenAccount accountOpenerFor(String? extensionKey) => (key, {subkey}) {
+    if (extensionKey == null || !accountKvKeyBelongsTo(extensionKey, key)) {
+      debugPrint('[extensions] account action "$key" ignored: not an account of "$extensionKey"');
+      return;
+    }
+    onOpenAccount?.call(key, subkey: subkey);
+  };
+
   /// See [presentExtensionResultMessage] — wired to the bridge's footer write,
   /// so a hook result's status message is held in order with the extension's
-  /// own, and to this service's account opener.
+  /// own, and to the account opener of [accountsOf], the extension whose
+  /// hook returned it.
   @override
-  Future<void> presentResultMessage(Map<String, dynamic> message, {String ns = 'extensions'}) => presentExtensionResultMessage(
+  Future<void> presentResultMessage(Map<String, dynamic> message, {String ns = 'extensions', String? accountsOf}) => presentExtensionResultMessage(
     message,
     writeStatus: _hostCalls.writeResultMessage,
-    onOpenAccount: onOpenAccount,
+    onOpenAccount: accountOpenerFor(accountsOf),
     ns: ns,
     images: extensionImagesFor(this, ns),
   );

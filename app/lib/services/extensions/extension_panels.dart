@@ -44,7 +44,20 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource, PanelC
         if (entry['ok'] == true && entry['value'] is Map) {
           final panel = (entry['value'] as Map).cast<String, dynamic>();
           final extensionKey = panel['extensionKey'];
-          final owner = extensionKey is String ? owningExtension(extensionKey, availableExtensions, (ExtensionInfo info) => info.key) : null;
+          // A panel is its own extension's, by the kernel's namespacing rule,
+          // checked again here: its panel key names the secrets the form is
+          // filled from, and its hook key the extension the form is handed to.
+          final panelKey = panel['panelKey'];
+          final hookKey = panel['hookKey'];
+          if (extensionKey is! String ||
+              panelKey is! String ||
+              hookKey is! String ||
+              !accountKvKeyBelongsTo(extensionKey, panelKey) ||
+              !accountKvKeyBelongsTo(extensionKey, hookKey)) {
+            debugPrint('[extensions] settings panel $panelKey not shown: not in the namespace of "$extensionKey"');
+            continue;
+          }
+          final owner = owningExtension(extensionKey, availableExtensions, (ExtensionInfo info) => info.key);
           // Only what the app shipped is trusted with whatever it registers.
           // A panel nobody can be found to own gets the narrowest placement.
           // One whose manifest does not declare `settingsPanel` is not shown:
@@ -184,15 +197,28 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource, PanelC
   /// returned — that tier owns its own persistence, so nothing is
   /// overlaid for them. `fieldType: 'account'` fields are resolved here
   /// regardless of tier — neither tier can know live account connection
-  /// status itself, since that's entirely host-owned (see AccountHook).
-  Future<Map<String, dynamic>?> getSettingsPanelDefinition({required String hookKey, required String panelKey, required String kind}) async {
+  /// status itself, since that's entirely host-owned (see AccountHook). Only
+  /// [extensionKey]'s own accounts are resolved: the panel names the account,
+  /// and naming another extension's must not tell it who is connected there.
+  Future<Map<String, dynamic>?> getSettingsPanelDefinition({
+    required String hookKey,
+    required String panelKey,
+    required String kind,
+    required String extensionKey,
+  }) async {
     final host = this.host;
     if (host == null) return null;
     try {
       final result = await host.invoke(Hooks.settingsPanelGetDefinition, key: hookKey, args: {'panelKey': panelKey}, timeout: const Duration(seconds: 5));
       if (result is! Map) return null;
       final definition = Map<String, dynamic>.from(result);
-      final elements = ((definition['elements'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      // A field naming another extension's account is left out: its row
+      // would read as the app's own word on that account, and its button
+      // would open that account's sign-in from inside this panel.
+      final elements = [
+        for (final e in (definition['elements'] as List?) ?? const [])
+          if (!_namesAnotherAccount(e as Map, extensionKey)) Map<String, dynamic>.from(e),
+      ];
       for (final el in elements) {
         if (el['type'] != 'field') continue;
         final fieldKey = el['key'] as String?;
@@ -212,6 +238,16 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource, PanelC
       debugPrint('[extensions] getSettingsPanelDefinition failed: $e');
       return null;
     }
+  }
+
+  /// Whether [element] is an account field naming an account that is not
+  /// [extensionKey]'s own.
+  static bool _namesAnotherAccount(Map<dynamic, dynamic> element, String extensionKey) {
+    if (element['type'] != 'field' || element['fieldType'] != 'account') return false;
+    final accountKey = (element['account'] as Map?)?['key'];
+    if (accountKey is! String || accountKvKeyBelongsTo(extensionKey, accountKey)) return false;
+    debugPrint('[extensions] settings panel field "${element['key']}" not shown: account "$accountKey" is not in the namespace of "$extensionKey"');
+    return true;
   }
 
   /// `{connected, label}` for a `fieldType: 'account'` field — `label` is

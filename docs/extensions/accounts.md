@@ -66,7 +66,13 @@ registerHook("account", {
   names, must be in your `domains`, over https and off the local network,
   and the document must name your `issuer` as its own; otherwise the login
   does not start. The account pane names the issuer's host and your
-  extension before the operator signs in.
+  extension before the operator signs in. A client Ham2K registered for one
+  of its own extensions (SOTA's `polo`, SpotterBot's `halo`) signs in for
+  that extension alone: the login does not start when the issuer or either
+  endpoint is that client's host, or when `redirectUrl` or
+  `webhookRedirectUrl` is one of that extension's own custom-scheme
+  redirects. The app takes a code only on the custom-scheme redirect the
+  login sent, and not when the provider says another issuer gave it.
 - **`synchronizable: true`** syncs the stored credentials across the
   operator's Apple devices through iCloud Keychain; false keeps them on the
   device. No effect elsewhere. Set it only for a login that is genuinely the
@@ -95,7 +101,8 @@ the batching and the dirty flags; the transport only sends an
 already-selected payload and returns the reply, so sync keeps working even
 if the runtime is wedged. One transport exists, Ham2K's own LoFi; the seam
 is documented so a reader knows what it is, not because a second is
-expected soon.
+expected soon. The app takes it from `ham2k-lofi` alone: a `syncTransport`
+any other extension registers is refused, with a line in the log.
 
 **Called:** one hook, the registered transport, by the app's sync engine.
 `SyncTransportHook` in `dist/index.d.ts` is the contract; the required

@@ -37,6 +37,7 @@ class _HostIsolateInit {
   final SendPort mainPort;
   final String kernelSource;
   final List<({String key, String source, int? api})> bundles;
+  final List<String> reservedKeys;
   final Map<String, List<String>> fetchAllowlists;
   final Map<String, List<String>> webSocketAllowlists;
 
@@ -59,6 +60,7 @@ class _HostIsolateInit {
     required this.mainPort,
     required this.kernelSource,
     required this.bundles,
+    required this.reservedKeys,
     required this.fetchAllowlists,
     required this.webSocketAllowlists,
     required this.secrets,
@@ -89,6 +91,7 @@ Future<void> _hostIsolateMain(_HostIsolateInit init) async {
       init.kernelSource,
       [for (final b in init.bundles) ExtensionBundle(key: b.key, source: b.source, api: b.api)],
       clock: ClockTravelState(anchorRealMillis: init.clockAnchorRealMillis, anchorVirtualMillis: init.clockAnchorVirtualMillis, speed: init.clockSpeed),
+      reservedKeys: init.reservedKeys,
     );
     init.mainPort.send({'type': 'ready', 'loadMillis': loadMillis, 'engine': core.engineDescription});
   } catch (e, st) {
@@ -266,7 +269,12 @@ class _HostCore {
 
   String get engineDescription => _js.engineDescription;
 
-  Future<int> init(String kernelSource, List<ExtensionBundle> bundles, {ClockTravelState clock = const ClockTravelState.real()}) async {
+  Future<int> init(
+    String kernelSource,
+    List<ExtensionBundle> bundles, {
+    ClockTravelState clock = const ClockTravelState.real(),
+    Iterable<String> reservedKeys = const [],
+  }) async {
     final stopwatch = Stopwatch()..start();
     _js = createEngineRuntime();
     _js.onMessage(_onPoloMessage);
@@ -276,7 +284,7 @@ class _HostCore {
       // `load` is async, but on native every evaluation in it runs before it
       // returns its future, so the wrapper times the whole boot — and host
       // calls answered during it count as part of it, not on top of it.
-      await _busy('load', () => _js.load(kernelSource, bundles, clock: clock));
+      await _busy('load', () => _js.load(kernelSource, bundles, clock: clock, reservedKeys: reservedKeys));
     } catch (e) {
       _timers.dispose(); // a timer set while activating may already be armed
       _js.dispose();
@@ -636,10 +644,14 @@ class _HostCore {
   static String _bundleKeyFor(Map<String, List<String>> allowlists, String? extensionKey) {
     if (extensionKey == null) return '';
     if (allowlists.containsKey(extensionKey)) return extensionKey;
+    // The longest: `k-radio-x` loaded beside `k-radio` owns `k-radio-x-y`,
+    // as the kernel decided when it let `k-radio-x` define it, and must not
+    // run under the shorter bundle's domains and budget.
+    String? owner;
     for (final key in allowlists.keys) {
-      if (_belongsTo(extensionKey, key)) return key;
+      if (_belongsTo(extensionKey, key) && key.length > (owner?.length ?? -1)) owner = key;
     }
-    return extensionKey;
+    return owner ?? extensionKey;
   }
 
   /// Admits one more host call from [slot], or refuses it: a bundle may have

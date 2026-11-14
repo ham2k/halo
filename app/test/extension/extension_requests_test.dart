@@ -30,8 +30,15 @@ void main() {
         return answers['${request.url}'] ?? http.Response('ok', 200);
       });
 
-  Future<http.Response> get(ExtensionNetworkGrant grant, String url, {bool dataFile = false, Uri? named, Map<String, String> headers = const {}}) async {
-    final client = ExtensionClient(grant, named: named, dataFile: dataFile, clients: recording(), onWeb: false);
+  Future<http.Response> get(
+    ExtensionNetworkGrant grant,
+    String url, {
+    bool dataFile = false,
+    Uri? named,
+    Map<String, String> headers = const {},
+    bool followRedirects = true,
+  }) async {
+    final client = ExtensionClient(grant, named: named, dataFile: dataFile, followRedirects: followRedirects, clients: recording(), onWeb: false);
     try {
       return await http.Response.fromStream(await client.send(http.Request('GET', Uri.parse(url))..headers.addAll(headers)));
     } finally {
@@ -132,6 +139,16 @@ void main() {
       answers['https://llota.app/lakes.csv'] = http.Response('', 302, headers: {'location': 'https://cdn.example/lakes.csv'});
       await get(llota, 'https://llota.app/lakes.csv', headers: {'Authorization': 'Bearer t'});
       expect(sent.map((s) => s.authorization), ['Bearer t', null]);
+    });
+
+    // An OAuth token exchange posts a code and its verifier: a 307 keeps the
+    // body, so following one would hand both to a host the sign-in was
+    // never checked against.
+    test('is the answer, not followed, where the client is told so', () async {
+      answers['https://llota.app/token'] = http.Response('', 307, headers: {'location': 'https://cdn.example/token'});
+      final response = await get(llota, 'https://llota.app/token', followRedirects: false);
+      expect(response.statusCode, 307);
+      expect(sent.map((s) => '${s.url}'), ['https://llota.app/token']);
     });
 
     test('is followed only so far', () async {

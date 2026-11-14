@@ -93,7 +93,7 @@ http.Client dataFileClient(ExtensionNetworkGrant? grant, {Uri? named, required E
 /// Sends an [http.Request] only, which is every request the app makes for
 /// an extension; a 303, or a 301 or 302 to a POST, continues as a GET.
 class ExtensionClient extends http.BaseClient {
-  ExtensionClient(this.grant, {this.named, this.dataFile = false, this.clients = defaultExtensionClient, this.onWeb = kIsWeb});
+  ExtensionClient(this.grant, {this.named, this.dataFile = false, this.followRedirects = true, this.clients = defaultExtensionClient, this.onWeb = kIsWeb});
 
   final ExtensionNetworkGrant grant;
 
@@ -108,6 +108,12 @@ class ExtensionClient extends http.BaseClient {
   final bool dataFile;
 
   final bool onWeb;
+
+  /// Whether a redirect is followed at all; without it the redirect is the
+  /// answer. An OAuth token exchange posts a code and its verifier, which go
+  /// to the endpoint the sign-in was checked against and nowhere else. A
+  /// browser follows redirects whatever this says.
+  final bool followRedirects;
 
   /// Where each hop's client comes from.
   final ExtensionClientFactory clients;
@@ -130,7 +136,7 @@ class ExtensionClient extends http.BaseClient {
       // sent as spelled it would cross the network in the clear.
       final response = await client.send(_copy(current, url: extensionFetchUri(url, onWeb: false), followRedirects: onWeb));
       final location = response.headers['location'];
-      if (onWeb || !_redirects.contains(response.statusCode) || location == null) return response;
+      if (onWeb || !followRedirects || !_redirects.contains(response.statusCode) || location == null) return response;
       await response.stream.drain<void>();
       if (hop >= kMaxFetchRedirects) throw http.ClientException('more than $kMaxFetchRedirects redirects', url);
       final asGet = response.statusCode == 303 || ((response.statusCode == 301 || response.statusCode == 302) && current.method == 'POST');

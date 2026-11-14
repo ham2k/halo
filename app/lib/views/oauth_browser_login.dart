@@ -119,8 +119,9 @@ class OAuthBrowserLoginBody extends StatefulWidget {
   final Stream<PushEvent>? webhookEvents;
   final Future<List<Map<String, dynamic>>> Function()? fetchWebhookEvents;
 
-  /// The authorization code came home.
-  final void Function(String code) onCode;
+  /// The authorization code came home, with the issuer the provider says
+  /// gave it (RFC 9207's `iss`) when it says.
+  final void Function(String code, String? issuedBy) onCode;
 
   /// The login ended in a message rather than a code.
   final void Function(String error) onError;
@@ -262,7 +263,8 @@ class _OAuthBrowserLoginBodyState extends State<OAuthBrowserLoginBody> {
         final error = payload['error_description'] ?? payload['error'];
         final code = payload['code'];
         if (code is String && code.isNotEmpty) {
-          widget.onCode(code);
+          final issuedBy = payload['iss'];
+          widget.onCode(code, issuedBy is String ? issuedBy : null);
         } else {
           // Either the provider's own `error`, or — no `code` and no
           // `error` — a malformed/incomplete relay payload. Both end the

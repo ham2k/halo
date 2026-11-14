@@ -156,8 +156,9 @@ Future<List<ScannedSetting>> _scanExtensionSettings(HaLoServices services) async
     final hookKey = panel['hookKey'] as String?;
     final panelKey = panel['panelKey'] as String?;
     final kind = panel['kind'] as String?;
-    if (hookKey == null || panelKey == null || kind == null) continue;
-    final definition = await services.extensions.getSettingsPanelDefinition(hookKey: hookKey, panelKey: panelKey, kind: kind);
+    final extensionKey = panel['extensionKey'] as String?;
+    if (hookKey == null || panelKey == null || kind == null || extensionKey == null) continue;
+    final definition = await services.extensions.getSettingsPanelDefinition(hookKey: hookKey, panelKey: panelKey, kind: kind, extensionKey: extensionKey);
     final rawElements = (definition?['elements'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
     final resolved = await services.systemLists.resolveInElements(rawElements);
     final elements = filterElementsForEnvironment(resolved);

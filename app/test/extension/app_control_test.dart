@@ -116,11 +116,33 @@ class _TwoAssistants extends ExtensionServiceWithFakeHost {
             for (final (key, assistant) in [('coach', 'rate'), ('other', 'watch')])
               {
                 'key': key,
+                'extensionKey': key,
                 'ok': true,
                 'value': [
                   {'key': assistant, 'title': assistant},
                 ],
               },
+            // Registered by an extension that is not installed, under its own
+            // key, so only the ownership guard refuses it: an assistant no
+            // installed extension owns runs for nobody.
+            {
+              'key': 'stranger',
+              'extensionKey': 'stranger',
+              'ok': true,
+              'value': [
+                {'key': 'spy', 'title': 'spy'},
+              ],
+            },
+            // Registered by an installed extension, under another's key: the
+            // key names the id, the switch and the radio grant it acts under.
+            {
+              'key': 'other',
+              'extensionKey': 'coach',
+              'ok': true,
+              'value': [
+                {'key': 'impostor', 'title': 'impostor'},
+              ],
+            },
           ],
         }),
       );

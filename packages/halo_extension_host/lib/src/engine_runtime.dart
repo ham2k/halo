@@ -41,11 +41,15 @@ String bridgeCall(String token, String entry, [List<Object?> args = const []]) =
     '__halo.bridge(${jsonEncode(token)}, ${jsonEncode(entry)}${[for (final arg in args) ', ${jsonEncode(arg)}'].join()})';
 
 /// Every key the kernel must know before any bundle evaluates: those the
-/// [bundles] are loaded under, and the retired built-ins' names, kept for
-/// nobody. A bundle may define sub-extensions only under its own key, and
-/// never under a longer one of these: a key that is a bundle of its own, or a
-/// name whose stored credentials outlive the extension that held it.
-List<String> declaredBundleKeys(Iterable<ExtensionBundle> bundles) => [for (final b in bundles) b.key, ...kRetiredBuiltIns.keys];
+/// [bundles] are loaded under, the [reserved] keys of extensions the app has
+/// but is not loading (switched off, or behind an experiment), and the
+/// retired built-ins' names, kept for nobody. A bundle may define
+/// sub-extensions only under its own key, and never under a longer one of
+/// these: a key that is an extension of its own, loaded or not, keeps its
+/// grants and its stored credentials, and a bundle defining under it would be
+/// handed both.
+List<String> declaredBundleKeys(Iterable<ExtensionBundle> bundles, [Iterable<String> reserved = const []]) =>
+    {for (final b in bundles) b.key, ...reserved, ...kRetiredBuiltIns.keys}.toList();
 
 /// The kernel's `beginBundle` call for [bundle]: the host declares the key
 /// the bundle may define, and the API level it was built for.
@@ -94,8 +98,14 @@ abstract class EngineRuntime {
   /// Loads the kernel bundle, then every extension bundle in order, then
   /// activates all extensions. Throws if any step fails.
   /// [clock] is applied BEFORE any bundle evaluates, so extensions activate on
-  /// the same clock the app is on (see [ClockTravelState]).
-  Future<void> load(String kernelSource, List<ExtensionBundle> bundles, {ClockTravelState clock = const ClockTravelState.real()});
+  /// the same clock the app is on (see [ClockTravelState]). [reservedKeys] are
+  /// declared with the bundles' own ([declaredBundleKeys]).
+  Future<void> load(
+    String kernelSource,
+    List<ExtensionBundle> bundles, {
+    ClockTravelState clock = const ClockTravelState.real(),
+    Iterable<String> reservedKeys = const [],
+  });
 
   /// Replaces one already-loaded bundle in place: unloads whatever it
   /// contributed, evaluates [bundle]'s new source, and activates what that

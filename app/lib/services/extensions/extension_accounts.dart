@@ -145,7 +145,20 @@ mixin _ExtensionAccounts {
       final accounts = <Map<String, dynamic>>[];
       for (final entry in entries) {
         if (entry['ok'] == true && entry['value'] is Map) {
-          accounts.add((entry['value'] as Map).cast<String, dynamic>());
+          final account = (entry['value'] as Map).cast<String, dynamic>();
+          // The kernel's own record of who registered it (it builds the
+          // definition, the bundle supplies only its label, description,
+          // fields and oauth2), against the keys the definition names: the
+          // account pane reads and tests the credentials stored under `kvKey`,
+          // with the extension named `key`.
+          final owner = account['extensionKey'];
+          final key = account['key'];
+          final kvKey = account['kvKey'];
+          if (owner is! String || key is! String || kvKey is! String || !accountKvKeyBelongsTo(owner, key) || !accountKvKeyBelongsTo(owner, kvKey)) {
+            debugPrint('[extensions] account $key not offered: not in the namespace of "$owner"');
+            continue;
+          }
+          accounts.add(account);
         }
       }
       return accounts;

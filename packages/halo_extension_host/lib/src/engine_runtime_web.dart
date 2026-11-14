@@ -331,7 +331,12 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
   }
 
   @override
-  Future<void> load(String kernelSource, List<ExtensionBundle> bundles, {ClockTravelState clock = const ClockTravelState.real()}) async {
+  Future<void> load(
+    String kernelSource,
+    List<ExtensionBundle> bundles, {
+    ClockTravelState clock = const ClockTravelState.real(),
+    Iterable<String> reservedKeys = const [],
+  }) async {
     // Everything after the load travels on this channel's port, which only
     // the bootstrap's closure holds: the worker's own channel is open to
     // every bundle in it, both ways (see the bootstrap).
@@ -379,7 +384,7 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
       'bundles': [
         for (final b in bundles) {'key': b.key, 'source': b.source, 'api': b.api},
       ],
-      'declaredKeys': declaredBundleKeys(bundles),
+      'declaredKeys': declaredBundleKeys(bundles, reservedKeys),
       // Applied by the bootstrap between the kernel and the bundles, so the
       // sandbox's Date is already on the app's clock when they evaluate.
       if (!clock.isReal) 'clock': {'anchorRealMillis': clock.anchorRealMillis, 'anchorVirtualMillis': clock.anchorVirtualMillis, 'speed': clock.speed},

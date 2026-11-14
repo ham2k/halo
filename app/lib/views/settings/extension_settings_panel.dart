@@ -11,6 +11,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../extension_markdown_images.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import '../../services/extensions/extension_service.dart' show accountKvKeyBelongsTo;
 import '../../services/halo_services.dart';
 import '../../services/link_opener.dart';
 import '../../settings/settings_catalog.dart' show elementSearchScore;
@@ -182,7 +183,12 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
     try {
       do {
         _reloadPending = false;
-        var definition = await widget.services.extensions.getSettingsPanelDefinition(hookKey: _hookKey, panelKey: _panelKey, kind: _kind);
+        var definition = await widget.services.extensions.getSettingsPanelDefinition(
+          hookKey: _hookKey,
+          panelKey: _panelKey,
+          kind: _kind,
+          extensionKey: widget.descriptor['extensionKey'] as String,
+        );
         // Extension-declared fields can reference system lists too.
         if (definition?['elements'] is List) {
           final resolved = await widget.services.systemLists.resolveInElements((definition!['elements'] as List).cast<Map<String, dynamic>>());
@@ -289,13 +295,22 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
     }
     _accountsCache = accounts;
     Map<String, dynamic>? account;
+    // The panel's own extension's accounts only, by the same rule that kept
+    // the field on it: a panel naming another's would open that account's
+    // sign-in and disconnect from inside itself.
+    final panelExtension = widget.descriptor['extensionKey'] as String;
     for (final a in accounts) {
-      if (a['kvKey'] == accountKey) {
+      final registeredBy = a['extensionKey'];
+      if (a['kvKey'] == accountKey && registeredBy is String && accountKvKeyBelongsTo(panelExtension, registeredBy)) {
         account = a;
         break;
       }
     }
-    if (account == null || !mounted) return;
+    if (account == null) {
+      debugPrint('[extensions] settings panel of "$panelExtension": no account "$accountKey" of its own to open');
+      return;
+    }
+    if (!mounted) return;
     await showModalPane<void>(
       context,
       title: account['label'] as String,

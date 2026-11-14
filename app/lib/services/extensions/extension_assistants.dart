@@ -30,17 +30,34 @@ mixin _ExtensionAssistants implements AssistantExtensionSource {
       );
       final results = <Map<String, dynamic>>[];
       for (final entry in entries) {
-        // The install warning, and the re-ask on an update, read the
-        // manifest's `hooks`: an assistant it does not declare is one the
-        // operator was never warned about, so it does not run.
-        final hookKey = entry['key'];
-        final owner = hookKey is String ? owningExtension(hookKey, availableExtensions, (ExtensionInfo info) => info.key) : null;
-        if (owner != null && owner.source != ExtensionSource.asset && !owner.hooks.contains(HookCategories.assistant)) {
-          debugPrint('[extensions] assistant hook "$hookKey" ignored: "${owner.key}" does not declare "${HookCategories.assistant}" in its manifest hooks');
-          continue;
-        }
+        // A failed call yields nothing, and its own error is the reason: a
+        // timed-out entry the host fills in carries no owner to check.
         if (entry['ok'] != true) {
           debugPrint('[extensions] assistant hook "${entry['key']}" getAssistants failed: ${entry['error']}');
+          continue;
+        }
+        // The install warning, and the re-ask on an update, read the
+        // manifest's `hooks`: an assistant it does not declare is one the
+        // operator was never warned about, so it does not run. Whose it is
+        // comes from the kernel's record of who registered it, never from the
+        // hook key, which the extension chose; one no installed extension owns
+        // runs for nobody.
+        final hookKey = entry['key'];
+        final registeredBy = entry['extensionKey'];
+        final owner = registeredBy is String ? owningExtension(registeredBy, availableExtensions, (ExtensionInfo info) => info.key) : null;
+        if (owner == null) {
+          debugPrint('[extensions] assistant hook "$hookKey" ignored: "$registeredBy" is no installed extension');
+          continue;
+        }
+        // The hook key names the assistant's id, its switch, and the extension
+        // whose radio grant and spot marks it acts under: its own, by the
+        // kernel's namespacing rule, checked again here.
+        if (hookKey is! String || registeredBy is! String || !accountKvKeyBelongsTo(registeredBy, hookKey)) {
+          debugPrint('[extensions] assistant hook "$hookKey" ignored: not in the namespace of "$registeredBy"');
+          continue;
+        }
+        if (owner.source != ExtensionSource.asset && !owner.hooks.contains(HookCategories.assistant)) {
+          debugPrint('[extensions] assistant hook "$hookKey" ignored: "${owner.key}" does not declare "${HookCategories.assistant}" in its manifest hooks');
           continue;
         }
         if (entry['value'] is! List) {

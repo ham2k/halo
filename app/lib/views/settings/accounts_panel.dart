@@ -23,6 +23,7 @@ import '../../config/navigation.dart';
 import '../../services/halo_services.dart';
 import '../../services/deep_link_service.dart';
 import '../../services/error_reporting_service.dart';
+import '../../services/extensions/oauth_clients.dart';
 import '../../services/extensions/extension_service.dart';
 import '../../services/push_service.dart';
 import '../extensions_panel.dart';
@@ -202,8 +203,14 @@ Future<void> showAccountDialogByKey(HaLoServices services, String accountKey, {S
 /// A sign-in the account pane is waiting on: what the waiting body needs to
 /// render, and the completer `_doOAuth` is parked on until something — the
 /// relay, a deep link, the operator, or the pane's own disposal — ends it.
+String _withoutTrailingSlash(String url) => url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+
 class _PendingOAuthLogin {
   final Uri authUri;
+
+  /// The issuer this sign-in was started at: a code a provider says another
+  /// issuer gave (RFC 9207's `iss`) is not this sign-in's.
+  final String issuer;
   final String? expectedState;
   final Stream<PushEvent>? webhookEvents;
   final Future<List<Map<String, dynamic>>> Function()? fetchWebhookEvents;
@@ -213,7 +220,7 @@ class _PendingOAuthLogin {
   /// than a code — read once, by the `_doOAuth` the completion wakes.
   String? error;
 
-  _PendingOAuthLogin({required this.authUri, this.expectedState, this.webhookEvents, this.fetchWebhookEvents});
+  _PendingOAuthLogin({required this.authUri, required this.issuer, this.expectedState, this.webhookEvents, this.fetchWebhookEvents});
 }
 
 /// One extension account's credentials, shown as a Modal Pane
@@ -266,13 +273,20 @@ class _AccountPaneState extends State<AccountPane> {
   /// `complete` where the route pop this replaces was forgiving, and two
   /// results really can race — a deep link the OS delivers while the operator
   /// is already pressing Cancel, or `dispose` after either.
-  void _resolveOAuth(_PendingOAuthLogin? login, String? code, {String? error}) {
+  void _resolveOAuth(_PendingOAuthLogin? login, String? code, {String? error, String? issuedBy}) {
     if (login == null) return;
     if (login.completer.isCompleted) {
       // Dropping it is right — this login is already over — but dropping it
       // in silence leaves no record that an answer came back after the fact.
       debugPrint('[oauth] a result arrived after its login had already ended');
       return;
+    }
+    if (code != null && issuedBy != null && _withoutTrailingSlash(issuedBy) != _withoutTrailingSlash(login.issuer)) {
+      // An issuer of the extension's own that sent the browser on to another
+      // service: the code is that service's, for its client.
+      debugPrint('[oauth] a code issued by "$issuedBy" refused for a sign-in at "${login.issuer}"');
+      code = null;
+      error = t.settings.accounts.loginIncompleteResponse;
     }
     login.error = error;
     login.completer.complete(code);
@@ -438,7 +452,32 @@ class _AccountPaneState extends State<AccountPane> {
     final useRelay = oauthUsesWebhookRelay();
     final redirectUrl = (useRelay ? oauth2['webhookRedirectUrl'] : oauth2['redirectUrl']) as String?;
 
+    // A client Ham2K registered for one extension signs in for that one
+    // alone: the tokens it gets are the operator's account there
+    // (oauth_clients.dart). Asked of the issuer and both redirects before
+    // anything is fetched, and again of the endpoints the issuer's discovery
+    // document names.
+    bool registeredToAnother(String? registeredTo) {
+      if (registeredTo == null || registeredTo == _ownerKey) return false;
+      final locale = LocaleSettings.currentLocale.languageCode;
+      widget.services.statusBar.setMessage(
+        key: 'accounts:login',
+        text: t.settings.accounts.oauthClientRegisteredTo(
+          owner: widget.services.extensions.owningExtensionOf(registeredTo)?.nameFor(locale) ?? registeredTo,
+          extension: widget.services.extensions.owningExtensionOf(_ownerKey)?.nameFor(locale) ?? '${widget.account['label']}',
+        ),
+      );
+      return true;
+    }
+
     try {
+      if (registeredToAnother(
+        registeredOAuthClientOwner([Uri.parse(issuer)], clientId) ??
+            registeredOAuthRedirectOwner(oauth2['redirectUrl'] as String?) ??
+            registeredOAuthRedirectOwner(oauth2['webhookRedirectUrl'] as String?),
+      )) {
+        return;
+      }
       if (redirectUrl == null) {
         // Only reachable if some future OAuth2 hook doesn't declare
         // webhookRedirectUrl — SOTA always does. Fail with the same relay
@@ -480,6 +519,7 @@ class _AccountPaneState extends State<AccountPane> {
       }
       if (response.statusCode != 200) throw Exception('Failed to load OIDC discovery: ${response.statusCode}');
       final endpoints = oauthEndpointsFrom(issuer: issuer, discovery: jsonDecode(response.body) as Map<String, dynamic>, grant: grant);
+      if (registeredToAnother(registeredOAuthClientOwner([endpoints.authorization, endpoints.token], clientId))) return;
 
       final codeVerifier = _randomString(64);
       final codeChallenge = _sha256Challenge(codeVerifier);
@@ -514,6 +554,7 @@ class _AccountPaneState extends State<AccountPane> {
 
       final login = _PendingOAuthLogin(
         authUri: authUri,
+        issuer: issuer,
         // The waiting body only resolves a login on the relay platforms; on
         // the deep-link ones the listener below is what ends it, so it gets
         // no relay wiring at all.
@@ -530,6 +571,7 @@ class _AccountPaneState extends State<AccountPane> {
         // it back through DeepLinkService. This listener is what completes
         // the login — the waiting body carries no relay wiring and never
         // resolves on its own.
+        final sentTo = Uri.parse(redirectUrl);
         linkSub = widget.services.deepLinks.links.listen((uri) {
           if (!DeepLinkService.isAuthCallback(uri)) return;
           if (uri.queryParameters['state'] != state) {
@@ -537,6 +579,14 @@ class _AccountPaneState extends State<AccountPane> {
             // for another login. Dropping it is right; dropping it in silence
             // leaves a pane waiting with no record that anything came back.
             debugPrint('[oauth] ignoring an auth callback for a different attempt');
+            return;
+          }
+          if (uri.scheme != sentTo.scheme || uri.host.toLowerCase() != sentTo.host.toLowerCase() || uri.path != sentTo.path) {
+            // This attempt's state on another redirect: the service sent
+            // another client's code home, after an issuer of the extension's
+            // own passed the browser on to it.
+            debugPrint('[oauth] refusing an auth callback on ${uri.replace(query: '')}, not the redirect this sign-in sent');
+            _resolveOAuth(login, null, error: t.settings.accounts.loginIncompleteResponse);
             return;
           }
           final callbackCode = uri.queryParameters['code'];
@@ -550,6 +600,7 @@ class _AccountPaneState extends State<AccountPane> {
             // rather than returning the operator to Connect with nothing
             // said and nothing to try differently.
             error: callbackError ?? (callbackCode == null ? t.settings.accounts.loginIncompleteResponse : null),
+            issuedBy: uri.queryParameters['iss'],
           );
         }, onError: (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'deep-link:auth-callback'));
       }
@@ -593,7 +644,7 @@ class _AccountPaneState extends State<AccountPane> {
       // succeeded. The extension's own refresh grant takes the same route
       // (halo_extension_host's extensionFetchUri). Judged as the endpoint the
       // discovery document named, not the proxy's address.
-      final tokenClient = ExtensionClient(grant, named: endpoints.token);
+      final tokenClient = ExtensionClient(grant, named: endpoints.token, followRedirects: false);
       final http.Response tokenResponse;
       try {
         tokenResponse = await tokenClient.post(
@@ -679,7 +730,7 @@ class _AccountPaneState extends State<AccountPane> {
               expectedState: oauthLogin.expectedState,
               webhookEvents: oauthLogin.webhookEvents,
               fetchWebhookEvents: oauthLogin.fetchWebhookEvents,
-              onCode: (code) => _resolveOAuth(oauthLogin, code),
+              onCode: (code, issuedBy) => _resolveOAuth(oauthLogin, code, issuedBy: issuedBy),
               onError: (error) => _resolveOAuth(oauthLogin, null, error: error),
               onCancel: () => _resolveOAuth(oauthLogin, null),
             ),
