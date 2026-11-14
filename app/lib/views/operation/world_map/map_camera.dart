@@ -37,88 +37,45 @@ class MapCamera {
   /// (the whole world when null), as far as keeps the view over them; a
   /// view wider than the bounds sits at their middle. A camera that [wraps]
   /// holds only the north and south, and brings the middle back into the
-  /// world the same place a world's breadth away. One that [cover]s, on a
-  /// world whose edge is a curve and with no bounds, draws the middle in
-  /// toward the world's own until every corner of the pane is on the world;
-  /// zoomed out past [coverZoom], it sits at the world's middle. On a curved
-  /// world with no bounds, the middle itself stays on the world.
-  factory MapCamera(
-    Size size,
-    MapProjection projection, {
-    required double zoom,
-    required Offset center,
-    Rect? bounds,
-    bool wraps = false,
-    bool cover = false,
-    double margin = 2,
-  }) {
+  /// world the same place a world's breadth away. On a curved world with no
+  /// bounds, the middle itself stays on the world; the pane's corners may
+  /// run past its edge, as they do at the zoom that fills the pane's height.
+  factory MapCamera(Size size, MapProjection projection, {required double zoom, required Offset center, Rect? bounds, bool wraps = false, double margin = 2}) {
     final world = projection.world;
     final scale = _fit(size, world, margin) * math.pow(2, zoom);
     if (scale <= 0) return MapCamera._(size, projection, zoom, center, scale, wraps);
     final limit = bounds ?? world;
     final halfW = size.width / 2 / scale, halfH = size.height / 2 / scale;
-    if (cover && bounds == null && projection is! RectangularProjection) {
-      return MapCamera._(size, projection, zoom, _drawnIn(projection, center, halfW, halfH), scale, wraps);
-    }
     double hold(double c, double half, double lo, double hi) => hi - lo <= 2 * half ? (lo + hi) / 2 : c.clamp(lo + half, hi - half);
     final x = wraps ? world.left + (center.dx - world.left) % world.width : hold(center.dx, halfW, limit.left, limit.right);
     var held = Offset(x, hold(center.dy, halfH, limit.top, limit.bottom));
     // A curved world fills its box only in part: held to the box alone, the
     // middle can come to rest past the edge, off the world, where it names
     // no place for the scene to keep.
-    if (bounds == null && projection is! RectangularProjection) held = _drawnIn(projection, held, 0, 0);
+    if (bounds == null && projection is! RectangularProjection) held = _drawnIn(projection, held);
     return MapCamera._(size, projection, zoom, held, scale, wraps);
   }
 
   static double _fit(Size size, Rect world, double margin) =>
       math.max(0.0, math.min((size.width - 2 * margin) / world.width, (size.height - 2 * margin) / world.height));
 
-  /// The least zoom at which a view that covers shows nothing past the
-  /// world's edge, or past [bounds]: the pane's full height of the world
-  /// when it [wraps], the box's height and breadth otherwise, and on a
-  /// world with a curved edge the largest view of the pane's shape that
-  /// fits inside it, about the world's middle.
-  static double coverZoom(Size size, MapProjection projection, {Rect? bounds, bool wraps = false, double margin = 2}) {
+  /// The zoom at which the world, or [bounds], fills the pane's height, pole
+  /// to pole, whatever the pane's width: the same rule on every projection.
+  static double coverZoom(Size size, MapProjection projection, {Rect? bounds, double margin = 2}) {
     final fit = _fit(size, projection.world, margin);
     if (fit <= 0) return 0;
-    double need;
-    if (bounds != null || projection is RectangularProjection) {
-      final limit = bounds ?? projection.world;
-      need = math.max(wraps ? 0.0 : size.width / limit.width, size.height / limit.height);
-    } else {
-      // Every view about the middle that fits is inside every larger one
-      // that fits, so the least scale that fits is found by halving.
-      var lo = fit, hi = fit * math.pow(2, 16);
-      for (var i = 0; i < 30; i++) {
-        final mid = math.sqrt(lo * hi);
-        _onWorld(projection, Offset.zero, size.width / 2 / mid, size.height / 2 / mid) ? hi = mid : lo = mid;
-      }
-      need = hi;
-    }
-    return math.max(0.0, math.log(need / fit) / math.ln2);
+    return math.max(0.0, math.log(size.height / (bounds ?? projection.world).height / fit) / math.ln2);
   }
 
-  /// Whether a view [halfW] by [halfH] either side of [center] lies on the
-  /// world: its middle, its corners and the middles of its sides, which is
-  /// enough on the convex worlds a curved edge bounds.
-  static bool _onWorld(MapProjection projection, Offset center, double halfW, double halfH) {
-    for (final dx in [-halfW, 0.0, halfW]) {
-      for (final dy in [-halfH, 0.0, halfH]) {
-        if (projection.toEarth(center.dx + dx, center.dy + dy) == null) return false;
-      }
-    }
-    return true;
-  }
-
-  /// [center], or the point nearest it toward the world's middle whose view
-  /// lies on the world. Those points make a convex set round the middle, so
-  /// the way in is found by halving.
-  static Offset _drawnIn(MapProjection projection, Offset center, double halfW, double halfH) {
-    if (_onWorld(projection, center, halfW, halfH)) return center;
+  /// [center], or the point nearest it toward the world's middle that is on
+  /// the world. A curved world is convex round its middle, so the way in is
+  /// found by halving.
+  static Offset _drawnIn(MapProjection projection, Offset center) {
+    if (projection.toEarth(center.dx, center.dy) != null) return center;
     var lo = 0.0, hi = 1.0;
     for (var i = 0; i < 24; i++) {
       final t = (lo + hi) / 2;
-      _onWorld(projection, center * t, halfW, halfH) ? lo = t : hi = t;
+      projection.toEarth(center.dx * t, center.dy * t) != null ? lo = t : hi = t;
     }
     return center * lo;
   }

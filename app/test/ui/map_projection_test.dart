@@ -161,28 +161,22 @@ void main() {
     });
   });
 
-  // A covering view that lets the pane run past a curved edge shows the
-  // panel's background in its corners; one that holds it too far in keeps
-  // the operator from zooming out to the widest view that fills the pane.
-  test('a view that covers fills the pane with the world at its widest, and a pan stops at the edge', () {
-    const pane = Size(400, 400);
+  // A view held in until the pane's corners are on a curved world leaps
+  // toward the middle the moment a zoom first lets them all fit there: a
+  // wheel notch in from a view panned to a pole carries it to the equator.
+  test('a view of a curved world panned to its top stays there at every zoom, held to the world\'s box', () {
+    const pane = Size(800, 400);
     for (final projection in <MapProjection>[const RobinsonProjection(0), AzimuthalProjection(const GridLocation(40, -74))]) {
-      final name = '${projection.runtimeType}';
-      final widest = MapCamera.coverZoom(pane, projection);
-      final corners = [Offset.zero, const Offset(400, 0), const Offset(0, 400), const Offset(400, 400)];
-      final camera = MapCamera(pane, projection, zoom: widest, center: Offset.zero, cover: true);
-      expect(corners.every((c) => camera.placeAt(c) != null), isTrue, reason: '$name: every corner on the world');
-      final wider = MapCamera(pane, projection, zoom: widest - 0.02, center: Offset.zero);
-      expect(corners.every((c) => wider.placeAt(c) != null), isFalse, reason: '$name: the least zoom that does');
-      final pushed = MapCamera(pane, projection, zoom: widest + 1, center: const Offset(0.3, -5), cover: true);
-      expect(corners.every((c) => pushed.placeAt(c) != null), isTrue, reason: '$name: panned off the top, held on it');
-      expect(pushed.center.dy, lessThan(-0.05), reason: '$name: as far toward it as the pane allows');
+      final world = projection.world;
+      for (var zoom = 0.1; zoom <= 3; zoom += 0.05) {
+        final camera = MapCamera(pane, projection, zoom: zoom, center: const Offset(0, -5));
+        if (camera.visible.height >= world.height) continue;
+        expect(camera.visible.top, closeTo(world.top, 1e-9), reason: '${projection.runtimeType} at zoom ${zoom.toStringAsFixed(2)}');
+      }
     }
-    // Plate carrée is half as tall as wide: in a square pane its height sets the widest view, and it still wraps.
+    // Plate carrée is half as tall as wide: in a square pane it still wraps, and only its height holds a pan.
     const plate = EquirectangularProjection(0);
-    final widest = MapCamera.coverZoom(pane, plate, wraps: true);
-    expect(MapCamera(pane, plate, zoom: widest, center: Offset.zero, wraps: true).visible.height, closeTo(plate.world.height, 1e-9));
-    final up = MapCamera(pane, plate, zoom: widest + 1, center: const Offset(4, -5), wraps: true, cover: true);
+    final up = MapCamera(const Size(400, 400), plate, zoom: 2, center: const Offset(4, -5), wraps: true);
     expect(up.visible.top, closeTo(plate.world.top, 1e-9));
   });
 

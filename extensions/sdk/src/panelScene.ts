@@ -476,7 +476,8 @@ export interface PanelSceneSpectrum {
     /** A rotator map's click or drag that turns the rotator (extension API 23); its `zoom` and `pan` are `native` or `off`. */
     turn?: "native" | "event" | "off"
     tune?: "native" | "event" | "off"
-    zoom?: "native" | "event" | "off"
+    /** On a `map` (extension API 25), also `center`: the wheel and a pinch zoom about the view's middle rather than the pointer. */
+    zoom?: "native" | "event" | "off" | "center"
     pan?: "native" | "event" | "off"
     split?: "native" | "event" | "off"
     levels?: "native" | "event" | "off"
@@ -1021,10 +1022,18 @@ export interface PanelSceneRotatorMap {
     /** On a `map` (extension API 25): what the view may be panned over; omitted, the whole world. An `east` less than `west` crosses the antimeridian. */
     bounds?: { north: number; south: number; west: number; east: number }
     /**
-     * On a `map` (extension API 25): the view never shows past the world's edge, or the bounds; the
-     * widest zoom is the one that fills the pane.
+     * On a `map` (extension API 25): the view zooms out no further than the world, or the bounds,
+     * fills the pane's height, pole to pole, whatever the pane's width. Without it the map zooms out
+     * until all of it shows, centered.
      */
     cover?: boolean
+    /**
+     * On a `map` (extension API 25) that goes round the world (no `bounds`, not azimuthal): the world
+     * repeats east and west across spare width, its markers and lines with it (the default). `false`
+     * shows it once, centered, and a pan east or west turns it under the view. Robinson, whose edges
+     * are curves, never repeats.
+     */
+    repeat?: boolean
   }
   /** The default decorations' beam, in degrees (30 by default; 0 draws none); an antenna whose device reports its own beam is drawn with that. */
   beamWidth?: PanelSceneSpectrumNumber

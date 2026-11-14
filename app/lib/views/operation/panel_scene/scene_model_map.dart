@@ -250,9 +250,15 @@ class SceneMapSpec {
   /// What the view may be panned over; null, the whole world.
   final ({double north, double south, double west, double east})? panBounds;
 
-  /// Whether the view stays on the world, or within [panBounds], never
-  /// showing past their edge: the widest zoom is the one that fills the pane.
+  /// Whether the view zooms out no further than the world, or [panBounds],
+  /// fills the pane's height, pole to pole, whatever its width; without it,
+  /// out to the whole world, centered.
   final bool panCover;
+
+  /// Whether a map that goes round the world (no [panBounds], not the
+  /// azimuthal) repeats it east and west across the pane's spare width;
+  /// false, it shows it once and a pan turns it under the view.
+  final bool panRepeat;
 
   final Map<String, SceneMapLook> styles;
   final List<SceneMapMarker> markers;
@@ -269,7 +275,8 @@ class SceneMapSpec {
   /// Whether the host's whole-map button is drawn.
   final bool actions;
 
-  /// `native` or `off`.
+  /// `native` or `off`; a zoom also `center`, about the view's middle
+  /// rather than the pointer.
   final String zoomGesture, panGesture;
 
   /// [previous], this map in the scene before, lends every marker, line and
@@ -305,6 +312,11 @@ class SceneMapSpec {
         null || false => false,
         true => true,
         _ => throw const FormatException('Invalid map pan cover'),
+      },
+      panRepeat = switch (_part(json, 'pan')['repeat']) {
+        null || true => true,
+        false => false,
+        _ => throw const FormatException('Invalid map pan repeat'),
       },
       styles = switch (json['styles']) {
         null => const {},
@@ -373,7 +385,7 @@ class SceneMapSpec {
     final gestures = json['gestures'];
     if (gestures == null) return 'native';
     if (gestures is! Map) throw const FormatException('Invalid map gestures');
-    return _oneOf(gestures, key, const ['native', 'off']) ?? 'native';
+    return _oneOf(gestures, key, key == 'zoom' ? const ['native', 'center', 'off'] : const ['native', 'off']) ?? 'native';
   }
 
   late final Map<Map<dynamic, dynamic>, SceneMapItem> _from = Map.identity()..addEntries([...markers, ...lines, ...circles].map((i) => MapEntry(i.source, i)));

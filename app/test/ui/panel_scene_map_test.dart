@@ -51,15 +51,15 @@ Map<String, dynamic> _doc({Map<String, dynamic> map = const {}, Map<String, dyna
 
 SceneMapSpec _spec(Map<String, dynamic> map) => PanelScene(_doc(map: map)).controlsById['map']!.map!;
 
-Future<List<Map<String, dynamic>>> _show(WidgetTester tester, {Map<String, dynamic> map = const {}}) async {
+Future<List<Map<String, dynamic>>> _show(WidgetTester tester, {Map<String, dynamic> map = const {}, Size size = const Size(400, 400)}) async {
   final events = <Map<String, dynamic>>[];
   await tester.pumpWidget(
     TranslationProvider(
       child: MaterialApp(
         home: Scaffold(
           body: SizedBox(
-            width: 400,
-            height: 400,
+            width: size.width,
+            height: size.height,
             child: PanelSceneView(
               scene: PanelScene(_doc(map: map)),
               home: const GridLocation(40, -100),
@@ -378,23 +378,81 @@ void main() {
       }
     });
 
-    // The floor follows the pane's shape, worked out at layout: a wheel that
-    // stops at the scene's own min of 0 leaves sea-less bands above and
-    // below a plate carrée world in a square pane.
-    testWidgets('a map that covers zooms out no further than fills the pane, and says so', (tester) async {
+    // The floor is the pane's height, pole to pole, on every projection: one
+    // worked out from the corners of a curved world stops short of it, and
+    // more so the wider the pane. Without cover, the whole world shows.
+    testWidgets('a map that covers zooms out until the world fills the pane\'s height, and one that does not to the whole world', (tester) async {
+      for (final (projection, world) in [
+        ('mercator', const MercatorProjection(0).world),
+        ('equirectangular', const EquirectangularProjection(0).world),
+        ('robinson', const RobinsonProjection(0).world),
+      ]) {
+        for (final cover in [true, false]) {
+          final events = await _show(
+            tester,
+            size: const Size(800, 200),
+            map: {
+              'projection': projection,
+              'pan': {'cover': cover},
+              'zoom': {'initial': 3},
+            },
+          );
+          final box = tester.getRect(find.byType(SceneMapView));
+          tester.binding.handlePointerEvent(PointerScrollEvent(position: box.center, scrollDelta: const Offset(0, 2000)));
+          await tester.pump(const Duration(milliseconds: 400));
+          // Zoom 0 fits the world within the pane less 2 pixels a side; covering, the pane's 200 pixels down take its height.
+          final fills = math.log(200 / world.height / math.min(796 / world.width, 196 / world.height)) / math.ln2;
+          expect(events.lastWhere((e) => e['gesture'] == 'zoom')['value'] as double, closeTo(cover ? fills : 0, 1e-9), reason: '$projection, cover: $cover');
+        }
+      }
+    });
+
+    // A rotator's map keeps the station in its middle: zoomed about the
+    // pointer, the wheel would carry the station off toward wherever the
+    // mouse happened to be.
+    testWidgets('a map that zooms about its middle keeps the place there under a wheel off to one side', (tester) async {
       final events = await _show(
         tester,
         map: {
           'projection': 'equirectangular',
-          'pan': {'cover': true},
-          'zoom': {'initial': 3},
+          'home': {'lat': 20, 'lon': 30},
+          'zoom': {'initial': 2},
+          'gestures': {'zoom': 'center'},
         },
       );
       final box = tester.getRect(find.byType(SceneMapView));
-      tester.binding.handlePointerEvent(PointerScrollEvent(position: box.center, scrollDelta: const Offset(0, 2000)));
+      tester.binding.handlePointerEvent(PointerScrollEvent(position: box.center + const Offset(120, 80), scrollDelta: const Offset(0, -200)));
       await tester.pump(const Duration(milliseconds: 400));
-      // 396 pixels fit 2π across at zoom 0; the pane's 400 pixels down take π.
-      expect(events.lastWhere((e) => e['gesture'] == 'zoom')['value'] as double, closeTo(math.log(800 / 396) / math.ln2, 1e-9));
+      final pan = events.lastWhere((e) => e['gesture'] == 'pan')['at'] as Map;
+      expect(pan['lat'] as double, closeTo(20, 1e-6));
+      expect(pan['lon'] as double, closeTo(30, 1e-6));
+    });
+
+    // Zoomed out in a pane wider than the world, a repeating map shows the
+    // world again either side, its markers with it; one that does not shows
+    // it once, centered, the spare width empty.
+    testWidgets('a map that repeats fills spare width with the world again, and one that does not shows it once', (tester) async {
+      for (final repeat in [true, false]) {
+        final events = await _show(
+          tester,
+          size: const Size(800, 200),
+          map: {
+            'projection': 'equirectangular',
+            'pan': {'repeat': repeat},
+            'markers': [
+              {'id': 'm', 'lat': 0, 'lon': 0, 'radius': 6, 'event': 'open'},
+            ],
+          },
+        );
+        final box = tester.getRect(find.byType(SceneMapView));
+        await tester.tapAt(box.center);
+        await tester.pump();
+        expect(events.last['layer'], 'm', reason: 'repeat: $repeat, in the middle');
+        // At zoom 0 the 200-pixel pane's height takes π, so the world is 392 pixels across.
+        await tester.tapAt(box.center + const Offset(392, 0));
+        await tester.pump();
+        expect(events.last['layer'], repeat ? 'm' : isNull, reason: 'repeat: $repeat, a world\'s breadth east');
+      }
     });
 
     // Each copy of the world is cut at the world's edge, which zoomed in lies
@@ -526,6 +584,51 @@ void main() {
       await tester.pump();
       final (_, after) = await placeAt(tester, () => _show(tester, map: map), const Offset(-93, 0));
       expect(after, closeTo(before, 0.5));
+    });
+
+    Future<void> dragLeft(WidgetTester tester, double pixels) async {
+      // The drag starts where the pointer is once it has moved far enough to be one.
+      final mouse = await tester.startGesture(tester.getRect(find.byType(SceneMapView)).center + const Offset(60, 0), kind: PointerDeviceKind.mouse);
+      await mouse.moveBy(const Offset(-3, 0));
+      await tester.pump();
+      for (var i = 0; i < pixels ~/ 10; i++) {
+        await mouse.moveBy(const Offset(-10, 0));
+        await tester.pump();
+      }
+      await mouse.up();
+      await tester.pump();
+    }
+
+    // A map that does not repeat has no copy to pan onto: held to its one
+    // world, wider than the view, a pan would not move it at all.
+    testWidgets('a map that does not repeat turns the world under a pan east or west', (tester) async {
+      final map = {
+        'projection': 'equirectangular',
+        'pan': {'repeat': false},
+      };
+      Future<List<Map<String, dynamic>>> show() => _show(tester, size: const Size(800, 200), map: map);
+      await show();
+      await dragLeft(tester, 100);
+      final (_, lon) = await placeAt(tester, show);
+      // At zoom 0 the world is 392 pixels across.
+      expect(lon, closeTo(100 / 392 * 360, 1));
+    });
+
+    // The view's middle is held in units that turning sets apart from
+    // repeating: read against the other's meridian, it is somewhere else.
+    testWidgets('a map that stops repeating keeps the place in the view\'s middle', (tester) async {
+      Map<String, dynamic> map(bool repeat) => {
+        'projection': 'equirectangular',
+        'home': {'lat': 0, 'lon': -100},
+        'zoom': {'initial': 2},
+        'pan': {'repeat': repeat},
+      };
+      await _show(tester, map: map(true));
+      await dragLeft(tester, 100);
+      final (_, before) = await placeAt(tester, () => _show(tester, map: map(true)));
+      expect(before, isNot(closeTo(-100, 5)), reason: 'panned away from home');
+      final (_, after) = await placeAt(tester, () => _show(tester, map: map(false)));
+      expect(after, closeTo(before, 0.1));
     });
 
     // Looking only at the copies of the world whose own breadth is in view,

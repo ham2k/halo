@@ -1032,22 +1032,29 @@ like a native control, it takes:
   operator's pan settled moves neither the view nor the middle. The others
   go on round the world as the
   operator pans east or west, the rectangular ones repeating beside
-  themselves and Robinson turning the world under the view, so they take
-  no `origin`.
+  themselves (unless `pan.repeat` is `false`) and Robinson turning the
+  world under the view, so they take no `origin`.
 - `map`: the world under it, as the rotator map's: `palette`, the colors
   over it, `grayline` and `world`. `world: false` draws a plain sea.
 - `zoom`: `{ min, max, initial }` in zoom levels, 0 fitting the whole world
-  in the pane and each step closer doubling the scale; 0 to 10 when
-  omitted, at most 16. `initial` may name a scene value.
-- `pan`: `{ bounds: { north, south, west, east }, cover }`. `bounds` is
-  what the view may be panned over; omitted, the whole world, round and
-  round. An `east` less than `west` crosses the antimeridian. A view wider
-  than the bounds sits at their middle. `cover: true` keeps the pane full:
-  the view never shows past the world's edge, or the bounds, so the widest
-  zoom is the one that fills the pane, which follows its shape, and a pan
-  stops at the edge. A `zoom.max` short of that zoom still holds, and the
-  view shows past the edge there. A Robinson or azimuthal world, whose edge is a curve,
-  is never seen whole that way.
+  in the pane, by its height or its breadth, whichever is tighter, and
+  each step closer doubling the scale; 0 to 10 when omitted, at most 16.
+  `initial` may name a scene value.
+- `pan`: `{ bounds: { north, south, west, east }, cover, repeat }`.
+  `bounds` is what the view may be panned over; omitted, the whole world,
+  round and round. An `east` less than `west` crosses the antimeridian. A
+  view wider or taller than the bounds sits at their middle. Without
+  `cover`, the map zooms out as far as `zoom.min` allows, at 0 until all
+  of it fits, centered, with room to spare on one side or the other.
+  `cover: true` stops it where the world, or the bounds, fills the pane's
+  height, pole to pole, on every projection and whatever the pane's width.
+  A pan north or south stops at the world's top or bottom, or the bounds';
+  on a Robinson or azimuthal world, whose edge is a curve, the pane's
+  corners can show past it there. Going round the world, a Web Mercator, plate carrée, Miller or
+  Patterson map repeats it east and west across spare width, markers,
+  lines and images with it; `repeat: false` shows it once, centered, and a
+  pan east or west turns it under the view instead. Robinson's world never
+  repeats, its edges being curves; it turns.
 - `styles`: up to 64 looks by name, for markers, lines and circles to
   take by `style`.
 - `markers`: up to 4,096, each an `id`, a `lat` and a `lon`. Drawn over
@@ -1125,7 +1132,9 @@ The control's own `event`, where it has one, hears the rest, as `commit`:
 
 A drag pans, the mouse wheel, a trackpad's two-finger scroll and a pinch
 zoom about the pointer. `gestures` takes `zoom` and `pan`, each `native`
-(the default) or `off`. To keep the operator's view, store the last
+(the default) or `off`, and `zoom` also `center`, about the view's middle
+however the pointer or a pinch lies: a rotator's map, centred on the
+station, keeps it there. To keep the operator's view, store the last
 `zoom` and `pan` and give them back as `zoom.initial` and `home`; forget
 them on a `reset`. A render that changes `home` or `zoom.initial` to
 anywhere else moves the view there, and a change of `projection` keeps the

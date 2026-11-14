@@ -77,8 +77,8 @@ class _SceneMapViewState extends State<SceneMapView> {
   Offset? _center;
   GridLocation? _sceneCenter;
 
-  /// The meridian a Robinson map that [_wraps] is turned to: the operator's,
-  /// until the scene changes its own view.
+  /// The meridian a map that [_turns] is turned to: the operator's, until
+  /// the scene changes its own view.
   double? _meridian;
 
   /// The azimuthal map's middle with no `origin`: the scene's view as it
@@ -87,9 +87,14 @@ class _SceneMapViewState extends State<SceneMapView> {
   /// again.
   GridLocation? _middle;
 
-  /// The projection last drawn, by name: a change carries the place in the
-  /// view's middle over to the new one.
-  String? _drawnAs;
+  /// How the view was last drawn: the projection by name, whether it turns
+  /// and its pan bounds. A change of any carries the place in the view's
+  /// middle over: the view's middle is held in units that each sets apart,
+  /// so a map that stops repeating would read a Greenwich-based middle
+  /// against the scene's meridian, somewhere else.
+  (String, bool, Object?)? _drawnAs;
+
+  (String, bool, Object?) get _drawing => (_spec.projection, _turns, _spec.panBounds);
 
   /// The zoom and the view's middle last sent as where a gesture settled. A
   /// scene that keeps the operator's view hands them back as its own, a
@@ -168,6 +173,12 @@ class _SceneMapViewState extends State<SceneMapView> {
   /// the azimuthal, with no pan bounds.
   bool get _wraps => _spec.projection != 'azimuthal' && _spec.panBounds == null;
 
+  /// Whether it goes round by turning the world under the view, its
+  /// meridian the view's middle, rather than by drawing copies of it side
+  /// by side: Robinson's, whose curved edges cannot meet, and any that does
+  /// not repeat.
+  bool get _turns => _wraps && (_spec.projection == 'robinson' || !_spec.panRepeat);
+
   /// The scene's own view moved: the operator's, held over it, is let go.
   void _noteScene(GridLocation scene) {
     if (_sceneCenter == scene) return;
@@ -185,10 +196,10 @@ class _SceneMapViewState extends State<SceneMapView> {
   static bool _same(double a, double b) => (a - b).abs() < 1e-6;
 
   /// The azimuthal map is centred on `origin`, or the scene's own view
-  /// ([_middle]). A rectangular world repeats east and west, so its meridian
-  /// is Greenwich's. Robinson cannot repeat — its world's edges are curves —
-  /// so a pan turns the world under the view instead, its meridian always
-  /// the view's middle. Pan bounds hold either to the meridian through their
+  /// ([_middle]). A rectangular world that repeats east and west keeps
+  /// Greenwich's meridian. One that [_turns] — Robinson, whose edges are
+  /// curves, and any that does not repeat — has the view's middle for its
+  /// meridian instead. Pan bounds hold any to the meridian through their
   /// middle, so the seam lies behind them.
   MapProjection _projectionFor(GridLocation sceneCenter) {
     if (_spec.projection == 'azimuthal') {
@@ -201,53 +212,49 @@ class _SceneMapViewState extends State<SceneMapView> {
       final b? => wrapLongitude(b.west + (b.east >= b.west ? b.east - b.west : b.east + 360 - b.west) / 2),
       null => null,
     };
+    final meridian = bounded ?? (_turns ? _meridian ?? wrapLongitude(sceneCenter.longitude) : 0.0);
     return switch (_spec.projection) {
-      'robinson' => RobinsonProjection(bounded ?? _meridian ?? wrapLongitude(sceneCenter.longitude)),
-      'equirectangular' => EquirectangularProjection(bounded ?? 0),
-      'miller' => MillerProjection(bounded ?? 0),
-      'patterson' => PattersonProjection(bounded ?? 0),
-      _ => MercatorProjection(bounded ?? 0),
+      'robinson' => RobinsonProjection(meridian),
+      'equirectangular' => EquirectangularProjection(meridian),
+      'miller' => MillerProjection(meridian),
+      'patterson' => PattersonProjection(meridian),
+      _ => MercatorProjection(meridian),
     };
   }
 
   /// The operator's view at [zoom] with [center], a point of [from], moved
-  /// to keep [anchor], the point under the pointer, under it. On a Robinson
-  /// map that wraps, the east-west part of a move turns the world instead,
+  /// to keep [anchor], the point under the pointer, under it. On a map that
+  /// [_turns], the east-west part of a move turns the world instead,
   /// keeping the view's middle on the meridian, by as much as moves the
-  /// anchor's parallel that far: they shorten toward the poles.
+  /// anchor's parallel that far: on Robinson they shorten toward the poles.
   void _moveTo(double zoom, Offset center, MapProjection from, Offset anchor) {
     _zoom = zoom;
-    if (from is RobinsonProjection && _wraps) {
-      final latitude = from.toEarth(0, anchor.dy)?.latitude ?? 0;
-      _meridian = wrapLongitude(from.meridian + RobinsonProjection.degreesAcross(center.dx, latitude: latitude));
+    if (from is CylindricalProjection && _turns) {
+      final degrees = switch (from) {
+        RobinsonProjection() => RobinsonProjection.degreesAcross(center.dx, latitude: from.toEarth(0, anchor.dy)?.latitude ?? 0),
+        _ => center.dx * 180 / math.pi,
+      };
+      _meridian = wrapLongitude(from.meridian + degrees);
       _center = Offset(0, center.dy);
     } else {
       _center = center;
     }
   }
 
-  /// The scene's projection changed: the operator's view, in the old one's
-  /// units, is the place in its middle in the new one. Kept as it was, it
-  /// means somewhere else: a Mercator view of New York is a corner of the
-  /// azimuthal disc, near its antipode.
+  /// The scene's projection, or how it goes round, changed: the operator's
+  /// view, in the old one's units, is the place in its middle in the new
+  /// one. Kept as it was, it means somewhere else: a Mercator view of New
+  /// York is a corner of the azimuthal disc, near its antipode.
   void _carryOver(GridLocation sceneCenter) {
     final camera = _camera;
     final at = _drawnAs == null || _center == null || camera == null ? null : camera.placeAt(camera.middle);
-    _drawnAs = _spec.projection;
+    _drawnAs = _drawing;
     _meridian = null;
     _center = null;
     if (at == null) return;
-    if (_spec.projection == 'robinson' && _wraps) _meridian = at.longitude;
+    if (_turns) _meridian = at.longitude;
     _center = _toMap(_projectionFor(sceneCenter), at.latitude, at.longitude);
   }
-
-  /// The least zoom that fills the pane with the world, for a view that
-  /// covers; as of the last layout, since it follows the pane's shape.
-  double _coverZoom = 0;
-
-  /// The widest the view may go: the scene's, or the zoom that fills the
-  /// pane when it covers, unless that is past the scene's closest.
-  double get _zoomFloor => _spec.panCover ? math.min(math.max(_spec.zoomMin, _coverZoom), _spec.zoomMax) : _spec.zoomMin;
 
   double get _zoomNow {
     final scene = (_spec.zoom?.resolve(widget.values) ?? _spec.zoomMin).clamp(_spec.zoomMin, _spec.zoomMax).toDouble();
@@ -262,6 +269,14 @@ class _SceneMapViewState extends State<SceneMapView> {
     }
     return math.max(_zoom ?? scene, _zoomFloor);
   }
+
+  /// The zoom that fills the pane's height with the world, as of the last
+  /// layout, since it follows the pane's shape.
+  double _coverZoom = 0;
+
+  /// The widest the view may go: the scene's, raised for a view that covers
+  /// to fill the pane's height, unless that is past the scene's closest.
+  double get _zoomFloor => _spec.panCover ? math.min(math.max(_spec.zoomMin, _coverZoom), _spec.zoomMax) : _spec.zoomMin;
 
   /// The view's middle in [projection]: the operator's, until the scene changes its own.
   Offset _centerNow(MapProjection projection, GridLocation scene) => _center ?? _toMap(projection, scene.latitude, scene.longitude) ?? Offset.zero;
@@ -284,9 +299,9 @@ class _SceneMapViewState extends State<SceneMapView> {
     final scene = _sceneCenterNow;
     final projection = _projectionFor(scene);
     final bounds = _bounds(projection);
-    final wraps = _wraps && projection is RectangularProjection;
-    if (_spec.panCover) _coverZoom = MapCamera.coverZoom(size, projection, bounds: bounds, wraps: wraps);
-    return MapCamera(size, projection, zoom: _zoomNow, center: _centerNow(projection, scene), bounds: bounds, wraps: wraps, cover: _spec.panCover);
+    final wraps = _wraps && !_turns && projection is RectangularProjection;
+    if (_spec.panCover) _coverZoom = MapCamera.coverZoom(size, projection, bounds: bounds);
+    return MapCamera(size, projection, zoom: _zoomNow, center: _centerNow(projection, scene), bounds: bounds, wraps: wraps);
   }
 
   // ------------------------------------------------------------- gestures
@@ -354,8 +369,10 @@ class _SceneMapViewState extends State<SceneMapView> {
       zoom = zoom.clamp(_zoomFloor, _spec.zoomMax).toDouble();
     }
     final start = MapCamera(camera.size, from, zoom: _startZoom, center: _startCenter, wraps: camera.wraps);
-    final anchor = start.toMap(_startFocal);
-    final focal = trackpad || _spec.panGesture == 'off' ? _startFocal : e.localFocalPoint;
+    // Zoomed about the middle, a pinch's focal point still pans by as far as it moves.
+    final about = _spec.zoomGesture == 'center' ? start.middle : _startFocal;
+    final anchor = start.toMap(about);
+    final focal = trackpad || _spec.panGesture == 'off' ? about : about + (e.localFocalPoint - _startFocal);
     final center = start.centerKeeping(anchor, focal, zoom);
     _moved = _moved || zoom != _startZoom || center != _startCenter;
     setState(() => _moveTo(zoom, center, from, anchor));
@@ -394,8 +411,9 @@ class _SceneMapViewState extends State<SceneMapView> {
       final camera = _camera;
       if (camera == null) return;
       final zoom = (_zoomNow + steps).clamp(_zoomFloor, _spec.zoomMax).toDouble();
-      final anchor = camera.toMap(event.localPosition);
-      final center = camera.centerKeeping(anchor, event.localPosition, zoom);
+      final about = _spec.zoomGesture == 'center' ? camera.middle : event.localPosition;
+      final anchor = camera.toMap(about);
+      final center = camera.centerKeeping(anchor, about, zoom);
       setState(() => _moveTo(zoom, center, camera.projection, anchor));
       _wheelSettle?.cancel();
       _wheelSettle = Timer(const Duration(milliseconds: 300), () {
@@ -453,7 +471,7 @@ class _SceneMapViewState extends State<SceneMapView> {
     final background = _spec.map.background ?? palette.backgroundFor(dark);
     final sceneCenter = _sceneCenterNow;
     _noteScene(sceneCenter);
-    if (_drawnAs != _spec.projection) _carryOver(sceneCenter);
+    if (_drawnAs != _drawing) _carryOver(sceneCenter);
     final projection = _projectionFor(sceneCenter);
     _world.project(_spec.map.world ? projection : null);
     _overlayImages.want(SceneImageScope.of(context), {for (final o in _spec.overlays) o.id: o.image});
@@ -471,7 +489,6 @@ class _SceneMapViewState extends State<SceneMapView> {
         builder: (context, constraints) {
           final size = constraints.biggest;
           final camera = _camera = _cameraNow(size);
-          // After the layout: a view that covers zooms by the pane's shape.
           _writeReadouts();
           final moved = _zoom != null || _center != null;
           final still = _spec.panGesture == 'off' && _spec.zoomGesture == 'off';

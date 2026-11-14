@@ -889,7 +889,8 @@ it centers on only when the scene names no place.
   Mercator, plate carrée, Miller's and Patterson's, which differ only in
   how high each latitude is drawn — repeat east and west, each copy drawn
   inside its own edge, which is cut on whole pixels so two copies meet
-  with no seam. Robinson's world has curved edges and cannot
+  with no seam; with `pan.repeat: false` one turns instead, as Robinson's
+  does. Robinson's world has curved edges and cannot
   repeat, so a pan east or west turns the world under the view instead:
   its meridian is always the view's middle, and the land, outlines,
   markers and lines are projected again as it turns (each line's great
@@ -901,15 +902,25 @@ it centers on only when the scene names no place.
   third of what projecting it all again costs. Pan bounds stop both
   wraps, and hold the projection to the meridian through their middle, so
   the seam lies behind them.
-- **Covering is the camera's.** `pan.cover` raises the zoom floor to the
-  least zoom that fills the pane, worked out at each layout since it
-  follows the pane's shape, and keeps the view on the world. A box —
-  a rectangular world, which only the north and south limit when it
-  repeats, or the bounds — is held side by side as before. A curved edge
-  is convex and symmetric about the world's middle, so the largest view
-  that fits sits there, found by halving the scale, and a view asked for
-  off it is drawn in toward the middle until its corners and the middles
-  of its sides are all on the world.
+- **Covering is the camera's.** Without it the widest zoom is `zoom.min`,
+  0 showing the whole world, centered. `pan.cover` raises it to the zoom
+  at which the world, or the bounds, fills the pane's height, pole to
+  pole, whatever the pane's width: one rule on every projection, worked
+  out at each layout since it follows the pane's shape. A floor where the
+  pane fits inside a curved world's edge stops a Robinson or azimuthal map
+  well short of its poles, more so the wider the pane, while a Mercator
+  one fills its height; the operator sees one projection cover and the
+  next not. Every view, covering or not, is held to a box — the world's,
+  which only the north and south limit when it repeats, or the bounds —
+  on each side apart: a view smaller than the box there is held inside
+  it, a larger one sits at its middle. A curved world is held to its box
+  too, its middle kept on the world, and the pane's corners may run past
+  its curved edge. Holding them on it instead — drawing the view in
+  toward the middle until they are — leaps the view toward the equator
+  the moment a zoom first lets the pane fit inside the edge, a pan to a
+  pole undone by one wheel notch. `gestures.zoom: center` zooms about the view's middle,
+  a pinch's movement still panning, for a map whose middle is the point:
+  a rotator's, centred on the station.
 - **Zoom is a web map's level, not the rotator map's factor.** 0 fits the
   whole world in the pane, each step doubles the scale. Radii and widths
   that follow the zoom are stops over the level, the shape MapLibre's
