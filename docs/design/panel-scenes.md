@@ -870,8 +870,9 @@ the operator's zoom and pan kept per placement in the key-value store.
 
 A map (`map`, extension API 25) is the world in Web Mercator,
 equirectangular, Miller's, Patterson's, azimuthal equidistant or Robinson's
-projection, with markers, great-circle lines and distance circles
-the scene places by latitude and longitude. The public contract is in
+projection, with markers, great-circle lines, lines through points and
+distance circles the scene places by latitude and longitude, labelled
+where the scene says. The public contract is in
 [panel scenes](../extensions/scenes.md#map) and `PanelSceneMap`. It needs no
 grant: it shows nothing of the station but the operation's location, which
 it centers on only when the scene names no place.
@@ -964,6 +965,29 @@ it centers on only when the scene names no place.
   the closing run along the pole. A click takes its edge only: a range
   ring round the station would otherwise take every click inside it from
   the map.
+- **A label sits where the view shows its edge.** A line's or a circle's
+  label (`scene_map_labels.dart`) is placed each frame on the screen: on
+  the part of its edge inside the pane, and inside its own copy of the
+  world, where the whole label fits along it, at the place there nearest
+  its anchor, a circle's north or a line's middle unless the scene names
+  a bearing or a share of the way. A pan slides it along the edge rather
+  than losing it off the pane's side; one the scene placed is hidden
+  instead, since moving it would say something it did not. The words are
+  straight, turned to the chord the label spans and kept upright, as a
+  contour's are, and every line's and circle's edge is cut under them, a
+  label over a line it crosses being unreadable. Labels are never moved
+  off one another.
+- **A frame's cost follows the pane, not the zoom.** A dashed line or
+  edge is dashed only where it reaches the pane (`dashedPath` with
+  `within`, on both maps): skipping ahead by its distance from the pane,
+  which it cannot cover in less of its length, a ring millions of pixels
+  round at zoom 12 costs a few dozen steps, where dashing it whole would
+  freeze a web build. A line or circle whose bounds miss the pane is not
+  taken onto the screen at all, its label not placed either. A frame
+  with the whole world in view still transforms every line's every point,
+  a point a degree of great circle, so the lines are held to 262,144
+  degrees in all, a step shorter than a degree counting as one: a budget
+  of places would let a few thousand of them a world apart make millions.
 - **Markers and lines are placed once per projection.** A marker's point
   and a line's great circle (a point a degree) are kept in the projection's
   units and moved onto the screen with the view, so a pan or a zoom of a

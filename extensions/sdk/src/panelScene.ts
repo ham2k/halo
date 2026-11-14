@@ -1114,10 +1114,47 @@ export interface PanelSceneMapMarker extends PanelSceneMapItem {
   lon: number
 }
 
-/** The great circle between two places: a marker's `id`, or a place. */
+/**
+ * Words set along a line or a circle's edge, as a contour's are, the edge cut under them. Placed where
+ * the view shows the edge, as near a circle's north or a line's middle as they fit, and moved along it
+ * as the operator pans; `az` or `along` holds them in one place, hidden while it is out of view.
+ */
+export interface PanelSceneMapLabel {
+  /** Its font size in pixels (11). */
+  size?: number
+  /** Omitted, the edge's; with a halo of the look's `casing` where it has one. */
+  color?: string
+}
+
+/** A line's label: its words, and where along it they sit. */
+export interface PanelSceneMapLineLabel extends PanelSceneMapLabel {
+  text: string
+  /** The share of the way from its start the label sits at, 0 to 1, running on past an end. */
+  along?: number
+}
+
+/** A circle's label: its words, or its distance. */
+export interface PanelSceneMapCircleLabel extends PanelSceneMapLabel {
+  /** Omitted, its distance. */
+  text?: string
+  /** The distance's unit. Omitted, the operator's. */
+  unit?: "km" | "mi"
+  /** The bearing from its middle the label sits at. */
+  az?: number
+}
+
+/**
+ * The way between places, each a marker's `id` or a place: from `from` to `to`, or through 2 to 4,096
+ * `points`. Each step is a great circle.
+ */
 export interface PanelSceneMapLine extends PanelSceneMapItem {
-  from: string | { lat: number; lon: number }
-  to: string | { lat: number; lon: number }
+  from?: string | { lat: number; lon: number }
+  to?: string | { lat: number; lon: number }
+  points?: (string | { lat: number; lon: number })[]
+  /** Runs on from the last of `points` back to the first: a contour. */
+  closed?: boolean
+  /** Its words, or the label's fields. */
+  label?: string | PanelSceneMapLineLabel
 }
 
 /**
@@ -1147,6 +1184,8 @@ export interface PanelSceneMapCircle extends PanelSceneMapItem {
   at: string | { lat: number; lon: number }
   /** More than 0, at most 20,015, half the way round the Earth. */
   km: number
+  /** `true`, its distance; its words; or the label's fields. */
+  label?: boolean | string | PanelSceneMapCircleLabel
 }
 
 /**
@@ -1170,7 +1209,7 @@ export interface PanelSceneMap {
   styles?: Record<string, PanelSceneMapLook>
   /** Up to 4,096, drawn over the lines, a later one over an earlier. */
   markers?: PanelSceneMapMarker[]
-  /** Up to 1,024. */
+  /** Up to 1,024, going at most 262,144° round the Earth in all, a step shorter than a degree counting as one. */
   lines?: PanelSceneMapLine[]
   /** Up to 256, drawn under the lines, a later one over an earlier. */
   circles?: PanelSceneMapCircle[]

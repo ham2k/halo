@@ -21,6 +21,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../../services/cat/equipment.dart' show EquipmentStatus, rotatorArrivedWithin, rotatorHeadingGap;
+import '../../../tools/distance_format.dart' show fmtDistance, fmtGrouped;
 import '../../station_rows.dart' show StationConnectionToggle;
 import '../world_map/map_projection.dart';
 import 'scene_model.dart';
@@ -771,7 +772,10 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
 
   /// What a text layer says, or null where what it shows is not known.
   String? _words(SceneRotatorLayer layer, _Rotator? r, double bearing, double? km) {
-    String formatted(double n) => '${layer.prefix ?? ''}${n.toStringAsFixed(layer.decimals)}${layer.suffix ?? ''}';
+    // A distance has thousands separators, as every distance the app shows; a bearing or a value is written as it is.
+    final distance = layer.value == null && (layer.show == 'km' || layer.show == 'mi');
+    String formatted(double n) =>
+        '${layer.prefix ?? ''}${distance ? fmtGrouped(n, decimals: layer.decimals) : n.toStringAsFixed(layer.decimals)}${layer.suffix ?? ''}';
     if (layer.text case final text?) return text;
     if (layer.value case final name?) {
       final n = widget.values[name];

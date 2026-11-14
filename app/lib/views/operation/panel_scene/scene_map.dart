@@ -12,6 +12,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart' show GridLocation;
@@ -22,7 +23,9 @@ import '../../map/map_grayline.dart' show capAround, capEdgePoints;
 import '../world_map/map_camera.dart';
 import '../world_map/map_projection.dart';
 import '../world_map/world_geometry.dart' show TurningShapes, fillRings;
+import '../../../tools/distance_format.dart';
 import 'scene_images.dart';
+import 'scene_map_labels.dart';
 import 'scene_model.dart';
 import 'scene_world.dart';
 
@@ -50,6 +53,9 @@ class SceneMapView extends StatefulWidget {
   /// Writes a scene value the control owns — the zoom, the place under the pointer.
   final void Function(String name, double value)? onReadout;
 
+  /// Whether a circle's distance is labelled in miles, where its label names no unit: the operator's setting.
+  final bool miles;
+
   const SceneMapView({
     super.key,
     required this.control,
@@ -60,6 +66,7 @@ class SceneMapView extends StatefulWidget {
     this.onItem,
     this.onGesture,
     this.onReadout,
+    this.miles = false,
   });
 
   @override
@@ -112,14 +119,26 @@ class _SceneMapViewState extends State<SceneMapView> {
     if (mounted) setState(() {});
   });
 
-  /// Each line's great circle by its ends, kept from render to render: a
-  /// panel that keeps the operator's view renders on every pan, and with a
-  /// thousand lines, making them all again each time is most of its cost.
-  /// The projection, which a pan of a Robinson map turns, only places them.
-  Map<_Ends, _Arc> _arcs = const {};
+  /// Each line's great circles by the places it runs through, kept from
+  /// render to render: a panel that keeps the operator's view renders on
+  /// every pan, and with a thousand lines, making them all again each time
+  /// is most of its cost. The projection, which a pan of a Robinson map
+  /// turns, only places them.
+  Map<_Route, _Arc> _arcs = const {};
+  List<_Route> _routes = const [];
 
   /// Each circle's edge by its middle and radius, kept the same way.
   Map<_Round, _Circle> _circles = const {};
+
+  /// Each label's words laid out, by its words and how they are drawn, kept
+  /// while the theme's label style holds: a panel that keeps the operator's
+  /// view renders on every pan, and would lay its words out again with each.
+  final _labelTexts = <(String, double, Color, Color?), MapLabelText>{};
+  TextStyle? _labelsFor;
+
+  /// The labels the last frame drew: a new scene lets go of the others.
+  final _labelsShown = <(String, double, Color, Color?)>{};
+  SceneMapSpec? _labelsShownFor;
 
   /// Each image's grid by its corners, kept the same way.
   Map<OverlayCorners, OverlaySheet> _sheets = const {};
@@ -152,10 +171,18 @@ class _SceneMapViewState extends State<SceneMapView> {
 
   @override
   void dispose() {
+    _forgetLabelTexts();
     _world.dispose();
     _overlayImages.dispose();
     _wheelSettle?.cancel();
     super.dispose();
+  }
+
+  void _forgetLabelTexts() {
+    for (final text in _labelTexts.values) {
+      text.dispose();
+    }
+    _labelTexts.clear();
   }
 
   void _onChange() {
@@ -469,6 +496,17 @@ class _SceneMapViewState extends State<SceneMapView> {
     final dark = theme.brightness == Brightness.dark;
     final palette = MapPalette.named(_spec.map.palette);
     final background = _spec.map.background ?? palette.backgroundFor(dark);
+    final labelStyle = theme.textTheme.labelMedium!;
+    if (_labelsFor != labelStyle) {
+      _forgetLabelTexts();
+      _labelsFor = labelStyle;
+    } else if (_labelsShownFor != _spec) {
+      // Words the new scene still shows are drawn by the next frame from these; the rest go.
+      for (final key in [..._labelTexts.keys]) {
+        if (!_labelsShown.contains(key)) _labelTexts.remove(key)!.dispose();
+      }
+    }
+    _labelsShownFor = _spec;
     final sceneCenter = _sceneCenterNow;
     _noteScene(sceneCenter);
     if (_drawnAs != _drawing) _carryOver(sceneCenter);
@@ -477,11 +515,12 @@ class _SceneMapViewState extends State<SceneMapView> {
     _overlayImages.want(SceneImageScope.of(context), {for (final o in _spec.overlays) o.id: o.image});
     if (_placed?.spec != _spec || _placed?.projection != projection) {
       if (_placed?.spec != _spec) {
-        _arcs = _Placed.arcsOf(_spec, _arcs);
+        _routes = _Placed.routesOf(_spec);
+        _arcs = _Placed.arcsOf(_routes, _arcs);
         _circles = _Placed.circlesOf(_spec, _circles);
         _sheets = {for (final o in _spec.overlays) overlayCornersOf(o): _sheets[overlayCornersOf(o)] ?? OverlaySheet(overlayCornersOf(o))};
       }
-      _placed = _Placed(_spec, projection, _arcs, _circles, _sheets, _placed);
+      _placed = _Placed(_spec, projection, _routes, _arcs, _circles, _sheets, _placed);
     }
     return ColoredBox(
       color: background,
@@ -518,6 +557,10 @@ class _SceneMapViewState extends State<SceneMapView> {
                           dark: dark,
                           palette: palette,
                           sea: _spec.map.world ? mapColorsOf(_spec.map, dark: dark).sea : theme.colorScheme.onSurface.withValues(alpha: 0.06),
+                          miles: widget.miles,
+                          labelStyle: labelStyle,
+                          labelTexts: _labelTexts,
+                          labelsShown: _labelsShown,
                         ),
                       ),
                     ),
@@ -541,26 +584,74 @@ class _SceneMapViewState extends State<SceneMapView> {
   }
 }
 
-/// A line's ends, latitude and longitude, from and to: all its great circle
-/// depends on.
-typedef _Ends = (double, double, double, double);
+/// The places a line runs through, latitude and longitude in turn, and
+/// whether it runs on back to the first: all its great circles depend on.
+class _Route {
+  final List<double> places;
+  final bool closed;
 
-/// How many great circles the maps have made, for a test to see they are
-/// made again only when a line's ends move.
+  _Route(this.places, this.closed);
+
+  @override
+  bool operator ==(Object other) => identical(this, other) || other is _Route && other.closed == closed && listEquals(other.places, places);
+
+  /// Hashed once: a line's places are thousands of numbers, and a map that turns looks every line up on every frame of a pan.
+  @override
+  late final int hashCode = Object.hash(closed, Object.hashAll(places));
+}
+
+/// How many lines' great circles the maps have made, for a test to see they
+/// are made again only when a line's places move.
 @visibleForTesting
 int mapGreatCirclesMade = 0;
 
-/// A line's great circle, as longitude, latitude pairs, and made ready for
-/// the last cylindrical projection it was placed in to turn.
+/// A line's great circles, step after step, as longitude, latitude pairs,
+/// and made ready for the last cylindrical projection it was placed in to
+/// turn.
 class _Arc {
   final Float32List points;
+
+  /// How far along the line each of [points] is, in degrees of arc: worked
+  /// out the first time a label is placed on it.
+  late final Float32List along = () {
+    final along = Float32List(points.length ~/ 2);
+    for (var i = 1; i < along.length; i++) {
+      along[i] = along[i - 1] + degreesApart(points[i * 2 - 1], points[i * 2 - 2], points[i * 2 + 1], points[i * 2]);
+    }
+    return along;
+  }();
   TurningShapes? _turning;
 
-  _Arc(_Ends e)
-    : points = Float32List.fromList([
-        for (final p in greatCircle(GridLocation(e.$1, e.$2), GridLocation(e.$3, e.$4))) ...[p.longitude, p.latitude],
-      ]) {
+  _Arc._(this.points);
+
+  factory _Arc(_Route r) {
     mapGreatCirclesMade++;
+    final places = [for (var i = 0; i + 1 < r.places.length; i += 2) GridLocation(r.places[i], r.places[i + 1])];
+    if (r.closed) places.add(places.first);
+    final steps = <GridLocation>[places.first];
+    for (var i = 0; i + 1 < places.length; i++) {
+      steps.addAll(greatCircle(places[i], places[i + 1]).skip(1));
+    }
+    return _Arc._(
+      Float32List.fromList([
+        for (final p in steps) ...[p.longitude, p.latitude],
+      ]),
+    );
+  }
+
+  /// The place [share] of the way along the line.
+  GridLocation at(double share) {
+    final target = share * along.last;
+    var i = 1;
+    while (i < along.length - 1 && along[i] < target) {
+      i++;
+    }
+    final span = along[i] - along[i - 1];
+    final t = span <= 0 ? 0.0 : ((target - along[i - 1]) / span).clamp(0.0, 1.0);
+    final lon0 = points[(i - 1) * 2], lat0 = points[(i - 1) * 2 + 1];
+    // A step across the antimeridian goes the short way, not back round the world.
+    final dLon = wrapLongitude(points[i * 2] - lon0);
+    return GridLocation(lat0 + (points[i * 2 + 1] - lat0) * t, lon0 + dLon * t);
   }
 
   TurningShapes turning(CylindricalProjection projection) => switch (_turning) {
@@ -591,7 +682,7 @@ class _Circle {
     // A degree of a great circle is the Earth's circumference over 360, on
     // the sphere distanceOnEarthKm measures: a circle at a contact's
     // distance passes through it.
-    final degrees = r.$3 / (2 * math.pi * 6371.0 / 360);
+    final degrees = r.$3 / (2 * math.pi * _earthKm / 360);
     final center = GridLocation(r.$1, r.$2);
     final outside = degrees > 90 + center.latitude.abs();
     final ring = outside ? capAround(GridLocation(-center.latitude, wrapLongitude(center.longitude + 180)), 180 - degrees) : capAround(center, degrees);
@@ -627,6 +718,25 @@ class _Circle {
       kept != null && kept.family == projection.runtimeType ? kept : make();
 }
 
+/// A circle's label's words: its own, or its distance in its unit, or in
+/// miles where it names none and [miles] is the operator's choice.
+@visibleForTesting
+String mapCircleWords(SceneMapCircle circle, SceneMapLabel label, {required bool miles}) =>
+    label.text ?? fmtDistance(circle.km, miles: label.unit == null ? miles : label.unit == 'mi');
+
+/// The Earth's radius on the sphere distanceOnEarthKm measures.
+const double _earthKm = 6371.0;
+
+/// The place [km] from [lat], [lon] on the bearing [az], in degrees.
+GridLocation _destination(double lat, double lon, double km, double az) {
+  const r = math.pi / 180;
+  final (phi, d, theta) = (lat * r, km / _earthKm, az * r);
+  // Rounding can carry the sine a hair past 1 on a circle through a pole, where asin is NaN.
+  final phi2 = math.asin((math.sin(phi) * math.cos(d) + math.cos(phi) * math.sin(d) * math.cos(theta)).clamp(-1.0, 1.0));
+  final dLon = math.atan2(math.sin(theta) * math.sin(d) * math.cos(phi), math.cos(d) - math.sin(phi) * math.sin(phi2));
+  return GridLocation(phi2 / r, lon + dLon / r);
+}
+
 /// What a circle [km] round [center] holds in [projection], as the map fills it.
 @visibleForTesting
 Path mapCircleFill(MapProjection projection, GridLocation center, double km) => _Circle((center.latitude, center.longitude, km)).fillIn(projection);
@@ -637,8 +747,8 @@ class _Placed {
   final SceneMapSpec spec;
   final MapProjection projection;
 
-  /// Each line's ends, in [spec]'s order.
-  final List<_Ends> ends;
+  /// Each line's places, in [spec]'s order.
+  final List<_Route> ends;
 
   /// Each marker's point, null where the projection does not draw it.
   final List<Offset?> markers;
@@ -648,6 +758,10 @@ class _Placed {
 
   /// Each line's stretches, as points, for a click to be measured against.
   final List<List<List<Offset>>> stretches;
+
+  /// Each line's and circle edge's bounds, in the projection's units.
+  late final lineBounds = [for (final l in lines) l.getBounds()];
+  late final edgeBounds = [for (final e in edges) e.getBounds()];
 
   /// Each circle's middle and radius, in [spec]'s order.
   final List<_Round> rounds;
@@ -667,6 +781,11 @@ class _Placed {
   /// one a turn either way where it runs on past the world's edge.
   final List<List<OverlayMesh>> overlays;
 
+  /// Where each line's and circle's label would sit, its `along` or `az`,
+  /// or its line's middle or its circle's north; null with no label, or
+  /// where the projection does not draw the place.
+  final List<Offset?> lineAnchors, circleAnchors;
+
   _Placed._(
     this.spec,
     this.projection,
@@ -682,6 +801,8 @@ class _Placed {
     this.lineLooks,
     this.circleLooks,
     this.overlays,
+    this.lineAnchors,
+    this.circleAnchors,
   );
 
   static List<_Round> _roundsOf(SceneMapSpec spec) {
@@ -700,39 +821,40 @@ class _Placed {
   /// [before] has where neither has changed.
   static Map<_Round, _Circle> circlesOf(SceneMapSpec spec, Map<_Round, _Circle> before) => {for (final r in _roundsOf(spec)) r: before[r] ?? _Circle(r)};
 
-  static List<_Ends> _endsOf(SceneMapSpec spec) {
+  /// The places each line of [spec] runs through: made once per scene.
+  static List<_Route> routesOf(SceneMapSpec spec) {
     final byId = {for (final m in spec.markers) m.id: m};
-    (double, double) end(Object e) => switch (e) {
-      final String id => (byId[id]!.lat, byId[id]!.lon),
-      final ({double lat, double lon}) at => (at.lat, at.lon),
-      _ => throw StateError('A map line end is a marker or a place'),
-    };
     return [
       for (final line in spec.lines)
-        switch ((end(line.from), end(line.to))) {
-          ((final a, final b), (final c, final d)) => (a, b, c, d),
-        },
+        _Route([
+          for (final p in line.points)
+            ...switch (p) {
+              final String id => [byId[id]!.lat, byId[id]!.lon],
+              final ({double lat, double lon}) at => [at.lat, at.lon],
+              _ => throw StateError('A map line runs through markers and places'),
+            },
+        ], line.closed),
     ];
   }
 
-  /// The great circle of each line of [spec], by its ends: the one [before]
-  /// has where its ends have not moved.
-  static Map<_Ends, _Arc> arcsOf(SceneMapSpec spec, Map<_Ends, _Arc> before) => {for (final e in _endsOf(spec)) e: before[e] ?? _Arc(e)};
+  /// The great circles of each line of [spec], by its places: the ones
+  /// [before] has where its places have not moved.
+  static Map<_Route, _Arc> arcsOf(List<_Route> routes, Map<_Route, _Arc> before) => {for (final e in routes) e: before[e] ?? _Arc(e)};
 
   /// [spec]'s markers and lines in [projection]; a line [before] placed in
   /// the same projection with the same ends is taken as it is.
   factory _Placed(
     SceneMapSpec spec,
     MapProjection projection,
-    Map<_Ends, _Arc> arcs,
+    List<_Route> ends,
+    Map<_Route, _Arc> arcs,
     Map<_Round, _Circle> circles,
     Map<OverlayCorners, OverlaySheet> sheets,
     _Placed? before,
   ) {
     // Past Web Mercator's cut, a marker sits on the edge, where its lines end.
     final markers = [for (final m in spec.markers) _SceneMapViewState._toMap(projection, m.lat, m.lon)];
-    final ends = _endsOf(spec);
-    final kept = <_Ends, (Path, List<List<Offset>>)>{
+    final kept = <_Route, (Path, List<List<Offset>>)>{
       if (before != null && before.projection == projection)
         for (final (i, e) in before.ends.indexed) e: (before.lines[i], before.stretches[i]),
     };
@@ -781,7 +903,42 @@ class _Placed {
         for (final (i, o) in before.spec.overlays.indexed) overlayCornersOf(o): before.overlays[i],
     };
     final overlays = [for (final o in spec.overlays) keptOverlays[overlayCornersOf(o)] ??= sheets[overlayCornersOf(o)]!.placeIn(projection)];
-    return _Placed._(spec, projection, ends, markers, lines, stretches, rounds, edges, edgeStretches, fills, markerLooks, lineLooks, circleLooks, overlays);
+    final lineAnchors = [
+      for (final (i, line) in spec.lines.indexed)
+        switch (line.label) {
+          final label? => switch (arcs[ends[i]]!.at(label.along ?? 0.5)) {
+            final p => _SceneMapViewState._toMap(projection, p.latitude, p.longitude),
+          },
+          null => null,
+        },
+    ];
+    final circleAnchors = [
+      for (final (i, circle) in spec.circles.indexed)
+        switch (circle.label) {
+          final label? => switch (_destination(rounds[i].$1, rounds[i].$2, rounds[i].$3, label.az ?? 0)) {
+            final p => _SceneMapViewState._toMap(projection, p.latitude, p.longitude),
+          },
+          null => null,
+        },
+    ];
+    return _Placed._(
+      spec,
+      projection,
+      ends,
+      markers,
+      lines,
+      stretches,
+      rounds,
+      edges,
+      edgeStretches,
+      fills,
+      markerLooks,
+      lineLooks,
+      circleLooks,
+      overlays,
+      lineAnchors,
+      circleAnchors,
+    );
   }
 
   /// How far past its point, in pixels, the largest marker is drawn at
@@ -1042,6 +1199,19 @@ class _MapPainter extends CustomPainter {
   final Color sea;
   final SceneImageLoader overlayImages;
 
+  /// A circle's distance, where its label has no unit of its own, in miles.
+  final bool miles;
+
+  /// A label's words, before its own size and color.
+  final TextStyle labelStyle;
+
+  /// Each label's words laid out, by its words and how they are drawn: the
+  /// view's, kept from frame to frame.
+  final Map<(String, double, Color, Color?), MapLabelText> labelTexts;
+
+  /// Filled with the keys of [labelTexts] this frame draws.
+  final Set<(String, double, Color, Color?)> labelsShown;
+
   _MapPainter({
     required this.camera,
     required this.spec,
@@ -1052,6 +1222,10 @@ class _MapPainter extends CustomPainter {
     required this.palette,
     required this.sea,
     required this.overlayImages,
+    required this.miles,
+    required this.labelStyle,
+    required this.labelTexts,
+    required this.labelsShown,
   });
 
   @override
@@ -1062,6 +1236,8 @@ class _MapPainter extends CustomPainter {
     // painted over.
     canvas.clipRect(Offset.zero & size);
     final zoom = camera.zoom;
+    labelsShown.clear();
+    final labels = _labels(size);
     // Each copy of the world inside its own edge: a line or the night that
     // runs on past the edge is the next copy's to draw, and drawn twice it
     // would show darker there. A rectangle's edge is cut on whole pixels, so
@@ -1104,12 +1280,27 @@ class _MapPainter extends CustomPainter {
       }
       for (final (i, look) in placed.circleLooks.indexed) {
         if ((look.fill, placed.fills[i]) case (final fill?, final path?)) canvas.drawPath(path.transform(toScreen), Paint()..color = fill);
-        _stroke(canvas, placed.edges[i].transform(toScreen), look, zoom);
+      }
+      // The lines' and circles' edges are cut under every label, as a
+      // contour's is: a label over a line it crosses cannot be read. Each
+      // box is cut on its own, so where two overlap both stay cut.
+      for (final l in labels) {
+        l.text.cutOut(canvas, l.at, l.angle);
+      }
+      // The pane in the projection's units: a line or an edge that does not
+      // reach it is not taken onto the screen at all, a cost every frame of
+      // each of its points.
+      final view = Rect.fromPoints(-origin / camera.scale, (Offset(size.width, size.height) - origin) / camera.scale);
+      for (final (i, look) in placed.circleLooks.indexed) {
+        if (placed.edgeBounds[i].overlaps(view.inflate(_strokeReach(look, zoom) / camera.scale))) _stroke(canvas, size, placed.edges[i], toScreen, look, zoom);
       }
       for (final (i, look) in placed.lineLooks.indexed) {
-        _stroke(canvas, placed.lines[i].transform(toScreen), look, zoom);
+        if (placed.lineBounds[i].overlaps(view.inflate(_strokeReach(look, zoom) / camera.scale))) _stroke(canvas, size, placed.lines[i], toScreen, look, zoom);
       }
       canvas.restore();
+    }
+    for (final l in labels) {
+      l.text.paintAt(canvas, l.at, l.angle);
     }
     for (final copy in camera.copiesWithin(placed.reachAt(zoom))) {
       final shift = Offset(copy * camera.scale, 0);
@@ -1139,12 +1330,89 @@ class _MapPainter extends CustomPainter {
     }
   }
 
+  /// Each label the view shows, in each copy of the world it is in, where
+  /// it sits: on the part of its edge in that copy and in the pane.
+  List<({MapLabelText text, Offset at, double angle})> _labels(Size size) {
+    final pane = Offset.zero & size;
+    final out = <({MapLabelText text, Offset at, double angle})>[];
+    final zoom = camera.zoom;
+    void place(SceneMapLabel label, String words, SceneMapLook look, List<List<Offset>> runs, Rect bounds, Offset anchor) {
+      // An edge not drawn at this zoom has no label: the words would stand for nothing, and cut the lines under them.
+      if ((look.width?.at(zoom) ?? _lineWidth) <= 0) return;
+      final color = label.color ?? look.color ?? palette.heading;
+      final key = (words, label.size, color, look.casing);
+      final text = labelTexts[key] ??= MapLabelText(
+        words,
+        labelStyle.copyWith(fontSize: label.size, color: color),
+        halo: look.casing,
+      );
+      final pinned = label.az != null || label.along != null;
+      for (final copy in camera.copies) {
+        final shift = Offset(copy * camera.scale, 0);
+        final origin = camera.origin + shift;
+        // An edge that misses the pane is not taken onto the screen to find it has no place there.
+        final onPane = Rect.fromLTRB(
+          origin.dx + bounds.left * camera.scale,
+          origin.dy + bounds.top * camera.scale,
+          origin.dx + bounds.right * camera.scale,
+          origin.dy + bounds.bottom * camera.scale,
+        );
+        if (!onPane.overlaps(pane.inflate(text.size.height))) continue;
+        var within = pane;
+        if (camera.projection is RectangularProjection) {
+          final world = camera.projection.world;
+          within = within.intersect(
+            Rect.fromLTRB(
+              origin.dx + world.left * camera.scale,
+              origin.dy + world.top * camera.scale,
+              origin.dx + world.right * camera.scale,
+              origin.dy + world.bottom * camera.scale,
+            ),
+          );
+        }
+        // Its words reach half their height either side of the edge.
+        within = within.deflate(text.size.height / 2);
+        final onScreen = [
+          for (final run in runs) [for (final p in run) camera.toScreen(p) + shift],
+        ];
+        final at = placeMapLabel(onScreen, within, text.room, camera.toScreen(anchor) + shift, pinned: pinned);
+        if (at == null) continue;
+        // A curved world's lines run on past its edge and are cut there: a label out past it would sit on nothing.
+        if (camera.projection is! RectangularProjection) {
+          final reach = Offset(math.cos(at.angle), math.sin(at.angle)) * (text.size.width / 2);
+          final edge = camera.projection.edge;
+          if (![at.at - reach, at.at, at.at + reach].every((p) => edge.contains((p - origin) / camera.scale))) continue;
+        }
+        out.add((text: text, at: at.at, angle: at.angle));
+        labelsShown.add(key);
+      }
+    }
+
+    for (final (i, circle) in spec.circles.indexed) {
+      final (label, anchor) = (circle.label, placed.circleAnchors[i]);
+      if (label == null || anchor == null) continue;
+      final words = mapCircleWords(circle, label, miles: miles);
+      place(label, words, placed.circleLooks[i], placed.edgeStretches[i], placed.edgeBounds[i], anchor);
+    }
+    for (final (i, line) in spec.lines.indexed) {
+      final (label, anchor) = (line.label, placed.lineAnchors[i]);
+      if (label == null || anchor == null) continue;
+      place(label, label.text!, placed.lineLooks[i], placed.stretches[i], placed.lineBounds[i], anchor);
+    }
+    return out;
+  }
+
+  /// How far past its path, in pixels, a line or an edge in [look] is drawn: half its width and its casing.
+  static double _strokeReach(SceneMapLook look, double zoom) => (look.width?.at(zoom) ?? _lineWidth) / 2 + 1;
+
   /// A line, or a circle's edge, in its look: under it its casing, a pixel
-  /// wider either side.
-  void _stroke(Canvas canvas, Path path, SceneMapLook look, double zoom) {
+  /// wider either side. [path] is in the projection's units, taken onto the
+  /// screen by [toScreen].
+  void _stroke(Canvas canvas, Size size, Path path, Float64List toScreen, SceneMapLook look, double zoom) {
     final width = look.width?.at(zoom) ?? _lineWidth;
     if (width <= 0) return;
-    if (look.dashed == true) path = dashedPath(path);
+    path = path.transform(toScreen);
+    if (look.dashed == true) path = dashedPath(path, within: (Offset.zero & size).inflate(width / 2 + 1));
     final stroke = Paint()
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round

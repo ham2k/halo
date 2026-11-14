@@ -43,8 +43,12 @@ class _RotatorMapPainter extends CustomPainter {
     required this.showStation,
   });
 
+  /// The pane, for a dashed line to be dashed only where it shows.
+  Rect _pane = Rect.zero;
+
   @override
   void paint(Canvas canvas, Size size) {
+    _pane = Offset.zero & size;
     if (frame.base <= 0) return;
     canvas.save();
     canvas.clipPath(frame.rimPath);
@@ -92,9 +96,9 @@ class _RotatorMapPainter extends CustomPainter {
       ..color = color
       ..strokeWidth = ring.width;
     final circle = Path()..addOval(Rect.fromCircle(center: frame.station, radius: r));
-    canvas.drawPath(ring.dashed ? dashedPath(circle) : circle, paint);
+    canvas.drawPath(ring.dashed ? dashedPath(circle, within: _pane.inflate(ring.width)) : circle, paint);
     for (final label in ring.labels) {
-      final text = label.text ?? '${(ring.unit == 'mi' ? ring.km / 1.609344 : ring.km).round()} ${ring.unit}';
+      final text = label.text ?? fmtDistance(ring.km, miles: ring.unit == 'mi');
       _label(canvas, text, frame.along(label.az, r), labelStyle.copyWith(fontSize: label.size, color: label.color ?? color, fontWeight: FontWeight.normal));
     }
   }
@@ -133,7 +137,7 @@ class _RotatorMapPainter extends CustomPainter {
                 ..close());
         // A pixel of the casing either side, under the line and round its head.
         if (layer.casing case final casing?) {
-          canvas.drawPath(layer.dashed ? dashedPath(line) : line, stroke(casing)..strokeWidth = width + 2);
+          canvas.drawPath(layer.dashed ? dashedPath(line, within: _pane.inflate(width + 2)) : line, stroke(casing)..strokeWidth = width + 2);
           if (tip != null) {
             canvas.drawPath(
               tip,
@@ -145,11 +149,11 @@ class _RotatorMapPainter extends CustomPainter {
             );
           }
         }
-        canvas.drawPath(layer.dashed ? dashedPath(line) : line, stroke(color));
+        canvas.drawPath(layer.dashed ? dashedPath(line, within: _pane.inflate(width)) : line, stroke(color));
         if (tip != null) canvas.drawPath(tip, Paint()..color = color);
       case SceneRotatorLayerKind.wedge:
         if (d.fill case final fill?) canvas.drawPath(d.path!, Paint()..color = fill);
-        final edge = layer.dashed ? dashedPath(d.path!) : d.path!;
+        final edge = layer.dashed ? dashedPath(d.path!, within: _pane.inflate(width)) : d.path!;
         // Along the outside of each side only: the arc mostly lies on the rim,
         // which has its own line, and inside, the casing would wash the fill.
         if ((d.color, layer.casing) case (_?, final casing?)) {
@@ -160,7 +164,7 @@ class _RotatorMapPainter extends CustomPainter {
               ..moveTo((a + shift).dx, (a + shift).dy)
               ..lineTo((b + shift).dx, (b + shift).dy);
           }
-          canvas.drawPath(layer.dashed ? dashedPath(along) : along, stroke(casing)..strokeWidth = 1);
+          canvas.drawPath(layer.dashed ? dashedPath(along, within: _pane.inflate(width)) : along, stroke(casing)..strokeWidth = 1);
         }
         if (d.color case final color?) canvas.drawPath(edge, stroke(color));
       case SceneRotatorLayerKind.circle:

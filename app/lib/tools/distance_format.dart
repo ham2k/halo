@@ -19,6 +19,11 @@ String fmtDistance(double km, {required bool miles}) {
   return miles ? t.map.distanceMiles(distance: formatted) : t.map.distanceKm(distance: formatted);
 }
 
+/// [value] with [decimals] decimals and the device locale's thousands
+/// separators, as [fmtDistance] writes its number: "12,345.6".
+String fmtGrouped(double value, {int decimals = 0}) =>
+    NumberFormat('#,##0${decimals > 0 ? '.${'0' * decimals}' : ''}', ui.PlatformDispatcher.instance.locale.toString()).format(value);
+
 /// DXCC entities big enough that their centroid is a poor position estimate —
 /// a distance for these is shown only once a state is known (see the call-info
 /// panels): US, Canada, Australia, Russia (all three), China, India, Mexico,

@@ -350,6 +350,14 @@ double wrapLongitude(double longitude) => (longitude + 180) % 360 - 180;
 
 double _sinh(double x) => (math.exp(x) - math.exp(-x)) / 2;
 
+/// The angle between two places at the Earth's middle, in degrees: the
+/// great circle's length on the sphere distanceOnEarthKm measures.
+double degreesApart(double lat1, double lon1, double lat2, double lon2) {
+  final (p1, p2) = (lat1 * _toRadians, lat2 * _toRadians);
+  final h = math.pow(math.sin((p2 - p1) / 2), 2) + math.cos(p1) * math.cos(p2) * math.pow(math.sin((lon2 - lon1) * _toRadians / 2), 2);
+  return 2 * math.asin(math.sqrt(h.clamp(0.0, 1.0))) / _toRadians;
+}
+
 /// The great circle from [from] to [to], as places no more than [stepDeg]
 /// apart along it: the shortest way round the Earth, which is how a signal
 /// and a line between two stations both go.

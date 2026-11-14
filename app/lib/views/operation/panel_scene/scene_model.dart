@@ -8,6 +8,7 @@ import 'package:halo_widgets/halo_widgets.dart' show parseExtensionColor;
 
 import '../../../services/panel_content_budgets.dart';
 import '../panel_environment.dart';
+import '../world_map/map_projection.dart' show degreesApart;
 
 part 'scene_model_spectrum_layers.dart';
 part 'scene_model_spectrum_gestures.dart';

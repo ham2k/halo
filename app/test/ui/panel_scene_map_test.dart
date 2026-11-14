@@ -126,7 +126,7 @@ void main() {
               'to': {'lat': 50, 'lon': 10},
             },
           ],
-        }).lines.single.to,
+        }).lines.single.points.last,
         (lat: 50.0, lon: 10.0),
       );
       for (final (why, map) in <(String, Map<String, dynamic>)>[
@@ -225,9 +225,226 @@ void main() {
             },
           },
         ),
+        (
+          'a line with both ends and points: which way it runs is not the scene\'s to leave open',
+          {
+            'lines': [
+              {
+                'id': 'l',
+                'from': {'lat': 0, 'lon': 0},
+                'to': {'lat': 1, 'lon': 1},
+                'points': [
+                  {'lat': 0, 'lon': 0},
+                  {'lat': 1, 'lon': 1},
+                ],
+              },
+            ],
+          },
+        ),
+        (
+          'a line through one point, which is no line',
+          {
+            'lines': [
+              {
+                'id': 'l',
+                'points': [
+                  {'lat': 0, 'lon': 0},
+                ],
+              },
+            ],
+          },
+        ),
+        (
+          'a line through a marker the map does not have',
+          {
+            'lines': [
+              {
+                'id': 'l',
+                'points': [
+                  'a',
+                  {'lat': 0, 'lon': 0},
+                ],
+              },
+            ],
+          },
+        ),
+        (
+          'a line\'s label with no words: a line has no distance to show',
+          {
+            'lines': [
+              {
+                'id': 'l',
+                'from': {'lat': 0, 'lon': 0},
+                'to': {'lat': 1, 'lon': 1},
+                'label': true,
+              },
+            ],
+          },
+        ),
+        (
+          'a line\'s label with a circle\'s unit, which it would drop',
+          {
+            'lines': [
+              {
+                'id': 'l',
+                'from': {'lat': 0, 'lon': 0},
+                'to': {'lat': 1, 'lon': 1},
+                'label': {'text': 'x', 'unit': 'mi'},
+              },
+            ],
+          },
+        ),
+        (
+          'a circle\'s label placed along it, as a line\'s is: it would sit at the north instead',
+          {
+            'circles': [
+              {
+                'id': 'c',
+                'at': {'lat': 0, 'lon': 0},
+                'km': 100,
+                'label': {'along': 0.5},
+              },
+            ],
+          },
+        ),
+        (
+          'a label with no words, which would cut the lines and say nothing',
+          {
+            'circles': [
+              {
+                'id': 'c',
+                'at': {'lat': 0, 'lon': 0},
+                'km': 100,
+                'label': ' ',
+              },
+            ],
+          },
+        ),
+        (
+          'a circle\'s distance in a unit the app does not show',
+          {
+            'circles': [
+              {
+                'id': 'c',
+                'at': {'lat': 0, 'lon': 0},
+                'km': 100,
+                'label': {'unit': 'nmi'},
+              },
+            ],
+          },
+        ),
       ]) {
         expect(() => _spec(map), throwsFormatException, reason: why);
       }
+    });
+
+    test('a line runs through its points in order, and on back to the first when closed', () {
+      final line = _spec({
+        'markers': [
+          {'id': 'a', 'lat': 1, 'lon': 2},
+        ],
+        'lines': [
+          {
+            'id': 'l',
+            'points': [
+              'a',
+              {'lat': 10, 'lon': 20},
+              {'lat': -5, 'lon': 30},
+            ],
+            'closed': true,
+            'label': '14 MHz',
+          },
+        ],
+      }).lines.single;
+      expect(line.points, ['a', (lat: 10.0, lon: 20.0), (lat: -5.0, lon: 30.0)]);
+      expect(line.closed, isTrue);
+      expect(line.label!.text, '14 MHz');
+    });
+
+    // Each degree of a step's great circle is a point placed on the screen
+    // every frame: counted by places, 4,096 of them a world apart would be
+    // 700,000 points on one line.
+    test('lines that go further round the Earth in all than the map\'s budget are refused as a budget', () {
+      Map<String, dynamic> line(String id, int places) => {
+        'id': id,
+        'points': [
+          for (var i = 0; i < places; i++) {'lat': 0, 'lon': i.isEven ? 0 : 178.5},
+        ],
+      };
+      // 1,464 steps of 178.5°, each 179 steps, is 262,056: the budget less 88.
+      expect(
+        () => _spec({
+          'lines': [line('a', 1465)],
+        }),
+        returnsNormally,
+      );
+      expect(
+        () => _spec({
+          'lines': [line('a', 1466)],
+        }),
+        throwsA(isA<PanelContentRefusal>()),
+        reason: '88 short and 179 more',
+      );
+      final close = {
+        'id': 'c',
+        'points': [
+          for (var i = 0; i < SceneMapLine.maxPoints; i++) {'lat': 0, 'lon': i / 1000},
+        ],
+      };
+      expect(
+        () => _spec({
+          'lines': [
+            for (var i = 0; i < 64; i++) {...close, 'id': 'c$i'},
+          ],
+        }),
+        returnsNormally,
+        reason: '64 lines of 4,096 places, each step a step: 262,080',
+      );
+      expect(
+        () => _spec({
+          'lines': [
+            for (var i = 0; i < 65; i++) {...close, 'id': 'c$i'},
+          ],
+        }),
+        throwsA(isA<PanelContentRefusal>()),
+      );
+    });
+
+    test('more points on a line than the budget is refused as a budget', () {
+      final points = [
+        for (var i = 0; i <= SceneMapLine.maxPoints; i++) {'lat': 0, 'lon': i % 360},
+      ];
+      expect(
+        () => _spec({
+          'lines': [
+            {'id': 'l', 'points': points},
+          ],
+        }),
+        throwsA(isA<PanelContentRefusal>()),
+      );
+    });
+
+    // The scene knows the operator's units from the render environment, but
+    // a range ring that says "km" to an operator who chose miles is the
+    // app's to get right without every extension asking.
+    test('a circle\'s distance is in the operator\'s units unless its label names its own, and its words are its own', () {
+      SceneMapCircle circle(Object label) => _spec({
+        'circles': [
+          {
+            'id': 'c',
+            'at': {'lat': 0, 'lon': 0},
+            'km': 1609.344,
+            'label': label,
+          },
+        ],
+      }).circles.single;
+      final plain = circle(true);
+      expect(mapCircleWords(plain, plain.label!, miles: true), contains('1,000'));
+      expect(mapCircleWords(plain, plain.label!, miles: false), contains('1,609'));
+      final km = circle({'unit': 'km'});
+      expect(mapCircleWords(km, km.label!, miles: true), contains('1,609'));
+      final words = circle('Skip');
+      expect(mapCircleWords(words, words.label!, miles: true), 'Skip');
     });
 
     test('more markers than the budget is refused as a budget, naming the bound', () {

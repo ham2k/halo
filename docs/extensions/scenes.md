@@ -876,7 +876,8 @@ one. Placed like a native control, it takes:
 - `rings`: up to 16 circles at a `distance` on the ground, in `unit` `km`
   (the default) or `mi`, each with `color`, `width`, `dashed` and up to 16
   `labels` at bearings: `{ az, text, size, color }`, the distance when
-  `text` is omitted.
+  `text` is omitted, with the thousands separators of the operator's
+  locale ("5,000 km").
 - `zoom`: `{ min, max, initial }`, 1 fitting the whole Earth; 1 to 20 when
   omitted. `initial` may name a scene value.
 - `pan`: where the station may be moved to, within the `area` `square`
@@ -932,7 +933,8 @@ an `id` and a `kind`:
 - `text`: at `at`, one of `text`, `value` (a scene value, with `decimals`)
   or `show`, one of the map's own readings: the rotator's `heading`,
   `target` or `elevation`, or this layer's place's `bearing`, `km` or `mi`
-  from the station. `prefix`, `suffix`, `size`, `weight`, `fontFamily`,
+  from the station, a distance with the thousands separators of the
+  operator's locale. `prefix`, `suffix`, `size`, `weight`, `fontFamily`,
   `italic`, `background` and `padding`; `align` (`start`, `center`, `end`)
   and `valign` (`top`, `center`, `bottom`) say which end and edge sit at
   its place.
@@ -1061,14 +1063,33 @@ like a native control, it takes:
   the lines, a later one over an earlier. On Web Mercator, one past its
   cut at 85.05° sits on the world's edge, where its lines end.
 - `lines`: up to 1,024, each an `id`, `from` and `to`, each a marker's `id`
-  or `{ lat, lon }`. A line is the great circle between its ends, the
-  shortest way round the Earth, broken where the projection's edge cuts it.
+  or `{ lat, lon }`; or `points` in order, 2 to 4,096 of them, with
+  `closed: true` to run on from the last back to the first (a contour).
+  Each step is the great circle between its two places, the shortest way
+  round the Earth, broken where the projection's edge cuts it. All the
+  map's lines together go at most 262,144° round the Earth, a step shorter
+  than a degree counting as one.
 - `circles`: up to 256, each an `id`, `at`, a marker's `id` or
   `{ lat, lon }`, and `km`, more than 0 and at most 20,015, half the way
   round the Earth: the places that far from `at`, measured as a contact's
   distance is. On most projections that is no circle, and one round a pole
   or past the far side of the Earth is filled the right way round. Drawn
   under the lines, a later one over an earlier.
+- A line's or a circle's `label` is set along it as a contour's is, its
+  edge cut under the words: `"14 MHz"`, or on a circle `true`, its
+  distance in the operator's units with their locale's thousands
+  separators ("5,000 km"); or its fields, `{ text, size, color }`
+  and, on a circle, `unit` and `az`, on a line, `along`. A circle's label
+  without `text` is its distance, in `unit` (`km` or `mi`) where it names
+  one. The app puts the label where the view shows the edge, as near a
+  circle's north or a line's middle as the words fit, and moves it along
+  the edge as the operator pans; `az` on a circle, a bearing from `at`, or
+  `along` on a line, 0 at its start and 1 at its end, holds it there
+  instead, running on past a line's end, and it is hidden while that part
+  of the edge is out of view. A label shows only while its edge is drawn
+  (a `width` above 0 at the zoom). `size` is its font size in pixels (11);
+  `color` is the edge's unless given, with a halo of the look's `casing`
+  where it has one.
 - `images` (API 25): up to 16 pictures laid on the world, each an `id`, an
   `image` ([Images](#images)), and its `corners`, four places from the top
   left round to the bottom left, the right edge east of the left; or its
@@ -1107,8 +1128,11 @@ whole world to 8 at zoom 6 and stays 8 closer in.
     { id: "home", lat: 40.7, lon: -74, fill: "#000000" },
     { id: "ja1abc", lat: 35.7, lon: 139.7, style: "qso", event: "open" },
   ],
-  lines: [{ id: "to-ja1abc", from: "home", to: "ja1abc", style: "path" }],
-  circles: [{ id: "5000km", at: "home", km: 5000, color: "#80FFFFFF", dashed: true }],
+  lines: [
+    { id: "to-ja1abc", from: "home", to: "ja1abc", style: "path" },
+    { id: "muf-14", points: mufContour, closed: true, label: "14 MHz", color: "#FFAA00" },
+  ],
+  circles: [{ id: "5000km", at: "home", km: 5000, color: "#80FFFFFF", dashed: true, label: true }],
 }
 ```
 

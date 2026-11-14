@@ -1170,6 +1170,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                         )
                       : null,
                   home: operationLocation,
+                  miles: dockServices.settings.distanceUnits == DistanceUnits.miles,
                 )
               // A module nothing in the catalog explains — an extension
               // disabled or uninstalled since this arrangement was saved. It

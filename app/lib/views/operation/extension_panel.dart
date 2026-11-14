@@ -64,6 +64,9 @@ class ExtensionPanel extends StatefulWidget {
   /// The operation's location, where a scene's `map` centres when it names no place.
   final GridLocation? home;
 
+  /// Whether a scene's map labels a circle's distance in miles where the scene names no unit.
+  final bool miles;
+
   /// How a markdown pane draws its images: the extension's own, from
   /// `extensionImagesFor`. Null draws each as its alt text.
   final MarkdownSizedImageBuilder? markdownImages;
@@ -81,6 +84,7 @@ class ExtensionPanel extends StatefulWidget {
     this.spectrum,
     this.rotator,
     this.home,
+    this.miles = false,
     this.markdownImages,
     this.sceneImages,
   });
@@ -847,6 +851,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         spectrum: widget.spectrum,
         rotator: widget.rotator,
         home: widget.home,
+        miles: widget.miles,
       );
       final images = widget.markdownImages;
       return SceneImageScope(

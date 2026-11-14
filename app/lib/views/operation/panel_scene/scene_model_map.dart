@@ -143,11 +143,124 @@ class SceneMapMarker extends SceneMapItem {
   SceneMapMarker(super.json) : lat = number(json, 'lat', min: -90, max: 90), lon = number(json, 'lon', min: -540, max: 540);
 }
 
-/// The great circle between two places, each a marker's id or `{ lat, lon }`.
-class SceneMapLine extends SceneMapItem {
-  final Object from, to;
+/// Text set along a line or a circle's edge, contour style: turned to run
+/// with the edge where it sits, upright, the edge cut under it.
+class SceneMapLabel {
+  /// The words; null on a circle, its distance.
+  final String? text;
 
-  SceneMapLine(super.json) : from = _end(json, 'from'), to = _end(json, 'to');
+  /// A circle's distance's unit, `km` or `mi`; null, the operator's.
+  final String? unit;
+
+  /// Where it sits: on a circle, its bearing from the middle; on a line, its
+  /// share of the way from the start. Null, wherever the view shows the
+  /// edge, as near the circle's north or the line's middle as it can.
+  final double? az, along;
+
+  /// Its font size, in pixels.
+  final double size;
+  final Color? color;
+
+  const SceneMapLabel._({this.text, this.unit, this.az, this.along, this.size = 11, this.color});
+
+  /// [json]'s `label`: its text, `true` for a circle's distance, or the
+  /// fields. A line's has text: it has no distance to show.
+  static SceneMapLabel? parse(Map<dynamic, dynamic> json, {required bool circle}) {
+    final raw = json['label'];
+    if (raw is Map) {
+      // Each kind's own fields: one on the other kind would be dropped, the label put somewhere the author did not say.
+      for (final key in circle ? const ['along'] : const ['unit', 'az']) {
+        if (raw[key] != null) throw FormatException('A map ${circle ? 'circle' : 'line'} label has no $key');
+      }
+    }
+    final label = switch (raw) {
+      null || false => null,
+      true when circle => const SceneMapLabel._(),
+      true => throw const FormatException('A map line label has text: a line has no distance to show'),
+      final String _ => SceneMapLabel._(text: string(json, 'label')),
+      final Map<dynamic, dynamic> l => SceneMapLabel._(
+        text: l['text'] == null ? null : string(l, 'text'),
+        unit: _oneOf(l, 'unit', const ['km', 'mi']),
+        az: l['az'] == null ? null : number(l, 'az', min: -360, max: 720),
+        along: l['along'] == null ? null : number(l, 'along', min: 0, max: 1),
+        size: number(l, 'size', fallback: 11, min: 4, max: 72),
+        color: _color(l, 'color'),
+      ),
+      _ => throw const FormatException('Invalid map label'),
+    };
+    if (label != null && !circle && label.text == null) throw const FormatException('A map line label has text: a line has no distance to show');
+    // Empty, it would draw nothing and still cut the lines under it.
+    if (label?.text?.trim().isEmpty ?? false) throw const FormatException('A map label has words');
+    return label;
+  }
+}
+
+/// The way between places, each a marker's id or `{ lat, lon }`: from
+/// [from] to [to], or through [points]; each step along a great circle.
+class SceneMapLine extends SceneMapItem {
+  /// The most [points] one line runs through.
+  static const maxPoints = 4096;
+
+  /// The places it runs through, in order: `from` and `to`, or `points`.
+  final List<Object> points;
+
+  /// Whether it runs on from its last point back to its first: a contour.
+  final bool closed;
+  final SceneMapLabel? label;
+
+  SceneMapLine(super.json)
+    : points = _points(json),
+      closed = switch (json['closed']) {
+        null || false => false,
+        true => true,
+        _ => throw const FormatException('Invalid map line closed'),
+      },
+      label = SceneMapLabel.parse(json, circle: false);
+
+  /// How many steps its great circles take, a step a degree and a step for
+  /// any shorter, its points places: counted once, as a line a patch left
+  /// alone is carried from scene to scene.
+  late final int steps = stepsThrough(const {});
+
+  /// [steps], with its markers' places from [markers].
+  int stepsThrough(Map<String, SceneMapMarker> markers) {
+    final places = [
+      for (final p in points)
+        switch (p) {
+          final String id => (lat: markers[id]?.lat ?? 0, lon: markers[id]?.lon ?? 0),
+          final ({double lat, double lon}) at => at,
+          _ => (lat: 0.0, lon: 0.0),
+        },
+    ];
+    if (closed) places.add(places.first);
+    var steps = 0;
+    for (var i = 0; i + 1 < places.length; i++) {
+      steps += math.max(1, degreesApart(places[i].lat, places[i].lon, places[i + 1].lat, places[i + 1].lon).ceil());
+    }
+    return steps;
+  }
+
+  static List<Object> _points(Map<dynamic, dynamic> json) {
+    final raw = json['points'];
+    if (raw == null) {
+      if (json['from'] == null && json['to'] == null) throw const FormatException('A map line runs from and to two places, or through its points');
+      return [_end(json, 'from'), _end(json, 'to')];
+    }
+    if (json['from'] != null || json['to'] != null) throw const FormatException('A map line runs from and to two places, or through its points');
+    if (raw is! List) throw const FormatException('Invalid map line points');
+    if (raw.length > maxPoints) throw _overCount('map line points', raw.length, maxPoints);
+    if (raw.length < 2) throw const FormatException('A map line runs through two points or more');
+    final points = <Object>[];
+    for (final (i, p) in raw.indexed) {
+      try {
+        points.add(_end({'point': p}, 'point'));
+      } on FormatException catch (e) {
+        // Among thousands, the one at fault named.
+        throw FormatException('${e.message} at points[$i]');
+      }
+    }
+    return points;
+  }
 
   static Object _end(Map<dynamic, dynamic> json, String key) => switch (json[key]) {
     final String id => id,
@@ -164,8 +277,12 @@ class SceneMapCircle extends SceneMapItem {
 
   final Object at;
   final double km;
+  final SceneMapLabel? label;
 
-  SceneMapCircle(super.json) : at = SceneMapLine._end(json, 'at'), km = number(json, 'km', min: 0, max: maxKm) {
+  SceneMapCircle(super.json)
+    : at = SceneMapLine._end(json, 'at'),
+      km = number(json, 'km', min: 0, max: maxKm),
+      label = SceneMapLabel.parse(json, circle: true) {
     if (km <= 0) throw const FormatException('A map circle is more than 0 km round');
   }
 }
@@ -226,6 +343,13 @@ class SceneMapSpec {
 
   static const maxMarkers = 4096;
   static const maxLines = 1024;
+
+  /// The most steps all of a map's lines take in all, each the great circle
+  /// between two of a line's places, counted a step a degree and a step
+  /// for any shorter: each degree is a point on it, placed on the screen
+  /// every frame it is in view. 1,024 lines across half the Earth fit;
+  /// 65,536 places a world apart, four million times a degree, would not.
+  static const maxLineSteps = 262144;
   static const maxCircles = 256;
   static const maxStyles = 64;
   static const double zoomFloor = 0;
@@ -346,6 +470,12 @@ class SceneMapSpec {
       zoomGesture = _gesture(json, 'zoom'),
       panGesture = _gesture(json, 'pan') {
     if (zoomMin > zoomMax) throw const FormatException('A map zoom min is past its max, 10 where it gives none');
+    final byId = {for (final m in markers) m.id: m};
+    var steps = 0;
+    for (final line in lines) {
+      steps += line.points.any((p) => p is String) ? line.stepsThrough(byId) : line.steps;
+      if (steps > maxLineSteps) throw _overCount('degrees of map lines in all', steps, maxLineSteps);
+    }
     if (panBounds case final b? when b.south >= b.north) throw const FormatException('A map pan bounds south is past its north');
     final ids = <String>{};
     for (final item in [...markers, ...lines, ...circles]) {
@@ -354,8 +484,8 @@ class SceneMapSpec {
     }
     final markerIds = {for (final m in markers) m.id};
     for (final line in lines) {
-      for (final end in [line.from, line.to]) {
-        if (end is String && !markerIds.contains(end)) throw FormatException('A map line ends at a marker it does not have: ${line.id}');
+      for (final end in line.points) {
+        if (end is String && !markerIds.contains(end)) throw FormatException('A map line runs through a marker it does not have: ${line.id}');
       }
     }
     for (final circle in circles) {
@@ -377,6 +507,8 @@ class SceneMapSpec {
     } on FormatException catch (e) {
       final id = json['id'];
       if (id is! String || e.message.endsWith(': $id')) rethrow;
+      // A budget stays one: the operator is told a limit was passed, not that the scene is broken.
+      if (e is PanelContentRefusal) throw PanelContentRefusal(e.budget, e.max, '${e.message}: $id');
       throw FormatException('${e.message}: $id');
     }
   }

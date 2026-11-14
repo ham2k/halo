@@ -413,12 +413,28 @@ List<List<Offset>> projectRuns(MapProjection projection, Float32List line) {
   return runs;
 }
 
-/// [path] as dashes 6 pixels long, 10 apart.
-Path dashedPath(Path path) {
+/// [path] as dashes 6 pixels long, 10 apart; with [within], only those
+/// that reach into it. Zoomed in, a ring round the world is millions of
+/// pixels long, and dashing all of it costs seconds a frame for the few
+/// hundred pixels the pane shows. A path goes no further than its length,
+/// so a point [within] is not reached sooner than its distance from it
+/// further along: the dashes before then are passed over a stretch at a
+/// time, keeping their places along the path so a pan does not slide them.
+Path dashedPath(Path path, {Rect? within}) {
   final out = Path();
   for (final metric in path.computeMetrics()) {
-    for (var d = 0.0; d < metric.length; d += 10) {
+    var d = 0.0;
+    while (d < metric.length) {
+      if (within != null) {
+        final at = metric.getTangentForOffset(d)!.position;
+        final away = math.max(math.max(within.left - at.dx, at.dx - within.right), math.max(within.top - at.dy, at.dy - within.bottom));
+        if (away > 6) {
+          d += math.max(10.0, (away / 10).floor() * 10.0);
+          continue;
+        }
+      }
       out.addPath(metric.extractPath(d, math.min(d + 6, metric.length)), Offset.zero);
+      d += 10;
     }
   }
   return out;

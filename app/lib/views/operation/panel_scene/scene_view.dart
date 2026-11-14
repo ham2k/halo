@@ -52,7 +52,10 @@ class PanelSceneView extends StatefulWidget {
 
   /// The operation's location, where a `map` control centres when the scene names no place.
   final GridLocation? home;
-  const PanelSceneView({super.key, required this.scene, this.onEvent, this.spectrum, this.rotator, this.home});
+
+  /// Whether a map labels a circle's distance in miles where the scene names no unit: the operator's setting.
+  final bool miles;
+  const PanelSceneView({super.key, required this.scene, this.onEvent, this.spectrum, this.rotator, this.home, this.miles = false});
   @override
   State<PanelSceneView> createState() => _PanelSceneViewState();
 }
@@ -434,6 +437,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     values: _values,
     disabled: control.disabled,
     home: widget.home,
+    miles: widget.miles,
     onClick: control.event == null || control.disabled ? null : (at) => _sendControl(control, 'commit', at: at),
     onItem: control.disabled ? null : (id, action, at) => _sendControl(control, 'activate', action: action, layer: id, at: at),
     onGesture: control.event == null || control.disabled

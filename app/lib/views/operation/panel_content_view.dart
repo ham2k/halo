@@ -217,8 +217,19 @@ class PanelContentView extends StatelessWidget {
   final SceneSpectrumSource? spectrum;
   final SceneRotatorSource? rotator;
   final GridLocation? home;
+  final bool miles;
 
-  const PanelContentView({super.key, required this.content, this.error, this.onRetry, this.onSceneEvent, this.spectrum, this.rotator, this.home});
+  const PanelContentView({
+    super.key,
+    required this.content,
+    this.error,
+    this.onRetry,
+    this.onSceneEvent,
+    this.spectrum,
+    this.rotator,
+    this.home,
+    this.miles = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -227,7 +238,7 @@ class PanelContentView extends StatelessWidget {
     if (content == null) return const Center(child: CircularProgressIndicator());
     switch (content.kind) {
       case 'scene' when content.scene != null:
-        return PanelSceneView(scene: content.scene!, onEvent: onSceneEvent, spectrum: spectrum, rotator: rotator, home: home);
+        return PanelSceneView(scene: content.scene!, onEvent: onSceneEvent, spectrum: spectrum, rotator: rotator, home: home, miles: miles);
       case 'markdown':
         return SingleChildScrollView(
           padding: const EdgeInsets.all(Space.lg),
