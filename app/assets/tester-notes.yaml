@@ -7,6 +7,7 @@
 upcoming:
   changes:
     - "Links from other apps ask before tuning the radio, filling in a contact or opening an operation"
+    - "New POTA export: one file for every park of an n-fer"
 
 "193":
   changes:

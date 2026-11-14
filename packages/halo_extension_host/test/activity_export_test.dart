@@ -1,11 +1,13 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Activate two parks at once and you owe the program two logs, one claiming
-// each (docs/design/activities.md §3.2). This is a different axis from
-// nfer_export_test.dart's split: that one multiplies RECORDS within a file by
-// the parks the other station was at; this one multiplies FILES by the parks
-// you were at.
+// Activate two references at once and most programs are owed two logs, one
+// claiming each (docs/design/activities.md §3.2); WWFF, through the SDK's
+// `activityExportHook`, is the one pre-loaded here. POTA is the exception: its
+// uploader reads the park fields as lists, so it is owed ONE file naming every
+// park. This is a different axis from nfer_export_test.dart's split: that one
+// multiplies RECORDS within a file by the parks the other station was at; this
+// one multiplies FILES by the references you were at.
 //
 // Driven through the real runtime with both bundles, because the whole
 // mechanism is `exportKey` round-tripping through the core and the activity
@@ -59,9 +61,50 @@ void main() {
       },
   ];
 
-  Future<ExtensionHost> startHost() => sharedHost(['adif', 'ham2k-pota']);
+  Map<String, dynamic> wwffOperation(List<String> refs) => {
+    ...operation(const []),
+    'refs': [
+      for (final ref in refs) {'type': 'wwffActivation', 'ref': ref},
+    ],
+  };
 
-  test('activating two parks offers one export per park', () async {
+  Future<ExtensionHost> startHost() => sharedHost(['adif', 'ham2k-pota']);
+  Future<ExtensionHost> startWwffHost() => sharedHost(['adif', 'ham2k-wwff']);
+
+  test('activating two references offers one export per reference', () async {
+    final host = await startWwffHost();
+    final options =
+        (await host.invokeHook(
+                  'export',
+                  key: 'ham2k-wwff',
+                  method: 'suggestExportOptions',
+                  args: {
+                    'operation': wwffOperation(['KFF-0001', 'KFF-0002']),
+                    'qsos': qsos,
+                  },
+                  timeout: const Duration(seconds: 20),
+                )
+                as List)
+            .cast<Map>();
+
+    expect(options.length, 2);
+    // The FORMAT leads the label: a reference activated on a contest weekend
+    // offers several files for it, and the reference alone said nothing about
+    // which of them a row was.
+    expect(options.map((o) => o['label']), ['ADIF for WWFF KFF-0001', 'ADIF for WWFF KFF-0002']);
+    // A stable kind groups the logs; distinct keys keep each one selectable.
+    expect(options.map((o) => o['exportType']), ['wwffActivation-adif', 'wwffActivation-adif']);
+    expect(options.map((o) => o['exportKey']), ['ham2k-wwff-adif:KFF-0001', 'ham2k-wwff-adif:KFF-0002']);
+    // Distinct filenames, so two selected exports don't collide on disk.
+    expect(options[0]['filename'], isNot(options[1]['filename']));
+    // Declared so the core slices to segments where WWFF was actually running.
+    expect(options.every((o) => o['refType'] == 'wwffActivation'), isTrue);
+    // And which reference, so each file holds only that reference's segments.
+    // Without it every reference's file is the whole log.
+    expect(options.map((o) => o['ref']), ['KFF-0001', 'KFF-0002']);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('activating two parks offers POTA one file for both', () async {
     final host = await startHost();
     final options =
         (await host.invokeHook(
@@ -77,36 +120,30 @@ void main() {
                 as List)
             .cast<Map>();
 
-    expect(options.length, 2);
-    // The FORMAT leads the label: a park activated on a contest weekend
-    // offers several files for the same reference, and the reference alone
-    // said nothing about which of them a row was.
-    expect(options.map((o) => o['label']), ['ADIF for POTA US-0001', 'ADIF for POTA US-0002']);
-    // A stable kind groups park logs; distinct keys keep each park selectable.
-    expect(options.map((o) => o['exportType']), ['potaActivation-adif', 'potaActivation-adif']);
-    expect(options.map((o) => o['exportKey']), ['ham2k-pota-adif:US-0001', 'ham2k-pota-adif:US-0002']);
-    // Distinct filenames, so two selected exports don't collide on disk.
-    expect(options[0]['filename'], isNot(options[1]['filename']));
-    // Declared so the core slices to segments where POTA was actually running.
-    expect(options.every((o) => o['refType'] == 'potaActivation'), isTrue);
-    // And which park, so each file holds only that park's segments. A bundle
-    // built before `ExportOption.ref` names it only here, and the core reads
-    // it in its place — without it every park's file is the whole log.
-    expect(options.map((o) => o['ref'] ?? (o['templateData'] as Map)['ref']), ['US-0001', 'US-0002']);
+    // A file per park submits every contact once per park.
+    expect(options.length, 1);
+    expect(options.single['label'], 'ADIF for POTA US-0001, US-0002');
+    expect(options.single['exportKey'], 'ham2k-pota-adif');
+    // No `ref`, and a joined `templateData.ref` that names no single park:
+    // either one naming a park would slice the file down to that park's
+    // segments while its name claims both.
+    expect(options.single['ref'], isNull);
+    expect((options.single['templateData'] as Map)['ref'], 'US-0001,US-0002');
+    expect(options.single['refType'], 'potaActivation');
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a per-park export requires a valid instance key', () async {
-    final host = await startHost();
-    for (final key in [null, 'potaActivation-adif', 'ham2k-sota-adif:US-0001']) {
+    final host = await startWwffHost();
+    for (final key in [null, 'wwffActivation-adif', 'ham2k-sota-adif:KFF-0001']) {
       await expectLater(
         host.invokeHook(
           'export',
-          key: 'ham2k-pota',
+          key: 'ham2k-wwff',
           method: 'generateExport',
           args: {
-            'operation': operation(['US-0001']),
+            'operation': wwffOperation(['KFF-0001']),
             'qsos': qsos,
-            'exportType': 'potaActivation-adif',
+            'exportType': 'wwffActivation-adif',
             'exportKey': ?key,
           },
           timeout: const Duration(seconds: 20),
@@ -116,19 +153,19 @@ void main() {
     }
   });
 
-  test('each file claims only its own park', () async {
-    final host = await startHost();
+  test('each file claims only its own reference', () async {
+    final host = await startWwffHost();
 
     Future<String> generate(String exportKey) async {
       final result =
           await host.invokeHook(
                 'export',
-                key: 'ham2k-pota',
+                key: 'ham2k-wwff',
                 method: 'generateExport',
                 args: {
-                  'operation': operation(['US-0001', 'US-0002']),
+                  'operation': wwffOperation(['KFF-0001', 'KFF-0002']),
                   'qsos': qsos,
-                  'exportType': 'potaActivation-adif',
+                  'exportType': 'wwffActivation-adif',
                   'exportKey': exportKey,
                 },
                 timeout: const Duration(seconds: 20),
@@ -137,30 +174,54 @@ void main() {
       return result['content'] as String;
     }
 
-    final first = await generate('ham2k-pota-adif:US-0001');
-    final second = await generate('ham2k-pota-adif:US-0002');
+    final first = await generate('ham2k-wwff-adif:KFF-0001');
+    final second = await generate('ham2k-wwff-adif:KFF-0002');
 
-    // Each file names its own park and does NOT mention the other — that is
+    // Each file names its own reference and does NOT mention the other — that is
     // what makes it separately submittable.
-    expect(first, contains('<MY_POTA_REF:7>US-0001'));
-    expect(first, isNot(contains('US-0002')));
-    expect(second, contains('<MY_POTA_REF:7>US-0002'));
-    expect(second, isNot(contains('US-0001')));
+    expect(first, contains('<MY_WWFF_REF:8>KFF-0001'));
+    expect(first, isNot(contains('KFF-0002')));
+    expect(second, contains('<MY_WWFF_REF:8>KFF-0002'));
+    expect(second, isNot(contains('KFF-0001')));
 
-    // Same contacts in both: you submit the whole log to each park.
+    // Same contacts in both: you submit the whole log to each reference.
     for (final content in [first, second]) {
       expect('<EOR>'.allMatches(content).length, 3);
     }
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  test('each file still claims only its own park on a segmented log', () async {
+  test('POTA\'s one file names every park on every record', () async {
+    final host = await startHost();
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'ham2k-pota',
+              method: 'generateExport',
+              args: {
+                'operation': operation(['US-0001', 'US-0002']),
+                'qsos': qsos,
+                'exportType': 'potaActivation-adif',
+                'exportKey': 'ham2k-pota-adif',
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
+    final content = result['content'] as String;
+
+    // Each contact once, claiming both parks: the core widened the slice to
+    // every park because the option names none.
+    expect('<EOR>'.allMatches(content).length, 3);
+    expect('<MY_POTA_REF:15>US-0001,US-0002'.allMatches(content).length, 3);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('each file still claims only its own reference on a segmented log', () async {
     // The generator hands `adifFields` each contact's SEGMENT operation
     // (`ExportRequest.segments`), so filtering the base operation's refs down
-    // to the one park is not enough: a two-fer with one break anywhere in the
+    // to the one reference is not enough: a two-fer with one break anywhere in the
     // log — a grid change, a contest ending — would otherwise put the other
-    // park onto every record of this file.
-    final host = await startHost();
-    final base = operation(['US-0001', 'US-0002']);
+    // reference onto every record of this file.
+    final host = await startWwffHost();
+    final base = wwffOperation(['KFF-0001', 'KFF-0002']);
     final segments = [
       {'fromMillis': -1, 'operation': base},
       {
@@ -171,16 +232,16 @@ void main() {
     final result =
         await host.invokeHook(
               'export',
-              key: 'ham2k-pota',
+              key: 'ham2k-wwff',
               method: 'generateExport',
-              args: {'operation': base, 'qsos': qsos, 'segments': segments, 'exportType': 'potaActivation-adif', 'exportKey': 'ham2k-pota-adif:US-0002'},
+              args: {'operation': base, 'qsos': qsos, 'segments': segments, 'exportType': 'wwffActivation-adif', 'exportKey': 'ham2k-wwff-adif:KFF-0002'},
               timeout: const Duration(seconds: 20),
             )
             as Map;
     final content = result['content'] as String;
 
-    expect('<MY_POTA_REF:7>US-0002'.allMatches(content).length, 3, reason: 'every record, in both segments');
-    expect(content, isNot(contains('US-0001')));
+    expect('<MY_WWFF_REF:8>KFF-0002'.allMatches(content).length, 3, reason: 'every record, in both segments');
+    expect(content, isNot(contains('KFF-0001')));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   // A file uploaded to POTA is POTA's log. Activate a park that is also a
@@ -214,7 +275,7 @@ void main() {
                   },
                 ],
                 'exportType': 'potaActivation-adif',
-                'exportKey': 'ham2k-pota-adif:US-0001',
+                'exportKey': 'ham2k-pota-adif',
               },
               timeout: const Duration(seconds: 20),
             )
@@ -417,21 +478,21 @@ void main() {
     expect(options, isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  test('a park removed since the panel listed it is refused, not exported empty', () async {
-    final host = await startHost();
+  test('a reference removed since the panel listed it is refused, not exported empty', () async {
+    final host = await startWwffHost();
     // The option list and the export run are read at different moments. Without
     // a guard this filters every activation ref away and produces a valid ADIF
-    // claiming no park at all — which looks submittable and isn't.
+    // claiming no reference at all — which looks submittable and isn't.
     await expectLater(
       host.invokeHook(
         'export',
-        key: 'ham2k-pota',
+        key: 'ham2k-wwff',
         method: 'generateExport',
         args: {
-          'operation': operation(['US-0001']),
+          'operation': wwffOperation(['KFF-0001']),
           'qsos': qsos,
-          'exportType': 'potaActivation-adif',
-          'exportKey': 'ham2k-pota-adif:US-0002',
+          'exportType': 'wwffActivation-adif',
+          'exportKey': 'ham2k-wwff-adif:KFF-0002',
         },
         timeout: const Duration(seconds: 20),
       ),
@@ -484,7 +545,7 @@ void main() {
                     },
                   ],
                   'exportType': 'potaActivation-adif',
-                  'exportKey': 'ham2k-pota-adif:US-0001',
+                  'exportKey': 'ham2k-pota-adif',
                   'includePrivateData': includePrivateData,
                 },
                 timeout: const Duration(seconds: 20),

@@ -38,7 +38,7 @@ void main() {
                 'operation': operation,
                 'qsos': qsos,
                 'exportType': 'potaActivation-adif',
-                'exportKey': 'ham2k-pota-adif:US-1234',
+                'exportKey': 'ham2k-pota-adif',
                 'includePrivateData': true,
                 'includeLookupData': false,
                 'exportData': {'ref': 'US-1234', 'activity': 'POTA'},

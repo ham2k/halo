@@ -2,14 +2,18 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // One contact can owe several ADIF records: work a station standing in two
-// parks and each park is submitted separately, which is the same reason it
-// counts twice toward an activation (docs/design/activities.md §4). The scorer
-// and the exporter have to agree about that, so this drives BOTH the `adif`
-// and `ham2k-pota` bundles through the real runtime — the record-splitting only
-// exists once the exporter can see POTA's `fieldCombinationsForOneQSO`.
+// parks and a state-park sponsor counts each park separately, which is the
+// same reason it counts twice toward an activation (docs/design/activities.md
+// §4). The scorer and the exporter have to agree about that, so this drives
+// BOTH the `adif` and `ham2k-pota` bundles through the real runtime — the
+// record-splitting only exists once the exporter can see POTA's
+// `fieldCombinationsForOneQSO`.
 //
-// Only in POTA's own file, though. The full ADIF is the operator's copy of the
-// log, and a split there reimports as two contacts.
+// Only in another program's file that includes POTA's fields, though — a
+// state-park log, stood in for here by WWFF naming POTA in `includeFieldsFrom`.
+// POTA's own uploader reads POTA_REF as a list, so its file is one record
+// naming both parks, and the full ADIF is the operator's copy of the log,
+// where a split reimports as two contacts.
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -32,9 +36,10 @@ void main() {
     ],
   };
 
-  /// POTA's own file, unless [full] asks for the whole-log export.
-  Future<String> exportAdif(List<String> activating, Map<String, dynamic> qso, {bool full = false}) async {
-    final host = await sharedHost(['adif', 'ham2k-pota']);
+  /// POTA's own file, unless [full] asks for the whole-log export or
+  /// [included] for another program's file that includes POTA's fields.
+  Future<String> exportAdif(List<String> activating, Map<String, dynamic> qso, {bool full = false, bool included = false}) async {
+    final host = await sharedHost(['adif', 'ham2k-pota', 'ham2k-wwff']);
     final result =
         await host.invokeHook(
               'export',
@@ -50,7 +55,11 @@ void main() {
                 },
                 'qsos': [qso],
                 'exportType': 'adif',
-                if (!full) 'mainHandler': 'ham2k-pota',
+                if (included) ...{
+                  'mainHandler': 'ham2k-wwff',
+                  'includeFieldsFrom': ['ham2k-pota'],
+                } else if (!full)
+                  'mainHandler': 'ham2k-pota',
               },
               timeout: const Duration(seconds: 20),
             )
@@ -61,8 +70,18 @@ void main() {
   /// Record bodies, without the header block.
   List<String> recordsIn(String adif) => adif.split('<EOR>').where((part) => part.contains('<CALL:')).toList();
 
-  test('a two-park P2P is written as two records, one per park', () async {
+  test('POTA\'s own file writes a two-park P2P as one record naming both parks', () async {
     final adif = await exportAdif(['US-0001'], qsoHunting(['US-9001', 'US-9002']));
+    final records = recordsIn(adif);
+
+    // A record per park submits the same contact to POTA once per park.
+    expect(records.length, 1);
+    expect(records[0], contains('<POTA_REF:15>US-9001,US-9002'));
+    expect(records[0], contains('<TIME_ON:6>143015'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('a file that includes POTA\'s fields writes a two-park P2P as two records, one per park', () async {
+    final adif = await exportAdif(['US-0001'], qsoHunting(['US-9001', 'US-9002']), included: true);
     final records = recordsIn(adif);
 
     expect(records.length, 2);
@@ -90,7 +109,7 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('the second record is shifted a second so it is not read as a duplicate', () async {
-    final adif = await exportAdif(['US-0001'], qsoHunting(['US-9001', 'US-9002']));
+    final adif = await exportAdif(['US-0001'], qsoHunting(['US-9001', 'US-9002']), included: true);
     final records = recordsIn(adif);
 
     expect(records[0], contains('<TIME_ON:6>143015'));
