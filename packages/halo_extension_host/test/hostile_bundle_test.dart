@@ -298,6 +298,41 @@ defined = true
       expect(answer['after'], answer['before']);
     });
 
+    test('a bundle cannot change or replace the country file every extension resolves calls against', () async {
+      // The library keeps the country file in module state, which freezing its
+      // objects does not reach, and exports the setter that swaps it.
+      final host = await _start([
+        _attacker('''
+          const cf = __halo.sharedModules['@ham2k/lib-country-files']
+          const look = () => JSON.stringify(cf.annotateFromCountryFile({ call: 'K1ABC' }))
+          const before = look()
+          let replaced = false
+          try { cf.setCountryFileData({ entities: {}, exact: {}, prefix: {}, prefixWAE: {}, exactWAE: {} }); replaced = true } catch (e) {}
+          try { cf.BIGCTY.entities.K.name = 'PWNED' } catch (e) {}
+          try { cf.BIGCTY.prefix.K = { p: 'JA' } } catch (e) {}
+          return { before: before, after: look(), replaced: replaced }
+        '''),
+      ]);
+      final answer = await _probe(host) as Map;
+      expect(answer['before'], contains('"entityPrefix":"K"'), reason: 'the case under test: a call the country file resolves');
+      expect(answer['after'], answer['before']);
+      expect(answer['replaced'], isFalse);
+    });
+
+    // Every published bundle's SDK calls useBuiltinCountryFile at load. The
+    // library's own installer writes into the entities, now frozen, so a real
+    // call would throw and refuse every one of those bundles. The lookup that
+    // follows also writes into its table entry, which a frozen table refuses.
+    test('a bundle that installs the built-in country file at load, as every SDK does, still loads', () async {
+      final host = await _start([
+        _attacker(
+          "return __halo.sharedModules['@ham2k/lib-country-files'].annotateFromCountryFile({ call: 'JA1ABC' }).entityPrefix",
+          prelude: "__halo.sharedModules['@ham2k/lib-country-files'].useBuiltinCountryFile()",
+        ),
+      ]);
+      expect(await _probe(host), 'JA');
+    });
+
     test('ordinary code that assigns over an inherited name still runs', () async {
       // A frozen prototype makes an assignment to a name it holds throw: the
       // Error subclass setting `this.name`, an object given its own toString,

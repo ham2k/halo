@@ -352,9 +352,16 @@ patch, `console`), is `freezeRealm` (`extensions/sdk/src/freezeRealm.ts`):
 - the kernel reads the monotonic clock every extension's timers are measured
   on through `performance.now` captured at load, never through the global;
 - the shared libraries are frozen through, reading their export getters, except
-  `i18next` and `@ham2k/lib-country-files`, which change their own state as
-  they run (one logger every instance re-initialises; country data every
-  bundle's SDK annotates at load) and are frozen one level deep;
+  `i18next`, which changes its own state as it runs (one logger every instance
+  re-initialises) and is frozen one level deep;
+- `@ham2k/lib-country-files` keeps the country file in module state no freeze
+  reaches, writes `regionCode` into its entities as it installs one, and
+  writes into its lookup tables on every lookup. So the kernel installs the built-in one before the freeze
+  and hands bundles the library with `useBuiltinCountryFile` a no-op,
+  `setCountryFileData` refused, and of `BIGCTY` only `entities`, frozen
+  through; the lookup tables stay the library's own, and no lookup hands an
+  entry out, so one bundle cannot change or replace what another resolves
+  calls against;
 - the properties ordinary code assigns on its own objects while a frozen
   prototype holds the same name (`this.name` and `message` in an `Error`
   subclass, an object's own `toString` or `valueOf`, `constructor` on a shared

@@ -18,9 +18,11 @@ import { annotateFromCountryFile, BIGCTY, useBuiltinCountryFile } from "@ham2k/l
 import type { AnnotatedCallInfo } from "@ham2k/lib-country-files"
 import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
 
-// Loads the bundled BIGCTY data once per runtime activation — self-contained,
-// no network — so DXCC entity resolution works without relying on a
-// callsign already having been enriched by a lookup hook.
+// Installs the bundled BIGCTY data — self-contained, no network — so DXCC
+// entity resolution works without relying on a callsign already having been
+// enriched by a lookup hook. In the app the kernel has installed it already
+// and this does nothing; it installs it under `node --test`, and in a bundle
+// that inlines the library.
 useBuiltinCountryFile()
 
 /// Parses and resolves a callsign's DXCC entity against the bundled country

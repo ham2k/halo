@@ -281,6 +281,12 @@ is worth roughly thirty times the bundle size. The app checks the ranges
 before loading and refuses a bundle it cannot satisfy, naming the library
 and both versions.
 
+Like the built-ins, they are frozen ([Concepts](concepts.md)).
+`@ham2k/lib-country-files` comes with its built-in country file already
+loaded: `useBuiltinCountryFile` does nothing, `setCountryFileData` throws, and
+`BIGCTY` carries only `entities`. Look calls up with `annotateFromCountryFile`,
+or the SDK's `annotateCallAgainstCountryFile`.
+
 **Declare the version you built against, not the oldest that compiles.** The
 check compares versions and cannot see which functions a version has. A
 library that gained an export satisfies a `^1.0.0` declaration on a host too

@@ -79,9 +79,33 @@ import * as liquidjs from "liquidjs"
 
 declare const __SHARED_VERSIONS__: Record<string, string>
 
+// The country file every bundle resolves calls against is the library's MODULE
+// state, which no freeze reaches: `setCountryFileData` would swap it for every
+// extension, and `useBuiltinCountryFile`, which each bundle's SDK calls at
+// load, writes into the data it installs. So it is installed once, here, and
+// bundles get the library with `useBuiltinCountryFile` a no-op and
+// `setCountryFileData` refused.
+//
+// Of `BIGCTY`, bundles get only `entities`, frozen through with the rest of
+// the libraries; the SDK reads one entity's longitude from it. The lookup
+// tables stay the library's own: a lookup writes `matchSource` onto the entry
+// it matched, so they cannot be frozen, and no lookup hands an entry out, so
+// a bundle that cannot reach them cannot change what another looks up.
+libCountryFiles.useBuiltinCountryFile()
+const sharedCountryFiles = {
+  ...libCountryFiles,
+  BIGCTY: { entities: libCountryFiles.BIGCTY.entities },
+  useBuiltinCountryFile: (): void => {},
+  setCountryFileData: (): void => {
+    throw new Error(
+      "setCountryFileData is not available to extensions: the country file is shared by every extension and cannot be replaced; look calls up with annotateFromCountryFile",
+    )
+  },
+}
+
 const sharedModules: Record<string, any> = {
   "@ham2k/lib-callsigns": libCallsigns,
-  "@ham2k/lib-country-files": libCountryFiles,
+  "@ham2k/lib-country-files": sharedCountryFiles,
   "@ham2k/lib-cqmag-data": libCqmagData,
   "@ham2k/lib-dxcc-data": libDxccData,
   "@ham2k/lib-format-tools": libFormatTools,
@@ -2106,6 +2130,6 @@ kernel.defineExtension({
 // app clock's Date, the number-format polyfill, `console`, the frozen `JSON`
 // and the kernel's own globals — and before any bundle evaluates
 // (docs/design/js-engine.md, "Frozen realm").
-freezeRealm([kernel, olderKernel], [sharedModules.i18next, sharedModules["@ham2k/lib-country-files"]])
+freezeRealm([kernel, olderKernel], [sharedModules.i18next])
 
 log("kernel ready")

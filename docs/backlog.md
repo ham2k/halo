@@ -83,8 +83,8 @@ plain Combine/Replace banner with no narrative around it.
 The `scoring` hook ([extensions/hooks.md](extensions/hooks.md)) is
 implemented as a single coarse-batched extension (`extensions/core/scoring`)
 rather than web-lofi's per-ref-type bridge hooks. It covers duplicate-contact
-detection, DXCC entities worked (resolved locally via
-`@ham2k/lib-country-files`' `useBuiltinCountryFile`), bands and modes worked,
+detection, DXCC entities worked (resolved locally against
+`@ham2k/lib-country-files`' built-in country file), bands and modes worked,
 and US states / Canadian provinces — the last carrying web-lofi's
 `USStatesScoringHandler` / `CanadianProvincesScoringHandler` lists inline,
 since no state/province reference data lib is wired in. What remains from
@@ -146,8 +146,8 @@ tracked only here:
   shared libraries are frozen before any bundle loads
   ([js-engine.md](design/js-engine.md), "Frozen realm"); a context per bundle
   is decided against, for its memory and per-call cost. What stays open: the
-  bundles share `globalThis`; `i18next` and `@ham2k/lib-country-files` are
-  frozen one level deep, since both change their own state as they run; and
+  bundles share `globalThis`; `i18next` is frozen one level deep, since it
+  changes its own state as it runs; and
   nothing interrupts a hook mid-run (a `while(true)` hook is caught by the
   Dart-side timeout and a host restart), which is accepted. Revisit if a
   shared library starts handling another extension's credentials, or if one
