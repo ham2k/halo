@@ -25,6 +25,7 @@ export 'src/models/models.dart';
 export 'src/models/call_change.dart';
 export 'src/models/chase_verdicts.dart';
 export 'src/models/claims.dart';
+export 'src/models/contest_refs.dart';
 export 'src/models/location_from_refs.dart';
 export 'src/models/location_repair.dart';
 export 'src/models/operation_lifecycle.dart';

@@ -232,6 +232,7 @@ abstract class ExtCommand extends Command<int> {
       exclude: globalResults!.multiOption('exclude').expand((value) => value.split(',')).toSet(),
       all: globalResults!.flag('all-extensions'),
     );
+    hostCalls.isContestRefType = runtime.isContestRefType;
     // Raw data files (callsign notes) live in the extension's own module
     // state, which dies with the process — the cached copy has to be fed
     // back in before any hook asks for it.

@@ -12,6 +12,7 @@
 import 'dart:io';
 
 import 'package:halo_build_tools/halo_build_tools.dart' show extensionMaySeeSecret, parseVersionDart;
+import 'package:halo_core/halo_core.dart' show contestMarkedArgs, refTypeOwner;
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'bundles.dart';
@@ -27,7 +28,31 @@ class ExtRuntime {
   /// in the app.
   final List<BundleEntry> loaded;
 
-  ExtRuntime({required this.host, required this.index, required this.loaded});
+  /// Whether a `contest` extension among [loaded] handles ref [type], as the
+  /// app answers it of the extensions running there: what marks a contest's
+  /// refs `contest: true` in everything handed to an extension.
+  late final bool Function(Object? type) isContestRefType = () {
+    final byType = <String, bool>{};
+    return (Object? type) => type is String && (byType[type] ??= refTypeOwner(loaded, (entry) => entry.hooks, type)?.category == 'contest');
+  }();
+
+  ExtRuntime({required this.host, required this.index, required this.loaded}) {
+    var warned = false;
+    host.argsFilter = (args) {
+      if (args is! Map<String, dynamic>) return args;
+      // A mark that cannot be made costs the call its mark, never the call;
+      // said once, since a batch would say it once per call.
+      try {
+        return contestMarkedArgs(args, isContestRefType);
+      } catch (e, st) {
+        if (!warned) {
+          warned = true;
+          stderr.writeln('halo-ext: warning — could not mark contest refs, so contests read as activities: $e\n$st');
+        }
+        return args;
+      }
+    };
+  }
 
   /// Boots the runtime.
   ///

@@ -186,6 +186,29 @@ void main() {
       expect(await calls.call('getOperation', {'uuid': 'op-1'}), containsPair('uuid', 'op-1'));
     });
 
+    // An extension reading the operation back must not find a park where a
+    // hook was just handed a contest.
+    test('getOperation and listOperations mark a contest ref as hook args do', () async {
+      final calls = host(
+        log: const LogContext(
+          operation: {
+            'uuid': 'op-1',
+            'refs': [
+              {'type': 'cqww'},
+              {'type': 'potaActivation', 'ref': 'US-0001'},
+            ],
+          },
+          qsos: [],
+        ),
+      )..isContestRefType = (type) => type == 'cqww';
+      const marked = [
+        {'type': 'cqww', 'contest': true},
+        {'type': 'potaActivation', 'ref': 'US-0001'},
+      ];
+      expect((await calls.call('getOperation', {'uuid': 'op-1'}) as Map)['refs'], marked);
+      expect(((await calls.call('listOperations', {}) as List).single as Map)['refs'], marked);
+    });
+
     test('listOperations answers the one operation the CLI holds, counting only the contacts the app would', () async {
       // A hook that finds operations through listOperations reaches nothing
       // in a CLI run without it.

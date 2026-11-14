@@ -41,9 +41,11 @@ class BundleEntry {
   /// any other that declares none at 0.
   int? get runtimeApi => core ? null : (api ?? 0);
 
-  /// The hook categories the manifest DECLARES. Informational — the runtime
-  /// learns the real ones from `registerHook`, which is what `list --hooks`
-  /// reports.
+  /// The hook categories the manifest DECLARES. The runtime learns the real
+  /// ones from `registerHook`, which is what `list --hooks` reports; but the
+  /// `ref:<type>` entries, with [category], decide which loaded extension owns
+  /// a ref type, and so which refs are marked `contest: true`
+  /// ([ExtRuntime.isContestRefType]), as `ExtensionInfo.hooks` does in the app.
   final List<String> hooks;
 
   /// Served by a dev server rather than read from the built bundle directory

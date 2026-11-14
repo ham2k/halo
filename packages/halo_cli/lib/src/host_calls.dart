@@ -148,6 +148,12 @@ class CliHostCalls {
   /// to see its answer.
   final bandAnnotations = BandAnnotationStore();
 
+  /// The runtime's [ExtRuntime.isContestRefType], set once it starts: the
+  /// operations these calls answer are marked as hook args are.
+  bool Function(Object? type) isContestRefType = _noContests;
+
+  static bool _noContests(Object? type) => false;
+
   CliHostCalls({
     required this.config,
     required this.index,
@@ -204,7 +210,7 @@ class CliHostCalls {
         // ruled out is answering as one the operator did NOT supply.
         final ours = operation['uuid'];
         if (ours != null && ours != uuid) return null;
-        return {...operation, 'uuid': uuid};
+        return contestMarkedOperation({...operation, 'uuid': uuid}, isContestRefType);
 
       case 'listOperations':
         // The one operation the CLI was handed, as the app lists one; it is
@@ -225,7 +231,7 @@ class CliHostCalls {
         final starts = [for (final qso in qsos) ?asQsonNum(qso['startAtMillis'])?.toInt()]..sort();
         final userTitle = asQsonString(operation['userTitle']) ?? '';
         return [
-          {
+          contestMarkedOperation({
             'uuid': operation['uuid'] ?? '',
             'stationCall': asQsonString(operation['stationCall']) ?? '',
             'title': userTitle.isNotEmpty ? userTitle : (asQsonString(operation['title']) ?? ''),
@@ -236,7 +242,7 @@ class CliHostCalls {
             'startAtMillisMax': starts.lastOrNull,
             'open': true,
             'front': true,
-          },
+          }, isContestRefType),
         ];
 
       case 'getQsos':

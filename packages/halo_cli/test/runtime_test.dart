@@ -180,4 +180,65 @@ __halo.defineExtension({
     }
     expect(connected, hasLength(1));
   });
+
+  // An extension that limits itself to contests must read the same log the
+  // same way under halo-ext as in the app; unmarked here, a contest reads as
+  // a park.
+  test('hook args mark the refs a loaded contest extension handles, and only those, as the app marks them', () async {
+    final dir = Directory.systemTemp.createTempSync('halo-cli-contest');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    File('${dir.path}/kernel.js').writeAsStringSync(index.kernelSource);
+    File('${dir.path}/cqww.js').writeAsStringSync("""
+__halo.defineExtension({
+  key: 'cqww',
+  name: 'CQ WW',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('bench', { key: 'cqww', hook: { refs: async function (args) { return args.operation.refs } } })
+  },
+})
+""");
+    File('${dir.path}/pota.js').writeAsStringSync("__halo.defineExtension({ key: 'pota', name: 'POTA', version: '0.0.1', onActivation: function () {} })");
+    final contestIndex = BundleIndex(
+      directory: dir,
+      kernelFile: 'kernel.js',
+      extensions: [
+        BundleEntry.fromJson(const {
+          'key': 'cqww',
+          'file': 'cqww.js',
+          'name': 'CQ WW',
+          'category': 'contest',
+          'hooks': ['ref:cqww', 'bench'],
+        }),
+        // Loaded too, and owning its type: owning a type is not being a contest.
+        BundleEntry.fromJson(const {
+          'key': 'pota',
+          'file': 'pota.js',
+          'name': 'POTA',
+          'category': 'activity',
+          'hooks': ['ref:potaActivation'],
+        }),
+      ],
+    );
+    runtime = await ExtRuntime.start(index: contestIndex, config: CliConfig(), only: const {'cqww', 'pota'});
+
+    final refs = await runtime.host.invokeHook(
+      'bench',
+      key: 'cqww',
+      method: 'refs',
+      args: {
+        'operation': {
+          'refs': [
+            {'type': 'cqww'},
+            // A mark kept from a log a contest extension once handled.
+            {'type': 'potaActivation', 'ref': 'US-0001', 'contest': true},
+          ],
+        },
+      },
+    );
+    expect(refs, [
+      {'type': 'cqww', 'contest': true},
+      {'type': 'potaActivation', 'ref': 'US-0001'},
+    ]);
+  });
 }

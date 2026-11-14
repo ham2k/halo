@@ -1229,15 +1229,8 @@ mixin _ExtensionHookApi {
   /// but not running answers nothing, and its grant is not the answer's.
   String? _refTypeOwner(Object? type) => _refTypeOwnerInfo(type)?.key;
 
-  ExtensionInfo? _refTypeOwnerInfo(Object? type) {
-    if (type is! String) return null;
-    bool declares(String hook) {
-      final declared = Hooks.refTypeOf(hook);
-      return declared == type || (declared?.startsWith('$type/') ?? false);
-    }
-
-    return availableExtensions.where((info) => _loadedExtensionKeys.contains(info.key) && info.hooks.any(declares)).firstOrNull;
-  }
+  ExtensionInfo? _refTypeOwnerInfo(Object? type) =>
+      refTypeOwner(availableExtensions.where((info) => _loadedExtensionKeys.contains(info.key)), (info) => info.hooks, type);
 
   ({Set<String> loaded, List<ExtensionInfo> available, Map<String, bool> byType})? _contestRefTypes;
 
@@ -1255,71 +1248,21 @@ mixin _ExtensionHookApi {
   }
 
   /// [operation] with each ref whose type a running `contest` extension
-  /// handles marked `contest: true`, and no other: nothing else tells an
-  /// extension a contest's ref from an activity's, so a mark a record kept
-  /// from before its contest extension stopped is taken away. [operation]
-  /// itself when every ref is already as it should be.
-  Map<String, dynamic> markContestRefs(Map<String, dynamic> operation) {
-    final refs = operation['refs'];
-    if (refs is! List) return operation;
-    bool misread(Object? ref) => ref is Map && (ref['contest'] == true) != _isContestRefType(ref['type']);
-    if (!refs.any(misread)) return operation;
-    return {
-      ...operation,
-      'refs': [
-        for (final ref in refs)
-          if (!misread(ref)) ref else if (_isContestRefType((ref as Map)['type'])) {...ref, 'contest': true} else Map.of(ref)..remove('contest'),
-      ],
-    };
-  }
+  /// handles marked `contest: true`, and no other ([contestMarkedOperation]).
+  Map<String, dynamic> markContestRefs(Map<String, dynamic> operation) => contestMarkedOperation(operation, _isContestRefType);
 
-  /// A hook call's [args] with the contest refs marked ([markContestRefs])
-  /// of their `operation` and of each of their `segments`' operations — the
-  /// [ExtensionHost.argsFilter] every hook call passes through. [args]
-  /// itself when nothing is marked.
+  /// A hook call's [args] with their operations' contest refs marked
+  /// ([contestMarkedArgs]) — the [ExtensionHost.argsFilter] every hook call
+  /// passes through.
   Object? markOperationArgs(Object? args) {
     if (args is! Map<String, dynamic>) return args;
     // A mark that cannot be made costs the call its mark, never the call.
     try {
-      return _markedOperationArgs(args);
+      return contestMarkedArgs(args, _isContestRefType);
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'extensions:contest-mark');
       return args;
     }
-  }
-
-  Map<String, dynamic> _markedOperationArgs(Map<String, dynamic> args) {
-    // A cast is a new wrapper, never the map itself, and an operation marked
-    // nowhere must come back as the same object.
-    Object? marked(Object? operation) {
-      if (operation is Map<String, dynamic>) return markContestRefs(operation);
-      if (operation is! Map) return operation;
-      final cast = operation.cast<String, dynamic>();
-      final result = markContestRefs(cast);
-      return identical(result, cast) ? operation : result;
-    }
-
-    final operation = args['operation'];
-    final markedOperation = marked(operation);
-    final segments = args['segments'];
-    List<Object?>? markedSegments;
-    if (segments is List) {
-      var any = false;
-      final each = <Object?>[];
-      for (final segment in segments) {
-        final segmentOperation = segment is Map ? segment['operation'] : null;
-        final markedSegment = marked(segmentOperation);
-        if (segment is Map && !identical(markedSegment, segmentOperation)) {
-          each.add({...segment, 'operation': markedSegment});
-          any = true;
-        } else {
-          each.add(segment);
-        }
-      }
-      if (any) markedSegments = each;
-    }
-    if (identical(markedOperation, operation) && markedSegments == null) return args;
-    return {...args, if (!identical(markedOperation, operation)) 'operation': markedOperation, 'segments': ?markedSegments};
   }
 
   /// [method] on every ref's `ref:<type>` handler in one [ExtensionHost.invokeHookBatch],
