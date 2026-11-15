@@ -540,6 +540,53 @@ void main() {
       expect(styleOf('K1AB').color, error);
     });
 
+    // A call one letter off reads as that letter at a glance: the letter
+    // differing from the text typed is coloured by how, and bold.
+    testWidgets('a letter the call adds is green and one it changes red, each bold, and a red bar marks one it leaves out', (tester) async {
+      final suggestions = DraftSuggestions()
+        ..list = const DraftSuggestionList(
+          forCall: 'K1ABC',
+          drafts: [
+            DraftSuggestion(
+              call: 'K1ABCD',
+              qso: {
+                'their': {'call': 'K1ABCD'},
+              },
+            ),
+            DraftSuggestion(
+              call: 'K1ABD',
+              qso: {
+                'their': {'call': 'K1ABD'},
+              },
+            ),
+            DraftSuggestion(
+              call: 'K1AC',
+              qso: {
+                'their': {'call': 'K1AC'},
+              },
+            ),
+          ],
+        )
+        ..call = 'K1ABC';
+      addTearDown(suggestions.dispose);
+      await tester.pumpWidget(host(suggestions: suggestions));
+      await settle(tester);
+      final context = tester.element(find.byType(FyiArea));
+      final error = Theme.of(context).colorScheme.error;
+      List<(String, Color?, FontWeight?)> letters(String shown) => [
+        for (final span in (tester.widget<Text>(find.text(shown)).textSpan! as TextSpan).children!.whereType<TextSpan>())
+          (span.text!, span.style?.color, span.style?.fontWeight),
+      ];
+      expect(letters('K1ABCD').last, ('D', const Color(0xFF00B400), FontWeight.w700));
+      expect(letters('K1ABD').last, ('D', error, FontWeight.w700));
+      expect(tester.widget<Text>(find.text('K1ABD')).style!.fontFamily, 'RobotoMono', reason: 'calls are in the callsign font, as the log draws them');
+      // K1AC: the B typed is a bar between A and C, not a letter.
+      final leftOut = (tester.widget<Text>(find.text('K1A\uFFFCC')).textSpan! as TextSpan).children!;
+      expect([for (final span in leftOut) span is TextSpan ? span.text : '|'], ['K', '1', 'A', '|', 'C']);
+      final bar = tester.widget<Container>(find.descendant(of: find.text('K1A\uFFFCC'), matching: find.byType(Container)));
+      expect(bar.color, error);
+    });
+
     testWidgets('shows only the calls that fit whole, and tells the set how many', (tester) async {
       final suggestions = DraftSuggestions()
         ..list = DraftSuggestionList(

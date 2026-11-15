@@ -680,7 +680,9 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
   /// dimmed, a new multiplier in the multiplier colour, another alert in the
   /// important one, each accent bold too, since colour alone is no signal —
   /// the one the call field reads in the important green and bold, and the
-  /// one picked on a pill of the operational colour. A tap on a call
+  /// one picked on a pill of the operational colour; within each, the
+  /// letters that differ from the text typed coloured by how, and a bar
+  /// where one typed is left out. A tap on a call
   /// picks it. The calls past the room the line leaves are cut off: the
   /// extension's order puts its least likely last. A list [held] for the
   /// next is dimmed and takes no taps; the next fades in over it, the slot
@@ -696,9 +698,10 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
   }) {
     final theme = Theme.of(context);
     final colors = HaLoColors.of(context);
-    final style = theme.textTheme.bodyMedium ?? const TextStyle();
+    final style = _suggestionStyle(context);
     final shown = !leaving && !hidden;
     final tertiary = theme.colorScheme.tertiary;
+    final dark = theme.brightness == Brightness.dark;
     Widget call(int index, DraftSuggestion draft) {
       final typedHere = draft.call == typed;
       final accent = draft.isDuplicate
@@ -711,8 +714,36 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
       // Every duplicate is in the log: its red and its line say so, and bold
       // is kept for the one the field reads.
       final bold = draft.isDuplicate ? typedHere : accent != null || (widget.worked?.call(draft.call) ?? false);
-      final text = Text(
-        draft.call,
+      // Each letter that differs from the text the list was made for says
+      // how: added in a green that stands apart from the letters typed,
+      // changed in the error red, both bold, and a bar in the error red where
+      // a letter typed is left out.
+      final error = theme.colorScheme.error;
+      final text = Text.rich(
+        TextSpan(
+          children: [
+            for (final letter in callLetters(list.forCall, draft.call))
+              if (letter.kind == CallLetterKind.removed)
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: Container(
+                    width: _leftOutBar,
+                    height: (style.fontSize ?? 14) * 0.9,
+                    margin: const EdgeInsets.symmetric(horizontal: _leftOutMargin),
+                    color: error,
+                  ),
+                )
+              else
+                TextSpan(
+                  text: letter.char,
+                  style: switch (letter.kind) {
+                    CallLetterKind.added => TextStyle(color: dark ? _addedLetterDark : _addedLetter, fontWeight: FontWeight.w700),
+                    CallLetterKind.changed => TextStyle(color: error, fontWeight: FontWeight.w700),
+                    _ => null,
+                  },
+                ),
+          ],
+        ),
         maxLines: 1,
         style: style.copyWith(color: accent, fontWeight: bold ? FontWeight.w700 : null, decoration: draft.isDuplicate ? TextDecoration.lineThrough : null),
       );
@@ -788,28 +819,39 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
     );
   }
 
+  /// The calls on the suggestions line are in the callsign font, as the
+  /// call field, the log and the spots draw calls.
+  static TextStyle _suggestionStyle(BuildContext context) => haloMonoStyle(context, fontSize: Theme.of(context).textTheme.bodyMedium?.fontSize);
+
+  /// A letter a suggested call adds, bold and brighter than the important
+  /// green, so it stands apart from the letters typed beside it.
+  static const _addedLetter = Color(0xFF00B400), _addedLetterDark = Color(0xFF3CF03C);
+
+  /// The bar drawn where a call leaves out a letter typed, and the room on
+  /// each side of it.
+  static const _leftOutBar = 2.0, _leftOutMargin = 1.0;
+
   /// How many of [list]'s calls fit whole in [room], from the first, and the
   /// first whatever the room — cut short rather than leaving the line an
   /// icon alone. Each is measured bold, as the call the field reads is
   /// drawn: measured as drawn, the count would change as Alt-Y moves the
-  /// mark along the line.
+  /// mark along the line. Measured with the house measurer, which folds in
+  /// the ambient style the drawn text merges onto (its letter spacing among
+  /// them) and the text scaler, which scales a bar as it scales the letters.
   static int _suggestionsThatFit(BuildContext context, DraftSuggestionList list, TextStyle style, double room) {
     if (room.isInfinite) return list.drafts.length;
-    final painter = TextPainter(textDirection: Directionality.of(context), textScaler: MediaQuery.textScalerOf(context), maxLines: 1);
+    final bold = style.copyWith(fontWeight: FontWeight.w700);
+    final fontSize = style.fontSize ?? 14;
+    final scale = MediaQuery.textScalerOf(context).scale(fontSize) / fontSize;
+    final bar = (_leftOutBar + 2 * _leftOutMargin) * scale;
     var used = 0.0;
     var count = 0;
     for (final draft in list.drafts) {
-      painter
-        ..text = TextSpan(
-          text: draft.call,
-          style: style.copyWith(fontWeight: FontWeight.w700),
-        )
-        ..layout();
-      used += painter.width + 2 * Space.xs;
+      final leftOut = callLetters(list.forCall, draft.call).where((letter) => letter.kind == CallLetterKind.removed).length;
+      used += spansWidth(context, [TextSpan(text: draft.call)], bold) + leftOut * bar + 2 * Space.xs;
       if (used > room && count > 0) break;
       count++;
     }
-    painter.dispose();
     return count;
   }
 

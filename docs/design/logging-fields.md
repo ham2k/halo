@@ -282,12 +282,20 @@ already holds is bold: on another band or mode it is no duplicate, and it is
 the likeliest station to be back. The call the field reads, typed in full or
 picked, is in the important green and bold — a duplicate in its red, struck
 through and bold, the one duplicate drawn bold, since every duplicate is in
-the log. It sits after the
+the log. Within each call, a letter that differs from the text the list was
+made for says how: one the call adds in a bright green that stands apart
+from the letters typed (the letter a typed `?` stands for among them) and
+one it changes in the error red, both bold, and where the call leaves out a
+letter typed, a bar in the error red between its neighbors, so a call one
+letter off reads as that letter at a glance.
+The calls are in the callsign font (`haloMonoStyle`), as the call field, the
+log and the spots draw them. It sits after the
 operating style and the keyer line — what is under way is read first — and
 before the other operational messages, taking the room the items before it
 leave, and shows as many calls as fit there whole, from the first — the
 extension's most likely — and the first cut short when not even it fits.
-Each is measured bold, as the call the field reads is drawn, so the count
+Each is measured bold, its bars included, as the call the field reads is
+drawn, so the count
 holds still while Alt-Y moves the mark.
 
 **When it shows.** A list is made for one text: the call field as it read

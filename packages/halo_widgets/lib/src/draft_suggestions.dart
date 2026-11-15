@@ -42,6 +42,58 @@ class DraftSuggestionList {
 /// The call field's text as a list is matched against it.
 String suggestionCallText(String text) => text.trim().toUpperCase();
 
+/// How a suggested call's letter differs from the text it was offered for.
+enum CallLetterKind { same, added, removed, changed }
+
+/// [call]'s letters, in order, each marked against [typed], the cheapest way
+/// to turn one into the other: `added` where the call has a letter the text
+/// lacks (a `?` typed stands for any one letter, and the one it stands for
+/// is added too), `changed` where one replaced another, and the text's
+/// letters the call lacks put back where they were, `removed`. Two
+/// neighbors that traded places come out as two changed letters.
+///
+/// Walked by character, never by UTF-16 unit: a span holding half a
+/// surrogate pair is malformed text the engine refuses to lay out.
+List<({String char, CallLetterKind kind})> callLetters(String typed, String call) {
+  final a = [for (final rune in typed.toUpperCase().runes) String.fromCharCode(rune)];
+  final b = [for (final rune in call.toUpperCase().runes) String.fromCharCode(rune)];
+  final n = a.length, m = b.length;
+  bool wild(int i) => a[i] == '?';
+  bool same(int i, int j) => a[i] == b[j] || wild(i);
+  // cost[i][j]: edits turning a's first i letters into b's first j.
+  final cost = [
+    for (var i = 0; i <= n; i++) [for (var j = 0; j <= m; j++) i == 0 ? j : (j == 0 ? i : 0)],
+  ];
+  for (var i = 1; i <= n; i++) {
+    for (var j = 1; j <= m; j++) {
+      final diagonal = cost[i - 1][j - 1] + (same(i - 1, j - 1) ? 0 : 1);
+      final up = cost[i - 1][j] + 1, left = cost[i][j - 1] + 1;
+      cost[i][j] = diagonal < up ? (diagonal < left ? diagonal : left) : (up < left ? up : left);
+    }
+  }
+
+  final letters = <({String char, CallLetterKind kind})>[];
+  var i = n, j = m;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && same(i - 1, j - 1) && cost[i][j] == cost[i - 1][j - 1]) {
+      letters.add((char: b[j - 1], kind: wild(i - 1) ? CallLetterKind.added : CallLetterKind.same));
+      i--;
+      j--;
+    } else if (i > 0 && j > 0 && cost[i][j] == cost[i - 1][j - 1] + 1) {
+      letters.add((char: b[j - 1], kind: CallLetterKind.changed));
+      i--;
+      j--;
+    } else if (j > 0 && cost[i][j] == cost[i][j - 1] + 1) {
+      letters.add((char: b[j - 1], kind: CallLetterKind.added));
+      j--;
+    } else {
+      letters.add((char: a[i - 1], kind: CallLetterKind.removed));
+      i--;
+    }
+  }
+  return letters.reversed.toList();
+}
+
 class DraftSuggestions extends ChangeNotifier {
   DraftSuggestionList? _list;
   String _call = '';
