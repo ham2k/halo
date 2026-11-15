@@ -2068,8 +2068,6 @@
       "civAddress": "电台 CI-V 地址",
       "civAddressDescription": "十六进制，与电台 CI-V 菜单中显示的一致。IC-705 出厂为 A4。",
       "civAddressInvalid": "CI-V 地址为两位十六进制数，01 到 FF",
-      "flexSlice": "Slice",
-      "flexSliceDescription": "此连接读取并调谐电台的哪个 Slice。",
       "flexSliceLabel(letter)": "Slice ${letter}",
       "flexSliceInvalid": "请选择电台的某个 Slice，A 到 H",
       "flexSliceMissing(letter)": "此电台未使用 Slice ${letter}——请选择其他 Slice，或在 SmartSDR 中创建",

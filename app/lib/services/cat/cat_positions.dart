@@ -89,9 +89,8 @@ mixin _Positions on _So2r {
     // one whose operator said nothing keys through that peer.
     final answered = _positions.slotsOf(owner)?.containsKey(category) ?? false;
     if (answered && previousUuid == uuid) return;
-    // One key, and one SDR scope, per SO2R radio, as one rig per role: Radio
-    // B is refused radio1's, and radio1 taking Radio B's leaves Radio B with
-    // None.
+    // One key, and one SDR scope, per SO2R radio: Radio B is refused
+    // radio1's, and radio1 taking Radio B's leaves Radio B with None.
     final b = radio2;
     final exclusive = _oneSetAtATime(category) && uuid != null && b != null;
     if (exclusive && radio == b && uuid == designatedFor(category)) return;

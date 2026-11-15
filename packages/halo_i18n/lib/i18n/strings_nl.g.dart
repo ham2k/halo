@@ -2645,8 +2645,6 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get civAddress => 'CI-V-adres van de radio';
 	@override String get civAddressDescription => 'Hexadecimaal, zoals getoond in het CI-V-menu van de radio. De IC-705 wordt geleverd met A4.';
 	@override String get civAddressInvalid => 'Een CI-V-adres bestaat uit twee hexcijfers, 01 tot FF';
-	@override String get flexSlice => 'Slice';
-	@override String get flexSliceDescription => 'Welke slice van de radio deze verbinding uitleest en afstemt.';
 	@override String flexSliceLabel({required Object letter}) => 'Slice ${letter}';
 	@override String get flexSliceInvalid => 'Kies een van de slices van de radio, A tot en met H';
 	@override String flexSliceMissing({required Object letter}) => 'Slice ${letter} is niet in gebruik op deze radio — kies een andere slice, of maak hem aan in SmartSDR';
@@ -6183,8 +6181,6 @@ extension on TranslationsNl {
 			'settings.station.civAddress' => 'CI-V-adres van de radio',
 			'settings.station.civAddressDescription' => 'Hexadecimaal, zoals getoond in het CI-V-menu van de radio. De IC-705 wordt geleverd met A4.',
 			'settings.station.civAddressInvalid' => 'Een CI-V-adres bestaat uit twee hexcijfers, 01 tot FF',
-			'settings.station.flexSlice' => 'Slice',
-			'settings.station.flexSliceDescription' => 'Welke slice van de radio deze verbinding uitleest en afstemt.',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'Slice ${letter}',
 			'settings.station.flexSliceInvalid' => 'Kies een van de slices van de radio, A tot en met H',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => 'Slice ${letter} is niet in gebruik op deze radio — kies een andere slice, of maak hem aan in SmartSDR',
@@ -6498,10 +6494,10 @@ extension on TranslationsNl {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Hoe vaak de radio om frequentie en mode wordt gevraagd zolang geen van beide verandert. Laat leeg voor ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Een geheel aantal milliseconden, ${min} tot ${max}',
 			'settings.station.advancedSettings' => 'Geavanceerde instellingen',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWR-waarde',
 			'settings.station.placeholderSwrDescription' => 'Wat deze radio tijdens het zenden op zijn SWR-meter meldt. Boven 1,8 waarschuwt het paneel.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwrInvalid' => 'Een getal, 1 of meer',
 			'settings.station.keyerNone' => 'Geen',
 			'settings.station.cwDialect' => 'CW-keyingdialect',
@@ -7012,10 +7008,10 @@ extension on TranslationsNl {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Kon ${filename} niet importeren: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} lijkt geen ADIF-bestand',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Waarschuwing: deze ADIF bevat QSO\'s van ${calls}, maar ze worden geïmporteerd als ${station} als je doorgaat.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' en ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} heeft geen datum en kan niet worden geïmporteerd', other: '${formatted} hebben geen datum en kunnen niet worden geïmporteerd', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.activationFound' => ({required Object refs}) => 'Dit bestand bevat een activatie van ${refs}.',
 			'adifImport.addActivation' => 'Toevoegen aan deze activatie',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Slechts ${written} van ${planned} konden worden toegepast — het logboek veranderde terwijl je besliste.',

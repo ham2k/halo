@@ -2645,8 +2645,6 @@ class _Translations$settings$station$cs extends Translations$settings$station$en
 	@override String get civAddress => 'CI-V adresa rádia';
 	@override String get civAddressDescription => 'Hexadecimálně, jak ji ukazuje menu CI-V rádia. IC-705 má z výroby A4.';
 	@override String get civAddressInvalid => 'CI-V adresa jsou dvě hexadecimální číslice, 01 až FF';
-	@override String get flexSlice => 'Slice';
-	@override String get flexSliceDescription => 'Ze kterého slice rádia toto připojení čte a který ladí.';
 	@override String flexSliceLabel({required Object letter}) => 'Slice ${letter}';
 	@override String get flexSliceInvalid => 'Vyberte jeden ze slice rádia, A až H';
 	@override String flexSliceMissing({required Object letter}) => 'Slice ${letter} se na tomto rádiu nepoužívá — vyberte jiný slice, nebo ho vytvořte v SmartSDR';
@@ -6183,8 +6181,6 @@ extension on TranslationsCs {
 			'settings.station.civAddress' => 'CI-V adresa rádia',
 			'settings.station.civAddressDescription' => 'Hexadecimálně, jak ji ukazuje menu CI-V rádia. IC-705 má z výroby A4.',
 			'settings.station.civAddressInvalid' => 'CI-V adresa jsou dvě hexadecimální číslice, 01 až FF',
-			'settings.station.flexSlice' => 'Slice',
-			'settings.station.flexSliceDescription' => 'Ze kterého slice rádia toto připojení čte a který ladí.',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'Slice ${letter}',
 			'settings.station.flexSliceInvalid' => 'Vyberte jeden ze slice rádia, A až H',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => 'Slice ${letter} se na tomto rádiu nepoužívá — vyberte jiný slice, nebo ho vytvořte v SmartSDR',
@@ -6498,10 +6494,10 @@ extension on TranslationsCs {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Jak často se ptát rádia na frekvenci a mód, když se ani jedno nemění. Ponechte prázdné pro ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Celé číslo milisekund, ${min} až ${max}',
 			'settings.station.advancedSettings' => 'Pokročilé nastavení',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'Hodnota PSV',
 			'settings.station.placeholderSwrDescription' => 'Co toto rádio hlásí na měřidle PSV během vysílání. Nad 1,8 panel varuje.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwrInvalid' => 'Číslo, 1 nebo více',
 			'settings.station.keyerNone' => 'Žádný',
 			'settings.station.cwDialect' => 'Dialekt klíčování CW',
@@ -7012,10 +7008,10 @@ extension on TranslationsCs {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} nelze importovat: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} nevypadá jako soubor ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Upozornění: tento ADIF obsahuje QSO od ${calls}, ale pokud budete pokračovat, budou importována jako ${station}.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' a ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} nemá datum a nelze ho importovat', other: '${formatted} nemá datum a nelze je importovat', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.activationFound' => ({required Object refs}) => 'Tento soubor zaznamenává aktivaci ${refs}.',
 			'adifImport.addActivation' => 'Přidat ji do této aktivity',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Použít se podařilo jen ${written} z ${planned} — log se změnil, zatímco jste se rozhodovali.',

@@ -2068,8 +2068,6 @@
       "civAddress": "CI-V-adres van de radio",
       "civAddressDescription": "Hexadecimaal, zoals getoond in het CI-V-menu van de radio. De IC-705 wordt geleverd met A4.",
       "civAddressInvalid": "Een CI-V-adres bestaat uit twee hexcijfers, 01 tot FF",
-      "flexSlice": "Slice",
-      "flexSliceDescription": "Welke slice van de radio deze verbinding uitleest en afstemt.",
       "flexSliceLabel(letter)": "Slice ${letter}",
       "flexSliceInvalid": "Kies een van de slices van de radio, A tot en met H",
       "flexSliceMissing(letter)": "Slice ${letter} is niet in gebruik op deze radio — kies een andere slice, of maak hem aan in SmartSDR",

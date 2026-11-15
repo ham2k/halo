@@ -3025,8 +3025,6 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get civAddress => 'radio ci-v address';
 	@override String get civAddressDescription => 'hex, as shown in the radio\'s ci-v menu. the ic-705 ships as a4.';
 	@override String get civAddressInvalid => 'a ci-v address is two hex digits, 01 to ff';
-	@override String get flexSlice => 'slice';
-	@override String get flexSliceDescription => 'which of the radio\'s slices this connection reads from and tunes.';
 	@override String flexSliceLabel({required Object letter}) => 'slice ${letter}';
 	@override String get flexSliceInvalid => 'pick one of the radio\'s slices, a through h';
 	@override String flexSliceMissing({required Object letter}) => 'slice ${letter} is not in use on this radio — pick another slice, or create it in smartsdr';
@@ -7090,8 +7088,6 @@ extension on TranslationsQrp {
 			'settings.station.civAddress' => 'radio ci-v address',
 			'settings.station.civAddressDescription' => 'hex, as shown in the radio\'s ci-v menu. the ic-705 ships as a4.',
 			'settings.station.civAddressInvalid' => 'a ci-v address is two hex digits, 01 to ff',
-			'settings.station.flexSlice' => 'slice',
-			'settings.station.flexSliceDescription' => 'which of the radio\'s slices this connection reads from and tunes.',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'slice ${letter}',
 			'settings.station.flexSliceInvalid' => 'pick one of the radio\'s slices, a through h',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => 'slice ${letter} is not in use on this radio — pick another slice, or create it in smartsdr',
@@ -7217,10 +7213,10 @@ extension on TranslationsQrp {
 			'settings.station.models.ts2000' => 'kenwood ts-2000',
 			'settings.station.models.qmx' => 'qrp labs qmx',
 			'settings.station.models.fx4cr' => 'bg2fx fx-4cr',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.tx500' => 'lab599 tx-500',
 			'settings.station.models.tx500mp' => 'lab599 tx-500mp',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.qcx' => 'qrp labs qcx',
 			'settings.station.models.elecraftGeneric' => 'elecraft - generic',
 			'settings.station.models.kx2' => 'elecraft kx2',
@@ -7731,10 +7727,10 @@ extension on TranslationsQrp {
 			'settings.developer.diagnostics' => 'diagnostics',
 			'settings.developer.importExport' => 'import / export',
 			'settings.developer.systemInformation' => 'system information',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.appVersion' => 'app version',
 			'settings.developer.dataFolder' => 'data folder',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.worktree' => 'worktree',
 			'settings.developer.launchedAt' => 'started',
 			'settings.developer.loading' => '(loading…)',
@@ -8245,10 +8241,10 @@ extension on TranslationsQrp {
 			'adifImport.stationCallJoin' => ' and ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} has no date and cannot be imported', other: '${formatted} have no date and cannot be imported', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'this file records an activation of ${refs}.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.addActivation' => 'add it to this operation',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'only ${written} of ${planned} could be applied — the log changed while you were deciding.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.busy' => 'an import is already running. wait for it to finish before starting another.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos, the most an operation can import at a time.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos. importing an adif into an operation is meant to add a few qsos, not to bring in a large log — use the logs view for that. developer mode lets you import it anyway, if you are sure.',

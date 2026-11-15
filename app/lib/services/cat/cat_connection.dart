@@ -321,6 +321,7 @@ extension _Connection on CatService {
         if (runtime.connection != connection) return;
         if (listEquals(stateFor(uuid).channels, channels)) return;
         _everywareDevicesAnnounced(uuid, channels);
+        _flexSlicesAnnounced(uuid, channels);
         _setState(uuid, stateFor(uuid).copyWith(channels: channels));
       },
       onSwitchState: (antennas, ports) {

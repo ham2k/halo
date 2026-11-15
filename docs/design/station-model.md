@@ -210,8 +210,9 @@ A capability declares how many slots may hold it:
   turn-taking (`KeyingStation.clearToSend`), which two slices of one Flex already need.
 - **Shared**: a rotator, a scope's display.
 
-A picker leaves out, or shows as taken, what another position holds exclusively. That replaces the
-separate refusals in `setRadio2` and `setDesignated`.
+A picker shows as taken what another position holds exclusively, and picking it takes it from that
+position. The radio pickers do this now, marking each set's radio with the set's letter. That
+replaces the separate refusals in `setRadio2` and `setDesignated`.
 
 ## 5. Positions
 
@@ -496,11 +497,12 @@ nothing, so saving that SDR's editor there makes it follow the Main radio again.
 another entry now is stored under `forwarded`, applied on load to everything in the blob that
 names a node, and by `CatService.nodeFor` to an id held anywhere else, a layout or an
 extension's settings. Not a node's own settings: a K4's `k4ConnectionId` can be the old id of
-a Sub configured first, and keeps naming its keychain entry. A build from before this reads
+a Sub configured first, and keeps naming its keychain entry. Flex nodes at one host and port are
+one device under slice A's node, made from the address when none tracked slice A, each other
+slice's node becoming `<device>/rx:<slice>`. A build from before this reads
 every entry under its new id, as a node of its own, but saves without `forwarded`, so an old id
 held outside the blob then names nothing. A peer that picked a K4's Sub by its old id finds it
-gone, since what it holds is the id this station offered then. The Flex row is phase 4's
-second stage.*
+gone, since what it holds is the id this station offered then.*
 
 A forwarding entry from an old node uuid to a capability address is permanent, for
 `renamedTypeKeys`'s reason: the record being read was written by a build with no upper bound on
@@ -557,7 +559,10 @@ Each is a full task. Nothing is visible to the operator before phase 3.
    (§ 8.1). The second: one Flex connection for all its slices, its nodes merged the same way,
    and the radio picker listing the slices the radio has. The Flex and Everyware are verified on
    hardware, the K4 against fakes and captures only.
-   *Status: the first stage is built, with the owner's order being the configured one (§ 8.1).*
+   *Status: the first stage is built, with the owner's order being the configured one (§ 8.1). Of
+   the second, the Flex's nodes are merged into one device, and the radio picker lists the slices
+   the radio has open, or last said it had while it is off; each slice still opens a connection
+   of its own.*
 5. **Split, a second receiver, diversity** (§ 5.2). New in the app's VFO, the drivers and the
    logging fields; nothing reads or sets split today.
 6. **Owned receivers and scopes.** The Flex as its own GUI client (HALO-766).

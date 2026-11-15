@@ -13,6 +13,14 @@ part of 'cat_service.dart';
 /// at every load.
 const _k4MainNamespace = 'b4f0f0c2-6a77-4f0c-9d2e-2f8a3c1d4e95';
 
+/// The namespace of the id a Flex gets, from its address, when no node
+/// tracked its slice A: the device is its slice A's entry.
+const _flexNamespace = '5d3a8e41-0c7b-4b8e-a6f2-91c4e07d2b63';
+
+/// The slices a Flex last said were open, on its device's settings: what its
+/// picker offers while the radio is off, as `{key, label, usedBy}` maps.
+const flexKnownSlicesConfigKey = 'flexKnownSlices';
+
 /// The keys a stored station names a peer's radio under: `peer` in a
 /// position and in version 3's `mainVfo`, `remoteRadio1` in version 2.
 const _peerKeys = {'peer', 'remoteRadio1'};
@@ -20,11 +28,12 @@ const _peerKeys = {'peer', 'remoteRadio1'};
 extension _Devices on CatService {
   /// The id [node] has as a capability of its device, or null when its own
   /// uuid is that: a remote K4's Sub is `<device>/rx:sub`, where the device
-  /// is its Main's id, and an Everyware rotor or switch is
+  /// is its Main's id, a Flex's slice B is `<device>/rx:1`, where the device
+  /// is its slice A's, and an Everyware rotor or switch is
   /// `<server>/rotator:<name>` or `<server>/switch:<name>`.
   ///
-  /// A K4's Main keeps its uuid, which is the device's: a bare device id is
-  /// its first receiver. An Everyware device's kind in its address is what
+  /// A K4's Main and a Flex's slice A keep their uuid, which is the device's:
+  /// a bare device id is its first receiver. An Everyware device's kind in its address is what
   /// it is on the wire, a rotor or a switch box, so a map switch retyped once
   /// the server says what it is keeps its id.
   String? _capabilityIdOf(EquipmentNode node) {
@@ -32,6 +41,13 @@ extension _Devices on CatService {
       if (_k4Receiver(node) == K4Receiver.main.name) return null;
       final device = _k4DeviceOf(_k4Identity(node));
       return device == null ? null : CapabilityAddress(device, kCapabilityReceiver, key: _k4Receiver(node)).toString();
+    }
+    if (_isFlex(node)) {
+      final slice = FlexRadioDriver.sliceFromConfig(node.config);
+      final address = _flexAddressOf(node);
+      if (slice == 0 || address == null) return null;
+      final device = _flexDeviceOf(address);
+      return device == null ? null : CapabilityAddress(device, kCapabilityReceiver, key: '$slice').toString();
     }
     if (_isEverywareDevice(node)) {
       final server = node.config[everywareServerConfigKey];
@@ -41,6 +57,68 @@ extension _Devices on CatService {
       return CapabilityAddress(server, kind, key: name).toString();
     }
     return null;
+  }
+
+  bool _isFlex(EquipmentNode node) => typeFor(node)?.driver is FlexRadioDriver;
+
+  /// Where a Flex node reaches its radio, which is what two slices of one
+  /// radio share: its host and port. Null for a node not given a host yet.
+  String? _flexAddressOf(EquipmentNode node) {
+    final host = node.config['host'];
+    if (host is! String || host.trim().isEmpty) return null;
+    final port = int.tryParse('${node.config['port'] ?? ''}'.trim()) ?? FlexRadioDriver.defaultPort;
+    return '${host.trim().toLowerCase()}:$port';
+  }
+
+  /// The id of the Flex at [address]: its slice A's entry.
+  String? _flexDeviceOf(String address) =>
+      _nodes.values.firstWhereOrNull((node) => _isFlex(node) && _flexAddressOf(node) == address && FlexRadioDriver.sliceFromConfig(node.config) == 0)?.uuid;
+
+  /// A Flex's slices reach it as its slice A does: an edit to the device's
+  /// connection settings is every slice's, and a slice connected on the old
+  /// ones reconnects on the new. Only those: the rest of an entry's config is
+  /// its own, as a set's computer voice settings on the radio it logs from
+  /// ([KeyingSurface.updateVoiceKeyingConfig]), which copied across would
+  /// put set A's sound devices on set B and reconnect set B's slice mid-QSO.
+  Future<void> _flexSlicesFollow(String deviceId) async {
+    final device = _nodes[deviceId];
+    final type = device == null ? null : typeFor(device);
+    if (device == null || type == null || type.driver is! FlexRadioDriver) return;
+    final shared = {...type.transport.recognizedConfigKeys, ...type.driver.recognizedConfigKeys}..remove(FlexRadioDriver.sliceConfigKey);
+    for (final id in entriesOf(deviceId).skip(1)) {
+      final entry = _nodes[id];
+      if (entry == null) continue;
+      final config = {
+        for (final MapEntry(:key, :value) in entry.config.entries)
+          if (!shared.contains(key)) key: value,
+        for (final key in shared)
+          if (device.config.containsKey(key)) key: device.config[key],
+      };
+      if (entry.typeKey == device.typeKey && const DeepCollectionEquality().equals(config, entry.config)) continue;
+      final status = stateFor(id).status;
+      final reconnect = status == EquipmentStatus.connected || status == EquipmentStatus.connecting;
+      if (reconnect) await disconnect(id, byUser: false);
+      _nodes[id] = EquipmentNode(uuid: id, typeKey: device.typeKey, name: entry.name, config: config);
+      if (reconnect) unawaited(connect(id));
+    }
+  }
+
+  /// A Flex entry reported the radio's slices: the open ones are kept on its
+  /// device, for the picker to offer while the radio is off. Only on a
+  /// change, so the repeats the radio sends write nothing.
+  void _flexSlicesAnnounced(String uuid, List<EquipmentChannel> channels) {
+    final node = _nodes[uuid];
+    if (node == null || !_isFlex(node) || channels.isEmpty) return;
+    final deviceId = deviceEntryFor(uuid);
+    final device = _nodes[deviceId];
+    if (device == null) return;
+    final open = [
+      for (final channel in channels)
+        if (channel.inUse) {'key': channel.key, 'label': channel.label, 'usedBy': ?channel.usedBy},
+    ];
+    if (const DeepCollectionEquality().equals(device.config[flexKnownSlicesConfigKey], open)) return;
+    _nodes[deviceId] = device.copyWith(config: {...device.config, flexKnownSlicesConfigKey: open});
+    unawaited(_save());
   }
 
   /// The id of the remote K4 whose connection is [identity]: its Main's.
@@ -56,8 +134,22 @@ extension _Devices on CatService {
   /// id, never the Sub's old one: that id is forwarded to the Sub, and a
   /// forwarded id is never another entry's. Made the same way at every load,
   /// so a station that is not saved in between gets the same Main again, and
-  /// whatever picked it still finds it.
+  /// whatever picked it still finds it. A Flex with no node on slice A gets
+  /// one the same way, from its address: the device is its slice A's entry,
+  /// whether or not that slice is open.
   void _settleDeviceIds() {
+    for (final node in [..._nodes.values]) {
+      if (!_isFlex(node)) continue;
+      final address = _flexAddressOf(node);
+      if (address == null || _flexDeviceOf(address) != null) continue;
+      final device = EquipmentNode(
+        uuid: uuidGenerator.v5(_flexNamespace, address),
+        typeKey: node.typeKey,
+        name: node.name,
+        config: {...node.config, FlexRadioDriver.sliceConfigKey: '0'},
+      );
+      _nodes[device.uuid] = device;
+    }
     for (final node in [..._nodes.values]) {
       if (!_isK4Remote(node) || _k4DeviceOf(_k4Identity(node)) != null) continue;
       final main = EquipmentNode(
@@ -92,12 +184,11 @@ extension _Devices on CatService {
         );
       }
     }
-    // A Main made for a Sub goes where the Sub was, ahead of it.
+    // A device made for a receiver goes where that receiver was, ahead of it.
     final ordered = <String, EquipmentNode>{};
     for (final node in settled.values) {
-      if (_isK4Remote(node) && _k4Receiver(node) == K4Receiver.sub.name) {
-        final main = settled[CapabilityAddress.parse(node.uuid)?.device];
-        if (main != null) ordered.putIfAbsent(main.uuid, () => main);
+      if (CapabilityAddress.parse(node.uuid) case CapabilityAddress(:final device, kind: kCapabilityReceiver)) {
+        if (settled[device] case final listed?) ordered.putIfAbsent(device, () => listed);
       }
       ordered.putIfAbsent(node.uuid, () => node);
     }
@@ -131,31 +222,63 @@ extension _Devices on CatService {
 
 /// What Station Configuration lists of the devices with several entries.
 extension CatDevices on CatService {
-  /// The entry listed for the device [id] is part of: a remote K4's Main for
-  /// its Sub, [id] itself for everything else.
-  String deviceEntryFor(String id) {
-    final node = _nodes[id];
-    if (node == null || !_isK4Remote(node) || _k4Receiver(node) == K4Receiver.main.name) return id;
-    return _k4DeviceOf(_k4Identity(node)) ?? id;
-  }
+  /// The entry listed for the device [id] is part of: the device's own for
+  /// a receiver addressed under it, a K4's Sub or a Flex's slice B, and [id]
+  /// itself for everything else. A second Sub of one K4, which keeps its own
+  /// id because the first holds the address, is its Main's too: listed on
+  /// its own, removing it would remove the whole K4 ([CatService.removeNode]).
+  String deviceEntryFor(String id) => switch (CapabilityAddress.parse(id)) {
+    CapabilityAddress(:final device, kind: kCapabilityReceiver) when _nodes.containsKey(device) => device,
+    _ => switch (_nodes[id]) {
+      final node? when _isK4Remote(node) && _k4Receiver(node) != K4Receiver.main.name => _k4DeviceOf(_k4Identity(node)) ?? id,
+      _ => id,
+    },
+  };
 
   /// What to call [node] wherever a radio is picked or shown: its device's
   /// name, and which receiver it is when the device has several, as
-  /// "K4 · Sub". A QSO's station info takes [CatService.displayNameFor],
-  /// the device alone.
+  /// "K4 · Sub" or "FLEX-6600 · Slice B". A QSO's station info takes
+  /// [CatService.displayNameFor], the device alone.
   String radioNameFor(EquipmentNode node) {
     final name = displayNameFor(node);
-    return switch (logicalChannelFor(node.uuid)?['label']) {
+    if (entriesOf(deviceEntryFor(node.uuid)).length < 2) return name;
+    return switch (typeFor(node)?.describeChannel(node.config)) {
       final receiver? => '$name · $receiver',
       null => name,
     };
   }
 
-  /// Every entry of the device whose listed entry is [id]: a remote K4's
-  /// receivers, Main first, and [id] alone for everything else.
+  /// The slices of the Flex [deviceId] a picker can add: those open on the
+  /// radio with no entry yet, as a connected entry of it reports them, or as
+  /// it last reported them while none is. Empty for anything else.
+  List<EquipmentChannel> flexSlicesToAdd(String deviceId) {
+    final device = _nodes[deviceId];
+    if (device == null || !_isFlex(device)) return const [];
+    final entries = entriesOf(deviceId);
+    final taken = {for (final id in entries) '${FlexRadioDriver.sliceFromConfig(_nodes[id]?.config ?? const {})}'};
+    final live = <String, EquipmentChannel>{
+      for (final id in entries)
+        for (final channel in stateFor(id).channels)
+          if (channel.inUse) channel.key: channel,
+    };
+    final known = [
+      if (device.config[flexKnownSlicesConfigKey] case final List<Object?> list)
+        for (final slice in list)
+          if (slice case {'key': final String key, 'label': final String label})
+            EquipmentChannel(key: key, label: label, inUse: true, usedBy: slice['usedBy'] as String?),
+    ];
+    return [
+      for (final channel in live.isNotEmpty ? live.values : known)
+        if (!taken.contains(channel.key)) channel,
+    ];
+  }
+
+  /// Every entry of the device whose listed entry is [id], that one first:
+  /// a remote K4's receivers, a Flex's slices, and [id] alone for everything
+  /// else.
   List<String> entriesOf(String id) => [
     id,
-    for (final entry in _k4SiblingIds(id))
-      if (entry != id) entry,
+    for (final node in _nodes.values)
+      if (node.uuid != id && deviceEntryFor(node.uuid) == id) node.uuid,
   ];
 }

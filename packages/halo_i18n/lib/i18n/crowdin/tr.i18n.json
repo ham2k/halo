@@ -2068,8 +2068,6 @@
       "civAddress": "Radyo CI-V adresi",
       "civAddressDescription": "Radyonun CI-V menüsünde gösterildiği gibi onaltılık. IC-705 fabrikadan A4 olarak gelir.",
       "civAddressInvalid": "CI-V adresi iki onaltılık basamaktır, 01 ile FF arası",
-      "flexSlice": "Slice",
-      "flexSliceDescription": "Bu bağlantının radyonun hangi slice'ından okuyup ayar yaptığı.",
       "flexSliceLabel(letter)": "Slice ${letter}",
       "flexSliceInvalid": "Radyonun slice'larından birini seçin, A ile H arası",
       "flexSliceMissing(letter)": "Slice ${letter} bu radyoda kullanılmıyor — başka bir slice seçin veya SmartSDR'da oluşturun",

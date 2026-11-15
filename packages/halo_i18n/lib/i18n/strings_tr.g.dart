@@ -2645,8 +2645,6 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get civAddress => 'Radyo CI-V adresi';
 	@override String get civAddressDescription => 'Radyonun CI-V menüsünde gösterildiği gibi onaltılık. IC-705 fabrikadan A4 olarak gelir.';
 	@override String get civAddressInvalid => 'CI-V adresi iki onaltılık basamaktır, 01 ile FF arası';
-	@override String get flexSlice => 'Slice';
-	@override String get flexSliceDescription => 'Bu bağlantının radyonun hangi slice\'ından okuyup ayar yaptığı.';
 	@override String flexSliceLabel({required Object letter}) => 'Slice ${letter}';
 	@override String get flexSliceInvalid => 'Radyonun slice\'larından birini seçin, A ile H arası';
 	@override String flexSliceMissing({required Object letter}) => 'Slice ${letter} bu radyoda kullanılmıyor — başka bir slice seçin veya SmartSDR\'da oluşturun';
@@ -6183,8 +6181,6 @@ extension on TranslationsTr {
 			'settings.station.civAddress' => 'Radyo CI-V adresi',
 			'settings.station.civAddressDescription' => 'Radyonun CI-V menüsünde gösterildiği gibi onaltılık. IC-705 fabrikadan A4 olarak gelir.',
 			'settings.station.civAddressInvalid' => 'CI-V adresi iki onaltılık basamaktır, 01 ile FF arası',
-			'settings.station.flexSlice' => 'Slice',
-			'settings.station.flexSliceDescription' => 'Bu bağlantının radyonun hangi slice\'ından okuyup ayar yaptığı.',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'Slice ${letter}',
 			'settings.station.flexSliceInvalid' => 'Radyonun slice\'larından birini seçin, A ile H arası',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => 'Slice ${letter} bu radyoda kullanılmıyor — başka bir slice seçin veya SmartSDR\'da oluşturun',
@@ -6498,10 +6494,10 @@ extension on TranslationsTr {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Frekans ve mod değişmezken radyoya ne sıklıkla sorulacağı. ${fallback} ms için boş bırakın.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '${min} ile ${max} arasında tam sayı milisaniye',
 			'settings.station.advancedSettings' => 'Gelişmiş Ayarlar',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWR değeri',
 			'settings.station.placeholderSwrDescription' => 'Bu radyonun yayın sırasında SWR ölçerinde bildirdiği değer. 1.8\'in üzerinde panel uyarır.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwrInvalid' => '1 veya daha büyük bir sayı',
 			'settings.station.keyerNone' => 'Yok',
 			'settings.station.cwDialect' => 'CW manipülasyon lehçesi',
@@ -7012,10 +7008,10 @@ extension on TranslationsTr {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} içe aktarılamadı: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} bir ADIF dosyasına benzemiyor',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Uyarı: bu ADIF\'te ${calls} çağrılarına ait QSO\'lar var, ancak devam ederseniz ${station} olarak içe aktarılacaklar.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' ve ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} tanesinin tarihi yok ve içe aktarılamaz', other: '${formatted} tanesinin tarihi yok ve içe aktarılamaz', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.activationFound' => ({required Object refs}) => 'Bu dosya ${refs} aktivasyonunu kaydediyor.',
 			'adifImport.addActivation' => 'Bu operasyona ekle',
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned} kayıttan yalnızca ${written} tanesi uygulanabildi — siz karar verirken günlük değişti.',

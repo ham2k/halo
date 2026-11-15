@@ -2068,8 +2068,6 @@
       "civAddress": "Adresa CI-V rádiostanice",
       "civAddressDescription": "Hexadecimálne, ako ju zobrazuje menu CI-V rádiostanice. IC-705 sa dodáva s A4.",
       "civAddressInvalid": "Adresa CI-V sú dve hexadecimálne číslice, 01 až FF",
-      "flexSlice": "Slice",
-      "flexSliceDescription": "Z ktorého slice rádiostanice toto pripojenie číta a ktorý ladí.",
       "flexSliceLabel(letter)": "Slice ${letter}",
       "flexSliceInvalid": "Vyberte jeden zo slice rádiostanice, A až H",
       "flexSliceMissing(letter)": "Slice ${letter} sa na tejto rádiostanici nepoužíva — vyberte iný slice alebo ho vytvorte v SmartSDR",

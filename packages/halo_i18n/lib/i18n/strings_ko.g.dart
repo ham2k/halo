@@ -2645,8 +2645,6 @@ class _Translations$settings$station$ko extends Translations$settings$station$en
 	@override String get civAddress => '무전기 CI-V 주소';
 	@override String get civAddressDescription => '무전기의 CI-V 메뉴에 표시되는 16진수. IC-705의 출고값은 A4입니다.';
 	@override String get civAddressInvalid => 'CI-V 주소는 01부터 FF까지의 16진수 두 자리입니다';
-	@override String get flexSlice => '슬라이스';
-	@override String get flexSliceDescription => '이 연결이 읽고 튜닝할 무전기의 슬라이스.';
 	@override String flexSliceLabel({required Object letter}) => '슬라이스 ${letter}';
 	@override String get flexSliceInvalid => '무전기의 슬라이스 A부터 H 중 하나를 선택하세요';
 	@override String flexSliceMissing({required Object letter}) => '이 무전기에서 슬라이스 ${letter}을(를) 사용하고 있지 않습니다. 다른 슬라이스를 선택하거나 SmartSDR에서 만드세요';
@@ -6183,8 +6181,6 @@ extension on TranslationsKo {
 			'settings.station.civAddress' => '무전기 CI-V 주소',
 			'settings.station.civAddressDescription' => '무전기의 CI-V 메뉴에 표시되는 16진수. IC-705의 출고값은 A4입니다.',
 			'settings.station.civAddressInvalid' => 'CI-V 주소는 01부터 FF까지의 16진수 두 자리입니다',
-			'settings.station.flexSlice' => '슬라이스',
-			'settings.station.flexSliceDescription' => '이 연결이 읽고 튜닝할 무전기의 슬라이스.',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => '슬라이스 ${letter}',
 			'settings.station.flexSliceInvalid' => '무전기의 슬라이스 A부터 H 중 하나를 선택하세요',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => '이 무전기에서 슬라이스 ${letter}을(를) 사용하고 있지 않습니다. 다른 슬라이스를 선택하거나 SmartSDR에서 만드세요',
@@ -6498,10 +6494,10 @@ extension on TranslationsKo {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '주파수와 모드가 바뀌지 않는 동안 무전기에 이를 묻는 간격. 비워 두면 ${fallback} ms입니다.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '${min}에서 ${max} 사이의 정수 밀리초',
 			'settings.station.advancedSettings' => '고급 설정',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWR 값',
 			'settings.station.placeholderSwrDescription' => '송신 중 이 무전기가 SWR 미터에 보고하는 값. 1.8을 넘으면 패널이 경고합니다.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwrInvalid' => '1 이상의 숫자',
 			'settings.station.keyerNone' => '없음',
 			'settings.station.cwDialect' => 'CW 키잉 방식',
@@ -7012,10 +7008,10 @@ extension on TranslationsKo {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename}을(를) 가져올 수 없습니다: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename}은(는) ADIF 파일이 아닌 것 같습니다',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '경고: 이 ADIF에는 ${calls}의 QSO가 있지만, 계속하면 ${station}(으)로 가져옵니다.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' 및 ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count}개는 날짜가 없어 가져올 수 없습니다', other: '${formatted}개는 날짜가 없어 가져올 수 없습니다', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.activationFound' => ({required Object refs}) => '이 파일에는 ${refs}의 활성화 기록이 있습니다.',
 			'adifImport.addActivation' => '이 운용에 추가',
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned}개 중 ${written}개만 적용할 수 있었습니다. 결정하는 동안 로그가 변경되었습니다.',

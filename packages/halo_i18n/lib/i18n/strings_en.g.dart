@@ -6642,12 +6642,6 @@ class Translations$settings$station$en {
 	/// en: 'A CI-V address is two hex digits, 01 to FF'
 	String get civAddressInvalid => 'A CI-V address is two hex digits, 01 to FF';
 
-	/// en: 'Slice'
-	String get flexSlice => 'Slice';
-
-	/// en: 'Which of the radio's slices this connection reads from and tunes.'
-	String get flexSliceDescription => 'Which of the radio\'s slices this connection reads from and tunes.';
-
 	/// en: 'Slice ${letter}'
 	String flexSliceLabel({required Object letter}) => 'Slice ${letter}';
 
@@ -13432,8 +13426,6 @@ extension on Translations {
 			'settings.station.civAddress' => 'Radio CI-V address',
 			'settings.station.civAddressDescription' => 'Hex, as shown in the radio\'s CI-V menu. The IC-705 ships as A4.',
 			'settings.station.civAddressInvalid' => 'A CI-V address is two hex digits, 01 to FF',
-			'settings.station.flexSlice' => 'Slice',
-			'settings.station.flexSliceDescription' => 'Which of the radio\'s slices this connection reads from and tunes.',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'Slice ${letter}',
 			'settings.station.flexSliceInvalid' => 'Pick one of the radio\'s slices, A through H',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => 'Slice ${letter} is not in use on this radio — pick another slice, or create it in SmartSDR',
@@ -13559,10 +13551,10 @@ extension on Translations {
 			'settings.station.models.ts2000' => 'Kenwood TS-2000',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.tx500' => 'Lab599 TX-500',
 			'settings.station.models.tx500mp' => 'Lab599 TX-500MP',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.qcx' => 'QRP Labs QCX',
 			'settings.station.models.elecraftGeneric' => 'Elecraft - Generic',
 			'settings.station.models.kx2' => 'Elecraft KX2',
@@ -14073,10 +14065,10 @@ extension on Translations {
 			'settings.developer.diagnostics' => 'Diagnostics',
 			'settings.developer.importExport' => 'Import / Export',
 			'settings.developer.systemInformation' => 'System Information',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.appVersion' => 'App Version',
 			'settings.developer.dataFolder' => 'Data Folder',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.worktree' => 'Worktree',
 			'settings.developer.launchedAt' => 'Started',
 			'settings.developer.loading' => '(loading…)',
@@ -14587,10 +14579,10 @@ extension on Translations {
 			'adifImport.stationCallJoin' => ' and ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} has no date and cannot be imported', other: '${formatted} have no date and cannot be imported', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'This file records an activation of ${refs}.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.addActivation' => 'Add it to this operation',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Only ${written} of ${planned} could be applied — the log changed while you were deciding.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.busy' => 'An import is already running. Wait for it to finish before starting another.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs, the most an operation can import at a time.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs. Importing an ADIF into an operation is meant to add a few QSOs, not to bring in a large log — use the Logs view for that. Developer mode lets you import it anyway, if you are sure.',

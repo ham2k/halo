@@ -941,7 +941,12 @@ Two rules the UI follows:
   (`EquipmentDriver.channelKey`, such as a FlexRadio's slices). A Flex with slice A
   set up is still something you could add, so it keeps being offered, each offer carrying the lowest
   channel not yet spoken for and named after it from the second on. Filtering per radio instead is
-  what left the second slice reachable only by typing the address in from the catalogue.
+  what left the second slice reachable only by typing the address in from the catalogue. An offer
+  for a radio already configured adds that slice to it, as `<device>/rx:<slice>`
+  ([station-model.md § 4.2](station-model.md#42-addresses)): a Flex is one device in Station
+  Configuration however many of its slices are configured, its row has no slice, and its editor
+  asks for none. The slice A entry is the device, made from the address for a radio stored with
+  none; an edit to the device is every slice's, and removing it removes them all.
 
 A **SOTAcat** is found by Multicast DNS rather than broadcast: it publishes a `_sotacat._tcp` service
 record (SRV = its rigctld port, TXT `id=` a stable id and `fw=` its firmware), and the app asks for
@@ -1207,8 +1212,9 @@ providing `vfoB`, which set B of the logging panel follows ([logging-fields.md](
 Station Configuration's Current Configuration band, as set B's block under set A's. It is the same wiring as `radio1`, narrowed:
 
 - **Local rigs only.** A peer's radio is never Radio B.
-- **Never radio1's rig.** `setRadio2` refuses it, and taking Radio B's rig as radio1 clears Radio
-  B — two VFOs tuning one radio would fight over it.
+- **Never radio1's rig at the same time.** Each set's picker offers the other's rig, and picking it
+  takes it: `setRadio2` on radio1's rig leaves set A with no radio, and radio1 taking Radio B's rig
+  clears Radio B — two VFOs tuning one radio would fight over it.
 - **Readings and tunes stay on their own VFO.** `_applyReading` writes a radio2 report to `vfoB`
   tagged `radio`, and `_onVfoChanged` dispatches on `RadioService.lastVfoKey`: a `vfoB` change
   retunes radio2 (`_retune`) and nothing else — a band picked by name included, which moves Radio

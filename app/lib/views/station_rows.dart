@@ -183,6 +183,14 @@ class TransceiverRow extends StatelessWidget {
   final VoidCallback onSelect;
   final VoidCallback? onEdit;
 
+  /// In a picker, the logging set this radio is ("A", "B"): its letter takes
+  /// the radio glyph's place, so the list says which radio each set has.
+  final String? set;
+
+  /// In a picker, whether the radio is connected now: said after its
+  /// address, so a pick can go to a radio that is already up.
+  final bool connected;
+
   /// The radio's [RowPlug], on an inventory row.
   final RowPlug? plug;
 
@@ -215,6 +223,8 @@ class TransceiverRow extends StatelessWidget {
     this.plug,
     this.state,
     this.unconfigured = false,
+    this.set,
+    this.connected = false,
   });
 
   @override
@@ -230,6 +240,7 @@ class TransceiverRow extends StatelessWidget {
       horizontalTitleGap: 0,
       leading: TransceiverGlyph(
         inUse: selected,
+        set: set,
         semanticLabel: selected ? st.mainVfo : st.makeMainVfo(name: name),
         onPressed: selected ? null : onSelect,
       ),
@@ -278,8 +289,17 @@ class TransceiverRow extends StatelessWidget {
           null => null,
         },
         null when connection.isEmpty => null,
-        null => Text(
-          connection,
+        null => Text.rich(
+          TextSpan(
+            text: connection,
+            children: [
+              if (connected)
+                TextSpan(
+                  text: ' · ${st.statusConnected}',
+                  style: TextStyle(color: connectedGreen(theme)),
+                ),
+            ],
+          ),
           textAlign: TextAlign.right,
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -894,19 +914,32 @@ class TransceiverGlyph extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool _bare;
 
-  const TransceiverGlyph({super.key, required this.inUse, this.semanticLabel, this.onPressed}) : _bare = false;
+  /// The logging set the radio is, drawn as its lettered box in place of
+  /// the radio, in the selected radio's color: a set's mark, whichever
+  /// set's picker shows it.
+  final String? set;
 
-  const TransceiverGlyph.bare({super.key, required this.inUse}) : semanticLabel = null, onPressed = null, _bare = true;
+  const TransceiverGlyph({super.key, required this.inUse, this.semanticLabel, this.onPressed, this.set}) : _bare = false;
+
+  const TransceiverGlyph.bare({super.key, required this.inUse}) : semanticLabel = null, onPressed = null, set = null, _bare = true;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final icon = Icon(
-      iconForCategory(kCategoryTransceiver),
-      size: _rowButtonIconSize,
-      color: inUse ? scheme.primary : scheme.onSurface.withValues(alpha: 0.38),
-      semanticLabel: semanticLabel,
-    );
+    final box = switch (set) {
+      'A' => MdiIcons.alphaABox,
+      'B' => MdiIcons.alphaBBox,
+      _ => null,
+    };
+    final Widget icon = switch (box) {
+      final box? => Icon(box, size: _rowButtonIconSize, color: scheme.primary, semanticLabel: semanticLabel),
+      null => Icon(
+        iconForCategory(kCategoryTransceiver),
+        size: _rowButtonIconSize,
+        color: inUse ? scheme.primary : scheme.onSurface.withValues(alpha: 0.38),
+        semanticLabel: semanticLabel,
+      ),
+    };
     if (_bare) return icon;
     return SizedBox(
       width: _rowButtonWidth,

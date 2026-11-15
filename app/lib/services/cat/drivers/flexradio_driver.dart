@@ -119,30 +119,11 @@ class FlexRadioDriver extends EquipmentDriver with AlwaysOffersScope {
   };
 
   @override
-  Set<String> get recognizedConfigKeys => {...super.recognizedConfigKeys, voiceCeilingConfigKey};
+  Set<String> get recognizedConfigKeys => {...super.recognizedConfigKeys, voiceCeilingConfigKey, sliceConfigKey};
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
       FlexRadioSession(sink, slice: sliceFromConfig(config), meterHost: config['host'] as String?, voiceMemoryCeiling: voiceCeilingFromConfig(config));
-
-  @override
-  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) =>
-      // A pairing that fixes the slice has nothing to ask — the same escape
-      // hatch the CI-V address field uses.
-      overrides.containsKey(sliceConfigKey)
-      ? const []
-      : [
-          {
-            'type': 'field',
-            'fieldType': 'select',
-            'key': sliceConfigKey,
-            'label': t.settings.station.flexSlice,
-            'description': t.settings.station.flexSliceDescription,
-            'options': [
-              for (var i = 0; i < sliceLabels.length; i++) {'value': '$i', 'label': t.settings.station.flexSliceLabel(letter: sliceLabels[i])},
-            ],
-          },
-        ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {

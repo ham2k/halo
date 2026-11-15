@@ -2645,8 +2645,6 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get civAddress => '無線機のCI-Vアドレス';
 	@override String get civAddressDescription => '無線機のCI-Vメニューに表示される16進数。IC-705の出荷時設定はA4です。';
 	@override String get civAddressInvalid => 'CI-Vアドレスは01からFFまでの2桁の16進数です';
-	@override String get flexSlice => 'スライス';
-	@override String get flexSliceDescription => 'この接続が読み取り、チューニングする無線機のスライス。';
 	@override String flexSliceLabel({required Object letter}) => 'スライス${letter}';
 	@override String get flexSliceInvalid => '無線機のスライスをAからHの中から選んでください';
 	@override String flexSliceMissing({required Object letter}) => 'スライス${letter}はこの無線機で使用されていません。別のスライスを選ぶか、SmartSDRで作成してください';
@@ -6183,8 +6181,6 @@ extension on TranslationsJa {
 			'settings.station.civAddress' => '無線機のCI-Vアドレス',
 			'settings.station.civAddressDescription' => '無線機のCI-Vメニューに表示される16進数。IC-705の出荷時設定はA4です。',
 			'settings.station.civAddressInvalid' => 'CI-Vアドレスは01からFFまでの2桁の16進数です',
-			'settings.station.flexSlice' => 'スライス',
-			'settings.station.flexSliceDescription' => 'この接続が読み取り、チューニングする無線機のスライス。',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'スライス${letter}',
 			'settings.station.flexSliceInvalid' => '無線機のスライスをAからHの中から選んでください',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => 'スライス${letter}はこの無線機で使用されていません。別のスライスを選ぶか、SmartSDRで作成してください',
@@ -6498,10 +6494,10 @@ extension on TranslationsJa {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '周波数とモードが変化していない間に、無線機に問い合わせる頻度。空欄の場合は${fallback} msです。',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '${min}〜${max}のミリ秒単位の整数',
 			'settings.station.advancedSettings' => '詳細設定',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWRの値',
 			'settings.station.placeholderSwrDescription' => '送信中にこの無線機がSWRメーターで報告する値。1.8を超えるとパネルが警告します。',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwrInvalid' => '1以上の数値',
 			'settings.station.keyerNone' => 'なし',
 			'settings.station.cwDialect' => 'CWキーイングの方式',
@@ -7012,10 +7008,10 @@ extension on TranslationsJa {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename}をインポートできませんでした：${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename}はADIFファイルではないようです',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '警告：このADIFには${calls}のQSOが含まれていますが、続行すると${station}としてインポートされます。',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stationCallJoin' => 'と',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件は日付がないためインポートできません', other: '${formatted}件は日付がないためインポートできません', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.activationFound' => ({required Object refs}) => 'このファイルには${refs}のアクティベーションが記録されています。',
 			'adifImport.addActivation' => 'このオペレーションに追加',
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned}件中${written}件しか適用できませんでした。判断している間にログが変更されました。',

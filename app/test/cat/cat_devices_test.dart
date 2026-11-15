@@ -11,10 +11,18 @@
 // old id goes on naming the same receiver or rotor, and that a forwarded id
 // is never handed to another entry.
 
+import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/computer_voice_keyer.dart' show voiceOutputConfigKey;
+import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/flexradio_driver.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,7 +34,12 @@ void main() {
 
   late SettingsService settings;
 
-  Future<CatService> load(Map<String, dynamic> blob, {Map<String, String> passwords = const {}, bool keychainRefuses = false}) async {
+  Future<CatService> load(
+    Map<String, dynamic> blob, {
+    Map<String, String> passwords = const {},
+    bool keychainRefuses = false,
+    EquipmentRegistry? registry,
+  }) async {
     SharedPreferences.setMockInitialValues({'stationEquipment': jsonEncode(blob)});
     final prefs = await SharedPreferences.getInstance();
     settings = SettingsService(prefs, secureStorage: FakeSecureStorage(failWrites: keychainRefuses));
@@ -34,7 +47,11 @@ void main() {
     for (final MapEntry(key: identity, value: password) in passwords.entries) {
       await settings.setEquipmentSecret(identity, 'password', password);
     }
-    final cat = CatService(settings, radio: RadioService(prefs, writeDelay: Duration.zero));
+    final cat = CatService(
+      settings,
+      radio: RadioService(prefs, writeDelay: Duration.zero),
+      registry: registry,
+    );
     addTearDown(cat.dispose);
     return cat;
   }
@@ -161,6 +178,143 @@ void main() {
     expect(cat.nodeFor('k4-main/rx:sub'), isNotNull);
   });
 
+  group('Flex nodes at one address', () {
+    Map<String, dynamic> flex(String slice, {String host = 'flex.local', String name = 'Shack Flex'}) => {
+      'typeKey': 'flexradio-tcp',
+      'name': name,
+      'config': {'host': host, 'port': 4992, 'slice': slice},
+    };
+
+    test('are one device: slice A\'s node is the device, and slice B\'s is its rx:1, picks and all', () async {
+      final cat = await load({
+        'version': 4,
+        'nodes': {
+          'flex-a': flex('0'),
+          'flex-b': flex('1', name: 'Flex B'),
+          'paddle': {'typeKey': 'paddle', 'name': 'Paddle'},
+        },
+        'positions': {
+          'a': {
+            'radio': {'local': 'flex-a'},
+            'slots': <String, dynamic>{},
+          },
+          'b': {
+            'radio': {'local': 'flex-b'},
+            'slots': {'key': 'paddle'},
+          },
+        },
+        'sets': {'A': 'a', 'B': 'b'},
+      });
+      expect(cat.nodes.map((node) => node.uuid), ['flex-a', 'flex-a/rx:1', 'paddle']);
+      expect(cat.radio2, 'flex-a/rx:1');
+      expect(cat.designatedFor('key', radio: 'flex-a/rx:1'), 'paddle');
+      expect(cat.nodeFor('flex-b')?.uuid, 'flex-a/rx:1', reason: 'a layout holding the old id finds the slice');
+      expect(cat.radioNameFor(cat.nodeFor('flex-a/rx:1')!), 'Shack Flex · Slice B');
+      expect(cat.entriesOf('flex-a'), ['flex-a', 'flex-a/rx:1']);
+    });
+
+    test('with no node on slice A get one made from the address, the same at every load', () async {
+      final onlyB = {
+        'version': 4,
+        'nodes': {'flex-b': flex('1')},
+        'positions': {
+          'a': {
+            'radio': {'local': 'flex-b'},
+            'slots': <String, dynamic>{},
+          },
+        },
+        'sets': {'A': 'a'},
+      };
+      final cat = await load(onlyB);
+      final device = cat.nodes.first.uuid;
+      expect(device, isNot('flex-b'), reason: 'the old id is the slice\'s, forwarded to it');
+      expect(cat.nodes.map((node) => node.uuid), [device, '$device/rx:1']);
+      expect(cat.radio1, LocalRadio('$device/rx:1'));
+      expect((await load(onlyB)).nodes.first.uuid, device);
+    });
+
+    test('at two addresses are two radios', () async {
+      final cat = await load({
+        'version': 4,
+        'nodes': {'shack': flex('0'), 'remote': flex('0', host: 'remote.example')},
+      });
+      expect(cat.nodes.map((node) => node.uuid), ['shack', 'remote']);
+    });
+
+    test('offer the slices the radio last said were open, and picking one adds it as an entry', () async {
+      // Read while the radio is off: a slice picked then is reached once it
+      // is on, and one the radio did not mention cannot be offered at all.
+      final cat = await load({
+        'version': 4,
+        'nodes': {
+          'flex-a': {
+            'typeKey': 'flexradio-tcp',
+            'name': 'Shack Flex',
+            'config': {
+              'host': 'flex.local',
+              'port': 4992,
+              'slice': '0',
+              flexKnownSlicesConfigKey: [
+                {'key': '0', 'label': 'A'},
+                {'key': '2', 'label': 'C', 'usedBy': 'Maestro'},
+              ],
+            },
+          },
+        },
+      });
+      expect(cat.flexSlicesToAdd('flex-a').map((slice) => (slice.key, slice.usedBy)), [('2', 'Maestro')], reason: 'slice A has its entry already');
+      final added = (await cat.addFlexSlice('flex-a', '2'))!;
+      expect(added, 'flex-a/rx:2');
+      expect(cat.nodeFor(added)!.config, {'host': 'flex.local', 'port': 4992, 'slice': '2'});
+      expect(cat.flexSlicesToAdd('flex-a'), isEmpty);
+      expect(cat.radioNameFor(cat.nodeFor(added)!), 'Shack Flex · Slice C');
+    });
+
+    test('keep the slices the radio says are open, from whichever slice says so, for the picker while it is off', () async {
+      // Without this the picker offers nothing to add until the radio is on
+      // AND one of its slices connected, and nothing at all once it is off.
+      final radio = _FakeFlexRadio();
+      final cat = await load({
+        'version': 4,
+        'nodes': {
+          'flex-a': {...flex('0'), 'typeKey': _fakeFlexTypeKey},
+          'flex-b': {...flex('1'), 'typeKey': _fakeFlexTypeKey},
+        },
+      }, registry: radio.registry);
+      await cat.connect('flex-a/rx:1');
+      radio.sinks.single.reportChannels(const [
+        EquipmentChannel(key: '0', label: 'A', inUse: true),
+        EquipmentChannel(key: '1', label: 'B', inUse: true),
+        EquipmentChannel(key: '2', label: 'C', inUse: true, usedBy: 'Maestro'),
+        EquipmentChannel(key: '3', label: 'D', inUse: false),
+      ]);
+      expect((await saved())['nodes']['flex-a']['config'][flexKnownSlicesConfigKey], [
+        {'key': '0', 'label': 'A'},
+        {'key': '1', 'label': 'B'},
+        {'key': '2', 'label': 'C', 'usedBy': 'Maestro'},
+      ], reason: "slice B's report lands on the device, and only the open slices");
+      await cat.disconnect('flex-a/rx:1');
+      expect(cat.flexSlicesToAdd('flex-a').map((slice) => slice.key), ['2']);
+    });
+
+    test('follow the device: an edit to its address is every slice\'s, and removing it removes them all', () async {
+      final cat = await load({
+        'version': 4,
+        'nodes': {'flex-a': flex('0'), 'flex-b': flex('1')},
+      });
+      final slice = cat.nodeFor('flex-a/rx:1')!;
+      await cat.updateNode(slice.copyWith(config: {...slice.config, voiceOutputConfigKey: 'Set B speakers'}));
+      final device = cat.nodeFor('flex-a')!;
+      await cat.updateNode(device.copyWith(config: {...device.config, 'host': 'flex.lan', voiceOutputConfigKey: 'Set A speakers'}));
+      // Left on the old address, slice B would be a radio of its own on the
+      // next load. Given the device's sound devices, set B's voice messages
+      // would play on set A's.
+      expect(cat.nodeFor('flex-a/rx:1')!.config, {'host': 'flex.lan', 'port': 4992, 'slice': '1', voiceOutputConfigKey: 'Set B speakers'});
+      await cat.removeNode('flex-a');
+      expect(cat.nodes, isEmpty);
+    });
+  });
+
   test('a remote K4 added is both its receivers, and the Main keeps the VFO', () async {
     final cat = await load({'version': 4, 'nodes': <String, dynamic>{}});
     final added = await cat.addNode(typeKey: 'k4-remote', config: {'host': '192.0.2.4', 'remotePort': 9204});
@@ -190,4 +344,68 @@ void main() {
     expect(cat.nodes.map((node) => node.uuid), ['server', 'server/rotator:Tower 1', 'server/switch:Stack%2FDir']);
     expect((await saved())['forwarded'], isNull, reason: 'nothing saved yet');
   });
+}
+
+const _fakeFlexTypeKey = 'fake-flex';
+
+/// A Flex whose sessions say nothing on their own: the test speaks for the
+/// radio through the sink each connection was handed.
+class _FakeFlexRadio {
+  final sinks = <EquipmentSink>[];
+
+  late final _transport = _FakeLink();
+
+  late final EquipmentRegistry registry = EquipmentRegistry(
+    models: [
+      EquipmentModel(
+        key: 'fake-flex',
+        category: kCategoryTransceiver,
+        name: () => 'Fake Flex',
+        variants: [EquipmentVariant(key: _fakeFlexTypeKey, driver: _FakeFlexDriver(sinks), transport: _transport)],
+      ),
+    ],
+    transports: {_transport.key: _transport},
+  );
+}
+
+class _FakeFlexDriver extends FlexRadioDriver {
+  final List<EquipmentSink> sinks;
+
+  _FakeFlexDriver(this.sinks);
+
+  @override
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
+    sinks.add(sink);
+    return _QuietSession();
+  }
+}
+
+class _QuietSession implements EquipmentSession {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _FakeLink extends EquipmentTransport {
+  @override
+  String get key => 'fake-flex-link';
+
+  @override
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async => _FakeConnection();
+}
+
+class _FakeConnection implements EquipmentConnection {
+  final _data = StreamController<Uint8List>();
+  final _closed = Completer<void>();
+
+  @override
+  Stream<Uint8List> get data => _data.stream;
+  @override
+  Future<void> get closed => _closed.future;
+  @override
+  void send(List<int> bytes) {}
+  @override
+  Future<void> close() async {
+    if (!_closed.isCompleted) _closed.complete();
+    unawaited(_data.close());
+  }
 }

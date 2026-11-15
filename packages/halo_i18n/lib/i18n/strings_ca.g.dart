@@ -2645,8 +2645,6 @@ class _Translations$settings$station$ca extends Translations$settings$station$en
 	@override String get civAddress => 'Adreça CI-V de la ràdio';
 	@override String get civAddressDescription => 'En hexadecimal, tal com es mostra al menú CI-V de la ràdio. L\'IC-705 ve amb A4.';
 	@override String get civAddressInvalid => 'Una adreça CI-V té dos dígits hexadecimals, de 01 a FF';
-	@override String get flexSlice => 'Slice';
-	@override String get flexSliceDescription => 'De quin slice de la ràdio llegeix i sintonitza aquesta connexió.';
 	@override String flexSliceLabel({required Object letter}) => 'Slice ${letter}';
 	@override String get flexSliceInvalid => 'Tria un dels slices de la ràdio, de la A a la H';
 	@override String flexSliceMissing({required Object letter}) => 'El slice ${letter} no s\'utilitza en aquesta ràdio — tria\'n un altre, o crea\'l a SmartSDR';
@@ -6183,8 +6181,6 @@ extension on TranslationsCa {
 			'settings.station.civAddress' => 'Adreça CI-V de la ràdio',
 			'settings.station.civAddressDescription' => 'En hexadecimal, tal com es mostra al menú CI-V de la ràdio. L\'IC-705 ve amb A4.',
 			'settings.station.civAddressInvalid' => 'Una adreça CI-V té dos dígits hexadecimals, de 01 a FF',
-			'settings.station.flexSlice' => 'Slice',
-			'settings.station.flexSliceDescription' => 'De quin slice de la ràdio llegeix i sintonitza aquesta connexió.',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'Slice ${letter}',
 			'settings.station.flexSliceInvalid' => 'Tria un dels slices de la ràdio, de la A a la H',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => 'El slice ${letter} no s\'utilitza en aquesta ràdio — tria\'n un altre, o crea\'l a SmartSDR',
@@ -6498,10 +6494,10 @@ extension on TranslationsCa {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Cada quant es demana a la ràdio la freqüència i el mode mentre cap dels dos canvia. Deixa-ho en blanc per a ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Un nombre enter de mil·lisegons, de ${min} a ${max}',
 			'settings.station.advancedSettings' => 'Configuració avançada',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'Lectura de ROE',
 			'settings.station.placeholderSwrDescription' => 'El que indica el mesurador de ROE d\'aquesta ràdio mentre transmet. Per sobre d\'1,8 el panell avisa.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwrInvalid' => 'Un nombre, 1 o més',
 			'settings.station.keyerNone' => 'Cap',
 			'settings.station.cwDialect' => 'Dialecte de manipulació CW',
@@ -7012,10 +7008,10 @@ extension on TranslationsCa {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'No s\'ha pogut importar ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} no sembla un fitxer ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Avís: aquest ADIF té QSOs de ${calls}, però s\'importaran com a ${station} si continues.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' i ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} no té data i no es pot importar', other: '${formatted} no tenen data i no es poden importar', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.activationFound' => ({required Object refs}) => 'Aquest fitxer registra una activació de ${refs}.',
 			'adifImport.addActivation' => 'Afegeix-la a aquesta operació',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Només s\'han pogut aplicar ${written} de ${planned} — el registre ha canviat mentre decidies.',

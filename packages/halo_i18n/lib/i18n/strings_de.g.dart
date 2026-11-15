@@ -2645,8 +2645,6 @@ class _Translations$settings$station$de extends Translations$settings$station$en
 	@override String get civAddress => 'CI-V-Adresse des Funkgeräts';
 	@override String get civAddressDescription => 'Hexadezimal, wie im CI-V-Menü des Funkgeräts angezeigt. Der IC-705 wird mit A4 ausgeliefert.';
 	@override String get civAddressInvalid => 'Eine CI-V-Adresse besteht aus zwei Hex-Ziffern, 01 bis FF';
-	@override String get flexSlice => 'Slice';
-	@override String get flexSliceDescription => 'Welchen Slice des Funkgeräts diese Verbindung liest und abstimmt.';
 	@override String flexSliceLabel({required Object letter}) => 'Slice ${letter}';
 	@override String get flexSliceInvalid => 'Wähle einen der Slices des Funkgeräts, A bis H';
 	@override String flexSliceMissing({required Object letter}) => 'Slice ${letter} wird auf diesem Funkgerät nicht genutzt — wähle einen anderen Slice oder erstelle ihn in SmartSDR';
@@ -6183,8 +6181,6 @@ extension on TranslationsDe {
 			'settings.station.civAddress' => 'CI-V-Adresse des Funkgeräts',
 			'settings.station.civAddressDescription' => 'Hexadezimal, wie im CI-V-Menü des Funkgeräts angezeigt. Der IC-705 wird mit A4 ausgeliefert.',
 			'settings.station.civAddressInvalid' => 'Eine CI-V-Adresse besteht aus zwei Hex-Ziffern, 01 bis FF',
-			'settings.station.flexSlice' => 'Slice',
-			'settings.station.flexSliceDescription' => 'Welchen Slice des Funkgeräts diese Verbindung liest und abstimmt.',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'Slice ${letter}',
 			'settings.station.flexSliceInvalid' => 'Wähle einen der Slices des Funkgeräts, A bis H',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => 'Slice ${letter} wird auf diesem Funkgerät nicht genutzt — wähle einen anderen Slice oder erstelle ihn in SmartSDR',
@@ -6498,10 +6494,10 @@ extension on TranslationsDe {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Wie oft das Funkgerät nach Frequenz und Modus gefragt wird, solange sich keines davon ändert. Leer lassen für ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Eine ganze Zahl in Millisekunden, ${min} bis ${max}',
 			'settings.station.advancedSettings' => 'Erweiterte Einstellungen',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWR-Wert',
 			'settings.station.placeholderSwrDescription' => 'Was dieses Funkgerät beim Senden auf seinem SWR-Meter meldet. Über 1,8 warnt das Panel.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwrInvalid' => 'Eine Zahl, 1 oder mehr',
 			'settings.station.keyerNone' => 'Keiner',
 			'settings.station.cwDialect' => 'CW-Tastungsdialekt',
@@ -7012,10 +7008,10 @@ extension on TranslationsDe {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} konnte nicht importiert werden: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} sieht nicht wie eine ADIF-Datei aus',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Warnung: Diese ADIF enthält QSOs von ${calls}, sie werden aber als ${station} importiert, wenn du fortfährst.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' und ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} hat kein Datum und kann nicht importiert werden', other: '${formatted} haben kein Datum und können nicht importiert werden', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.activationFound' => ({required Object refs}) => 'Diese Datei enthält eine Aktivierung von ${refs}.',
 			'adifImport.addActivation' => 'Zu diesem Betrieb hinzufügen',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Nur ${written} von ${planned} konnten übernommen werden — das Log hat sich geändert, während du entschieden hast.',

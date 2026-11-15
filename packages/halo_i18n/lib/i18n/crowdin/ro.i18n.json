@@ -2068,8 +2068,6 @@
       "civAddress": "Adresa CI-V a stației radio",
       "civAddressDescription": "Hex, așa cum apare în meniul CI-V al stației radio. IC-705 vine setat pe A4.",
       "civAddressInvalid": "O adresă CI-V are două cifre hex, de la 01 la FF",
-      "flexSlice": "Slice",
-      "flexSliceDescription": "Din care slice al stației radio citește și pe care îl acordă această conexiune.",
       "flexSliceLabel(letter)": "Slice ${letter}",
       "flexSliceInvalid": "Alegeți unul dintre slice-urile stației radio, de la A la H",
       "flexSliceMissing(letter)": "Slice ${letter} nu este folosit pe această stație radio — alegeți alt slice sau creați-l în SmartSDR",

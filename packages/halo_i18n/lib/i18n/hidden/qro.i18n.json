@@ -2289,8 +2289,6 @@
       "civAddress": "RADIO CI-V ADDRESS",
       "civAddressDescription": "HEX, AS SHOWN IN THE RADIO'S CI-V MENU. THE IC-705 SHIPS AS A4.",
       "civAddressInvalid": "A CI-V ADDRESS IS TWO HEX DIGITS, 01 TO FF",
-      "flexSlice": "SLICE",
-      "flexSliceDescription": "WHICH OF THE RADIO'S SLICES THIS CONNECTION READS FROM AND TUNES.",
       "flexSliceLabel(letter)": "SLICE ${letter}",
       "flexSliceInvalid": "PICK ONE OF THE RADIO'S SLICES, A THROUGH H",
       "flexSliceMissing(letter)": "SLICE ${letter} IS NOT IN USE ON THIS RADIO — PICK ANOTHER SLICE, OR CREATE IT IN SMARTSDR",

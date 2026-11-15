@@ -2068,8 +2068,6 @@
       "civAddress": "無線機のCI-Vアドレス",
       "civAddressDescription": "無線機のCI-Vメニューに表示される16進数。IC-705の出荷時設定はA4です。",
       "civAddressInvalid": "CI-Vアドレスは01からFFまでの2桁の16進数です",
-      "flexSlice": "スライス",
-      "flexSliceDescription": "この接続が読み取り、チューニングする無線機のスライス。",
       "flexSliceLabel(letter)": "スライス${letter}",
       "flexSliceInvalid": "無線機のスライスをAからHの中から選んでください",
       "flexSliceMissing(letter)": "スライス${letter}はこの無線機で使用されていません。別のスライスを選ぶか、SmartSDRで作成してください",

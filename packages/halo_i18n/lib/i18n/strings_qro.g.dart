@@ -3025,8 +3025,6 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get civAddress => 'RADIO CI-V ADDRESS';
 	@override String get civAddressDescription => 'HEX, AS SHOWN IN THE RADIO\'S CI-V MENU. THE IC-705 SHIPS AS A4.';
 	@override String get civAddressInvalid => 'A CI-V ADDRESS IS TWO HEX DIGITS, 01 TO FF';
-	@override String get flexSlice => 'SLICE';
-	@override String get flexSliceDescription => 'WHICH OF THE RADIO\'S SLICES THIS CONNECTION READS FROM AND TUNES.';
 	@override String flexSliceLabel({required Object letter}) => 'SLICE ${letter}';
 	@override String get flexSliceInvalid => 'PICK ONE OF THE RADIO\'S SLICES, A THROUGH H';
 	@override String flexSliceMissing({required Object letter}) => 'SLICE ${letter} IS NOT IN USE ON THIS RADIO — PICK ANOTHER SLICE, OR CREATE IT IN SMARTSDR';
@@ -7090,8 +7088,6 @@ extension on TranslationsQro {
 			'settings.station.civAddress' => 'RADIO CI-V ADDRESS',
 			'settings.station.civAddressDescription' => 'HEX, AS SHOWN IN THE RADIO\'S CI-V MENU. THE IC-705 SHIPS AS A4.',
 			'settings.station.civAddressInvalid' => 'A CI-V ADDRESS IS TWO HEX DIGITS, 01 TO FF',
-			'settings.station.flexSlice' => 'SLICE',
-			'settings.station.flexSliceDescription' => 'WHICH OF THE RADIO\'S SLICES THIS CONNECTION READS FROM AND TUNES.',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'SLICE ${letter}',
 			'settings.station.flexSliceInvalid' => 'PICK ONE OF THE RADIO\'S SLICES, A THROUGH H',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => 'SLICE ${letter} IS NOT IN USE ON THIS RADIO — PICK ANOTHER SLICE, OR CREATE IT IN SMARTSDR',
@@ -7217,10 +7213,10 @@ extension on TranslationsQro {
 			'settings.station.models.ts2000' => 'KENWOOD TS-2000',
 			'settings.station.models.qmx' => 'QRP LABS QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.tx500' => 'LAB599 TX-500',
 			'settings.station.models.tx500mp' => 'LAB599 TX-500MP',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.qcx' => 'QRP LABS QCX',
 			'settings.station.models.elecraftGeneric' => 'ELECRAFT - GENERIC',
 			'settings.station.models.kx2' => 'ELECRAFT KX2',
@@ -7731,10 +7727,10 @@ extension on TranslationsQro {
 			'settings.developer.diagnostics' => 'DIAGNOSTICS',
 			'settings.developer.importExport' => 'IMPORT / EXPORT',
 			'settings.developer.systemInformation' => 'SYSTEM INFORMATION',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.appVersion' => 'APP VERSION',
 			'settings.developer.dataFolder' => 'DATA FOLDER',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.worktree' => 'WORKTREE',
 			'settings.developer.launchedAt' => 'STARTED',
 			'settings.developer.loading' => '(LOADING…)',
@@ -8245,10 +8241,10 @@ extension on TranslationsQro {
 			'adifImport.stationCallJoin' => ' AND ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} HAS NO DATE AND CANNOT BE IMPORTED', other: '${formatted} HAVE NO DATE AND CANNOT BE IMPORTED', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'THIS FILE RECORDS AN ACTIVATION OF ${refs}.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.addActivation' => 'ADD IT TO THIS OPERATION',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'ONLY ${written} OF ${planned} COULD BE APPLIED — THE LOG CHANGED WHILE YOU WERE DECIDING.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.busy' => 'AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS, THE MOST AN OPERATION CAN IMPORT AT A TIME.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS. IMPORTING AN ADIF INTO AN OPERATION IS MEANT TO ADD A FEW QSOS, NOT TO BRING IN A LARGE LOG — USE THE LOGS VIEW FOR THAT. DEVELOPER MODE LETS YOU IMPORT IT ANYWAY, IF YOU ARE SURE.',

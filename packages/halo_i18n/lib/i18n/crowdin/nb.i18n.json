@@ -2068,8 +2068,6 @@
       "civAddress": "Radioens CI-V-adresse",
       "civAddressDescription": "Heksadesimal, slik den vises i radioens CI-V-meny. IC-705 leveres med A4.",
       "civAddressInvalid": "En CI-V-adresse er to heksadesimale sifre, 01 til FF",
-      "flexSlice": "Slice",
-      "flexSliceDescription": "Hvilken av radioens slicer denne tilkoblingen leser fra og stiller inn.",
       "flexSliceLabel(letter)": "Slice ${letter}",
       "flexSliceInvalid": "Velg en av radioens slicer, A til H",
       "flexSliceMissing(letter)": "Slice ${letter} er ikke i bruk på denne radioen — velg en annen slice, eller opprett den i SmartSDR",

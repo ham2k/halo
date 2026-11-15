@@ -41,8 +41,8 @@ extension _SetRows on StationPanel {
   }
 
   /// SO2R's Radio B, under the Main VFO's row: the same row, picked from this
-  /// station's own transceivers only — never the Main VFO's, which one rig
-  /// cannot be at the same time.
+  /// station's own transceivers. The Main VFO's is offered too, and picking
+  /// it takes it from set A ([CatService.setRadio2]).
   Widget _radio2Row(BuildContext context) {
     final st = context.t.settings.station;
     return TransceiverMenu(
@@ -54,16 +54,20 @@ extension _SetRows on StationPanel {
 
         return [
           for (final node in _cat.nodes)
-            if (_cat.typeFor(node)?.category == kCategoryTransceiver && !_cat.isRadio1(node.uuid))
+            if (_cat.typeFor(node)?.category == kCategoryTransceiver) ...[
               TransceiverRow(
                 name: _displayName(node),
                 channel: _cat.typeFor(node)?.describeChannel(node.config),
                 connection: connectionTextFor(context, _cat.typeFor(node), node.config),
                 transportType: _cat.typeFor(node),
                 selected: _cat.isRadio2(node.uuid),
+                set: _setOf(node.uuid),
+                connected: _cat.stateFor(node.uuid).status == EquipmentStatus.connected,
                 onSelect: () => pick(node.uuid),
                 onEdit: () => pick(node.uuid),
               ),
+              ..._flexSliceRows(context, node, pick),
+            ],
           TransceiverRow(name: st.noTransceiver, connection: '', selected: _cat.radio2 == null, onSelect: () => pick(null), onEdit: () => pick(null)),
         ];
       },
@@ -207,4 +211,41 @@ extension _SetRows on StationPanel {
     final parts = phoneKeyingParts(context, services, radio: radio, namesRadio: false);
     return _keyingLine(picker: parts.picker, controls: parts.controls);
   }
+
+  /// After the last of a Flex's entries, a row for each slice open on the
+  /// radio that has none yet: picking it adds it ([CatService.addFlexSlice])
+  /// and picks it. Where the radio's slices are held by more than one
+  /// program, each says whose it is.
+  List<Widget> _flexSliceRows(BuildContext context, EquipmentNode node, void Function(String uuid) pick) {
+    final device = _cat.deviceEntryFor(node.uuid);
+    final listed = _cat.nodeFor(device);
+    if (listed == null || _cat.entriesOf(device).last != node.uuid) return const [];
+    final st = context.t.settings.station;
+    final slices = _cat.flexSlicesToAdd(device);
+    final holders = {for (final slice in slices) slice.usedBy};
+    void add(String key) => unawaited(
+      _cat.addFlexSlice(device, key).then((id) {
+        if (id != null) pick(id);
+      }),
+    );
+    return [
+      for (final slice in slices)
+        TransceiverRow(
+          name: _displayName(listed),
+          channel: st.flexSliceLabel(letter: slice.label),
+          connection: holders.length > 1 && slice.usedBy != null ? slice.usedBy! : connectionTextFor(context, _cat.typeFor(listed), listed.config),
+          transportType: _cat.typeFor(listed),
+          selected: false,
+          onSelect: () => add(slice.key),
+          onEdit: () => add(slice.key),
+        ),
+    ];
+  }
+
+  /// The logging set [uuid] is the radio of, for a picker's row to say so.
+  String? _setOf(String uuid) => _cat.isRadio1(uuid)
+      ? kSetA
+      : _cat.isRadio2(uuid)
+      ? kSetB
+      : null;
 }

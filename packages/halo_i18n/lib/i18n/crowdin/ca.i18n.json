@@ -2068,8 +2068,6 @@
       "civAddress": "Adreça CI-V de la ràdio",
       "civAddressDescription": "En hexadecimal, tal com es mostra al menú CI-V de la ràdio. L'IC-705 ve amb A4.",
       "civAddressInvalid": "Una adreça CI-V té dos dígits hexadecimals, de 01 a FF",
-      "flexSlice": "Slice",
-      "flexSliceDescription": "De quin slice de la ràdio llegeix i sintonitza aquesta connexió.",
       "flexSliceLabel(letter)": "Slice ${letter}",
       "flexSliceInvalid": "Tria un dels slices de la ràdio, de la A a la H",
       "flexSliceMissing(letter)": "El slice ${letter} no s'utilitza en aquesta ràdio — tria'n un altre, o crea'l a SmartSDR",

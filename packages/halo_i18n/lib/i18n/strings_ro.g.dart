@@ -2645,8 +2645,6 @@ class _Translations$settings$station$ro extends Translations$settings$station$en
 	@override String get civAddress => 'Adresa CI-V a stației radio';
 	@override String get civAddressDescription => 'Hex, așa cum apare în meniul CI-V al stației radio. IC-705 vine setat pe A4.';
 	@override String get civAddressInvalid => 'O adresă CI-V are două cifre hex, de la 01 la FF';
-	@override String get flexSlice => 'Slice';
-	@override String get flexSliceDescription => 'Din care slice al stației radio citește și pe care îl acordă această conexiune.';
 	@override String flexSliceLabel({required Object letter}) => 'Slice ${letter}';
 	@override String get flexSliceInvalid => 'Alegeți unul dintre slice-urile stației radio, de la A la H';
 	@override String flexSliceMissing({required Object letter}) => 'Slice ${letter} nu este folosit pe această stație radio — alegeți alt slice sau creați-l în SmartSDR';
@@ -6183,8 +6181,6 @@ extension on TranslationsRo {
 			'settings.station.civAddress' => 'Adresa CI-V a stației radio',
 			'settings.station.civAddressDescription' => 'Hex, așa cum apare în meniul CI-V al stației radio. IC-705 vine setat pe A4.',
 			'settings.station.civAddressInvalid' => 'O adresă CI-V are două cifre hex, de la 01 la FF',
-			'settings.station.flexSlice' => 'Slice',
-			'settings.station.flexSliceDescription' => 'Din care slice al stației radio citește și pe care îl acordă această conexiune.',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'Slice ${letter}',
 			'settings.station.flexSliceInvalid' => 'Alegeți unul dintre slice-urile stației radio, de la A la H',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => 'Slice ${letter} nu este folosit pe această stație radio — alegeți alt slice sau creați-l în SmartSDR',
@@ -6498,10 +6494,10 @@ extension on TranslationsRo {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'Cât de des se cer stației frecvența și modul cât timp niciunul nu se schimbă. Lăsați gol pentru ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'Un număr întreg de milisecunde, de la ${min} la ${max}',
 			'settings.station.advancedSettings' => 'Setări avansate',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'Valoare SWR',
 			'settings.station.placeholderSwrDescription' => 'Ce raportează această stație pe instrumentul SWR în timpul emisiei. Peste 1.8 panoul avertizează.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwrInvalid' => 'Un număr, 1 sau mai mare',
 			'settings.station.keyerNone' => 'Niciunul',
 			'settings.station.cwDialect' => 'Dialect de manipulare CW',
@@ -7012,10 +7008,10 @@ extension on TranslationsRo {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '${filename} nu a putut fi importat: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} nu pare a fi un fișier ADIF',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Atenție: acest ADIF are QSO-uri de la ${calls}, dar vor fi importate ca ${station} dacă continuați.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' și ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} nu are dată și nu poate fi importat', other: '${formatted} nu au dată și nu pot fi importate', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.activationFound' => ({required Object refs}) => 'Acest fișier înregistrează o activare a ${refs}.',
 			'adifImport.addActivation' => 'Adaugă la această operațiune',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Doar ${written} din ${planned} au putut fi aplicate — jurnalul s-a schimbat cât timp decideați.',

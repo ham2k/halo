@@ -1387,11 +1387,9 @@ void main() {
     expect(services.cat.radio1, LocalRadio('radio-1'));
   });
 
-  testWidgets("a multi-channel radio wears its channel beside the name, not in the address", (tester) async {
-    // Two slices of one Flex are two rows with the SAME address, so the slice
-    // is the only thing telling them apart — which is why it belongs with the
-    // name and not appended to the address, where a narrow column clipped it
-    // to "…Slice A" and dropped the address entirely.
+  testWidgets('a Flex stored on slice B is one row for the radio, and the slice in use is named where it is used', (tester) async {
+    // The slice is a receiver of the radio, picked as a radio: on the
+    // inventory's row it would say the row is one slice, which it is not.
     await pumpSettings(
       tester,
       equipment: {
@@ -1408,22 +1406,12 @@ void main() {
     );
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
+    expect(find.text('Shack Flex · Slice B'), findsOneWidget, reason: 'the radio in use, and which of its slices');
     await tester.tap(find.text('1 transceiver'));
     await tester.pumpAndSettle();
-
-    expect(find.text('Slice B'), findsOneWidget);
-
-    // Beside the NAME, not in the address column — the row is a 3:2 split and
-    // the address sits at its right end, so a slice still tacked onto the
-    // address would be over there.
-    final pill = tester.getRect(find.text('Slice B'));
-    final name = tester.getRect(find.text('Shack Flex').last);
-    expect(pill.left, greaterThan(name.left), reason: 'after the name');
-
-    // And gone from the ADDRESS, which says only where the radio is. Only the
-    // current transceiver's row states one: an inventory row says what its
-    // radio is doing instead.
-    expect(find.text('flex.local:4992'), findsOneWidget, reason: 'the slice is not tacked onto it');
+    expect(find.text('Slice B'), findsNothing);
+    expect(find.text('Slice A'), findsNothing);
+    expect(find.text('Shack Flex'), findsOneWidget, reason: 'one row for the radio');
   });
 
   testWidgets('a node whose type no longer exists says so instead of vanishing', (tester) async {

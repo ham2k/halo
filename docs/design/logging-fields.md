@@ -1925,7 +1925,7 @@ controls ([contests.md](contests.md)).
 
 Behind the `so2r` experiment (`EXP SO2R`). Single Operator, Two Radios: a
 Radio B picked in Station Configuration (`CatService.radio2`, local rigs
-only, never the Main VFO's) drives `vfoB` the way radio1 drives `vfoA`, and
+only) drives `vfoB` the way radio1 drives `vfoA`, and
 the logging panel grows a second set of main fields for it.
 
 **Two sets under one strip.** Each set is a whole `LoggingControls` —

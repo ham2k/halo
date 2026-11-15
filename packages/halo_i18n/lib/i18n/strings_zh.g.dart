@@ -2645,8 +2645,6 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get civAddress => '电台 CI-V 地址';
 	@override String get civAddressDescription => '十六进制，与电台 CI-V 菜单中显示的一致。IC-705 出厂为 A4。';
 	@override String get civAddressInvalid => 'CI-V 地址为两位十六进制数，01 到 FF';
-	@override String get flexSlice => 'Slice';
-	@override String get flexSliceDescription => '此连接读取并调谐电台的哪个 Slice。';
 	@override String flexSliceLabel({required Object letter}) => 'Slice ${letter}';
 	@override String get flexSliceInvalid => '请选择电台的某个 Slice，A 到 H';
 	@override String flexSliceMissing({required Object letter}) => '此电台未使用 Slice ${letter}——请选择其他 Slice，或在 SmartSDR 中创建';
@@ -6183,8 +6181,6 @@ extension on TranslationsZh {
 			'settings.station.civAddress' => '电台 CI-V 地址',
 			'settings.station.civAddressDescription' => '十六进制，与电台 CI-V 菜单中显示的一致。IC-705 出厂为 A4。',
 			'settings.station.civAddressInvalid' => 'CI-V 地址为两位十六进制数，01 到 FF',
-			'settings.station.flexSlice' => 'Slice',
-			'settings.station.flexSliceDescription' => '此连接读取并调谐电台的哪个 Slice。',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'Slice ${letter}',
 			'settings.station.flexSliceInvalid' => '请选择电台的某个 Slice，A 到 H',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => '此电台未使用 Slice ${letter}——请选择其他 Slice，或在 SmartSDR 中创建',
@@ -6498,10 +6494,10 @@ extension on TranslationsZh {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '在频率和模式都没有变化时，多久向电台查询一次频率和模式。留空则为 ${fallback} ms。',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '整数毫秒，${min} 到 ${max}',
 			'settings.station.advancedSettings' => '高级设置',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWR 读数',
 			'settings.station.placeholderSwrDescription' => '此电台在发射时 SWR 表上报告的数值。高于 1.8 时面板会警告。',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwrInvalid' => '数字，1 或更大',
 			'settings.station.keyerNone' => '无',
 			'settings.station.cwDialect' => 'CW 键控方言',
@@ -7012,10 +7008,10 @@ extension on TranslationsZh {
 			'adifImport.failed' => ({required Object filename, required Object error}) => '无法导入 ${filename}：${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} 看起来不是 ADIF 文件',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '警告：此 ADIF 包含来自 ${calls} 的 QSO，但如果继续，它们将作为 ${station} 导入。',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.stationCallJoin' => ' 和 ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个没有日期，无法导入', other: '${formatted} 个没有日期，无法导入', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.activationFound' => ({required Object refs}) => '此文件记录了 ${refs} 的一次激活。',
 			'adifImport.addActivation' => '将其添加到此操作',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => '只有 ${written} / ${planned} 个得以应用——在您决定期间日志发生了变化。',

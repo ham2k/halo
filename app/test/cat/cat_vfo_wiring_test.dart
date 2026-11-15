@@ -395,14 +395,15 @@ void main() {
       expect(cat.radio2, picked);
     });
 
-    test('one rig never fills both roles', () async {
+    test('one rig never fills both roles: picking the other role\'s takes it', () async {
       await settings.setExperimentEnabled('so2r', true);
       final a = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
       final b = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
       await cat.setRadio1(LocalRadio(a.uuid));
 
       await cat.setRadio2(a.uuid);
-      expect(cat.radio2, isNull, reason: "radio1's rig is refused as Radio B");
+      expect(cat.radio2, a.uuid, reason: "radio1's rig picked as Radio B moves there");
+      expect(cat.radio1, isNull, reason: 'and leaves set A with no radio');
 
       await cat.setRadio2(b.uuid);
       await cat.setRadio1(LocalRadio(b.uuid));

@@ -2068,8 +2068,6 @@
       "civAddress": "CI-V-Adresse des Funkgeräts",
       "civAddressDescription": "Hexadezimal, wie im CI-V-Menü des Funkgeräts angezeigt. Der IC-705 wird mit A4 ausgeliefert.",
       "civAddressInvalid": "Eine CI-V-Adresse besteht aus zwei Hex-Ziffern, 01 bis FF",
-      "flexSlice": "Slice",
-      "flexSliceDescription": "Welchen Slice des Funkgeräts diese Verbindung liest und abstimmt.",
       "flexSliceLabel(letter)": "Slice ${letter}",
       "flexSliceInvalid": "Wähle einen der Slices des Funkgeräts, A bis H",
       "flexSliceMissing(letter)": "Slice ${letter} wird auf diesem Funkgerät nicht genutzt — wähle einen anderen Slice oder erstelle ihn in SmartSDR",

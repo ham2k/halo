@@ -47,6 +47,7 @@ import 'drivers/everyware_server.dart';
 import 'transports/k4_remote_transport.dart';
 import 'transports/sdr_usb_transport.dart' show SdrUsbConnection, SdrUsbTransport;
 import 'drivers/kenwood_driver.dart' show KenwoodDriver;
+import 'drivers/flexradio_driver.dart' show FlexRadioDriver;
 import 'drivers/k4_receiver_codec.dart' show K4Receiver;
 import 'drivers/k4_shared_session_config.dart' show k4ReceiverConfigKey;
 import 'discovery.dart';
@@ -529,6 +530,7 @@ class CatService extends ChangeNotifier
   /// Points `vfoA` at a radio — this device's own, a peer's, or None. One
   /// setter because there is one slot: every pick is a statement about the
   /// same VFO, so each displaces whatever filled the role before.
+  @override
   Future<void> setRadio1(MainVfo? next) async {
     if (_radio1 == next) return;
     final outgoing = _localRadio1;
@@ -988,6 +990,7 @@ class CatService extends ChangeNotifier
       }
       final stored = await _stashSecrets(node);
       _nodes[node.uuid] = _everywareKeepAnnounced(_nodes[node.uuid] ?? previous, stored);
+      await _flexSlicesFollow(node.uuid);
       await _save();
       await _everywareNodeSaved(node.uuid);
       for (final sub in leavingSubs) {
@@ -1007,13 +1010,41 @@ class CatService extends ChangeNotifier
     }
   }
 
-  /// Removes [uuid], and a remote K4's receivers together: they are one
-  /// device. The Main goes last, so a removal that fails part-way leaves the
-  /// Main, which the next load gives its Sub back, never a Sub that load
-  /// would make a new K4 for.
+  /// Slice [key] of the Flex [deviceId] as an entry of it, made now if it
+  /// has none: picking an open slice is what adds it. Answers its id, or
+  /// null when the device is gone, which leaves nothing to pick. Listed
+  /// after the device's other entries, where the picker offered it.
+  Future<String?> addFlexSlice(String deviceId, String key) async {
+    final id = CapabilityAddress(deviceId, kCapabilityReceiver, key: key).toString();
+    final device = _nodes[deviceId];
+    if (device == null) return null;
+    if (_nodes.containsKey(id)) return id;
+    final after = entriesOf(deviceId).last;
+    final nodes = [..._nodes.values];
+    _nodes.clear();
+    for (final node in nodes) {
+      _nodes[node.uuid] = node;
+      if (node.uuid == after) {
+        _nodes[id] = EquipmentNode(
+          uuid: id,
+          typeKey: device.typeKey,
+          name: device.name,
+          config: {...device.config, FlexRadioDriver.sliceConfigKey: key}..remove(flexKnownSlicesConfigKey),
+        );
+      }
+    }
+    await _save();
+    notifyListeners();
+    return id;
+  }
+
+  /// Removes [uuid], and every entry of its device with it: a K4's
+  /// receivers, a Flex's slices. The device's own entry goes last, so a
+  /// removal that fails part-way leaves it, never a receiver that the next
+  /// load would make a new device for.
   Future<void> removeNode(String uuid) async {
     final device = deviceEntryFor(uuid);
-    for (final receiver in {..._k4SiblingIds(uuid), uuid}) {
+    for (final receiver in {..._k4SiblingIds(uuid), ...entriesOf(device)}) {
       if (receiver != device && _nodes.containsKey(receiver)) await _removeOne(receiver);
     }
     await _removeOne(device);

@@ -22,6 +22,7 @@ import 'add_equipment_dialog.dart';
 import 'midi_controller_pane.dart';
 import '../services/cat/capability.dart';
 import '../services/cat/equipment.dart';
+import '../services/cat/station_positions.dart' show kSetA, kSetB;
 import '../services/cat/telemetry_poller.dart';
 import '../services/cat/transports/everyware_transport.dart' show EverywareDeviceTransport;
 import '../services/cat/transports/none_transport.dart' show NoneTransport;
@@ -865,16 +866,20 @@ class StationPanel extends StatelessWidget {
 
     return [
       for (final node in _cat.nodes)
-        if (_cat.typeFor(node)?.category == kCategoryTransceiver)
+        if (_cat.typeFor(node)?.category == kCategoryTransceiver) ...[
           TransceiverRow(
             name: _displayName(node),
             channel: _cat.typeFor(node)?.describeChannel(node.config),
             connection: connectionTextFor(context, _cat.typeFor(node), node.config),
             transportType: _cat.typeFor(node),
             selected: _cat.isRadio1(node.uuid),
+            set: _setOf(node.uuid),
+            connected: _cat.stateFor(node.uuid).status == EquipmentStatus.connected,
             onSelect: () => pick(node.uuid),
             onEdit: () => pick(node.uuid),
           ),
+          ..._flexSliceRows(context, node, pick),
+        ],
       for (final peer in services.peerRemoteRadios.all)
         TransceiverRow(
           name: peer.radio.name,
@@ -1194,16 +1199,20 @@ class StationPanel extends StatelessWidget {
                   ),
                   for (final node in section.nodes)
                     if (section.category == kCategoryTransceiver && _cat.typeFor(node) != null)
+                      // No channel beside the name: the row is the device, a K4
+                      // with both its receivers or a Flex with all its slices,
+                      // and which one a set logs from is picked, not listed.
+                      // It is in use, and reads as, whichever entry set A logs
+                      // from: a Flex on slice B is not offered its slice A.
                       TransceiverRow(
                         name: _displayName(node),
-                        channel: _cat.typeFor(node)?.describeChannel(node.config),
                         connection: connectionTextFor(context, _cat.typeFor(node), node.config),
                         transportType: _cat.typeFor(node),
-                        selected: _cat.isRadio1(node.uuid),
+                        selected: _cat.entriesOf(node.uuid).any(_cat.isRadio1),
                         onSelect: () => unawaited(_onMainVfoPicked(node.uuid)),
                         onEdit: () => _editEquipment(context, node),
                         plug: _plugFor(node),
-                        state: _cat.stateFor(node.uuid),
+                        state: _cat.stateFor(_cat.entriesOf(node.uuid).firstWhere(_cat.isRadio1, orElse: () => node.uuid)),
                         unconfigured: _cat.typeFor(node)?.isUnconfigured(node.config) ?? false,
                       )
                     else

@@ -100,6 +100,8 @@ mixin _So2r on _KeyingSurface {
   String? get _radio2;
   set _radio2(String? uuid);
 
+  Future<void> setRadio1(MainVfo? next);
+
   /// [_radio2] while the SO2R experiment is on, and null otherwise: a stored
   /// pick neither drives `vfoB` nor auto-connects for an operator who has
   /// turned SO2R off, and is back when they turn it on again.
@@ -109,9 +111,11 @@ mixin _So2r on _KeyingSurface {
   bool isRadio2(String uuid) => radio2 == uuid;
 
   /// Points `vfoB` at a local transceiver, or None. Radio1's own rig is
-  /// refused rather than taken from it — the picker never offers it.
+  /// taken from it, leaving set A with no radio, as radio1 taking Radio B's
+  /// leaves set B with none: one rig never fills both roles.
   Future<void> setRadio2(String? uuid) async {
-    if (_radio2 == uuid || (uuid != null && uuid == _localRadio1)) return;
+    if (_radio2 == uuid) return;
+    if (uuid != null && uuid == _localRadio1) await setRadio1(null);
     // [setRadio1]'s echo-guard reasoning: neither radio was told anything
     // through `vfoB` while it was not Radio B.
     for (final id in [_radio2, uuid]) {

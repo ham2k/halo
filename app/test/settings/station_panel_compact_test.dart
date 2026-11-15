@@ -248,6 +248,49 @@ void main() {
     expect(find.bySemanticsLabel('Computer Audio'), findsOneWidget, reason: "the way to Radio B's sound devices, and only Radio B's");
   });
 
+  testWidgets("under SO2R, each set's picker offers the other's radio, and picking it takes it", (tester) async {
+    // The operator moves a rig between sets in one pick, rather than first
+    // clearing it from the set that has it.
+    await services.settings.setExperimentEnabled('so2r', true);
+    final cat = services.cat;
+    final left = await cat.addNode(typeKey: 'placeholder-radio', name: 'Left Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    final right = await cat.addNode(typeKey: 'placeholder-radio', name: 'Right Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    await cat.setRadio1(LocalRadio(left.uuid));
+    await cat.setRadio2(right.uuid);
+    await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+    await tester.pumpAndSettle();
+    // Set B's picker: set A's always listed every rig.
+    await tester.tap(find.bySemanticsLabel('Choose transceiver').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Left Rig').last);
+    await tester.pumpAndSettle();
+    expect(cat.radio2, left.uuid);
+    expect(cat.radio1, isNull, reason: 'one rig never fills both roles');
+  });
+
+  testWidgets("a radio picker marks each set's radio with the set's letter in place of the radio glyph", (tester) async {
+    // What a pick will take from the other set has to be visible before it
+    // is made.
+    await services.settings.setExperimentEnabled('so2r', true);
+    final cat = services.cat;
+    final left = await cat.addNode(typeKey: 'placeholder-radio', name: 'Left Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    final right = await cat.addNode(typeKey: 'placeholder-radio', name: 'Right Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    await cat.addNode(typeKey: 'placeholder-radio', name: 'Spare Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    await cat.setRadio1(LocalRadio(left.uuid));
+    await cat.setRadio2(right.uuid);
+    await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel('Choose transceiver').first);
+    await tester.pumpAndSettle();
+    Finder glyphOf(String name) => find.descendant(
+      of: find.ancestor(of: find.text(name).last, matching: find.byType(TransceiverRow)),
+      matching: find.byType(TransceiverGlyph),
+    );
+    expect(tester.widget<TransceiverGlyph>(glyphOf('Left Rig')).set, 'A');
+    expect(tester.widget<TransceiverGlyph>(glyphOf('Right Rig')).set, 'B');
+    expect(tester.widget<TransceiverGlyph>(glyphOf('Spare Rig')).set, isNull, reason: 'on no set: the radio glyph');
+  });
+
   testWidgets('under SO2R, the switcher is picked beside the button to its settings, which hold stereo and listening', (tester) async {
     await services.settings.setExperimentEnabled('so2r', true);
     final cat = services.cat;
