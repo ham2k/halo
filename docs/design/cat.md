@@ -4522,7 +4522,12 @@ the spectrum's settle is counted at the new rate, and a stretch sampled at a
 wider one outlasts it. An HF+ hears nothing between its HF and VHF ports, 31
 to 60 MHz, so a dial there reads as out of reach.
 
-libairspy and libairspyhf (BSD-3) are compiled into the package. libusb
+libairspy and libairspyhf (BSD-3) are compiled into the package, with one
+change of ours that upstream lacks and a re-vendor must keep: a receiver's
+lists of sample rates, sample-rate architectures and attenuation steps are
+taken at most 64 entries long and never empty, each read into exactly the
+buffer allocated for it, so a device cannot choose how much is allocated or
+written past it. libusb
 (LGPL-2.1) is a library of its own, so it can be replaced: a framework built
 from the vendored source on macOS (`tool/build_libusb_macos.sh`, committed),
 libusb's own release DLLs on Windows, the system's on Linux, where a build

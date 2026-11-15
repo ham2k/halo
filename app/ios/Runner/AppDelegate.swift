@@ -126,7 +126,7 @@ import UIKit
       try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
       try FileManager.default.copyItem(at: url, to: destination)
     } catch {
-      NSLog("[open-file] could not copy \(url.lastPathComponent): \(error)")
+      NSLog("[open-file] could not copy %@: %@", url.lastPathComponent, String(describing: error))
       return false
     }
     // LSSupportsOpeningDocumentsInPlace is off, so iOS has already copied the
@@ -541,7 +541,7 @@ private final class BonjourBrowser: NSObject, NetServiceBrowserDelegate, NetServ
   // missing from NSBonjourServices. The dialog shows nothing found, the
   // same as every other platform without a network.
   func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String: NSNumber]) {
-    NSLog("[bonjour] browse refused: \(errorDict)")
+    NSLog("[bonjour] browse refused: %@", String(describing: errorDict))
   }
 
   // didFind does not fire again for an instance already found, so a resolve
@@ -552,10 +552,10 @@ private final class BonjourBrowser: NSObject, NetServiceBrowserDelegate, NetServ
     let key = ObjectIdentifier(sender)
     let attempts = (resolveAttempts[key] ?? 1) + 1
     guard attempts <= 3 else {
-      NSLog("[bonjour] resolve of \(sender.name) failed: \(errorDict); giving up")
+      NSLog("[bonjour] resolve of %@ failed: %@; giving up", sender.name, String(describing: errorDict))
       return
     }
-    NSLog("[bonjour] resolve of \(sender.name) failed: \(errorDict); retrying")
+    NSLog("[bonjour] resolve of %@ failed: %@; retrying", sender.name, String(describing: errorDict))
     resolveAttempts[key] = attempts
     sender.resolve(withTimeout: 5)
   }
@@ -576,15 +576,32 @@ private final class BonjourBrowser: NSObject, NetServiceBrowserDelegate, NetServ
 
   func netServiceDidResolveAddress(_ sender: NetService) {
     guard let host = sender.hostName, sender.port > 0 else {
-      NSLog("[bonjour] \(sender.name) resolved without a host or port")
+      NSLog("[bonjour] %@ resolved without a host or port", sender.name)
       return
     }
-    var txt: [String: String] = [:]
-    if let data = sender.txtRecordData() {
-      for (key, value) in NetService.dictionary(fromTXTRecord: data) {
-        txt[key] = String(data: value, encoding: .utf8) ?? ""
-      }
-    }
+    let txt = sender.txtRecordData().map(BonjourBrowser.txtPairs) ?? [:]
     onFound(["name": sender.name, "host": host, "port": sender.port, "txt": txt])
+  }
+
+  /// A TXT record's attributes (RFC 6763 §6): length-prefixed `key=value`
+  /// strings. A key is lowercased, since keys compare without regard to
+  /// case, and only its first occurrence is kept; a key with no `=` reads as
+  /// an empty value. Not `NetService.dictionary(fromTXTRecord:)`: its Swift
+  /// bridge casts every value to Data, and a key with no `=` has NSNull,
+  /// which aborts the app.
+  static func txtPairs(_ data: Data) -> [String: String] {
+    let bytes = [UInt8](data)
+    var pairs: [String: String] = [:]
+    var at = 0
+    while at < bytes.count {
+      let length = Int(bytes[at])
+      let entry = bytes[(at + 1)..<min(at + 1 + length, bytes.count)]
+      at += 1 + length
+      let equals = entry.firstIndex(of: UInt8(ascii: "="))
+      let key = String(decoding: entry[..<(equals ?? entry.endIndex)], as: UTF8.self).lowercased()
+      guard !key.isEmpty, pairs[key] == nil else { continue }
+      pairs[key] = equals.map { String(decoding: entry[($0 + 1)...], as: UTF8.self) } ?? ""
+    }
+    return pairs
   }
 }

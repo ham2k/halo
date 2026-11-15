@@ -46,6 +46,11 @@ typedef int bool;
 #endif
 
 #define PACKET_SIZE (12)
+/* The most sample rates taken from a device. The list's length is the
+   device's to say, and is allocated from: unbounded, a device chooses how
+   much is allocated and, with a zero, makes an empty list the first entry of
+   which is read. */
+#define MAX_FIRMWARE_LIST_COUNT (64)
 #define UNPACKED_SIZE (16)
 #define RAW_BUFFER_COUNT (8)
 
@@ -820,7 +825,7 @@ static int airspy_read_samplerates_from_fw(struct airspy_device* device, uint32_
 		0,
 		len,
 		(unsigned char*)buffer,
-		(len > 0 ? len : 1) * sizeof(uint32_t),
+		(uint16_t)((len > 0 ? len : 1) * sizeof(uint32_t)),
 		LIBUSB_CTRL_TIMEOUT_MS);
 
 	if (result < 1)
@@ -887,10 +892,15 @@ static int airspy_open_init(airspy_device_t** device, uint64_t serial_number, in
 	lib_device->sample_type = AIRSPY_SAMPLE_FLOAT32_IQ;
 
 	result = airspy_read_samplerates_from_fw(lib_device, &lib_device->supported_samplerate_count, 0);
+	if (result == AIRSPY_SUCCESS && (lib_device->supported_samplerate_count == 0 || lib_device->supported_samplerate_count > MAX_FIRMWARE_LIST_COUNT))
+	{
+		result = AIRSPY_ERROR_OTHER;
+	}
 	if (result == AIRSPY_SUCCESS)
 	{
-		lib_device->supported_samplerates = (uint32_t *) malloc(lib_device->supported_samplerate_count * sizeof(uint32_t));
-		result = airspy_read_samplerates_from_fw(lib_device, lib_device->supported_samplerates, lib_device->supported_samplerate_count);
+		lib_device->supported_samplerates = (uint32_t *) calloc(lib_device->supported_samplerate_count, sizeof(uint32_t));
+		result = lib_device->supported_samplerates == NULL ? AIRSPY_ERROR_NO_MEM
+			: airspy_read_samplerates_from_fw(lib_device, lib_device->supported_samplerates, lib_device->supported_samplerate_count);
 		if (result != AIRSPY_SUCCESS)
 		{
 			free(lib_device->supported_samplerates);
@@ -901,6 +911,12 @@ static int airspy_open_init(airspy_device_t** device, uint64_t serial_number, in
 	{
 		lib_device->supported_samplerate_count = 2;
 		lib_device->supported_samplerates = (uint32_t *) malloc(lib_device->supported_samplerate_count * sizeof(uint32_t));
+		if (lib_device->supported_samplerates == NULL)
+		{
+			airspy_open_exit(lib_device);
+			free(lib_device);
+			return AIRSPY_ERROR_NO_MEM;
+		}
 		lib_device->supported_samplerates[0] = 10000000;
 		lib_device->supported_samplerates[1] = 2500000;
 	}

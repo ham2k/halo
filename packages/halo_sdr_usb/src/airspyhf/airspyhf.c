@@ -53,6 +53,11 @@ typedef int bool;
 #define MIN(a,b) ((a) < (b) ? a : b)
 
 #define SAMPLES_TO_TRANSFER (1024 * 4)
+/* The most sample rates or attenuation steps taken from a device. Each
+   list's length is the device's to say, and is allocated from: unbounded, a
+   device chooses how much is allocated and, with a zero, makes an empty list
+   the first entry of which is read. */
+#define MAX_FIRMWARE_LIST_COUNT (64)
 #define SERIAL_NUMBER_UNUSED (0)
 #define FILE_DESCRIPTOR_UNUSED (-1)
 #define RAW_BUFFER_COUNT (8)
@@ -593,7 +598,7 @@ static int airspyhf_read_samplerates_from_fw(airspyhf_device_t* device, uint32_t
 		0,
 		len,
 		(unsigned char*) buffer,
-		(len > 0 ? len : 1) * (int16_t) sizeof(uint32_t),
+		(uint16_t)((len > 0 ? len : 1) * sizeof(uint32_t)),
 		LIBUSB_CTRL_TIMEOUT_MS);
 
 	if (result < 1)
@@ -614,7 +619,7 @@ static int airspyhf_read_att_steps_from_fw(airspyhf_device_t* device, void* buff
 		0,
 		count,
 		(unsigned char*) buffer,
-		(int16_t)(count > 0 ? (count * sizeof(float)) : sizeof(int32_t)),
+		(uint16_t)(count > 0 ? (count * sizeof(float)) : sizeof(int32_t)),
 		LIBUSB_CTRL_TIMEOUT_MS);
 
 	if (result < 1)
@@ -635,7 +640,7 @@ static int airspyhf_read_samplerate_architectures_from_fw(airspyhf_device_t* dev
 		0,
 		len,
 		(unsigned char*) buffer,
-		(len > 0 ? len : 1) * (int16_t) sizeof(uint32_t),
+		(uint16_t)((len > 0 ? len : 1) * sizeof(uint32_t)), /* the buffer's size: four bytes a rate, as libairspyhf has always asked */
 		LIBUSB_CTRL_TIMEOUT_MS);
 
 	if (result < 1)
@@ -994,21 +999,28 @@ static int airspyhf_open_init(airspyhf_device_t** device, uint64_t serial_number
 	lib_device->samplerate_architectures = NULL;
 
 	result = airspyhf_read_samplerates_from_fw(lib_device, &lib_device->supported_samplerate_count, 0);
+	if (result == AIRSPYHF_SUCCESS && (lib_device->supported_samplerate_count == 0 || lib_device->supported_samplerate_count > MAX_FIRMWARE_LIST_COUNT))
+	{
+		result = AIRSPYHF_ERROR;
+	}
 	if (result == AIRSPYHF_SUCCESS)
 	{
-		lib_device->supported_samplerates = (uint32_t *)malloc(lib_device->supported_samplerate_count * sizeof(uint32_t));
-		result = airspyhf_read_samplerates_from_fw(lib_device, lib_device->supported_samplerates, lib_device->supported_samplerate_count);
+		lib_device->supported_samplerates = (uint32_t *)calloc(lib_device->supported_samplerate_count, sizeof(uint32_t));
+		result = lib_device->supported_samplerates == NULL ? AIRSPYHF_ERROR
+			: airspyhf_read_samplerates_from_fw(lib_device, lib_device->supported_samplerates, lib_device->supported_samplerate_count);
 		if (result == AIRSPYHF_SUCCESS)
 		{
-			lib_device->samplerate_architectures = (uint8_t *)malloc(lib_device->supported_samplerate_count * sizeof(uint8_t));
-			result = airspyhf_read_samplerate_architectures_from_fw(lib_device, lib_device->samplerate_architectures, lib_device->supported_samplerate_count);
-			if (result != AIRSPYHF_SUCCESS)
+			lib_device->samplerate_architectures = (uint8_t *)calloc(lib_device->supported_samplerate_count, sizeof(uint32_t));
+			if (lib_device->samplerate_architectures == NULL)
+			{
+				result = AIRSPYHF_ERROR;
+			}
+			else if (airspyhf_read_samplerate_architectures_from_fw(lib_device, lib_device->samplerate_architectures, lib_device->supported_samplerate_count) != AIRSPYHF_SUCCESS)
 			{
 				memset(lib_device->samplerate_architectures, 0, lib_device->supported_samplerate_count * sizeof(uint8_t)); // Assume Zero IF for all
-				result = AIRSPYHF_SUCCESS; // Clear this error for backward compatibility.
 			}
 		}
-		else
+		if (result != AIRSPYHF_SUCCESS)
 		{
 			free(lib_device->supported_samplerates);
 			lib_device->supported_samplerates = NULL;
@@ -1021,20 +1033,33 @@ static int airspyhf_open_init(airspyhf_device_t** device, uint64_t serial_number
 
 		lib_device->supported_samplerate_count = 1;
 		lib_device->supported_samplerates = (uint32_t *) malloc(lib_device->supported_samplerate_count * sizeof(uint32_t));
-		lib_device->supported_samplerates[0] = DEFAULT_SAMPLERATE;
-
 		lib_device->samplerate_architectures = (uint8_t *) malloc(lib_device->supported_samplerate_count * sizeof(uint8_t));
+		if (lib_device->supported_samplerates == NULL || lib_device->samplerate_architectures == NULL)
+		{
+			airspyhf_open_exit(lib_device);
+			free(lib_device->supported_samplerates);
+			free(lib_device->samplerate_architectures);
+			free(lib_device);
+			return AIRSPYHF_ERROR;
+		}
+		lib_device->supported_samplerates[0] = DEFAULT_SAMPLERATE;
 		lib_device->samplerate_architectures[0] = 0;
 	}
 
 	lib_device->current_samplerate = lib_device->supported_samplerates[0];
 	lib_device->is_low_if = lib_device->samplerate_architectures[0];
 
+	lib_device->supported_att_steps = NULL;
 	result = airspyhf_read_att_steps_from_fw(lib_device, &lib_device->supported_att_step_count, 0);
+	if (result == AIRSPYHF_SUCCESS && (lib_device->supported_att_step_count == 0 || lib_device->supported_att_step_count > MAX_FIRMWARE_LIST_COUNT))
+	{
+		result = AIRSPYHF_ERROR;
+	}
 	if (result == AIRSPYHF_SUCCESS)
 	{
-		lib_device->supported_att_steps = (float*)malloc(lib_device->supported_att_step_count * sizeof(float));
-		result = airspyhf_read_att_steps_from_fw(lib_device, lib_device->supported_att_steps, lib_device->supported_att_step_count);
+		lib_device->supported_att_steps = (float*)calloc(lib_device->supported_att_step_count, sizeof(float));
+		result = lib_device->supported_att_steps == NULL ? AIRSPYHF_ERROR
+			: airspyhf_read_att_steps_from_fw(lib_device, lib_device->supported_att_steps, lib_device->supported_att_step_count);
 		if (result != AIRSPYHF_SUCCESS)
 		{
 			free(lib_device->supported_att_steps);
@@ -1049,6 +1074,14 @@ static int airspyhf_open_init(airspyhf_device_t** device, uint64_t serial_number
 
 		lib_device->supported_att_step_count = DEFAULT_ATT_STEP_COUNT;
 		lib_device->supported_att_steps = (float*)malloc(lib_device->supported_att_step_count * sizeof(float));
+		if (lib_device->supported_att_steps == NULL)
+		{
+			airspyhf_open_exit(lib_device);
+			free(lib_device->supported_samplerates);
+			free(lib_device->samplerate_architectures);
+			free(lib_device);
+			return AIRSPYHF_ERROR;
+		}
 		for (uint32_t i = 0; i < lib_device->supported_att_step_count; i++)
 		{
 			lib_device->supported_att_steps[i] = i * DEFAULT_ATT_STEP_INCREMENT;
