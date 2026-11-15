@@ -889,7 +889,6 @@
         "other": "${count} Spots"
       },
       "spotsCountFiltered": "${count} von ${total} Spots werden angezeigt",
-      "spotsDisabled": "Spots für diesen Betrieb deaktiviert",
       "ageMinutes": "${minutes} Minuten",
       "callsOfNote": "Bemerkenswerte Rufzeichen",
       "yourSpots": "Deine Spots",

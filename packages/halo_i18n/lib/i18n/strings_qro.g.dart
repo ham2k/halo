@@ -2096,6 +2096,8 @@ class _Translations$operation$spots$qro extends Translations$operation$spots$en 
 
 	// Translations
 	@override String get empty => 'NO SPOTS MATCH YOUR FILTERS';
+	@override String get disabledNoLocal => 'SPOTS DISABLED FOR THIS OPERATION, NO MANUAL ENTRIES';
+	@override String get disabledLocalOff => 'SPOTS DISABLED FOR THIS OPERATION, ENABLE LOCAL SPOTS IN SETTINGS › SPOTTING';
 	@override String error({required Object error}) => 'FAILED TO LOAD SPOTS: ${error}';
 	@override String get unknownBand => 'OTHER';
 	@override String get auto => 'AUTOMATIC';
@@ -2110,7 +2112,10 @@ class _Translations$operation$spots$qro extends Translations$operation$spots$en 
 		other: '${count} SPOTS',
 	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => 'SHOWING ${count} OF ${total} SPOTS';
-	@override String get spotsDisabled => 'SPOTS DISABLED FOR THIS OPERATION';
+	@override String pendingUpdates({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: 'REFRESH TO SEE ${count} UPDATE',
+		other: 'REFRESH TO SEE ${count} UPDATES',
+	);
 	@override String ageMinutes({required Object minutes}) => '${minutes} MINUTES';
 	@override String get callsOfNote => 'CALLS OF NOTE';
 	@override String get yourSpots => 'YOUR SPOTS';
@@ -5934,6 +5939,8 @@ extension on TranslationsQro {
 			'operation.export.stash.freeTier' => 'FREE ACCOUNTS CAN ONLY KEEP ONE STASH AT A TIME. SUBSCRIBERS CAN KEEP AS MANY AS THEY WANT.',
 			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'SENT ${count} FILE TO HAM2K’S FILE STASH (STASH.HAM2K.NET)', other: 'SENT ${count} FILES TO HAM2K’S FILE STASH (STASH.HAM2K.NET)', ), 
 			'operation.spots.empty' => 'NO SPOTS MATCH YOUR FILTERS',
+			'operation.spots.disabledNoLocal' => 'SPOTS DISABLED FOR THIS OPERATION, NO MANUAL ENTRIES',
+			'operation.spots.disabledLocalOff' => 'SPOTS DISABLED FOR THIS OPERATION, ENABLE LOCAL SPOTS IN SETTINGS › SPOTTING',
 			'operation.spots.error' => ({required Object error}) => 'FAILED TO LOAD SPOTS: ${error}',
 			'operation.spots.unknownBand' => 'OTHER',
 			'operation.spots.auto' => 'AUTOMATIC',
@@ -5945,7 +5952,7 @@ extension on TranslationsQro {
 			'operation.spots.phoneAndCw' => 'PHONE & CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} SPOT', other: '${count} SPOTS', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'SHOWING ${count} OF ${total} SPOTS',
-			'operation.spots.spotsDisabled' => 'SPOTS DISABLED FOR THIS OPERATION',
+			'operation.spots.pendingUpdates' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'REFRESH TO SEE ${count} UPDATE', other: 'REFRESH TO SEE ${count} UPDATES', ), 
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} MINUTES',
 			'operation.spots.callsOfNote' => 'CALLS OF NOTE',
 			'operation.spots.yourSpots' => 'YOUR SPOTS',
@@ -6185,10 +6192,10 @@ extension on TranslationsQro {
 			'activitiesView.addToOperationShort' => 'ADD TO OP.',
 			'activitiesView.mapEmptyState' => 'NO RESULTS TO SHOW ON THE MAP',
 			'activitiesView.mapEmptyStateHint' => 'SWITCH BACK TO THE LIST, OR SEARCH FOR SOMETHING ELSE',
-			'activitiesView.imports' => 'IMPORTS',
-			'loggingControls.timeUtc' => 'TIME (UTC)',
 			_ => null,
 		} ?? switch (path) {
+			'activitiesView.imports' => 'IMPORTS',
+			'loggingControls.timeUtc' => 'TIME (UTC)',
 			'loggingControls.date' => 'DATE',
 			'loggingControls.now' => 'NOW',
 			'loggingControls.manualTimeSettings' => 'MANUAL TIME',
@@ -6699,10 +6706,10 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (NOT CONNECTED)',
 			'settings.radio.voiceMessages.lead' => 'KEY-UP DELAY',
 			'settings.radio.voiceMessages.tail' => 'UNKEY DELAY',
-			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} MS',
-			'settings.radio.voiceMessages.listenButton' => 'LISTEN',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} MS',
+			'settings.radio.voiceMessages.listenButton' => 'LISTEN',
 			'settings.radio.voiceMessages.notRecorded' => 'NOT RECORDED',
 			'settings.radio.voiceMessages.unplayable' => 'CAN\'T PLAY THIS FILE',
 			'settings.radio.voiceMessages.problemNoOutput' => 'CHOOSE THE SOUND DEVICE THAT FEEDS THE RADIO BEFORE PLAYING A MESSAGE.',
@@ -7213,10 +7220,10 @@ extension on TranslationsQro {
 			'settings.station.models.ts2000' => 'KENWOOD TS-2000',
 			'settings.station.models.qmx' => 'QRP LABS QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
-			'settings.station.models.tx500' => 'LAB599 TX-500',
-			'settings.station.models.tx500mp' => 'LAB599 TX-500MP',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.tx500' => 'LAB599 TX-500',
+			'settings.station.models.tx500mp' => 'LAB599 TX-500MP',
 			'settings.station.models.qcx' => 'QRP LABS QCX',
 			'settings.station.models.elecraftGeneric' => 'ELECRAFT - GENERIC',
 			'settings.station.models.kx2' => 'ELECRAFT KX2',
@@ -7727,10 +7734,10 @@ extension on TranslationsQro {
 			'settings.developer.diagnostics' => 'DIAGNOSTICS',
 			'settings.developer.importExport' => 'IMPORT / EXPORT',
 			'settings.developer.systemInformation' => 'SYSTEM INFORMATION',
-			'settings.developer.appVersion' => 'APP VERSION',
-			'settings.developer.dataFolder' => 'DATA FOLDER',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.appVersion' => 'APP VERSION',
+			'settings.developer.dataFolder' => 'DATA FOLDER',
 			'settings.developer.worktree' => 'WORKTREE',
 			'settings.developer.launchedAt' => 'STARTED',
 			'settings.developer.loading' => '(LOADING…)',
@@ -8241,10 +8248,10 @@ extension on TranslationsQro {
 			'adifImport.stationCallJoin' => ' AND ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} HAS NO DATE AND CANNOT BE IMPORTED', other: '${formatted} HAVE NO DATE AND CANNOT BE IMPORTED', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'THIS FILE RECORDS AN ACTIVATION OF ${refs}.',
-			'adifImport.addActivation' => 'ADD IT TO THIS OPERATION',
-			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'ONLY ${written} OF ${planned} COULD BE APPLIED — THE LOG CHANGED WHILE YOU WERE DECIDING.',
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.addActivation' => 'ADD IT TO THIS OPERATION',
+			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'ONLY ${written} OF ${planned} COULD BE APPLIED — THE LOG CHANGED WHILE YOU WERE DECIDING.',
 			'adifImport.busy' => 'AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS, THE MOST AN OPERATION CAN IMPORT AT A TIME.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS. IMPORTING AN ADIF INTO AN OPERATION IS MEANT TO ADD A FEW QSOS, NOT TO BRING IN A LARGE LOG — USE THE LOGS VIEW FOR THAT. DEVELOPER MODE LETS YOU IMPORT IT ANYWAY, IF YOU ARE SURE.',

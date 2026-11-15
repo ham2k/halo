@@ -1864,7 +1864,6 @@ class _Translations$operation$spots$tr extends Translations$operation$spots$en {
 		other: '${count} spot',
 	);
 	@override String spotsCountFiltered({required Object total, required Object count}) => '${total} spottan ${count} tanesi gösteriliyor';
-	@override String get spotsDisabled => 'Bu operasyon için spotlar devre dışı';
 	@override String ageMinutes({required Object minutes}) => '${minutes} dakika';
 	@override String get callsOfNote => 'Notlu Çağrılar';
 	@override String get yourSpots => 'Spotlarınız';
@@ -5175,7 +5174,6 @@ extension on TranslationsTr {
 			'operation.spots.phoneAndCw' => 'Telefon ve CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} spot', other: '${count} spot', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object total, required Object count}) => '${total} spottan ${count} tanesi gösteriliyor',
-			'operation.spots.spotsDisabled' => 'Bu operasyon için spotlar devre dışı',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} dakika',
 			'operation.spots.callsOfNote' => 'Notlu Çağrılar',
 			'operation.spots.yourSpots' => 'Spotlarınız',
@@ -5468,9 +5466,9 @@ extension on TranslationsTr {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => 'Çift!',
 			'loggingControls.info.noticeNewBand' => 'Yeni Bant',
+			'loggingControls.info.noticeNewMode' => 'Yeni Mod',
 			_ => null,
 		} ?? switch (path) {
-			'loggingControls.info.noticeNewMode' => 'Yeni Mod',
 			'loggingControls.info.noticeNewDXCC' => 'Yeni DXCC',
 			'loggingControls.info.noticeNewState' => 'Yeni Eyalet',
 			'loggingControls.info.noticeNewProvince' => 'Yeni İl',
@@ -5982,9 +5980,9 @@ extension on TranslationsTr {
 			'settings.peers.connected' => 'Bağlı',
 			'settings.peers.viaBluetooth' => 'Bluetooth üzerinden',
 			'settings.peers.connecting' => 'Bağlanıyor…',
+			'settings.peers.syncing' => 'Senkronize ediliyor…',
 			_ => null,
 		} ?? switch (path) {
-			'settings.peers.syncing' => 'Senkronize ediliyor…',
 			'settings.peers.waitingForThem' => 'Diğer cihaz bekleniyor',
 			'settings.peers.notConnected' => 'Bağlı değil',
 			'settings.peers.wantsToPair' => 'bu operasyonu paylaşmak istiyor',
@@ -6496,9 +6494,9 @@ extension on TranslationsTr {
 			'settings.station.advancedSettings' => 'Gelişmiş Ayarlar',
 			'settings.station.placeholderSwr' => 'SWR değeri',
 			'settings.station.placeholderSwrDescription' => 'Bu radyonun yayın sırasında SWR ölçerinde bildirdiği değer. 1.8\'in üzerinde panel uyarır.',
+			'settings.station.placeholderSwrInvalid' => '1 veya daha büyük bir sayı',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.placeholderSwrInvalid' => '1 veya daha büyük bir sayı',
 			'settings.station.keyerNone' => 'Yok',
 			'settings.station.cwDialect' => 'CW manipülasyon lehçesi',
 			'settings.station.cwDialectDescription' => 'Bu radyonun KY komutunun hangi biçimini aldığı. Yok, CAT üzerinden CW manipülasyonu olmadığı anlamına gelir.',
@@ -7010,9 +7008,9 @@ extension on TranslationsTr {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Uyarı: bu ADIF\'te ${calls} çağrılarına ait QSO\'lar var, ancak devam ederseniz ${station} olarak içe aktarılacaklar.',
 			'adifImport.stationCallJoin' => ' ve ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} tanesinin tarihi yok ve içe aktarılamaz', other: '${formatted} tanesinin tarihi yok ve içe aktarılamaz', ), 
+			'adifImport.activationFound' => ({required Object refs}) => 'Bu dosya ${refs} aktivasyonunu kaydediyor.',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.activationFound' => ({required Object refs}) => 'Bu dosya ${refs} aktivasyonunu kaydediyor.',
 			'adifImport.addActivation' => 'Bu operasyona ekle',
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned} kayıttan yalnızca ${written} tanesi uygulanabildi — siz karar verirken günlük değişti.',
 			'adifImport.busy' => 'Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.',

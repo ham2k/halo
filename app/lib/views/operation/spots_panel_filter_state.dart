@@ -123,12 +123,18 @@ class SpotsFilterState extends ChangeNotifier {
   /// the merge/filter pipeline it triggers) when neither changed, so a live
   /// CAT-control feed updating freq alone doesn't force a recompute on every
   /// tick.
+  ///
+  /// Nor when no filter is on "auto": a listener takes a notice from here for
+  /// a change to what the filters show — the Spots panel lets a held list go
+  /// on it — and tuning the radio to a spot changes nothing a fixed filter
+  /// shows.
   void _onVfoChanged() {
     final vfo = _radio.vfoA;
     if (vfo.band == _vfoBand && vfo.mode == _vfoMode) return;
+    final followed = (_bandFilter == 'auto' && vfo.band != _vfoBand) || (_modeFilter == 'auto' && superModeForMode(vfo.mode) != superModeForMode(_vfoMode));
     _vfoBand = vfo.band;
     _vfoMode = vfo.mode;
-    notifyListeners();
+    if (followed) notifyListeners();
   }
 
   /// The operator changed a setting — only their band list reaches the

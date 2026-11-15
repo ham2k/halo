@@ -1864,7 +1864,6 @@ class _Translations$operation$spots$ko extends Translations$operation$spots$en {
 		other: '${count}개의 스팟',
 	);
 	@override String spotsCountFiltered({required Object total, required Object count}) => '스팟 ${total}개 중 ${count}개 표시 중';
-	@override String get spotsDisabled => '이 운용에서는 스팟이 비활성화되어 있습니다';
 	@override String ageMinutes({required Object minutes}) => '${minutes}분';
 	@override String get callsOfNote => '주목할 콜사인';
 	@override String get yourSpots => '내 스팟';
@@ -5175,7 +5174,6 @@ extension on TranslationsKo {
 			'operation.spots.phoneAndCw' => '보이스 및 CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count}개의 스팟', other: '${count}개의 스팟', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object total, required Object count}) => '스팟 ${total}개 중 ${count}개 표시 중',
-			'operation.spots.spotsDisabled' => '이 운용에서는 스팟이 비활성화되어 있습니다',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes}분',
 			'operation.spots.callsOfNote' => '주목할 콜사인',
 			'operation.spots.yourSpots' => '내 스팟',
@@ -5468,9 +5466,9 @@ extension on TranslationsKo {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => '중복!',
 			'loggingControls.info.noticeNewBand' => '새로운 밴드',
+			'loggingControls.info.noticeNewMode' => '새로운 모드',
 			_ => null,
 		} ?? switch (path) {
-			'loggingControls.info.noticeNewMode' => '새로운 모드',
 			'loggingControls.info.noticeNewDXCC' => '새로운 DXCC',
 			'loggingControls.info.noticeNewState' => '새로운 주',
 			'loggingControls.info.noticeNewProvince' => '새로운 주/도',
@@ -5982,9 +5980,9 @@ extension on TranslationsKo {
 			'settings.peers.connected' => '연결됨',
 			'settings.peers.viaBluetooth' => '블루투스 경유',
 			'settings.peers.connecting' => '연결 중…',
+			'settings.peers.syncing' => '동기화 중…',
 			_ => null,
 		} ?? switch (path) {
-			'settings.peers.syncing' => '동기화 중…',
 			'settings.peers.waitingForThem' => '상대 기기 대기 중',
 			'settings.peers.notConnected' => '연결 안 됨',
 			'settings.peers.wantsToPair' => '이 운용을 공유하려고 합니다',
@@ -6496,9 +6494,9 @@ extension on TranslationsKo {
 			'settings.station.advancedSettings' => '고급 설정',
 			'settings.station.placeholderSwr' => 'SWR 값',
 			'settings.station.placeholderSwrDescription' => '송신 중 이 무전기가 SWR 미터에 보고하는 값. 1.8을 넘으면 패널이 경고합니다.',
+			'settings.station.placeholderSwrInvalid' => '1 이상의 숫자',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.placeholderSwrInvalid' => '1 이상의 숫자',
 			'settings.station.keyerNone' => '없음',
 			'settings.station.cwDialect' => 'CW 키잉 방식',
 			'settings.station.cwDialectDescription' => '이 무전기가 받는 KY 명령의 형태. 없음은 CAT을 통한 CW 키잉이 없음을 뜻합니다.',
@@ -7010,9 +7008,9 @@ extension on TranslationsKo {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '경고: 이 ADIF에는 ${calls}의 QSO가 있지만, 계속하면 ${station}(으)로 가져옵니다.',
 			'adifImport.stationCallJoin' => ' 및 ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count}개는 날짜가 없어 가져올 수 없습니다', other: '${formatted}개는 날짜가 없어 가져올 수 없습니다', ), 
+			'adifImport.activationFound' => ({required Object refs}) => '이 파일에는 ${refs}의 활성화 기록이 있습니다.',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.activationFound' => ({required Object refs}) => '이 파일에는 ${refs}의 활성화 기록이 있습니다.',
 			'adifImport.addActivation' => '이 운용에 추가',
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned}개 중 ${written}개만 적용할 수 있었습니다. 결정하는 동안 로그가 변경되었습니다.',
 			'adifImport.busy' => '이미 가져오기가 진행 중입니다. 완료될 때까지 기다린 후 시작하세요.',

@@ -163,14 +163,10 @@ extension LayoutControls<T extends StatefulWidget> on DockHost<T> {
   /// the logging pane's tune button, and the only route to a form whose fields
   /// configure that pane and nothing else.
   Widget buildPanelSettingsButton(PanelDefinition panel, {required BuildContext context}) {
-    final theme = Theme.of(context);
     return Builder(
-      builder: (buttonContext) => IconButton(
-        icon: Icon(
-          MdiIcons.tune,
-          color: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
-          semanticLabel: _t.panelSettings(panel: panel.title),
-        ),
+      builder: (buttonContext) => buildTuneButton(
+        context,
+        label: _t.panelSettings(panel: panel.title),
         onPressed: () => unawaited(
           // A placement that rendered a form or menu entries, or a panel with a file, offers a
           // menu: its own settings, its entries, then the file.
@@ -243,6 +239,17 @@ extension LayoutControls<T extends StatefulWidget> on DockHost<T> {
     await actions[picked].$2();
   }
 
+  /// A pane's settings button for a panel that answers it with a dialog of
+  /// its own — the Spots panel's filters — in the same tune glyph as
+  /// [buildTargetSettingsButton] and [buildPanelSettingsButton].
+  Widget buildTuneButton(BuildContext context, {required String label, required VoidCallback onPressed}) {
+    final theme = Theme.of(context);
+    return IconButton(
+      icon: Icon(MdiIcons.tune, color: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary, semanticLabel: label),
+      onPressed: onPressed,
+    );
+  }
+
   /// A tune-icon button that opens a target-scoped settings dialog — the
   /// counterpart of [buildPanelSettingsButton] for a pane the VIEW answers
   /// for natively (through its own [nativePanelSettingsForm] override)
@@ -254,14 +261,10 @@ extension LayoutControls<T extends StatefulWidget> on DockHost<T> {
     List<TargetDialogAction> actions = const [],
     Map<String, SettingsGroup>? groupOverrides,
   }) {
-    final theme = Theme.of(context);
     return Builder(
-      builder: (buttonContext) => IconButton(
-        icon: Icon(
-          MdiIcons.tune,
-          color: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
-          semanticLabel: MaterialLocalizations.of(context).showMenuTooltip,
-        ),
+      builder: (buttonContext) => buildTuneButton(
+        context,
+        label: MaterialLocalizations.of(context).showMenuTooltip,
         onPressed: () =>
             showSettingsForTarget(buttonContext, services: dockServices, target: target, title: title, actions: actions, groupOverrides: groupOverrides),
       ),

@@ -889,7 +889,6 @@
         "other": "${count} spoturi"
       },
       "spotsCountFiltered": "Se afișează ${count} din ${total} spoturi",
-      "spotsDisabled": "Spoturile sunt dezactivate pentru această operațiune",
       "ageMinutes": "${minutes} minute",
       "callsOfNote": "Indicative notabile",
       "yourSpots": "Spoturile dvs.",

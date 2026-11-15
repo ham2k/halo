@@ -889,7 +889,6 @@
         "other": "${count} spotů"
       },
       "spotsCountFiltered": "Zobrazeno ${count} z ${total} spotů",
-      "spotsDisabled": "Spoty jsou pro tuto aktivitu vypnuté",
       "ageMinutes": "${minutes} minut",
       "callsOfNote": "Zajímavé značky",
       "yourSpots": "Vaše spoty",

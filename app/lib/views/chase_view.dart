@@ -339,6 +339,9 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
   final _loggingKey = GlobalKey();
   final _spotsKey = GlobalKey();
   final _mapKey = GlobalKey();
+
+  /// Lets the Spots tab's settings button open the panel's filters.
+  final _spotsController = SpotsPanelController();
   final _zeroBeat = ZeroBeatOffsetter();
 
   Map<String, dynamic>? _suggestedQso;
@@ -706,6 +709,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
       callInfo: _callInfo,
       visible: _spotsVisible,
       chasing: true,
+      controller: _spotsController,
     );
     final infoPanel = InformationPanel(
       operation: operation,
@@ -798,6 +802,8 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
                     ],
                   ),
                   ChaseView.mapPanelId: (context) => buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle),
+                  ChaseView.spotsPanelId: (context) =>
+                      buildTuneButton(context, label: context.t.operation.spots.filters.title, onPressed: _spotsController.openFilters),
                 },
                 extraChildren: (inLayout) => sharedDashboardPanes(inLayout, operationGrid: operation.displayGrid),
               ),

@@ -889,7 +889,6 @@
         "other": "${count} spot"
       },
       "spotsCountFiltered": "${total} spottan ${count} tanesi gösteriliyor",
-      "spotsDisabled": "Bu operasyon için spotlar devre dışı",
       "ageMinutes": "${minutes} dakika",
       "callsOfNote": "Notlu Çağrılar",
       "yourSpots": "Spotlarınız",

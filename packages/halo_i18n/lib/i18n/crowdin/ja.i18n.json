@@ -889,7 +889,6 @@
         "other": "${count}スポット"
       },
       "spotsCountFiltered": "${total}件中${count}件のスポットを表示",
-      "spotsDisabled": "このオペレーションではスポットが無効です",
       "ageMinutes": "${minutes}分",
       "callsOfNote": "注目のコール",
       "yourSpots": "あなたのスポット",

@@ -353,10 +353,10 @@ void main() {
         ],
         'panel:notes:render': {'kind': 'markdown', 'content': 'ok'},
       },
-      // 'spots' rather than 'logging' as the other pane: logging carries a
-      // tune button of its own, and two would leave the assertion below
+      // 'info' rather than 'logging' or 'spots' as the other pane: both carry
+      // a tune button of their own, and two would leave the assertion below
       // unable to say which pane's it found.
-      layout: const ['spots', 'ext:notes:text#1'],
+      layout: const ['info', 'ext:notes:text#1'],
     );
     await pumpOperation(tester, services);
 

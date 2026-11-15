@@ -889,7 +889,6 @@
         "other": "${count} spots"
       },
       "spotsCountFiltered": "Mostrando ${count} de ${total} spots",
-      "spotsDisabled": "Spots desabilitados nesta operação",
       "ageMinutes": "${minutes} minutos",
       "callsOfNote": "Indicativos com notas",
       "yourSpots": "Seus spots",

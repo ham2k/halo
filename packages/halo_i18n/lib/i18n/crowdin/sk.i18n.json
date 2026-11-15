@@ -889,7 +889,6 @@
         "other": "${count} spotov"
       },
       "spotsCountFiltered": "Zobrazuje sa ${count} z ${total} spotov",
-      "spotsDisabled": "Spoty sú pre túto prevádzku vypnuté",
       "ageMinutes": "${minutes} minút",
       "callsOfNote": "Poznámky k volacím znakom",
       "yourSpots": "Vaše spoty",

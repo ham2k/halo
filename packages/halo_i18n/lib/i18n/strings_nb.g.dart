@@ -1864,7 +1864,6 @@ class _Translations$operation$spots$nb extends Translations$operation$spots$en {
 		other: '${count} spotter',
 	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => 'Viser ${count} av ${total} spotter';
-	@override String get spotsDisabled => 'Spotter deaktivert for denne operasjonen';
 	@override String ageMinutes({required Object minutes}) => '${minutes} minutter';
 	@override String get callsOfNote => 'Kjente kallesignaler';
 	@override String get yourSpots => 'Dine spotter';
@@ -5175,7 +5174,6 @@ extension on TranslationsNb {
 			'operation.spots.phoneAndCw' => 'Telefoni og CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} spot', other: '${count} spotter', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Viser ${count} av ${total} spotter',
-			'operation.spots.spotsDisabled' => 'Spotter deaktivert for denne operasjonen',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutter',
 			'operation.spots.callsOfNote' => 'Kjente kallesignaler',
 			'operation.spots.yourSpots' => 'Dine spotter',
@@ -5468,9 +5466,9 @@ extension on TranslationsNb {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => 'Duplikat!',
 			'loggingControls.info.noticeNewBand' => 'Nytt bånd',
+			'loggingControls.info.noticeNewMode' => 'Ny modus',
 			_ => null,
 		} ?? switch (path) {
-			'loggingControls.info.noticeNewMode' => 'Ny modus',
 			'loggingControls.info.noticeNewDXCC' => 'Ny DXCC',
 			'loggingControls.info.noticeNewState' => 'Ny stat',
 			'loggingControls.info.noticeNewProvince' => 'Ny provins',
@@ -5982,9 +5980,9 @@ extension on TranslationsNb {
 			'settings.peers.connected' => 'Tilkoblet',
 			'settings.peers.viaBluetooth' => 'via Bluetooth',
 			'settings.peers.connecting' => 'Kobler til…',
+			'settings.peers.syncing' => 'Synkroniserer…',
 			_ => null,
 		} ?? switch (path) {
-			'settings.peers.syncing' => 'Synkroniserer…',
 			'settings.peers.waitingForThem' => 'Venter på den andre enheten',
 			'settings.peers.notConnected' => 'Ikke tilkoblet',
 			'settings.peers.wantsToPair' => 'vil dele denne operasjonen',
@@ -6496,9 +6494,9 @@ extension on TranslationsNb {
 			'settings.station.advancedSettings' => 'Avanserte innstillinger',
 			'settings.station.placeholderSwr' => 'SWR-verdi',
 			'settings.station.placeholderSwrDescription' => 'Hva denne radioen rapporterer på SWR-måleren under sending. Over 1,8 gir panelet en advarsel.',
+			'settings.station.placeholderSwrInvalid' => 'Et tall, 1 eller mer',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.placeholderSwrInvalid' => 'Et tall, 1 eller mer',
 			'settings.station.keyerNone' => 'Ingen',
 			'settings.station.cwDialect' => 'Dialekt for CW-nøkling',
 			'settings.station.cwDialectDescription' => 'Hvilken form av KY-kommandoen denne radioen tar. Ingen betyr ingen CW-nøkling over CAT.',
@@ -7010,9 +7008,9 @@ extension on TranslationsNb {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Advarsel: denne ADIF-filen har QSOer fra ${calls}, men de blir importert som ${station} hvis du fortsetter.',
 			'adifImport.stationCallJoin' => ' og ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} mangler dato og kan ikke importeres', other: '${formatted} mangler dato og kan ikke importeres', ), 
+			'adifImport.activationFound' => ({required Object refs}) => 'Denne filen registrerer en aktivering av ${refs}.',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.activationFound' => ({required Object refs}) => 'Denne filen registrerer en aktivering av ${refs}.',
 			'adifImport.addActivation' => 'Legg den til i denne operasjonen',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Bare ${written} av ${planned} kunne tas i bruk — loggen ble endret mens du bestemte deg.',
 			'adifImport.busy' => 'En import pågår allerede. Vent til den er ferdig før du starter en ny.',

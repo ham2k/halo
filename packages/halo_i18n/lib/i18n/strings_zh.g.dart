@@ -1864,7 +1864,6 @@ class _Translations$operation$spots$zh extends Translations$operation$spots$en {
 		other: '${count} 个信号',
 	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => '显示 ${count} / ${total} 个信号';
-	@override String get spotsDisabled => '此操作已禁用信号';
 	@override String ageMinutes({required Object minutes}) => '${minutes} 分钟';
 	@override String get callsOfNote => '有备注的呼号';
 	@override String get yourSpots => '您的信号';
@@ -5175,7 +5174,6 @@ extension on TranslationsZh {
 			'operation.spots.phoneAndCw' => '话音和 CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个信号', other: '${count} 个信号', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => '显示 ${count} / ${total} 个信号',
-			'operation.spots.spotsDisabled' => '此操作已禁用信号',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} 分钟',
 			'operation.spots.callsOfNote' => '有备注的呼号',
 			'operation.spots.yourSpots' => '您的信号',
@@ -5468,9 +5466,9 @@ extension on TranslationsZh {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}：${notice}',
 			'loggingControls.info.noticeDupe' => '重复！',
 			'loggingControls.info.noticeNewBand' => '新频段',
+			'loggingControls.info.noticeNewMode' => '新模式',
 			_ => null,
 		} ?? switch (path) {
-			'loggingControls.info.noticeNewMode' => '新模式',
 			'loggingControls.info.noticeNewDXCC' => '新 DXCC',
 			'loggingControls.info.noticeNewState' => '新州',
 			'loggingControls.info.noticeNewProvince' => '新省',
@@ -5982,9 +5980,9 @@ extension on TranslationsZh {
 			'settings.peers.connected' => '已连接',
 			'settings.peers.viaBluetooth' => '通过蓝牙',
 			'settings.peers.connecting' => '连接中…',
+			'settings.peers.syncing' => '同步中…',
 			_ => null,
 		} ?? switch (path) {
-			'settings.peers.syncing' => '同步中…',
 			'settings.peers.waitingForThem' => '等待另一台设备',
 			'settings.peers.notConnected' => '未连接',
 			'settings.peers.wantsToPair' => '想要共享此操作',
@@ -6496,9 +6494,9 @@ extension on TranslationsZh {
 			'settings.station.advancedSettings' => '高级设置',
 			'settings.station.placeholderSwr' => 'SWR 读数',
 			'settings.station.placeholderSwrDescription' => '此电台在发射时 SWR 表上报告的数值。高于 1.8 时面板会警告。',
+			'settings.station.placeholderSwrInvalid' => '数字，1 或更大',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.placeholderSwrInvalid' => '数字，1 或更大',
 			'settings.station.keyerNone' => '无',
 			'settings.station.cwDialect' => 'CW 键控方言',
 			'settings.station.cwDialectDescription' => '此电台接受哪种格式的 KY 命令。“无”表示不通过 CAT 进行 CW 键控。',
@@ -7010,9 +7008,9 @@ extension on TranslationsZh {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '警告：此 ADIF 包含来自 ${calls} 的 QSO，但如果继续，它们将作为 ${station} 导入。',
 			'adifImport.stationCallJoin' => ' 和 ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个没有日期，无法导入', other: '${formatted} 个没有日期，无法导入', ), 
+			'adifImport.activationFound' => ({required Object refs}) => '此文件记录了 ${refs} 的一次激活。',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.activationFound' => ({required Object refs}) => '此文件记录了 ${refs} 的一次激活。',
 			'adifImport.addActivation' => '将其添加到此操作',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => '只有 ${written} / ${planned} 个得以应用——在您决定期间日志发生了变化。',
 			'adifImport.busy' => '已有导入正在进行。请等待其完成后再开始新的导入。',

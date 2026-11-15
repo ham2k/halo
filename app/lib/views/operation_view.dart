@@ -221,6 +221,10 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   final _spotsKey = GlobalKey();
   final _mapKey = GlobalKey();
 
+  /// Lets the Spots tab's settings button open the panel's filters.
+  @override
+  final _spotsController = SpotsPanelController();
+
   /// [reveal] false fills the fields and leaves the operator where they are —
   /// what sliding a spot row open does. The spots list is the thing being
   /// worked in that gesture, and on a narrow window surfacing the logging
@@ -1109,6 +1113,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 // new-vs-editing accent that says so.
                 callInfo: _callInfo,
                 visible: _spotsVisible,
+                controller: _spotsController,
               ),
             ),
           ),

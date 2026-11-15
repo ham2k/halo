@@ -10,16 +10,15 @@ class _SpotsFilterPill extends StatelessWidget {
   final int filteredCount;
   final int totalCount;
   final VoidCallback onTap;
-  final VoidCallback onRefresh;
+
+  /// Null leaves the refresh pill out: the operation asks no spot source
+  /// (`Operation.assistance`), so there is nothing to fetch.
+  final VoidCallback? onRefresh;
   final bool refreshing;
 
   /// Whether the initial spots fetch is still in flight — shows the
   /// progress bar reserved at the bottom of this pill's own background.
   final bool loading;
-
-  /// The operation fetches no spots (`Operation.assistance`): every pill
-  /// shows disabled and the count line says why.
-  final bool disabled;
 
   const _SpotsFilterPill({
     required this.bandLabel,
@@ -31,19 +30,15 @@ class _SpotsFilterPill extends StatelessWidget {
     required this.onRefresh,
     required this.refreshing,
     required this.loading,
-    this.disabled = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final t = context.t;
     final theme = Theme.of(context);
-    final countLabel = disabled
-        ? t.operation.spots.spotsDisabled
-        : filteredCount == totalCount
+    final countLabel = filteredCount == totalCount
         ? t.operation.spots.spotsCount(count: totalCount)
         : t.operation.spots.spotsCountFiltered(count: filteredCount, total: totalCount);
-    final onTap = disabled ? null : this.onTap;
 
     return Container(
       // Same background as the main logging control area (logging_controls.dart's
@@ -63,28 +58,23 @@ class _SpotsFilterPill extends StatelessWidget {
                 // Extra breathing room above and below the pill row.
                 Padding(
                   padding: EdgeInsets.symmetric(vertical: LayoutDensity.metricsOf(context).spotTilePaddingV),
-                  child: Opacity(
-                    opacity: disabled ? 0.38 : 1,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Desktop-only manual refresh — mobile refreshes by
-                        // pull-to-refresh instead (RefreshIndicator on the list below).
-                        if (!isMobilePlatform) ...[
-                          _FilterInfoPill(icon: 'refresh', loading: refreshing, onTap: refreshing || disabled ? null : onRefresh),
-                          const SizedBox(width: Space.sm),
-                        ],
-                        // The only pill that can grow; flex it so it ellipsizes on a
-                        // narrow panel rather than overflowing the row.
-                        Flexible(
-                          child: _FilterInfoPill(icon: 'radio', label: '$bandLabel • $modeLabel', onTap: onTap),
-                        ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // The only pill that can grow; flex it so it ellipsizes on a
+                      // narrow panel rather than overflowing the row.
+                      Flexible(
+                        child: _FilterInfoPill(icon: 'radio', label: '$bandLabel • $modeLabel', onTap: onTap),
+                      ),
+                      const SizedBox(width: Space.sm),
+                      _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
+                      // On every platform: pull-to-refresh is not discoverable,
+                      // and a mouse cannot pull at all.
+                      if (onRefresh case final onRefresh?) ...[
                         const SizedBox(width: Space.sm),
-                        _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
-                        const SizedBox(width: Space.sm),
-                        _FilterInfoPill(icon: 'tune', onTap: onTap),
+                        _FilterInfoPill(icon: 'refresh', loading: refreshing, onTap: refreshing ? null : onRefresh),
                       ],
-                    ),
+                    ],
                   ),
                 ),
                 Text(
@@ -105,7 +95,7 @@ class _SpotsFilterPill extends StatelessWidget {
           // the plain scaffold background below the whole filter area.
           SizedBox(
             height: _spotsProgressHeight,
-            child: loading && !disabled ? const LinearProgressIndicator(minHeight: _spotsProgressHeight) : null,
+            child: loading ? const LinearProgressIndicator(minHeight: _spotsProgressHeight) : null,
           ),
         ],
       ),
@@ -113,9 +103,8 @@ class _SpotsFilterPill extends StatelessWidget {
   }
 }
 
-/// A small icon (+ optional text) pill — the band/mode/age filter summaries
-/// shown next to the tune button, and (icon-only, tappable) the tune button
-/// itself.
+/// A small icon (+ optional text) pill — the band/mode/age filter summaries,
+/// and (icon-only) the refresh button beside them.
 class _FilterInfoPill extends StatelessWidget {
   final String icon;
   final String? label;
@@ -137,7 +126,7 @@ class _FilterInfoPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.sm),
       decoration: BoxDecoration(color: poloColors.tertiaryLight, borderRadius: BorderRadius.circular(8)),
       // Fixed height regardless of whether `label` is present, so the
-      // icon-only tune pill matches the icon+text filter-summary pills
+      // icon-only refresh pill matches the icon+text filter-summary pills
       // instead of coming out shorter.
       child: SizedBox(
         height: 20,

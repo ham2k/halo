@@ -889,7 +889,6 @@
         "other": "${count} anuncis"
       },
       "spotsCountFiltered": "Mostrant ${count} de ${total} anuncis",
-      "spotsDisabled": "Anuncis desactivats en aquesta operació",
       "ageMinutes": "${minutes} minuts",
       "callsOfNote": "Indicatius destacats",
       "yourSpots": "Els teus anuncis",

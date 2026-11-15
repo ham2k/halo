@@ -13,6 +13,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
   CallInfoData? get _callInfo;
   void _republishPeerHeaderIfChanged(Operation operation);
   void _openFind();
+  SpotsPanelController get _spotsController;
 
   @override
   HaLoServices get dockServices => widget.services;
@@ -355,6 +356,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
       tabActions: {
         'logging': (context) => _buildLoggingSettingsButton(qsos, context: context),
         'map': (context) => _buildMapSettingsButton(context: context),
+        'spots': (context) => buildTuneButton(context, label: context.t.operation.spots.filters.title, onPressed: _spotsController.openFilters),
       },
       extraChildren: (inLayout) => {
         for (final id in inLayout)

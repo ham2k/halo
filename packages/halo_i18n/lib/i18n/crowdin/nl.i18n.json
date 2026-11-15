@@ -889,7 +889,6 @@
         "other": "${count} spots"
       },
       "spotsCountFiltered": "${count} van ${total} spots getoond",
-      "spotsDisabled": "Spots uitgeschakeld voor deze activatie",
       "ageMinutes": "${minutes} minuten",
       "callsOfNote": "Opmerkelijke roepnamen",
       "yourSpots": "Jouw spots",

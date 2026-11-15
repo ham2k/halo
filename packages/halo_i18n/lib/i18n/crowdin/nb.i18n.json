@@ -889,7 +889,6 @@
         "other": "${count} spotter"
       },
       "spotsCountFiltered": "Viser ${count} av ${total} spotter",
-      "spotsDisabled": "Spotter deaktivert for denne operasjonen",
       "ageMinutes": "${minutes} minutter",
       "callsOfNote": "Kjente kallesignaler",
       "yourSpots": "Dine spotter",

@@ -889,7 +889,6 @@
         "other": "${count}개의 스팟"
       },
       "spotsCountFiltered": "스팟 ${total}개 중 ${count}개 표시 중",
-      "spotsDisabled": "이 운용에서는 스팟이 비활성화되어 있습니다",
       "ageMinutes": "${minutes}분",
       "callsOfNote": "주목할 콜사인",
       "yourSpots": "내 스팟",

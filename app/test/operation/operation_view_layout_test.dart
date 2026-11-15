@@ -292,14 +292,20 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // The BUTTON: the Spots pane draws this glyph too, as a filter label.
-    final tune = find.widgetWithIcon(IconButton, MdiIcons.tune).hitTestable();
+    // The BUTTONS, told apart by label: the Spots tab carries a tune button
+    // of its own, for its filters.
+    Finder tuneLabelled(bool Function(String? label) test) => find
+        .ancestor(of: find.byWidgetPredicate((w) => w is Icon && w.icon == MdiIcons.tune && test(w.semanticLabel)), matching: find.byType(IconButton))
+        .hitTestable();
+    final spotsFilters = t.operation.spots.filters.title;
+    final tune = tuneLabelled((label) => label != spotsFilters);
     expect(find.descendant(of: find.byType(AppBar), matching: find.byIcon(MdiIcons.tune)), findsNothing);
     expect(tune, findsOneWidget, reason: 'QSOs is the selected tab on mount');
 
     await tester.tap(find.text('SPOTS'));
     await tester.pumpAndSettle();
     expect(tune, findsNothing, reason: 'hidden once QSOs is no longer the active tab');
+    expect(tuneLabelled((label) => label == spotsFilters), findsOneWidget, reason: "the Spots tab's own, for its filters");
 
     await tester.tap(find.text('0 QSOs'));
     await tester.pumpAndSettle();

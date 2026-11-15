@@ -123,6 +123,15 @@ void main() {
       expect(state.bandFilter, 'auto');
     });
 
+    // The Spots panel lets a held list go on a notice from here, and tuning
+    // to a spot is the operator still working the list, not changing it.
+    test('the VFO changing band or mode is no change to filters that do not follow it', () async {
+      await makeState(stored: {'bandFilter': 'any', 'modeFilter': phoneCwModeFilter});
+      services.radio.setVfo('vfoA', freq: 14074, mode: 'FT8');
+      services.radio.setVfo('vfoA', freq: 7030, mode: 'CW');
+      expect(notified, 0);
+    });
+
     // Every settings write notifies, this state's own saves included; only
     // the band list reaches the filters.
     test('only an edit to the band list is worth a rebuild', () async {

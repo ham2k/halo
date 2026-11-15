@@ -1864,7 +1864,6 @@ class _Translations$operation$spots$ro extends Translations$operation$spots$en {
 		other: '${count} spoturi',
 	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => 'Se afișează ${count} din ${total} spoturi';
-	@override String get spotsDisabled => 'Spoturile sunt dezactivate pentru această operațiune';
 	@override String ageMinutes({required Object minutes}) => '${minutes} minute';
 	@override String get callsOfNote => 'Indicative notabile';
 	@override String get yourSpots => 'Spoturile dvs.';
@@ -5175,7 +5174,6 @@ extension on TranslationsRo {
 			'operation.spots.phoneAndCw' => 'Fonie și CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} spot', other: '${count} spoturi', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Se afișează ${count} din ${total} spoturi',
-			'operation.spots.spotsDisabled' => 'Spoturile sunt dezactivate pentru această operațiune',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minute',
 			'operation.spots.callsOfNote' => 'Indicative notabile',
 			'operation.spots.yourSpots' => 'Spoturile dvs.',
@@ -5468,9 +5466,9 @@ extension on TranslationsRo {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => 'Duplicat!',
 			'loggingControls.info.noticeNewBand' => 'Bandă nouă',
+			'loggingControls.info.noticeNewMode' => 'Mod nou',
 			_ => null,
 		} ?? switch (path) {
-			'loggingControls.info.noticeNewMode' => 'Mod nou',
 			'loggingControls.info.noticeNewDXCC' => 'DXCC nou',
 			'loggingControls.info.noticeNewState' => 'Stat nou',
 			'loggingControls.info.noticeNewProvince' => 'Provincie nouă',
@@ -5982,9 +5980,9 @@ extension on TranslationsRo {
 			'settings.peers.connected' => 'Conectat',
 			'settings.peers.viaBluetooth' => 'prin Bluetooth',
 			'settings.peers.connecting' => 'Se conectează…',
+			'settings.peers.syncing' => 'Se sincronizează…',
 			_ => null,
 		} ?? switch (path) {
-			'settings.peers.syncing' => 'Se sincronizează…',
 			'settings.peers.waitingForThem' => 'Se așteaptă celălalt dispozitiv',
 			'settings.peers.notConnected' => 'Neconectat',
 			'settings.peers.wantsToPair' => 'vrea să partajeze această operațiune',
@@ -6496,9 +6494,9 @@ extension on TranslationsRo {
 			'settings.station.advancedSettings' => 'Setări avansate',
 			'settings.station.placeholderSwr' => 'Valoare SWR',
 			'settings.station.placeholderSwrDescription' => 'Ce raportează această stație pe instrumentul SWR în timpul emisiei. Peste 1.8 panoul avertizează.',
+			'settings.station.placeholderSwrInvalid' => 'Un număr, 1 sau mai mare',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.placeholderSwrInvalid' => 'Un număr, 1 sau mai mare',
 			'settings.station.keyerNone' => 'Niciunul',
 			'settings.station.cwDialect' => 'Dialect de manipulare CW',
 			'settings.station.cwDialectDescription' => 'Ce formă a comenzii KY acceptă această stație. Niciunul înseamnă fără manipulare CW prin CAT.',
@@ -7010,9 +7008,9 @@ extension on TranslationsRo {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Atenție: acest ADIF are QSO-uri de la ${calls}, dar vor fi importate ca ${station} dacă continuați.',
 			'adifImport.stationCallJoin' => ' și ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} nu are dată și nu poate fi importat', other: '${formatted} nu au dată și nu pot fi importate', ), 
+			'adifImport.activationFound' => ({required Object refs}) => 'Acest fișier înregistrează o activare a ${refs}.',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.activationFound' => ({required Object refs}) => 'Acest fișier înregistrează o activare a ${refs}.',
 			'adifImport.addActivation' => 'Adaugă la această operațiune',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Doar ${written} din ${planned} au putut fi aplicate — jurnalul s-a schimbat cât timp decideați.',
 			'adifImport.busy' => 'Un import rulează deja. Așteptați să se termine înainte de a porni altul.',

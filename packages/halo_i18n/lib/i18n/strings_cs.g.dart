@@ -1864,7 +1864,6 @@ class _Translations$operation$spots$cs extends Translations$operation$spots$en {
 		other: '${count} spotů',
 	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => 'Zobrazeno ${count} z ${total} spotů';
-	@override String get spotsDisabled => 'Spoty jsou pro tuto aktivitu vypnuté';
 	@override String ageMinutes({required Object minutes}) => '${minutes} minut';
 	@override String get callsOfNote => 'Zajímavé značky';
 	@override String get yourSpots => 'Vaše spoty';
@@ -5175,7 +5174,6 @@ extension on TranslationsCs {
 			'operation.spots.phoneAndCw' => 'Fónie a CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} spot', other: '${count} spotů', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Zobrazeno ${count} z ${total} spotů',
-			'operation.spots.spotsDisabled' => 'Spoty jsou pro tuto aktivitu vypnuté',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minut',
 			'operation.spots.callsOfNote' => 'Zajímavé značky',
 			'operation.spots.yourSpots' => 'Vaše spoty',
@@ -5468,9 +5466,9 @@ extension on TranslationsCs {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => 'Duplicita!',
 			'loggingControls.info.noticeNewBand' => 'Nové pásmo',
+			'loggingControls.info.noticeNewMode' => 'Nový mód',
 			_ => null,
 		} ?? switch (path) {
-			'loggingControls.info.noticeNewMode' => 'Nový mód',
 			'loggingControls.info.noticeNewDXCC' => 'Nové DXCC',
 			'loggingControls.info.noticeNewState' => 'Nový stát',
 			'loggingControls.info.noticeNewProvince' => 'Nová provincie',
@@ -5982,9 +5980,9 @@ extension on TranslationsCs {
 			'settings.peers.connected' => 'Připojeno',
 			'settings.peers.viaBluetooth' => 'přes Bluetooth',
 			'settings.peers.connecting' => 'Připojování…',
+			'settings.peers.syncing' => 'Synchronizace…',
 			_ => null,
 		} ?? switch (path) {
-			'settings.peers.syncing' => 'Synchronizace…',
 			'settings.peers.waitingForThem' => 'Čeká se na druhé zařízení',
 			'settings.peers.notConnected' => 'Nepřipojeno',
 			'settings.peers.wantsToPair' => 'chce sdílet tuto aktivitu',
@@ -6496,9 +6494,9 @@ extension on TranslationsCs {
 			'settings.station.advancedSettings' => 'Pokročilé nastavení',
 			'settings.station.placeholderSwr' => 'Hodnota PSV',
 			'settings.station.placeholderSwrDescription' => 'Co toto rádio hlásí na měřidle PSV během vysílání. Nad 1,8 panel varuje.',
+			'settings.station.placeholderSwrInvalid' => 'Číslo, 1 nebo více',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.placeholderSwrInvalid' => 'Číslo, 1 nebo více',
 			'settings.station.keyerNone' => 'Žádný',
 			'settings.station.cwDialect' => 'Dialekt klíčování CW',
 			'settings.station.cwDialectDescription' => 'Jakou podobu příkazu KY toto rádio přijímá. Žádný znamená bez klíčování CW přes CAT.',
@@ -7010,9 +7008,9 @@ extension on TranslationsCs {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Upozornění: tento ADIF obsahuje QSO od ${calls}, ale pokud budete pokračovat, budou importována jako ${station}.',
 			'adifImport.stationCallJoin' => ' a ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} nemá datum a nelze ho importovat', other: '${formatted} nemá datum a nelze je importovat', ), 
+			'adifImport.activationFound' => ({required Object refs}) => 'Tento soubor zaznamenává aktivaci ${refs}.',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.activationFound' => ({required Object refs}) => 'Tento soubor zaznamenává aktivaci ${refs}.',
 			'adifImport.addActivation' => 'Přidat ji do této aktivity',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Použít se podařilo jen ${written} z ${planned} — log se změnil, zatímco jste se rozhodovali.',
 			'adifImport.busy' => 'Import už probíhá. Než spustíte další, počkejte, až skončí.',

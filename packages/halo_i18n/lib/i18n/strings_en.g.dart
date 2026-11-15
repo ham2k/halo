@@ -4553,6 +4553,12 @@ class Translations$operation$spots$en {
 	/// en: 'No spots match your filters'
 	String get empty => 'No spots match your filters';
 
+	/// en: 'Spots disabled for this operation, no manual entries'
+	String get disabledNoLocal => 'Spots disabled for this operation, no manual entries';
+
+	/// en: 'Spots disabled for this operation, enable Local Spots in Settings › Spotting'
+	String get disabledLocalOff => 'Spots disabled for this operation, enable Local Spots in Settings › Spotting';
+
 	/// en: 'Failed to load spots: ${error}'
 	String error({required Object error}) => 'Failed to load spots: ${error}';
 
@@ -4589,8 +4595,11 @@ class Translations$operation$spots$en {
 	/// en: 'Showing ${count} of ${total} spots'
 	String spotsCountFiltered({required Object count, required Object total}) => 'Showing ${count} of ${total} spots';
 
-	/// en: 'Spots disabled for this operation'
-	String get spotsDisabled => 'Spots disabled for this operation';
+	/// en: '(one) {Refresh to see ${count} update} (other) {Refresh to see ${count} updates}'
+	String pendingUpdates({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Refresh to see ${count} update',
+		other: 'Refresh to see ${count} updates',
+	);
 
 	/// en: '${minutes} minutes'
 	String ageMinutes({required Object minutes}) => '${minutes} minutes';
@@ -12272,6 +12281,8 @@ extension on Translations {
 			'operation.export.stash.freeTier' => 'Free accounts can only keep one stash at a time. Subscribers can keep as many as they want.',
 			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Sent ${count} file to Ham2K’s File Stash (stash.ham2k.net)', other: 'Sent ${count} files to Ham2K’s File Stash (stash.ham2k.net)', ), 
 			'operation.spots.empty' => 'No spots match your filters',
+			'operation.spots.disabledNoLocal' => 'Spots disabled for this operation, no manual entries',
+			'operation.spots.disabledLocalOff' => 'Spots disabled for this operation, enable Local Spots in Settings › Spotting',
 			'operation.spots.error' => ({required Object error}) => 'Failed to load spots: ${error}',
 			'operation.spots.unknownBand' => 'Other',
 			'operation.spots.auto' => 'Automatic',
@@ -12283,7 +12294,7 @@ extension on Translations {
 			'operation.spots.phoneAndCw' => 'Phone & CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} spot', other: '${count} spots', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Showing ${count} of ${total} spots',
-			'operation.spots.spotsDisabled' => 'Spots disabled for this operation',
+			'operation.spots.pendingUpdates' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Refresh to see ${count} update', other: 'Refresh to see ${count} updates', ), 
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutes',
 			'operation.spots.callsOfNote' => 'Calls of Note',
 			'operation.spots.yourSpots' => 'Your Spots',
@@ -12523,10 +12534,10 @@ extension on Translations {
 			'activitiesView.addToOperationShort' => 'Add to Op.',
 			'activitiesView.mapEmptyState' => 'No results to show on the map',
 			'activitiesView.mapEmptyStateHint' => 'Switch back to the list, or search for something else',
-			'activitiesView.imports' => 'Imports',
-			'loggingControls.timeUtc' => 'Time (UTC)',
 			_ => null,
 		} ?? switch (path) {
+			'activitiesView.imports' => 'Imports',
+			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
 			'loggingControls.now' => 'Now',
 			'loggingControls.manualTimeSettings' => 'Manual Time',
@@ -13037,10 +13048,10 @@ extension on Translations {
 			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (not connected)',
 			'settings.radio.voiceMessages.lead' => 'Key-up delay',
 			'settings.radio.voiceMessages.tail' => 'Unkey delay',
-			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
-			'settings.radio.voiceMessages.listenButton' => 'Listen',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
+			'settings.radio.voiceMessages.listenButton' => 'Listen',
 			'settings.radio.voiceMessages.notRecorded' => 'Not recorded',
 			'settings.radio.voiceMessages.unplayable' => 'Can\'t play this file',
 			'settings.radio.voiceMessages.problemNoOutput' => 'Choose the sound device that feeds the radio before playing a message.',
@@ -13551,10 +13562,10 @@ extension on Translations {
 			'settings.station.models.ts2000' => 'Kenwood TS-2000',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
-			'settings.station.models.tx500' => 'Lab599 TX-500',
-			'settings.station.models.tx500mp' => 'Lab599 TX-500MP',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.tx500' => 'Lab599 TX-500',
+			'settings.station.models.tx500mp' => 'Lab599 TX-500MP',
 			'settings.station.models.qcx' => 'QRP Labs QCX',
 			'settings.station.models.elecraftGeneric' => 'Elecraft - Generic',
 			'settings.station.models.kx2' => 'Elecraft KX2',
@@ -14065,10 +14076,10 @@ extension on Translations {
 			'settings.developer.diagnostics' => 'Diagnostics',
 			'settings.developer.importExport' => 'Import / Export',
 			'settings.developer.systemInformation' => 'System Information',
-			'settings.developer.appVersion' => 'App Version',
-			'settings.developer.dataFolder' => 'Data Folder',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.appVersion' => 'App Version',
+			'settings.developer.dataFolder' => 'Data Folder',
 			'settings.developer.worktree' => 'Worktree',
 			'settings.developer.launchedAt' => 'Started',
 			'settings.developer.loading' => '(loading…)',
@@ -14579,10 +14590,10 @@ extension on Translations {
 			'adifImport.stationCallJoin' => ' and ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} has no date and cannot be imported', other: '${formatted} have no date and cannot be imported', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'This file records an activation of ${refs}.',
-			'adifImport.addActivation' => 'Add it to this operation',
-			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Only ${written} of ${planned} could be applied — the log changed while you were deciding.',
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.addActivation' => 'Add it to this operation',
+			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Only ${written} of ${planned} could be applied — the log changed while you were deciding.',
 			'adifImport.busy' => 'An import is already running. Wait for it to finish before starting another.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs, the most an operation can import at a time.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs. Importing an ADIF into an operation is meant to add a few QSOs, not to bring in a large log — use the Logs view for that. Developer mode lets you import it anyway, if you are sure.',

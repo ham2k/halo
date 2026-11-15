@@ -4,9 +4,10 @@
 part of 'spots_panel.dart';
 
 mixin _SpotsList on State<SpotsPanel> {
-  SpotsService get _spots;
+  Future<void> _pullRefresh();
   bool get _loading;
   Map<String, SpotCallInfo> get _callNotes;
+  bool get _localSpotsOn;
   SpotsFilterState get _filterState;
   String get _sortBy;
   Set<String> get _ourBaseCalls;
@@ -23,52 +24,19 @@ mixin _SpotsList on State<SpotsPanel> {
   SpotWorkedOverrides get _workedOverrides;
   _SlideGroup get _slideGroup;
 
-  /// Sections the already-filtered `filtered` spots per the current
-  /// sort/group settings, then renders the scrollable list — split out of
-  /// `build()` just for readability.
-  ///
-  /// `selfSpots` — our own station's spots, unfiltered (see
-  /// [SpotsFilterState.summarize]) — pin above everything as their own section.
-  /// `groupCallsWithNotes` prepends a "Calls of Note" section (spots whose
-  /// callsign has a note, per `_callNotes`) ahead of everything else —
-  /// those spots still also appear in their normal section below, same as
-  /// app-polo's SpotsPanel.jsx (a pinned duplicate, not an exclusive move).
-  /// `groupByBand` then decides band sections vs. one flat section; either
-  /// way `filtered` is already sorted per `sortBy`, so that order is what
-  /// shows within each band (or across the whole flat list).
-  Widget _buildSpotsList(BuildContext context, List<Map<String, dynamic>> filtered, List<Map<String, dynamic>> selfSpots) {
+  /// Renders [rawSections] ([_sectionsOf]) as the scrollable list — split
+  /// out of `build()` just for readability.
+  Widget _buildSpotsList(BuildContext context, _SpotSections rawSections) {
     final t = context.t;
     final theme = Theme.of(context);
-
-    final callsWithNotes = _filterState.groupCallsWithNotes
-        ? {
-            for (final entry in _callNotes.entries)
-              if (entry.value.hasNote) entry.key,
-          }
-        : const <String>{};
-    // The assistants' picks, strongest boost first and the list's own order
-    // among equals.
-    final boosted = [
-      for (final spot in filtered)
-        if (_markingFor(spot) case final marking? when marking.boost > 0) (spot: spot, boost: marking.boost),
-    ];
-    mergeSort(boosted, compare: (a, b) => b.boost.compareTo(a.boost));
-    final rawSections = sectionSpots(
-      filtered,
-      selfSpots: selfSpots,
-      picks: [for (final pick in boosted) pick.spot],
-      callsWithNotes: callsWithNotes,
-      groupByBand: _filterState.groupByBand,
-    );
     final sections = [
       for (final section in rawSections)
         (key: section.key, label: '${_sectionLabel(t, section.key)} - ${t.operation.spots.spotsCount(count: section.spots.length)}', spots: section.spots),
     ];
     // Same adaptive Hz-digit rule as qso_list.dart's DayHeaderRow/QSO rows —
     // computed across every currently-visible spot, not per-tile, so every
-    // tile's Hz segment (if any) lines up at the same width. The pinned self
-    // spots count too: they can sit outside `filtered`.
-    final visibleSpots = [...selfSpots, ...filtered];
+    // tile's Hz segment (if any) lines up at the same width.
+    final visibleSpots = [for (final section in rawSections) ...section.spots];
     final hzDigits = hzDigitsNeeded(visibleSpots.map(_freqOf));
     // The left column is only as wide as the widest frequency (and mode)
     // actually on screen — HF-only spots pack tighter than the fixed width
@@ -96,7 +64,7 @@ mixin _SpotsList on State<SpotsPanel> {
       // ProgressIndicatorTheme, so it is the one progress affordance the
       // theme cannot reach.
       color: HaLoColors.of(context).onSurfaceAccent,
-      onRefresh: _spots.refresh,
+      onRefresh: _pullRefresh,
       // `sections`, not `filtered`: a pinned self spot must survive filters
       // that empty the rest of the board — that is when it is needed.
       child: sections.isEmpty
@@ -110,7 +78,20 @@ mixin _SpotsList on State<SpotsPanel> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(Space.xxl),
-                        child: Center(child: Text(t.operation.spots.empty, style: theme.textTheme.bodyMedium)),
+                        child: Center(
+                          // Without assistance only the station's own spots
+                          // can show, and no filter brings others in: what
+                          // can is the operator spotting, with Local Spots.
+                          child: Text(
+                            widget.operation.assistance
+                                ? t.operation.spots.empty
+                                : _localSpotsOn
+                                ? t.operation.spots.disabledNoLocal
+                                : t.operation.spots.disabledLocalOff,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ),
                       ),
                     ],
                   ))
@@ -282,6 +263,67 @@ mixin _SpotsList on State<SpotsPanel> {
               ],
             ),
     );
+  }
+
+  /// The sections the list lays the already-filtered [filtered] spots out
+  /// in, top to bottom, per the current sort/group settings.
+  ///
+  /// [selfSpots] — our own station's spots, unfiltered (see
+  /// [SpotsFilterState.summarize]) — pin above everything as their own
+  /// section. `groupCallsWithNotes` prepends a "Calls of Note" section (spots
+  /// whose callsign has a note, per `_callNotes`) ahead of everything else —
+  /// those spots still also appear in their normal section below, same as
+  /// app-polo's SpotsPanel.jsx (a pinned duplicate, not an exclusive move).
+  /// `groupByBand` then decides band sections vs. one flat section; either
+  /// way [filtered] is already sorted per `sortBy`, so that order is what
+  /// shows within each band (or across the whole flat list).
+  _SpotSections _sectionsOf(List<Map<String, dynamic>> filtered, List<Map<String, dynamic>> selfSpots) {
+    final callsWithNotes = _filterState.groupCallsWithNotes
+        ? {
+            for (final entry in _callNotes.entries)
+              if (entry.value.hasNote) entry.key,
+          }
+        : const <String>{};
+    // The assistants' picks, strongest boost first and the list's own order
+    // among equals.
+    final boosted = [
+      for (final spot in filtered)
+        if (_markingFor(spot) case final marking? when marking.boost > 0) (spot: spot, boost: marking.boost),
+    ];
+    mergeSort(boosted, compare: (a, b) => b.boost.compareTo(a.boost));
+    return sectionSpots(
+      filtered,
+      selfSpots: selfSpots,
+      picks: [for (final pick in boosted) pick.spot],
+      callsWithNotes: callsWithNotes,
+      groupByBand: _filterState.groupByBand,
+    );
+  }
+
+  /// The headers and rows [sections] lay out, top to bottom: each as its
+  /// section (and station, for a [row]), where it starts and how tall it is.
+  /// Heights as [SpotRevealState] counts them, so a row that gains its second
+  /// line moves the rows under it here as it does on screen.
+  List<({String key, double top, double height, bool row})> _layoutOf(_SpotSections sections) {
+    final scale = _reveal.rowHeightScale;
+    final header = _reveal.sectionHeaderExtent;
+    final layout = <({String key, double top, double height, bool row})>[];
+    var y = 0.0;
+    for (final section in sections) {
+      layout.add((key: section.key, top: y, height: header, row: false));
+      y += header;
+      // A second row of one station on one frequency counted as such, or
+      // the two would pass for one.
+      final seen = <String, int>{};
+      for (final spot in section.spots) {
+        final height = _spotRowHeightOf(spot) * scale;
+        final row = '${section.key}|${_rowKeyOf(spot)}';
+        final nth = seen[row] = (seen[row] ?? 0) + 1;
+        layout.add((key: nth == 1 ? row : '$row#$nth', top: y, height: height, row: true));
+        y += height;
+      }
+    }
+    return layout;
   }
 
   /// What [_SpotTile] paints for [spot], for the reveal's offset arithmetic.

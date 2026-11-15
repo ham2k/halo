@@ -889,7 +889,6 @@
         "other": "${count} 个信号"
       },
       "spotsCountFiltered": "显示 ${count} / ${total} 个信号",
-      "spotsDisabled": "此操作已禁用信号",
       "ageMinutes": "${minutes} 分钟",
       "callsOfNote": "有备注的呼号",
       "yourSpots": "您的信号",

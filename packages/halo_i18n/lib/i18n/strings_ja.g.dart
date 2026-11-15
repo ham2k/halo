@@ -1864,7 +1864,6 @@ class _Translations$operation$spots$ja extends Translations$operation$spots$en {
 		other: '${count}スポット',
 	);
 	@override String spotsCountFiltered({required Object total, required Object count}) => '${total}件中${count}件のスポットを表示';
-	@override String get spotsDisabled => 'このオペレーションではスポットが無効です';
 	@override String ageMinutes({required Object minutes}) => '${minutes}分';
 	@override String get callsOfNote => '注目のコール';
 	@override String get yourSpots => 'あなたのスポット';
@@ -5175,7 +5174,6 @@ extension on TranslationsJa {
 			'operation.spots.phoneAndCw' => '電話とCW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}スポット', other: '${count}スポット', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object total, required Object count}) => '${total}件中${count}件のスポットを表示',
-			'operation.spots.spotsDisabled' => 'このオペレーションではスポットが無効です',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes}分',
 			'operation.spots.callsOfNote' => '注目のコール',
 			'operation.spots.yourSpots' => 'あなたのスポット',
@@ -5468,9 +5466,9 @@ extension on TranslationsJa {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}：${notice}',
 			'loggingControls.info.noticeDupe' => '重複！',
 			'loggingControls.info.noticeNewBand' => '新しいバンド',
+			'loggingControls.info.noticeNewMode' => '新しいモード',
 			_ => null,
 		} ?? switch (path) {
-			'loggingControls.info.noticeNewMode' => '新しいモード',
 			'loggingControls.info.noticeNewDXCC' => '新しいDXCC',
 			'loggingControls.info.noticeNewState' => '新しい州',
 			'loggingControls.info.noticeNewProvince' => '新しい州/県',
@@ -5982,9 +5980,9 @@ extension on TranslationsJa {
 			'settings.peers.connected' => '接続済み',
 			'settings.peers.viaBluetooth' => 'Bluetooth経由',
 			'settings.peers.connecting' => '接続中…',
+			'settings.peers.syncing' => '同期中…',
 			_ => null,
 		} ?? switch (path) {
-			'settings.peers.syncing' => '同期中…',
 			'settings.peers.waitingForThem' => '相手のデバイスを待っています',
 			'settings.peers.notConnected' => '未接続',
 			'settings.peers.wantsToPair' => 'がこのオペレーションの共有を求めています',
@@ -6496,9 +6494,9 @@ extension on TranslationsJa {
 			'settings.station.advancedSettings' => '詳細設定',
 			'settings.station.placeholderSwr' => 'SWRの値',
 			'settings.station.placeholderSwrDescription' => '送信中にこの無線機がSWRメーターで報告する値。1.8を超えるとパネルが警告します。',
+			'settings.station.placeholderSwrInvalid' => '1以上の数値',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.placeholderSwrInvalid' => '1以上の数値',
 			'settings.station.keyerNone' => 'なし',
 			'settings.station.cwDialect' => 'CWキーイングの方式',
 			'settings.station.cwDialectDescription' => 'この無線機が受け付けるKYコマンドの形式。なしの場合、CAT経由のCWキーイングは行いません。',
@@ -7010,9 +7008,9 @@ extension on TranslationsJa {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '警告：このADIFには${calls}のQSOが含まれていますが、続行すると${station}としてインポートされます。',
 			'adifImport.stationCallJoin' => 'と',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件は日付がないためインポートできません', other: '${formatted}件は日付がないためインポートできません', ), 
+			'adifImport.activationFound' => ({required Object refs}) => 'このファイルには${refs}のアクティベーションが記録されています。',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.activationFound' => ({required Object refs}) => 'このファイルには${refs}のアクティベーションが記録されています。',
 			'adifImport.addActivation' => 'このオペレーションに追加',
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned}件中${written}件しか適用できませんでした。判断している間にログが変更されました。',
 			'adifImport.busy' => 'すでにインポートを実行中です。完了してから次のインポートを開始してください。',

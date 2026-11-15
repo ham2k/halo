@@ -1864,7 +1864,6 @@ class _Translations$operation$spots$nl extends Translations$operation$spots$en {
 		other: '${count} spots',
 	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => '${count} van ${total} spots getoond';
-	@override String get spotsDisabled => 'Spots uitgeschakeld voor deze activatie';
 	@override String ageMinutes({required Object minutes}) => '${minutes} minuten';
 	@override String get callsOfNote => 'Opmerkelijke roepnamen';
 	@override String get yourSpots => 'Jouw spots';
@@ -5175,7 +5174,6 @@ extension on TranslationsNl {
 			'operation.spots.phoneAndCw' => 'SSB & CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} spot', other: '${count} spots', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => '${count} van ${total} spots getoond',
-			'operation.spots.spotsDisabled' => 'Spots uitgeschakeld voor deze activatie',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minuten',
 			'operation.spots.callsOfNote' => 'Opmerkelijke roepnamen',
 			'operation.spots.yourSpots' => 'Jouw spots',
@@ -5468,9 +5466,9 @@ extension on TranslationsNl {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => 'Dupe!',
 			'loggingControls.info.noticeNewBand' => 'Nieuwe band',
+			'loggingControls.info.noticeNewMode' => 'Nieuwe mode',
 			_ => null,
 		} ?? switch (path) {
-			'loggingControls.info.noticeNewMode' => 'Nieuwe mode',
 			'loggingControls.info.noticeNewDXCC' => 'Nieuwe DXCC',
 			'loggingControls.info.noticeNewState' => 'Nieuwe staat',
 			'loggingControls.info.noticeNewProvince' => 'Nieuwe provincie',
@@ -5982,9 +5980,9 @@ extension on TranslationsNl {
 			'settings.peers.connected' => 'Verbonden',
 			'settings.peers.viaBluetooth' => 'via Bluetooth',
 			'settings.peers.connecting' => 'Verbinden…',
+			'settings.peers.syncing' => 'Synchroniseren…',
 			_ => null,
 		} ?? switch (path) {
-			'settings.peers.syncing' => 'Synchroniseren…',
 			'settings.peers.waitingForThem' => 'Wachten op het andere apparaat',
 			'settings.peers.notConnected' => 'Niet verbonden',
 			'settings.peers.wantsToPair' => 'wil deze activatie delen',
@@ -6496,9 +6494,9 @@ extension on TranslationsNl {
 			'settings.station.advancedSettings' => 'Geavanceerde instellingen',
 			'settings.station.placeholderSwr' => 'SWR-waarde',
 			'settings.station.placeholderSwrDescription' => 'Wat deze radio tijdens het zenden op zijn SWR-meter meldt. Boven 1,8 waarschuwt het paneel.',
+			'settings.station.placeholderSwrInvalid' => 'Een getal, 1 of meer',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.placeholderSwrInvalid' => 'Een getal, 1 of meer',
 			'settings.station.keyerNone' => 'Geen',
 			'settings.station.cwDialect' => 'CW-keyingdialect',
 			'settings.station.cwDialectDescription' => 'Welke vorm van het KY-commando deze radio gebruikt. Geen betekent geen CW-keying via CAT.',
@@ -7010,9 +7008,9 @@ extension on TranslationsNl {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Waarschuwing: deze ADIF bevat QSO\'s van ${calls}, maar ze worden geïmporteerd als ${station} als je doorgaat.',
 			'adifImport.stationCallJoin' => ' en ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} heeft geen datum en kan niet worden geïmporteerd', other: '${formatted} hebben geen datum en kunnen niet worden geïmporteerd', ), 
+			'adifImport.activationFound' => ({required Object refs}) => 'Dit bestand bevat een activatie van ${refs}.',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.activationFound' => ({required Object refs}) => 'Dit bestand bevat een activatie van ${refs}.',
 			'adifImport.addActivation' => 'Toevoegen aan deze activatie',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Slechts ${written} van ${planned} konden worden toegepast — het logboek veranderde terwijl je besliste.',
 			'adifImport.busy' => 'Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.',

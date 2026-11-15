@@ -1864,7 +1864,6 @@ class _Translations$operation$spots$fr extends Translations$operation$spots$en {
 		other: '${count} spots',
 	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => 'Affichage de ${count} spots sur ${total}';
-	@override String get spotsDisabled => 'Spots désactivés pour cette opération';
 	@override String ageMinutes({required Object minutes}) => '${minutes} minutes';
 	@override String get callsOfNote => 'Indicatifs notables';
 	@override String get yourSpots => 'Vos spots';
@@ -5175,7 +5174,6 @@ extension on TranslationsFr {
 			'operation.spots.phoneAndCw' => 'Phonie et CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} spot', other: '${count} spots', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Affichage de ${count} spots sur ${total}',
-			'operation.spots.spotsDisabled' => 'Spots désactivés pour cette opération',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutes',
 			'operation.spots.callsOfNote' => 'Indicatifs notables',
 			'operation.spots.yourSpots' => 'Vos spots',
@@ -5468,9 +5466,9 @@ extension on TranslationsFr {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer} : ${notice}',
 			'loggingControls.info.noticeDupe' => 'Doublon !',
 			'loggingControls.info.noticeNewBand' => 'Nouvelle bande',
+			'loggingControls.info.noticeNewMode' => 'Nouveau mode',
 			_ => null,
 		} ?? switch (path) {
-			'loggingControls.info.noticeNewMode' => 'Nouveau mode',
 			'loggingControls.info.noticeNewDXCC' => 'Nouveau DXCC',
 			'loggingControls.info.noticeNewState' => 'Nouvel état',
 			'loggingControls.info.noticeNewProvince' => 'Nouvelle province',
@@ -5982,9 +5980,9 @@ extension on TranslationsFr {
 			'settings.peers.connected' => 'Connecté',
 			'settings.peers.viaBluetooth' => 'via Bluetooth',
 			'settings.peers.connecting' => 'Connexion…',
+			'settings.peers.syncing' => 'Synchronisation…',
 			_ => null,
 		} ?? switch (path) {
-			'settings.peers.syncing' => 'Synchronisation…',
 			'settings.peers.waitingForThem' => 'En attente de l\'autre appareil',
 			'settings.peers.notConnected' => 'Non connecté',
 			'settings.peers.wantsToPair' => 'veut partager cette opération',
@@ -6496,9 +6494,9 @@ extension on TranslationsFr {
 			'settings.station.advancedSettings' => 'Paramètres avancés',
 			'settings.station.placeholderSwr' => 'Valeur de ROS',
 			'settings.station.placeholderSwrDescription' => 'Ce que cette radio indique sur son ROS-mètre pendant l\'émission. Au-dessus de 1,8 le panneau avertit.',
+			'settings.station.placeholderSwrInvalid' => 'Un nombre, 1 ou plus',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.placeholderSwrInvalid' => 'Un nombre, 1 ou plus',
 			'settings.station.keyerNone' => 'Aucun',
 			'settings.station.cwDialect' => 'Dialecte de manipulation CW',
 			'settings.station.cwDialectDescription' => 'Quelle forme de la commande KY cette radio accepte. Aucun signifie pas de manipulation CW via CAT.',
@@ -7010,9 +7008,9 @@ extension on TranslationsFr {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Attention : cet ADIF contient des QSOs de ${calls}, mais ils seront importés comme ${station} si vous continuez.',
 			'adifImport.stationCallJoin' => ' et ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} n\'a pas de date et ne peut pas être importé', other: '${formatted} n\'ont pas de date et ne peuvent pas être importés', ), 
+			'adifImport.activationFound' => ({required Object refs}) => 'Ce fichier contient une activation de ${refs}.',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.activationFound' => ({required Object refs}) => 'Ce fichier contient une activation de ${refs}.',
 			'adifImport.addActivation' => 'L\'ajouter à cette opération',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Seuls ${written} sur ${planned} ont pu être appliqués — le journal a changé pendant que vous décidiez.',
 			'adifImport.busy' => 'Une importation est déjà en cours. Attendez qu\'elle se termine avant d\'en lancer une autre.',

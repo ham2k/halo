@@ -1864,7 +1864,6 @@ class _Translations$operation$spots$ca extends Translations$operation$spots$en {
 		other: '${count} anuncis',
 	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => 'Mostrant ${count} de ${total} anuncis';
-	@override String get spotsDisabled => 'Anuncis desactivats en aquesta operació';
 	@override String ageMinutes({required Object minutes}) => '${minutes} minuts';
 	@override String get callsOfNote => 'Indicatius destacats';
 	@override String get yourSpots => 'Els teus anuncis';
@@ -5175,7 +5174,6 @@ extension on TranslationsCa {
 			'operation.spots.phoneAndCw' => 'Fonia i CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} anunci', other: '${count} anuncis', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Mostrant ${count} de ${total} anuncis',
-			'operation.spots.spotsDisabled' => 'Anuncis desactivats en aquesta operació',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minuts',
 			'operation.spots.callsOfNote' => 'Indicatius destacats',
 			'operation.spots.yourSpots' => 'Els teus anuncis',
@@ -5468,9 +5466,9 @@ extension on TranslationsCa {
 			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => 'Duplicat!',
 			'loggingControls.info.noticeNewBand' => 'Banda Nova',
+			'loggingControls.info.noticeNewMode' => 'Mode Nou',
 			_ => null,
 		} ?? switch (path) {
-			'loggingControls.info.noticeNewMode' => 'Mode Nou',
 			'loggingControls.info.noticeNewDXCC' => 'DXCC Nou',
 			'loggingControls.info.noticeNewState' => 'Estat Nou',
 			'loggingControls.info.noticeNewProvince' => 'Província Nova',
@@ -5982,9 +5980,9 @@ extension on TranslationsCa {
 			'settings.peers.connected' => 'Connectat',
 			'settings.peers.viaBluetooth' => 'per Bluetooth',
 			'settings.peers.connecting' => 'Connectant…',
+			'settings.peers.syncing' => 'Sincronitzant…',
 			_ => null,
 		} ?? switch (path) {
-			'settings.peers.syncing' => 'Sincronitzant…',
 			'settings.peers.waitingForThem' => 'Esperant l\'altre dispositiu',
 			'settings.peers.notConnected' => 'No connectat',
 			'settings.peers.wantsToPair' => 'vol compartir aquesta operació',
@@ -6496,9 +6494,9 @@ extension on TranslationsCa {
 			'settings.station.advancedSettings' => 'Configuració avançada',
 			'settings.station.placeholderSwr' => 'Lectura de ROE',
 			'settings.station.placeholderSwrDescription' => 'El que indica el mesurador de ROE d\'aquesta ràdio mentre transmet. Per sobre d\'1,8 el panell avisa.',
+			'settings.station.placeholderSwrInvalid' => 'Un nombre, 1 o més',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.placeholderSwrInvalid' => 'Un nombre, 1 o més',
 			'settings.station.keyerNone' => 'Cap',
 			'settings.station.cwDialect' => 'Dialecte de manipulació CW',
 			'settings.station.cwDialectDescription' => 'Quina forma de l\'ordre KY accepta aquesta ràdio. Cap vol dir sense manipulació CW per CAT.',
@@ -7010,9 +7008,9 @@ extension on TranslationsCa {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Avís: aquest ADIF té QSOs de ${calls}, però s\'importaran com a ${station} si continues.',
 			'adifImport.stationCallJoin' => ' i ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} no té data i no es pot importar', other: '${formatted} no tenen data i no es poden importar', ), 
+			'adifImport.activationFound' => ({required Object refs}) => 'Aquest fitxer registra una activació de ${refs}.',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.activationFound' => ({required Object refs}) => 'Aquest fitxer registra una activació de ${refs}.',
 			'adifImport.addActivation' => 'Afegeix-la a aquesta operació',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Només s\'han pogut aplicar ${written} de ${planned} — el registre ha canviat mentre decidies.',
 			'adifImport.busy' => 'Ja hi ha una importació en curs. Espera que acabi abans de començar-ne una altra.',

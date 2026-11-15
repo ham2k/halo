@@ -29,6 +29,8 @@ import '../../services/spot_board.dart';
 import '../../services/spot_board_service.dart';
 import '../../services/spot_marks_service.dart';
 import '../../services/spots_service.dart';
+import '../../services/spotting_settings.dart';
+import '../list_update_hold.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
 part 'spots_panel_filter_state.dart';
@@ -65,6 +67,12 @@ List<Map<String, dynamic>> _refsOf(Map<String, dynamic> spot) {
       if (ref is Map) ref.cast<String, dynamic>(),
   ];
 }
+
+/// The station and frequency a row of the list stands for, which a re-post
+/// keeps while bringing a new time and maybe a new comment. Not unique: the
+/// merge keeps two spots of one station on one frequency far enough apart in
+/// time as two rows.
+String _rowKeyOf(Map<String, dynamic> spot) => '${_callOf(spot)}|${_freqOf(spot)}';
 
 int _timeOf(Map<String, dynamic> spot) => asSpotNum(asSpotMap(spot['spot'])?['timeInMillis'])?.toInt() ?? 0;
 
@@ -395,6 +403,14 @@ double? spotScrollTarget({
   return clamped;
 }
 
+/// Opens a [SpotsPanel]'s filter dialog from outside the panel — its tab's
+/// settings button, which the dock builds apart from the pane.
+class SpotsPanelController {
+  Future<void> Function()? _openFilters;
+
+  Future<void> openFilters() => _openFilters?.call() ?? Future.value();
+}
+
 class SpotsPanel extends StatefulWidget {
   final Operation operation;
   final HaLoServices services;
@@ -471,6 +487,8 @@ class SpotsPanel extends StatefulWidget {
   /// options say.
   final bool chasing;
 
+  final SpotsPanelController? controller;
+
   const SpotsPanel({
     super.key,
     required this.operation,
@@ -485,11 +503,25 @@ class SpotsPanel extends StatefulWidget {
     this.qsos = const [],
     this.callInfo,
     this.chasing = false,
+    this.controller,
   });
 
   @override
   State<SpotsPanel> createState() => _SpotsPanelState();
 }
+
+/// The sections the Spots panel lays its rows out in, top to bottom — see
+/// `_SpotsList._sectionsOf`.
+typedef _SpotSections = List<({String key, List<Map<String, dynamic>> spots})>;
+
+/// The rows a board makes on the Spots panel — see [_SpotsPanelState._rowsOf].
+typedef _SpotRows = ({
+  ({List<Map<String, dynamic>> filtered, List<Map<String, dynamic>> selfSpots, int total}) summary,
+  List<Map<String, dynamic>> ordered,
+  List<Map<String, dynamic>> unhidden,
+  int hiddenCount,
+  Set<String> hiddenBy,
+});
 
 class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
   Map<String, String> _sourceNames = {};
@@ -502,11 +534,55 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
   /// word from the bar that counts them.
   bool _showHidden = false;
 
-  @override
   SpotsService get _spots => widget.services.spots;
-  Map<String, List<Map<String, dynamic>>> get _spotsBySource => _spots.spotsBySource;
+
+  /// Holds the list still while the operator is using it — see
+  /// [ListUpdateHold]. While it holds, [_held] is the list as it stood when
+  /// the hold started, or when what waited last went in: its rows, in their
+  /// order and sections, whatever moved since — spots arriving or ageing
+  /// out, verdicts, call notes, assistants' marks. Each row still shows its
+  /// spot as it is now ([_withLiveContent]); [_held]'s `local` is what
+  /// [_localKeys] were, as a change there is the operator's own and never
+  /// waits.
+  final _hold = ListUpdateHold();
+  ({_SpotRows rows, _SpotSections sections, List<String> local})? _held;
+
+  /// The list as the last build put it on screen: what a hold starting
+  /// keeps, and what a list going over to the live one is pinned by.
+  ({_SpotRows rows, _SpotSections sections})? _showing;
+
+  /// Set when the list goes over to the live one: what was on screen, for
+  /// the next build to keep the row at its top in place by — see [_inView].
+  _SpotSections? _pinFrom;
+
+  /// Where the station the operator is working stands, by its local spots.
+  List<String> get _localKeys => [for (final spot in _spots.spotsBySource[localSpotSource] ?? const <Map<String, dynamic>>[]) _rowKeyOf(spot)];
+
+  /// The board the list shows. Only the local spots for an operation without
+  /// assistance: it asks no spot source (see `SpotBoardService.spotsAllowed`),
+  /// and what the sources' board still holds came from another operation.
+  Map<String, List<Map<String, dynamic>>> get _spotsBySource {
+    final live = _spots.spotsBySource;
+    if (widget.operation.assistance) return live;
+    return {localSpotSource: ?live[localSpotSource]};
+  }
+
+  /// Whether the Local Spots setting is on, kept to rebuild when it turns:
+  /// the empty list of an operation without assistance says which.
   @override
-  bool get _loading => !_spots.loaded;
+  late bool _localSpotsOn = SpottingSettings.localSpots(widget.services.settings);
+
+  void _onSettingsChanged() {
+    final on = SpottingSettings.localSpots(widget.services.settings);
+    if (on != _localSpotsOn && mounted) setState(() => _localSpotsOn = on);
+  }
+
+  List<Map<String, dynamic>> _listed(_SpotRows rows) => _showHidden ? rows.ordered : rows.unhidden;
+
+  @override
+  /// An operation without assistance never fetches, so it is never waiting
+  /// for a first fetch either.
+  bool get _loading => widget.operation.assistance && !_spots.loaded;
   String? get _error => _spots.error?.toString();
 
   /// The filters the operator picked, and the VFO band/mode and band list
@@ -524,7 +600,7 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
   Map<String, SpotScore> get _spotScores => _board.scoresFor(widget.operation.uuid) ?? const {};
 
   @override
-  final _scrollController = ScrollController();
+  final ShiftableScrollController _scrollController = ShiftableScrollController();
 
   /// Identifies the current QSO's row, for the reveal's measured
   /// correction, and the calibration row, for its row-height reading — see
@@ -594,6 +670,9 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
     super.initState();
     widget.visible.addListener(_onVisibilityChanged);
     _filterState.addListener(_onFiltersChanged);
+    widget.services.settings.addListener(_onSettingsChanged);
+    _hold.addListener(_onHoldChanged);
+    widget.controller?._openFilters = _openFilterDialog;
     // The panel is a consumer, not the owner: the Operation View already
     // holds the board — and through it the spots — so the `spot-history`
     // lookup and extension panels have them whether or not this panel was
@@ -649,7 +728,10 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
   @override
   void dispose() {
     widget.services.extensions.runtimeGeneration.removeListener(_loadSourceNames);
+    if (widget.controller?._openFilters == _openFilterDialog) widget.controller!._openFilters = null;
+    _hold.dispose();
     _filterState.dispose();
+    widget.services.settings.removeListener(_onSettingsChanged);
     _board.removeListener(_onBoardChanged);
     widget.services.extensions.spotMarks.removeListener(_onBoardChanged);
     widget.visible.removeListener(_onVisibilityChanged);
@@ -682,8 +764,48 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
     });
   }
 
+  /// The operator changed what the list shows, so it shows the board as it
+  /// stands — holding the old one back would answer their change with stale
+  /// rows.
   void _onFiltersChanged() {
+    _letGo();
     if (mounted) setState(() {});
+  }
+
+  /// Ends a hold for a change of the operator's to what the list shows,
+  /// unpinned: the row at the top of the old list means nothing in the new
+  /// one.
+  void _letGo() {
+    _held = null;
+    _hold.release();
+  }
+
+  /// A hold starting keeps the list on screen; one ending lets the list
+  /// catch up with everything that waited.
+  void _onHoldChanged() {
+    if (_hold.held) {
+      // Nothing built yet: the next build holds what it puts on screen.
+      if (_showing case final showing?) _held = (rows: showing.rows, sections: showing.sections, local: _localKeys);
+    } else {
+      _catchUp();
+    }
+  }
+
+  /// Lets the list go over to the live one at its next build, keeping the
+  /// row at its top in place. The toast's Refresh too, which keeps holding
+  /// from there — the operator just tapped the list, so they are still
+  /// using it.
+  void _catchUp() {
+    if (_held == null) return;
+    _pinFrom = _showing?.sections;
+    _held = null;
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Future<void> _pullRefresh() async {
+    if (widget.operation.assistance) await _spots.refresh();
+    if (mounted) _hold.release();
   }
 
   /// The board moved — a fetch settled, verdicts or call info arrived — so
@@ -695,6 +817,9 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
   @override
   void didUpdateWidget(SpotsPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Another operation, or this one's rules changed: rows held from before
+    // may be ones it must not show.
+    if (widget.operation.uuid != oldWidget.operation.uuid || widget.operation.assistance != oldWidget.operation.assistance) _letGo();
     if (widget.logRevision != oldWidget.logRevision || !identical(widget.operation, oldWidget.operation)) {
       _boardView.show(widget.operation, widget.qsos, logRevision: widget.logRevision, chasing: widget.chasing);
     }
@@ -709,6 +834,10 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
     if (widget.visible != oldWidget.visible) {
       oldWidget.visible.removeListener(_onVisibilityChanged);
       widget.visible.addListener(_onVisibilityChanged);
+    }
+    if (widget.controller != oldWidget.controller) {
+      if (oldWidget.controller?._openFilters == _openFilterDialog) oldWidget.controller!._openFilters = null;
+      widget.controller?._openFilters = _openFilterDialog;
     }
   }
 
@@ -796,13 +925,18 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
   }
 
   /// The filter-row refresh button's handler: drives a fetch while showing a
-  /// spinner in place of the button's icon. Pull-to-refresh calls the cache
-  /// directly — the RefreshIndicator draws its own spinner.
+  /// spinner in place of the button's icon. Pull-to-refresh is
+  /// [_pullRefresh] — the RefreshIndicator draws its own spinner.
+  ///
+  /// Lets a held list go once the fetch is in, not before: the pointer
+  /// moving on to the list while it runs would start a hold that keeps back
+  /// the very spots the operator asked for.
   Future<void> _refresh() async {
     if (_refreshing) return;
     setState(() => _refreshing = true);
     try {
       await _spots.refresh();
+      if (mounted) _hold.release();
       // A press that was skipped for being offline has to say so. The
       // status-bar offline icon is a passive state indicator somewhere else
       // on screen; it is not an answer to this button.
@@ -824,6 +958,13 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
       if (emoji != null) return emoji;
     }
     return null;
+  }
+
+  /// A change of the operator's to what the list shows that does not go
+  /// through [_filterState], applied with the same release.
+  void _changeList(void Function() change) {
+    _letGo();
+    change();
   }
 
   Future<void> _openFilterDialog() {
@@ -853,15 +994,19 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
         sortBy: _sortBy,
         offersWanted: widget.chasing,
         alertingOnly: widget.chasing ? widget.services.chase.alertingOnly : null,
-        onAlertingOnlyChanged: widget.chasing ? widget.services.chase.setAlertingOnly : null,
+        onAlertingOnlyChanged: widget.chasing ? (value) => _changeList(() => widget.services.chase.setAlertingOnly(value)) : null,
         groupByBand: filters.groupByBand,
         groupCallsWithNotes: filters.groupCallsWithNotes,
-        sources: spotsFilterSourceList(
-          installed: _sourceNames.keys,
-          withSpots: _spotsBySource.keys,
-          unavailable: _spots.unavailableSources,
-          failed: _spots.failedSources,
-        ),
+        // None without assistance: the operation asks no source, and what
+        // they last said was to another operation.
+        sources: widget.operation.assistance
+            ? spotsFilterSourceList(
+                installed: _sourceNames.keys,
+                withSpots: _spotsBySource.keys,
+                unavailable: _spots.unavailableSources,
+                failed: _spots.failedSources,
+              )
+            : const [],
         sourceNames: {..._sourceNames, localSpotSource: t.operation.spots.filters.sourceLocal},
         sourceSpotCounts: _spotsBySource.map((key, spots) => MapEntry(key, spots.length)),
         unavailableSources: _spots.unavailableSources.toSet(),
@@ -872,7 +1017,7 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
         onBandChanged: filters.setBandFilter,
         onModeChanged: filters.setModeFilter,
         onAgeChanged: filters.setAgeMinutes,
-        onSortByChanged: widget.chasing ? widget.services.chase.setSpotsSortBy : filters.setSortBy,
+        onSortByChanged: widget.chasing ? (value) => _changeList(() => widget.services.chase.setSpotsSortBy(value)) : filters.setSortBy,
         onGroupByBandChanged: filters.setGroupByBand,
         onGroupCallsWithNotesChanged: filters.setGroupCallsWithNotes,
         onToggleSource: filters.toggleSource,
@@ -888,31 +1033,9 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
     final vfo = widget.services.radio.vfoA;
     _markings.clear();
 
-    // The board asks no spot source for this operation (see
-    // `SpotBoardService.spotsAllowed`), and what it still holds came from
-    // another one — so no list at all, rather than those spots.
-    if (!widget.operation.assistance) {
-      _reveal.forget();
-      return Column(
-        children: [
-          _SpotsFilterPill(
-            bandLabel: spotsFilterBandPillLabel(t, _filterState.bandFilter, vfo.band),
-            modeLabel: spotsFilterModePillLabel(t, _filterState.modeFilter, superModeForMode(vfo.mode)),
-            ageMinutes: _filterState.ageMinutes,
-            filteredCount: 0,
-            totalCount: 0,
-            onTap: _openFilterDialog,
-            onRefresh: _refresh,
-            refreshing: false,
-            loading: false,
-            disabled: true,
-          ),
-          const Spacer(),
-        ],
-      );
-    }
-
-    if (_error != null) {
+    final assistance = widget.operation.assistance;
+    // An error is a source's, and an operation without assistance asks none.
+    if (_error != null && assistance) {
       // There is no list while this shows, so nothing is revealed on it.
       _reveal.forget();
       return Center(
@@ -920,13 +1043,87 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
       );
     }
 
+    final live = _rowsOf(_spotsBySource);
+    final (:rows, :sections, :pending) = _shownRows(live, _sectionsOf(_listed(live), live.summary.selfSpots));
+    _showing = (rows: rows, sections: sections);
+    final hiddenCount = rows.hiddenCount;
+    // Showing them is an answer to the bar, which goes with the last of them:
+    // spots hidden after that are hidden until the operator asks again.
+    if (hiddenCount == 0) _showHidden = false;
+
+    return Column(
+      children: [
+        _SpotsFilterPill(
+          bandLabel: spotsFilterBandPillLabel(t, _filterState.bandFilter, vfo.band),
+          modeLabel: spotsFilterModePillLabel(t, _filterState.modeFilter, superModeForMode(vfo.mode)),
+          ageMinutes: _filterState.ageMinutes,
+          filteredCount: _listed(rows).length,
+          totalCount: rows.summary.total,
+          onTap: _openFilterDialog,
+          onRefresh: assistance ? _refresh : null,
+          refreshing: _refreshing,
+          loading: _loading,
+        ),
+        if (hiddenCount > 0)
+          _HiddenSpotsBar(
+            count: hiddenCount,
+            by: [for (final key in rows.hiddenBy) widget.services.extensions.extensionInfo(key)?.nameFor(LocaleSettings.currentLocale.languageCode) ?? key]
+              ..sort(),
+            showing: _showHidden,
+            onToggle: () => _changeList(() => setState(() => _showHidden = !_showHidden)),
+          ),
+        // Clears the bottom safe area (home indicator) itself — the status
+        // footer doesn't reserve it globally; the panel fills behind.
+        Expanded(
+          child: SafeArea(
+            top: false,
+            left: false,
+            right: false,
+            child: ListUpdateHoldDetector(
+              hold: _hold,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    // A list scrolled while it holds has other rows in view,
+                    // and other updates for the toast to count.
+                    child: NotificationListener<ScrollEndNotification>(
+                      onNotification: (_) {
+                        if (_held != null) setState(() {});
+                        return false;
+                      },
+                      child: _buildSpotsList(context, sections),
+                    ),
+                  ),
+                  Positioned(
+                    left: Space.md,
+                    right: Space.md,
+                    bottom: Space.lg,
+                    child: Center(
+                      child: PendingUpdatesToast(
+                        count: pending,
+                        label: (count) => t.operation.spots.pendingUpdates(count: count),
+                        onApply: _catchUp,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// The rows [board] makes, through the filters, the Chasing view's order and
+  /// what the assistants hid — which leaves the list, but not without a word:
+  /// the bar under the filter says how many, and by whom, and shows them.
+  _SpotRows _rowsOf(Map<String, List<Map<String, dynamic>>> board) {
     final summary = _filterState.summarize(
-      _filterState.mergedSpots(_spotsBySource, entityOf: _entityOf),
+      _filterState.mergedSpots(board, entityOf: _entityOf),
       ourBaseCalls: _ourBaseCalls,
       continentOf: (c) => _callNotes[c]?.continent,
     );
-    // What an assistant hid leaves the list, but not without a word: the
-    // bar under the filter says how many, and by whom, and shows them.
     final ordered = _chaseOrder(summary.filtered);
     final hiddenBy = <String>{};
     final unhidden = <Map<String, dynamic>>[];
@@ -938,36 +1135,139 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
         hiddenBy.addAll(by);
       }
     }
-    final hiddenCount = ordered.length - unhidden.length;
-    // Showing them is an answer to the bar, which goes with the last of them:
-    // spots hidden after that are hidden until the operator asks again.
-    if (hiddenCount == 0) _showHidden = false;
-    final filtered = _showHidden ? ordered : unhidden;
+    return (summary: summary, ordered: ordered, unhidden: unhidden, hiddenCount: ordered.length - unhidden.length, hiddenBy: hiddenBy);
+  }
 
-    return Column(
-      children: [
-        _SpotsFilterPill(
-          bandLabel: spotsFilterBandPillLabel(t, _filterState.bandFilter, vfo.band),
-          modeLabel: spotsFilterModePillLabel(t, _filterState.modeFilter, superModeForMode(vfo.mode)),
-          ageMinutes: _filterState.ageMinutes,
-          filteredCount: filtered.length,
-          totalCount: summary.total,
-          onTap: _openFilterDialog,
-          onRefresh: _refresh,
-          refreshing: _refreshing,
-          loading: _loading,
-        ),
-        if (hiddenCount > 0)
-          _HiddenSpotsBar(
-            count: hiddenCount,
-            by: [for (final key in hiddenBy) widget.services.extensions.extensionInfo(key)?.nameFor(LocaleSettings.currentLocale.languageCode) ?? key]..sort(),
-            showing: _showHidden,
-            onToggle: () => setState(() => _showHidden = !_showHidden),
-          ),
-        // Clears the bottom safe area (home indicator) itself — the status
-        // footer doesn't reserve it globally; the panel fills behind.
-        Expanded(child: SafeArea(top: false, left: false, right: false, child: _buildSpotsList(context, filtered, summary.selfSpots))),
-      ],
-    );
+  /// The rows and sections the list shows, and how many updates wait behind
+  /// the toast, given the [live] list.
+  ///
+  /// While the list holds, it goes over to the live one anyway when that
+  /// changes no row's place in view ([_inView]) — a spot arriving below the
+  /// fold, or above the view while the list is scrolled down, with the
+  /// scroll following it — or when the station the operator is working moves
+  /// ([_localKeys]). Holding back the first would only make the list staler
+  /// for nothing; the second is the operator's own doing. Nor does an empty
+  /// list hold: it has no row to keep still.
+  ({_SpotRows rows, _SpotSections sections, int pending}) _shownRows(_SpotRows live, _SpotSections liveSections) {
+    var pinFrom = _pinFrom;
+    _pinFrom = null;
+    if (_held case final held?) {
+      final sections = _withLiveContent(held.sections, live);
+      // A list with no rows has none to move under the pointer.
+      if (listEquals(held.local, _localKeys) && held.sections.any((section) => section.spots.isNotEmpty)) {
+        final view = _inView(sections, liveSections);
+        if (view.count > 0) return (rows: held.rows, sections: sections, pending: view.count);
+      }
+      pinFrom = sections;
+    }
+    if (pinFrom != null) {
+      final shift = _inView(pinFrom, liveSections).shift;
+      if (shift != 0) _scrollController.shiftBy(shift);
+    }
+    if (_hold.held) _held = (rows: live, sections: liveSections, local: _localKeys);
+    return (rows: live, sections: liveSections, pending: 0);
+  }
+
+  /// [sections] in their own order, each spot as [live] has it now: a spot
+  /// re-posted with a new comment or time, or newly struck as worked,
+  /// changes in place. A spot [live] no longer lists stays as it was. Of
+  /// two rows of one station on one frequency ([_rowKeyOf]), each is
+  /// matched by its time, as neither can say which of the live ones it is.
+  _SpotSections _withLiveContent(_SpotSections sections, _SpotRows live) {
+    final current = <String, List<Map<String, dynamic>>>{};
+    for (final spot in [...live.summary.selfSpots, ...live.ordered]) {
+      final same = current.putIfAbsent(_rowKeyOf(spot), () => []);
+      if (!same.any((other) => identical(other, spot))) same.add(spot);
+    }
+    Map<String, dynamic> now(Map<String, dynamic> spot) => switch (current[_rowKeyOf(spot)]) {
+      [final only] => only,
+      final same? => same.firstWhere((other) => _timeOf(other) == _timeOf(spot), orElse: () => spot),
+      null => spot,
+    };
+    return [
+      for (final section in sections) (key: section.key, spots: [for (final spot in section.spots) now(spot)]),
+    ];
+  }
+
+  /// What showing [live] instead of [held] would do to the part of the list
+  /// in view: how far the scroll has to follow it ([shift]), and how many
+  /// rows in view it adds, takes away or reorders ([count]) — zero when it
+  /// leaves their order alone there. A row that only changes, even in
+  /// height, is not counted: [held] shows it as it is now
+  /// ([_withLiveContent]).
+  ///
+  /// The list is pinned by its topmost visible row that both lists have:
+  /// whatever changes above it, out of sight, the scroll moves by just as
+  /// much. At the very top nothing is out of sight, so a row arriving there
+  /// is one in view. "In view" runs to a quarter of a view below the bottom,
+  /// as slack for row heights the layout declares rather than measures.
+  ({double shift, int count}) _inView(_SpotSections held, _SpotSections live) {
+    final was = _layoutOf(held);
+    final would = _layoutOf(live);
+    final position = _scrollController.hasClients ? _scrollController.position : null;
+    final measured = position != null && position.hasPixels && position.hasViewportDimension;
+    // No list on screen to measure against — an empty one — and everything
+    // is in view.
+    final pixels = measured ? position.pixels : 0.0;
+    final top = pixels <= 0 ? double.negativeInfinity : pixels + _reveal.sectionHeaderExtent;
+    final bottom = measured ? pixels + position.viewportDimension * 1.25 : double.infinity;
+    bool inView(({String key, double top, double height, bool row}) entry, double shift) =>
+        entry.top + entry.height > top + shift && entry.top < bottom + shift;
+
+    var shift = 0.0;
+    if (pixels > 0) {
+      final liveIndex = <String, int>{};
+      for (final (index, entry) in would.indexed) {
+        liveIndex.putIfAbsent(entry.key, () => index);
+      }
+      for (final entry in was) {
+        if (!inView(entry, 0)) continue;
+        if (liveIndex[entry.key] case final index?) {
+          shift = would[index].top - entry.top;
+          break;
+        }
+      }
+    }
+    final wasInView = [
+      for (final entry in was)
+        if (inView(entry, 0)) entry,
+    ];
+    final wouldInView = [
+      for (final entry in would)
+        if (inView(entry, shift)) entry,
+    ];
+
+    // Arriving in view or leaving it is an update only for a row new to the
+    // list or gone from it: one only pushed across the edge of the view by
+    // another is not news of its own.
+    final wasKeys = {for (final entry in was) entry.key};
+    final wouldKeys = {for (final entry in would) entry.key};
+    // Spots, not headers: a station on a band new to the list is one update.
+    final arriving = wouldInView.where((entry) => entry.row && !wasKeys.contains(entry.key)).length;
+    final leaving = wasInView.where((entry) => entry.row && !wouldKeys.contains(entry.key)).length;
+    final wasIndex = {for (final (index, entry) in wasInView.indexed) entry.key: index};
+    final common = [for (final entry in wouldInView) ?wasIndex[entry.key]];
+    final moved = common.length - _longestIncreasingRun(common);
+    return (shift: shift, count: arriving + leaving + moved);
+  }
+
+  /// The length of the longest strictly increasing subsequence of [values]:
+  /// the rows that kept their order, when [values] are their old places in
+  /// their new order.
+  static int _longestIncreasingRun(List<int> values) {
+    final tails = <int>[];
+    for (final value in values) {
+      var low = 0, high = tails.length;
+      while (low < high) {
+        final mid = (low + high) >> 1;
+        if (tails[mid] < value) {
+          low = mid + 1;
+        } else {
+          high = mid;
+        }
+      }
+      low == tails.length ? tails.add(value) : tails[low] = value;
+    }
+    return tails.length;
   }
 }
