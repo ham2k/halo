@@ -36,6 +36,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 22 | the band scope's `window` and `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed one's `width: 'box'`, a zoom's `commit` of its middle as a pan, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click; `radio.compression`; `cells`, the `grid` and `cell` layout nodes, and a layout up to 12 deep and 512 nodes; a slider's or knob's `invertScroll`; named `sources` for radios, rotators and antenna switches, a band scope's `radio` naming one; a layer's `clipX` and `clipY`, and a binding's `hold` |
 | 23 | the rotator map control (`rotatorMap`), a `nativeButton`'s `icon` variant, an event's `bearing` and `km`, and a binding's `offset` |
 | 25 | the map control (`map`), an event's `lat` and `lon`, and the `reset` gesture; an event answer's `patch` and `host.updateScene`, changing a scene in place; `image` layers and a map's `images` |
+| 26 | the map's `globe` projection, its `depth` and `atmosphere` |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -1026,14 +1027,14 @@ like a native control, it takes:
   `patterson` (between those two, the high latitudes kept from swelling),
   `azimuthal` (azimuthal equidistant: every straight line out of the middle
   is a great circle, and its edge is the far side of the Earth),
-  `robinson`, or (API 25) `globe`: the Earth as a globe seen from afar,
+  `robinson`, or (API 26) `globe`: the Earth as a globe seen from afar,
   its far half hidden, shaded, a drag turning it with north kept up, the
   place in the view's middle facing the viewer.
-- `depth`, 0 to 2 (API 25): how strongly the globe's face is shaded to
+- `depth`, 0 to 2 (API 26): how strongly the globe's face is shaded to
   look round, its light and its shade scaled together: 1, the default, as
   the host draws it, 0 flat, 2 twice as strong. The other projections take
   none.
-- `atmosphere` (API 25): the air round the globe, a glow fading out past
+- `atmosphere` (API 26): the air round the globe, a glow fading out past
   its rim and a band of it just inside. `false` draws none; omitted or
   `true`, the host's; `{ color, width }`, the scene's own: `color` as
   `#RRGGBB`, or `#AARRGGBB` for how strong it is at the rim, and `width`,

@@ -870,7 +870,7 @@ the operator's zoom and pan kept per placement in the key-value store.
 
 A map (`map`, extension API 25) is the world in Web Mercator,
 equirectangular, Miller's, Patterson's, azimuthal equidistant or Robinson's
-projection, or as a globe (orthographic), with markers, great-circle lines, lines through points and
+projection, or as a globe (orthographic, extension API 26), with markers, great-circle lines, lines through points and
 distance circles the scene places by latitude and longitude, labelled
 where the scene says. The public contract is in
 [panel scenes](../extensions/scenes.md#map) and `PanelSceneMap`. It needs no

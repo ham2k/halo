@@ -1199,20 +1199,22 @@ export interface PanelSceneMapCircle extends PanelSceneMapItem {
 export interface PanelSceneMap {
   /**
    * `mercator` (Web Mercator, the default), `equirectangular` (plate carrée), `miller`, `patterson`,
-   * `azimuthal` (equidistant), `robinson`, or `globe`: the Earth seen from afar, its far half
-   * hidden, turned by a drag with north kept up.
+   * `azimuthal` (equidistant), `robinson`, or `globe` (extension API 26): the Earth seen from afar,
+   * its far half hidden, turned by a drag with north kept up.
    */
   projection?: "mercator" | "equirectangular" | "miller" | "patterson" | "azimuthal" | "robinson" | "globe"
   /**
    * How strongly the globe's face is shaded to look round, 0 to 2: its light and its shade, scaled
-   * together. 1, the default, as the host draws it; 0, flat. The other projections take none.
+   * together. 1, the default, as the host draws it; 0, flat. The other projections take none. Extension
+   * API 26.
    */
   depth?: number
   /**
    * The air round the globe, a glow fading out past its rim and a band of it just inside. `false`,
    * none; omitted or `true`, the host's; an object, the scene's own: `color` as `#RRGGBB`, or
    * `#AARRGGBB` for how strong it is at the rim, and `width`, 0 to 0.5, how far past the rim it
-   * reaches as a share of the globe's radius (0.08). The other projections take none.
+   * reaches as a share of the globe's radius (0.08). The other projections take none. Extension
+   * API 26.
    */
   atmosphere?: boolean | { color?: string; width?: number }
   /**
