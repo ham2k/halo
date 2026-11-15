@@ -57,6 +57,7 @@ import 'operation/spots_panel.dart';
 import 'operation/summaries/operation_summaries_panel.dart';
 import 'operation/summaries/operation_summaries_settings.dart';
 import 'tester_overlay.dart' show testerOverlayCovering;
+import 'app_shell/system_back.dart';
 import 'voice_messages_dialog.dart' show computerVoiceProblemText;
 import 'operation/positions_panel.dart';
 import 'operation/read_only_while_deleted.dart';
@@ -485,6 +486,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // widget, because the keys must work whichever field has focus, and the
     // main key handler (main.dart) only looks at modified chords.
     HardwareKeyboard.instance.addHandler(_onCwKeyEvent);
+    systemBack.addHandler(_onSystemBack);
     widget.services.cat.messageKeyRequests.addListener(_onMessageKeyRequest);
     widget.services.cat.pttKeys.addTarget(_pttTarget);
     widget.services.cat.keyer('A').voicedWords?.attach(_voiceRender, operatorCall: _voiceOperatorCall, refused: _voiceRefused);
@@ -743,6 +745,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onCwKeyEvent);
+    systemBack.removeHandler(_onSystemBack);
     widget.services.cat.messageKeyRequests.removeListener(_onMessageKeyRequest);
     widget.services.cat.pttKeys.removeTarget(_pttTarget);
     widget.services.cat.keyer('A').voicedWords?.detach(_voiceRender);

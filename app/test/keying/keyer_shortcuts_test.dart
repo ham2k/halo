@@ -2,18 +2,24 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The keyer's chords, as the operation view hears them: ⌥1-⌥8 for the
-// function keys a laptop or tablet keyboard lacks, and ⌥K for keyboard mode.
+// function keys a laptop or tablet keyboard lacks, ⌥K for keyboard mode, and
+// Stop sending on a key of the operator's choosing — and the system back, which
+// a tablet keyboard may send from its Escape key.
 // Against a real CatService with the placeholder radio in CW, which runs the
 // real send queue, so what is asserted is what the queue was handed.
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/app_shell/system_back.dart';
 import 'package:ham2k_logger/views/keyer_area.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
@@ -87,6 +93,16 @@ void main() {
     await tester.sendKeyEvent(key);
     await tester.sendKeyUpEvent(modifier);
     await tester.pump(const Duration(milliseconds: 100));
+  }
+
+  /// What the engine sends for a system back press.
+  Future<void> systemBackPress(WidgetTester tester) async {
+    await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+      'flutter/navigation',
+      const JSONMethodCodec().encodeMethodCall(const MethodCall('popRoute')),
+      (_) {},
+    );
+    await tester.pumpAndSettle();
   }
 
   // Keyboard mode's field is in the keyer control's panel, which ⌥K opens.
@@ -167,6 +183,66 @@ void main() {
     expect(typingField(), findsOneWidget, reason: 'sanity: the focus is in keyboard mode\'s field');
     await chord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.digit3);
     expect(services.cat.cwSending, isFalse);
+    await unmount(tester);
+  });
+
+  testWidgets('Stop sending, bound to a key, stops a message as Escape does', (tester) async {
+    // For a keyboard whose Escape never reaches the app: on a Samsung tablet
+    // One UI can make it Home, and the operator's only way to stop a message
+    // from the keyboard is a key they bind themselves.
+    keyBindings.value = const KeyBindingOverrides().withCommand(keyerStopCommandId, [KeyChord.parse('F12')!]).resolve();
+    addTearDown(() => keyBindings.value = LegacyKeyBindings());
+    await pumpOperation(tester);
+    await tester.sendKeyEvent(LogicalKeyboardKey.f1);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(services.cat.cwSending, isTrue, reason: 'sanity: F1 is sending');
+    await tester.sendKeyEvent(LogicalKeyboardKey.f12);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(services.cat.cwSending, isFalse);
+    await unmount(tester);
+  });
+
+  testWidgets('a system back stops a message before it closes the view', (tester) async {
+    // Many tablet keyboards send Back from their Escape key. Unclaimed, the
+    // press pops the operation with the message still keying and the
+    // operator no longer looking at the keyer to stop it.
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final node = await services.cat.addNode(
+      typeKey: 'placeholder-radio',
+      name: 'Bench Rig',
+      config: {...placeholderRadioModel.variants.single.defaultConfig, 'placeholderMode': 'CW'},
+    );
+    await tester.runAsync(() => services.cat.connect(node.uuid));
+    addTearDown(() => services.cat.disconnect(node.uuid));
+    final operation = await services.operations.create(stationCall: 'KI2D');
+    final navigator = GlobalKey<NavigatorState>();
+    // Ahead of the MaterialApp, as HaLoApp attaches it.
+    systemBack.attach();
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(navigatorKey: navigator, home: const Text('Home')),
+      ),
+    );
+    unawaited(
+      navigator.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (_) => OperationView(services: services, operationUuid: operation.uuid),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.f1);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(services.cat.cwSending, isTrue, reason: 'sanity: F1 is sending');
+    await systemBackPress(tester);
+    expect(services.cat.cwSending, isFalse);
+    expect(find.byType(OperationView), findsOneWidget, reason: 'the press went to the message, not the route');
+
+    await systemBackPress(tester);
+    expect(find.byType(OperationView), findsNothing, reason: 'with nothing sending, a back closes the view as ever');
     await unmount(tester);
   });
 

@@ -15,6 +15,7 @@ import '../../config/tester_notes.dart';
 import '../../config/version.dart';
 
 import '../../services/halo_services.dart';
+import 'system_back.dart';
 
 /// Shows `TesterOverlayView` on the Dev and Next editions whenever
 /// `kBuildNumber` has advanced past `SettingsService.lastSeenTesterBuild`
@@ -138,7 +139,14 @@ class _TesterOverlayGateState extends State<TesterOverlayGate> {
   @override
   Widget build(BuildContext context) {
     final pending = _pending;
-    return Stack(children: [widget.child, if (pending != null) _buildOverlay(context, pending)]);
+    return Stack(
+      children: [
+        widget.child,
+        // A back dismisses it as Continue does. Layer 1: above the release
+        // notes, which it paints over.
+        if (pending != null) SystemBackCover(onBack: _dismiss, layer: 1, child: _buildOverlay(context, pending)),
+      ],
+    );
   }
 
   /// Always full screen, even on wide layouts — the same presentation choice

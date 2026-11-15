@@ -3663,6 +3663,7 @@ class _Translations$keyboardShortcuts$command$qrp extends Translations$keyboardS
 	@override String get find => 'find in the log';
 	@override String keyerMessage({required Object n}) => 'send message ${n}';
 	@override String get keyboardMode => 'keyboard mode on or off';
+	@override String get stopKeying => 'stop sending';
 	@override String get toggleStyle => 'switch between run and s&p';
 	@override String get ptt => 'push to talk';
 	@override String get so2rStereo => 'so2r: hear both radios, or only the focused one';
@@ -7938,6 +7939,7 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.command.find' => 'find in the log',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'send message ${n}',
 			'keyboardShortcuts.command.keyboardMode' => 'keyboard mode on or off',
+			'keyboardShortcuts.command.stopKeying' => 'stop sending',
 			'keyboardShortcuts.command.toggleStyle' => 'switch between run and s&p',
 			'keyboardShortcuts.command.ptt' => 'push to talk',
 			'keyboardShortcuts.command.so2rStereo' => 'so2r: hear both radios, or only the focused one',
@@ -8236,9 +8238,9 @@ extension on TranslationsQrp {
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos. importing an adif into an operation is meant to add a few qsos, not to bring in a large log — use the logs view for that. developer mode lets you import it anyway, if you are sure.',
 			'adifImport.importAnyway' => 'import anyway',
 			'offline.statusOffline' => 'internet: offline',
-			'offline.statusOnline' => 'internet: connected',
 			_ => null,
 		} ?? switch (path) {
+			'offline.statusOnline' => 'internet: connected',
 			'offline.noRoute' => 'no network connection at all.',
 			'offline.unreachable' => 'the network is up, but no server is responding — often a sign-in page waiting in a browser.',
 			'offline.reachable' => 'all services responding as expected.',

@@ -14,6 +14,7 @@ import '../../config/release_notes.dart';
 import '../../config/version.dart';
 
 import '../../services/halo_services.dart';
+import 'system_back.dart';
 
 /// Shows `ReleaseOverlayView` once per new `kPublicVersion`, on top of the
 /// whole app (same one-integration-point wrapping as `StatusBarOverlay`
@@ -88,7 +89,13 @@ class _ReleaseOverlayGateState extends State<ReleaseOverlayGate> {
   @override
   Widget build(BuildContext context) {
     final pending = _pending;
-    return Stack(children: [widget.child, if (pending != null) _buildOverlay(context, pending)]);
+    return Stack(
+      children: [
+        widget.child,
+        // A back dismisses it as Continue does.
+        if (pending != null) SystemBackCover(onBack: _dismiss, layer: 0, child: _buildOverlay(context, pending)),
+      ],
+    );
   }
 
   /// Same shirt-size logic as halo_widgets' Modal Panes

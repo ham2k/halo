@@ -3663,6 +3663,7 @@ class _Translations$keyboardShortcuts$command$qro extends Translations$keyboardS
 	@override String get find => 'FIND IN THE LOG';
 	@override String keyerMessage({required Object n}) => 'SEND MESSAGE ${n}';
 	@override String get keyboardMode => 'KEYBOARD MODE ON OR OFF';
+	@override String get stopKeying => 'STOP SENDING';
 	@override String get toggleStyle => 'SWITCH BETWEEN RUN AND S&P';
 	@override String get ptt => 'PUSH TO TALK';
 	@override String get so2rStereo => 'SO2R: HEAR BOTH RADIOS, OR ONLY THE FOCUSED ONE';
@@ -7938,6 +7939,7 @@ extension on TranslationsQro {
 			'keyboardShortcuts.command.find' => 'FIND IN THE LOG',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'SEND MESSAGE ${n}',
 			'keyboardShortcuts.command.keyboardMode' => 'KEYBOARD MODE ON OR OFF',
+			'keyboardShortcuts.command.stopKeying' => 'STOP SENDING',
 			'keyboardShortcuts.command.toggleStyle' => 'SWITCH BETWEEN RUN AND S&P',
 			'keyboardShortcuts.command.ptt' => 'PUSH TO TALK',
 			'keyboardShortcuts.command.so2rStereo' => 'SO2R: HEAR BOTH RADIOS, OR ONLY THE FOCUSED ONE',
@@ -8236,9 +8238,9 @@ extension on TranslationsQro {
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS. IMPORTING AN ADIF INTO AN OPERATION IS MEANT TO ADD A FEW QSOS, NOT TO BRING IN A LARGE LOG — USE THE LOGS VIEW FOR THAT. DEVELOPER MODE LETS YOU IMPORT IT ANYWAY, IF YOU ARE SURE.',
 			'adifImport.importAnyway' => 'IMPORT ANYWAY',
 			'offline.statusOffline' => 'INTERNET: OFFLINE',
-			'offline.statusOnline' => 'INTERNET: CONNECTED',
 			_ => null,
 		} ?? switch (path) {
+			'offline.statusOnline' => 'INTERNET: CONNECTED',
 			'offline.noRoute' => 'NO NETWORK CONNECTION AT ALL.',
 			'offline.unreachable' => 'THE NETWORK IS UP, BUT NO SERVER IS RESPONDING — OFTEN A SIGN-IN PAGE WAITING IN A BROWSER.',
 			'offline.reachable' => 'ALL SERVICES RESPONDING AS EXPECTED.',

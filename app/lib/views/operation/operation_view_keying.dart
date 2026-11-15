@@ -121,6 +121,12 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
       // to stop, on a station whose radio plays no voice at all.
       return cat.stopKeying();
     }
+    // Escape's job, on a key of the operator's choosing. Unlike Escape it is
+    // taken even with nothing to stop: it has no other meaning to fall back to.
+    if (bindings.claim(keyerStopCommandId, event) != null) {
+      cat.stopKeying();
+      return true;
+    }
 
     int? n;
     for (var i = 1; i <= SettingsService.cwMessageCount; i++) {
@@ -136,6 +142,17 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
 
     if (n == null) return false;
     return _keyMessage(n);
+  }
+
+  /// A system back stops what Escape stops before it leaves this view: many
+  /// tablet keyboards send Back from their Escape key, and the Navigator's
+  /// answer to it is closing this view with the message still keying. With
+  /// nothing to stop, the back goes on to the Navigator.
+  bool _onSystemBack() {
+    if (testerOverlayCovering.value) return false;
+    if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
+    if (!widget.services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
+    return widget.services.cat.stopKeying();
   }
 
   /// Run ↔ S&P for the set the operator is in. Silent: a key pressed

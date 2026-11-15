@@ -33,6 +33,7 @@ import 'onboarding_gate.dart';
 import 'extension_upgrade_gate.dart';
 import 'release_overlay_gate.dart';
 import 'status_bar_overlay.dart';
+import 'system_back.dart';
 import 'tester_overlay_gate.dart';
 
 class HaLoApp extends StatefulWidget {
@@ -69,6 +70,8 @@ class _HaLoAppState extends State<HaLoApp> {
   @override
   void initState() {
     super.initState();
+    // Here, ahead of the MaterialApp built below: see [SystemBack.attach].
+    systemBack.attach();
     widget.services.keyBindingsService;
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     _keyCommandHandlerOwner = this;
@@ -348,6 +351,7 @@ class _HaLoAppState extends State<HaLoApp> {
         title: isWindowedPlatform ? 'Ham2K Logger' : 'HaLo',
         navigatorKey: navigatorKey,
         navigatorObservers: [_modalBarrierObserver, homeRouteObserver, homeRailRouteObserver],
+        onNavigationNotification: systemBack.onNavigationNotification,
         locale: TranslationProvider.of(context).locale.formattingLocale,
         supportedLocales: formattingLocales,
         localizationsDelegates: GlobalMaterialLocalizations.delegates,

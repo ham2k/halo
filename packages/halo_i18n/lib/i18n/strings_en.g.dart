@@ -8326,6 +8326,9 @@ class Translations$keyboardShortcuts$command$en {
 	/// en: 'Keyboard mode on or off'
 	String get keyboardMode => 'Keyboard mode on or off';
 
+	/// en: 'Stop sending'
+	String get stopKeying => 'Stop sending';
+
 	/// en: 'Switch between Run and S&P'
 	String get toggleStyle => 'Switch between Run and S&P';
 
@@ -14264,6 +14267,7 @@ extension on Translations {
 			'keyboardShortcuts.command.find' => 'Find in the log',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'Send message ${n}',
 			'keyboardShortcuts.command.keyboardMode' => 'Keyboard mode on or off',
+			'keyboardShortcuts.command.stopKeying' => 'Stop sending',
 			'keyboardShortcuts.command.toggleStyle' => 'Switch between Run and S&P',
 			'keyboardShortcuts.command.ptt' => 'Push to talk',
 			'keyboardShortcuts.command.so2rStereo' => 'SO2R: hear both radios, or only the focused one',
@@ -14562,9 +14566,9 @@ extension on Translations {
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs. Importing an ADIF into an operation is meant to add a few QSOs, not to bring in a large log — use the Logs view for that. Developer mode lets you import it anyway, if you are sure.',
 			'adifImport.importAnyway' => 'Import anyway',
 			'offline.statusOffline' => 'Internet: OFFLINE',
-			'offline.statusOnline' => 'Internet: connected',
 			_ => null,
 		} ?? switch (path) {
+			'offline.statusOnline' => 'Internet: connected',
 			'offline.noRoute' => 'No network connection at all.',
 			'offline.unreachable' => 'The network is up, but no server is responding — often a sign-in page waiting in a browser.',
 			'offline.reachable' => 'All services responding as expected.',

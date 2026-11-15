@@ -1662,6 +1662,14 @@ and open controls all day long and one press too many must not cost a
 contact. It never walks back *in* either: in particular a second Escape does
 not re-select the QSO the first one deselected, which it used to do.
 
+The **system back** — Android's back button or gesture, and a keyboard's Back
+key, which many tablet keyboards send from their Escape key — stops a keying
+message the same way before it does anything else, and with nothing keying
+closes the Operation view as ever (`SystemBack`, `system_back.dart`). For a
+keyboard whose Escape reaches the app as neither — One UI can make it Home —
+`keyer.stop` puts the stop on a key of the operator's choosing
+([keyboard-shortcuts.md](keyboard-shortcuts.md#commands)).
+
 **Wipe and undo** have chords of their own, the info row's second button on
 the keyboard. **Alt+W** wipes the QSO being composed (nothing else: while
 editing, the button is Delete/Revert and the chord does nothing), with the

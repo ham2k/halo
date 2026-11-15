@@ -394,6 +394,7 @@ final List<KeyCommandSpec> keyCommandSpecs = [
   const KeyCommandSpec('logView.find', KeyCommandContext.logView, ['mod+F']),
   for (var n = 1; n <= keyerMessageKeyCount; n++) KeyCommandSpec('keyer.message$n', KeyCommandContext.operation, ['F$n', 'alt+$n']),
   const KeyCommandSpec('keyer.keyboardMode', KeyCommandContext.operation, ['alt+K']),
+  const KeyCommandSpec(keyerStopCommandId, KeyCommandContext.operation, []),
   const KeyCommandSpec('radio.ptt', KeyCommandContext.operation, ["'"]),
   const KeyCommandSpec(styleToggleCommandId, KeyCommandContext.operation, ['alt+U']),
   const KeyCommandSpec(so2rStereoCommandId, KeyCommandContext.operation, [r'\']),
@@ -423,6 +424,11 @@ KeyCommandSpec? keyCommandSpec(String id) {
   }
   return null;
 }
+
+/// Stops every message, chain and repeat, as Escape does. No key by
+/// default: it is for a keyboard whose Escape never reaches the app — a
+/// Samsung tablet's, which One UI can turn into Home.
+const keyerStopCommandId = 'keyer.stop';
 
 /// PTT: the push-to-talk key (cat_ptt.dart).
 const pttCommandId = 'radio.ptt';

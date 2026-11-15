@@ -47,8 +47,20 @@ class _BootGateState extends State<BootGate> with SingleTickerProviderStateMixin
 
   late final AnimationController _fadeController = AnimationController(vsync: this, duration: _transitionDuration)..value = 1;
 
-  Widget _currentChild = const MaterialApp(key: ValueKey('splash'), debugShowCheckedModeBanner: false, home: SplashScreen());
+  Widget _currentChild = const MaterialApp(
+    key: ValueKey('splash'),
+    debugShowCheckedModeBanner: false,
+    onNavigationNotification: _tellAndroidNothing,
+    home: SplashScreen(),
+  );
   Widget? _previousChild;
+
+  /// The `onNavigationNotification` of the splash and boot-error apps: what
+  /// Android is told about the system back is HaLoApp's `SystemBack`'s alone.
+  /// The splash is mounted afresh beside HaLoApp for the fade, and its
+  /// Navigator's word that it cannot pop would otherwise land after
+  /// `SystemBack`'s and stand until the claim next changes.
+  static bool _tellAndroidNothing(NavigationNotification _) => true;
 
   /// Bounds how long [initState] waits for the onboarding photo (see below)
   /// before giving up and switching off the splash without it.
@@ -112,6 +124,7 @@ class _BootGateState extends State<BootGate> with SingleTickerProviderStateMixin
               MaterialApp(
                 key: const ValueKey('boot-error'),
                 debugShowCheckedModeBanner: false,
+                onNavigationNotification: _tellAndroidNothing,
                 home: BootErrorScreen(error: error),
               ),
             );
@@ -128,6 +141,7 @@ class _BootGateState extends State<BootGate> with SingleTickerProviderStateMixin
               MaterialApp(
                 key: const ValueKey('boot-error'),
                 debugShowCheckedModeBanner: false,
+                onNavigationNotification: _tellAndroidNothing,
                 home: BootErrorScreen(error: error),
               ),
             );

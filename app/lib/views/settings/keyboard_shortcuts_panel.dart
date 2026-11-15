@@ -43,6 +43,7 @@ String keyCommandTitle(Translations t, String id) {
     'app.densityAuto' => c.densityAuto,
     'logView.find' => c.find,
     'keyer.keyboardMode' => c.keyboardMode,
+    keyerStopCommandId => c.stopKeying,
     styleToggleCommandId => c.toggleStyle,
     pttCommandId => c.ptt,
     so2rStereoCommandId => c.so2rStereo,

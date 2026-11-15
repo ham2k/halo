@@ -3224,6 +3224,7 @@
       "find": "Find in the log",
       "keyerMessage": "Send message ${n}",
       "keyboardMode": "Keyboard mode on or off",
+      "stopKeying": "Stop sending",
       "toggleStyle": "Switch between Run and S&P",
       "ptt": "Push to talk",
       "so2rStereo": "SO2R: hear both radios, or only the focused one",
