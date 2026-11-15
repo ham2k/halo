@@ -18,7 +18,7 @@ import '../models/claims.dart';
 import 'repo_support.dart';
 
 class ClaimsRepository {
-  ClaimsRepository(this.db, {this.onChange});
+  ClaimsRepository(this.db, {void Function()? onChange}) : onChange = outsideTransaction(onChange);
 
   final HaLoDatabase db;
 

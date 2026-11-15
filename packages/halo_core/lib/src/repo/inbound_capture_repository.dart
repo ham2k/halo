@@ -12,6 +12,7 @@ import 'package:drift/drift.dart';
 import '../app_clock.dart';
 import '../db/database.dart';
 import '../uuid.dart';
+import 'repo_support.dart';
 
 /// The QSON [row] carried, decoded from its stored blob. See `InboundCaptures`.
 extension InboundCaptureRowQson on InboundCaptureRow {
@@ -25,7 +26,7 @@ class InboundCaptureRepository {
   final HaLoDatabase db;
   final void Function()? onChange;
 
-  InboundCaptureRepository(this.db, {this.onChange});
+  InboundCaptureRepository(this.db, {void Function()? onChange}) : onChange = outsideTransaction(onChange);
 
   /// Records a capture, unless [dedupeKey] already exists — a program that
   /// broadcasts the same contact twice (a resend, a second listener sharing

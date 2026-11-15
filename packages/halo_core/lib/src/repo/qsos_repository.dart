@@ -68,7 +68,7 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
   /// See [LocalContactHook].
   final LocalContactHook? onLocalContact;
 
-  QsosRepository(this.db, {this.onChange, this.sequences, this.onLocalContact});
+  QsosRepository(this.db, {void Function()? onChange, this.sequences, this.onLocalContact}) : onChange = outsideTransaction(onChange);
 
   /// See [QsoWriteLedger]: what each write touched, for [watchForOperation].
   final _ledger = QsoWriteLedger();

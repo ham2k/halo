@@ -1044,6 +1044,47 @@ void main() {
     }),
   );
 
+  // A repository announces some writes from inside its own transaction (`setStatus` wraps
+  // `saveData`, which calls `onChange`). drift binds a transaction to the zone its callback runs
+  // in, so a debounce timer created there runs its round in that zone after the transaction has
+  // closed: every query the round makes goes to the dead transaction, and so does every round the
+  // timers it arms go on to start. Nothing is pushed or pulled again until the app restarts.
+  test('a change announced inside a transaction still syncs once the transaction closes', () async {
+    final wired = OperationsRepository(db, onChange: () => engine.notifyChanged());
+    final op = await operations.create(stationCall: 'KI2D');
+    await operations.markSynced([op]);
+
+    await wired.setStatus(op.uuid, OperationStatus.active);
+    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 500));
+
+    expect(transport.calls.where((c) => c.$1 == Hooks.syncTransportSync.method), hasLength(1));
+    expect(await operations.hasUnsynced(), isFalse, reason: 'the status change was pushed and marked synced');
+  });
+
+  // Past the debounce cap, the announcement starts its round at once, still inside the announcing
+  // write's transaction rather than from a timer. Guarding only the timer leaves this path bound
+  // to the transaction, and a long burst of edits that ends in a status change wedges sync.
+  test(
+    'a change announced inside a transaction past the debounce cap still syncs',
+    () => runOnFakeClock((_) async {
+      final wired = OperationsRepository(db, onChange: () => engine.notifyChanged());
+      final op = await operations.create(stationCall: 'KI2D');
+      await operations.markSynced([op]);
+      final every = SyncEngine.debounceDelay - const Duration(milliseconds: 100);
+      for (var at = Duration.zero; at < SyncEngine.debounceMaxWait; at += every) {
+        engine.notifyChanged();
+        await Future<void>.delayed(every);
+      }
+      expect(transport.calls, isEmpty);
+
+      await wired.setStatus(op.uuid, OperationStatus.active);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      expect(transport.calls.where((c) => c.$1 == Hooks.syncTransportSync.method), hasLength(1));
+      expect(await operations.hasUnsynced(), isFalse, reason: 'the status change was pushed and marked synced');
+    }),
+  );
+
   // The failed round's catch already re-armed the timer, with a backoff. Running the deferred
   // round at once instead would hit the same dead network a second time and count it twice.
   test(

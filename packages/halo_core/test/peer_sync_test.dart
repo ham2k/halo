@@ -258,6 +258,21 @@ void main() {
       }),
     );
 
+    // `setStatus` announces from inside its own transaction. A debounce timer created there
+    // scans against that transaction after it has closed, and the peers never hear the change.
+    test('a change announced inside a transaction is still scanned once it closes', () async {
+      final wired = OperationsRepository(db, onChange: outbox.notifyChanged);
+      final op = await operations.create(stationCall: 'KI2D');
+      outbox.activeOperationUuid = op.uuid;
+      await outbox.scanNow();
+      final before = await outbox.latestSeq(op.uuid);
+
+      await wired.setStatus(op.uuid, OperationStatus.active);
+      await Future<void>.delayed(PeerOutbox.debounceDelay + const Duration(milliseconds: 300));
+
+      expect(await outbox.latestSeq(op.uuid), greaterThan(before));
+    });
+
     test('two concurrent scans for the same operation do not duplicate events', () async {
       final op = await operations.create(stationCall: 'KI2D');
       outbox.activeOperationUuid = op.uuid;

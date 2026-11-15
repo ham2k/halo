@@ -12,6 +12,7 @@
 // drift streams — the database is the source of truth and, later, the
 // multi-window bus (DESIGN.md §8).
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
@@ -21,6 +22,26 @@ import '../app_clock.dart';
 import '../db/database.dart';
 import '../models/models.dart';
 import '../models/qson_values.dart';
+
+/// [onChange], called in the caller's zone minus any drift transaction bound
+/// to it. Every repository's `onChange` passes through here.
+///
+/// A repository can announce from inside a transaction: a writer nested in
+/// another writer's `db.transaction` (`setStatus` around `saveData`)
+/// announces before the outer one closes. drift binds a transaction to the
+/// zone its callback runs in, and every timer or future started there
+/// inherits the binding — so a listener that schedules work on that
+/// announcement would run it against a transaction that has since closed.
+/// Over the background-isolate connection the app ships with, a query there
+/// never completes and raises nothing (in-process, it throws): a sync round
+/// waiting on one holds the engine busy, and nothing syncs until a restart.
+/// Everything else about the zone (a test's fake clock) is kept.
+///
+/// `#DatabaseConnectionUser` is the zone key drift's `connection_user.dart`
+/// binds the transaction under. sync_engine_test's "a change announced inside
+/// a transaction" fails if a drift upgrade renames it.
+void Function()? outsideTransaction(void Function()? onChange) =>
+    onChange == null ? null : () => runZoned(onChange, zoneValues: {#DatabaseConnectionUser: null});
 
 /// Encodes a QSO's QSON for storage, normalizing wrong-typed fields on the
 /// way — see [normalizeQsoQson]. Storage is the one chokepoint every write

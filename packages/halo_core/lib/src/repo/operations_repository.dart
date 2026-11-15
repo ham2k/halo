@@ -47,7 +47,8 @@ class OperationsRepository {
   /// Notified after every local write so the sync engine can debounce a
   /// small-batch round (DESIGN.md §4) — kept as a plain callback rather than
   /// a direct dependency so this repository doesn't need to know the sync
-  /// engine's type.
+  /// engine's type. Called outside any transaction the write runs in
+  /// ([outsideTransaction]), so a listener's timers never inherit one.
   final void Function()? onChange;
 
   /// Runs after every LOCAL data write ([saveData]) but a status move, with
@@ -59,7 +60,7 @@ class OperationsRepository {
   /// `mergeFromSync` and never reach this — they carry their own event rows.
   final Future<void> Function(Operation? before, Operation after)? onLocalSave;
 
-  OperationsRepository(this.db, {this.onChange, this.onLocalSave});
+  OperationsRepository(this.db, {void Function()? onChange, this.onLocalSave}) : onChange = outsideTransaction(onChange);
 
   final _deletions = StreamController<String>.broadcast();
 
