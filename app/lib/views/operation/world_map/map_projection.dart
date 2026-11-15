@@ -107,6 +107,70 @@ class AzimuthalProjection implements MapProjection {
   int get hashCode => Object.hash(AzimuthalProjection, center);
 }
 
+/// The Earth as a globe seen from far off over [center]: orthographic, scaled
+/// to a disc of radius 1 whose rim is the horizon. The far half is behind
+/// the globe and not drawn; a drag turns the globe, so [center] is always
+/// the view's middle.
+class OrthographicProjection implements MapProjection {
+  final GridLocation center;
+  final double _lon0;
+  final double _sinLat0;
+  final double _cosLat0;
+
+  OrthographicProjection(this.center)
+    : _lon0 = center.longitude * _toRadians,
+      _sinLat0 = math.sin(center.latitude * _toRadians),
+      _cosLat0 = math.cos(center.latitude * _toRadians);
+
+  /// Where [latitude], [longitude] fall on the disc, and how far toward the
+  /// viewer: 1 at [center], 0 on the horizon, below 0 behind the globe.
+  ({double x, double y, double depth}) project(double latitude, double longitude) {
+    final lat = latitude * _toRadians;
+    final dLon = longitude * _toRadians - _lon0;
+    final sinLat = math.sin(lat), cosLat = math.cos(lat), cosDLon = math.cos(dLon);
+    return (x: cosLat * math.sin(dLon), y: -(_cosLat0 * sinLat - _sinLat0 * cosLat * cosDLon), depth: _sinLat0 * sinLat + _cosLat0 * cosLat * cosDLon);
+  }
+
+  @override
+  Offset? toMap(double latitude, double longitude) {
+    final p = project(latitude, longitude);
+    return p.depth < 0 ? null : Offset(p.x, p.y);
+  }
+
+  @override
+  GridLocation? toEarth(double x, double y) {
+    final rho = math.sqrt(x * x + y * y);
+    if (rho > 1) return null;
+    if (rho == 0) return center;
+    final c = math.asin(rho);
+    final sinC = math.sin(c), cosC = math.cos(c);
+    // y runs down: north is -y.
+    final lat = math.asin((cosC * _sinLat0 - y * sinC * _cosLat0 / rho).clamp(-1.0, 1.0));
+    final lon = _lon0 + math.atan2(x * sinC, rho * _cosLat0 * cosC + y * _sinLat0 * sinC);
+    return GridLocation(lat / _toRadians, wrapLongitude(lon / _toRadians));
+  }
+
+  /// The place behind the middle of the globe, as far from [center] as can be.
+  GridLocation get antipode => GridLocation(-center.latitude, wrapLongitude(center.longitude + 180));
+
+  @override
+  Rect get world => const Rect.fromLTRB(-1, -1, 1, 1);
+
+  @override
+  Path get edge => Path()..addOval(world);
+
+  /// A step of a line never jumps on the globe: it goes behind it, where it
+  /// is not drawn, and comes back.
+  @override
+  double get longestStep => 0.5;
+
+  @override
+  bool operator ==(Object other) => other is OrthographicProjection && other.center == center;
+
+  @override
+  int get hashCode => Object.hash(OrthographicProjection, center);
+}
+
 /// A projection whose x is the longitude east of its [meridian] times a
 /// factor of the latitude alone, so a place a turn east of another,
 /// unwrapped, lands a world's breadth along the same parallel: a ring or a line that crosses

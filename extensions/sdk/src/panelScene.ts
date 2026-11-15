@@ -1019,7 +1019,10 @@ export interface PanelSceneRotatorMap {
      */
     x?: PanelSceneSpectrumNumber
     y?: PanelSceneSpectrumNumber
-    /** On a `map` (extension API 25): what the view may be panned over; omitted, the whole world. An `east` less than `west` crosses the antimeridian. */
+    /**
+     * On a `map` (extension API 25): what the view may be panned over; omitted, the whole world. An `east`
+     * less than `west` crosses the antimeridian. The globe takes none.
+     */
     bounds?: { north: number; south: number; west: number; east: number }
     /**
      * On a `map` (extension API 25): the view zooms out no further than the world, or the bounds,
@@ -1196,9 +1199,22 @@ export interface PanelSceneMapCircle extends PanelSceneMapItem {
 export interface PanelSceneMap {
   /**
    * `mercator` (Web Mercator, the default), `equirectangular` (plate carrée), `miller`, `patterson`,
-   * `azimuthal` (equidistant) or `robinson`.
+   * `azimuthal` (equidistant), `robinson`, or `globe`: the Earth seen from afar, its far half
+   * hidden, turned by a drag with north kept up.
    */
-  projection?: "mercator" | "equirectangular" | "miller" | "patterson" | "azimuthal" | "robinson"
+  projection?: "mercator" | "equirectangular" | "miller" | "patterson" | "azimuthal" | "robinson" | "globe"
+  /**
+   * How strongly the globe's face is shaded to look round, 0 to 2: its light and its shade, scaled
+   * together. 1, the default, as the host draws it; 0, flat. The other projections take none.
+   */
+  depth?: number
+  /**
+   * The air round the globe, a glow fading out past its rim and a band of it just inside. `false`,
+   * none; omitted or `true`, the host's; an object, the scene's own: `color` as `#RRGGBB`, or
+   * `#AARRGGBB` for how strong it is at the rim, and `width`, 0 to 0.5, how far past the rim it
+   * reaches as a share of the globe's radius (0.08). The other projections take none.
+   */
+  atmosphere?: boolean | { color?: string; width?: number }
   /**
    * The azimuthal map's middle. Omitted, `home` as the scene last moved it: a `home` that gives back
    * where the operator's pan settled moves neither. The other projections go on round the world as

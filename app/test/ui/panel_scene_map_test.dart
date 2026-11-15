@@ -447,6 +447,38 @@ void main() {
       expect(mapCircleWords(words, words.label!, miles: true), 'Skip');
     });
 
+    // Unbounded, a depth of 10 paints the globe's far side solid black over
+    // the world the scene shows there.
+    test('a globe\'s depth is 1 unless the scene sets it, from flat at 0 to twice as strong at 2', () {
+      expect(_spec({'projection': 'globe'}).depth, 1);
+      expect(_spec({'projection': 'globe', 'depth': 0}).depth, 0);
+      expect(() => _spec({'projection': 'globe', 'depth': 2.5}), throwsFormatException);
+      expect(() => _spec({'projection': 'globe', 'depth': -1}), throwsFormatException);
+    });
+
+    // The air is the one thing drawn past the globe's rim, over whatever the
+    // panel shows round the map: a scene must be able to turn it off.
+    test('a globe\'s atmosphere is the host\'s unless the scene names its own or turns it off', () {
+      expect(_spec({'projection': 'globe'}).atmosphere, (color: null, width: 0.08));
+      expect(_spec({'projection': 'globe', 'atmosphere': false}).atmosphere, isNull);
+      expect(_spec({'projection': 'globe', 'atmosphere': true}).atmosphere, isNotNull);
+      final own = _spec({
+        'projection': 'globe',
+        'atmosphere': {'color': '#80FF8800', 'width': 0.2},
+      }).atmosphere!;
+      expect(own.color, const Color(0x80FF8800));
+      expect(own.width, 0.2);
+      expect(
+        () => _spec({
+          'projection': 'globe',
+          'atmosphere': {'width': 1},
+        }),
+        throwsFormatException,
+        reason: 'past half a radius, it reaches off a pane the globe fills',
+      );
+      expect(() => _spec({'projection': 'globe', 'atmosphere': 'blue'}), throwsFormatException);
+    });
+
     test('more markers than the budget is refused as a budget, naming the bound', () {
       final markers = [
         for (var i = 0; i <= SceneMapSpec.maxMarkers; i++) {'id': 'm$i', 'lat': 0, 'lon': 0},
@@ -572,6 +604,61 @@ void main() {
       wheel(box.center);
       await tester.pump(const Duration(milliseconds: 400));
       expect(events.lastWhere((e) => e['gesture'] == 'zoom')['value'] as double, closeTo(3, 1e-9), reason: 'the scroll between the two goes on counting');
+    });
+
+    // A drag that slid the view over a fixed globe would run off its rim a
+    // quarter of the way round; turned instead, the globe keeps the place
+    // the view moved to in its middle, facing the viewer.
+    testWidgets('a drag turns the globe, the place it moved to coming round to the middle, north still up', (tester) async {
+      final events = await _show(
+        tester,
+        map: {
+          'projection': 'globe',
+          'home': {'lat': 0, 'lon': 0},
+        },
+      );
+      final box = tester.getRect(find.byType(SceneMapView));
+      // The globe is the pane's height across, 200 pixels a radius: 100 pixels is 30° at the middle.
+      await tester.dragFrom(box.center, const Offset(-118, 0));
+      await tester.pump();
+      var at = events.lastWhere((e) => e['gesture'] == 'pan')['at'] as Map;
+      expect(at['lon'] as double, closeTo(30, 4));
+      expect(at['lat'] as double, closeTo(0, 1));
+      // Again: from the turned globe, another 30° on, which a slide would have put most of the way to the rim.
+      await tester.dragFrom(box.center, const Offset(-118, 0));
+      await tester.pump();
+      at = events.lastWhere((e) => e['gesture'] == 'pan')['at'] as Map;
+      expect(at['lon'] as double, closeTo(60, 6));
+      await tester.dragFrom(box.center, const Offset(0, 118));
+      await tester.pump();
+      at = events.lastWhere((e) => e['gesture'] == 'pan')['at'] as Map;
+      expect(at['lat'] as double, closeTo(30, 4), reason: 'a drag down brings the north round');
+      expect(at['lon'] as double, closeTo(60, 6), reason: 'without turning it east or west');
+    });
+
+    // Faced, a place past the pole is across it on the far meridian: north
+    // kept up, the globe spins half round, and a drag on turns it back
+    // against the finger.
+    testWidgets('a drag over a pole turns the globe as far as the pole, and back the way it came', (tester) async {
+      final events = await _show(
+        tester,
+        map: {
+          'projection': 'globe',
+          'home': {'lat': 60, 'lon': 0},
+        },
+      );
+      final box = tester.getRect(find.byType(SceneMapView));
+      for (var i = 0; i < 2; i++) {
+        await tester.dragFrom(box.center, const Offset(0, 160));
+        await tester.pump();
+        final at = events.lastWhere((e) => e['gesture'] == 'pan')['at'] as Map;
+        expect(at['lat'] as double, closeTo(90, 1e-6), reason: 'drag ${i + 1}: held at the pole');
+      }
+      await tester.dragFrom(box.center, const Offset(0, -118));
+      await tester.pump();
+      final at = events.lastWhere((e) => e['gesture'] == 'pan')['at'] as Map;
+      expect(at['lat'] as double, closeTo(60, 4));
+      expect(at['lon'] as double, closeTo(0, 1e-6), reason: 'on the meridian it went up, not the one across the pole');
     });
 
     // Without the wrap the whole world at zoom 0 cannot be panned at all,

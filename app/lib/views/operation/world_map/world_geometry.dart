@@ -12,6 +12,12 @@
 // from Argentina) projects inside out: its inside on Earth is its outside on
 // the disc. Filling the rim too whenever the antipode is inside turns it back,
 // with no clipping on the sphere.
+//
+// The globe hides its far half. A ring's hidden stretch is laid along the
+// horizon, the rim, each point at the rim in the direction it lies behind
+// the globe: its outline, cut at the horizon, closes along it. A ring round
+// the point behind the globe's middle winds once round the rim that way, and
+// is turned back the same way as the azimuthal map's.
 
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -40,17 +46,20 @@ class WorldOutlines {
 /// Whether [rings] hold the place at [latitude], [longitude], in even-odd: a
 /// lake is not land. Each ring is also laid a turn west and a turn east: a
 /// ring that crosses the antimeridian runs on past ±180 in one piece, and
-/// its far side belongs at the other edge.
+/// its far side belongs at the other edge. A ring closes back to its first
+/// point whether or not it ends there: a cap round a pole ends at the pole,
+/// and the meridian from there back to its start is one of its edges.
 bool ringsHold(List<Float32List> rings, double latitude, double longitude) {
   final lon = wrapLongitude(longitude);
   var crossings = 0;
   for (final ring in rings) {
-    for (var i = 0; i + 3 < ring.length; i += 2) {
+    for (var i = 0; i + 1 < ring.length; i += 2) {
+      final j = (i + 2) % ring.length;
       final y1 = ring[i + 1];
-      final y2 = ring[i + 3];
+      final y2 = ring[j + 1];
       if ((y1 <= latitude) == (y2 <= latitude)) continue;
       final x1 = ring[i];
-      final x = x1 + (latitude - y1) * (ring[i + 2] - x1) / (y2 - y1);
+      final x = x1 + (latitude - y1) * (ring[j] - x1) / (y2 - y1);
       if (x < lon) crossings++;
       if (x - 360 < lon) crossings++;
       if (x + 360 < lon) crossings++;
@@ -83,9 +92,73 @@ Path fillRings(MapProjection projection, List<Float32List> rings) {
       final antipode = disc.antipode;
       if (ringsHold(rings, antipode.latitude, antipode.longitude)) path.addOval(disc.world.inflate(_pastRim));
       return path;
+    case final OrthographicProjection globe:
+      final path = Path()..fillType = PathFillType.evenOdd;
+      for (final ring in rings) {
+        if (ring.length < 6) continue;
+        final points = _onGlobe(globe, ring);
+        if (points.length >= 3) path.addPolygon(points, true);
+      }
+      final antipode = globe.antipode;
+      if (ringsHold(rings, antipode.latitude, antipode.longitude)) path.addOval(globe.world.inflate(_pastRim));
+      return path;
     default:
       throw UnsupportedError('No fill for ${projection.runtimeType}');
   }
+}
+
+/// [ring] on [globe]: where it is in front, as it falls; where it is behind,
+/// along the horizon, from where it goes behind round to where it comes
+/// back, each point at the rim in the direction it lies.
+List<Offset> _onGlobe(OrthographicProjection globe, Float32List ring) {
+  final out = <Offset>[];
+  double? rimAngle;
+  // Along the rim from the last point laid there, the short way, a few
+  // degrees a step: a chord would cut across the face of the globe.
+  void rim(double angle) {
+    if (rimAngle case final from?) {
+      final turn = (angle - from + math.pi) % (2 * math.pi) - math.pi;
+      final steps = (turn.abs() / (5 * math.pi / 180)).floor();
+      for (var k = 1; k <= steps; k++) {
+        final a = from + turn * k / (steps + 1);
+        out.add(Offset(math.cos(a), math.sin(a)));
+      }
+    }
+    out.add(Offset(math.cos(angle), math.sin(angle)));
+    rimAngle = angle;
+  }
+
+  final n = ring.length ~/ 2;
+  var a = globe.project(ring[1], ring[0]);
+  for (var i = 0; i < n; i++) {
+    final j = (i + 1) % n;
+    final b = globe.project(ring[j * 2 + 1], ring[j * 2]);
+    if (a.depth >= 0) {
+      out.add(Offset(a.x, a.y));
+      rimAngle = null;
+    } else if (a.x != 0 || a.y != 0) {
+      rim(math.atan2(a.y, a.x));
+    }
+    // Where the step crosses the horizon: depth is linear along the chord
+    // through the Earth, and the chord's point there is on the rim's line.
+    if ((a.depth >= 0) != (b.depth >= 0)) {
+      final t = a.depth / (a.depth - b.depth);
+      final angle = math.atan2(a.y + (b.y - a.y) * t, a.x + (b.x - a.x) * t);
+      if (a.depth >= 0) {
+        rimAngle = null;
+        rim(angle);
+      } else {
+        rim(angle);
+        rimAngle = null;
+      }
+    }
+    a = b;
+  }
+  // Behind where it closes too, the ring goes back round the rim to where
+  // it began; closed by a chord, its last step would cut across the face.
+  final first = globe.project(ring[1], ring[0]);
+  if (rimAngle != null && first.depth < 0 && (first.x != 0 || first.y != 0)) rim(math.atan2(first.y, first.x));
+  return out;
 }
 
 /// Rings or lines made ready for a cylindrical projection at any meridian.

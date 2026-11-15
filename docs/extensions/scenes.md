@@ -1025,12 +1025,26 @@ like a native control, it takes:
   same rectangle), `miller` (Mercator's look with the poles drawn),
   `patterson` (between those two, the high latitudes kept from swelling),
   `azimuthal` (azimuthal equidistant: every straight line out of the middle
-  is a great circle, and its edge is the far side of the Earth) or
-  `robinson`.
+  is a great circle, and its edge is the far side of the Earth),
+  `robinson`, or (API 25) `globe`: the Earth as a globe seen from afar,
+  its far half hidden, shaded, a drag turning it with north kept up, the
+  place in the view's middle facing the viewer.
+- `depth`, 0 to 2 (API 25): how strongly the globe's face is shaded to
+  look round, its light and its shade scaled together: 1, the default, as
+  the host draws it, 0 flat, 2 twice as strong. The other projections take
+  none.
+- `atmosphere` (API 25): the air round the globe, a glow fading out past
+  its rim and a band of it just inside. `false` draws none; omitted or
+  `true`, the host's; `{ color, width }`, the scene's own: `color` as
+  `#RRGGBB`, or `#AARRGGBB` for how strong it is at the rim, and `width`,
+  0 to 0.5, how far past the rim it reaches as a share of the globe's
+  radius, 0.08 by default. Nothing else is drawn past the rim. The other
+  projections take none.
 - `home`, `{ lat, lon }`: the place in the view's middle until the
   operator pans; omitted, the operation's location, or 0, 0 without one.
 - `origin`, `{ lat, lon }`: the azimuthal map's middle; omitted, `home`
-  as the scene last moved it. A `home` that gives back where the
+  as the scene last moved it. The globe takes none: it turns to face
+  `home`, and then wherever the operator turns it. A `home` that gives back where the
   operator's pan settled moves neither the view nor the middle. The others
   go on round the world as the
   operator pans east or west, the rectangular ones repeating beside
@@ -1056,7 +1070,8 @@ like a native control, it takes:
   Patterson map repeats it east and west across spare width, markers,
   lines and images with it; `repeat: false` shows it once, centered, and a
   pan east or west turns it under the view instead. Robinson's world never
-  repeats, its edges being curves; it turns.
+  repeats, its edges being curves; it turns. The globe takes no `bounds`:
+  it turns round the whole world, as far as either pole.
 - `styles`: up to 64 looks by name, for markers, lines and circles to
   take by `style`.
 - `markers`: up to 4,096, each an `id`, a `lat` and a `lon`. Drawn over

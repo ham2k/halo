@@ -25,6 +25,7 @@ import '../world_map/map_projection.dart';
 import '../world_map/world_geometry.dart' show TurningShapes, fillRings;
 import '../../../tools/distance_format.dart';
 import 'scene_images.dart';
+import 'scene_map_globe.dart';
 import 'scene_map_labels.dart';
 import 'scene_model.dart';
 import 'scene_world.dart';
@@ -93,6 +94,11 @@ class _SceneMapViewState extends State<SceneMapView> {
   /// on that, the map would move the operator's view off it by the pan
   /// again.
   GridLocation? _middle;
+
+  /// The place the globe is turned to face: the operator's, until the scene
+  /// moves its own view. A drag turns the globe rather than sliding the view
+  /// over it, so the view's middle is always this.
+  GridLocation? _facing;
 
   /// How the view was last drawn: the projection by name, whether it turns
   /// and its pan bounds. A change of any carries the place in the view's
@@ -198,7 +204,10 @@ class _SceneMapViewState extends State<SceneMapView> {
 
   /// Whether the view goes on round the world east and west: any map but
   /// the azimuthal, with no pan bounds.
-  bool get _wraps => _spec.projection != 'azimuthal' && _spec.panBounds == null;
+  bool get _wraps => !_disc && _spec.panBounds == null;
+
+  /// Whether the world is a disc round its middle: the azimuthal map, and the globe.
+  bool get _disc => _spec.projection == 'azimuthal' || _spec.projection == 'globe';
 
   /// Whether it goes round by turning the world under the view, its
   /// meridian the view's middle, rather than by drawing copies of it side
@@ -216,6 +225,7 @@ class _SceneMapViewState extends State<SceneMapView> {
     if (sent != null && _same(sent.latitude, scene.latitude) && _same(sent.longitude, scene.longitude)) return;
     _center = null;
     _meridian = null;
+    _facing = null;
     _middle = scene;
   }
 
@@ -229,6 +239,7 @@ class _SceneMapViewState extends State<SceneMapView> {
   /// meridian instead. Pan bounds hold any to the meridian through their
   /// middle, so the seam lies behind them.
   MapProjection _projectionFor(GridLocation sceneCenter) {
+    if (_spec.projection == 'globe') return OrthographicProjection(_facing ?? _middle ?? sceneCenter);
     if (_spec.projection == 'azimuthal') {
       return AzimuthalProjection(switch (_spec.origin) {
         final o? => GridLocation(o.lat, o.lon),
@@ -256,7 +267,20 @@ class _SceneMapViewState extends State<SceneMapView> {
   /// anchor's parallel that far: on Robinson they shorten toward the poles.
   void _moveTo(double zoom, Offset center, MapProjection from, Offset anchor) {
     _zoom = zoom;
-    if (from is CylindricalProjection && _turns) {
+    if (from is OrthographicProjection) {
+      // The place the view's middle moved to is turned to face the viewer:
+      // past the rim, the one on it the same way. One past a pole lies
+      // across it, a meridian more than 90° round: faced, with north kept
+      // up, the globe would spin half round and a drag on would turn it
+      // back against the finger. The pole is as far as it turns.
+      final r = center.distance;
+      final to = from.toEarth(r > 1 ? center.dx / r * 0.999 : center.dx, r > 1 ? center.dy / r * 0.999 : center.dy);
+      final facing = from.center;
+      if (to != null) {
+        _facing = math.cos((to.longitude - facing.longitude) * math.pi / 180) < 0 ? GridLocation(to.latitude < 0 ? -90 : 90, facing.longitude) : to;
+      }
+      _center = Offset.zero;
+    } else if (from is CylindricalProjection && _turns) {
       final degrees = switch (from) {
         RobinsonProjection() => RobinsonProjection.degreesAcross(center.dx, latitude: from.toEarth(0, anchor.dy)?.latitude ?? 0),
         _ => center.dx * 180 / math.pi,
@@ -277,9 +301,15 @@ class _SceneMapViewState extends State<SceneMapView> {
     final at = _drawnAs == null || _center == null || camera == null ? null : camera.placeAt(camera.middle);
     _drawnAs = _drawing;
     _meridian = null;
+    _facing = null;
     _center = null;
     if (at == null) return;
     if (_turns) _meridian = at.longitude;
+    if (_spec.projection == 'globe') {
+      _facing = at;
+      _center = Offset.zero;
+      return;
+    }
     _center = _toMap(_projectionFor(sceneCenter), at.latitude, at.longitude);
   }
 
@@ -314,7 +344,9 @@ class _SceneMapViewState extends State<SceneMapView> {
     _ => lat,
   }, lon);
 
+  /// What the view may be panned over; the globe turns round the whole world, and is panned over none.
   Rect? _bounds(MapProjection projection) => switch (_spec.panBounds) {
+    _ when projection is OrthographicProjection => null,
     final b? => projectedBounds(projection, north: b.north, south: b.south, west: b.west, east: b.east),
     null => null,
   };
@@ -472,6 +504,7 @@ class _SceneMapViewState extends State<SceneMapView> {
       _zoom = null;
       _center = null;
       _meridian = null;
+      _facing = null;
     });
     widget.onGesture?.call('reset', null, null);
   }
@@ -841,6 +874,18 @@ class _Placed {
   /// [before] has where its places have not moved.
   static Map<_Route, _Arc> arcsOf(List<_Route> routes, Map<_Route, _Arc> before) => {for (final e in routes) e: before[e] ?? _Arc(e)};
 
+  /// Where a label prefers to sit, [at] on its line or circle. Behind the
+  /// globe, a label the host places is drawn toward it, from the rim the way
+  /// it lies: dropped, a circle seen all but its north would show none. One
+  /// the scene pinned there is hidden, as off the pane.
+  static Offset? _labelAnchor(MapProjection projection, GridLocation at, {required bool pinned}) {
+    final on = _SceneMapViewState._toMap(projection, at.latitude, at.longitude);
+    if (on != null || pinned || projection is! OrthographicProjection) return on;
+    final (:x, :y, depth: _) = projection.project(at.latitude, at.longitude);
+    final r = math.sqrt(x * x + y * y);
+    return r == 0 ? Offset.zero : Offset(x / r, y / r);
+  }
+
   /// [spec]'s markers and lines in [projection]; a line [before] placed in
   /// the same projection with the same ends is taken as it is.
   factory _Placed(
@@ -906,18 +951,14 @@ class _Placed {
     final lineAnchors = [
       for (final (i, line) in spec.lines.indexed)
         switch (line.label) {
-          final label? => switch (arcs[ends[i]]!.at(label.along ?? 0.5)) {
-            final p => _SceneMapViewState._toMap(projection, p.latitude, p.longitude),
-          },
+          final label? => _labelAnchor(projection, arcs[ends[i]]!.at(label.along ?? 0.5), pinned: label.along != null),
           null => null,
         },
     ];
     final circleAnchors = [
       for (final (i, circle) in spec.circles.indexed)
         switch (circle.label) {
-          final label? => switch (_destination(rounds[i].$1, rounds[i].$2, rounds[i].$3, label.az ?? 0)) {
-            final p => _SceneMapViewState._toMap(projection, p.latitude, p.longitude),
-          },
+          final label? => _labelAnchor(projection, _destination(rounds[i].$1, rounds[i].$2, rounds[i].$3, label.az ?? 0), pinned: label.az != null),
           null => null,
         },
     ];
@@ -1245,6 +1286,10 @@ class _MapPainter extends CustomPainter {
     for (final copy in camera.copies) {
       final origin = camera.origin + Offset(copy * camera.scale, 0);
       final toScreen = Float64List.fromList([camera.scale, 0, 0, 0, 0, camera.scale, 0, 0, 0, 0, 1, 0, origin.dx, origin.dy, 0, 1]);
+      final air = switch (spec.atmosphere) {
+        final a? => a.color ?? globeAirColor(dark: dark),
+        null => null,
+      };
       canvas.save();
       if (camera.projection is RectangularProjection) {
         final world = camera.projection.world;
@@ -1258,6 +1303,7 @@ class _MapPainter extends CustomPainter {
           doAntiAlias: false,
         );
       } else {
+        if (camera.projection is OrthographicProjection && air != null) paintGlobeAir(canvas, origin, camera.scale, color: air, width: spec.atmosphere!.width);
         canvas.clipPath(camera.projection.edge.transform(toScreen));
       }
       canvas.drawPaint(Paint()..color = sea);
@@ -1278,6 +1324,7 @@ class _MapPainter extends CustomPainter {
         }
         canvas.restore();
       }
+      if (camera.projection is OrthographicProjection) paintGlobeShade(canvas, origin, camera.scale, dark: dark, depth: spec.depth, air: air);
       for (final (i, look) in placed.circleLooks.indexed) {
         if ((look.fill, placed.fills[i]) case (final fill?, final path?)) canvas.drawPath(path.transform(toScreen), Paint()..color = fill);
       }

@@ -870,7 +870,7 @@ the operator's zoom and pan kept per placement in the key-value store.
 
 A map (`map`, extension API 25) is the world in Web Mercator,
 equirectangular, Miller's, Patterson's, azimuthal equidistant or Robinson's
-projection, with markers, great-circle lines, lines through points and
+projection, or as a globe (orthographic), with markers, great-circle lines, lines through points and
 distance circles the scene places by latitude and longitude, labelled
 where the scene says. The public contract is in
 [panel scenes](../extensions/scenes.md#map) and `PanelSceneMap`. It needs no
@@ -922,6 +922,27 @@ it centers on only when the scene names no place.
   third of what projecting it all again costs. Pan bounds stop both
   wraps, and hold the projection to the meridian through their middle, so
   the seam lies behind them.
+- **The globe turns; it is not panned over.** `globe` is the orthographic
+  projection, a disc of radius 1 whose rim is the horizon, centered on the
+  place it faces. A drag works out where the view's middle would move to,
+  on the projection the gesture began on, and turns the globe to face that
+  place, the view's middle staying the disc's: slid over a fixed globe
+  instead, a view would run off its rim a quarter of the way round, and
+  north would tilt away from up. The near half is drawn as the other maps
+  draw theirs, a place behind it dropped as Web Mercator drops one past
+  its cut, so lines stop at the horizon. A ring that goes behind is laid
+  along the rim for that stretch, each hidden point at the rim in the
+  direction it lies, and closes there; one round the point behind the
+  globe's middle winds once round the rim that way and is turned back by
+  filling the rim too, as on the azimuthal map. A world cell whose middle
+  is further behind than its own half-diagonal is not projected at all,
+  since the globe turns on every frame of a drag. A shade lit from the
+  upper left, darkening round the far side and toward the rim, with a
+  glint, gives it its roundness, scaled by the scene's `depth`; it lies
+  under what the scene draws. The scene's `atmosphere` is the one thing
+  drawn past the rim, a glow fading out round it: a shadow cast on the
+  pane, or anything else there, would lie over what the panel shows round
+  the map.
 - **Covering is the camera's.** Without it the widest zoom is `zoom.min`,
   0 showing the whole world, centered. `pan.cover` raises it to the zoom
   at which the world, or the bounds, fills the pane's height, pole to

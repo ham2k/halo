@@ -337,7 +337,7 @@ class SceneMapOverlay {
 /// places on it by latitude and longitude.
 class SceneMapSpec {
   static const keys = [
-    'projection', 'home', 'origin', 'map', 'zoom', 'pan', 'styles', 'markers', 'lines', 'circles', 'images', //
+    'projection', 'depth', 'atmosphere', 'home', 'origin', 'map', 'zoom', 'pan', 'styles', 'markers', 'lines', 'circles', 'images', //
     'zoomValue', 'hoverLat', 'hoverLon', 'actions', 'gestures',
   ];
 
@@ -356,8 +356,17 @@ class SceneMapSpec {
   static const double zoomCeiling = 16;
 
   /// `mercator` (Web Mercator), `equirectangular`, `miller`, `patterson`,
-  /// `azimuthal` (equidistant) or `robinson`.
+  /// `azimuthal` (equidistant), `robinson` or `globe` (orthographic, turned under a drag).
   final String projection;
+
+  /// How strongly the globe's face is shaded to look round, 1 as the host
+  /// draws it, 0 flat, up to 2.
+  final double depth;
+
+  /// The air round the globe, past its rim and just inside it: null, none;
+  /// [color] null, the host's; [width] how far past the rim it reaches, in
+  /// radii.
+  final ({Color? color, double width})? atmosphere;
 
   /// The place in the view's middle until the operator pans; null, the operation's location.
   final ({double lat, double lon})? home;
@@ -407,7 +416,14 @@ class SceneMapSpec {
   /// circle read from the very object it was: a patch to one marker of
   /// thousands reads that one.
   SceneMapSpec(Map<dynamic, dynamic> json, {SceneMapSpec? previous})
-    : projection = _oneOf(json, 'projection', const ['mercator', 'equirectangular', 'miller', 'patterson', 'azimuthal', 'robinson']) ?? 'mercator',
+    : projection = _oneOf(json, 'projection', const ['mercator', 'equirectangular', 'miller', 'patterson', 'azimuthal', 'robinson', 'globe']) ?? 'mercator',
+      depth = number(json, 'depth', fallback: 1, min: 0, max: 2),
+      atmosphere = switch (json['atmosphere']) {
+        null || true => (color: null, width: 0.08),
+        false => null,
+        final Map<dynamic, dynamic> a => (color: _color(a, 'color'), width: number(a, 'width', fallback: 0.08, min: 0, max: 0.5)),
+        _ => throw const FormatException('Invalid map atmosphere'),
+      },
       home = switch (json['home']) {
         null => null,
         final Map<dynamic, dynamic> h => (lat: number(h, 'lat', min: -90, max: 90), lon: number(h, 'lon', min: -540, max: 540)),

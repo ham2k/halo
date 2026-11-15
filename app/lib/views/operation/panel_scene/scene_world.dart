@@ -195,6 +195,10 @@ Future<List<Float32List>> _loadDivisions() => _divisionsLoad ??= rootBundle.load
 /// The land, coasts, borders and divisions drawn, in the projection's units.
 typedef WorldLayers = ({Path land, Path coast, Path borders, Path divisions});
 
+/// Half a cell's diagonal on the sphere, in radians: no point of it is
+/// further from its middle.
+final double _cellHalfDiagonal = degreesApart(0, 0, cellDegrees / 2, cellDegrees / 2) * math.pi / 180;
+
 /// The outlines in one projection, in its own units: cut into cells
 /// (world_cells.dart), each projected the first time a view takes it in,
 /// and only the cells a view reaches drawn.
@@ -278,6 +282,15 @@ class WorldPaths {
   /// the disc a cell is projected to know its reach.
   bool _reaches(int i, Rect view) {
     final projection = this.projection;
+    // Behind the globe, by more than the cell's own half-diagonal: its middle
+    // past the horizon by that much leaves none of it in front. A globe turns
+    // on every frame of a drag, and projecting the hidden half of the world
+    // to find it hidden would be half that frame's cost.
+    if (projection is OrthographicProjection) {
+      final cell = cells[i];
+      final middle = projection.project(cell.south + cellDegrees / 2, cell.west + cellDegrees / 2);
+      if (middle.depth < -math.sin(_cellHalfDiagonal)) return false;
+    }
     if (projection is! CylindricalProjection) {
       final reach = _reach[i] ??= () {
         final cell = _projected[i] ??= _project(cells[i]);
