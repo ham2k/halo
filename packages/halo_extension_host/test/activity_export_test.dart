@@ -69,7 +69,9 @@ void main() {
   };
 
   Future<ExtensionHost> startHost() => sharedHost(['adif', 'ham2k-pota']);
-  Future<ExtensionHost> startWwffHost() => sharedHost(['adif', 'ham2k-wwff']);
+  // The WWFF tests share the host the mixed POTA and WWFF tests start, not
+  // a host of their own: each kernel costs seconds to start.
+  Future<ExtensionHost> startWwffHost() => sharedHost(['adif', 'ham2k-pota', 'ham2k-wwff']);
 
   test('activating two references offers one export per reference', () async {
     final host = await startWwffHost();
@@ -208,8 +210,8 @@ void main() {
             as Map;
     final content = result['content'] as String;
 
-    // Each contact once, claiming both parks: the core widened the slice to
-    // every park because the option names none.
+    // Each contact once, claiming both parks: a record per park would submit
+    // the contact to POTA once per park.
     expect('<EOR>'.allMatches(content).length, 3);
     expect('<MY_POTA_REF:15>US-0001,US-0002'.allMatches(content).length, 3);
   }, timeout: const Timeout(Duration(seconds: 60)));

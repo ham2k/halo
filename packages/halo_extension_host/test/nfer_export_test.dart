@@ -16,6 +16,8 @@
 // where a split reimports as two contacts.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
+import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'support/bundles.dart';
 
@@ -36,10 +38,18 @@ void main() {
     ],
   };
 
+  Future<ExtensionHost> startHost() => sharedHost(['adif', 'ham2k-pota', 'ham2k-wwff', 'templates']);
+
   /// POTA's own file, unless [full] asks for the whole-log export or
   /// [included] for another program's file that includes POTA's fields.
-  Future<String> exportAdif(List<String> activating, Map<String, dynamic> qso, {bool full = false, bool included = false}) async {
-    final host = await sharedHost(['adif', 'ham2k-pota', 'ham2k-wwff']);
+  Future<String> exportAdif(
+    List<String> activating,
+    Map<String, dynamic> qso, {
+    bool full = false,
+    bool included = false,
+    Map<String, dynamic>? exportSettings,
+  }) async {
+    final host = await startHost();
     final result =
         await host.invokeHook(
               'export',
@@ -60,6 +70,7 @@ void main() {
                   'includeFieldsFrom': ['ham2k-pota'],
                 } else if (!full)
                   'mainHandler': 'ham2k-pota',
+                'exportSettings': ?exportSettings,
               },
               timeout: const Duration(seconds: 20),
             )
@@ -78,6 +89,35 @@ void main() {
     expect(records.length, 1);
     expect(records[0], contains('<POTA_REF:15>US-9001,US-9002'));
     expect(records[0], contains('<TIME_ON:6>143015'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('POTA\'s own file, at the settings an operator who never opened them has, writes POTA_REF alone', () async {
+    // The settings resolved as the app resolves them: no pick of the operator's,
+    // so the park-fields choice takes POTA's default. A file without that pick
+    // writes SIG as well, which every other test here exercises.
+    final host = await startHost();
+    final definitions = await host.invokeHook(Hooks.exportGetExportTypes.category, key: 'ham2k-pota', method: Hooks.exportGetExportTypes.method) as List;
+    final resolved =
+        await host.invoke(
+              Hooks.templateExportSettings,
+              key: 'templates',
+              args: {
+                'definitions': definitions,
+                'global': <String, dynamic>{},
+                'overrides': {for (final definition in definitions) (definition as Map)['exportType']: <String, dynamic>{}},
+              },
+            )
+            as List;
+    final settings = (resolved.firstWhere((type) => (type as Map)['exportType'] == 'potaActivation-adif') as Map)['settings'] as Map;
+
+    final records = recordsIn(await exportAdif(['US-0001'], qsoHunting(['US-9001', 'US-9002']), exportSettings: Map<String, dynamic>.from(settings)));
+
+    expect(records.length, 1);
+    expect(records[0], contains('<POTA_REF:15>US-9001,US-9002'));
+    expect(records[0], contains('<MY_POTA_REF:7>US-0001'));
+    for (final field in ['<SIG:', '<SIG_INFO:', '<MY_SIG:', '<MY_SIG_INFO:']) {
+      expect(records[0], isNot(contains(field)));
+    }
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a file that includes POTA\'s fields writes a two-park P2P as two records, one per park', () async {
@@ -181,10 +221,17 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('POTA declaring both hook methods does not write its fields twice', () async {
-    final adif = await exportAdif(['US-0001'], qsoHunting(['US-9001']));
-    // `fieldsForOneQSO` and `fieldCombinationsForOneQSO` both answer for POTA;
-    // the exporter must take only the combinations.
-    expect('<MY_SIG:4>POTA'.allMatches(adif).length, 1);
-    expect('<SIG:4>POTA'.allMatches(adif).length, 1);
+    // `fieldCombinationsForOneQSO` answers only for a file that includes
+    // POTA's fields and a contact hunting two parks, and `fieldsForOneQSO`
+    // answers too: the exporter must take only the combinations.
+    final adif = await exportAdif(['US-0001'], qsoHunting(['US-9001', 'US-9002']), included: true);
+    final records = recordsIn(adif);
+
+    expect(records.length, 2);
+    for (final record in records) {
+      expect('<MY_SIG:4>POTA'.allMatches(record).length, 1);
+      expect('<SIG:4>POTA'.allMatches(record).length, 1);
+      expect('<POTA_REF:'.allMatches(record).length, 1);
+    }
   }, timeout: const Timeout(Duration(seconds: 60)));
 }

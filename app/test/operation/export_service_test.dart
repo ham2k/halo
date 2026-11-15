@@ -879,8 +879,8 @@ void main() {
       // its own ref — every shipped contest does — produced an empty file with
       // an empty filename for a log it had just offered to export. Since
       // `activityExportHook` THROWS when it can't find the reference its
-      // exportKey names, the same gap turns POTA's per-park ADIF into an
-      // outright failure rather than a quiet one.
+      // exportKey names, the same gap turns a per-reference ADIF, such as
+      // WWFF's, into an outright failure rather than a quiet one.
       await service.generateExports((await operations.get(created.uuid))!, [
         {'hookKey': 'cqww', 'exportType': 'cabrillo', 'refType': 'cqww'},
       ]);

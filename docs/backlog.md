@@ -126,6 +126,17 @@ them beside the English ones, and the palette match both. Revisit when a
 non-English tester reports the palette can't find a command, or when the
 next locale ships.
 
+## POTA's file keeps a park removed after the panel listed it
+
+POTA writes one file for every park of an n-fer, named for them all. The
+Exports panel lists that name when it builds the option, and
+`ExportService.generateExports` gives the file the name the option carried,
+while the records come from the operation as it is when the file is written.
+Remove a park between the two and the file is named for both parks while its
+records claim one. Decided to leave it: the panel rebuilds its list each time
+it opens, so this takes a park removed while the panel stays open. Revisit if
+an operator reports a file whose name lists a park its records lack.
+
 ## Callsign lookup results are not cached
 
 app-polo caches lookup results in the `lookups` table; HaLo re-queries QRZ/

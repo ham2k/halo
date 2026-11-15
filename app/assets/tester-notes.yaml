@@ -7,7 +7,8 @@
 upcoming:
   changes:
     - "Links from other apps ask before tuning the radio, filling in a contact or opening an operation"
-    - "New POTA export: one file for every park of an n-fer"
+    - "Improved POTA export: one file for every park of an n-fer"
+    - "New POTA Park fields setting (Settings → Exports)"
     - "New Provides line in each device's settings: what it can do"
 
 "193":
