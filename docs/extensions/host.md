@@ -284,9 +284,9 @@ contact instead, as tapping a spot starts one, and needs `their.call`.
 A field of the wrong kind rejects, naming it, and changes nothing: `notes`
 and the calls are text, `their` and `our` are objects, `refs` is a list of
 refs, each with a `type` and plain values (text, numbers, true or false), a
-grid is a Maidenhead locator, and `lat` comes with `lon`; a number written as
-text, `freq: "14074"`, is taken as the number. A top-level field the app does
-not know goes in as it is. A grid written or cleared without `lat` and `lon`
+grid is a Maidenhead locator, `lat` comes with `lon`, and `startAtMillis` is
+a whole number; a number written as text, `freq: "14074"`, is taken as the
+number. A top-level field the app does not know goes in as it is. A grid written or cleared without `lat` and `lon`
 clears the coordinates beside it, which would otherwise outrank it.
 `freq`, `band` and `mode` move the radio with the fields, so a patch naming
 any of them also needs `requiresRadioWrite`. Answers `{ accepted }`, false

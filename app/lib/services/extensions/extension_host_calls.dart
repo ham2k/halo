@@ -424,7 +424,7 @@ class _ExtensionHostCalls {
     final raw = params['patch'];
     if (raw is! Map) throw const FormatException('updateDraft: `patch` must be an object, the fields of a QSO to change');
     final violations = <QsonTypeViolation>[];
-    final patch = normalizeQsoQson(raw.cast<String, dynamic>(), violations: violations);
+    var patch = normalizeQsoQson(raw.cast<String, dynamic>(), violations: violations);
     if (violations.isNotEmpty) {
       throw FormatException('updateDraft: ${violations.map((v) => '`${v.path}` must be ${_kindName(v.expected)}').join('; ')}');
     }
@@ -434,6 +434,13 @@ class _ExtensionHostCalls {
           throw FormatException('updateDraft: `refs[$index]` must be { type, … } of plain values: text, numbers and true or false');
         }
       }
+    }
+    // The logging fields take a start that is an int and nothing else: a
+    // fraction of a millisecond would be dropped there, the contact timed by
+    // the clock instead, and the call still answer accepted.
+    if (patch['startAtMillis'] case final num start when start is! int) {
+      if (start != start.truncateToDouble()) throw const FormatException('updateDraft: `startAtMillis` must be a whole number of milliseconds');
+      patch = {...patch, 'startAtMillis': start.toInt()};
     }
     for (final side in const ['their', 'our']) {
       if (patch[side] case final Map<dynamic, dynamic> part) {

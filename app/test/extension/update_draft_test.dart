@@ -242,6 +242,25 @@ void main() {
     );
   });
 
+  // The logging fields read a start only as an int: a fraction, or a whole
+  // number that arrived as a double ("1.7e12" written as text), would be
+  // dropped there and the contact timed by the clock, while the call said
+  // accepted.
+  test('a start is a whole number of milliseconds: a fraction is refused, a whole double arrives as an int', () async {
+    final extensions = harness();
+    await expectLater(
+      call(extensions, {
+        'patch': {'startAtMillis': 1731600000000.5},
+      }),
+      throwsA(isA<FormatException>().having((e) => e.message, 'message', contains('`startAtMillis`'))),
+    );
+    expect(delivered, isEmpty);
+    await call(extensions, {
+      'patch': {'startAtMillis': '1.7316e12'},
+    });
+    expect(delivered.single.patch['startAtMillis'], isA<int>().having((v) => v, 'value', 1731600000000));
+  });
+
   test('a number written as text arrives as the number, and a field the app does not know goes on as it is', () async {
     await call(harness(radioWrite: true), {
       'patch': {'freq': '14074.5', 'k1abcCoach': 42},
