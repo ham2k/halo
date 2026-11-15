@@ -64,7 +64,7 @@ ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 # macOS ships bash 3.2, so no associative arrays: case functions instead.
 # ---------------------------------------------------------------------------
 
-PKG_GROUP_NAMES="extensions core build-tools mcp extension-host quickjs audio sdr-usb tls-psk widgets i18n cli app dist"
+PKG_GROUP_NAMES="extensions core build-tools mcp extension-host quickjs audio sdr-usb tls-psk windows-tls widgets i18n cli app dist"
 
 app_group_names() {
   local d
@@ -86,6 +86,7 @@ pkg_group_dir() {
     audio) echo "packages/halo_audio" ;;
     sdr-usb) echo "packages/halo_sdr_usb" ;;
     tls-psk) echo "packages/halo_tls_psk" ;;
+    windows-tls) echo "packages/halo_windows_tls" ;;
     widgets) echo "packages/halo_widgets" ;;
     i18n) echo "packages/halo_i18n" ;;
     cli) echo "packages/halo_cli" ;;
@@ -547,7 +548,7 @@ run_subset() {
       dist) run_dist=1; need_bundles=1 ;;
       app) run_all_app=1; need_bundles=1; need_hostlib=1; need_i18n=1 ;;
       quickjs | audio | sdr-usb) need_hostlib=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
-      tls-psk) pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
+      tls-psk | windows-tls) pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
       extension-host) need_bundles=1; need_hostlib=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
       core | build-tools | mcp) pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
       widgets | i18n) need_i18n=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
@@ -711,6 +712,8 @@ changed_subset() {
       packages/halo_audio/*) groups="$groups audio cat" ;;
       packages/halo_sdr_usb/*) groups="$groups sdr-usb cat" ;;
       packages/halo_tls_psk/*) groups="$groups tls-psk cat" ;;
+      # Its other consumer is the app's entrypoint, which `errors` boots.
+      packages/halo_windows_tls/*) groups="$groups windows-tls extension-host errors" ;;
       packages/halo_widgets/*) groups="$groups widgets" ;;
       # A string reaches every widget and every view.
       packages/halo_i18n/*) groups="$groups i18n widgets app" ;;
@@ -967,7 +970,7 @@ ensure_secrets
 
 check_i18n_fresh
 
-PACKAGES=(packages/halo_core packages/halo_build_tools packages/halo_mcp packages/halo_i18n packages/halo_extension_host packages/halo_quickjs packages/halo_audio packages/halo_sdr_usb packages/halo_tls_psk packages/halo_widgets packages/halo_cli app)
+PACKAGES=(packages/halo_core packages/halo_build_tools packages/halo_mcp packages/halo_i18n packages/halo_extension_host packages/halo_quickjs packages/halo_audio packages/halo_sdr_usb packages/halo_tls_psk packages/halo_windows_tls packages/halo_widgets packages/halo_cli app)
 # The private distribution layer, present only in the halo-dist checkout — a
 # public checkout has no app_dist/ and must still pass everything above.
 if [[ -d "$ROOT_DIR/app_dist" ]]; then

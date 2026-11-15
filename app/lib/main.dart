@@ -48,8 +48,10 @@ import 'services/update_check_service.dart';
 import 'services/update_service.dart';
 import 'services/update_notices.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:halo_windows_tls/halo_windows_tls.dart';
 
 import 'config/navigation.dart';
+import 'config/user_agent.dart' show ham2kUserAgentWithoutBuild;
 import 'services/bootstrap.dart';
 import 'services/deep_link_router.dart';
 import 'services/dev_fixture_reset.dart';
@@ -82,6 +84,17 @@ export 'views/app_shell/status_bar_overlay.dart';
 /// instead, and Android an intent).
 void main(List<String> args) => runHaLoApp(launchArguments: args);
 
+/// On Windows, recovers HTTPS connections refused for a root certificate the
+/// PC has not downloaded yet (package halo_windows_tls). Wraps only the HTTP
+/// clients created after it runs, so an entrypoint that builds services with
+/// clients of their own calls it before building them; [runHaLoApp] calls it
+/// too, and a second call does nothing.
+void installHaLoTlsRootRecovery() => installWindowsTlsRootRecovery(
+  userAgent: ham2kUserAgentWithoutBuild(),
+  onRecovered: (message) => ErrorReportingService.breadcrumb(message, category: 'tls-roots'),
+  onFailure: (error, stackTrace) => ErrorReportingService.report(error, stackTrace, context: 'tls-roots:recover'),
+);
+
 /// The whole app launch sequence, with the distribution-only services
 /// injectable — the OSS `main()` above runs it with the no-op defaults,
 /// while a private distribution entrypoint (`app_dist`'s `main_dist.dart`)
@@ -98,6 +111,9 @@ void runHaLoApp({
   UpdateCheckService? updateCheck,
   ErrorReportingBackend? errorReporting,
 }) {
+  // Before the crash-reporting backend starts, so its own client is wrapped
+  // too.
+  installHaLoTlsRootRecovery();
   // Global error capture: backend upload when one is injected, local
   // logging + the error tile + a StatusBar notice everywhere — see
   // services/error_reporting_service.dart. The ENTIRE startup sequence

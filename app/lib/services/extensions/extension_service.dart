@@ -117,6 +117,21 @@ class ExtensionTimersSuspended implements Exception {
   String toString() => 'timers of $extensionKey suspended ($reason)';
 }
 
+/// A recovery of a root Windows had not downloaded yet that broke in the
+/// extension isolate, carried over as text. An ErrorPolicy rule for a
+/// recovery failure matches [errorType] here as well as the type itself,
+/// or the same failure is judged two ways depending on the isolate.
+class ExtensionTlsRootRecoveryFailed implements Exception {
+  const ExtensionTlsRootRecoveryFailed(this.errorType, this.error);
+
+  /// The error's runtime type in the extension isolate.
+  final String errorType;
+  final String error;
+
+  @override
+  String toString() => error;
+}
+
 class ExtensionService
     with
         ExtensionScoring,
@@ -601,6 +616,13 @@ class ExtensionService
       _host!.logs.listen((line) => debugPrint('[extensions] $line'));
       _host!.interpretationUpdates.listen(_interpretationUpdates.add);
       _host!.timerSuspensions.listen(_noticeTimerSuspension);
+      _host!.tlsRootFailures.listen(
+        (failure) => ErrorReportingService.report(
+          ExtensionTlsRootRecoveryFailed(failure.errorType, failure.error),
+          StackTrace.fromString(failure.stackTrace),
+          context: 'tls-roots:recover (extensions)',
+        ),
+      );
       for (final line in _host!.logLines) {
         debugPrint('[extensions] $line');
       }

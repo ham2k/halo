@@ -30,6 +30,11 @@ dependencies:
   # the real AppClock to prove the two agree (docs/design/time.md).
   halo_core:
     path: ../halo_core
+  # The extension isolate opens its own connections, and HttpOverrides and
+  # the default SecurityContext are per isolate: it installs the recovery
+  # for itself.
+  halo_windows_tls:
+    path: ../halo_windows_tls
 
 dev_dependencies:
   archive: ^4.0.0

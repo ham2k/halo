@@ -41,6 +41,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:halo_core/halo_core.dart' show realNowUtc;
+import 'package:halo_windows_tls/halo_windows_tls.dart';
 import 'package:http/http.dart' as http;
 
 import 'src/engine_load.dart';
@@ -115,6 +116,7 @@ class ExtensionHost {
   final _fatalErrors = StreamController<String>.broadcast();
   final _interpretationUpdates = StreamController<Map<String, dynamic>>.broadcast();
   final _timerSuspensions = StreamController<TimerSuspension>.broadcast();
+  final _tlsRootFailures = StreamController<({String errorType, String error, String stackTrace})>.broadcast();
   final _sampleAdded = StreamController<HookCallSample>.broadcast();
 
   /// Every log line received so far (the stream only carries new ones).
@@ -176,6 +178,11 @@ class ExtensionHost {
 
   /// An extension whose timers broke their budget (extensions/sdk/src/timerQueue.ts); its hooks keep working.
   Stream<TimerSuspension> get timerSuspensions => _timerSuspensions.stream;
+
+  /// A recovery of a root Windows had not downloaded yet (halo_windows_tls)
+  /// that broke in the extension isolate, which has no crash reporting of its
+  /// own. [errorType] is the error's runtime type there.
+  Stream<({String errorType, String error, String stackTrace})> get tlsRootFailures => _tlsRootFailures.stream;
 
   /// Each sample as it joins [samples], timeouts included.
   Stream<HookCallSample> get sampleAdded => _sampleAdded.stream;
@@ -784,6 +791,11 @@ class ExtensionHost {
         engineLoad.pong();
       case 'timersSuspended':
         if (msg case {'extensionKey': String key, 'reason': String reason}) _timerSuspensions.add((extensionKey: key, reason: reason));
+      case 'tlsRootsFailure':
+        if (msg case {'errorType': String errorType, 'error': String error, 'stackTrace': String stackTrace}) {
+          _log('ERROR [tls-roots] recovery failed: $error');
+          _tlsRootFailures.add((errorType: errorType, error: error, stackTrace: stackTrace));
+        }
       case 'updateInterpretation':
         final input = msg['input'] as String?;
         if (input == null) return;
@@ -899,6 +911,7 @@ class ExtensionHost {
     await _fatalErrors.close();
     await _interpretationUpdates.close();
     await _timerSuspensions.close();
+    await _tlsRootFailures.close();
     await _sampleAdded.close();
     await engineLoad.dispose();
   }

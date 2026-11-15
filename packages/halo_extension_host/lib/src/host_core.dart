@@ -74,6 +74,16 @@ class _HostIsolateInit {
 }
 
 Future<void> _hostIsolateMain(_HostIsolateInit init) async {
+  // Before the core exists, so every client extensions fetch through is
+  // created after it. The guarded fetch and extension sockets choose their
+  // own connections and get no recovery (TlsRootRecoveringHttpClient says
+  // why). Crash reporting lives in the main isolate, so failures go there.
+  installWindowsTlsRootRecovery(
+    userAgent: init.userAgent ?? 'Ham2K Logger',
+    onRecovered: (message) => init.mainPort.send({'type': 'log', 'message': '[tls-roots] $message'}),
+    onFailure: (error, stackTrace) =>
+        init.mainPort.send({'type': 'tlsRootsFailure', 'errorType': '${error.runtimeType}', 'error': '$error', 'stackTrace': '$stackTrace'}),
+  );
   final receive = ReceivePort();
   init.mainPort.send({'type': 'port', 'port': receive.sendPort});
 

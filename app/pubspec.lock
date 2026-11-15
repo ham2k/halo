@@ -752,6 +752,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  halo_windows_tls:
+    dependency: "direct main"
+    description:
+      path: "../packages/halo_windows_tls"
+      relative: true
+    source: path
+    version: "0.0.1"
   hooks:
     dependency: transitive
     description:

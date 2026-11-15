@@ -89,7 +89,7 @@ packages/halo_audio/tool/build_host.sh
 # 5. Dependencies for the app and every first-party package — the same set
 #    the gate walks (scripts/test.sh), so `flutter analyze` and a package's
 #    own `flutter test` work from a fresh checkout without the gate first.
-for pkg in app packages/halo_core packages/halo_build_tools packages/halo_mcp packages/halo_i18n packages/halo_extension_host packages/halo_quickjs packages/halo_audio packages/halo_tls_psk packages/halo_widgets packages/halo_cli; do
+for pkg in app packages/halo_core packages/halo_build_tools packages/halo_mcp packages/halo_i18n packages/halo_extension_host packages/halo_quickjs packages/halo_audio packages/halo_tls_psk packages/halo_windows_tls packages/halo_widgets packages/halo_cli; do
   step "$pkg: pub get"
   (cd "$pkg" && flutter pub get >/dev/null)
 done
