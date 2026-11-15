@@ -469,11 +469,14 @@ export const host = {
   /// a map merges key by key (`{ their: { sent: "599" } }` leaves the call),
   /// `null` clears a field, anything else (a list of `refs` included)
   /// replaces it whole. With `replace: true` it is a new contact instead, as
-  /// tapping a spot starts one, and needs `their.call`. Any field, the call
-  /// included, whatever the operator is doing: needs `requiresDraftWrite`,
-  /// and `requiresRadioWrite` as well for `freq`, `band` or `mode`, which
-  /// move the radio. `accepted` is false with no such operation open, or an
-  /// existing QSO open for editing in its place. Extension API 22.
+  /// tapping a spot starts one, and needs `their.call`. A field of the wrong
+  /// kind rejects, naming it (`notes: 42`, a `their` that is not an object, a
+  /// ref with no `type` or a nested value, a grid that is no locator, a `lat`
+  /// without its `lon`); a number written as text is taken as the number. Any field, the call included, whatever the operator is
+  /// doing: needs `requiresDraftWrite`, and `requiresRadioWrite` as well for
+  /// `freq`, `band` or `mode`, which move the radio. `accepted` is false with
+  /// no such operation open, or an existing QSO open for editing in its
+  /// place. Extension API 22.
   async updateDraft(patch: DraftPatch, options: { replace?: boolean; operationUuid?: string } = {}): Promise<{ accepted: boolean }> {
     return (await hostCallFn()("updateDraft", { patch, ...options })) as { accepted: boolean }
   },

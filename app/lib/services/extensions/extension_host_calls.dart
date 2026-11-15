@@ -404,13 +404,47 @@ class _ExtensionHostCalls {
   /// (`requiresDraftWrite`). A frequency, band or mode moves the radio with
   /// the fields, so those take `requiresRadioWrite` as well. `extensionKey`
   /// is the kernel's stamp, not the caller's.
+  ///
+  /// Every field is read here against the kinds a contact's fields hold
+  /// (`normalizeQsoQson`), at the call: a `notes: 42` or a `their` that is not
+  /// a map throws in the logging fields when the patch lands, out of the
+  /// extension's reach and in the operator's way. A value that coerces, a
+  /// numeric string for `freq`, goes on coerced; a key the schema does not
+  /// name goes on as it is, since every field is open to the patch. A ref
+  /// needs a `type` and plain values only — a contest's exchange ref has no
+  /// `ref`, a park carries its coordinates. A grid and a coordinate are
+  /// read as every other grid writer reads them (docs/design/locations.md): a
+  /// grid that is no locator, or one axis of a pair alone, would leave the
+  /// contact placed nowhere, or at a point nobody stated.
   Future<dynamic> _updateDraft(Map<String, dynamic> params) async {
     final extensionKey = params['extensionKey'] as String?;
     if (!CapabilityGrant.among(_service.availableExtensions, (info) => info.requiresDraftWrite).allows(extensionKey)) {
       throw ExtensionHostException("updateDraft blocked: extension '${extensionKey ?? 'unknown'}' does not declare requiresDraftWrite");
     }
-    final patch = params['patch'];
-    if (patch is! Map) throw const FormatException('updateDraft: `patch` must be an object, the fields of a QSO to change');
+    final raw = params['patch'];
+    if (raw is! Map) throw const FormatException('updateDraft: `patch` must be an object, the fields of a QSO to change');
+    final violations = <QsonTypeViolation>[];
+    final patch = normalizeQsoQson(raw.cast<String, dynamic>(), violations: violations);
+    if (violations.isNotEmpty) {
+      throw FormatException('updateDraft: ${violations.map((v) => '`${v.path}` must be ${_kindName(v.expected)}').join('; ')}');
+    }
+    if (patch['refs'] case final List<dynamic> refs) {
+      for (final (index, ref) in refs.indexed) {
+        if (ref is! Map || ref['type'] is! String || !ref.values.every((v) => v == null || v is String || v is num || v is bool)) {
+          throw FormatException('updateDraft: `refs[$index]` must be { type, … } of plain values: text, numbers and true or false');
+        }
+      }
+    }
+    for (final side in const ['their', 'our']) {
+      if (patch[side] case final Map<dynamic, dynamic> part) {
+        if (part['grid'] case final String grid when grid.trim().isNotEmpty && !isWellFormedGrid(grid)) {
+          throw FormatException('updateDraft: `$side.grid` must be a Maidenhead locator, such as FN31 or FN31pr');
+        }
+        if (part.containsKey('lat') != part.containsKey('lon')) {
+          throw FormatException('updateDraft: `$side.lat` and `$side.lon` go together, a coordinate is both or neither');
+        }
+      }
+    }
     if ((patch.containsKey('freq') || patch.containsKey('band') || patch.containsKey('mode')) && !_service.radioCalls.canWrite(extensionKey)) {
       throw ExtensionHostException(
         "updateDraft blocked: a frequency, band or mode moves the radio, and extension '$extensionKey' does not declare requiresRadioWrite",
@@ -423,7 +457,7 @@ class _ExtensionHostCalls {
       if (call is! String || call.trim().isEmpty) throw const FormatException('updateDraft: a replacement needs their.call');
     }
     final operationUuid = params['operationUuid'] is String ? params['operationUuid'] as String : null;
-    return {'accepted': _service.onUpdateDraft?.call(patch.cast<String, dynamic>(), operationUuid, replace: replace) ?? false};
+    return {'accepted': _service.onUpdateDraft?.call(_gridClearsCoordinate(patch), operationUuid, replace: replace) ?? false};
   }
 
   /// How many draft suggestions one list may hold. The line shows as many
@@ -498,6 +532,24 @@ class _ExtensionHostCalls {
     if (operations != null && await operations.get(operationUuid) == null) return null;
     return operationUuid;
   }
+
+  /// A field's kind as the extension writes it, in JavaScript's words.
+  static String _kindName(QsonFieldType type) => switch (type) {
+    QsonFieldType.string => 'text',
+    QsonFieldType.number || QsonFieldType.latitude || QsonFieldType.longitude => 'a number',
+    QsonFieldType.map => 'an object',
+    QsonFieldType.list => 'a list',
+  };
+
+  /// [patch] with the coordinate pair cleared beside a grid it writes or
+  /// clears without one, in `their` or `our`: a pair from before would
+  /// outrank the new grid (docs/design/locations.md).
+  static Map<String, dynamic> _gridClearsCoordinate(Map<String, dynamic> patch) => {
+    ...patch,
+    for (final side in const ['their', 'our'])
+      if (patch[side] case final Map<dynamic, dynamic> part when part.containsKey('grid') && !part.containsKey('lat'))
+        side: {...part.cast<String, dynamic>(), 'lat': null, 'lon': null},
+  };
 
   static DraftSuggestion _draftSuggestion(Object? draft) {
     const shape = 'draftSuggestions.post: each draft is { qso, notices?, alerts? }, its qso with their.call';
