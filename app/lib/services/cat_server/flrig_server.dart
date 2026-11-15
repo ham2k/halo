@@ -40,7 +40,11 @@ final _headerEnd = RegExp(r'\r?\n\r?\n');
 final _origin = RegExp(r'^origin:', caseSensitive: false, multiLine: true);
 final _contentLength = RegExp(r'^content-length:\s*(\d+)', caseSensitive: false, multiLine: true);
 final _methodName = RegExp(r'<methodName>\s*([^<\s]+)\s*</methodName>');
-final _paramValue = RegExp(r'<param>\s*<value>\s*(?:<(\w+)>([^<]*)</\1>|([^<]*))\s*</value>\s*</param>');
+// No two neighbouring parts can take the same character: whitespace a bare
+// value is padded with is its own, and trimmed in code. With a `\s*` on each
+// side of `([^<]*)`, a run of blanks with no `</value>` after it is tried at
+// every three-way split of the run.
+final _paramValue = RegExp(r'<param>\s*<value>(?:\s*<(\w+)>([^<]*)</\1>\s*|([^<]*))</value>\s*</param>');
 
 typedef _Method = String Function(List<String> params);
 

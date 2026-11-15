@@ -27,12 +27,12 @@ class _FailingCaptures extends InboundCaptureRepository {
   int failures;
 
   @override
-  Future<InboundCaptureRow> capture({required String source, required String dedupeKey, required Map<String, dynamic> qsoData}) {
+  Future<InboundCaptureRow> capture({required String source, required String dedupeKey, required Map<String, dynamic> qsoData, String? sender}) {
     if (failures > 0) {
       failures--;
       throw StateError('disk full');
     }
-    return super.capture(source: source, dedupeKey: dedupeKey, qsoData: qsoData);
+    return super.capture(source: source, dedupeKey: dedupeKey, qsoData: qsoData, sender: sender);
   }
 }
 

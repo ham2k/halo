@@ -225,6 +225,11 @@ class InboundCaptures extends Table {
   /// still recognized by [dedupeKey] as already handled.
   TextColumn get addedToOperation => text().nullable()();
 
+  /// The address the program sent it from, as the network said: this device
+  /// or another on its network. Null for a capture recorded before senders
+  /// were, or by a caller with no network in between.
+  TextColumn get sender => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {uuid};
 }
@@ -382,7 +387,7 @@ class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -482,6 +487,11 @@ class HaLoDatabase extends _$HaLoDatabase {
         // did (`OperationsRepository.inferStatus`).
         if (from < 18) {
           await m.addColumn(operations, operations.status);
+        }
+        // From below v9 the table was created a few steps up, in its current
+        // shape, `sender` included: adding it again would throw.
+        if (from >= 9 && from < 19) {
+          await m.addColumn(inboundCaptures, inboundCaptures.sender);
         }
       });
     },

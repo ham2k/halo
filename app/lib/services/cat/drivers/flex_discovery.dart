@@ -25,7 +25,7 @@ class FlexRadioDiscoverer implements EquipmentDiscoverer {
 
   @override
   Stream<DiscoveredEquipment> discover() => udpBroadcastDatagrams(port: FlexRadioDriver.defaultPort)
-      .map(parseFlexDiscovery)
+      .map((datagram) => parseFlexDiscovery(datagram.data))
       .where((found) => found != null)
       .map(
         (found) => DiscoveredEquipment(

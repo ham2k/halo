@@ -76,6 +76,23 @@ void main() {
     expect(parseN1mmContactInfo('not xml at all'), isNull);
   });
 
+  test('a field runs to the first closing tag of its name, and a tag never closed is skipped', () {
+    final info = parseN1mmContactInfo('<contactinfo><junk><timestamp>2026-03-15 22:15:32</timestamp><name>Ken <name>Jr</name><call>K3TN</call></contactinfo>')!;
+    expect(info.qso['their'], containsPair('call', 'K3TN'));
+    expect(info.qso['their'], containsPair('name', 'Ken <name>Jr'));
+    expect(info.qso['startAtMillis'], DateTime.utc(2026, 3, 15, 22, 15, 32).millisecondsSinceEpoch);
+  });
+
+  // Matched as one lazy pattern, each tag that never closes scans the
+  // datagram to its end: seconds of the main isolate for one packet anyone
+  // on the network can send.
+  test('a datagram of tags that never close is read in one pass', () {
+    final datagram = '<contactinfo>${'<a>' * 20000}<call>K3TN</call><timestamp>2026-03-15 22:15:32</timestamp></contactinfo>';
+    final watch = Stopwatch()..start();
+    expect(parseN1mmContactInfo(datagram)?.qso['their'], containsPair('call', 'K3TN'));
+    expect(watch.elapsedMilliseconds, lessThan(1000));
+  });
+
   test('rejects a contactinfo record with no callsign or no timestamp', () {
     expect(parseN1mmContactInfo('<contactinfo><timestamp>2026-03-15 22:15:32</timestamp></contactinfo>'), isNull);
     expect(parseN1mmContactInfo('<contactinfo><call>K3TN</call></contactinfo>'), isNull);

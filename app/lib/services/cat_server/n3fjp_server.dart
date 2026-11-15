@@ -57,36 +57,50 @@ class N3fjpServerConnection implements CatServerConnection {
       final commandEnd = n3fjpCommandEnd.firstMatch(_pending)?.end ?? -1;
       final firstEnd = [lineEnd, commandEnd].where((i) => i >= 0).fold<int?>(null, (a, b) => a == null || b < a ? b : a);
       if (firstEnd != null) {
-        if (isHttpRequestLine(_pending.substring(0, firstEnd))) {
+        if (isBrowserRequestLine(_pending.substring(0, firstEnd))) {
           hangUp();
           return;
         }
         _vetted = true;
       }
     }
-    while (_vetted) {
-      final end = n3fjpCommandEnd.firstMatch(_pending);
-      if (end == null) break;
-      final message = _pending.substring(0, end.end);
-      _pending = _pending.substring(end.end);
-      final match = n3fjpCommand.firstMatch(message);
-      if (match == null) continue;
-      // A tune notifies at once; its report waits until the command's own
-      // reply is out, which is the order a client reading replies expects.
-      _handling = true;
-      final String? reply;
-      try {
-        reply = respond(match.group(1)!.toUpperCase(), match.group(2)!);
-      } finally {
-        _handling = false;
-      }
-      if (reply != null) send(utf8.encode(reply));
-      if (_changedWhileHandling) {
-        _changedWhileHandling = false;
-        _onRigChanged();
-      }
-    }
+    if (_vetted) _takeCommands();
     if (_pending.length > catServerMaxPending) hangUp();
+  }
+
+  /// Answers every whole command in [_pending], and keeps what follows the
+  /// last once, at the end: cut after each command instead, a read of many
+  /// short commands is copied once per command.
+  void _takeCommands() {
+    var consumed = 0;
+    try {
+      for (final end in n3fjpCommandEnd.allMatches(_pending)) {
+        final message = _pending.substring(consumed, end.end);
+        consumed = end.end;
+        _answer(message);
+      }
+    } finally {
+      _pending = _pending.substring(consumed);
+    }
+  }
+
+  void _answer(String message) {
+    final match = n3fjpCommand.firstMatch(message);
+    if (match == null) return;
+    // A tune notifies at once; its report waits until the command's own
+    // reply is out, which is the order a client reading replies expects.
+    _handling = true;
+    final String? reply;
+    try {
+      reply = respond(match.group(1)!.toUpperCase(), match.group(2)!);
+    } finally {
+      _handling = false;
+    }
+    if (reply != null) send(utf8.encode(reply));
+    if (_changedWhileHandling) {
+      _changedWhileHandling = false;
+      _onRigChanged();
+    }
   }
 
   @override

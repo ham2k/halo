@@ -167,7 +167,7 @@ class RigctldServerConnection implements CatServerConnection {
       return;
     }
     for (final line in _framer.add(bytes)) {
-      if (_firstLine && isHttpRequestLine(line)) {
+      if (_firstLine && isBrowserRequestLine(line)) {
         hangUp();
         return;
       }

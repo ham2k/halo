@@ -162,16 +162,41 @@ void _put(Map<String, dynamic> dest, String key, String? value) {
   if (value != null) dest[key] = value;
 }
 
-/// Every `<tag>value</tag>` pair in [inner], names lowercased, entities
-/// decoded. Only ever called on the content BETWEEN the root element's own
-/// tags — N1MM's fields don't nest, so this is a flat scan, not a real
-/// parse.
-final _fieldPattern = RegExp(r'<([a-zA-Z][\w:-]*)>(.*?)</\1>', dotAll: true);
+final _openTag = RegExp(r'<([a-zA-Z][\w:-]*)>');
+final _closeTag = RegExp(r'</([a-zA-Z][\w:-]*)>');
 
+/// Every `<tag>value</tag>` pair in [inner], names lowercased, entities
+/// decoded: each opening tag up to the first closing tag of its name after
+/// it, the scan going on after that. Only ever called on the content BETWEEN
+/// the root element's own tags — N1MM's fields don't nest, so this is a flat
+/// scan, not a real parse.
+///
+/// The closing tags are found in one pass first. As one lazy pattern with a
+/// backreference, each opening tag with no closing tag would scan the
+/// datagram to its end, and one datagram of thousands of `<a>` would hold the
+/// main isolate.
 Map<String, String> _fields(String inner) {
+  final closes = <String, List<int>>{};
+  for (final close in _closeTag.allMatches(inner)) {
+    closes.putIfAbsent(close.group(1)!, () => []).add(close.start);
+  }
+  // Per name, the first of its closing tags not yet behind the scan.
+  final next = <String, int>{};
   final fields = <String, String>{};
-  for (final match in _fieldPattern.allMatches(inner)) {
-    fields[match.group(1)!.toLowerCase()] = _decodeEntities(match.group(2)!.trim());
+  var from = 0;
+  for (final open in _openTag.allMatches(inner)) {
+    if (open.start < from) continue;
+    final name = open.group(1)!;
+    final ends = closes[name];
+    if (ends == null) continue;
+    var i = next[name] ?? 0;
+    while (i < ends.length && ends[i] < open.end) {
+      i++;
+    }
+    next[name] = i;
+    if (i == ends.length) continue;
+    fields[name.toLowerCase()] = _decodeEntities(inner.substring(open.end, ends[i]).trim());
+    from = ends[i] + name.length + 3;
   }
   return fields;
 }

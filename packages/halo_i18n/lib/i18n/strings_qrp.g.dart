@@ -2170,6 +2170,13 @@ class _Translations$operation$import$qrp extends Translations$operation$import$e
 	@override String get pendingEmpty => 'nothing captured yet';
 	@override String stationMismatch({required Object call}) => 'logged as ${call}, not this operation\'s station';
 	@override String get discardAction => 'discard';
+	@override String heldNotice({required Object sender}) => 'a contact from ${sender} is waiting in imports';
+	@override String heldTitle({required Object sender}) => 'waiting: contacts from ${sender}';
+	@override String get heldBody => 'another device on your network sent these. add them if it\'s one of yours.';
+	@override String get heldAddAction => 'add';
+	@override String get heldAlwaysAction => 'always add from this device';
+	@override String get allowedSendersTitle => 'other devices whose contacts are added';
+	@override String allowedSenderRemove({required Object sender}) => 'stop adding from ${sender}';
 	@override String get gapDialogTitle => 'include earlier captures?';
 	@override String gapDialogBody({required Object count}) => '${count} more qsos were captured earlier, before a gap in the data. include them too?';
 	@override String get gapDialogRecentOnly => 'just the recent ones';
@@ -6013,6 +6020,13 @@ extension on TranslationsQrp {
 			'operation.import.pendingEmpty' => 'nothing captured yet',
 			'operation.import.stationMismatch' => ({required Object call}) => 'logged as ${call}, not this operation\'s station',
 			'operation.import.discardAction' => 'discard',
+			'operation.import.heldNotice' => ({required Object sender}) => 'a contact from ${sender} is waiting in imports',
+			'operation.import.heldTitle' => ({required Object sender}) => 'waiting: contacts from ${sender}',
+			'operation.import.heldBody' => 'another device on your network sent these. add them if it\'s one of yours.',
+			'operation.import.heldAddAction' => 'add',
+			'operation.import.heldAlwaysAction' => 'always add from this device',
+			'operation.import.allowedSendersTitle' => 'other devices whose contacts are added',
+			'operation.import.allowedSenderRemove' => ({required Object sender}) => 'stop adding from ${sender}',
 			'operation.import.gapDialogTitle' => 'include earlier captures?',
 			'operation.import.gapDialogBody' => ({required Object count}) => '${count} more qsos were captured earlier, before a gap in the data. include them too?',
 			'operation.import.gapDialogRecentOnly' => 'just the recent ones',
@@ -6175,6 +6189,8 @@ extension on TranslationsQrp {
 			'activitiesView.mapEmptyStateHint' => 'switch back to the list, or search for something else',
 			'activitiesView.imports' => 'imports',
 			'loggingControls.timeUtc' => 'time (utc)',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.date' => 'date',
 			'loggingControls.now' => 'now',
 			'loggingControls.manualTimeSettings' => 'manual time',
@@ -6182,8 +6198,6 @@ extension on TranslationsQrp {
 			'loggingControls.manualTimeIncrementNone' => 'none',
 			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} minute', other: '${count} minutes', ), 
 			'loggingControls.frequency' => 'frequency',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.mode' => 'mode',
 			'loggingControls.theirCall' => 'their call',
 			'loggingControls.noteField' => 'note',
@@ -6689,6 +6703,8 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.tail' => 'unkey delay',
 			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
 			'settings.radio.voiceMessages.listenButton' => 'listen',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.notRecorded' => 'not recorded',
 			'settings.radio.voiceMessages.unplayable' => 'can\'t play this file',
 			'settings.radio.voiceMessages.problemNoOutput' => 'choose the sound device that feeds the radio before playing a message.',
@@ -6696,8 +6712,6 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.problemInputMissing' => 'the recording device is not connected.',
 			'settings.radio.voiceMessages.problemDeviceFailed' => 'the sound device would not open.',
 			'settings.radio.voiceMessages.problemNotRecorded' => 'that message has no recording yet.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.problemRecordingSilent' => 'nothing was heard from the recording device, so the message was left as it was. check the input, and that the app is allowed to use the microphone.',
 			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'the radio is not taking audio from the app right now. it needs a network connection to the radio.',
 			'settings.radio.voiceMessages.problemSourceRefused' => 'the radio would not switch its transmit audio to the app, so the message stopped. set the radio to transmit the app\'s audio.',
@@ -7203,6 +7217,8 @@ extension on TranslationsQrp {
 			'settings.station.models.ts2000' => 'kenwood ts-2000',
 			'settings.station.models.qmx' => 'qrp labs qmx',
 			'settings.station.models.fx4cr' => 'bg2fx fx-4cr',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.tx500' => 'lab599 tx-500',
 			'settings.station.models.tx500mp' => 'lab599 tx-500mp',
 			'settings.station.models.qcx' => 'qrp labs qcx',
@@ -7210,8 +7226,6 @@ extension on TranslationsQrp {
 			'settings.station.models.kx2' => 'elecraft kx2',
 			'settings.station.models.kx3' => 'elecraft kx3',
 			'settings.station.models.k4' => 'elecraft k4',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.ic705' => 'icom ic-705',
 			'settings.station.models.ic7300' => 'icom ic-7300',
 			'settings.station.models.ic7300mk2' => 'icom ic-7300 mk2',
@@ -7717,6 +7731,8 @@ extension on TranslationsQrp {
 			'settings.developer.diagnostics' => 'diagnostics',
 			'settings.developer.importExport' => 'import / export',
 			'settings.developer.systemInformation' => 'system information',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.appVersion' => 'app version',
 			'settings.developer.dataFolder' => 'data folder',
 			'settings.developer.worktree' => 'worktree',
@@ -7724,8 +7740,6 @@ extension on TranslationsQrp {
 			'settings.developer.loading' => '(loading…)',
 			'settings.developer.panelLoadFailed' => 'could not load this settings panel.',
 			'settings.developer.extDevServer' => 'extension dev server',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.extensionSettings' => 'extension settings',
 			'settings.developer.extDevServerDescription' => 'load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.',
 			'settings.developer.extDevServerAddress' => 'server address',
@@ -8231,6 +8245,8 @@ extension on TranslationsQrp {
 			'adifImport.stationCallJoin' => ' and ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} has no date and cannot be imported', other: '${formatted} have no date and cannot be imported', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'this file records an activation of ${refs}.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.addActivation' => 'add it to this operation',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'only ${written} of ${planned} could be applied — the log changed while you were deciding.',
 			'adifImport.busy' => 'an import is already running. wait for it to finish before starting another.',
@@ -8238,8 +8254,6 @@ extension on TranslationsQrp {
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos. importing an adif into an operation is meant to add a few qsos, not to bring in a large log — use the logs view for that. developer mode lets you import it anyway, if you are sure.',
 			'adifImport.importAnyway' => 'import anyway',
 			'offline.statusOffline' => 'internet: offline',
-			_ => null,
-		} ?? switch (path) {
 			'offline.statusOnline' => 'internet: connected',
 			'offline.noRoute' => 'no network connection at all.',
 			'offline.unreachable' => 'the network is up, but no server is responding — often a sign-in page waiting in a browser.',

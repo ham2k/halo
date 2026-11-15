@@ -34,6 +34,22 @@ void main() {
 
   String valueOf(String response) => RegExp(r'<param>\s*<value>(.*)</value>\s*</param>', dotAll: true).firstMatch(response)!.group(1)!;
 
+  test('a parameter padded with blanks, bare or typed, is read without them', () {
+    receive(hamlibRequest('rig.set_vfoA', '  7074000  '));
+    receive(hamlibRequest('rig.set_vfoA', ' <double>7030000</double> '));
+    expect(rig.tunes.map((t) => t.freqKHz), [7074.0, 7030.0]);
+  });
+
+  // With blanks a parameter could give to either side of its value, a run of
+  // them with no `</value>` after it is tried at every three-way split: hours
+  // of the main isolate for one request.
+  test('a parameter of blanks that never closes is read in one pass', () {
+    final watch = Stopwatch()..start();
+    receive(hamlibRequest('rig.set_vfoA', '${' ' * 3000}<x'));
+    expect(watch.elapsedMilliseconds, lessThan(1000));
+    expect(rig.tunes, isEmpty);
+  });
+
   test('answers in HTTP/1.1, which Hamlib compares character for character', () {
     receive(hamlibRequest('main.get_version'));
     expect(sent.single, startsWith('HTTP/1.1 200 OK\r\n'));

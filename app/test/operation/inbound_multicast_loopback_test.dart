@@ -110,7 +110,7 @@ void main() {
     final subscription = udpMulticastDatagrams(
       port: port,
       multicastGroup: _group.address,
-    ).listen((data) => received.add(String.fromCharCodes(data)), onError: (Object e) => listenError = e);
+    ).listen((datagram) => received.add(String.fromCharCodes(datagram.data)), onError: (Object e) => listenError = e);
     addTearDown(subscription.cancel);
 
     await _sendOnLoopbackUntil(port, () => received.isNotEmpty || listenError != null);

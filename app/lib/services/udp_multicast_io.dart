@@ -27,6 +27,8 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import 'udp_datagram.dart';
+
 /// Datagrams arriving on [port] and addressed to [address], for as long as
 /// the subscription lives. Joins [address] as a multicast group only when it
 /// actually is one (224.0.0.0–239.255.255.255) — a unicast or broadcast
@@ -36,12 +38,12 @@ import 'package:flutter/foundation.dart';
 /// [udpBroadcastDatagrams] in udp_broadcast_io.dart, and for the same
 /// reason: a port already held by another app, or a network that blocks
 /// multicast, should leave the caller with "nothing found" and a reason.
-Stream<Uint8List> udpMulticastDatagrams({required int port, required String multicastGroup}) {
+Stream<UdpDatagram> udpMulticastDatagrams({required int port, required String multicastGroup}) {
   RawDatagramSocket? socket;
   var cancelled = false;
-  late final StreamController<Uint8List> controller;
+  late final StreamController<UdpDatagram> controller;
 
-  controller = StreamController<Uint8List>(
+  controller = StreamController<UdpDatagram>(
     onListen: () async {
       try {
         final bound = await _bind(port);
@@ -66,7 +68,7 @@ Stream<Uint8List> udpMulticastDatagrams({required int port, required String mult
           (event) {
             if (event != RawSocketEvent.read) return;
             final datagram = socket?.receive();
-            if (datagram != null && !controller.isClosed) controller.add(datagram.data);
+            if (datagram != null && !controller.isClosed) controller.add((data: datagram.data, sender: datagram.address.address));
           },
           onError: controller.addError,
           onDone: controller.close,
@@ -108,9 +110,11 @@ Future<List<NetworkInterface>> _interfacesToJoin() async {
 /// and one sent on the LAN interface only a socket joined there. So the
 /// listener joins every attached network, where a bare `joinMulticast(group)`
 /// covers the default route's alone — a stranger's WSJT-X on a club LAN or a
-/// VPN is thereby heard too, which is acceptable because the operator reviews
-/// every capture before it reaches a log. An interface that refuses (a VPN
-/// tunnel, a Linux `lo` without multicast enabled) is skipped. When none
+/// VPN is thereby heard too, which is acceptable because only this device's
+/// own contacts, and those of devices the operator allowed, reach a log on
+/// their own (`InboundQsoListenerService.addsOnItsOwn`). An interface that
+/// refuses (a VPN tunnel, a Linux `lo` without multicast enabled) is
+/// skipped. When none
 /// accepted — or there were none to try — the bare join is the fallback, and
 /// its failure is the one that propagates: that error says something about
 /// the platform (iOS without the multicast entitlement), not about whichever
@@ -154,5 +158,21 @@ Future<RawDatagramSocket> _bind(int port) async {
   } catch (e) {
     debugPrint('[udp-multicast] SO_REUSEPORT unavailable ($e), binding $port without it');
     return RawDatagramSocket.bind(InternetAddress.anyIPv4, port, reuseAddress: true);
+  }
+}
+
+/// Whether [address] is this device's own: a loopback address, or one of its
+/// network interfaces'. Asked anew each time, since an interface's address
+/// changes with the network it joins.
+Future<bool> isThisDevice(String address) async {
+  final parsed = InternetAddress.tryParse(address);
+  if (parsed == null) return false;
+  if (parsed.isLoopback) return true;
+  try {
+    final interfaces = await NetworkInterface.list(includeLoopback: true, includeLinkLocal: true);
+    return interfaces.any((interface) => interface.addresses.any((own) => own.address == parsed.address));
+  } on SocketException catch (e) {
+    debugPrint('[udp-multicast] cannot list interfaces: $e');
+    return false;
   }
 }

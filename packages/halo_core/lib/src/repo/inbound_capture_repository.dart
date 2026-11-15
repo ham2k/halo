@@ -38,7 +38,9 @@ class InboundCaptureRepository {
   /// independent socket callbacks (`InboundQsoListenerService`'s handlers
   /// fire-and-forget via `unawaited`), so a check-then-insert has a real race
   /// window between them — the index is what actually makes this atomic.
-  Future<InboundCaptureRow> capture({required String source, required String dedupeKey, required Map<String, dynamic> qsoData}) async {
+  ///
+  /// [sender] is the address the datagram came from (`InboundCaptures.sender`).
+  Future<InboundCaptureRow> capture({required String source, required String dedupeKey, required Map<String, dynamic> qsoData, String? sender}) async {
     final uuid = uuidGenerator.v4();
     await db
         .into(db.inboundCaptures)
@@ -54,6 +56,7 @@ class InboundCaptureRepository {
             // a real QSO.
             data: jsonEncode(qsoData),
             receivedAtMillis: nowMillis(),
+            sender: Value(sender),
           ),
           mode: InsertMode.insertOrIgnore,
         );

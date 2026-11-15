@@ -91,6 +91,26 @@ void main() {
     expect(rig.tunes, isEmpty);
   });
 
+  // Cutting the rest of the text after each command copies it once per
+  // command: seconds of the main isolate for one read of empty commands.
+  test('a read of many commands is taken in one pass', () {
+    final watch = Stopwatch()..start();
+    receive('<CMD><PROGRAM></CMD>${'</CMD>' * 150000}<CMD><PROGRAM></CMD><CMD><READ');
+    expect(watch.elapsedMilliseconds, lessThan(1000));
+    receive('BMF></CMD>');
+    expect(sent, hasLength(3), reason: 'what follows the last command is kept for the next read');
+    expect(sent[2], contains('<READBMFRESPONSE>'));
+  });
+
+  // As one lazy pattern, each `<VALUE>` with no `</VALUE>` after it scans
+  // the message to its end: seconds of the main isolate for one message.
+  test('a message of values that never close is read in one pass', () {
+    final watch = Stopwatch()..start();
+    receive('<CMD><CHANGEFREQ>${'<VALUE>' * 9000}</CMD>');
+    expect(watch.elapsedMilliseconds, lessThan(1000));
+    expect(rig.tunes, isEmpty);
+  });
+
   test('a logging command is not found rather than pretended to', () {
     receive('<CMD><ACTION><VALUE>ENTER</VALUE></CMD>');
     expect(sent.single, '<CMD><CMD_NOT_FOUND></CMD>\r\n');

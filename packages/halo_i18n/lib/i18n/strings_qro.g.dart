@@ -2170,6 +2170,13 @@ class _Translations$operation$import$qro extends Translations$operation$import$e
 	@override String get pendingEmpty => 'NOTHING CAPTURED YET';
 	@override String stationMismatch({required Object call}) => 'LOGGED AS ${call}, NOT THIS OPERATION\'S STATION';
 	@override String get discardAction => 'DISCARD';
+	@override String heldNotice({required Object sender}) => 'A CONTACT FROM ${sender} IS WAITING IN IMPORTS';
+	@override String heldTitle({required Object sender}) => 'WAITING: CONTACTS FROM ${sender}';
+	@override String get heldBody => 'ANOTHER DEVICE ON YOUR NETWORK SENT THESE. ADD THEM IF IT\'S ONE OF YOURS.';
+	@override String get heldAddAction => 'ADD';
+	@override String get heldAlwaysAction => 'ALWAYS ADD FROM THIS DEVICE';
+	@override String get allowedSendersTitle => 'OTHER DEVICES WHOSE CONTACTS ARE ADDED';
+	@override String allowedSenderRemove({required Object sender}) => 'STOP ADDING FROM ${sender}';
 	@override String get gapDialogTitle => 'INCLUDE EARLIER CAPTURES?';
 	@override String gapDialogBody({required Object count}) => '${count} MORE QSOS WERE CAPTURED EARLIER, BEFORE A GAP IN THE DATA. INCLUDE THEM TOO?';
 	@override String get gapDialogRecentOnly => 'JUST THE RECENT ONES';
@@ -6013,6 +6020,13 @@ extension on TranslationsQro {
 			'operation.import.pendingEmpty' => 'NOTHING CAPTURED YET',
 			'operation.import.stationMismatch' => ({required Object call}) => 'LOGGED AS ${call}, NOT THIS OPERATION\'S STATION',
 			'operation.import.discardAction' => 'DISCARD',
+			'operation.import.heldNotice' => ({required Object sender}) => 'A CONTACT FROM ${sender} IS WAITING IN IMPORTS',
+			'operation.import.heldTitle' => ({required Object sender}) => 'WAITING: CONTACTS FROM ${sender}',
+			'operation.import.heldBody' => 'ANOTHER DEVICE ON YOUR NETWORK SENT THESE. ADD THEM IF IT\'S ONE OF YOURS.',
+			'operation.import.heldAddAction' => 'ADD',
+			'operation.import.heldAlwaysAction' => 'ALWAYS ADD FROM THIS DEVICE',
+			'operation.import.allowedSendersTitle' => 'OTHER DEVICES WHOSE CONTACTS ARE ADDED',
+			'operation.import.allowedSenderRemove' => ({required Object sender}) => 'STOP ADDING FROM ${sender}',
 			'operation.import.gapDialogTitle' => 'INCLUDE EARLIER CAPTURES?',
 			'operation.import.gapDialogBody' => ({required Object count}) => '${count} MORE QSOS WERE CAPTURED EARLIER, BEFORE A GAP IN THE DATA. INCLUDE THEM TOO?',
 			'operation.import.gapDialogRecentOnly' => 'JUST THE RECENT ONES',
@@ -6175,6 +6189,8 @@ extension on TranslationsQro {
 			'activitiesView.mapEmptyStateHint' => 'SWITCH BACK TO THE LIST, OR SEARCH FOR SOMETHING ELSE',
 			'activitiesView.imports' => 'IMPORTS',
 			'loggingControls.timeUtc' => 'TIME (UTC)',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.date' => 'DATE',
 			'loggingControls.now' => 'NOW',
 			'loggingControls.manualTimeSettings' => 'MANUAL TIME',
@@ -6182,8 +6198,6 @@ extension on TranslationsQro {
 			'loggingControls.manualTimeIncrementNone' => 'NONE',
 			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} MINUTE', other: '${count} MINUTES', ), 
 			'loggingControls.frequency' => 'FREQUENCY',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.mode' => 'MODE',
 			'loggingControls.theirCall' => 'THEIR CALL',
 			'loggingControls.noteField' => 'NOTE',
@@ -6689,6 +6703,8 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.tail' => 'UNKEY DELAY',
 			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} MS',
 			'settings.radio.voiceMessages.listenButton' => 'LISTEN',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.notRecorded' => 'NOT RECORDED',
 			'settings.radio.voiceMessages.unplayable' => 'CAN\'T PLAY THIS FILE',
 			'settings.radio.voiceMessages.problemNoOutput' => 'CHOOSE THE SOUND DEVICE THAT FEEDS THE RADIO BEFORE PLAYING A MESSAGE.',
@@ -6696,8 +6712,6 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.problemInputMissing' => 'THE RECORDING DEVICE IS NOT CONNECTED.',
 			'settings.radio.voiceMessages.problemDeviceFailed' => 'THE SOUND DEVICE WOULD NOT OPEN.',
 			'settings.radio.voiceMessages.problemNotRecorded' => 'THAT MESSAGE HAS NO RECORDING YET.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.problemRecordingSilent' => 'NOTHING WAS HEARD FROM THE RECORDING DEVICE, SO THE MESSAGE WAS LEFT AS IT WAS. CHECK THE INPUT, AND THAT THE APP IS ALLOWED TO USE THE MICROPHONE.',
 			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'THE RADIO IS NOT TAKING AUDIO FROM THE APP RIGHT NOW. IT NEEDS A NETWORK CONNECTION TO THE RADIO.',
 			'settings.radio.voiceMessages.problemSourceRefused' => 'THE RADIO WOULD NOT SWITCH ITS TRANSMIT AUDIO TO THE APP, SO THE MESSAGE STOPPED. SET THE RADIO TO TRANSMIT THE APP\'S AUDIO.',
@@ -7203,6 +7217,8 @@ extension on TranslationsQro {
 			'settings.station.models.ts2000' => 'KENWOOD TS-2000',
 			'settings.station.models.qmx' => 'QRP LABS QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.tx500' => 'LAB599 TX-500',
 			'settings.station.models.tx500mp' => 'LAB599 TX-500MP',
 			'settings.station.models.qcx' => 'QRP LABS QCX',
@@ -7210,8 +7226,6 @@ extension on TranslationsQro {
 			'settings.station.models.kx2' => 'ELECRAFT KX2',
 			'settings.station.models.kx3' => 'ELECRAFT KX3',
 			'settings.station.models.k4' => 'ELECRAFT K4',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.ic705' => 'ICOM IC-705',
 			'settings.station.models.ic7300' => 'ICOM IC-7300',
 			'settings.station.models.ic7300mk2' => 'ICOM IC-7300 MK2',
@@ -7717,6 +7731,8 @@ extension on TranslationsQro {
 			'settings.developer.diagnostics' => 'DIAGNOSTICS',
 			'settings.developer.importExport' => 'IMPORT / EXPORT',
 			'settings.developer.systemInformation' => 'SYSTEM INFORMATION',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.appVersion' => 'APP VERSION',
 			'settings.developer.dataFolder' => 'DATA FOLDER',
 			'settings.developer.worktree' => 'WORKTREE',
@@ -7724,8 +7740,6 @@ extension on TranslationsQro {
 			'settings.developer.loading' => '(LOADING…)',
 			'settings.developer.panelLoadFailed' => 'COULD NOT LOAD THIS SETTINGS PANEL.',
 			'settings.developer.extDevServer' => 'EXTENSION DEV SERVER',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.extensionSettings' => 'EXTENSION SETTINGS',
 			'settings.developer.extDevServerDescription' => 'LOAD EXTENSIONS FROM A DEV SERVER ON YOUR NETWORK INSTEAD OF THE ONES BUILT INTO THE APP, AND RELOAD THEM AS YOU SAVE.',
 			'settings.developer.extDevServerAddress' => 'SERVER ADDRESS',
@@ -8231,6 +8245,8 @@ extension on TranslationsQro {
 			'adifImport.stationCallJoin' => ' AND ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} HAS NO DATE AND CANNOT BE IMPORTED', other: '${formatted} HAVE NO DATE AND CANNOT BE IMPORTED', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'THIS FILE RECORDS AN ACTIVATION OF ${refs}.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.addActivation' => 'ADD IT TO THIS OPERATION',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'ONLY ${written} OF ${planned} COULD BE APPLIED — THE LOG CHANGED WHILE YOU WERE DECIDING.',
 			'adifImport.busy' => 'AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.',
@@ -8238,8 +8254,6 @@ extension on TranslationsQro {
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS. IMPORTING AN ADIF INTO AN OPERATION IS MEANT TO ADD A FEW QSOS, NOT TO BRING IN A LARGE LOG — USE THE LOGS VIEW FOR THAT. DEVELOPER MODE LETS YOU IMPORT IT ANYWAY, IF YOU ARE SURE.',
 			'adifImport.importAnyway' => 'IMPORT ANYWAY',
 			'offline.statusOffline' => 'INTERNET: OFFLINE',
-			_ => null,
-		} ?? switch (path) {
 			'offline.statusOnline' => 'INTERNET: CONNECTED',
 			'offline.noRoute' => 'NO NETWORK CONNECTION AT ALL.',
 			'offline.unreachable' => 'THE NETWORK IS UP, BUT NO SERVER IS RESPONDING — OFTEN A SIGN-IN PAGE WAITING IN A BROWSER.',

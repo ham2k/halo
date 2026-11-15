@@ -158,7 +158,8 @@ void main() {
 
       final received = await firstFrame.timeout(const Duration(seconds: 5));
       repeating.cancel();
-      expect(parseFlexDiscovery(received)?.nickname, 'RadioRoom');
+      expect(parseFlexDiscovery(received.data)?.nickname, 'RadioRoom');
+      expect(received.sender, '127.0.0.1', reason: 'each datagram says where it came from');
     });
   });
 

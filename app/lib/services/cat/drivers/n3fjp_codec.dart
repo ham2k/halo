@@ -28,7 +28,16 @@ final n3fjpCommandEnd = RegExp(r'</CMD>', caseSensitive: false);
 String n3fjpMessage(String inner) => '<CMD>$inner</CMD>\r\n';
 
 /// The text of the first `<name>` element in [body], or null.
-String? n3fjpTag(String body, String name) => RegExp('<$name>(.*?)</$name>', caseSensitive: false, dotAll: true).firstMatch(body)?.group(1);
+///
+/// The first `<name>` and the first `</name>` after it, found once each: as
+/// one lazy pattern, a body of `<name>`s with no `</name>` is scanned to its
+/// end from every one of them.
+String? n3fjpTag(String body, String name) {
+  final open = RegExp('<$name>', caseSensitive: false).firstMatch(body);
+  if (open == null) return null;
+  final close = RegExp('</$name>', caseSensitive: false).allMatches(body, open.end).firstOrNull;
+  return close == null ? null : body.substring(open.end, close.start);
+}
 
 /// N3FJP names a band by its metres without the unit (`40`), and anything
 /// shorter by its own name (`70CM`).

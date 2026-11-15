@@ -142,12 +142,20 @@ class CatServerPtt {
   /// key and no key went out, which each protocol refuses in its own words.
   /// An unkey always succeeds, and drops only this client's own key.
   bool set(bool on) {
-    if (on) return rig.keyPtt(this);
+    if (on) return !_dropped && rig.keyPtt(this);
     rig.releasePtt(this);
     return true;
   }
 
-  void drop() => rig.releasePtt(this);
+  /// Unkeys for good. A client hung up on in the middle of a read still has
+  /// that read's later commands answered, and a key among them would go out
+  /// for a client that is gone, with nothing left to unkey it.
+  void drop() {
+    _dropped = true;
+    rig.releasePtt(this);
+  }
+
+  bool _dropped = false;
 }
 
 /// Whether [freqKHz] is a frequency a radio could be tuned to. A client's

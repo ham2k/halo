@@ -77,7 +77,7 @@ class AntennaGeniusDiscoverer implements EquipmentDiscoverer {
 
   @override
   Stream<DiscoveredEquipment> discover() => udpBroadcastDatagrams(port: antennaGeniusAnnouncePort)
-      .map(parseAgAnnouncement)
+      .map((datagram) => parseAgAnnouncement(datagram.data))
       .where((found) => found != null)
       .map(
         (found) => DiscoveredEquipment(

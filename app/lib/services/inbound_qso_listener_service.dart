@@ -31,6 +31,7 @@ import 'error_reporting_service.dart';
 import 'lookup_queue_service.dart';
 import 'settings_service.dart';
 import 'status_bar_service.dart';
+import 'udp_datagram.dart';
 import 'udp_multicast.dart';
 
 class InboundQsoListenerService extends ChangeNotifier {
@@ -49,6 +50,10 @@ class InboundQsoListenerService extends ChangeNotifier {
   /// How long a failed capture waits before its retry — tests shrink it.
   final Duration captureRetryInterval;
 
+  /// Whether an address is this device's own ([isThisDevice]); tests stand
+  /// in for the network.
+  final Future<bool> Function(String address) isOwnAddress;
+
   InboundQsoListenerService({
     required this.settings,
     required this.captures,
@@ -57,15 +62,16 @@ class InboundQsoListenerService extends ChangeNotifier {
     required this.lookupQueue,
     this.statusBar,
     this.captureRetryInterval = const Duration(seconds: 5),
+    this.isOwnAddress = isThisDevice,
   }) {
     settings.addListener(_onSettingsChanged);
     _onSettingsChanged();
   }
 
-  StreamSubscription<Uint8List>? _n1mmSubscription;
+  StreamSubscription<UdpDatagram>? _n1mmSubscription;
   int? _n1mmBoundPort;
 
-  StreamSubscription<Uint8List>? _wsjtxSubscription;
+  StreamSubscription<UdpDatagram>? _wsjtxSubscription;
   int? _wsjtxBoundPort;
   String? _wsjtxBoundGroup;
 
@@ -103,7 +109,7 @@ class InboundQsoListenerService extends ChangeNotifier {
   /// database, so there is nowhere durable to spool them; the visible
   /// [captureError] is what turns "lost invisibly" into "lost loudly" in
   /// the worst case.
-  final List<({String source, String dedupeKey, Map<String, dynamic> qso})> _captureRetryQueue = [];
+  final List<({String source, String dedupeKey, Map<String, dynamic> qso, String? sender})> _captureRetryQueue = [];
   Timer? _captureRetryTimer;
 
   /// A retry drain can be mid-flight when [dispose] runs (the timer nulls
@@ -206,7 +212,7 @@ class InboundQsoListenerService extends ChangeNotifier {
     }
   }
 
-  void _onN1mmDatagram(Uint8List data) {
+  void _onN1mmDatagram(UdpDatagram datagram) {
     // Not `notifyListeners()`: WSJT-X's sibling handler below can fire many
     // times a second during heavy decode traffic, and the Imports panel
     // rebuilding on every one of those (nobody displays this field there)
@@ -215,7 +221,7 @@ class InboundQsoListenerService extends ChangeNotifier {
     n1mmLastReceivedAtMillis = nowMillis();
     final N1mmContactInfo? info;
     try {
-      info = parseN1mmContactInfo(utf8.decode(data, allowMalformed: true));
+      info = parseN1mmContactInfo(utf8.decode(datagram.data, allowMalformed: true));
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'InboundQsoListenerService:parseN1mm');
       return;
@@ -226,15 +232,15 @@ class InboundQsoListenerService extends ChangeNotifier {
     // the console for as long as listening stays on.
     if (info == null) return;
     _log('N1MM', info.qso);
-    unawaited(captureIncoming(source: n1mmSource, dedupeKey: n1mmDedupeKey(info), qso: info.qso));
+    unawaited(captureIncoming(source: n1mmSource, dedupeKey: n1mmDedupeKey(info), qso: info.qso, sender: datagram.sender));
   }
 
-  void _onWsjtxDatagram(Uint8List data) {
+  void _onWsjtxDatagram(UdpDatagram datagram) {
     // See the note on `_onN1mmDatagram` — deliberately not `notifyListeners()`.
     wsjtxLastReceivedAtMillis = nowMillis();
     final WsjtxQsoLogged? info;
     try {
-      info = parseWsjtxQsoLogged(data);
+      info = parseWsjtxQsoLogged(datagram.data);
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'InboundQsoListenerService:parseWsjtx');
       return;
@@ -244,7 +250,7 @@ class InboundQsoListenerService extends ChangeNotifier {
     // this is silent for the same reason N1MM's RadioInfo is.
     if (info == null) return;
     _log('WSJT-X', info.qso);
-    unawaited(captureIncoming(source: wsjtxSource, dedupeKey: wsjtxDedupeKey(info), qso: info.qso));
+    unawaited(captureIncoming(source: wsjtxSource, dedupeKey: wsjtxDedupeKey(info), qso: info.qso, sender: datagram.sender));
   }
 
   void _log(String source, Map<String, dynamic> qso) {
@@ -260,28 +266,30 @@ class InboundQsoListenerService extends ChangeNotifier {
   /// microseconds apart, so without this every auto-routed QSO lands twice.
   final Set<String> _inFlight = {};
 
+  /// [sender] is the address the datagram came from; null for a caller with
+  /// no network in between.
   @visibleForTesting
-  Future<void> captureIncoming({required String source, required String dedupeKey, required Map<String, dynamic> qso}) async {
+  Future<void> captureIncoming({required String source, required String dedupeKey, required Map<String, dynamic> qso, String? sender}) async {
     // A copy of a capture already in flight has nothing to add: it is the
     // same row, and that row's routing is already under way.
     if (!_inFlight.add(dedupeKey)) return;
     try {
-      await _captureIncoming(source: source, dedupeKey: dedupeKey, qso: qso);
+      await _captureIncoming(source: source, dedupeKey: dedupeKey, qso: qso, sender: sender);
     } finally {
       _inFlight.remove(dedupeKey);
     }
   }
 
-  Future<void> _captureIncoming({required String source, required String dedupeKey, required Map<String, dynamic> qso}) async {
+  Future<void> _captureIncoming({required String source, required String dedupeKey, required Map<String, dynamic> qso, String? sender}) async {
     final InboundCaptureRow row;
     try {
-      row = await captures.capture(source: source, dedupeKey: dedupeKey, qsoData: qso);
+      row = await captures.capture(source: source, dedupeKey: dedupeKey, qsoData: qso, sender: sender);
     } catch (e, st) {
       // A streak report, not one per attempt: the retry loop below re-enters
       // here every interval, and a device already refusing writes gains
       // nothing from a Sentry upload per tick.
       ErrorReportingService.reportIfRepeated(_captureFailureKey, e, st, context: 'InboundQsoListenerService:capture');
-      _captureRetryQueue.add((source: source, dedupeKey: dedupeKey, qso: qso));
+      _captureRetryQueue.add((source: source, dedupeKey: dedupeKey, qso: qso, sender: sender));
       _setCaptureError(e.toString());
       _scheduleCaptureRetry();
       return;
@@ -292,8 +300,44 @@ class InboundQsoListenerService extends ChangeNotifier {
     // routing it through `addToOperation` again would log the QSO twice.
     if (row.addedToOperation != null) return;
     final receiving = receivingOperationUuid;
-    if (receiving != null) await addToOperation(receiving, [row]);
+    if (receiving == null) return;
+    // The stored row's sender, not this datagram's: a copy of a capture
+    // already stored is that row, whoever sent the copy.
+    final from = row.sender;
+    if (from == null || await addsOnItsOwn(from)) {
+      await addToOperation(receiving, [row]);
+    } else {
+      statusBar?.showNotice(
+        key: _heldNoticeKey(from),
+        icon: 'lan-pending',
+        text: t.operation.import.heldNotice(sender: from),
+        persist: false,
+      );
+    }
   }
+
+  /// Whether a contact [sender] sent is added to the receiving operation as
+  /// it arrives: this device's own, or another the operator allowed. Neither
+  /// protocol says who sent a datagram, and anyone on the network can send
+  /// one, so any other's waits in the Imports panel.
+  Future<bool> addsOnItsOwn(String sender) async => settings.inboundSendersAllowed.contains(sender) || await isOwnAddress(sender);
+
+  /// Adds [sender]'s contacts as they arrive, from now on.
+  Future<void> allowSender(String sender) async {
+    await settings.setInboundSenderAllowed(sender, true);
+    dismissHeldNotice(sender);
+  }
+
+  /// Takes down the notice that [sender]'s contacts are waiting, once none are.
+  void dismissHeldNotice(String sender) => statusBar?.dismissNotice(_heldNoticeKey(sender));
+
+  /// The captures an [addToOperation] has taken, kept once added: a caller's
+  /// rows are a snapshot, still unmarked until the database says otherwise,
+  /// and a second call with them — a second tap — would log each contact
+  /// twice.
+  final _claimed = <String>{};
+
+  static String _heldNoticeKey(String sender) => 'inboundQsos:held:$sender';
 
   static const _captureFailureKey = 'inbound-capture';
   static const _captureNoticeKey = 'inboundQsos:captureFailed';
@@ -332,13 +376,14 @@ class InboundQsoListenerService extends ChangeNotifier {
       for (var i = 0; i < batch.length; i++) {
         final entry = batch[i];
         try {
-          await captureIncoming(source: entry.source, dedupeKey: entry.dedupeKey, qso: entry.qso);
+          await captureIncoming(source: entry.source, dedupeKey: entry.dedupeKey, qso: entry.qso, sender: entry.sender);
         } catch (e, st) {
           // captureIncoming's own catch covers the insert; a throw here is
-          // the post-insert routing (addToOperation) — the entry itself IS
-          // durably captured and visible as pending, but the REST of the
-          // batch must not be dropped with the queue already cleared.
-          ErrorReportingService.reportIfRepeated(_captureFailureKey, e, st, context: 'InboundQsoListenerService:retryRoute');
+          // the post-insert routing (addsOnItsOwn, addToOperation) — the
+          // entry itself IS durably captured and visible as pending, but the
+          // REST of the batch must not be dropped with the queue already
+          // cleared. Reported at once: the insert before it ends any streak.
+          ErrorReportingService.report(e, st, context: 'InboundQsoListenerService:retryRoute');
           _captureRetryQueue.addAll(batch.sublist(i + 1));
           if (!_disposed) _scheduleCaptureRetry();
           return;
@@ -367,8 +412,9 @@ class InboundQsoListenerService extends ChangeNotifier {
   /// reactive `watchPending` re-run (and an Imports panel rebuild) for
   /// every single row.
   Future<List<Qso>> addToOperation(String operationUuid, List<InboundCaptureRow> rows) async {
-    final pending = rows.where((r) => r.addedToOperation == null).toList();
+    final pending = rows.where((r) => r.addedToOperation == null && !_claimed.contains(r.uuid)).toList();
     if (pending.isEmpty) return const [];
+    _claimed.addAll(pending.map((r) => r.uuid));
     final operation = await operations.get(operationUuid);
     final stationCall = operation != null && operation.stationCalls.length == 1 ? operation.stationCalls.first : null;
 
@@ -403,8 +449,16 @@ class InboundQsoListenerService extends ChangeNotifier {
         addedUuids.add(row.uuid);
       }
     } finally {
+      _claimed.removeAll(pending.map((r) => r.uuid).where((uuid) => !addedUuids.contains(uuid)));
       if (addedUuids.isNotEmpty) await captures.markAdded(addedUuids, operationUuid);
       if (added.isNotEmpty) lookupQueue.enqueueAll(added, force: false);
+    }
+    final stillWaiting = {
+      for (final row in pending)
+        if (!addedUuids.contains(row.uuid)) ?row.sender,
+    };
+    for (final sender in {for (final row in pending) ?row.sender}.difference(stillWaiting)) {
+      dismissHeldNotice(sender);
     }
     return added;
   }

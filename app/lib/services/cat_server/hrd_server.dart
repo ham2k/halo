@@ -32,8 +32,48 @@ import 'cat_server_rig.dart';
 
 final _contextPrefix = RegExp(r'^\[\d+\]\s*');
 
-/// One argument: a `{braced name}`, spaces and all, or a bare word.
-final _token = RegExp(r'\{([^}]*)\}|(\S+)');
+/// The arguments of [command]: each a `{braced name}`, spaces and all, or a
+/// bare word. A `{` with no `}` after it starts a bare word.
+///
+/// One pass, not a pattern: tried as a `{…}` at every `{`, a line of `{ { {`
+/// with no `}` is scanned to its end from each of them.
+List<String> _words(String command) {
+  final words = <String>[];
+  final lastClose = command.lastIndexOf('}');
+  var i = 0;
+  while (i < command.length) {
+    if (_isSpace(command.codeUnitAt(i))) {
+      i++;
+      continue;
+    }
+    if (command.codeUnitAt(i) == 0x7b && i < lastClose) {
+      final close = command.indexOf('}', i + 1);
+      words.add(command.substring(i + 1, close));
+      i = close + 1;
+      continue;
+    }
+    final start = i;
+    while (i < command.length && !_isSpace(command.codeUnitAt(i))) {
+      i++;
+    }
+    words.add(command.substring(start, i));
+  }
+  return words;
+}
+
+/// Whitespace as `\s` reads it, which is what a command's words are split on.
+bool _isSpace(int unit) =>
+    (unit >= 0x09 && unit <= 0x0d) ||
+    unit == 0x20 ||
+    unit == 0xa0 ||
+    unit == 0x1680 ||
+    (unit >= 0x2000 && unit <= 0x200a) ||
+    unit == 0x2028 ||
+    unit == 0x2029 ||
+    unit == 0x202f ||
+    unit == 0x205f ||
+    unit == 0x3000 ||
+    unit == 0xfeff;
 
 class HrdServerConnection implements CatServerConnection {
   final CatServerRig rig;
@@ -49,28 +89,36 @@ class HrdServerConnection implements CatServerConnection {
   /// Decided by the client's first bytes and kept for the connection.
   bool? _framed;
 
+  /// Takes every whole command in what has arrived, and keeps the rest once,
+  /// at the end: kept after each command instead, a read of many short lines
+  /// is copied once per line.
   @override
   void receive(Uint8List bytes) {
     _buffer.add(bytes);
-    while (true) {
-      final pending = _buffer.toBytes();
-      if (pending.isEmpty) return;
-      _framed ??= pending.length >= 8 ? startsWithHrdFrame(pending) : (pending.contains(0x0a) ? false : null);
-      final framed = _framed;
-      if (framed == null) return;
-      final ({int consumed, String command})? taken;
-      try {
-        taken = framed ? _takeFrame(pending) : _takeLine(pending);
-      } on FormatException {
-        hangUp();
-        return;
+    final pending = _buffer.takeBytes();
+    var offset = 0;
+    try {
+      while (offset < pending.length) {
+        final rest = Uint8List.sublistView(pending, offset);
+        _framed ??= rest.length >= 8 ? startsWithHrdFrame(rest) : (rest.contains(0x0a) ? false : null);
+        final framed = _framed;
+        if (framed == null) return;
+        final ({int consumed, String command})? taken;
+        try {
+          taken = framed ? _takeFrame(rest) : _takeLine(rest);
+        } on FormatException {
+          offset = pending.length;
+          hangUp();
+          return;
+        }
+        if (taken == null) return;
+        offset += taken.consumed;
+        if (taken.command.isEmpty) continue;
+        final reply = respond(taken.command);
+        send(framed ? encodeHrdFrame(reply) : utf8.encode('$reply\n'));
       }
-      if (taken == null) return;
-      _buffer.clear();
-      _buffer.add(pending.sublist(taken.consumed));
-      if (taken.command.isEmpty) continue;
-      final reply = respond(taken.command);
-      send(framed ? encodeHrdFrame(reply) : utf8.encode('$reply\n'));
+    } finally {
+      _buffer.add(Uint8List.sublistView(pending, offset));
     }
   }
 
@@ -91,7 +139,7 @@ class HrdServerConnection implements CatServerConnection {
       return null;
     }
     final command = utf8.decode(pending.sublist(0, end), allowMalformed: true).trim();
-    if (_firstLine && isHttpRequestLine(command)) throw const FormatException('an HTTP request, not an HRD client');
+    if (_firstLine && isBrowserRequestLine(command)) throw const FormatException('an HTTP request, not an HRD client');
     _firstLine = false;
     return (consumed: end + 1, command: command);
   }
@@ -99,7 +147,7 @@ class HrdServerConnection implements CatServerConnection {
   /// The reply text for one command.
   String respond(String raw) {
     final command = raw.replaceFirst(_contextPrefix, '').trim();
-    final words = [for (final m in _token.allMatches(command)) m.group(1) ?? m.group(2)!];
+    final words = _words(command);
     if (words.isEmpty) return 'ERROR: unknown command';
     final verb = words.first.toLowerCase();
     final what = words.length > 1 ? words[1].toLowerCase() : '';

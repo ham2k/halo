@@ -234,13 +234,20 @@ void main() {
       expect(hangUps, 1);
     });
 
-    test('a web page\'s request is hung up on before its body can be read as commands', () {
-      // A page can POST to localhost:4532 without asking; read line by line,
-      // `F 7000000` in its body would retune the radio.
-      connection.receive(Uint8List.fromList(utf8.encode('POST / HTTP/1.1\r\nHost: localhost:4532\r\n\r\nF 7000000\n')));
-      expect(hangUps, 1);
-      expect(rig.tunes, isEmpty);
-    });
+    // A page can send to localhost:4532 without asking; read line by line,
+    // `F 7000000` in its body would retune the radio. Its `fetch` may name
+    // any method, and an https page opens with a TLS handshake.
+    for (final (label, opening) in [
+      ('a POST', 'POST / HTTP/1.1'),
+      ('a method of its own', 'PROPFIND / HTTP/1.1'),
+      ('a TLS handshake', '\x16\x03\x01\x02\x00\x01'),
+    ]) {
+      test("a web page's request, $label, is hung up on before its body can be read as commands", () {
+        connection.receive(Uint8List.fromList(latin1.encode('$opening\r\nHost: localhost:4532\r\n\r\nF 7000000\n')));
+        expect(hangUps, 1);
+        expect(rig.tunes, isEmpty);
+      });
+    }
 
     test('q ends the connection', () {
       connection.receive(Uint8List.fromList(utf8.encode('q\nf\n')));

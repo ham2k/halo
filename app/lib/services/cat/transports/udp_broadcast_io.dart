@@ -15,18 +15,20 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../../udp_datagram.dart';
+
 /// Datagrams arriving on [port], for as long as the subscription lives.
 ///
 /// Errors are reported on the stream rather than thrown: a port already
 /// held by another app, or a sandbox that won't allow the bind, should
 /// leave the caller with "nothing found" and a reason — not an exception
 /// out of a UI callback.
-Stream<Uint8List> udpBroadcastDatagrams({required int port}) {
+Stream<UdpDatagram> udpBroadcastDatagrams({required int port}) {
   RawDatagramSocket? socket;
   var cancelled = false;
-  late final StreamController<Uint8List> controller;
+  late final StreamController<UdpDatagram> controller;
 
-  controller = StreamController<Uint8List>(
+  controller = StreamController<UdpDatagram>(
     onListen: () async {
       try {
         final bound = await _bind(port);
@@ -44,7 +46,7 @@ Stream<Uint8List> udpBroadcastDatagrams({required int port}) {
           (event) {
             if (event != RawSocketEvent.read) return;
             final datagram = socket?.receive();
-            if (datagram != null && !controller.isClosed) controller.add(datagram.data);
+            if (datagram != null && !controller.isClosed) controller.add((data: datagram.data, sender: datagram.address.address));
           },
           onError: controller.addError,
           onDone: controller.close,

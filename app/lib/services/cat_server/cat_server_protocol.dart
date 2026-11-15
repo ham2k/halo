@@ -46,14 +46,24 @@ abstract class CatServerConnection {
 /// client past it is dropped: no real request comes near it.
 const catServerMaxPending = 64 * 1024;
 
-final _httpRequestLine = RegExp(r'^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|CONNECT|TRACE) \S+ HTTP/', caseSensitive: false);
+/// An HTTP request line by its shape: any method, since a page's `fetch` may
+/// name one of its own.
+final _httpRequestLine = RegExp(r'^\S+ \S+ HTTP/\d', caseSensitive: false);
 
-/// Whether [line], the first a connection sent, opens an HTTP request — a web
-/// page reaching for `localhost`, not a radio program. A page can post to any
-/// port without asking, and a line protocol would read each line of the body
-/// as a command, so a page the operator happens to have open could retune the
-/// radio. None of the emulated protocols starts that way.
-bool isHttpRequestLine(String line) => _httpRequestLine.hasMatch(line.trimLeft());
+/// A TLS record carrying a handshake, which is how an `https:` page's request
+/// to the port begins.
+const _tlsHandshake = 0x16;
+
+/// Whether [line], the first a connection sent, opens a browser's request — a
+/// web page reaching for `localhost`, not a radio program: an HTTP request
+/// line, or the start of a TLS handshake. A page can send to any port without
+/// asking, and a line protocol would read each line of the body as a command,
+/// so a page the operator happens to have open could retune the radio. None
+/// of the emulated protocols starts that way.
+bool isBrowserRequestLine(String line) {
+  final trimmed = line.trimLeft();
+  return (trimmed.isNotEmpty && trimmed.codeUnitAt(0) == _tlsHandshake) || _httpRequestLine.hasMatch(trimmed);
+}
 
 /// The failures an operator can do something about, told apart from the
 /// system's own wording — which differs by OS, and is in English whatever the

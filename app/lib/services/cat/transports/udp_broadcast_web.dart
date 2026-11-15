@@ -7,6 +7,6 @@
 // the honest answer, and the Station Configuration section is hidden on web
 // anyway.
 
-import 'dart:typed_data';
+import '../../udp_datagram.dart';
 
-Stream<Uint8List> udpBroadcastDatagrams({required int port}) => const Stream.empty();
+Stream<UdpDatagram> udpBroadcastDatagrams({required int port}) => const Stream.empty();

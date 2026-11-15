@@ -67,6 +67,16 @@ void main() {
       connection.receive(Uint8List.fromList(utf8.encode('get id\n')));
       expect(utf8.decode(sent.single), 'Ham2K Logger\n');
     });
+
+    // Keeping the rest of the buffer after each line copies it once per line:
+    // seconds of the main isolate for one read of blank lines.
+    test('a read of many lines is taken in one pass', () {
+      final watch = Stopwatch()..start();
+      connection.receive(Uint8List.fromList(utf8.encode('get id\n${'\n' * 200000}get id\nget i')));
+      expect(watch.elapsedMilliseconds, lessThan(1000));
+      connection.receive(Uint8List.fromList(utf8.encode('d\n')));
+      expect(sent.map(utf8.decode), ['Ham2K Logger\n', 'Ham2K Logger\n', 'Ham2K Logger\n'], reason: 'what follows the last line is kept for the next read');
+    });
   });
 
   group('commands', () {
@@ -82,6 +92,20 @@ void main() {
       expect(ask('[1] get dropdown-text {Mode}'), 'Mode: PKT-U');
       expect(ask('[1] get dropdown-text {Main Mode}'), 'Main Mode: PKT-U');
       expect(ask('[1] get dropdown-text Main~Mode'), 'Main Mode: PKT-U');
+    });
+
+    test('a braced name runs to the first } after it, and a { with none after it starts a bare word', () {
+      rig.move(mode: 'DATA-USB');
+      expect(ask('[1] get dropdown-text {Main {Mode}'), 'Main {Mode: PKT-U');
+      expect(ask('[1] get dropdown-text {Mode'), '{Mode: PKT-U');
+    });
+
+    // Tried as a `{…}` at every `{`, a line of them with no `}` is scanned to
+    // its end from each one: seconds of the main isolate for one line.
+    test('a line of unclosed braces is read in one pass', () {
+      final watch = Stopwatch()..start();
+      expect(ask('get dropdown-text ${'{ ' * 32000}'), '');
+      expect(watch.elapsedMilliseconds, lessThan(1000));
     });
 
     test('setting the dropdown tunes the mode by its app name', () {
@@ -119,6 +143,15 @@ void main() {
       expect(ask('[1] set button-select Tune 1'), startsWith('ERROR'));
       connection.close();
       expect(rig.ptts, [true, false, true, false]);
+    });
+
+    // A client hung up on mid-read still has the rest of that read answered;
+    // a key there would go out with nothing left to unkey it.
+    test('a client hung up on keys nothing after', () {
+      rig.transmitAllowed = true;
+      connection.close();
+      expect(ask('[1] set button-select TX 1'), startsWith('ERROR'));
+      expect(rig.ptts, isEmpty);
     });
 
     test('with no radio connected nothing is read or tuned', () {

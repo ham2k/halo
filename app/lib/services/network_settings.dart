@@ -27,6 +27,7 @@ mixin NetworkSettings on ChangeNotifier {
   static const _peerSharedScreenIdsKey = 'peerSharedScreenIds';
   static const _peerDeviceIdKey = 'peerDeviceId';
   static const _peerDeviceNameKey = 'peerDeviceName';
+  static const _inboundSendersAllowedKey = 'inboundSendersAllowed';
   static const _n1mmProtocolEnabledKey = 'n1mmProtocolEnabled';
   static const _n1mmListenPortKey = 'n1mmListenPort';
   static const _wsjtxProtocolEnabledKey = 'wsjtxProtocolEnabled';
@@ -171,6 +172,20 @@ mixin NetworkSettings on ChangeNotifier {
 
   Future<void> setN1mmListenPort(int port) async {
     await prefs.setInt(_n1mmListenPortKey, port);
+    notifyListeners();
+  }
+
+  /// The other devices on the network whose contacts are added to the
+  /// receiving operation as they arrive, by address. This device's own always
+  /// are; any other's wait in the Imports panel for the operator, since
+  /// neither protocol says who sent a datagram and anyone on the network can
+  /// send one.
+  List<String> get inboundSendersAllowed => prefs.getStringList(_inboundSendersAllowedKey) ?? const [];
+
+  Future<void> setInboundSenderAllowed(String sender, bool allowed) async {
+    final current = inboundSendersAllowed;
+    if (current.contains(sender) == allowed) return;
+    await prefs.setStringList(_inboundSendersAllowedKey, allowed ? [...current, sender] : [...current.where((s) => s != sender)]);
     notifyListeners();
   }
 

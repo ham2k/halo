@@ -76,11 +76,36 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
     super.dispose();
   }
 
+  /// Per sender among the captures, whether its contacts are added on their
+  /// own ([InboundQsoListenerService.addsOnItsOwn]); asked once per sender
+  /// until a setting changes, not on every rebuild.
+  final _addsOnItsOwn = <String, Future<bool>>{};
+
+  Future<bool> _addsOnItsOwnFor(String? sender) =>
+      sender == null ? Future.value(true) : _addsOnItsOwn[sender] ??= widget.services.inboundQsos.addsOnItsOwn(sender);
+
   void _onChanged() {
+    _addsOnItsOwn.clear();
     if (mounted) setState(() {});
   }
 
   bool get _receiving => widget.services.inboundQsos.receivingOperationUuid == widget.operation.uuid;
+
+  /// Adds the waiting captures [sender] sent to this operation and, when
+  /// [always], every later one as it arrives.
+  Future<void> _addFrom(String sender, {bool always = false}) async {
+    final inboundQsos = widget.services.inboundQsos;
+    if (always) await inboundQsos.allowSender(sender);
+    await inboundQsos.addToOperation(widget.operation.uuid, [..._pending.where((row) => row.sender == sender)]);
+  }
+
+  Future<void> _discard(InboundCaptureRow row) async {
+    await widget.services.inboundCaptures.discard([row.uuid]);
+    final sender = row.sender;
+    if (sender != null && !_pending.any((other) => other.uuid != row.uuid && other.sender == sender)) {
+      widget.services.inboundQsos.dismissHeldNotice(sender);
+    }
+  }
 
   Future<void> _setReceiving(bool value) async {
     final inboundQsos = widget.services.inboundQsos;
@@ -89,7 +114,13 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
       return;
     }
 
-    final toAddNow = await _resolveBacklog(_pending);
+    // A held sender's captures stay held: they wait on their own tile.
+    final backlog = [
+      for (final row in _pending)
+        if (await _addsOnItsOwnFor(row.sender)) row,
+    ];
+    if (!mounted) return;
+    final toAddNow = await _resolveBacklog(backlog);
     if (toAddNow == null || !mounted) return; // the operator backed out of the gap dialog
     // Set BEFORE processing the backlog: a datagram arriving mid-await is
     // then already routed automatically, rather than landing in a buffer
@@ -235,6 +266,7 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
               final showAddToOperation = _receiving || rows.isNotEmpty;
 
               final sorted = [...rows]..sort((a, b) => b.receivedAtMillis.compareTo(a.receivedAtMillis));
+              final senders = {for (final row in rows) ?row.sender};
               return SliverMainAxisGroup(
                 slivers: sectionSlivers(context, [
                   if (showAddToOperation)
@@ -245,6 +277,14 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
                       value: _receiving,
                       onChanged: (value) => unawaited(_setReceiving(value)),
                     ),
+                  for (final sender in senders)
+                    _HeldSenderTile(
+                      key: ValueKey(sender),
+                      sender: sender,
+                      addsOnItsOwn: _addsOnItsOwnFor(sender),
+                      onAdd: () => unawaited(_addFrom(sender)),
+                      onAlwaysAdd: () => unawaited(_addFrom(sender, always: true)),
+                    ),
                   SectionHeader(t.pendingSectionTitle),
                   if (sorted.isEmpty)
                     Padding(
@@ -252,12 +292,7 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
                       child: Text(t.pendingEmpty, style: theme.textTheme.bodyMedium),
                     )
                   else
-                    for (final row in sorted)
-                      _CaptureTile(
-                        row: row,
-                        operationStationCall: operationStationCall,
-                        onDiscard: () => unawaited(widget.services.inboundCaptures.discard([row.uuid])),
-                      ),
+                    for (final row in sorted) _CaptureTile(row: row, operationStationCall: operationStationCall, onDiscard: () => unawaited(_discard(row))),
                 ]),
               );
             },
@@ -265,6 +300,48 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
         ],
       ),
     ];
+  }
+}
+
+/// Captures another device on the network sent, waiting for the operator:
+/// nothing says who sent a datagram, so they are not added on their own.
+/// Nothing at all for a sender whose contacts are.
+class _HeldSenderTile extends StatelessWidget {
+  final String sender;
+  final Future<bool> addsOnItsOwn;
+  final VoidCallback onAdd;
+  final VoidCallback onAlwaysAdd;
+
+  const _HeldSenderTile({super.key, required this.sender, required this.addsOnItsOwn, required this.onAdd, required this.onAlwaysAdd});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.t.operation.import;
+    return FutureBuilder<bool>(
+      future: addsOnItsOwn,
+      builder: (context, snapshot) {
+        // Shown unless the answer is yes: a sender that cannot be placed
+        // waits like a stranger.
+        if (snapshot.data == true || (!snapshot.hasData && !snapshot.hasError)) return const SizedBox.shrink();
+        return ListTile(
+          leading: const Icon(MdiIcons.lanPending),
+          title: Text(t.heldTitle(sender: sender)),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(t.heldBody),
+              Wrap(
+                spacing: Space.sm,
+                children: [
+                  TextButton(onPressed: onAdd, child: Text(t.heldAddAction)),
+                  TextButton(onPressed: onAlwaysAdd, child: Text(t.heldAlwaysAction)),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -510,6 +587,23 @@ class _ListenSettingsDialogBodyState extends State<_ListenSettingsDialogBody> {
             portField: portField(_wsjtxPortController, _wsjtxPortError),
             helpText: t.helpWsjtxSetup,
           ),
+          if (settings.inboundSendersAllowed.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(Space.lg, Space.sm, Space.lg, 0),
+              child: Text(t.allowedSendersTitle, style: theme.textTheme.titleSmall),
+            ),
+            for (final sender in settings.inboundSendersAllowed)
+              ListTile(
+                title: Text(sender),
+                trailing: IconButton(
+                  icon: Icon(MdiIcons.closeCircleOutline, semanticLabel: t.allowedSenderRemove(sender: sender)),
+                  onPressed: () async {
+                    await settings.setInboundSenderAllowed(sender, false);
+                    if (mounted) setState(() {});
+                  },
+                ),
+              ),
+          ],
         ],
       ),
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),

@@ -3561,6 +3561,15 @@ class $InboundCapturesTable extends InboundCaptures
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _senderMeta = const VerificationMeta('sender');
+  @override
+  late final GeneratedColumn<String> sender = GeneratedColumn<String>(
+    'sender',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     uuid,
@@ -3569,6 +3578,7 @@ class $InboundCapturesTable extends InboundCaptures
     data,
     receivedAtMillis,
     addedToOperation,
+    sender,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3634,6 +3644,12 @@ class $InboundCapturesTable extends InboundCaptures
         ),
       );
     }
+    if (data.containsKey('sender')) {
+      context.handle(
+        _senderMeta,
+        sender.isAcceptableOrUnknown(data['sender']!, _senderMeta),
+      );
+    }
     return context;
   }
 
@@ -3666,6 +3682,10 @@ class $InboundCapturesTable extends InboundCaptures
       addedToOperation: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}added_to_operation'],
+      ),
+      sender: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sender'],
       ),
     );
   }
@@ -3700,6 +3720,11 @@ class InboundCaptureRow extends DataClass
   /// it to a log — kept (not deleted) so a re-arriving duplicate broadcast is
   /// still recognized by [dedupeKey] as already handled.
   final String? addedToOperation;
+
+  /// The address the program sent it from, as the network said: this device
+  /// or another on its network. Null for a capture recorded before senders
+  /// were, or by a caller with no network in between.
+  final String? sender;
   const InboundCaptureRow({
     required this.uuid,
     required this.source,
@@ -3707,6 +3732,7 @@ class InboundCaptureRow extends DataClass
     required this.data,
     required this.receivedAtMillis,
     this.addedToOperation,
+    this.sender,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3718,6 +3744,9 @@ class InboundCaptureRow extends DataClass
     map['received_at_millis'] = Variable<int>(receivedAtMillis);
     if (!nullToAbsent || addedToOperation != null) {
       map['added_to_operation'] = Variable<String>(addedToOperation);
+    }
+    if (!nullToAbsent || sender != null) {
+      map['sender'] = Variable<String>(sender);
     }
     return map;
   }
@@ -3732,6 +3761,9 @@ class InboundCaptureRow extends DataClass
       addedToOperation: addedToOperation == null && nullToAbsent
           ? const Value.absent()
           : Value(addedToOperation),
+      sender: sender == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sender),
     );
   }
 
@@ -3747,6 +3779,7 @@ class InboundCaptureRow extends DataClass
       data: serializer.fromJson<String>(json['data']),
       receivedAtMillis: serializer.fromJson<int>(json['receivedAtMillis']),
       addedToOperation: serializer.fromJson<String?>(json['addedToOperation']),
+      sender: serializer.fromJson<String?>(json['sender']),
     );
   }
   @override
@@ -3759,6 +3792,7 @@ class InboundCaptureRow extends DataClass
       'data': serializer.toJson<String>(data),
       'receivedAtMillis': serializer.toJson<int>(receivedAtMillis),
       'addedToOperation': serializer.toJson<String?>(addedToOperation),
+      'sender': serializer.toJson<String?>(sender),
     };
   }
 
@@ -3769,6 +3803,7 @@ class InboundCaptureRow extends DataClass
     String? data,
     int? receivedAtMillis,
     Value<String?> addedToOperation = const Value.absent(),
+    Value<String?> sender = const Value.absent(),
   }) => InboundCaptureRow(
     uuid: uuid ?? this.uuid,
     source: source ?? this.source,
@@ -3778,6 +3813,7 @@ class InboundCaptureRow extends DataClass
     addedToOperation: addedToOperation.present
         ? addedToOperation.value
         : this.addedToOperation,
+    sender: sender.present ? sender.value : this.sender,
   );
   InboundCaptureRow copyWithCompanion(InboundCapturesCompanion data) {
     return InboundCaptureRow(
@@ -3791,6 +3827,7 @@ class InboundCaptureRow extends DataClass
       addedToOperation: data.addedToOperation.present
           ? data.addedToOperation.value
           : this.addedToOperation,
+      sender: data.sender.present ? data.sender.value : this.sender,
     );
   }
 
@@ -3802,7 +3839,8 @@ class InboundCaptureRow extends DataClass
           ..write('dedupeKey: $dedupeKey, ')
           ..write('data: $data, ')
           ..write('receivedAtMillis: $receivedAtMillis, ')
-          ..write('addedToOperation: $addedToOperation')
+          ..write('addedToOperation: $addedToOperation, ')
+          ..write('sender: $sender')
           ..write(')'))
         .toString();
   }
@@ -3815,6 +3853,7 @@ class InboundCaptureRow extends DataClass
     data,
     receivedAtMillis,
     addedToOperation,
+    sender,
   );
   @override
   bool operator ==(Object other) =>
@@ -3825,7 +3864,8 @@ class InboundCaptureRow extends DataClass
           other.dedupeKey == this.dedupeKey &&
           other.data == this.data &&
           other.receivedAtMillis == this.receivedAtMillis &&
-          other.addedToOperation == this.addedToOperation);
+          other.addedToOperation == this.addedToOperation &&
+          other.sender == this.sender);
 }
 
 class InboundCapturesCompanion extends UpdateCompanion<InboundCaptureRow> {
@@ -3835,6 +3875,7 @@ class InboundCapturesCompanion extends UpdateCompanion<InboundCaptureRow> {
   final Value<String> data;
   final Value<int> receivedAtMillis;
   final Value<String?> addedToOperation;
+  final Value<String?> sender;
   final Value<int> rowid;
   const InboundCapturesCompanion({
     this.uuid = const Value.absent(),
@@ -3843,6 +3884,7 @@ class InboundCapturesCompanion extends UpdateCompanion<InboundCaptureRow> {
     this.data = const Value.absent(),
     this.receivedAtMillis = const Value.absent(),
     this.addedToOperation = const Value.absent(),
+    this.sender = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   InboundCapturesCompanion.insert({
@@ -3852,6 +3894,7 @@ class InboundCapturesCompanion extends UpdateCompanion<InboundCaptureRow> {
     required String data,
     required int receivedAtMillis,
     this.addedToOperation = const Value.absent(),
+    this.sender = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : uuid = Value(uuid),
        source = Value(source),
@@ -3865,6 +3908,7 @@ class InboundCapturesCompanion extends UpdateCompanion<InboundCaptureRow> {
     Expression<String>? data,
     Expression<int>? receivedAtMillis,
     Expression<String>? addedToOperation,
+    Expression<String>? sender,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3874,6 +3918,7 @@ class InboundCapturesCompanion extends UpdateCompanion<InboundCaptureRow> {
       if (data != null) 'data': data,
       if (receivedAtMillis != null) 'received_at_millis': receivedAtMillis,
       if (addedToOperation != null) 'added_to_operation': addedToOperation,
+      if (sender != null) 'sender': sender,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3885,6 +3930,7 @@ class InboundCapturesCompanion extends UpdateCompanion<InboundCaptureRow> {
     Value<String>? data,
     Value<int>? receivedAtMillis,
     Value<String?>? addedToOperation,
+    Value<String?>? sender,
     Value<int>? rowid,
   }) {
     return InboundCapturesCompanion(
@@ -3894,6 +3940,7 @@ class InboundCapturesCompanion extends UpdateCompanion<InboundCaptureRow> {
       data: data ?? this.data,
       receivedAtMillis: receivedAtMillis ?? this.receivedAtMillis,
       addedToOperation: addedToOperation ?? this.addedToOperation,
+      sender: sender ?? this.sender,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3919,6 +3966,9 @@ class InboundCapturesCompanion extends UpdateCompanion<InboundCaptureRow> {
     if (addedToOperation.present) {
       map['added_to_operation'] = Variable<String>(addedToOperation.value);
     }
+    if (sender.present) {
+      map['sender'] = Variable<String>(sender.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3934,6 +3984,7 @@ class InboundCapturesCompanion extends UpdateCompanion<InboundCaptureRow> {
           ..write('data: $data, ')
           ..write('receivedAtMillis: $receivedAtMillis, ')
           ..write('addedToOperation: $addedToOperation, ')
+          ..write('sender: $sender, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7705,6 +7756,7 @@ typedef $$InboundCapturesTableCreateCompanionBuilder =
       required String data,
       required int receivedAtMillis,
       Value<String?> addedToOperation,
+      Value<String?> sender,
       Value<int> rowid,
     });
 typedef $$InboundCapturesTableUpdateCompanionBuilder =
@@ -7715,6 +7767,7 @@ typedef $$InboundCapturesTableUpdateCompanionBuilder =
       Value<String> data,
       Value<int> receivedAtMillis,
       Value<String?> addedToOperation,
+      Value<String?> sender,
       Value<int> rowid,
     });
 
@@ -7754,6 +7807,11 @@ class $$InboundCapturesTableFilterComposer
 
   ColumnFilters<String> get addedToOperation => $composableBuilder(
     column: $table.addedToOperation,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sender => $composableBuilder(
+    column: $table.sender,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -7796,6 +7854,11 @@ class $$InboundCapturesTableOrderingComposer
     column: $table.addedToOperation,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get sender => $composableBuilder(
+    column: $table.sender,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$InboundCapturesTableAnnotationComposer
@@ -7828,6 +7891,9 @@ class $$InboundCapturesTableAnnotationComposer
     column: $table.addedToOperation,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get sender =>
+      $composableBuilder(column: $table.sender, builder: (column) => column);
 }
 
 class $$InboundCapturesTableTableManager
@@ -7873,6 +7939,7 @@ class $$InboundCapturesTableTableManager
                 Value<String> data = const Value.absent(),
                 Value<int> receivedAtMillis = const Value.absent(),
                 Value<String?> addedToOperation = const Value.absent(),
+                Value<String?> sender = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InboundCapturesCompanion(
                 uuid: uuid,
@@ -7881,6 +7948,7 @@ class $$InboundCapturesTableTableManager
                 data: data,
                 receivedAtMillis: receivedAtMillis,
                 addedToOperation: addedToOperation,
+                sender: sender,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -7891,6 +7959,7 @@ class $$InboundCapturesTableTableManager
                 required String data,
                 required int receivedAtMillis,
                 Value<String?> addedToOperation = const Value.absent(),
+                Value<String?> sender = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InboundCapturesCompanion.insert(
                 uuid: uuid,
@@ -7899,6 +7968,7 @@ class $$InboundCapturesTableTableManager
                 data: data,
                 receivedAtMillis: receivedAtMillis,
                 addedToOperation: addedToOperation,
+                sender: sender,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

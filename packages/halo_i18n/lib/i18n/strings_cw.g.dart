@@ -2170,6 +2170,13 @@ class _Translations$operation$import$cw extends Translations$operation$import$en
 	@override String get pendingEmpty => '—· ——— — ···· ·· —· ——· / —·—· ·— ·——· — ··— ·—· · —·· / —·—— · —';
 	@override String stationMismatch({required Object call}) => '·—·· ——— ——· ——· · —·· / ·— ··· / ${call} ——··—— / —· ——— — / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —· ·————· ··· / ··· — ·— — ·· ——— —·';
 	@override String get discardAction => '—·· ·· ··· —·—· ·— ·—· —··';
+	@override String heldNotice({required Object sender}) => '·— / —·—· ——— —· — ·— —·—· — / ··—· ·—· ——— —— / ${sender} / ·· ··· / ·—— ·— ·· — ·· —· ——· / ·· —· / ·· —— ·——· ——— ·—· — ···';
+	@override String heldTitle({required Object sender}) => '·—— ·— ·· — ·· —· ——· ———··· / —·—· ——— —· — ·— —·—· — ··· / ··—· ·—· ——— —— / ${sender}';
+	@override String get heldBody => '·— —· ——— — ···· · ·—· / —·· · ···— ·· —·—· · / ——— —· / —·—— ——— ··— ·—· / —· · — ·—— ——— ·—· —·— / ··· · —· — / — ···· · ··· · ·—·—·— / ·— —·· —·· / — ···· · —— / ·· ··—· / ·· — ·————· ··· / ——— —· · / ——— ··—· / —·—— ——— ··— ·—· ··· ·—·—·—';
+	@override String get heldAddAction => '·— —·· —··';
+	@override String get heldAlwaysAction => '·— ·—·· ·—— ·— —·—— ··· / ·— —·· —·· / ··—· ·—· ——— —— / — ···· ·· ··· / —·· · ···— ·· —·—· ·';
+	@override String get allowedSendersTitle => '——— — ···· · ·—· / —·· · ···— ·· —·—· · ··· / ·—— ···· ——— ··· · / —·—· ——— —· — ·— —·—· — ··· / ·— ·—· · / ·— —·· —·· · —··';
+	@override String allowedSenderRemove({required Object sender}) => '··· — ——— ·——· / ·— —·· —·· ·· —· ——· / ··—· ·—· ——— —— / ${sender}';
 	@override String get gapDialogTitle => '·· —· —·—· ·—·· ··— —·· · / · ·— ·—· ·—·· ·· · ·—· / —·—· ·— ·——· — ··— ·—· · ··· ··——··';
 	@override String gapDialogBody({required Object count}) => '${count} / —— ——— ·—· · / ——·— ··· ——— ··· / ·—— · ·—· · / —·—· ·— ·——· — ··— ·—· · —·· / · ·— ·—· ·—·· ·· · ·—· ——··—— / —··· · ··—· ——— ·—· · / ·— / ——· ·— ·——· / ·· —· / — ···· · / —·· ·— — ·— ·—·—·— / ·· —· —·—· ·—·· ··— —·· · / — ···· · —— / — ——— ——— ··——··';
 	@override String get gapDialogRecentOnly => '·——— ··— ··· — / — ···· · / ·—· · —·—· · —· — / ——— —· · ···';
@@ -6013,6 +6020,13 @@ extension on TranslationsCw {
 			'operation.import.pendingEmpty' => '—· ——— — ···· ·· —· ——· / —·—· ·— ·——· — ··— ·—· · —·· / —·—— · —',
 			'operation.import.stationMismatch' => ({required Object call}) => '·—·· ——— ——· ——· · —·· / ·— ··· / ${call} ——··—— / —· ——— — / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —· ·————· ··· / ··· — ·— — ·· ——— —·',
 			'operation.import.discardAction' => '—·· ·· ··· —·—· ·— ·—· —··',
+			'operation.import.heldNotice' => ({required Object sender}) => '·— / —·—· ——— —· — ·— —·—· — / ··—· ·—· ——— —— / ${sender} / ·· ··· / ·—— ·— ·· — ·· —· ——· / ·· —· / ·· —— ·——· ——— ·—· — ···',
+			'operation.import.heldTitle' => ({required Object sender}) => '·—— ·— ·· — ·· —· ——· ———··· / —·—· ——— —· — ·— —·—· — ··· / ··—· ·—· ——— —— / ${sender}',
+			'operation.import.heldBody' => '·— —· ——— — ···· · ·—· / —·· · ···— ·· —·—· · / ——— —· / —·—— ——— ··— ·—· / —· · — ·—— ——— ·—· —·— / ··· · —· — / — ···· · ··· · ·—·—·— / ·— —·· —·· / — ···· · —— / ·· ··—· / ·· — ·————· ··· / ——— —· · / ——— ··—· / —·—— ——— ··— ·—· ··· ·—·—·—',
+			'operation.import.heldAddAction' => '·— —·· —··',
+			'operation.import.heldAlwaysAction' => '·— ·—·· ·—— ·— —·—— ··· / ·— —·· —·· / ··—· ·—· ——— —— / — ···· ·· ··· / —·· · ···— ·· —·—· ·',
+			'operation.import.allowedSendersTitle' => '——— — ···· · ·—· / —·· · ···— ·· —·—· · ··· / ·—— ···· ——— ··· · / —·—· ——— —· — ·— —·—· — ··· / ·— ·—· · / ·— —·· —·· · —··',
+			'operation.import.allowedSenderRemove' => ({required Object sender}) => '··· — ——— ·——· / ·— —·· —·· ·· —· ——· / ··—· ·—· ——— —— / ${sender}',
 			'operation.import.gapDialogTitle' => '·· —· —·—· ·—·· ··— —·· · / · ·— ·—· ·—·· ·· · ·—· / —·—· ·— ·——· — ··— ·—· · ··· ··——··',
 			'operation.import.gapDialogBody' => ({required Object count}) => '${count} / —— ——— ·—· · / ——·— ··· ——— ··· / ·—— · ·—· · / —·—· ·— ·——· — ··— ·—· · —·· / · ·— ·—· ·—·· ·· · ·—· ——··—— / —··· · ··—· ——— ·—· · / ·— / ——· ·— ·——· / ·· —· / — ···· · / —·· ·— — ·— ·—·—·— / ·· —· —·—· ·—·· ··— —·· · / — ···· · —— / — ——— ——— ··——··',
 			'operation.import.gapDialogRecentOnly' => '·——— ··— ··· — / — ···· · / ·—· · —·—· · —· — / ——— —· · ···',
@@ -6175,6 +6189,8 @@ extension on TranslationsCw {
 			'activitiesView.mapEmptyStateHint' => '··· ·—— ·· — —·—· ···· / —··· ·— —·—· —·— / — ——— / — ···· · / ·—·· ·· ··· — ——··—— / ——— ·—· / ··· · ·— ·—· —·—· ···· / ··—· ——— ·—· / ··· ——— —— · — ···· ·· —· ——· / · ·—·· ··· ·',
 			'activitiesView.imports' => '·· —— ·——· ——— ·—· — ···',
 			'loggingControls.timeUtc' => '— ·· —— · / —·——· ··— — —·—· —·——·—',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.date' => '—·· ·— — ·',
 			'loggingControls.now' => '—· ——— ·——',
 			'loggingControls.manualTimeSettings' => '—— ·— —· ··— ·— ·—·· / — ·· —— ·',
@@ -6182,8 +6198,6 @@ extension on TranslationsCw {
 			'loggingControls.manualTimeIncrementNone' => '—· ——— —· ·',
 			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / —— ·· —· ··— — ·', other: '${count} / —— ·· —· ··— — · ···', ), 
 			'loggingControls.frequency' => '··—· ·—· · ——·— ··— · —· —·—· —·——',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.mode' => '—— ——— —·· ·',
 			'loggingControls.theirCall' => '— ···· · ·· ·—· / —·—· ·— ·—·· ·—··',
 			'loggingControls.noteField' => '—· ——— — ·',
@@ -6689,6 +6703,8 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.tail' => '··— —· —·— · —·—— / —·· · ·—·· ·— —·——',
 			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} / —— ···',
 			'settings.radio.voiceMessages.listenButton' => '·—·· ·· ··· — · —·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.notRecorded' => '—· ——— — / ·—· · —·—· ——— ·—· —·· · —··',
 			'settings.radio.voiceMessages.unplayable' => '—·—· ·— —· ·————· — / ·——· ·—·· ·— —·—— / — ···· ·· ··· / ··—· ·· ·—·· ·',
 			'settings.radio.voiceMessages.problemNoOutput' => '—·—· ···· ——— ——— ··· · / — ···· · / ··· ——— ··— —· —·· / —·· · ···— ·· —·—· · / — ···· ·— — / ··—· · · —·· ··· / — ···· · / ·—· ·— —·· ·· ——— / —··· · ··—· ——— ·—· · / ·——· ·—·· ·— —·—— ·· —· ——· / ·— / —— · ··· ··· ·— ——· · ·—·—·—',
@@ -6696,8 +6712,6 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.problemInputMissing' => '— ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·· · ···— ·· —·—· · / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —·· ·—·—·—',
 			'settings.radio.voiceMessages.problemDeviceFailed' => '— ···· · / ··· ——— ··— —· —·· / —·· · ···— ·· —·—· · / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —· ·—·—·—',
 			'settings.radio.voiceMessages.problemNotRecorded' => '— ···· ·— — / —— · ··· ··· ·— ——· · / ···· ·— ··· / —· ——— / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·—— · — ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.problemRecordingSilent' => '—· ——— — ···· ·· —· ——· / ·—— ·— ··· / ···· · ·— ·—· —·· / ··—· ·—· ——— —— / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·· · ···— ·· —·—· · ——··—— / ··· ——— / — ···· · / —— · ··· ··· ·— ——· · / ·—— ·— ··· / ·—·· · ··—· — / ·— ··· / ·· — / ·—— ·— ··· ·—·—·— / —·—· ···· · —·—· —·— / — ···· · / ·· —· ·——· ··— — ——··—— / ·— —· —·· / — ···· ·— — / — ···· · / ·— ·——· ·——· / ·· ··· / ·— ·—·· ·—·· ——— ·—— · —·· / — ——— / ··— ··· · / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · ·—·—·—',
 			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => '— ···· · / ·—· ·— —·· ·· ——— / ·· ··· / —· ——— — / — ·— —·— ·· —· ——· / ·— ··— —·· ·· ——— / ··—· ·—· ——— —— / — ···· · / ·— ·——· ·——· / ·—· ·· ——· ···· — / —· ——— ·—— ·—·—·— / ·· — / —· · · —·· ··· / ·— / —· · — ·—— ——— ·—· —·— / —·—· ——— —· —· · —·—· — ·· ——— —· / — ——— / — ···· · / ·—· ·— —·· ·· ——— ·—·—·—',
 			'settings.radio.voiceMessages.problemSourceRefused' => '— ···· · / ·—· ·— —·· ·· ——— / ·—— ——— ··— ·—·· —·· / —· ——— — / ··· ·—— ·· — —·—· ···· / ·· — ··· / — ·—· ·— —· ··· —— ·· — / ·— ··— —·· ·· ——— / — ——— / — ···· · / ·— ·——· ·——· ——··—— / ··· ——— / — ···· · / —— · ··· ··· ·— ——· · / ··· — ——— ·——· ·——· · —·· ·—·—·— / ··· · — / — ···· · / ·—· ·— —·· ·· ——— / — ——— / — ·—· ·— —· ··· —— ·· — / — ···· · / ·— ·——· ·——· ·————· ··· / ·— ··— —·· ·· ——— ·—·—·—',
@@ -7203,6 +7217,8 @@ extension on TranslationsCw {
 			'settings.station.models.ts2000' => '—·— · —· ·—— ——— ——— —·· / — ··· —····— ··——— ————— ————— —————',
 			'settings.station.models.qmx' => '——·— ·—· ·——· / ·—·· ·— —··· ··· / ——·— —— —··—',
 			'settings.station.models.fx4cr' => '—··· ——· ··——— ··—· —··— / ··—· —··— —····— ····— —·—· ·—·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.tx500' => '·—·· ·— —··· ····· ————· ————· / — —··— —····— ····· ————— —————',
 			'settings.station.models.tx500mp' => '·—·· ·— —··· ····· ————· ————· / — —··— —····— ····· ————— ————— —— ·——·',
 			'settings.station.models.qcx' => '——·— ·—· ·——· / ·—·· ·— —··· ··· / ——·— —·—· —··—',
@@ -7210,8 +7226,6 @@ extension on TranslationsCw {
 			'settings.station.models.kx2' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ··———',
 			'settings.station.models.kx3' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ···——',
 			'settings.station.models.k4' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ····—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.ic705' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ————— ·····',
 			'settings.station.models.ic7300' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ···—— ————— —————',
 			'settings.station.models.ic7300mk2' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ···—— ————— ————— / —— —·— ··———',
@@ -7717,6 +7731,8 @@ extension on TranslationsCw {
 			'settings.developer.diagnostics' => '—·· ·· ·— ——· —· ——— ··· — ·· —·—· ···',
 			'settings.developer.importExport' => '·· —— ·——· ——— ·—· — / —··—· / · —··— ·——· ——— ·—· —',
 			'settings.developer.systemInformation' => '··· —·—— ··· — · —— / ·· —· ··—· ——— ·—· —— ·— — ·· ——— —·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.appVersion' => '·— ·——· ·——· / ···— · ·—· ··· ·· ——— —·',
 			'settings.developer.dataFolder' => '—·· ·— — ·— / ··—· ——— ·—·· —·· · ·—·',
 			'settings.developer.worktree' => '·—— ——— ·—· —·— — ·—· · ·',
@@ -7724,8 +7740,6 @@ extension on TranslationsCw {
 			'settings.developer.loading' => '—·——· ·—·· ——— ·— —·· ·· —· ——· … —·——·—',
 			'settings.developer.panelLoadFailed' => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—·· ——— ·— —·· / — ···· ·· ··· / ··· · — — ·· —· ——· ··· / ·——· ·— —· · ·—·· ·—·—·—',
 			'settings.developer.extDevServer' => '· —··— — · —· ··· ·· ——— —· / —·· · ···— / ··· · ·—· ···— · ·—·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.extensionSettings' => '· —··— — · —· ··· ·· ——— —· / ··· · — — ·· —· ——· ···',
 			'settings.developer.extDevServerDescription' => '·—·· ——— ·— —·· / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·—· ——— —— / ·— / —·· · ···— / ··· · ·—· ···— · ·—· / ——— —· / —·—— ——— ··— ·—· / —· · — ·—— ——— ·—· —·— / ·· —· ··· — · ·— —·· / ——— ··—· / — ···· · / ——— —· · ··· / —··· ··— ·· ·—·· — / ·· —· — ——— / — ···· · / ·— ·——· ·——· ——··—— / ·— —· —·· / ·—· · ·—·· ——— ·— —·· / — ···· · —— / ·— ··· / —·—— ——— ··— / ··· ·— ···— · ·—·—·—',
 			'settings.developer.extDevServerAddress' => '··· · ·—· ···— · ·—· / ·— —·· —·· ·—· · ··· ···',
@@ -8231,6 +8245,8 @@ extension on TranslationsCw {
 			'adifImport.stationCallJoin' => '·— —· —··',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ···· ·— ··· / —· ——— / —·· ·— — · / ·— —· —·· / —·—· ·— —· —· ——— — / —··· · / ·· —— ·——· ——— ·—· — · —··', other: '${formatted} / ···· ·— ···— · / —· ——— / —·· ·— — · / ·— —· —·· / —·—· ·— —· —· ——— — / —··· · / ·· —— ·——· ——— ·—· — · —··', ), 
 			'adifImport.activationFound' => ({required Object refs}) => '— ···· ·· ··· / ··—· ·· ·—·· · / ·—· · —·—· ——— ·—· —·· ··· / ·— —· / ·— —·—· — ·· ···— ·— — ·· ——— —· / ——— ··—· / ${refs} ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.addActivation' => '·— —·· —·· / ·· — / — ——— / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => '——— —· ·—·· —·—— / ${written} / ——— ··—· / ${planned} / —·—· ——— ··— ·—·· —·· / —··· · / ·— ·——· ·——· ·—·· ·· · —·· / — / — ···· · / ·—·· ——— ——· / —·—· ···· ·— —· ——· · —·· / ·—— ···· ·· ·—·· · / —·—— ——— ··— / ·—— · ·—· · / —·· · —·—· ·· —·· ·· —· ——· ·—·—·—',
 			'adifImport.busy' => '·— —· / ·· —— ·——· ——— ·—· — / ·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / ·—· ··— —· —· ·· —· ——· ·—·—·— / ·—— ·— ·· — / ··—· ——— ·—· / ·· — / — ——— / ··—· ·· —· ·· ··· ···· / —··· · ··—· ——— ·—· · / ··· — ·— ·—· — ·· —· ——· / ·— —· ——— — ···· · ·—· ·—·—·—',
@@ -8238,8 +8254,6 @@ extension on TranslationsCw {
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${limit} / ——·— ··· ——— ··· ·—·—·— / ·· —— ·——· ——— ·—· — ·· —· ——· / ·— —· / ·— —·· ·· ··—· / ·· —· — ——— / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / ·· ··· / —— · ·— —· — / — ——— / ·— —·· —·· / ·— / ··—· · ·—— / ——·— ··· ——— ··· ——··—— / —· ——— — / — ——— / —··· ·—· ·· —· ——· / ·· —· / ·— / ·—·· ·— ·—· ——· · / ·—·· ——— ——· / — / ··— ··· · / — ···· · / ·—·· ——— ——· ··· / ···— ·· · ·—— / ··—· ——— ·—· / — ···· ·— — ·—·—·— / —·· · ···— · ·—·· ——— ·——· · ·—· / —— ——— —·· · / ·—·· · — ··· / —·—— ——— ··— / ·· —— ·——· ——— ·—· — / ·· — / ·— —· —·—— ·—— ·— —·—— ——··—— / ·· ··—· / —·—— ——— ··— / ·— ·—· · / ··· ··— ·—· · ·—·—·—',
 			'adifImport.importAnyway' => '·· —— ·——· ——— ·—· — / ·— —· —·—— ·—— ·— —·——',
 			'offline.statusOffline' => '·· —· — · ·—· —· · — ———··· / ——— ··—· ··—· ·—·· ·· —· ·',
-			_ => null,
-		} ?? switch (path) {
 			'offline.statusOnline' => '·· —· — · ·—· —· · — ———··· / —·—· ——— —· —· · —·—· — · —··',
 			'offline.noRoute' => '—· ——— / —· · — ·—— ——— ·—· —·— / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— — / ·— ·—·· ·—·· ·—·—·—',
 			'offline.unreachable' => '— ···· · / —· · — ·—— ——— ·—· —·— / ·· ··· / ··— ·——· ——··—— / —··· ··— — / —· ——— / ··· · ·—· ···— · ·—· / ·· ··· / ·—· · ··· ·——· ——— —· —·· ·· —· ——· / — / ——— ··—· — · —· / ·— / ··· ·· ——· —· —····— ·· —· / ·——· ·— ——· · / ·—— ·— ·· — ·· —· ——· / ·· —· / ·— / —··· ·—· ——— ·—— ··· · ·—· ·—·—·—',
