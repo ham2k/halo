@@ -774,6 +774,64 @@ void main() {
       });
     });
 
+    // A display reads canRecenter to know whether the sweep will follow a move. Said yes while the
+    // radio would not move, the display skips keeping its window inside the sweep and leaves a
+    // blank strip beside it, waiting on a scope that stays put.
+    test('canRecenter says yes exactly while a pan reaches the radio', () {
+      followFakeClock();
+      fakeAsync((async) {
+        make({});
+        (bool, bool) moves(int centerHz) => (session.spectrumCapabilities.canRecenter, session.setSpectrum(SpectrumRequest(centerHz: centerHz)));
+
+        session.startSpectrum();
+        tuneTo(144025000);
+        expect(moves(144100000), (false, false), reason: 'nothing heard from the scope yet');
+        sweep(civScopeModeCenter, 144025000, 100000);
+        expect(moves(144100000), (false, false), reason: 'centred, the switch to Scroll-F on its way');
+        sweep(civScopeModeScrollF, 143925000, 144125000);
+        expect(moves(144100000), (true, true));
+
+        // The operator presses CENT on the radio: the sweep stays where the radio puts it until
+        // Scroll-F is back.
+        async.elapse(const Duration(seconds: 5));
+        sweep(civScopeModeCenter, 144025000, 100000);
+        expect(moves(144100000), (false, false));
+        sweep(civScopeModeScrollF, 143925000, 144125000);
+        expect(moves(144100000), (true, true));
+
+        // A dial off every band range the model keeps edges for has no preset to move.
+        tuneTo(250000000);
+        sweep(civScopeModeScrollF, 249900000, 250100000);
+        expect(moves(250050000), (false, false));
+      });
+    });
+
+    // A radio already in Scroll-F says so in answer to the display's first reads, before any sweep:
+    // the pan it is asked for then has no window to start from, and must not be tried.
+    test('a radio already in Scroll-F can be recentered once a sweep and its preset are known', () {
+      (bool, bool) moves(int centerHz) => (session.spectrumCapabilities.canRecenter, session.setSpectrum(SpectrumRequest(centerHz: centerHz)));
+
+      make({});
+      sink.answers[civScopeMode] = [civScopeMode, 0x00, civScopeModeScrollF];
+      session.startSpectrum();
+      tuneTo(144025000);
+      expect(moves(144100000), (false, false), reason: 'in Scroll-F with its preset known, but no sweep yet: nothing says where the window is');
+      sweep(civScopeModeScrollF, 143925000, 144125000);
+      expect(moves(144100000), (true, true));
+
+      // The preset's answer lost: in Scroll-F there is no takeover to ask it again, and no edges to write without it.
+      make({});
+      sink.answers = {
+        civScopeMode: [civScopeMode, 0x00, civScopeModeScrollF],
+      };
+      session.startSpectrum();
+      tuneTo(144025000);
+      sweep(civScopeModeScrollF, 143925000, 144125000);
+      expect(moves(144100000), (false, false));
+      session.handleData(Uint8List.fromList([0xFE, 0xFE, us, ic705, civScopeCommand, civScopeEdgeNumber, 0x00, 0x02, 0xFD]));
+      expect(moves(144100000), (true, true));
+    });
+
     test('a lost answer for the preset is asked again, not left to hold Scroll-F off for the whole display', () {
       followFakeClock();
       fakeAsync((async) {

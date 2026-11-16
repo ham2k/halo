@@ -148,6 +148,26 @@ mixin _CivScope implements SpectrumSession {
   /// rather than being asked again every 2 s under a notice that flickers.
   bool _takeOverRefused = false;
 
+  /// Whether a move of the window reaches the radio now: the scope in
+  /// Scroll-F, its preset known, the dial inside a band range the model keeps
+  /// edges for, and a sweep heard to say where the window is. Short of any of
+  /// them — the first sweeps, a refused takeover, a switch back on the
+  /// radio's panel, a dial off every range — the sweep stays where the radio
+  /// puts it, and `canRecenter` says so, or a display waits on a scope that
+  /// will not move. A refused edges frame is the one refusal this cannot see.
+  bool get _holdsScope =>
+      _scopeMode == civScopeModeScrollF && _scopeEdgeNumber != null && _scopeSettings.lowHz != null && _scopeSettings.highHz != null && _scopeRangeIndex() >= 0;
+
+  /// The band range of the operating frequency in [_scopeEdgeRanges]; -1 off
+  /// every one, or before a frequency is known.
+  int _scopeRangeIndex() {
+    final freq = _freqHz;
+    if (freq == null) return -1;
+    final ranges = _scopeEdgeRanges;
+    // Neighbouring ranges share their ends: one ending where the next begins takes the dial only below it.
+    return ranges.indexWhere((range) => freq >= range[0] && (freq < range[1] || (freq == range[1] && range == ranges.last)));
+  }
+
   @override
   String? get spectrumUnavailable {
     if (!_scopeSupported) return t.settings.station.spectrumUnsupported;
@@ -157,9 +177,10 @@ mixin _CivScope implements SpectrumSession {
   }
 
   /// Under [_scopeAdjusts], the window is the app's — span and centre alike
-  /// are a preset's edges — and the mode is the one it keeps. Otherwise
-  /// nothing about the scope is: no span to fit, no REF or speed to send, no
-  /// window to move, so a display zooms and pans only within the sweep.
+  /// are a preset's edges — and the mode is the one it keeps; the window
+  /// moves only while [_holdsScope]. Otherwise nothing about the scope is: no
+  /// span to fit, no REF or speed to send, no window to move, so a display
+  /// zooms and pans only within the sweep.
   @override
   SpectrumCapabilities get spectrumCapabilities {
     if (!_scopeAdjusts) return const SpectrumCapabilities(spansHz: [], refMinDb: 0, refMaxDb: 0, refStepDb: civScopeRefStepDb, modes: {});
@@ -174,7 +195,7 @@ mixin _CivScope implements SpectrumSession {
       refStepDb: civScopeRefStepDb,
       modes: const {},
       speeds: const {SpectrumSpeed.slow, SpectrumSpeed.mid, SpectrumSpeed.fast},
-      canRecenter: true,
+      canRecenter: _holdsScope,
       spanSetsEdges: true,
     );
   }
@@ -240,11 +261,9 @@ mixin _CivScope implements SpectrumSession {
     // Said done only for what went to the radio: a window believed moved where it was not runs off
     // into filler, and a move never sent is never tried again.
     var done = request.refLevelDb != null || request.speed != null;
-    if (request.spanHz != null || request.centerHz != null) {
-      final (low, high) = (_scopeSettings.lowHz, _scopeSettings.highHz);
-      if (low != null && high != null && _scopeMode == civScopeModeScrollF) {
-        done = _placeScopeEdges(request.centerHz ?? (low + high) ~/ 2, request.spanHz == null ? high - low : 2 * caps.snapSpan(request.spanHz!)) || done;
-      }
+    if ((request.spanHz != null || request.centerHz != null) && _holdsScope) {
+      final (low, high) = (_scopeSettings.lowHz!, _scopeSettings.highHz!);
+      done = _placeScopeEdges(request.centerHz ?? (low + high) ~/ 2, request.spanHz == null ? high - low : 2 * caps.snapSpan(request.spanHz!)) || done;
     }
     if (request.refLevelDb case final ref?) {
       final snapped = caps.snapRef(ref);
@@ -317,13 +336,9 @@ mixin _CivScope implements SpectrumSession {
   /// there is no range, or no preset or frequency known yet. Edges the
   /// radio already shows in Scroll-F are not written again.
   bool _placeScopeEdges(int centerHz, int widthHz) {
-    final (edge, freq) = (_scopeEdgeNumber, _freqHz);
-    if (edge == null || freq == null) return false;
-    final ranges = _scopeEdgeRanges;
-    // Neighbouring ranges share their ends: one ending where the next begins takes the dial only below it.
-    final index = ranges.indexWhere((range) => freq >= range[0] && (freq < range[1] || (freq == range[1] && range == ranges.last)));
-    if (index < 0) return false;
-    final [rangeLow, rangeHigh] = ranges[index];
+    final (edge, freq, index) = (_scopeEdgeNumber, _freqHz, _scopeRangeIndex());
+    if (edge == null || freq == null || index < 0) return false;
+    final [rangeLow, rangeHigh] = _scopeEdgeRanges[index];
     final width = ((widthHz / 1000).round() * 1000).clamp(_narrowestEdgesHz, math.min(civScopeMaxEdgeWidthHz, rangeHigh - rangeLow)).toInt();
     final (lowest, highest) = (((freq - width + 1000) / 1000).ceil() * 1000, ((freq - 1000) / 1000).floor() * 1000);
     final low = (((centerHz - width / 2) / 1000).round() * 1000).clamp(lowest, math.max(lowest, highest)).toInt();

@@ -4306,6 +4306,12 @@ WiFi:
   - *The edges.* The scope then `canRecenter`: a scene's `follow` moves the
     window before the dial reaches its edge, where the radio would scroll it,
     and a pan past the sweep moves it; a span asked for is the edges' width.
+    It says so only while Scroll-F holds, the preset is known and the dial
+    is inside a band range: before the switch lands, after Scroll-F is
+    refused, while the radio's panel has switched it back, or with the dial
+    off every range, the sweep stays where the radio puts it, and a display
+    keeps its window inside that sweep as it does for a scope the app
+    cannot move.
     Edges are whole kHz, at most 1 MHz apart, and inside the band range of
     the operating frequency, numbered per model (`civScopeEdgeRanges`, pinned
     for the IC-705, IC-9700 and IC-905), with the dial a kHz inside them:
