@@ -239,6 +239,15 @@ class ErrorPolicy {
       matches: _isWebFocusTraversalNull,
     ),
     ErrorRule(
+      id: 'web-focus-inactive-element',
+      reason:
+          'Flutter web asking an element the frame has just taken out of the tree for its render '
+          'object, while the browser moves focus as a route opens. A debug-build assertion, compiled '
+          'out of every build a user runs',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isWebFocusInactiveElement,
+    ),
+    ErrorRule(
       id: 'hot-restart-stale-object',
       reason:
           'a live object left behind by a hot reload/restart, whose class no longer has the '
@@ -730,22 +739,39 @@ class ErrorPolicy {
   /// debug build and is minified in a release one, so requiring it would make
   /// this work only where the noise matters least.
   ///
-  /// This cannot hide a bug of ours. No observer in this app implements
-  /// `didChangeViewFocus` — only Flutter's own `View` does — so nothing of ours
-  /// can throw inside that dispatch. Delete this the day Flutter's `!` is fixed;
-  /// #271 tracks the upstream side.
+  /// Code of ours does run inside that dispatch: ViewFocusGuard, which
+  /// implements `didChangeViewFocus` to put focus back after the
+  /// accessibility DOM blurs it, and any render object of ours a focus node's
+  /// `rect` walks through (`applyPaintTransform`, as CollapsingSliver's
+  /// does). The guard's one `!` follows a check that the node is still live,
+  /// and the sliver's reads its child's parent data, which an attached child
+  /// always has — but a null check or a cast added to either later would be
+  /// silenced by this rule, so keep that code free of them. Delete this the
+  /// day Flutter's `!` is fixed; #271 tracks the upstream side.
   static bool _isWebFocusTraversalNull(Object error, FlutterErrorDetails? details) {
-    if (!(debugTreatAsWeb ?? kIsWeb)) return false;
-    if (details == null) return false;
-    if (!(details.context?.toString() ?? '').contains('WidgetsBindingObserver.didChangeViewFocus')) {
-      return false;
-    }
+    if (!_inWebViewFocusDispatch(details)) return false;
     if (error is TypeError) return true;
     // Belt and braces for the web runtime's own null-check type, whose identity
     // has moved between Dart versions; the message has not.
     final text = error.toString();
     return text.contains('Unexpected null value') || text.contains('Null check operator used on a null value');
   }
+
+  /// The framework's own dispatch of a view-focus change, on web — the only
+  /// platform whose embedder reports one (see [_isWebFocusTraversalNull]).
+  static bool _inWebViewFocusDispatch(FlutterErrorDetails? details) =>
+      (debugTreatAsWeb ?? kIsWeb) && details != null && (details.context?.toString() ?? '').contains('WidgetsBindingObserver.didChangeViewFocus');
+
+  /// Flutter's `Element.findRenderObject` assertion, raised inside that same
+  /// dispatch: a route opening while the browser moves focus mid-frame has
+  /// `View` read the render object of an element the frame has already
+  /// deactivated. An `assert`, so only debug builds throw it — where it also
+  /// skips that one focus move, which a release build makes. Matched on its
+  /// summary and that dispatch together: the same
+  /// assertion raised from our own code anywhere else is a real misuse of a
+  /// context and stays loud.
+  static bool _isWebFocusInactiveElement(Object error, FlutterErrorDetails? details) =>
+      _inWebViewFocusDispatch(details) && error is FlutterError && error.message.startsWith('Cannot get renderObject of inactive element');
 
   /// Flutter's own "RenderFlex overflowed by N pixels" layout warning — a
   /// debug-only assertion (release builds clip silently and never throw

@@ -210,6 +210,46 @@ void main() {
     });
   });
 
+  group('web focus reading an inactive element', () {
+    // What `Element.findRenderObject`'s assertion throws, summary first.
+    FlutterError inactive() => FlutterError.fromParts([
+      ErrorSummary('Cannot get renderObject of inactive element.'),
+      ErrorDescription('In order for an element to have a valid renderObject, it must be active.'),
+    ]);
+    FlutterErrorDetails inViewFocusDispatch(Object error) => FlutterErrorDetails(
+      exception: error,
+      library: 'widgets library',
+      context: ErrorDescription('while dispatching notifications for WidgetsBindingObserver.didChangeViewFocus'),
+    );
+
+    test('is console-only when the browser moves focus as a route opens — no notice, no upload', () {
+      ErrorPolicy.debugTreatAsWeb = true;
+      expect(dispositionFor(inactive(), details: inViewFocusDispatch(inactive())), ErrorDisposition.logOnly);
+    });
+
+    test('the same assertion from our own code, outside that dispatch, stays loud', () {
+      // A context read after its widget left the tree is a real misuse of
+      // ours; only the framework's own view-focus dispatch is exempt. Ours
+      // arrives through FlutterError.onError too, with details naming where
+      // it was caught, so a rule that looked only for details would take it.
+      ErrorPolicy.debugTreatAsWeb = true;
+      expect(dispositionFor(inactive()), ErrorDisposition.notify);
+      final inAGesture = FlutterErrorDetails(exception: inactive(), library: 'gesture library', context: ErrorDescription('while handling a gesture'));
+      expect(dispositionFor(inactive(), details: inAGesture), ErrorDisposition.notify);
+    });
+
+    test('off web it stays loud', () {
+      ErrorPolicy.debugTreatAsWeb = false;
+      expect(dispositionFor(inactive(), details: inViewFocusDispatch(inactive())), ErrorDisposition.notify);
+    });
+
+    test('another framework error in that dispatch stays loud', () {
+      ErrorPolicy.debugTreatAsWeb = true;
+      final other = FlutterError('A RenderBox was not laid out.');
+      expect(dispositionFor(other, details: inViewFocusDispatch(other)), isNot(ErrorDisposition.logOnly));
+    });
+  });
+
   group('web semantics node map inconsistency', () {
     // The engine dumps both trees into the message; only the first line is
     // stable, and it is what the rule matches on.
