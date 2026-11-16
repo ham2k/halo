@@ -158,10 +158,12 @@ extension _Connection on CatService {
           : _isEverywareDevice(node)
           ? _everywareDeviceConnection(node)
           : switch (_isFlex(node) ? _flexAddressOf(node) : null) {
+              // HaLo's own slices ride HaLo's station on the radio, a
+              // connection of its own beside the one bound to another's.
               final address? => await _flexConnections.acquire(
-                key: address,
+                key: _ownedFlexSlice(node) == null ? address : '$address#station',
                 target: type.targetFor(_flexRadioConfig(node)),
-                config: type.driverConfig(_flexRadioConfig(node)),
+                config: type.driverConfig(_flexConnectionConfig(node)),
                 open: transport.connect,
                 cancel: cancel,
               ),
@@ -205,6 +207,8 @@ extension _Connection on CatService {
     String? droppedBecause;
     final sink = _NodeSink(
       connection: connection,
+      receiveAudioLink: () => _receiveAudioLink(node),
+      talkAudioLink: () => _talkAudioLink(node),
       linkedVfo: () => _linkedVfoHz(uuid),
       onDropConnection: (why) {
         if (runtime.connection != connection) return;
@@ -329,6 +333,14 @@ extension _Connection on CatService {
         _setState(uuid, stateFor(uuid).copyWith(problem: message, clearProblem: message == null));
         _flexSliceProblem(uuid);
       },
+      onReleaseKey: () {
+        if (runtime.connection == connection && _ptt.heldOn(runtime.session)) _ptt.release();
+      },
+      onAudioProblem: (message) {
+        if (runtime.connection != connection || stateFor(uuid).audioProblem == message) return;
+        if (message != null) trafficLog?.note(_logLabel(uuid), 'audio: $message');
+        _setState(uuid, stateFor(uuid).copyWith(audioProblem: message, clearAudioProblem: message == null));
+      },
       onChannels: (channels) {
         if (runtime.connection != connection) return;
         if (listEquals(stateFor(uuid).channels, channels)) return;
@@ -437,7 +449,15 @@ extension _Connection on CatService {
     final EquipmentSession session;
     try {
       session = connection is SharedReceiverConnection
-          ? connection.createSession(sink, receiver: _isK4Remote(node) ? _k4Receiver(node) : '${FlexRadioDriver.sliceFromConfig(config)}')
+          ? connection.createSession(
+              sink,
+              receiver: _isK4Remote(node)
+                  ? _k4Receiver(node)
+                  : switch (_ownedFlexSlice(node)) {
+                      final letter? => '$flexOwnSlicePrefix$letter',
+                      null => '${FlexRadioDriver.sliceFromConfig(config)}',
+                    },
+            )
           : type.driver.createSession(sink, type.driverConfig(config));
     } catch (e, st) {
       // A shared connection can end while its lease is awaiting attachment.

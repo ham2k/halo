@@ -31,6 +31,8 @@ import '../services/cat/transports/placeholder_transport.dart' show PlaceholderT
 import '../services/cat/transports/serial_transport.dart' show SerialTransportConfig, serialDtrHighConfigKey, serialRtsHighConfigKey;
 import '../services/cat/drivers/antenna_genius_driver.dart';
 import '../services/cat/drivers/icom_civ_driver.dart' show civScopeAdjustConfigKey, civScopeConfigKey;
+import '../services/cat/drivers/flexradio_driver.dart' show FlexRadioDriver, flexStationNameConfigKey;
+import '../config/device_identity.dart' show resolvedDeviceIdentity;
 import '../services/cat/drivers/rotator_config.dart';
 import '../services/cat/drivers/everyware_codec.dart' show EverywareSwitchKind;
 import '../services/cat/drivers/everyware_devices.dart'
@@ -44,6 +46,7 @@ import '../services/settings_service.dart';
 import 'equipment_report.dart';
 import 'keying_pickers.dart';
 import 'so2r_switch_dialog.dart';
+import 'station_panel_audio.dart';
 import 'station_rows.dart';
 import 'settings_view.dart' show settingsGroupRows;
 import '../settings/core_settings_groups.dart' show moreStationSettingsKey, stationConfigurationSectionKey;
@@ -349,6 +352,8 @@ class StationPanel extends StatelessWidget {
     // granted USB device, say) — configElements() reflects the transport's
     // CURRENT state each time it's called, so rebuilding from it is enough;
     // nothing here needs to know what specifically changed.
+    final audio = RadioAudioEditorFields(services, type.driver, config);
+
     List<Map<String, dynamic>>? connectionCache;
     List<Map<String, dynamic>> buildElements({bool fresh = true}) {
       if (fresh) connectionCache = null;
@@ -470,6 +475,8 @@ class StationPanel extends StatelessWidget {
         // poll and meter cadences — and the pairing's troubleshooting
         // notes. Gone when the chosen pairing leaves nothing under it.
         {'type': 'header', 'style': 'category', 'title': st.moreBand, 'hideWhenEmpty': true},
+        ...audio.more(context),
+        ..._flexStationNameElements(context, model),
         ...addressRows(connection.where((element) => isAdvanced(element) && !isLinkAdvanced(element)).toList()),
         ...connection.where(isNote),
       ];
@@ -508,6 +515,7 @@ class StationPanel extends StatelessWidget {
         ...config,
         ...everywareDeviceToggles(config),
         if (choosable) 'transport': type.transportKey,
+        ...audio.initial,
         // Where each device port is pointing right now — live state, seeded
         // so the pickers open on the truth rather than blank. Last, so a key
         // collision could never let a stored value stand in for what the
@@ -752,6 +760,9 @@ class StationPanel extends StatelessWidget {
   /// The same, for set B's.
   static const _detailsSectionB = 'detailsB';
 
+  /// The same, for the station's audio mixing.
+  static const _mixingSection = 'mixing';
+
   /// The dropdown's value for a peer radio. Namespaced because the list is
   /// shared with local nodes and both are keyed by a uuid — one that means
   /// "a node in THIS station" and one that does not.
@@ -840,6 +851,7 @@ class StationPanel extends StatelessWidget {
         return CurrentTransceiverTile(
           displayName: so2r ? st.so2rRadioName(radio: 'A', name: _displayName(node)) : _displayName(node),
           channel: _cat.channelNameFor(node),
+          onCloseChannel: _cat.canCloseFlexSlice(node.uuid) ? () => _closeFlexSlice(context, node.uuid) : null,
           connection: connectionTextFor(context, _cat.typeFor(node), node.config),
           transportType: _cat.typeFor(node),
           state: _cat.stateFor(node.uuid),
@@ -980,6 +992,7 @@ class StationPanel extends StatelessWidget {
         final details = [
           ?_scopeAdjustRow(context, localRadio1, inset: detailsInset),
           ?_scopeRow(context, localRadio1, radio: null, inset: detailsInset),
+          ?_radioAudioRow(context, localRadio1, inset: detailsInset),
           if ((!keyOutside && offersKey) || offersPhone)
             Padding(
               padding: EdgeInsets.fromLTRB(detailsInset.left, 0, detailsInset.right, Space.md),
@@ -997,6 +1010,7 @@ class StationPanel extends StatelessWidget {
           if (radio2 != null) ...[
             ?_scopeAdjustRow(context, radio2, inset: detailsInset),
             ?_scopeRow(context, radio2, radio: radio2, inset: detailsInset),
+            ?_radioAudioRow(context, radio2, inset: detailsInset),
             if (!keyOutside && keys.isNotEmpty) _radio2PickRow(context, kCategoryKey, keys, inset: detailsInset),
             if (offersPhoneB)
               Padding(
@@ -1136,6 +1150,33 @@ class StationPanel extends StatelessWidget {
                     ),
                   ],
                 ),
+              // The station's audio mixing, once a radio's audio goes through
+              // this computer: the volume on its row, the rest folded.
+              if (_cat.radiosThroughComputer.isNotEmpty) ...[
+                SectionedSlivers(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: ColoredBox(
+                        color: rigGround,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: Space.lg),
+                          child: AudioMixingRow(services: services),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                ..._foldedDetails(
+                  context,
+                  AudioMixingRow.details(context, services, inset: detailsInset),
+                  section: _mixingSection,
+                  rowInset: rowInset,
+                  detailsInset: detailsInset,
+                  ground: rigGround,
+                  expanded: expanded,
+                  toggle: toggle,
+                ),
+              ],
               // Room at the foot of the rig's ground, before the inventory —
               // slivers of its own, so folding the details does not fold it.
               SectionedSlivers(

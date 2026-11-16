@@ -345,6 +345,10 @@ class EquipmentChannel {
   /// of slices apart when two stations share one radio.
   final String? holder;
 
+  /// The holder's own id with the equipment, which stays the same when two
+  /// holders share a name: a Flex station's `client_id`.
+  final String? holderId;
+
   /// Something holds this channel and the equipment has not said what.
   ///
   /// Its own flag because the difference decides the operator's answer: an
@@ -362,6 +366,7 @@ class EquipmentChannel {
     this.mode,
     this.usedBy,
     this.holder,
+    this.holderId,
     this.heldByUnknown = false,
   });
 
@@ -375,10 +380,11 @@ class EquipmentChannel {
       other.mode == mode &&
       other.usedBy == usedBy &&
       other.holder == holder &&
+      other.holderId == holderId &&
       other.heldByUnknown == heldByUnknown;
 
   @override
-  int get hashCode => Object.hash(key, label, inUse, freqKHz, mode, usedBy, holder, heldByUnknown);
+  int get hashCode => Object.hash(key, label, inUse, freqKHz, mode, usedBy, holder, holderId, heldByUnknown);
 
   @override
   String toString() =>
@@ -783,6 +789,11 @@ class EquipmentState {
   /// with the same weight as an error because to the operator it is one.
   final String? problem;
 
+  /// Why the radio's audio does not go through this computer as the
+  /// operator asked, shown on its row as [problem] is: its own, since a
+  /// slice that is fine on the radio can still be one HaLo cannot play.
+  final String? audioProblem;
+
   /// Every channel the equipment currently offers, when it has more than one
   /// — see [EquipmentChannel]. Empty for equipment with a single channel,
   /// and for one that has not said yet.
@@ -840,6 +851,7 @@ class EquipmentState {
     this.stale = false,
     this.diagnostic,
     this.problem,
+    this.audioProblem,
     this.channels = const [],
     this.switchAntennas = const [],
     this.switchPorts = const [],
@@ -870,6 +882,8 @@ class EquipmentState {
     bool clearDiagnostic = false,
     String? problem,
     bool clearProblem = false,
+    String? audioProblem,
+    bool clearAudioProblem = false,
     List<EquipmentChannel>? channels,
     List<SwitchAntenna>? switchAntennas,
     List<SwitchPort>? switchPorts,
@@ -904,6 +918,7 @@ class EquipmentState {
     // Same flag-not-null reasoning as [diagnostic]: "the slice is back"
     // has to be sayable.
     problem: clearProblem ? null : (problem ?? this.problem),
+    audioProblem: clearAudioProblem ? null : (audioProblem ?? this.audioProblem),
     channels: channels ?? this.channels,
     switchAntennas: switchAntennas ?? this.switchAntennas,
     switchPorts: switchPorts ?? this.switchPorts,

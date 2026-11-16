@@ -14,6 +14,7 @@ upcoming:
     - "New POTA Park fields setting (Settings → Exports)"
     - "New Provides line in each device's settings: what it can do"
     - "Contacts another computer's N1MM or WSJT-X sends wait in Imports until you allow it"
+    - "New Slice in a FlexRadio's radio picker: HaLo opens a slice of its own"
 
 "193":
   changes:

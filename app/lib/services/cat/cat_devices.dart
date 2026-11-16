@@ -44,10 +44,11 @@ extension _Devices on CatService {
     }
     if (_isFlex(node)) {
       final slice = FlexRadioDriver.sliceFromConfig(node.config);
+      final own = _ownedFlexSlice(node);
       final address = _flexAddressOf(node);
-      if (slice == 0 || address == null) return null;
+      if ((slice == 0 && own == null) || address == null) return null;
       final device = _flexDeviceOf(address);
-      return device == null ? null : CapabilityAddress(device, kCapabilityReceiver, key: '$slice').toString();
+      return device == null ? null : CapabilityAddress(device, kCapabilityReceiver, key: own == null ? '$slice' : '$flexOwnSlicePrefix$own').toString();
     }
     if (_isEverywareDevice(node)) {
       final server = node.config[everywareServerConfigKey];
@@ -63,10 +64,12 @@ extension _Devices on CatService {
 
   /// Where a Flex node reaches its radio, which is what two slices of one
   /// radio share: its host and port. Null for a node not given a host yet.
-  String? _flexAddressOf(EquipmentNode node) {
-    final host = node.config['host'];
+  String? _flexAddressOf(EquipmentNode node) => _flexAddressIn(node.config);
+
+  String? _flexAddressIn(Map<String, dynamic> config) {
+    final host = config['host'];
     if (host is! String || host.trim().isEmpty) return null;
-    final port = int.tryParse('${node.config['port'] ?? ''}'.trim()) ?? FlexRadioDriver.defaultPort;
+    final port = int.tryParse('${config['port'] ?? ''}'.trim()) ?? FlexRadioDriver.defaultPort;
     return '${host.trim().toLowerCase()}:$port';
   }
 
@@ -82,35 +85,141 @@ extension _Devices on CatService {
     };
   }
 
-  /// The config keys a Flex's slices take from its device: its connection
-  /// settings and the driver's, except which slice.
+  /// What [node]'s connection is opened with: the radio's settings, and for
+  /// HaLo's own slice, HaLo's station: the id the radio keeps its slices
+  /// by, and the name others see it as.
+  Map<String, dynamic> _flexConnectionConfig(EquipmentNode node) => {..._flexRadioConfig(node), if (_ownedFlexSlice(node) != null) flexGuiConfigKey: true};
+
+  /// The config keys a Flex's connection is opened with: its transport's
+  /// and the driver's, except which slice.
   Set<String> _flexSharedKeys(EquipmentNode device) => switch (typeFor(device)) {
     final type? => {...type.transport.recognizedConfigKeys, ...type.driver.recognizedConfigKeys}..remove(FlexRadioDriver.sliceConfigKey),
     null => const {},
   };
 
-  void _logFlexSent(String address, List<int> bytes) {
-    if (_flexDeviceOf(address) case final device?) trafficLog?.sent(_logLabel(device), bytes);
+  /// The config keys a Flex's slices take from its device: [_flexSharedKeys],
+  /// and how far behind its audio may fall when it is heard in HaLo, which
+  /// the radio's editor sets for all of them.
+  Set<String> _flexFollowedKeys(EquipmentNode device) => {..._flexSharedKeys(device), receiveAudioDelayConfigKey};
+
+  /// What a new slice entry of [device] takes from it.
+  Map<String, dynamic> _flexFollowedConfig(EquipmentNode device) {
+    final followed = _flexFollowedKeys(device);
+    return {
+      for (final MapEntry(:key, :value) in device.config.entries)
+        if (followed.contains(key)) key: value,
+    };
   }
 
-  void _logFlexReceived(String address, List<int> bytes) {
-    if (_flexDeviceOf(address) case final device?) trafficLog?.received(_logLabel(device), bytes);
+  /// A pool key names the radio, and HaLo's station on it after a `#`.
+  void _logFlexSent(String key, List<int> bytes) {
+    if (_flexDeviceOf(key.split('#').first) case final device?) trafficLog?.sent(_logLabel(device), bytes);
+  }
+
+  void _logFlexReceived(String key, List<int> bytes) {
+    if (_flexDeviceOf(key.split('#').first) case final device?) trafficLog?.received(_logLabel(device), bytes);
+  }
+
+  /// The letter of HaLo's own slice [node] is, on HaLo's station on the
+  /// radio; null for a slice another station holds.
+  String? _ownedFlexSlice(EquipmentNode node) => switch (node.config[flexOwnSliceConfigKey]) {
+    final String letter when letter.isNotEmpty => letter,
+    _ => null,
+  };
+
+  /// Whether [slice] of the Flex [deviceId] is held by HaLo's own station:
+  /// by the radio's id for it, since SmartSDR on the same computer goes by
+  /// the same station name.
+  bool _isHalos(String deviceId, EquipmentChannel slice) {
+    final id = _nodes[deviceId]?.config[flexClientIdConfigKey];
+    return id is String && id.isNotEmpty && slice.holderId == id;
+  }
+
+  /// What HaLo's station on a Flex is called: this computer's name, with
+  /// anything the radio's status could not carry (a space) made a dash.
+  String _flexStationOf(EquipmentNode? device) {
+    final given = device?.config[flexStationNameConfigKey];
+    final name = (given is String && given.trim().isNotEmpty ? given : resolvedDeviceIdentity?.name ?? '').trim().replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '-');
+    return name.isEmpty ? flexProgramName : name;
+  }
+
+  /// The station name for a station connection opened with [config]: read
+  /// as it opens, as [_flexClientIdIn] is.
+  String? _flexStationIn(Map<String, dynamic> config) {
+    if (config[flexGuiConfigKey] != true) return null;
+    final address = _flexAddressIn(config);
+    return _flexStationOf(address == null ? null : _nodes[_flexDeviceOf(address)]);
+  }
+
+  /// What an edit to [node]'s settings asks of what is live: its audio
+  /// reconnected, its station renamed.
+  void _deviceSettingsEdited(EquipmentNode previous, EquipmentNode node) {
+    _audioSettingsEdited(previous, node);
+    _flexStationEdited(previous, node);
+  }
+
+  /// The id the radio gave HaLo's station, kept through an edit: the
+  /// editor saves the settings it read as it opened, and a station
+  /// registered since would otherwise lose the id its slices are kept by.
+  EquipmentNode _flexKeepClientId(EquipmentNode current, EquipmentNode edited) => switch (current.config[flexClientIdConfigKey]) {
+    final String id when _isFlex(edited) && edited.config[flexClientIdConfigKey] == null => edited.copyWith(
+      config: {...edited.config, flexClientIdConfigKey: id},
+    ),
+    _ => edited,
+  };
+
+  /// A Flex renamed for this computer is renamed on the radio at once, on
+  /// HaLo's station's live connection.
+  void _flexStationEdited(EquipmentNode previous, EquipmentNode node) {
+    if (!_isFlex(node) || previous.config[flexStationNameConfigKey] == node.config[flexStationNameConfigKey]) return;
+    final name = _flexStationOf(node);
+    for (final id in _flexOwnedEntries(deviceEntryFor(node.uuid))) {
+      if (_runtimes[id]?.session case final FlexRadioSession session) session.renameStation(name);
+    }
+  }
+
+  /// The id the radio keeps HaLo's station's slices by, for a station
+  /// connection opened with [config]: the device's, as the radio last gave
+  /// it.
+  String? _flexClientIdIn(Map<String, dynamic> config) {
+    if (config[flexGuiConfigKey] != true) return null;
+    final address = _flexAddressIn(config);
+    final device = address == null ? null : _nodes[_flexDeviceOf(address)];
+    return switch (device?.config[flexClientIdConfigKey]) {
+      final String id when id.isNotEmpty => id,
+      _ => null,
+    };
+  }
+
+  /// The radio keeps HaLo's station's slices under the id it gave it: kept
+  /// on the device, so the next connection brings them back.
+  void _flexClientIdAssigned(Map<String, dynamic> config, String id) {
+    final address = _flexAddressIn(config);
+    final device = address == null ? null : _flexDeviceOf(address);
+    final node = device == null ? null : _nodes[device];
+    if (node == null || node.config[flexClientIdConfigKey] == id) return;
+    _nodes[node.uuid] = node.copyWith(config: {...node.config, flexClientIdConfigKey: id});
+    unawaited(_save());
   }
 
   /// The id of the Flex at [address]: its slice A's entry.
-  String? _flexDeviceOf(String address) =>
-      _nodes.values.firstWhereOrNull((node) => _isFlex(node) && _flexAddressOf(node) == address && FlexRadioDriver.sliceFromConfig(node.config) == 0)?.uuid;
+  String? _flexDeviceOf(String address) => _nodes.values
+      .firstWhereOrNull(
+        (node) => _isFlex(node) && _flexAddressOf(node) == address && FlexRadioDriver.sliceFromConfig(node.config) == 0 && _ownedFlexSlice(node) == null,
+      )
+      ?.uuid;
 
   /// A Flex's slices reach it as its slice A does: an edit to the device's
-  /// connection settings is every slice's, and a slice connected on the old
-  /// ones reconnects on the new. Only those: the rest of an entry's config is
+  /// connection settings, or to its audio's buffering, is every slice's, and a
+  /// slice connected on the old ones reconnects on the new. Only those
+  /// ([_flexFollowedKeys]): the rest of an entry's config is
   /// its own, as a set's computer voice settings on the radio it logs from
   /// ([KeyingSurface.updateVoiceKeyingConfig]), which copied across would
   /// put set A's sound devices on set B and reconnect set B's slice mid-QSO.
   Future<void> _flexSlicesFollow(String deviceId) async {
     final device = _nodes[deviceId];
     if (device == null || !_isFlex(device)) return;
-    final shared = _flexSharedKeys(device);
+    final shared = _flexFollowedKeys(device);
     for (final id in entriesOf(deviceId).skip(1)) {
       final entry = _nodes[id];
       if (entry == null) continue;
@@ -122,7 +231,13 @@ extension _Devices on CatService {
       };
       if (entry.typeKey == device.typeKey && const DeepCollectionEquality().equals(config, entry.config)) continue;
       final status = stateFor(id).status;
-      final reconnect = status == EquipmentStatus.connected || status == EquipmentStatus.connecting;
+      // Only for what the slice's connection is made with: a change to how
+      // its audio is buffered is no reason to drop a slice nobody hears here.
+      final connectionChanged =
+          entry.typeKey != device.typeKey ||
+          _flexSharedKeys(device).any((key) => config[key] != entry.config[key]) ||
+          (_audioDiffers(entry.config, config) && (hearsInHalo(id) || talksThroughHalo(id)));
+      final reconnect = connectionChanged && (status == EquipmentStatus.connected || status == EquipmentStatus.connecting);
       if (reconnect) await disconnect(id, byUser: false);
       _nodes[id] = EquipmentNode(uuid: id, typeKey: device.typeKey, name: entry.name, config: config);
       if (reconnect) unawaited(connect(id));
@@ -150,7 +265,8 @@ extension _Devices on CatService {
 
   bool _flexSliceDisposable(String uuid) {
     final node = _nodes[uuid];
-    if (node == null || !_isFlex(node) || deviceEntryFor(uuid) == uuid) return false;
+    // HaLo's own slices close only when the operator closes them.
+    if (node == null || !_isFlex(node) || deviceEntryFor(uuid) == uuid || _ownedFlexSlice(node) != null) return false;
     final notOpen = switch (_runtimes[uuid]?.session) {
       final TransmitGatedSession session => session.cannotTransmit,
       _ => null,
@@ -161,7 +277,7 @@ extension _Devices on CatService {
     if (_positions.positionOf(radio)?.slots.isNotEmpty ?? false) return false;
     if (_positions.all.any((position) => position.slots.values.contains(uuid))) return false;
     final device = _nodes[deviceEntryFor(uuid)];
-    final own = {if (device != null) ..._flexSharedKeys(device), FlexRadioDriver.sliceConfigKey};
+    final own = {if (device != null) ..._flexFollowedKeys(device), FlexRadioDriver.sliceConfigKey};
     return node.config.keys.every(own.contains);
   }
 
@@ -176,7 +292,7 @@ extension _Devices on CatService {
     if (device == null) return;
     final open = [
       for (final channel in channels)
-        if (channel.inUse) {'key': channel.key, 'label': channel.label, 'usedBy': ?channel.usedBy, 'holder': ?channel.holder},
+        if (channel.inUse) {'key': channel.key, 'label': channel.label, 'usedBy': ?channel.usedBy, 'holder': ?channel.holder, 'holderId': ?channel.holderId},
     ];
     if (const DeepCollectionEquality().equals(device.config[flexKnownSlicesConfigKey], open)) return;
     _nodes[deviceId] = device.copyWith(config: {...device.config, flexKnownSlicesConfigKey: open});
@@ -316,6 +432,8 @@ extension CatDevices on CatService {
   /// one.
   String? channelNameFor(EquipmentNode node) {
     if (!_isFlex(node)) return typeFor(node)?.describeChannel(node.config);
+    // HaLo's own slice is named by its letter alone: it is this computer's.
+    if (_ownedFlexSlice(node) case final letter?) return t.settings.station.flexSliceLabel(letter: letter);
     return flexSliceName(deviceEntryFor(node.uuid), '${FlexRadioDriver.sliceFromConfig(node.config)}');
   }
 
@@ -328,8 +446,14 @@ extension CatDevices on CatService {
     final open = _flexOpenSlices(deviceId);
     final letter = open[key]?.label ?? FlexRadioDriver.sliceLabel(int.tryParse(key) ?? 0);
     final holders = {for (final slice in open.values) ?slice.holder};
-    return switch (open[key]?.holder) {
-      final holder? when holders.length > 1 => t.settings.station.flexSliceOnStation(letter: letter, station: holder),
+    // HaLo's own station goes by this computer's name, as SmartSDR on it
+    // does: beside it, another's slice says whose it is, even when theirs
+    // is the only other station.
+    final halosOpen = open.values.any((slice) => _isHalos(deviceId, slice));
+    return switch (open[key]) {
+      // HaLo's own, by its letter alone: it is this computer's.
+      final slice? when _isHalos(deviceId, slice) => t.settings.station.flexSliceLabel(letter: letter),
+      EquipmentChannel(:final holder?) when holders.length > 1 || halosOpen => t.settings.station.flexSliceOnStation(letter: letter, station: holder),
       _ => t.settings.station.flexSliceLabel(letter: letter),
     };
   }
@@ -349,17 +473,159 @@ extension CatDevices on CatService {
       if (device.config[flexKnownSlicesConfigKey] case final List<Object?> list)
         for (final slice in list)
           if (slice case {'key': final String key, 'label': final String label})
-            key: EquipmentChannel(key: key, label: label, inUse: true, usedBy: slice['usedBy'] as String?, holder: slice['holder'] as String?),
+            key: EquipmentChannel(
+              key: key,
+              label: label,
+              inUse: true,
+              usedBy: slice['usedBy'] as String?,
+              holder: slice['holder'] as String?,
+              holderId: slice['holderId'] as String?,
+            ),
     };
   }
+
+  /// Slice [key] of the Flex [deviceId] as an entry of it, made now if it
+  /// has none: picking an open slice is what adds it. Answers its id, or
+  /// null when the device is gone, which leaves nothing to pick. Listed
+  /// after the device's other entries, where the picker offered it, and
+  /// connected when the radio is: it joins the radio's one connection, as
+  /// the radio's plug opens every slice.
+  ///
+  /// A slice HaLo's own station holds — one the radio brought back from
+  /// HaLo's last connection — is added as HaLo's, by its letter.
+  Future<String?> addFlexSlice(String deviceId, String key) async {
+    final open = _flexOpenSlices(deviceId)[key];
+    if (open != null && _isHalos(deviceId, open) && _flexOwnedEntries(deviceId).isNotEmpty) {
+      return _addFlexEntry(deviceId, '$flexOwnSlicePrefix${open.label}', {flexOwnSliceConfigKey: open.label});
+    }
+    return _addFlexEntry(deviceId, key, {FlexRadioDriver.sliceConfigKey: key});
+  }
+
+  Future<String?> _addFlexEntry(String deviceId, String key, Map<String, dynamic> own) async {
+    final id = CapabilityAddress(deviceId, kCapabilityReceiver, key: key).toString();
+    final device = _nodes[deviceId];
+    if (device == null) return null;
+    if (_nodes.containsKey(id)) return id;
+    final after = entriesOf(deviceId).last;
+    final nodes = [..._nodes.values];
+    _nodes.clear();
+    for (final node in nodes) {
+      _nodes[node.uuid] = node;
+      if (node.uuid == after) {
+        _nodes[id] = EquipmentNode(
+          uuid: id,
+          typeKey: device.typeKey,
+          name: device.name,
+          // The radio's settings, not slice A's own: a set's computer voice
+          // settings on slice A are not this slice's.
+          config: {..._flexFollowedConfig(device), ...own},
+        );
+      }
+    }
+    await _save();
+    _changed();
+    if (_flexLive(deviceId)) unawaited(connect(id));
+    return id;
+  }
+
+  bool _flexLive(String deviceId) =>
+      entriesOf(deviceId).any((entry) => const {EquipmentStatus.connected, EquipmentStatus.connecting}.contains(stateFor(entry).status));
+
+  List<String> _flexOwnedEntries(String deviceId) => [
+    for (final id in entriesOf(deviceId))
+      if (_nodes[id] case final node? when _ownedFlexSlice(node) != null) id,
+  ];
+
+  /// How many more slices the Flex [deviceId] can open, as a connected
+  /// entry of it last heard the radio say; null while none is connected.
+  int? flexFreeSlices(String deviceId) {
+    for (final id in entriesOf(deviceId)) {
+      if (_runtimes[id]?.session case final FlexRadioSession session when stateFor(id).status == EquipmentStatus.connected) {
+        if (session.freeSlices case final free?) return free;
+      }
+    }
+    return null;
+  }
+
+  /// A new slice on HaLo's own station on the Flex [deviceId], added as an
+  /// entry of it, and its id: null when the radio would not open one.
+  ///
+  /// HaLo's first slice is the one the radio opens for its station as it
+  /// registers, so it needs no panadapter of its own. That one is HaLo's
+  /// "A" only on a station the radio has nothing kept for: one it brings
+  /// back may have only other letters, and then a slice is opened, and the
+  /// entry goes by the letter the radio gives it.
+  Future<String?> openFlexSlice(String deviceId) async {
+    final owned = _flexOwnedEntries(deviceId);
+    if (owned.isEmpty) {
+      final first = await _addFlexEntry(deviceId, '${flexOwnSlicePrefix}A', {flexOwnSliceConfigKey: 'A'});
+      if (first == null) return null;
+      if (await _flexSliceResolved(first)) return first;
+      final letter = await _flexStationSession(first)?.openSlice();
+      if (letter == 'A') return first;
+      if (letter == null) {
+        // Kept, it reads as a missing slice the operator cannot close, and
+        // registers HaLo on the radio again at every launch.
+        await _removeOne(first);
+        return null;
+      }
+      final id = await _addFlexEntry(deviceId, '$flexOwnSlicePrefix$letter', {flexOwnSliceConfigKey: letter});
+      await _removeOne(first);
+      return id;
+    }
+    final station = owned.first;
+    if (stateFor(station).status != EquipmentStatus.connected) await connect(station);
+    final letter = await _flexStationSession(station)?.openSlice();
+    return letter == null ? null : _addFlexEntry(deviceId, '$flexOwnSlicePrefix$letter', {flexOwnSliceConfigKey: letter});
+  }
+
+  FlexRadioSession? _flexStationSession(String id) => switch (_runtimes[id]?.session) {
+    final FlexRadioSession session => session,
+    _ => null,
+  };
+
+  /// Whether HaLo's own slice [id] has a number on the radio, given the
+  /// time its station takes to register and hear back.
+  Future<bool> _flexSliceResolved(String id) async {
+    for (var waited = Duration.zero; waited < const Duration(seconds: 5); waited += const Duration(milliseconds: 100)) {
+      if ((_flexStationSession(id)?.slice ?? -1) >= 0) return true;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    return false;
+  }
+
+  /// Closes HaLo's own slice [id] on the radio, with the panadapter it came
+  /// with, and removes its entry; false, with the entry kept, when the
+  /// radio did not close it.
+  ///
+  /// Only over its connection: the radio keeps HaLo's slices by its
+  /// station's id, so an entry removed without the radio having closed it
+  /// would leave the slice open there, taking one of the few it has.
+  Future<bool> closeFlexSlice(String id) async {
+    if (!canCloseFlexSlice(id)) return false;
+    if (!await _flexStationSession(id)!.closeSlice()) return false;
+    await _removeOne(id);
+    return true;
+  }
+
+  /// Whether [id] is a slice of HaLo's own station that the radio has
+  /// described on a live connection, so the operator can close it there.
+  bool canCloseFlexSlice(String id) => switch (_nodes[id]) {
+    final node? => _ownedFlexSlice(node) != null && stateFor(id).status == EquipmentStatus.connected && (_flexStationSession(id)?.slice ?? -1) >= 0,
+    null => false,
+  };
 
   /// The slices of the Flex [deviceId] a picker can add: those open on the
   /// radio with no entry yet. Empty for anything else.
   List<EquipmentChannel> flexSlicesToAdd(String deviceId) {
-    final taken = {for (final id in entriesOf(deviceId)) '${FlexRadioDriver.sliceFromConfig(_nodes[id]?.config ?? const {})}'};
+    final taken = {
+      for (final id in entriesOf(deviceId))
+        if (_nodes[id] case final node? when _ownedFlexSlice(node) == null) '${FlexRadioDriver.sliceFromConfig(node.config)}',
+    };
+    final ownTaken = {for (final id in _flexOwnedEntries(deviceId)) _ownedFlexSlice(_nodes[id]!)};
     return [
       for (final channel in _flexOpenSlices(deviceId).values)
-        if (!taken.contains(channel.key)) channel,
+        if (!taken.contains(channel.key) && !(_isHalos(deviceId, channel) && ownTaken.contains(channel.label))) channel,
     ];
   }
 

@@ -16,11 +16,14 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
-import 'package:halo_audio/halo_audio.dart' show AudioPlayback;
+import 'package:halo_audio/halo_audio.dart' show AudioDevice, AudioPlayback;
 import 'package:halo_core/halo_core.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_sdr_usb/halo_sdr_usb.dart' show SdrUsbDevice;
+import '../../config/device_identity.dart' show resolvedDeviceIdentity;
+import '../audio/radio_audio.dart';
+import '../audio/radio_audio_settings.dart';
 import '../error_reporting_service.dart';
 import '../hang_watchdog.dart';
 import '../peer/peer_station_radios.dart';
@@ -48,7 +51,17 @@ import 'drivers/everyware_server.dart';
 import 'transports/k4_remote_transport.dart';
 import 'transports/sdr_usb_transport.dart' show SdrUsbConnection, SdrUsbTransport;
 import 'drivers/kenwood_driver.dart' show KenwoodDriver;
-import 'drivers/flexradio_driver.dart' show FlexRadio, FlexRadioDriver;
+import 'drivers/flexradio_driver.dart'
+    show
+        FlexRadio,
+        FlexRadioDriver,
+        FlexRadioSession,
+        flexClientIdConfigKey,
+        flexGuiConfigKey,
+        flexOwnSliceConfigKey,
+        flexOwnSlicePrefix,
+        flexProgramName,
+        flexStationNameConfigKey;
 import 'drivers/k4_receiver_codec.dart' show K4Receiver;
 import 'drivers/k4_shared_session_config.dart' show k4ReceiverConfigKey;
 import 'discovery.dart';
@@ -92,6 +105,7 @@ part 'cat_peer_offers.dart';
 part 'cat_positions.dart';
 part 'cat_keying_surface.dart';
 part 'cat_so2r.dart';
+part 'cat_radio_audio.dart';
 part 'cat_so2r_audio.dart';
 part 'cat_k4.dart';
 part 'cat_credentials.dart';
@@ -254,7 +268,15 @@ class CatService extends ChangeNotifier
   /// A Flex's one connection, which each of its slices leases
   /// ([_flexAddressOf] names the radio).
   late final _flexConnections = SharedConnectionPool(
-    createOwner: (connection, send, config) => FlexRadio.fromConfig(config, send: send),
+    // The station's id is read as the connection opens, not from a lease's
+    // settings: it is kept on the device after the first lease asked.
+    createOwner: (connection, send, config) => FlexRadio.fromConfig(
+      config,
+      send: send,
+      clientId: _flexClientIdIn(config),
+      station: _flexStationIn(config),
+      onClientId: (id) => _flexClientIdAssigned(config, id),
+    ),
     onSend: _logFlexSent,
     onReceive: _logFlexReceived,
   );
@@ -390,6 +412,7 @@ class CatService extends ChangeNotifier
     this.silentDropAfter = _silentDropAfter,
     VoiceAudio? voiceAudio,
     Future<String> Function()? voiceMessagesDirectory,
+    this._radioAudio,
   }) : assert(idleRetryFirst > Duration.zero, 'a zero first delay makes the backoff a tight loop'),
        assert(sdrRetryDelay > Duration.zero, 'a zero delay retries an absent SDR in a tight loop'),
        registry = registry ?? EquipmentRegistry() {
@@ -414,6 +437,14 @@ class CatService extends ChangeNotifier
 
   @override
   List<EquipmentNode> get nodes => List.unmodifiable(_nodes.values);
+
+  /// The audio engine, made the first time a radio's audio is wanted
+  /// (cat_radio_audio.dart).
+  RadioAudio? _radioAudio;
+
+  /// The mix while its sliders move ([CatRadioAudioChoices.setMixVolume]).
+  double? _mixVolume;
+  final _mixLevels = <String, double>{};
 
   /// The nodes this launch will not connect on its own, and why an operator
   /// might find a radio they expect to be live sitting disconnected
@@ -852,6 +883,9 @@ class CatService extends ChangeNotifier
     return typeFor(node)?.name ?? node.typeKey;
   }
 
+  /// For what [CatDevices] changes from outside the class body.
+  void _changed() => notifyListeners();
+
   @override
   Future<void> _save() => _settings.setStationEquipment({
     'version': _storageVersion,
@@ -1002,7 +1036,7 @@ class CatService extends ChangeNotifier
         await disconnect(node.uuid, byUser: _everywareServerOf(node.uuid) == null);
       }
       final stored = await _stashSecrets(node);
-      _nodes[node.uuid] = _everywareKeepAnnounced(_nodes[node.uuid] ?? previous, stored);
+      _nodes[node.uuid] = _flexKeepClientId(_nodes[node.uuid] ?? previous, _everywareKeepAnnounced(_nodes[node.uuid] ?? previous, stored));
       await _flexSlicesFollow(node.uuid);
       await _save();
       await _everywareNodeSaved(node.uuid);
@@ -1021,40 +1055,7 @@ class CatService extends ChangeNotifier
       _runtimes[node.uuid]?.userDisconnected = false;
       unawaited(_reconnectWithRetries(node.uuid));
     }
-  }
-
-  /// Slice [key] of the Flex [deviceId] as an entry of it, made now if it
-  /// has none: picking an open slice is what adds it. Answers its id, or
-  /// null when the device is gone, which leaves nothing to pick. Listed
-  /// after the device's other entries, where the picker offered it, and
-  /// connected when the radio is: it joins the radio's one connection, as
-  /// the radio's plug opens every slice.
-  Future<String?> addFlexSlice(String deviceId, String key) async {
-    final id = CapabilityAddress(deviceId, kCapabilityReceiver, key: key).toString();
-    final device = _nodes[deviceId];
-    if (device == null) return null;
-    if (_nodes.containsKey(id)) return id;
-    final after = entriesOf(deviceId).last;
-    final nodes = [..._nodes.values];
-    _nodes.clear();
-    for (final node in nodes) {
-      _nodes[node.uuid] = node;
-      if (node.uuid == after) {
-        _nodes[id] = EquipmentNode(
-          uuid: id,
-          typeKey: device.typeKey,
-          name: device.name,
-          // The radio's settings, not slice A's own: a set's computer voice
-          // settings on slice A are not this slice's.
-          config: {..._flexRadioConfig(device), FlexRadioDriver.sliceConfigKey: key},
-        );
-      }
-    }
-    await _save();
-    notifyListeners();
-    final live = entriesOf(deviceId).any((entry) => const {EquipmentStatus.connected, EquipmentStatus.connecting}.contains(stateFor(entry).status));
-    if (live) unawaited(connect(id));
-    return id;
+    _deviceSettingsEdited(previous, node);
   }
 
   /// Removes [uuid], and every entry of its device with it: a K4's
@@ -1450,6 +1451,7 @@ class CatService extends ChangeNotifier
   void dispose() {
     _disposed = true;
     _stopSo2r();
+    _radioAudio?.close();
     _radio?.removeListener(_onVfoChanged);
     // Cancelled, not merely guarded: the callback checks _disposed, but a
     // pending timer can still sit scheduled for minutes, and a test harness

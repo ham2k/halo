@@ -95,6 +95,7 @@ extension _SetRows on StationPanel {
         return CurrentTransceiverTile(
           displayName: st.so2rRadioName(radio: 'B', name: _displayName(node)),
           channel: _cat.channelNameFor(node),
+          onCloseChannel: _cat.canCloseFlexSlice(node.uuid) ? () => _closeFlexSlice(context, node.uuid) : null,
           connection: connectionTextFor(context, _cat.typeFor(node), node.config),
           transportType: _cat.typeFor(node),
           state: _cat.stateFor(node.uuid),
@@ -317,18 +318,104 @@ extension _SetRows on StationPanel {
         if (id != null) pick(id);
       }),
     );
+    // A slice of HaLo's own: HaLo becomes a station on the radio for it,
+    // which only a radio with a slice free can take.
+    final refused = context.t.settings.station.flexNewSliceRefused;
+    void open() => unawaited(
+      _cat.openFlexSlice(device).then((id) {
+        if (id == null) return _flexSliceNotice(refused);
+        pick(id);
+      }),
+    );
+    final connection = connectionTextFor(context, _cat.typeFor(listed), listed.config);
     return [
       for (final slice in slices)
         TransceiverRow(
           name: _displayName(listed),
           channel: _cat.flexSliceName(device, slice.key),
-          connection: connectionTextFor(context, _cat.typeFor(listed), listed.config),
+          connection: connection,
           transportType: _cat.typeFor(listed),
           selected: false,
           onSelect: () => add(slice.key),
           onEdit: () => add(slice.key),
         ),
+      if ((_cat.flexFreeSlices(device) ?? 0) > 0)
+        TransceiverRow(
+          name: _displayName(listed),
+          channel: context.t.settings.station.flexNewSlice,
+          connection: connection,
+          transportType: _cat.typeFor(listed),
+          selected: false,
+          onSelect: open,
+          onEdit: open,
+        ),
     ];
+  }
+
+  /// What SmartSDR and the radio's other stations call HaLo's own station
+  /// on a Flex: this computer's name unless the operator names it.
+  List<Map<String, dynamic>> _flexStationNameElements(BuildContext context, EquipmentModel model) {
+    if (!model.variants.any((variant) => variant.driver is FlexRadioDriver)) return const [];
+    final st = context.t.settings.station;
+    return [
+      {
+        'type': 'field',
+        'fieldType': 'text',
+        'key': flexStationNameConfigKey,
+        'label': isMobilePlatform ? st.flexStationNameDevice : st.flexStationNameComputer,
+        'description': st.flexStationNameDescription,
+        if (resolvedDeviceIdentity?.name case final name? when name.isNotEmpty) 'placeholder': name,
+      },
+    ];
+  }
+
+  /// Closes HaLo's own slice [uuid] on the radio, from the X on its pill,
+  /// and says so when the radio did not.
+  void _closeFlexSlice(BuildContext context, String uuid) {
+    final refused = context.t.settings.station.flexCloseSliceRefused;
+    unawaited(
+      _cat.closeFlexSlice(uuid).then((closed) {
+        if (!closed) _flexSliceNotice(refused);
+      }),
+    );
+  }
+
+  /// A slice HaLo asked the radio to open or close, and the radio did not:
+  /// said once, as it happens, with nothing on any row to show for it.
+  void _flexSliceNotice(String text) => services.statusBar.showNotice(key: 'flex:slice', icon: 'radio', text: text, persist: false);
+
+  /// Where the set's radio is heard, and where its microphone is: in HaLo,
+  /// or on the radio itself. Chosen per set's radio, since a slice of a
+  /// Flex is a receiver the radio's editor does not reach.
+  Widget? _radioAudioRow(BuildContext context, String? uuid, {required EdgeInsets inset}) {
+    if (uuid == null) return null;
+    final st = context.t.settings.station;
+    final here = isMobilePlatform ? st.audioOnThisDevice : st.audioOnThisComputer;
+    Widget choice(String label, bool value, void Function(bool on) onChanged) => DropdownButtonFormField<bool>(
+      key: ValueKey('$label:$uuid:$value'),
+      isExpanded: true,
+      initialValue: value,
+      icon: dropdownTrailingIcon,
+      decoration: poloFieldDecoration(context, label),
+      menuMaxHeight: dropdownMenuMaxHeight(context),
+      items: [
+        DropdownMenuItem(value: true, child: Text(here, overflow: TextOverflow.ellipsis)),
+        DropdownMenuItem(value: false, child: Text(st.audioOnTheRadio, overflow: TextOverflow.ellipsis)),
+      ],
+      onChanged: (on) => on == null || on == value ? null : onChanged(on),
+    );
+    final choices = [
+      if (_cat.offersReceiveAudio(uuid)) choice(st.listenToAudio, _cat.hearsInHalo(uuid), (on) => unawaited(_cat.setHearsInHalo(uuid, on))),
+      if (_cat.offersTalkAudio(uuid)) choice(st.microphone, _cat.talksThroughHalo(uuid), (on) => unawaited(_cat.setTalksThroughHalo(uuid, on))),
+    ];
+    if (choices.isEmpty) return null;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
+      child: Row(
+        spacing: Space.md,
+        children: [for (final choice in choices) Expanded(child: choice)],
+      ),
+    );
   }
 
   /// The logging set [uuid] is the radio of, for a picker's row to say so.

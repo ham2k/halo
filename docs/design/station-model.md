@@ -568,6 +568,11 @@ Each is a full task. Nothing is visible to the operator before phase 3.
 5. **Split, a second receiver, diversity** (§ 5.2). New in the app's VFO, the drivers and the
    logging fields; nothing reads or sets split today.
 6. **Owned receivers and scopes.** The Flex as its own GUI client (HALO-766).
+   *Status: HaLo registers as a station of its own on a Flex for the slices it opens ("New Slice"
+   in the radio pickers), on a connection beside the one bound to another station, and owns them;
+   the radio keeps them under the id it gave HaLo's station and brings them back at the next
+   connect (cat.md, "One connection, several receivers"). The spectrum of an owned slice still
+   comes through DAX IQ, not the radio's own FFT.*
 7. **Audio and IQ as capabilities, and mixers.** A receiver's audio channels, the mixer that routes
    them (§ 6.1), and the computer's own. After the audio engine work (HALO-932) has settled what an
    audio channel is.

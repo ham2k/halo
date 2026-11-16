@@ -14,7 +14,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:halo_audio/halo_audio.dart' show AudioOutput;
+import 'package:halo_audio/halo_audio.dart' show AudioEndpoint, AudioEngine, AudioOutput, AudioRoute;
 import 'package:halo_core/halo_core.dart' show realNowMillis;
 
 import 'drivers/cw_send_queue.dart' show CwSendProgress;
@@ -332,6 +332,81 @@ abstract class TuneCarrierSink {
 abstract class TransmitAudioSink {
   /// Null on a connection that carries none.
   TransmitAudioConnection? get transmitAudio;
+}
+
+/// Where a session that carries its radio's receive audio itself reaches
+/// the audio engine (docs/design/audio.md) — a sink of its own, as
+/// [TunerSink] is.
+abstract class ReceiveAudioSink {
+  /// Null unless the operator wants this radio heard in HaLo and this
+  /// device's engine can carry it. Asked as the session's network link
+  /// opens; a change takes effect at the next connect.
+  RadioAudioLink? get receiveAudio;
+}
+
+/// The engine, and the operator's ears in it, as a [ReceiveAudioSink] offers
+/// them.
+abstract interface class RadioAudioLink {
+  AudioEngine get engine;
+
+  /// Routes [source] to the operator's output. The route goes with
+  /// [source] when it closes. Null, with the reason for the CAT recording
+  /// given to [why], when the output will not open.
+  AudioRoute? hear(AudioEndpoint source, {required void Function(String reason) why});
+}
+
+/// Where a session says why the radio's audio does not go through this
+/// computer as the operator asked: shown on the radio's row, as a problem
+/// is, and cleared with null once it does.
+abstract class AudioProblemSink {
+  void reportAudioProblem(String? message);
+
+  /// The radio refused what the app's key on it needs, after the key went
+  /// out (the microphone's stream as its transmit source): the app lets go
+  /// of the key, as the operator releasing it would.
+  void releaseKey();
+}
+
+/// Where a session that carries its radio's transmit audio itself reaches
+/// the station's microphone in the audio engine (docs/design/audio.md § 5)
+/// — a sink of its own, as [ReceiveAudioSink] is.
+abstract class TalkAudioSink {
+  /// Null unless the operator talks through HaLo on this radio and this
+  /// device's engine can carry it. Asked as the session's network link
+  /// opens; a change takes effect at the next connect.
+  TalkAudioLink? get talkAudio;
+}
+
+/// The engine, and the station's microphone in it, as a [TalkAudioSink]
+/// offers them.
+abstract interface class TalkAudioLink {
+  AudioEngine get engine;
+
+  /// Opens the microphone and routes it into [sink], for one over; the
+  /// microphone closes with the route. Null, with the reason for the CAT
+  /// recording given to [why], when the microphone will not open.
+  TalkRoute? speak(AudioEndpoint sink, {required void Function(String reason) why});
+}
+
+/// One over's microphone and its route.
+abstract interface class TalkRoute {
+  void close();
+}
+
+/// A transceiver HaLo keys for the operator's own voice from the station's
+/// microphone, through the engine (docs/design/audio.md § 5), rather than
+/// with the radio's own mic input. Only the operator's key: a CAT server
+/// client keying for a digital-mode program sends that program's audio.
+abstract interface class TalkPttSession implements PttSession {
+  /// Whether the operator's key goes through HaLo's microphone: they asked
+  /// for it on this radio and the session carries it.
+  bool get talksThroughHalo;
+
+  /// Keys with the microphone's audio, or unkeys. False when nothing was
+  /// keyed — the radio's stream not granted yet, or the microphone would
+  /// not open — rather than keying the radio's own mic, which is not what
+  /// the operator is speaking into.
+  bool setPttTalking(bool on);
 }
 
 /// Where a session whose connection carries binary frames
@@ -894,6 +969,16 @@ abstract class EquipmentDriver {
   /// the radio is not connected. A driver that says true here must create
   /// sessions that are.
   bool get canKeyCw => false;
+
+  /// Whether this driver's sessions can carry their radio's receive audio
+  /// to the audio engine themselves ([ReceiveAudioSink]): what the editor
+  /// offers "Hear this radio in HaLo" on.
+  bool get carriesReceiveAudio => false;
+
+  /// Whether this driver's sessions can carry the station's microphone to
+  /// their radio themselves ([TalkPttSession]): what the editor offers
+  /// "Talk through HaLo" on.
+  bool get carriesTalkAudio => false;
 
   /// [canKeyCw] for one node: [config] is the node's merged configuration
   /// (the entry's overrides included), and a driver whose keyer is a

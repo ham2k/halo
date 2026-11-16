@@ -14,11 +14,18 @@
 #if defined(__APPLE__)
 #define MA_NO_RUNTIME_LINKING
 #endif
+// Winsock ahead of the windows.h miniaudio includes, which would otherwise
+// bring in the old winsock.h and clash with it (halo_audio_net.c).
+#if defined(_WIN32)
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio/miniaudio.h"
 
 #include "halo_audio.h"
 
+#include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,6 +58,37 @@ int halo_audio_use_null_backend(void) {
 static void set_error(char* err, int err_len, const char* what, ma_result r) {
   if (err == NULL || err_len <= 0) return;
   snprintf(err, (size_t)err_len, "%s: %s", what, ma_result_description(r));
+}
+
+// --- Posts to the binding (HaloAudioPort) -----------------------------------
+
+// Dart_PostCObject's message, as dart_native_api.h lays it out, for the one
+// kind posted here: an integer. The union stands for the header's, whose
+// widest members are 64-bit, so the value sits where the VM reads it on
+// every ABI.
+typedef struct {
+  int32_t type;
+  union {
+    int64_t as_int64;
+    double as_double;
+    void* as_pointer;
+  } value;
+} HaloDartInt64;
+#define HALO_DART_KINT64 3 // Dart_CObject_kInt64
+
+typedef int8_t (*HaloPostFn)(int64_t port, HaloDartInt64* message);
+
+// Set before any thread that posts is started, so each sees it.
+static HaloPostFn g_post = NULL;
+
+void halo_audio_set_post(void* post_c_object) { g_post = (HaloPostFn)post_c_object; }
+
+static void halo_audio_post(HaloAudioPort port, int64_t value) {
+  if (port == 0 || g_post == NULL) return;
+  HaloDartInt64 message;
+  message.type = HALO_DART_KINT64;
+  message.value.as_int64 = value;
+  g_post(port, &message);
 }
 
 // --- Device ids as hex ------------------------------------------------------
@@ -453,9 +491,9 @@ struct HaloAudioOutput {
   ma_spinlock lock;
   ma_decoder* decoder;
   ma_bool32 ended;
-  HaloAudioPlayedFn on_end;
+  HaloAudioPort on_end;
   int64_t token;
-  HaloAudioEndFn on_lost;
+  HaloAudioPort on_lost;
   int64_t lost_token;
   volatile ma_bool32 closing;
 };
@@ -463,7 +501,7 @@ struct HaloAudioOutput {
 static void output_callback(ma_device* device, void* output, const void* input, ma_uint32 frames) {
   (void)input;
   HaloAudioOutput* out = (HaloAudioOutput*)device->pUserData;
-  HaloAudioPlayedFn ended_fn = NULL;
+  HaloAudioPort ended_port = 0;
   int64_t ended_token = 0;
   int32_t failed = 0;
   ma_spinlock_lock(&out->lock);
@@ -472,26 +510,28 @@ static void output_callback(ma_device* device, void* output, const void* input, 
     ma_result r = ma_decoder_read_pcm_frames(out->decoder, output, frames, &read);
     if (read < frames || (r != MA_SUCCESS && r != MA_AT_END)) {
       out->ended = MA_TRUE;
-      ended_fn = out->on_end;
+      ended_port = out->on_end;
       ended_token = out->token;
       failed = r != MA_SUCCESS && r != MA_AT_END;
     }
   }
   ma_spinlock_unlock(&out->lock);
-  // Outside the lock: the binding's callback only posts a message, but it
-  // is still not the audio thread's business to hold the lock through it.
-  if (ended_fn != NULL) ended_fn(ended_token, failed);
+  // Outside the lock: a post is quick, but still not the audio thread's
+  // business to hold the lock through.
+  if (ended_port != 0) halo_audio_post(ended_port, ended_token * 2 + failed);
 }
 
 static void output_notification(const ma_device_notification* notification) {
   HaloAudioOutput* out = (HaloAudioOutput*)notification->pDevice->pUserData;
-  if (out == NULL || out->closing || out->on_lost == NULL) return;
+  if (out == NULL || out->closing || out->on_lost == 0) return;
   // A device stops by itself when it goes away — unplugged, or taken by
-  // the system — and that is the only stop this binding does not ask for.
-  if (notification->type == ma_device_notification_type_stopped) out->on_lost(out->lost_token);
+  // the system — and also when the system moves it and starts it again.
+  // So this only tells the binding to look: halo_audio_output_alive says
+  // which it was.
+  if (notification->type == ma_device_notification_type_stopped) halo_audio_post(out->on_lost, out->lost_token);
 }
 
-HaloAudioOutput* halo_audio_output_open(const char* device_id, HaloAudioEndFn on_lost, int64_t lost_token, char* err, int err_len) {
+HaloAudioOutput* halo_audio_output_open(const char* device_id, HaloAudioPort on_lost, int64_t lost_token, char* err, int err_len) {
   ma_context* ctx = context();
   if (ctx == NULL) {
     set_error(err, err_len, "audio", MA_NO_BACKEND);
@@ -546,7 +586,7 @@ static void decoder_free(ma_decoder* decoder) {
   free(decoder);
 }
 
-int halo_audio_output_play(HaloAudioOutput* out, const char* path, HaloAudioPlayedFn on_end, int64_t token, char* err, int err_len) {
+int halo_audio_output_play(HaloAudioOutput* out, const char* path, HaloAudioPort on_end, int64_t token, char* err, int err_len) {
   ma_decoder* decoder = (ma_decoder*)calloc(1, sizeof(ma_decoder));
   if (decoder == NULL) {
     set_error(err, err_len, "play", MA_OUT_OF_MEMORY);
@@ -576,7 +616,7 @@ void halo_audio_output_stop(HaloAudioOutput* out) {
   ma_spinlock_lock(&out->lock);
   ma_decoder* previous = out->decoder;
   out->decoder = NULL;
-  out->on_end = NULL;
+  out->on_end = 0;
   ma_spinlock_unlock(&out->lock);
   decoder_free(previous);
 }
@@ -691,3 +731,8 @@ int halo_audio_recorder_free(HaloAudioRecorder* recorder, char* err, int err_len
   set_error(err, err_len, failed == MA_DEVICE_NOT_STARTED ? "record: device stopped" : "record: write", failed);
   return -1;
 }
+
+// --- The live engine ------------------------------------------------------------
+
+#include "halo_audio_engine.c"
+#include "halo_audio_net.c"

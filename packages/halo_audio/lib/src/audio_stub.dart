@@ -9,6 +9,8 @@ import 'dart:typed_data';
 
 import 'devices.dart';
 
+part 'engine_stub.dart';
+
 abstract final class HaloAudio {
   static bool get isSupported => false;
 

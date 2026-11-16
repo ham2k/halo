@@ -3036,8 +3036,45 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get civAddressInvalid => 'A CI-V ADDRESS IS TWO HEX DIGITS, 01 TO FF';
 	@override String flexSliceLabel({required Object letter}) => 'SLICE ${letter}';
 	@override String flexSliceOnStation({required Object letter, required Object station}) => 'SLICE ${letter} ON ${station}';
+	@override String get flexNewSlice => 'NEW SLICE';
+	@override String get flexNewSliceRefused => 'THE RADIO DID NOT OPEN A NEW SLICE';
+	@override String get flexCloseSliceRefused => 'THE RADIO DID NOT CLOSE THE SLICE';
+	@override String get flexStationRefused => 'THE RADIO REFUSED HALO AS A STATION';
+	@override String audioProblemOutput({required Object name}) => 'NOT HEARD HERE: THE OUTPUT ${name} IS NOT CONNECTED';
+	@override String get audioProblemOutputOpen => 'NOT HEARD HERE: THE AUDIO OUTPUT WOULD NOT OPEN';
+	@override String get audioProblemRoute => 'NOT HEARD HERE: HALO COULD NOT ROUTE ITS AUDIO';
+	@override String get audioProblemDaxChannels => 'NOT HEARD HERE: EVERY DAX CHANNEL ON THE RADIO IS TAKEN';
+	@override String get audioProblemStream => 'NOT HEARD HERE: THE RADIO REFUSED ITS AUDIO STREAM';
+	@override String audioProblemMicrophone({required Object name}) => 'CAN\'T TALK HERE: THE MICROPHONE ${name} IS NOT CONNECTED';
+	@override String get audioProblemMicrophoneOpen => 'CAN\'T TALK HERE: THE MICROPHONE WOULD NOT OPEN';
+	@override String get audioProblemTalkStream => 'CAN\'T TALK HERE: THE RADIO REFUSED THE MICROPHONE STREAM';
+	@override String get audioProblemTalkNotReady => 'CAN\'T TALK HERE YET: THE RADIO HAS NOT TAKEN THE MICROPHONE STREAM';
+	@override String get audioProblemIpv4 => 'AUDIO CAN\'T GO THROUGH THIS COMPUTER: REACH THE RADIO AT AN IPV4 ADDRESS';
+	@override String get audioProblemEngine => 'AUDIO CAN\'T GO THROUGH THIS COMPUTER: HALO\'S AUDIO ENGINE WOULD NOT START';
+	@override String get flexStationNameComputer => 'SMARTSDR NAME FOR THIS COMPUTER';
+	@override String get flexStationNameDevice => 'SMARTSDR NAME FOR THIS DEVICE';
+	@override String get flexStationNameDescription => 'WHAT SMARTSDR AND THE RADIO\'S OTHER STATIONS LIST HALO\'S OWN SLICES UNDER. LEFT EMPTY, IT IS THE NAME THIS SYSTEM GOES BY.';
+	@override String get flexCloseSlice => 'CLOSE SLICE';
 	@override String get flexSliceInvalid => 'PICK ONE OF THE RADIO\'S SLICES, A THROUGH H';
 	@override String flexSliceMissing({required Object letter}) => 'SLICE ${letter} IS NOT IN USE ON THIS RADIO — PICK ANOTHER SLICE, OR CREATE IT IN SMARTSDR';
+	@override String get listenToAudio => 'LISTEN TO AUDIO';
+	@override String get audioMixing => 'AUDIO MIXING';
+	@override String get audioVolume => 'VOLUME';
+	@override String get audioOutput => 'OUTPUT';
+	@override String get audioOutputDefault => 'THE SYSTEM\'S DEFAULT OUTPUT';
+	@override String audioDevicesUnlisted({required Object name}) => '${name} (DEVICES COULD NOT BE LISTED)';
+	@override String get audioOnThisComputer => 'ON THIS COMPUTER';
+	@override String get audioOnThisDevice => 'ON THIS DEVICE';
+	@override String get audioOnTheRadio => 'ON THE RADIO';
+	@override String receiveAudioOutputMissing({required Object name}) => '${name} (NOT CONNECTED)';
+	@override String get receiveAudioDelay => 'RECEIVE AUDIO MAX BUFFERING';
+	@override String get receiveAudioDelayDescription => 'HOW FAR BEHIND THE RADIO ITS AUDIO MAY FALL TO RIDE OUT A BUSY NETWORK. SHORTER IS MORE IMMEDIATE, BUT DROPS OUT MORE OFTEN, ESPECIALLY OVER WI-FI.';
+	@override String get receiveAudioDelay40 => 'SHORT, UP TO 40 MS (WIRED NETWORK)';
+	@override String get receiveAudioDelay100 => 'MEDIUM, UP TO 100 MS';
+	@override String get receiveAudioDelay250 => 'LONG, UP TO 250 MS (WI-FI)';
+	@override String get receiveAudioDelay500 => 'LONGEST, UP TO 500 MS';
+	@override String get microphone => 'MICROPHONE';
+	@override String get microphoneDefault => 'THE SYSTEM\'S DEFAULT INPUT';
 	@override String get channelNotInUse => 'NOT IN USE';
 	@override String get channelHeldByUnknown => 'IN USE BY ANOTHER PROGRAM';
 	@override String get flexNoSlices => 'THIS RADIO HAS NOT REPORTED ANY SLICES — CHECK THAT SMARTSDR IS RUNNING AND THAT THIS CLIENT MAY SUBSCRIBE';
@@ -7140,8 +7177,45 @@ extension on TranslationsQro {
 			'settings.station.civAddressInvalid' => 'A CI-V ADDRESS IS TWO HEX DIGITS, 01 TO FF',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'SLICE ${letter}',
 			'settings.station.flexSliceOnStation' => ({required Object letter, required Object station}) => 'SLICE ${letter} ON ${station}',
+			'settings.station.flexNewSlice' => 'NEW SLICE',
+			'settings.station.flexNewSliceRefused' => 'THE RADIO DID NOT OPEN A NEW SLICE',
+			'settings.station.flexCloseSliceRefused' => 'THE RADIO DID NOT CLOSE THE SLICE',
+			'settings.station.flexStationRefused' => 'THE RADIO REFUSED HALO AS A STATION',
+			'settings.station.audioProblemOutput' => ({required Object name}) => 'NOT HEARD HERE: THE OUTPUT ${name} IS NOT CONNECTED',
+			'settings.station.audioProblemOutputOpen' => 'NOT HEARD HERE: THE AUDIO OUTPUT WOULD NOT OPEN',
+			'settings.station.audioProblemRoute' => 'NOT HEARD HERE: HALO COULD NOT ROUTE ITS AUDIO',
+			'settings.station.audioProblemDaxChannels' => 'NOT HEARD HERE: EVERY DAX CHANNEL ON THE RADIO IS TAKEN',
+			'settings.station.audioProblemStream' => 'NOT HEARD HERE: THE RADIO REFUSED ITS AUDIO STREAM',
+			'settings.station.audioProblemMicrophone' => ({required Object name}) => 'CAN\'T TALK HERE: THE MICROPHONE ${name} IS NOT CONNECTED',
+			'settings.station.audioProblemMicrophoneOpen' => 'CAN\'T TALK HERE: THE MICROPHONE WOULD NOT OPEN',
+			'settings.station.audioProblemTalkStream' => 'CAN\'T TALK HERE: THE RADIO REFUSED THE MICROPHONE STREAM',
+			'settings.station.audioProblemTalkNotReady' => 'CAN\'T TALK HERE YET: THE RADIO HAS NOT TAKEN THE MICROPHONE STREAM',
+			'settings.station.audioProblemIpv4' => 'AUDIO CAN\'T GO THROUGH THIS COMPUTER: REACH THE RADIO AT AN IPV4 ADDRESS',
+			'settings.station.audioProblemEngine' => 'AUDIO CAN\'T GO THROUGH THIS COMPUTER: HALO\'S AUDIO ENGINE WOULD NOT START',
+			'settings.station.flexStationNameComputer' => 'SMARTSDR NAME FOR THIS COMPUTER',
+			'settings.station.flexStationNameDevice' => 'SMARTSDR NAME FOR THIS DEVICE',
+			'settings.station.flexStationNameDescription' => 'WHAT SMARTSDR AND THE RADIO\'S OTHER STATIONS LIST HALO\'S OWN SLICES UNDER. LEFT EMPTY, IT IS THE NAME THIS SYSTEM GOES BY.',
+			'settings.station.flexCloseSlice' => 'CLOSE SLICE',
 			'settings.station.flexSliceInvalid' => 'PICK ONE OF THE RADIO\'S SLICES, A THROUGH H',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => 'SLICE ${letter} IS NOT IN USE ON THIS RADIO — PICK ANOTHER SLICE, OR CREATE IT IN SMARTSDR',
+			'settings.station.listenToAudio' => 'LISTEN TO AUDIO',
+			'settings.station.audioMixing' => 'AUDIO MIXING',
+			'settings.station.audioVolume' => 'VOLUME',
+			'settings.station.audioOutput' => 'OUTPUT',
+			'settings.station.audioOutputDefault' => 'THE SYSTEM\'S DEFAULT OUTPUT',
+			'settings.station.audioDevicesUnlisted' => ({required Object name}) => '${name} (DEVICES COULD NOT BE LISTED)',
+			'settings.station.audioOnThisComputer' => 'ON THIS COMPUTER',
+			'settings.station.audioOnThisDevice' => 'ON THIS DEVICE',
+			'settings.station.audioOnTheRadio' => 'ON THE RADIO',
+			'settings.station.receiveAudioOutputMissing' => ({required Object name}) => '${name} (NOT CONNECTED)',
+			'settings.station.receiveAudioDelay' => 'RECEIVE AUDIO MAX BUFFERING',
+			'settings.station.receiveAudioDelayDescription' => 'HOW FAR BEHIND THE RADIO ITS AUDIO MAY FALL TO RIDE OUT A BUSY NETWORK. SHORTER IS MORE IMMEDIATE, BUT DROPS OUT MORE OFTEN, ESPECIALLY OVER WI-FI.',
+			'settings.station.receiveAudioDelay40' => 'SHORT, UP TO 40 MS (WIRED NETWORK)',
+			'settings.station.receiveAudioDelay100' => 'MEDIUM, UP TO 100 MS',
+			'settings.station.receiveAudioDelay250' => 'LONG, UP TO 250 MS (WI-FI)',
+			'settings.station.receiveAudioDelay500' => 'LONGEST, UP TO 500 MS',
+			'settings.station.microphone' => 'MICROPHONE',
+			'settings.station.microphoneDefault' => 'THE SYSTEM\'S DEFAULT INPUT',
 			'settings.station.channelNotInUse' => 'NOT IN USE',
 			'settings.station.channelHeldByUnknown' => 'IN USE BY ANOTHER PROGRAM',
 			'settings.station.flexNoSlices' => 'THIS RADIO HAS NOT REPORTED ANY SLICES — CHECK THAT SMARTSDR IS RUNNING AND THAT THIS CLIENT MAY SUBSCRIBE',
@@ -7223,6 +7297,8 @@ extension on TranslationsQro {
 			'settings.station.radioPass' => 'RADIO PASSWORD',
 			'settings.station.radioLoginDescription' => 'THE RADIO\'S NETWORK → REMOTE LOGIN, NOT YOUR WIFI PASSWORD.',
 			'settings.station.radioUserRequired' => 'THE RADIO\'S REMOTE-CONTROL USERNAME IS REQUIRED',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.connectFailedBridgeClosed' => 'THE BRIDGE HUNG UP AT ONCE. ANOTHER PROGRAM AT THE STATION MAY HAVE THE RADIO\'S PORT: A LOGGER, WSJT-X OR RIGCTLD.',
 			'settings.station.connectFailedBridgeSaid' => ({required Object said}) => 'THE BRIDGE HUNG UP AT ONCE, SAYING “${said}”.',
 			'settings.station.connectFailedBusy' => 'DEVICE IS IN USE',
@@ -7260,8 +7336,6 @@ extension on TranslationsQro {
 			'settings.station.models.tenTecEagle' => 'TEN-TEC EAGLE (599)',
 			'settings.station.models.tenTecOrion' => 'TEN-TEC ORION (565)',
 			'settings.station.models.tenTecOrionII' => 'TEN-TEC ORION II (566)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.sotacat' => 'SOTACAT (ELECRAFT KX2/KX3)',
 			'settings.station.models.yaesuGeneric' => 'YAESU - GENERIC',
 			'settings.station.models.icomGeneric' => 'ICOM - GENERIC',
@@ -7737,6 +7811,8 @@ extension on TranslationsQro {
 			'settings.station.rotatorNoReading' => 'WAITING FOR THE CONTROLLER TO REPORT ITS POSITION…',
 			'settings.station.rotatorNotResponding' => 'NOT RESPONDING',
 			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'TURNING TO ${heading}, AS FAR AS THIS ROTATOR\'S LIMITS ALLOW',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorTargetAzimuth' => 'TURN TO AZIMUTH',
 			'settings.station.rotatorTargetAzimuthShort' => 'TURN TO AZ',
 			'settings.station.rotatorTargetElevation' => 'TURN TO ELEVATION',
@@ -7774,8 +7850,6 @@ extension on TranslationsQro {
 			'settings.profiles.section' => 'SECTION',
 			'settings.search.clear' => 'CLEAR',
 			'settings.search.hint' => 'SEARCH PREFERENCES',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.developerModeDescription' => 'ENABLE DEVELOPER WARNINGS, DEBUG LOGS, AND TOOLS.',
 			'settings.developer.experiments' => 'EXPERIMENTS',
 			'settings.developer.showIdleMetrics' => 'SHOW IDLE METRICS',
@@ -8251,6 +8325,8 @@ extension on TranslationsQro {
 			'switchAccounts.otherAccounts' => 'OTHER ACCOUNTS',
 			'switchAccounts.linkToAnother' => 'LINK TO ANOTHER ACCOUNT',
 			'switchAccounts.linkWithSibling' => 'LINK WITH OTHER HAM2K APP',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.linkWithPolo' => 'LINK WITH ACCOUNT IN OLDER VERSION',
 			'switchAccounts.linkWithSiblingDescription' => 'YOU HAVE ANOTHER HAM2K APP INSTALLED. LINK WITH THE ACCOUNT IN USE THERE.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'APPROVE THE REQUEST IN ${app}, THEN COME BACK HERE.',
@@ -8288,8 +8364,6 @@ extension on TranslationsQro {
 			'qsonImport.description' => 'CREATE A NEW OPERATION FROM A QSON FILE, AS DEVELOPER MODE EXPORTS ONE HERE OR IN POLO.',
 			'qsonImport.importing' => ({required Object filename}) => 'IMPORTING ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'COULD NOT IMPORT ${filename}: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.pickerFailed' => ({required Object error}) => 'COULD NOT OPEN A FILE TO IMPORT: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} IS NOT UTF-8 TEXT, SO IT IS NOT A QSON FILE',
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} IS NOT A JSON FILE, SO IT IS NOT A QSON FILE',

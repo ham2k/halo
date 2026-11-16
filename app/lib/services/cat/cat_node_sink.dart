@@ -19,8 +19,13 @@ class _NodeSink
         GpsSink,
         TransmitAudioSink,
         BinaryFramesSink,
-        So2rSwitchSink {
+        So2rSwitchSink,
+        ReceiveAudioSink,
+        TalkAudioSink,
+        AudioProblemSink {
   final EquipmentConnection connection;
+  final RadioAudioLink? Function()? receiveAudioLink;
+  final TalkAudioLink? Function()? talkAudioLink;
   final double? Function() linkedVfo;
   final void Function(String why) onDropConnection;
   final void Function(VfoReading) onReading;
@@ -33,6 +38,8 @@ class _NodeSink
   final void Function(List<VoiceMemory>) onVoiceMemories;
   final void Function(String?) onDiagnostic;
   final void Function(String?) onProblem;
+  final void Function(String?)? onAudioProblem;
+  final void Function()? onReleaseKey;
   final void Function(List<EquipmentChannel>) onChannels;
   final void Function(List<SwitchAntenna>, List<SwitchPort>) onSwitchState;
   final void Function() onAlive;
@@ -50,7 +57,11 @@ class _NodeSink
 
   _NodeSink({
     required this.connection,
+    this.receiveAudioLink,
+    this.talkAudioLink,
     required this.linkedVfo,
+    this.onReleaseKey,
+    this.onAudioProblem,
     required this.onDropConnection,
     required this.onSend,
     required this.onReading,
@@ -83,6 +94,12 @@ class _NodeSink
     onSend(bytes);
     connection.send(bytes);
   }
+
+  @override
+  RadioAudioLink? get receiveAudio => receiveAudioLink?.call();
+
+  @override
+  TalkAudioLink? get talkAudio => talkAudioLink?.call();
 
   @override
   TransmitAudioConnection? get transmitAudio => switch (connection) {
@@ -125,6 +142,12 @@ class _NodeSink
 
   @override
   void reportProblem(String? message) => onProblem(message);
+
+  @override
+  void reportAudioProblem(String? message) => onAudioProblem?.call(message);
+
+  @override
+  void releaseKey() => onReleaseKey?.call();
 
   @override
   void reportChannels(List<EquipmentChannel> channels) => onChannels(channels);

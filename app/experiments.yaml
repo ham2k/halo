@@ -198,3 +198,11 @@ experiments:
   - key: boards
     name: Control Boards
     description: Place a Control Board panel and lay out its buttons and meters in its settings.
+  # HaLo's own audio engine (docs/design/audio.md): a radio's receive audio
+  # carried to the operator's headphones with no virtual sound device — so
+  # far a FlexRadio slice's DAX, asked for on the radio's equipment node.
+  # Private while the engine is built out phase by phase.
+  - key: audio
+    name: Radio Audio
+    description: Hear a radio's receive audio in HaLo itself, with no virtual sound device.
+    private: true

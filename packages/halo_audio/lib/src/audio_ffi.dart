@@ -8,12 +8,15 @@
 
 import 'dart:async';
 import 'dart:ffi';
+import 'dart:isolate' show RawReceivePort;
 import 'dart:io' show Platform, File, Directory;
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
 
 import 'devices.dart';
+
+part 'engine_ffi.dart';
 
 DynamicLibrary _openLibrary() {
   const envOverride = String.fromEnvironment('HALO_AUDIO_LIB');
@@ -68,10 +71,22 @@ List<String> _hostCandidates() {
   return candidates;
 }
 
-typedef _EndNative = Void Function(Int64);
-typedef _PlayedNative = Void Function(Int64, Int32);
-
 final DynamicLibrary _lib = _openLibrary();
+
+final _setPost = _lib.lookupFunction<Void Function(Pointer<Void>), void Function(Pointer<Void>)>('halo_audio_set_post');
+var _postSet = false;
+
+/// A port the library's threads post an integer to (HaloAudioPort in
+/// halo_audio.h), open for the isolate's life. Never a NativeCallable: once
+/// the isolate that made one is gone — a hot restart, an app shutting down —
+/// a native thread calling it aborts the process.
+int _port(void Function(int value) onPost) {
+  if (!_postSet) {
+    _setPost(NativeApi.postCObject.cast());
+    _postSet = true;
+  }
+  return RawReceivePort((Object? value) => onPost(value! as int), 'halo_audio').sendPort.nativePort;
+}
 
 final _useNullBackend = _lib.lookupFunction<Int32 Function(), int Function()>('halo_audio_use_null_backend');
 final _enumerate = _lib.lookupFunction<Int32 Function(Int32), int Function(int)>('halo_audio_enumerate');
@@ -92,14 +107,14 @@ final _normalize = _lib
     >('halo_audio_normalize');
 final _outputOpen = _lib
     .lookupFunction<
-      Pointer<Void> Function(Pointer<Utf8>, Pointer<NativeFunction<_EndNative>>, Int64, Pointer<Utf8>, Int32),
-      Pointer<Void> Function(Pointer<Utf8>, Pointer<NativeFunction<_EndNative>>, int, Pointer<Utf8>, int)
+      Pointer<Void> Function(Pointer<Utf8>, Int64, Int64, Pointer<Utf8>, Int32),
+      Pointer<Void> Function(Pointer<Utf8>, int, int, Pointer<Utf8>, int)
     >('halo_audio_output_open');
 final _outputAlive = _lib.lookupFunction<Int32 Function(Pointer<Void>), int Function(Pointer<Void>)>('halo_audio_output_alive');
 final _outputPlay = _lib
     .lookupFunction<
-      Int32 Function(Pointer<Void>, Pointer<Utf8>, Pointer<NativeFunction<_PlayedNative>>, Int64, Pointer<Utf8>, Int32),
-      int Function(Pointer<Void>, Pointer<Utf8>, Pointer<NativeFunction<_PlayedNative>>, int, Pointer<Utf8>, int)
+      Int32 Function(Pointer<Void>, Pointer<Utf8>, Int64, Int64, Pointer<Utf8>, Int32),
+      int Function(Pointer<Void>, Pointer<Utf8>, int, int, Pointer<Utf8>, int)
     >('halo_audio_output_play');
 final _outputStop = _lib.lookupFunction<Void Function(Pointer<Void>), void Function(Pointer<Void>)>('halo_audio_output_stop');
 final _outputClose = _lib.lookupFunction<Void Function(Pointer<Void>), void Function(Pointer<Void>)>('halo_audio_output_close');
@@ -121,11 +136,16 @@ final _playing = <int, AudioPlayback>{};
 final _open = <int, AudioOutput>{};
 var _nextToken = 1;
 
-/// One listener each for every output, kept for the process's life: the
-/// audio thread may call one up to the moment its output is closed, and a
-/// callable closed with an output would be one a late call could still reach.
-final _onEnd = NativeCallable<_PlayedNative>.listener((int token, int failed) => _playing.remove(token)?._finish(failed: failed != 0));
-final _onLost = NativeCallable<_EndNative>.listener((int token) => _open[token]?._goneNow());
+/// One port each for every output: a file's token × 2, + 1 when it broke
+/// off unread, and an output's token when its device stopped by itself.
+final _onEnd = _port((value) => _playing.remove(value >> 1)?._finish(failed: value & 1 != 0));
+final _onLost = _port((token) => _open[token]?._stopped());
+
+/// How long after a device stops by itself it is asked whether it runs
+/// again. A device the system moves — a default device to a new default, a
+/// PulseAudio stream suspended and resumed — stops and starts, and is not
+/// gone; one unplugged stays stopped.
+const _rerouteGrace = Duration(seconds: 1);
 
 /// The whole binding: static, since there is one audio system per process.
 abstract final class HaloAudio {
@@ -224,7 +244,7 @@ abstract final class HaloAudio {
   /// the device will not open.
   static AudioOutput openOutput({String? deviceId}) {
     final token = _nextToken++;
-    final handle = _withError((err) => _withStrings('', deviceId, (_, d) => _outputOpen(d, _onLost.nativeFunction, token, err, _errLen)));
+    final handle = _withError((err) => _withStrings('', deviceId, (_, d) => _outputOpen(d, _onLost, token, err, _errLen)));
     return _open[token] = AudioOutput._(handle, token);
   }
 
@@ -269,7 +289,8 @@ class AudioOutput {
   final _gone = Completer<void>();
 
   /// Completes if the device stops by itself — unplugged, or taken away by
-  /// the system. Never on [close].
+  /// the system — and is not running again a second later, as a device the
+  /// system moves is. Never on [close].
   Future<void> get gone => _gone.future;
 
   /// Whether the device is open and still running.
@@ -284,7 +305,7 @@ class AudioOutput {
     final err = malloc<Uint8>(_errLen);
     err[0] = 0;
     try {
-      if (_outputPlay(_handle, p, _onEnd.nativeFunction, token, err.cast(), _errLen) != 0) {
+      if (_outputPlay(_handle, p, _onEnd, token, err.cast(), _errLen) != 0) {
         throw HaloAudioException(err.cast<Utf8>().toDartString());
       }
     } finally {
@@ -315,8 +336,10 @@ class AudioOutput {
     current._finish();
   }
 
-  void _goneNow() {
-    if (!_gone.isCompleted) _gone.complete();
+  void _stopped() {
+    Timer(_rerouteGrace, () {
+      if (_handle != nullptr && !_gone.isCompleted && !isAlive) _gone.complete();
+    });
   }
 
   /// Closes the device. Safe to call more than once.

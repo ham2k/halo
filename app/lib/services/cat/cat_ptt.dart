@@ -49,6 +49,10 @@ class CatPtt {
   PttSession? _keyed;
   Object? _owner;
   bool _confirmed = false;
+
+  /// Whether the key went out for the operator's voice through HaLo's
+  /// microphone ([TalkPttSession]), and so comes off the same way.
+  bool _talking = false;
   Timer? _timeout;
 
   /// Whether the app's key is on [session].
@@ -72,6 +76,22 @@ class CatPtt {
     if (!mayKey(owner)) return false;
     if (heldOn(target)) {
       if (identical(_owner, owner)) return true;
+      // The operator taking a client's key speaks into the station's
+      // microphone, as on a key of their own; one that cannot is refused,
+      // rather than leaving the program's audio on the air under their key.
+      if (owner == null && !_talking && target is TalkPttSession && target.talksThroughHalo) {
+        try {
+          if (!target.setPttTalking(true)) {
+            release();
+            return false;
+          }
+        } catch (e, st) {
+          release();
+          ErrorReportingService.report(e, st, context: 'cat:ptt');
+          return false;
+        }
+        _talking = true;
+      }
       _owner = owner;
       _timeout?.cancel();
       _timeout = Timer(timeout, release);
@@ -84,8 +104,18 @@ class CatPtt {
     _owner = owner;
     _confirmed = false;
     held.value = true;
+    // The operator's key only: a client keys for a program that sends its
+    // own audio.
+    _talking = owner == null && target is TalkPttSession && target.talksThroughHalo;
     try {
-      target.setPtt(true);
+      if (_talking) {
+        if (!(target as TalkPttSession).setPttTalking(true)) {
+          _clear();
+          return false;
+        }
+      } else {
+        target.setPtt(true);
+      }
     } catch (e, st) {
       _clear();
       ErrorReportingService.report(e, st, context: 'cat:ptt');
@@ -102,9 +132,14 @@ class CatPtt {
     final target = _keyed;
     if (target == null) return false;
     if (owner != null && !identical(_owner, owner)) return false;
+    final talking = _talking;
     _clear();
     try {
-      target.setPtt(false);
+      if (talking) {
+        (target as TalkPttSession).setPttTalking(false);
+      } else {
+        target.setPtt(false);
+      }
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:ptt');
     }
@@ -136,6 +171,7 @@ class CatPtt {
   void _clear() {
     _timeout?.cancel();
     _timeout = _keyed = _owner = null;
+    _talking = false;
     held.value = false;
   }
 

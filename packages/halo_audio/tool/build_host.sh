@@ -18,7 +18,13 @@ esac
 OUT="build/host/libhalo_audio.$EXT"
 mkdir -p build/host
 
-if [[ -f "$OUT" && "$OUT" -nt src/halo_audio.c && "$OUT" -nt src/halo_audio.h && "$OUT" -nt src/miniaudio/miniaudio.h ]]; then
+# halo_audio.c includes the engine's source: one translation unit, every
+# file of it named here.
+fresh=1
+for source in src/halo_audio.c src/halo_audio.h src/halo_audio_engine.c src/halo_audio_engine.h src/halo_audio_net.c src/miniaudio/miniaudio.h; do
+  [[ -f "$OUT" && "$OUT" -nt "$source" ]] || fresh=0
+done
+if [[ "$fresh" == 1 ]]; then
   echo "halo_audio: host lib up to date"
   exit 0
 fi

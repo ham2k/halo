@@ -10,9 +10,8 @@
 // every string is NUL-terminated UTF-8.
 //
 // Single-threaded from the caller's side: every function here is called from
-// the Dart isolate that owns the binding. The calls that cross threads are
-// an output's two callbacks, which miniaudio's threads make — the binding
-// passes NativeCallable.listeners, which only post a message.
+// the Dart isolate that owns the binding. What crosses threads the other
+// way is a post to one of the binding's ports ([HaloAudioPort]).
 
 #ifndef HALO_AUDIO_H
 #define HALO_AUDIO_H
@@ -36,15 +35,23 @@ extern "C" {
 typedef struct HaloAudioOutput HaloAudioOutput;
 typedef struct HaloAudioRecorder HaloAudioRecorder;
 
-/// Called from the audio thread, and only posts: when an output has handed
-/// its device the last of a file (the device still sounding the few tens of
-/// milliseconds it holds, which the caller's tail covers), and when an
-/// output's device stopped without being asked to — unplugged.
-typedef void (*HaloAudioEndFn)(int64_t token);
+/// Where a native thread tells the binding something happened: the native
+/// port of one of its ReceivePorts, 0 for none. A port, not a function the
+/// binding hands over: once the isolate that made a NativeCallable is gone
+/// (a hot restart, an app shutting down), calling it aborts the process,
+/// while a post to a port whose isolate is gone fails quietly.
+///
+/// An output posts its lost token when its device stopped without being
+/// asked to — unplugged, or moved by the system and started again, which
+/// halo_audio_output_alive tells apart a moment later — and a file's token
+/// when it has handed its device the last of the file (the device still
+/// sounding the few tens of milliseconds it holds, which the caller's tail
+/// covers).
+typedef int64_t HaloAudioPort;
 
-/// [HaloAudioEndFn] for a file played into an output, with [failed] 1 when
-/// the file stopped short because it could not be read further, else 0.
-typedef void (*HaloAudioPlayedFn)(int64_t token, int32_t failed);
+/// Hands over Dart's Dart_PostCObject (the binding's NativeApi.postCObject),
+/// which every post goes through. Before anything that is given a port.
+HALO_AUDIO_API void halo_audio_set_post(void* post_c_object);
 
 /// Selects miniaudio's null backend — real-time pacing, no hardware — for
 /// every call after it. Only before the first call that touches a device;
@@ -85,18 +92,18 @@ HALO_AUDIO_API int halo_audio_normalize(const char* from, const char* to, float 
 /// Opens the device [device_id] (NULL or "" for the system default) and
 /// starts it playing silence, until a file is played into it. Kept open
 /// between files, so a play costs a file open and nothing more. [on_lost]
-/// is called with [lost_token] if the device stops by itself. NULL on
+/// is posted [lost_token] if the device stops by itself. NULL on
 /// failure, with the reason written to [err].
-HALO_AUDIO_API HaloAudioOutput* halo_audio_output_open(const char* device_id, HaloAudioEndFn on_lost, int64_t lost_token, char* err, int err_len);
+HALO_AUDIO_API HaloAudioOutput* halo_audio_output_open(const char* device_id, HaloAudioPort on_lost, int64_t lost_token, char* err, int err_len);
 
 /// Whether [out]'s device is still running — false once it has gone away.
 HALO_AUDIO_API int halo_audio_output_alive(HaloAudioOutput* out);
 
 /// Plays [path] into [out], replacing whatever it was playing. [on_end] is
-/// called with [token] when the file runs out, or breaks off where it could
-/// not be read; the device plays silence after it. 0, or -1 with the reason
+/// posted [token] × 2 when the file runs out, or [token] × 2 + 1 when it
+/// breaks off where it could not be read; the device plays silence after it. 0, or -1 with the reason
 /// written to [err] when the file will not open.
-HALO_AUDIO_API int halo_audio_output_play(HaloAudioOutput* out, const char* path, HaloAudioPlayedFn on_end, int64_t token, char* err, int err_len);
+HALO_AUDIO_API int halo_audio_output_play(HaloAudioOutput* out, const char* path, HaloAudioPort on_end, int64_t token, char* err, int err_len);
 
 /// Silences [out] at once, its device left running.
 HALO_AUDIO_API void halo_audio_output_stop(HaloAudioOutput* out);

@@ -18,7 +18,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
-import 'package:halo_audio/halo_audio.dart' show AudioOutput;
+import 'package:halo_audio/halo_audio.dart' show AudioEngine, AudioOutput, HaloAudioException;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../driver.dart';
@@ -33,11 +33,16 @@ import 'flex_slice_config.dart';
 import 'voice_activity_tracker.dart';
 import 'flex_spectrum.dart';
 import 'flex_dax_switch.dart';
+import 'flex_dax_rx.dart';
+import 'flex_dax_talk.dart';
 import 'flex_dax_tx.dart';
 import '../transports/flex_meter_socket.dart';
 import '../transports/shared_connection.dart';
 
 part 'flex_radio.dart';
+part 'flexradio_receive_audio.dart';
+part 'flexradio_talk.dart';
+part 'flexradio_slice_status.dart';
 
 /// App mode names → SmartSDR's, where the spellings differ. SmartSDR calls
 /// its data sidebands `DIGU`/`DIGL`; the app names them the way every other
@@ -72,6 +77,33 @@ const flexRadioPingInterval = Duration(seconds: 25);
 /// it is about to report, short enough that the operator is not left staring
 /// at a blank row wondering.
 const _sliceRefreshSettle = Duration(seconds: 3);
+
+/// What HaLo's station on a Flex is called in every client's list:
+/// `Ham2K (Chirimena)`. No space: the radio's status splits on them.
+const flexProgramName = 'Ham2K';
+
+/// A Flex node that is HaLo's own station's slice: [flexOwnSliceConfigKey]
+/// holds its letter, the receiver it attaches as is `own-<letter>`, and
+/// its connection is HaLo's station, not bound to another.
+const flexOwnSliceConfigKey = 'flexOwnSlice';
+const flexOwnSlicePrefix = 'own-';
+
+/// Whether a connection is HaLo's station; and, on the radio's entry, the
+/// id the radio keeps that station's slices by.
+const flexGuiConfigKey = 'flexGui';
+const flexClientIdConfigKey = 'flexClientId';
+
+/// What the operator calls this computer on the radio, kept on the radio's
+/// entry; absent for the computer's own name.
+const flexStationNameConfigKey = 'flexStationName';
+
+/// The panadapter a new slice comes with, in pixels and rows: what the
+/// radio's FFT is computed for until the display says what it draws.
+const _panPixels = 1024;
+const _panRows = 400;
+
+/// How long a new slice's panadapter is given to bring its slice.
+const _sliceOpenWait = Duration(seconds: 5);
 
 class FlexRadioDriver extends EquipmentDriver with AlwaysOffersScope {
   const FlexRadioDriver();
@@ -108,6 +140,15 @@ class FlexRadioDriver extends EquipmentDriver with AlwaysOffersScope {
 
   @override
   bool get canKeyCw => true;
+
+  /// A slice's DAX receive audio, through the engine (flex_dax_rx.dart).
+  @override
+  bool get carriesReceiveAudio => true;
+
+  /// The station's microphone to the transmitter, through the engine
+  /// (flex_dax_talk.dart).
+  @override
+  bool get carriesTalkAudio => true;
 
   /// The DVK holds twelve; the app offers one per function key. Whether the
   /// radio's licence lets it play any is known only once connected, when
@@ -202,13 +243,24 @@ class FlexRadioSession
         So2rRadioAudioSession,
         RawCommandSession,
         ReceiveLevelSession,
-        TransmitGatedSession {
+        TransmitGatedSession,
+        TalkPttSession {
   final EquipmentSink _sink;
 
   /// Which slice this node reads from and tunes. Symmetric on purpose: a
   /// node that watched one slice and tuned another would log a frequency
   /// the operator never transmitted on.
-  final int slice;
+  ///
+  /// HaLo's own slice is looked up each time, not kept: its number, once the
+  /// radio closes it, may go to another station's slice, and kept it would
+  /// tune that one.
+  int get slice => _index ?? _radio._ownedIndex(ownLetter!) ?? -1;
+  final int? _index;
+
+  /// HaLo's own slice's letter on its station, for a slice HaLo owns; its
+  /// [slice] number is found once the radio has described it, and is -1
+  /// until then.
+  final String? ownLetter;
 
   final FlexRadio _radio;
 
@@ -217,19 +269,19 @@ class FlexRadioSession
 
   FlexRadioSession(
     EquipmentSink sink, {
-    this.slice = 0,
+    int slice = 0,
     String? meterHost,
-    Future<FlexMeterSocket?> Function(String host, void Function(Uint8List data) onData, void Function(Object error, StackTrace stack) onError)
-        openMeterSocket =
-        FlexMeterSocket.open,
+    FlexUdpSocketOpener openMeterSocket = FlexMeterSocket.open,
     Duration voiceMemoryCeiling = voiceActivityCeiling,
   }) : _sink = sink,
+       _index = slice,
+       ownLetter = null,
        _ownsWire = true,
        _radio = FlexRadio(send: sink.send, meterHost: meterHost, openMeterSocket: openMeterSocket, voiceMemoryCeiling: voiceMemoryCeiling) {
     _radio._sessions.add(this);
   }
 
-  FlexRadioSession._on(this._radio, this._sink, {required this.slice}) : _ownsWire = false {
+  FlexRadioSession._on(this._radio, this._sink, {int? slice, this.ownLetter}) : _index = slice, _ownsWire = false {
     _radio._sessions.add(this);
   }
 
@@ -241,6 +293,15 @@ class FlexRadioSession
 
   /// Whether this slice wants updates: started and not yet stopped.
   bool _active = false;
+
+  /// The slice's receive audio, and the operator's voice to the radio,
+  /// while the audio engine carries them.
+  FlexDaxReceive? _daxRx;
+  FlexDaxTalk? _talk;
+
+  /// Why this slice's audio does not go through this computer: the radio's
+  /// socket, its receive audio, its microphone ([_reportAudioProblem]).
+  String? _socketProblem, _rxProblem, _talkProblem;
 
   final _signalThrottle = FlexSignalThrottle();
 
@@ -338,7 +399,7 @@ class FlexRadioSession
   /// frequency. A flag on a slice no session reads is the operator's split,
   /// and stays where it is.
   void _takeTx() {
-    if (_radio._txOnAnotherSlice(this)) _radio._sendCommand('slice set $slice tx=1');
+    if (slice >= 0 && _radio._txOnAnotherSlice(this)) _radio._sendCommand('slice set $slice tx=1');
   }
 
   /// The slice's own audio level (0–100) and mute. Its RF gain is the
@@ -347,17 +408,22 @@ class FlexRadioSession
   ReceiveLevels get receiveLevels => (af: true, rf: false, mute: true);
 
   @override
-  void setAfGain(double level) => _radio._sendCommand('slice set $slice audio_level=${receiveLevelOn(level, 100)}');
+  void setAfGain(double level) {
+    if (slice >= 0) _radio._sendCommand('slice set $slice audio_level=${receiveLevelOn(level, 100)}');
+  }
 
   @override
   void setRfGain(double level) {}
 
   @override
-  void setMute(bool muted) => _radio._sendCommand('slice set $slice audio_mute=${muted ? 1 : 0}');
+  void setMute(bool muted) {
+    if (slice >= 0) _radio._sendCommand('slice set $slice audio_mute=${muted ? 1 : 0}');
+  }
 
   /// The slice's receive and transmit antennas, each its own setting.
   @override
   void setAntenna({String? rx, String? tx}) {
+    if (slice < 0) return;
     if (rx != null) _changeSlice('slice set $slice rxant=$rx', {'rxant': rx});
     if (tx != null) _changeSlice('slice set $slice txant=$tx', {'txant': tx});
   }
@@ -368,6 +434,7 @@ class FlexRadioSession
   /// seen on RadioRoom (FLEX-6600, 4.2.20).
   @override
   void setPassband(Passband passband) {
+    if (slice < 0) return;
     _changeSlice('filt $slice ${passband.lowHz} ${passband.highHz}', {'filter_lo': '${passband.lowHz}', 'filter_hi': '${passband.highHz}'});
   }
 
@@ -391,6 +458,7 @@ class FlexRadioSession
   /// dedupes what it holds, and a driver keeping its own copy of what it
   /// last said is what [EquipmentSink.reportDiagnostic]'s own note forbids.
   void _checkTrackedSlice() {
+    if (_radio._stationRefused) return _sink.reportProblem(t.settings.station.flexStationRefused);
     final slices = _radio._slices;
     if (slices.isEmpty) {
       _sink.reportProblem(t.settings.station.flexNoSlices);
@@ -415,10 +483,18 @@ class FlexRadioSession
   /// Null before any verdict: the slice is presumed open until the radio
   /// has described its slices without it.
   @override
-  String? get cannotTransmit => _sliceMissing ? t.settings.station.flexSliceMissing(letter: FlexRadioDriver.sliceLabel(slice)) : null;
+  String? get cannotTransmit => _radio._stationRefused
+      ? t.settings.station.flexStationRefused
+      : _sliceMissing
+      ? t.settings.station.flexSliceMissing(letter: ownLetter ?? FlexRadioDriver.sliceLabel(slice))
+      : null;
 
+  /// Nothing to HaLo's own slice before the radio has said which it is
+  /// ([slice] is -1): the radio refuses a slice it does not have. The slice
+  /// then reads as the radio has it, and a tune made before is not sent.
   @override
   void setFrequency(double freqKHz) {
+    if (slice < 0) return;
     final mhz = (freqKHz / 1000).toStringAsFixed(6);
     _changeSlice('slice tune $slice $mhz', {'RF_frequency': mhz});
   }
@@ -431,7 +507,7 @@ class FlexRadioSession
   @override
   void setMode(String mode) {
     final flexMode = flexModesByAppMode[mode.toUpperCase()] ?? mode.toUpperCase(), command = 'slice set $slice mode=$flexMode';
-    if (!isModeName(flexMode)) return;
+    if (!isModeName(flexMode) || slice < 0) return;
     _radio._sendCommand(
       command,
       onReply: (code, _) {
@@ -536,6 +612,12 @@ class FlexRadioSession
   @override
   void refreshKeyerSpeed() => _radio._refreshKeyerSpeed();
 
+  @override
+  bool get talksThroughHalo => _talkAudio != null;
+
+  @override
+  bool setPttTalking(bool on) => _setPttTalking(on);
+
   /// Keys the radio on this slice: the transmit flag comes here first, since
   /// `xmit` names none. Whether it keyed comes back as the interlock push.
   @override
@@ -550,7 +632,26 @@ class FlexRadioSession
   FlexSliceAudio get _sliceAudio => (pan: _radio._slices[slice]?.audioPan, mute: _radio._slices[slice]?.audioMute);
 
   @override
-  void setSo2rEar(So2rEar? ear) => _so2rAudio.set(ear, _sliceAudio);
+  void setSo2rEar(So2rEar? ear) {
+    if (slice >= 0) _so2rAudio.set(ear, _sliceAudio);
+  }
+
+  /// How many more slices the radio can open, as it last said.
+  int? get freeSlices => _radio.freeSlices;
+
+  /// A new slice on HaLo's station ([FlexRadio.openSlice]); null where this
+  /// slice is not on HaLo's station.
+  Future<String?> openSlice() => _radio.openSlice();
+
+  /// Renames HaLo's station on the radio, as every client lists it.
+  void renameStation(String name) => _radio.renameStation(name);
+
+  /// Closes this slice on the radio, where it is HaLo's own; whether the
+  /// radio did.
+  Future<bool> closeSlice() async {
+    final letter = ownLetter;
+    return letter != null && await _radio.closeSlice(letter);
+  }
 
   @override
   bool get switchesToComputerAudio => true;
@@ -626,7 +727,8 @@ class FlexRadioSession
   void _leaveSlice() {
     if (_left) return;
     _left = true;
-    _so2rAudio.teardown(_sliceAudio);
+    _stopAudioStreams();
+    if (slice >= 0) _so2rAudio.teardown(_sliceAudio);
     _spectrum.teardown();
   }
 
@@ -637,56 +739,4 @@ class FlexRadioSession
     _radio._detach(this);
     if (_ownsWire) _radio.teardown();
   }
-}
-
-/// What the radio last said about one slice. Merged field-by-field from the
-/// status pushes, which carry only what changed.
-@immutable
-class _SliceStatus {
-  final String label;
-
-  /// Null when the radio has mentioned this slice without ever saying
-  /// whether it is running. Guessing either way is a real answer to a
-  /// question nobody asked: `true` withdraws a missing-slice problem that is
-  /// still true, and `false` accuses a slice that is fine. Both are silent,
-  /// so the state is representable instead.
-  final bool? inUse;
-  final double? freqKHz;
-  final String? mode;
-  final String? clientHandle;
-
-  /// Whether this slice holds the radio's transmit flag (`tx=1`).
-  final bool? tx;
-
-  /// The panadapter showing this slice, as `0x40000000`.
-  final String? pan;
-
-  /// The receive filter's edges, in Hz from the slice frequency.
-  final int? filterLo, filterHi;
-
-  /// The antennas in use, and the ports each can choose.
-  final String? rxant, txant;
-  final List<String>? rxPorts, txPorts;
-
-  /// `audio_pan` (0 left, 100 right) and `audio_mute`: what SO2R switches.
-  final int? audioPan;
-  final bool? audioMute;
-
-  const _SliceStatus({
-    required this.label,
-    required this.inUse,
-    this.freqKHz,
-    this.mode,
-    this.clientHandle,
-    this.tx,
-    this.pan,
-    this.filterLo,
-    this.filterHi,
-    this.rxant,
-    this.txant,
-    this.rxPorts,
-    this.txPorts,
-    this.audioPan,
-    this.audioMute,
-  });
 }

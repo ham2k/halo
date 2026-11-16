@@ -16,6 +16,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/services/audio/radio_audio.dart' show receiveAudioConfigKey, receiveAudioDelayConfigKey;
+import 'package:ham2k_logger/services/audio/radio_audio_settings.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/computer_voice_keyer.dart' show voiceOutputConfigKey;
 import 'package:ham2k_logger/services/cat/drivers/flexradio_driver.dart';
@@ -273,12 +275,12 @@ void main() {
     test("name each slice by the radio's letter, and by its station while two stations hold the radio's slices", () async {
       // Each station letters its own slices from A: under multiFLEX two
       // slices are both "Slice A", and only the station tells them apart.
-      Future<CatService> holding(List<Map<String, String>> open) => load({
+      Future<CatService> holding(List<Map<String, String>> open, {String? clientId}) => load({
         'version': 4,
         'nodes': {
           'flex-a': {
             ...flex('0'),
-            'config': {...flex('0')['config'] as Map<String, dynamic>, flexKnownSlicesConfigKey: open},
+            'config': {...flex('0')['config'] as Map<String, dynamic>, flexKnownSlicesConfigKey: open, flexClientIdConfigKey: ?clientId},
           },
           'flex-b': flex('1'),
         },
@@ -291,6 +293,19 @@ void main() {
       expect(cat.channelNameFor(cat.nodeFor('flex-a')!), 'Slice A on CUBAGUA');
       expect(cat.radioNameFor(cat.nodeFor('flex-a/rx:1')!), 'Shack Flex · Slice B on CUBAGUA');
       expect(cat.flexSliceName('flex-a', '2'), 'Slice A on chirimena', reason: "the radio's letter, not one from its index");
+      cat = await holding([
+        {'key': '0', 'label': 'A', 'holder': 'CUBAGUA'},
+        {'key': '2', 'label': 'A', 'holder': 'Chirimena', 'holderId': 'HALO-ID'},
+      ], clientId: 'HALO-ID');
+      expect(cat.flexSliceName('flex-a', '2'), 'Slice A', reason: "HaLo's own: this computer's, so no station to name");
+      // HaLo's station goes by the computer's name, as SmartSDR on it does:
+      // left plain, SmartSDR's slice reads exactly like HaLo's own.
+      cat = await holding([
+        {'key': '0', 'label': 'A', 'holder': 'Chirimena'},
+        {'key': '2', 'label': 'A', 'holder': 'Chirimena', 'holderId': 'HALO-ID'},
+      ], clientId: 'HALO-ID');
+      expect(cat.flexSliceName('flex-a', '0'), 'Slice A on Chirimena');
+      expect(cat.flexSliceName('flex-a', '2'), 'Slice A');
       cat = await holding([
         {'key': '0', 'label': 'A', 'holder': 'CUBAGUA'},
         {'key': '1', 'label': 'B', 'holder': 'CUBAGUA'},
@@ -371,6 +386,89 @@ void main() {
       expect((await saved())['nodes'].keys, isNot(contains('flex-a/rx:1')));
     });
 
+    test("HaLo's own slice registers its station under the id the radio gave it last time, on a connection of its own", () async {
+      // Without the id the radio opens a fresh station, and the slices it
+      // kept for HaLo's are never brought back.
+      final radio = _FakeFlexRadio();
+      final cat = await load({
+        'version': 4,
+        'nodes': {
+          'flex-a': {
+            ...flex('0', host: '192.0.2.1'),
+            'typeKey': _fakeFlexTypeKey,
+            'config': {...flex('0', host: '192.0.2.1')['config'] as Map<String, dynamic>, flexClientIdConfigKey: '1DF30D74'},
+          },
+          'flex-a/rx:own-A': {
+            'typeKey': _fakeFlexTypeKey,
+            'name': 'Shack Flex',
+            'config': {'host': '192.0.2.1', 'port': 4992, flexOwnSliceConfigKey: 'A'},
+          },
+        },
+      }, registry: radio.registry);
+      await cat.connect('flex-a');
+      await cat.connect('flex-a/rx:own-A');
+      expect(radio.opened, 2, reason: "HaLo's station beside the connection bound to another's");
+      radio.say('V1.4.0.0\nH5AC2F980\n');
+      await pumpEventQueue();
+      expect(radio.sent.where((line) => line.contains('client gui')), [contains('client gui 1DF30D74')]);
+      await cat.disconnect('flex-a/rx:own-A');
+      await cat.disconnect('flex-a');
+    });
+
+    // The editor saves the settings it read as it opened: a station id the
+    // radio gave meanwhile, lost, leaves HaLo's slices kept on the radio for
+    // a station that never comes back.
+    test("an editor's save keeps the station id the radio gave while it was open", () async {
+      final cat = await load({
+        'version': 4,
+        'nodes': {'flex-a': flex('0')},
+      });
+      final opened = cat.nodeFor('flex-a')!;
+      await cat.updateNode(opened.copyWith(config: {...opened.config, flexClientIdConfigKey: '1DF30D74'}));
+      await cat.updateNode(opened.copyWith(config: {...opened.config, flexStationNameConfigKey: 'Shack-Mac'}));
+      expect(cat.nodeFor('flex-a')!.config[flexClientIdConfigKey], '1DF30D74');
+    });
+
+    // The editor shows the buffering at its default: a save of anything else
+    // would otherwise drop every radio, mid-QSO.
+    test('an edit to the audio buffering reconnects only a radio heard here', () async {
+      final radio = _FakeFlexRadio();
+      final cat = await load({
+        'version': 4,
+        'nodes': {
+          'flex-a': {...flex('0'), 'typeKey': _fakeFlexTypeKey},
+        },
+      }, registry: radio.registry);
+      await cat.connect('flex-a');
+      final node = cat.nodeFor('flex-a')!;
+      await cat.updateNode(node.copyWith(config: {...node.config, receiveAudioDelayConfigKey: 500}));
+      await pumpEventQueue();
+      expect(radio.opened, 1, reason: 'nobody hears it here');
+      await cat.disconnect('flex-a');
+    });
+
+    test("a connected radio whose audio settings are edited reconnects to take them", () async {
+      // Its links to the audio engine are made as it connects: an edit left
+      // for the next connect is one the operator does not hear.
+      final radio = _FakeFlexRadio();
+      final cat = await load({
+        'version': 4,
+        'nodes': {
+          'flex-a': {...flex('0'), 'typeKey': _fakeFlexTypeKey},
+        },
+      }, registry: radio.registry);
+      await cat.connect('flex-a');
+      final node = cat.nodeFor('flex-a')!;
+      await cat.updateNode(node.copyWith(config: {...node.config, 'host': 'flex.local'}));
+      await pumpEventQueue();
+      expect(radio.opened, 1, reason: 'nothing to do with its audio');
+      await cat.updateNode(node.copyWith(config: {...node.config, receiveAudioConfigKey: true}));
+      await pumpEventQueue();
+      expect(radio.opened, 2);
+      expect(cat.stateFor('flex-a').status, EquipmentStatus.connected);
+      await cat.disconnect('flex-a');
+    });
+
     test('keep the slices the radio says are open, from whichever slice says so, for the picker while it is off', () async {
       // Without this the picker offers nothing to add until the radio is on
       // AND one of its slices connected, and nothing at all once it is off.
@@ -413,9 +511,28 @@ void main() {
       // next load. Given the device's sound devices, set B's voice messages
       // would play on set A's.
       expect(cat.nodeFor('flex-a/rx:1')!.config, {'host': 'flex.lan', 'port': 4992, 'slice': '1', voiceOutputConfigKey: 'Set B speakers'});
+      // How far behind the radio's audio may fall is set once, in its
+      // editor, for every slice: a slice has no editor of its own.
+      final edited = cat.nodeFor('flex-a')!;
+      await cat.updateNode(edited.copyWith(config: {...edited.config, receiveAudioDelayConfigKey: 250}));
+      expect(cat.nodeFor('flex-a/rx:1')!.config[receiveAudioDelayConfigKey], 250);
       await cat.removeNode('flex-a');
       expect(cat.nodes, isEmpty);
     });
+  });
+
+  // A slider's every step stored would write the preferences dozens of times
+  // a second; stored at the end only, it is heard as it moves all the same.
+  test("the mix's volume and each radio's level are heard as they move, and stored as the drag ends", () async {
+    final cat = await load({'version': 4, 'nodes': <String, dynamic>{}});
+    await cat.setMixVolume(0.3);
+    await cat.setMixLevel('flex-a', 0.6);
+    expect((cat.mixVolume, cat.mixLevel('flex-a')), (0.3, 0.6));
+    expect((settings.stationVolume, settings.radioLevel('flex-a')), (1.0, 1.0), reason: 'not stored mid-drag');
+    await cat.setMixVolume(0.4, store: true);
+    await cat.setMixLevel('flex-a', 0.7, store: true);
+    expect((settings.stationVolume, settings.radioLevel('flex-a')), (0.4, 0.7));
+    expect((cat.mixVolume, cat.mixLevel('flex-a')), (0.4, 0.7));
   });
 
   test('a remote K4 added is both its receivers, and the Main keeps the VFO', () async {
@@ -456,6 +573,9 @@ const _fakeFlexTypeKey = 'fake-flex';
 /// opened for it.
 class _FakeFlexRadio {
   int opened = 0, closed = 0;
+
+  /// Every command sent, on whichever of its connections.
+  final sent = <String>[];
   _FakeConnection? _connection;
 
   late final _transport = _FakeLink(this);
@@ -510,7 +630,7 @@ class _FakeConnection implements EquipmentConnection {
   @override
   Future<void> get closed => _closed.future;
   @override
-  void send(List<int> bytes) {}
+  void send(List<int> bytes) => radio.sent.add(utf8.decode(bytes));
   @override
   Future<void> close() async {
     if (_closed.isCompleted) return;

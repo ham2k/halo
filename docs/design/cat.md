@@ -187,6 +187,20 @@ The leases must agree on how the connection is opened: a Flex's slices take thei
 driver settings from the radio's own entry, never their own, so a slice's computer voice
 settings cannot make it ask for a different connection.
 
+**HaLo's own station on a Flex.** "New Slice" in the radio pickers, offered while the radio has a
+slice free, registers HaLo as a GUI client of the radio (`client gui`, program `Ham2K`, station
+this computer's name or the one the Flex's editor gives it) on a connection of its own, beside the
+one bound to another station; the pool keys it `host:port#station`. The radio opens a slice and a
+panadapter for a new station by itself, and each later "New Slice" opens another with
+`display pan create`. The radio keeps a station's slices under the id it gave it (`client gui`'s
+answer), which is kept on the radio's entry and read as the station's connection opens, so the
+next connection brings them back. Each station letters its own slices from A, and the radio's
+number for one can change between connections, so an entry of HaLo's own (`<device>/rx:own-A`)
+finds its slice by its letter among the slices HaLo's handle holds. A slice is HaLo's by the
+radio's client id for it, not by name: SmartSDR on the same computer goes by the same one. An X on
+an owned slice's pill closes it on the radio (`display pan remove`, which takes the slice with it);
+nothing else does, since unpicking a slice leaves it open, as a SmartSDR station's are.
+
 A Flex slice entry that nothing of the operator's is on — no set logs from it, no position has
 picked it, it has no picks or settings of its own — goes once its connection has settled that the
 radio is not running that slice: closed in SmartSDR, say. Slice A is the radio's own entry and
@@ -2637,7 +2651,10 @@ time, and unmeasured elsewhere), which inside a message would come out of the ke
 is a file open and a decoder swap. The keyer opens it as it is built, closes it after **five
 minutes** with nothing played (`computerVoiceIdleRelease`), and opens it again before keying the
 next message. A device that goes away under it — unplugged — stops a message going into it and is
-looked for again on the next play. The device list is read once and again only when a stored
+looked for again on the next play. It counts as gone only if it is not running again a
+second after it stopped: a device the system moves (a PulseAudio stream suspended and
+resumed, a default moved to a new default) stops and starts, and a message keeps playing
+into it. The device list is read once and again only when a stored
 device is not on it or will not open.
 
 **Nothing is keyed until the audio has somewhere to go.** The output device is matched before the

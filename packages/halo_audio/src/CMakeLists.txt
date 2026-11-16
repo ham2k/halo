@@ -22,6 +22,8 @@ if (MSVC)
   # symbolicated (see halo_quickjs's src/CMakeLists.txt for why the flags
   # live here and not in app/windows/CMakeLists.txt).
   target_compile_options(halo_audio PRIVATE $<$<CONFIG:Release>:/Zi>)
+  # The engine's sockets (halo_audio_net.c).
+  target_link_libraries(halo_audio ws2_32)
   target_link_options(halo_audio PRIVATE $<$<CONFIG:Release>:/DEBUG>)
 elseif (UNIX)
   # miniaudio dlopens ALSA, PulseAudio and JACK at runtime: no build-time

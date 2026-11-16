@@ -6669,11 +6669,122 @@ class Translations$settings$station$en {
 	/// en: 'Slice ${letter} on ${station}'
 	String flexSliceOnStation({required Object letter, required Object station}) => 'Slice ${letter} on ${station}';
 
+	/// en: 'New Slice'
+	String get flexNewSlice => 'New Slice';
+
+	/// en: 'The radio did not open a new slice'
+	String get flexNewSliceRefused => 'The radio did not open a new slice';
+
+	/// en: 'The radio did not close the slice'
+	String get flexCloseSliceRefused => 'The radio did not close the slice';
+
+	/// en: 'The radio refused HaLo as a station'
+	String get flexStationRefused => 'The radio refused HaLo as a station';
+
+	/// en: 'Not heard here: the output ${name} is not connected'
+	String audioProblemOutput({required Object name}) => 'Not heard here: the output ${name} is not connected';
+
+	/// en: 'Not heard here: the audio output would not open'
+	String get audioProblemOutputOpen => 'Not heard here: the audio output would not open';
+
+	/// en: 'Not heard here: HaLo could not route its audio'
+	String get audioProblemRoute => 'Not heard here: HaLo could not route its audio';
+
+	/// en: 'Not heard here: every DAX channel on the radio is taken'
+	String get audioProblemDaxChannels => 'Not heard here: every DAX channel on the radio is taken';
+
+	/// en: 'Not heard here: the radio refused its audio stream'
+	String get audioProblemStream => 'Not heard here: the radio refused its audio stream';
+
+	/// en: 'Can't talk here: the microphone ${name} is not connected'
+	String audioProblemMicrophone({required Object name}) => 'Can\'t talk here: the microphone ${name} is not connected';
+
+	/// en: 'Can't talk here: the microphone would not open'
+	String get audioProblemMicrophoneOpen => 'Can\'t talk here: the microphone would not open';
+
+	/// en: 'Can't talk here: the radio refused the microphone stream'
+	String get audioProblemTalkStream => 'Can\'t talk here: the radio refused the microphone stream';
+
+	/// en: 'Can't talk here yet: the radio has not taken the microphone stream'
+	String get audioProblemTalkNotReady => 'Can\'t talk here yet: the radio has not taken the microphone stream';
+
+	/// en: 'Audio can't go through this computer: reach the radio at an IPv4 address'
+	String get audioProblemIpv4 => 'Audio can\'t go through this computer: reach the radio at an IPv4 address';
+
+	/// en: 'Audio can't go through this computer: HaLo's audio engine would not start'
+	String get audioProblemEngine => 'Audio can\'t go through this computer: HaLo\'s audio engine would not start';
+
+	/// en: 'SmartSDR Name for this computer'
+	String get flexStationNameComputer => 'SmartSDR Name for this computer';
+
+	/// en: 'SmartSDR Name for this device'
+	String get flexStationNameDevice => 'SmartSDR Name for this device';
+
+	/// en: 'What SmartSDR and the radio's other stations list HaLo's own slices under. Left empty, it is the name this system goes by.'
+	String get flexStationNameDescription => 'What SmartSDR and the radio\'s other stations list HaLo\'s own slices under. Left empty, it is the name this system goes by.';
+
+	/// en: 'Close Slice'
+	String get flexCloseSlice => 'Close Slice';
+
 	/// en: 'Pick one of the radio's slices, A through H'
 	String get flexSliceInvalid => 'Pick one of the radio\'s slices, A through H';
 
 	/// en: 'Slice ${letter} is not in use on this radio — pick another slice, or create it in SmartSDR'
 	String flexSliceMissing({required Object letter}) => 'Slice ${letter} is not in use on this radio — pick another slice, or create it in SmartSDR';
+
+	/// en: 'Listen to Audio'
+	String get listenToAudio => 'Listen to Audio';
+
+	/// en: 'Audio Mixing'
+	String get audioMixing => 'Audio Mixing';
+
+	/// en: 'Volume'
+	String get audioVolume => 'Volume';
+
+	/// en: 'Output'
+	String get audioOutput => 'Output';
+
+	/// en: 'The system's default output'
+	String get audioOutputDefault => 'The system\'s default output';
+
+	/// en: '${name} (devices could not be listed)'
+	String audioDevicesUnlisted({required Object name}) => '${name} (devices could not be listed)';
+
+	/// en: 'On This Computer'
+	String get audioOnThisComputer => 'On This Computer';
+
+	/// en: 'On This Device'
+	String get audioOnThisDevice => 'On This Device';
+
+	/// en: 'On The Radio'
+	String get audioOnTheRadio => 'On The Radio';
+
+	/// en: '${name} (not connected)'
+	String receiveAudioOutputMissing({required Object name}) => '${name} (not connected)';
+
+	/// en: 'Receive audio max buffering'
+	String get receiveAudioDelay => 'Receive audio max buffering';
+
+	/// en: 'How far behind the radio its audio may fall to ride out a busy network. Shorter is more immediate, but drops out more often, especially over Wi-Fi.'
+	String get receiveAudioDelayDescription => 'How far behind the radio its audio may fall to ride out a busy network. Shorter is more immediate, but drops out more often, especially over Wi-Fi.';
+
+	/// en: 'Short, up to 40 ms (wired network)'
+	String get receiveAudioDelay40 => 'Short, up to 40 ms (wired network)';
+
+	/// en: 'Medium, up to 100 ms'
+	String get receiveAudioDelay100 => 'Medium, up to 100 ms';
+
+	/// en: 'Long, up to 250 ms (Wi-Fi)'
+	String get receiveAudioDelay250 => 'Long, up to 250 ms (Wi-Fi)';
+
+	/// en: 'Longest, up to 500 ms'
+	String get receiveAudioDelay500 => 'Longest, up to 500 ms';
+
+	/// en: 'Microphone'
+	String get microphone => 'Microphone';
+
+	/// en: 'The system's default input'
+	String get microphoneDefault => 'The system\'s default input';
 
 	/// en: 'not in use'
 	String get channelNotInUse => 'not in use';
@@ -13537,8 +13648,45 @@ extension on Translations {
 			'settings.station.civAddressInvalid' => 'A CI-V address is two hex digits, 01 to FF',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'Slice ${letter}',
 			'settings.station.flexSliceOnStation' => ({required Object letter, required Object station}) => 'Slice ${letter} on ${station}',
+			'settings.station.flexNewSlice' => 'New Slice',
+			'settings.station.flexNewSliceRefused' => 'The radio did not open a new slice',
+			'settings.station.flexCloseSliceRefused' => 'The radio did not close the slice',
+			'settings.station.flexStationRefused' => 'The radio refused HaLo as a station',
+			'settings.station.audioProblemOutput' => ({required Object name}) => 'Not heard here: the output ${name} is not connected',
+			'settings.station.audioProblemOutputOpen' => 'Not heard here: the audio output would not open',
+			'settings.station.audioProblemRoute' => 'Not heard here: HaLo could not route its audio',
+			'settings.station.audioProblemDaxChannels' => 'Not heard here: every DAX channel on the radio is taken',
+			'settings.station.audioProblemStream' => 'Not heard here: the radio refused its audio stream',
+			'settings.station.audioProblemMicrophone' => ({required Object name}) => 'Can\'t talk here: the microphone ${name} is not connected',
+			'settings.station.audioProblemMicrophoneOpen' => 'Can\'t talk here: the microphone would not open',
+			'settings.station.audioProblemTalkStream' => 'Can\'t talk here: the radio refused the microphone stream',
+			'settings.station.audioProblemTalkNotReady' => 'Can\'t talk here yet: the radio has not taken the microphone stream',
+			'settings.station.audioProblemIpv4' => 'Audio can\'t go through this computer: reach the radio at an IPv4 address',
+			'settings.station.audioProblemEngine' => 'Audio can\'t go through this computer: HaLo\'s audio engine would not start',
+			'settings.station.flexStationNameComputer' => 'SmartSDR Name for this computer',
+			'settings.station.flexStationNameDevice' => 'SmartSDR Name for this device',
+			'settings.station.flexStationNameDescription' => 'What SmartSDR and the radio\'s other stations list HaLo\'s own slices under. Left empty, it is the name this system goes by.',
+			'settings.station.flexCloseSlice' => 'Close Slice',
 			'settings.station.flexSliceInvalid' => 'Pick one of the radio\'s slices, A through H',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => 'Slice ${letter} is not in use on this radio — pick another slice, or create it in SmartSDR',
+			'settings.station.listenToAudio' => 'Listen to Audio',
+			'settings.station.audioMixing' => 'Audio Mixing',
+			'settings.station.audioVolume' => 'Volume',
+			'settings.station.audioOutput' => 'Output',
+			'settings.station.audioOutputDefault' => 'The system\'s default output',
+			'settings.station.audioDevicesUnlisted' => ({required Object name}) => '${name} (devices could not be listed)',
+			'settings.station.audioOnThisComputer' => 'On This Computer',
+			'settings.station.audioOnThisDevice' => 'On This Device',
+			'settings.station.audioOnTheRadio' => 'On The Radio',
+			'settings.station.receiveAudioOutputMissing' => ({required Object name}) => '${name} (not connected)',
+			'settings.station.receiveAudioDelay' => 'Receive audio max buffering',
+			'settings.station.receiveAudioDelayDescription' => 'How far behind the radio its audio may fall to ride out a busy network. Shorter is more immediate, but drops out more often, especially over Wi-Fi.',
+			'settings.station.receiveAudioDelay40' => 'Short, up to 40 ms (wired network)',
+			'settings.station.receiveAudioDelay100' => 'Medium, up to 100 ms',
+			'settings.station.receiveAudioDelay250' => 'Long, up to 250 ms (Wi-Fi)',
+			'settings.station.receiveAudioDelay500' => 'Longest, up to 500 ms',
+			'settings.station.microphone' => 'Microphone',
+			'settings.station.microphoneDefault' => 'The system\'s default input',
 			'settings.station.channelNotInUse' => 'not in use',
 			'settings.station.channelHeldByUnknown' => 'in use by another program',
 			'settings.station.flexNoSlices' => 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe',
@@ -13620,6 +13768,8 @@ extension on Translations {
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s Network → Remote login, not your WiFi password.',
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.connectFailedBridgeClosed' => 'The bridge hung up at once. Another program at the station may have the radio\'s port: a logger, WSJT-X or rigctld.',
 			'settings.station.connectFailedBridgeSaid' => ({required Object said}) => 'The bridge hung up at once, saying “${said}”.',
 			'settings.station.connectFailedBusy' => 'Device is in use',
@@ -13657,8 +13807,6 @@ extension on Translations {
 			'settings.station.models.tenTecEagle' => 'Ten-Tec Eagle (599)',
 			'settings.station.models.tenTecOrion' => 'Ten-Tec Orion (565)',
 			'settings.station.models.tenTecOrionII' => 'Ten-Tec Orion II (566)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.sotacat' => 'SOTAcat (Elecraft KX2/KX3)',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Generic',
 			'settings.station.models.icomGeneric' => 'Icom - Generic',
@@ -14134,6 +14282,8 @@ extension on Translations {
 			'settings.station.rotatorNoReading' => 'Waiting for the controller to report its position…',
 			'settings.station.rotatorNotResponding' => 'not responding',
 			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'Turning to ${heading}, as far as this rotator\'s limits allow',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorTargetAzimuth' => 'Turn to azimuth',
 			'settings.station.rotatorTargetAzimuthShort' => 'Turn to az',
 			'settings.station.rotatorTargetElevation' => 'Turn to elevation',
@@ -14171,8 +14321,6 @@ extension on Translations {
 			'settings.profiles.section' => 'Section',
 			'settings.search.clear' => 'Clear',
 			'settings.search.hint' => 'Search preferences',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.developerModeDescription' => 'Enable developer warnings, debug logs, and tools.',
 			'settings.developer.experiments' => 'Experiments',
 			'settings.developer.showIdleMetrics' => 'Show idle metrics',
@@ -14648,6 +14796,8 @@ extension on Translations {
 			'switchAccounts.otherAccounts' => 'Other accounts',
 			'switchAccounts.linkToAnother' => 'Link to another account',
 			'switchAccounts.linkWithSibling' => 'Link with other Ham2K App',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.linkWithPolo' => 'Link with account in older version',
 			'switchAccounts.linkWithSiblingDescription' => 'You have another Ham2K app installed. Link with the account in use there.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Approve the request in ${app}, then come back here.',
@@ -14685,8 +14835,6 @@ extension on Translations {
 			'qsonImport.description' => 'Create a new operation from a QSON file, as Developer Mode exports one here or in PoLo.',
 			'qsonImport.importing' => ({required Object filename}) => 'Importing ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Could not import ${filename}: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Could not open a file to import: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} is not UTF-8 text, so it is not a QSON file',
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} is not a JSON file, so it is not a QSON file',

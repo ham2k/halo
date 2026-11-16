@@ -23,21 +23,53 @@ class FlexRadio implements SharedConnectionOwner {
   /// where no socket can be opened (a test that gives none).
   final String? meterHost;
 
-  final Future<FlexMeterSocket?> Function(String host, void Function(Uint8List data) onData, void Function(Object error, StackTrace stack) onError)
-  openMeterSocket;
+  /// How the UDP socket is opened where no slice on it is heard in HaLo:
+  /// a parameter because the real one binds a port and resolves a host.
+  final FlexUdpSocketOpener openMeterSocket;
 
   final Duration voiceMemoryCeiling;
+
+  /// Whether this connection is HaLo's own station on the radio (a GUI
+  /// client, owning the slices it opens) rather than bound to another's.
+  final bool gui;
+
+  /// The id the radio gave HaLo's station, under which it keeps the
+  /// station's slices and panadapters between connections; null for one
+  /// never registered. A new one is handed to [onClientId] to keep.
+  final String? clientId;
+  final void Function(String clientId)? onClientId;
+
+  /// What other stations see HaLo's as: this computer's name, or the one
+  /// the operator gave it.
+  String? station;
 
   FlexRadio({
     required void Function(List<int> bytes) send,
     this.meterHost,
     this.openMeterSocket = FlexMeterSocket.open,
     this.voiceMemoryCeiling = voiceActivityCeiling,
+    this.gui = false,
+    this.clientId,
+    this.onClientId,
+    this.station,
   }) : _sendBytes = send;
 
   /// The radio's settings out of a node's: what every slice of it shares.
-  factory FlexRadio.fromConfig(Map<String, dynamic> config, {required void Function(List<int> bytes) send}) =>
-      FlexRadio(send: send, meterHost: config['host'] as String?, voiceMemoryCeiling: voiceCeilingFromConfig(config));
+  factory FlexRadio.fromConfig(
+    Map<String, dynamic> config, {
+    required void Function(List<int> bytes) send,
+    String? clientId,
+    String? station,
+    void Function(String clientId)? onClientId,
+  }) => FlexRadio(
+    send: send,
+    meterHost: config['host'] as String?,
+    voiceMemoryCeiling: voiceCeilingFromConfig(config),
+    gui: config[flexGuiConfigKey] == true,
+    clientId: clientId,
+    onClientId: onClientId,
+    station: station,
+  );
 
   /// The slices attached, in the order they attached.
   final _sessions = <FlexRadioSession>[];
@@ -51,6 +83,10 @@ class FlexRadio implements SharedConnectionOwner {
   @override
   EquipmentSession attach(EquipmentSink sink, {required String receiver}) {
     if (_disposed) throw StateError('The Flex connection is closed');
+    if (receiver.startsWith(flexOwnSlicePrefix)) {
+      if (!gui) throw StateError("HaLo's own slice is on its own station's connection");
+      return FlexRadioSession._on(this, sink, ownLetter: receiver.substring(flexOwnSlicePrefix.length));
+    }
     final slice = parseFlexSlice(receiver);
     if (slice == null) throw ArgumentError.value(receiver, 'receiver');
     return FlexRadioSession._on(this, sink, slice: slice);
@@ -95,6 +131,20 @@ class FlexRadio implements SharedConnectionOwner {
     } else {
       if (_handshakeDone) session._spectrum.subscribe();
       if (_meterSocket != null) session._spectrum.socketReady();
+      // A slice heard in HaLo, or talking through it, starting on a socket
+      // the engine does not own: its audio has nowhere to arrive, so the
+      // socket is opened again through the engine.
+      final wantsAudio = session._receiveAudio != null || session._talkAudio != null;
+      if (_engineRefused && wantsAudio) {
+        session._socketProblem = _engineRefusedWhy;
+        session._reportAudioProblem();
+      } else if (_meterSocket case final socket?) {
+        if (socket.audioSocket == null && wantsAudio) {
+          _reopenForAudio();
+        } else {
+          session._startAudioStreams(socket);
+        }
+      }
       if (_metersUnavailable) session._spectrum.socketUnavailable();
       // Said before this slice was listening: its node's state is set
       // only from its start.
@@ -255,13 +305,69 @@ class FlexRadio implements SharedConnectionOwner {
   /// Whether any slice wants updates: the radio is subscribed while one does.
   bool _wantUpdates = false;
 
+  /// This connection's handle, as a slice's `client_handle` names its
+  /// owner: `0x158f8cc1`.
+  String? _handle;
+
+  /// Completed with the handshake: what opening a slice right after the
+  /// connection came up waits for.
+  final _handshaken = Completer<void>();
+
   void _handleHandshakeLine(String line) {
     if (_handshakeDone || !_handshakePattern.hasMatch(line)) return;
     _handshakeDone = true;
+    _handshaken.complete();
+    _handle = '0x${line.substring(1)}'.toLowerCase();
+    if (gui) _register();
     if (_wantUpdates) _subscribe();
   }
 
+  /// HaLo's station, under the id the radio keeps its slices by. The radio
+  /// opens a slice and a panadapter for a station on its own, or brings
+  /// back what that id had open.
+  void _register() {
+    _sendCommand(
+      'client gui ${clientId ?? ''}'.trim(),
+      onReply: (code, body) {
+        final id = body.trim();
+        if (code != 0) {
+          // Said on each slice's row, where it would otherwise read as a
+          // slice the radio is not running.
+          _stationRefused = true;
+          _broadcast((sink) => sink.reportDiagnostic('Flex refused HaLo as a station: 0x${code.toRadixString(16).toUpperCase()}'));
+          for (final session in _sessions.toList()) {
+            session._checkTrackedSlice();
+          }
+        } else if (id.isNotEmpty && id != clientId) {
+          onClientId?.call(id);
+        }
+      },
+    );
+    _sendCommand('client program $flexProgramName');
+    if (station case final station? when station.isNotEmpty) _sendCommand('client station $station');
+  }
+
+  /// What every client lists HaLo's station as, from now on.
+  void renameStation(String name) {
+    if (!gui || name.isEmpty || name == station) return;
+    station = name;
+    if (_handshakeDone) _sendCommand('client station $name');
+  }
+
+  /// The radio refused `client gui`: this connection holds no slices of
+  /// HaLo's, and opens none.
+  bool _stationRefused = false;
+
+  /// How many more slices the radio can open (`radio slices=`), as it last
+  /// said; null before it has.
+  int? freeSlices;
+
+  static final _radioPattern = RegExp(r'^S[0-9a-fA-F]+\|radio (.+)$');
+
   void _handleStatusLine(String line) {
+    if (_radioPattern.firstMatch(line) case final radio?) {
+      if (int.tryParse(_parseFields(radio[1]!)['slices'] ?? '') case final free?) freeSlices = free;
+    }
     final sliceMatch = _slicePattern.firstMatch(line);
     if (sliceMatch != null) {
       _handleSliceLine(sliceMatch);
@@ -351,6 +457,8 @@ class FlexRadio implements SharedConnectionOwner {
     _sendCommand('sub license all');
     // The tuner: `atu status=… atu_enabled=…`.
     _sendCommand('sub atu all');
+    // How many slices the radio has free: `radio slices=`, for "New Slice".
+    _sendCommand('sub radio all');
     for (final session in _sessions) {
       session._spectrum.subscribe();
     }
@@ -366,6 +474,7 @@ class FlexRadio implements SharedConnectionOwner {
     _sendCommand('unsub dvk all');
     _sendCommand('unsub license all');
     _sendCommand('unsub atu all');
+    _sendCommand('unsub radio all');
   }
 
   /// Whether the subscription's full refresh has had its time
@@ -432,7 +541,8 @@ class FlexRadio implements SharedConnectionOwner {
   // first slice attached whose owner is known, not the first client
   // discovered (there may be several operators).
   void _bindTrackedClient() {
-    if (!_handshakeDone || !_wantUpdates) return;
+    // A station of its own binds to nobody: its slices are its own.
+    if (gui || !_handshakeDone || !_wantUpdates) return;
     for (final session in _sessions) {
       final handle = _slices[session.slice]?.clientHandle?.toLowerCase();
       final id = _clientIds[handle];
@@ -441,6 +551,9 @@ class FlexRadio implements SharedConnectionOwner {
       _boundClientId = id;
       _sendCommand('client bind client_id=$id');
       _sendCommand('sub tx all');
+      for (final session in _sessions.toList()) {
+        session._updateAudioStreams();
+      }
       return;
     }
   }
@@ -491,9 +604,19 @@ class FlexRadio implements SharedConnectionOwner {
         txPorts: fields['tx_ant_list']?.split(',').where((p) => p.isNotEmpty).toList() ?? previous?.txPorts,
         audioPan: int.tryParse(fields['audio_pan'] ?? '') ?? previous?.audioPan,
         audioMute: fields['audio_mute'] != null ? fields['audio_mute'] == '1' : previous?.audioMute,
+        dax: int.tryParse(fields['dax'] ?? '') ?? previous?.dax,
       );
     }
     _publishChannels();
+    for (final MapEntry(key: pan, value: opened) in _openingSlices.entries.toList()) {
+      if (_sliceOnPan(pan) case final letter?) {
+        _openingSlices.remove(pan);
+        if (!opened.isCompleted) opened.complete(letter);
+      }
+    }
+    for (final session in _sessions.toList()) {
+      session._updateAudioStreams();
+    }
     _bindTrackedClient();
     for (final session in _sessions.toList()) {
       if (session.slice == index) {
@@ -504,6 +627,80 @@ class FlexRadio implements SharedConnectionOwner {
         session._reportOnAir();
       }
     }
+  }
+
+  /// The radio's number for HaLo's own slice [letter] on this connection,
+  /// or null before the radio has described it. Each station letters its
+  /// own slices from A, and the number can differ from one connection to
+  /// the next.
+  int? _ownedIndex(String letter) {
+    final handle = _handle;
+    if (!gui || handle == null) return null;
+    for (final MapEntry(:key, :value) in _slices.entries) {
+      if (value.clientHandle?.toLowerCase() == handle && value.label == letter && value.inUse != false) return key;
+    }
+    return null;
+  }
+
+  /// The panadapters HaLo asked for and is waiting to see a slice of, by
+  /// pan id: each brings a slice of its own.
+  final _openingSlices = <String, Completer<String?>>{};
+
+  /// Opens a slice on HaLo's station, with the panadapter every slice comes
+  /// with, and answers its letter: null when the radio refused or never
+  /// said, or this is not HaLo's station.
+  ///
+  /// Asked right after the station's connection came up, it waits for the
+  /// radio's handshake first: sent before it, the radio refuses it.
+  Future<String?> openSlice() async {
+    if (!gui) return null;
+    if (!_handshakeDone) await _handshaken.future.timeout(_sliceOpenWait, onTimeout: () {});
+    if (!_handshakeDone || _stationRefused) return null;
+    final opened = Completer<String?>();
+    _sendCommand(
+      'display pan create x=$_panPixels y=$_panRows',
+      onReply: (code, body) {
+        final pan = body.split(',').first.trim().toLowerCase();
+        if (code != 0 || pan.isEmpty) {
+          _broadcast((sink) => sink.reportDiagnostic('Flex refused a new slice: 0x${code.toRadixString(16).toUpperCase()}'));
+          if (!opened.isCompleted) opened.complete(null);
+          return;
+        }
+        if (_sliceOnPan(pan) case final letter?) return opened.complete(letter);
+        _openingSlices[pan] = opened;
+      },
+    );
+    return opened.future.timeout(
+      _sliceOpenWait,
+      onTimeout: () {
+        // Not left waiting: a slice the radio opens later is one the picker
+        // offers to add, not one added here behind the operator's back.
+        _openingSlices.removeWhere((_, waiting) => identical(waiting, opened));
+        return null;
+      },
+    );
+  }
+
+  /// Closes HaLo's slice [letter] on the radio, and the panadapter it came
+  /// with; the radio removes the slice with its panadapter. Whether the
+  /// radio did: false, with nothing sent, for a slice it has not described.
+  Future<bool> closeSlice(String letter) {
+    final index = _ownedIndex(letter);
+    if (index == null) return Future.value(false);
+    final closed = Completer<bool>();
+    final command = switch (_slices[index]?.pan) {
+      final pan? => 'display pan remove $pan',
+      null => 'slice remove $index',
+    };
+    _sendCommand(command, onReply: (code, _) => closed.complete(code == 0));
+    return closed.future.timeout(_sliceOpenWait, onTimeout: () => false);
+  }
+
+  String? _sliceOnPan(String pan) {
+    for (final status in _slices.values) {
+      if (status.pan?.toLowerCase() == pan && status.clientHandle?.toLowerCase() == _handle) return status.label;
+    }
+    return null;
   }
 
   /// e.g. "S5AC2F980|client 0x1C61D553 connected program=SmartSDR-Win
@@ -548,6 +745,7 @@ class FlexRadio implements SharedConnectionOwner {
             mode: status.mode,
             usedBy: _nonEmpty(_clients[status.clientHandle?.toLowerCase()]),
             holder: _holders[status.clientHandle?.toLowerCase()],
+            holderId: _clientIds[status.clientHandle?.toLowerCase()],
             // A handle we cannot resolve is the dangerous case, not a
             // harmless one: `sub client all` may have been refused, or the
             // radio may format a handle differently in the two places it
@@ -568,7 +766,7 @@ class FlexRadio implements SharedConnectionOwner {
   late final _meters = FlexMeterCodec(0);
   final _powerThrottle = FlexSignalThrottle(decimals: 1);
   final _swrThrottle = FlexSignalThrottle(decimals: 1);
-  FlexMeterSocket? _meterSocket;
+  FlexUdpSocket? _meterSocket;
   bool _openingMeters = false;
   int _meterGeneration = 0;
 
@@ -586,6 +784,24 @@ class FlexRadio implements SharedConnectionOwner {
     }
     _openingMeters = true;
     final generation = _meterGeneration;
+    // The audio engine opens it where any slice on it is heard in HaLo or
+    // talks through it: the slice's DAX audio arrives on it, and the
+    // microphone's leaves from it. Not once the engine has refused it.
+    final engine = _engineRefused ? null : _audioEngine();
+    // An address the engine cannot take (IPv6) still gets the meters and the
+    // spectrum, on a socket of its own: only the audio goes without.
+    final FlexUdpSocketOpener open = engine == null
+        ? openMeterSocket
+        : (host, onData, onError) async {
+            try {
+              return await openFlexEngineSocket(engine, host, onData, onError);
+            } on FlexAudioNeedsIpv4 catch (error) {
+              _engineRefusedWith(t.settings.station.audioProblemIpv4, '$error');
+            } on HaloAudioException catch (error) {
+              _engineRefusedWith(t.settings.station.audioProblemEngine, error.message);
+            }
+            return openMeterSocket(host, onData, onError);
+          };
     void failed(Object error, StackTrace stack) {
       if (generation == _meterGeneration && _wantUpdates) {
         _broadcast((sink) => sink.reportDiagnostic('Flex receive meter unavailable: $error'));
@@ -593,7 +809,7 @@ class FlexRadio implements SharedConnectionOwner {
     }
 
     unawaited(
-      openMeterSocket(meterHost!, (data) {
+      open(meterHost!, (data) {
         if (generation != _meterGeneration || !_wantUpdates) return;
         for (final session in _sessions.toList()) {
           if (session._spectrum.packet(data)) return;
@@ -627,9 +843,15 @@ class FlexRadio implements SharedConnectionOwner {
             }
           }
           if (socket != null) {
+            // A slice wanting audio that attached while a plain socket was
+            // opening: its audio has nowhere to arrive, so it opens again.
+            if (socket.audioSocket == null && !_engineRefused && _audioEngine() != null && _reopenForAudio()) return;
             _sendCommand('client udpport ${socket.port}');
             _sendCommand('sub meter all');
             _sendCommand('meter list');
+            for (final session in _sessions.toList()) {
+              session._startAudioStreams(socket);
+            }
           }
         },
         onError: (Object error, StackTrace stack) {
@@ -646,10 +868,58 @@ class FlexRadio implements SharedConnectionOwner {
     );
   }
 
+  /// The socket opened again through the audio engine, for a slice that
+  /// wants audio on a plain one; whether it was. Not under a key: the
+  /// socket carries the voice keyer's message and the microphone, and the
+  /// radio keyed on DAX with them cut puts noise on the air. Then it waits
+  /// for the unkey ([_handleInterlockLine]).
+  bool _reopenForAudio() {
+    _reopenAfterUnkey = _keyedByUs || _transmitting == true;
+    if (_reopenAfterUnkey) return false;
+    _stopMeters();
+    _startMeters();
+    return true;
+  }
+
+  bool _reopenAfterUnkey = false;
+
+  /// Whether the audio engine refused this connection's socket — the
+  /// radio at an IPv6 address, the engine not starting — after which the
+  /// socket is a plain one and is not opened through it again.
+  bool _engineRefused = false;
+
+  /// The engine, where a slice on this connection is heard in HaLo or
+  /// talks through it; null where none is, or the engine will not start.
+  AudioEngine? _audioEngine() {
+    try {
+      return [for (final session in _sessions) session._receiveAudio?.engine ?? session._talkAudio?.engine].nonNulls.firstOrNull;
+    } on HaloAudioException catch (error) {
+      _engineRefusedWith(t.settings.station.audioProblemEngine, error.message);
+      return null;
+    }
+  }
+
+  /// Each slice wanting audio says, on its row, why it gets none.
+  String? _engineRefusedWhy;
+
+  void _engineRefusedWith(String why, String detail) {
+    _engineRefused = true;
+    _engineRefusedWhy = why;
+    for (final session in _sessions.toList()) {
+      if (session._receiveAudio == null && session._talkAudio == null) continue;
+      session._sink.reportDiagnostic('Flex audio socket unavailable: $detail');
+      session._socketProblem = why;
+      session._reportAudioProblem();
+    }
+  }
+
   void _stopMeters() {
-    // The DAX audio goes out on the same socket.
+    // The DAX audio comes and goes on the same socket.
     _daxOutput?.lost();
     _daxOutput = null;
+    for (final session in _sessions) {
+      session._stopAudioStreams();
+    }
     _meterGeneration++;
     _openingMeters = false;
     _metersUnavailable = false;
@@ -707,6 +977,7 @@ class FlexRadio implements SharedConnectionOwner {
     final transmitting = const {'PTT_REQUESTED', 'TRANSMITTING', 'UNKEY_REQUESTED'}.contains(state);
     _transmitting = transmitting;
     _daxSwitch.interlock(transmitting: transmitting, onAir: state == 'TRANSMITTING');
+    if (!transmitting && _reopenAfterUnkey) _reopenForAudio();
     for (final session in _sessions.toList()) {
       session._reportOnAir();
     }

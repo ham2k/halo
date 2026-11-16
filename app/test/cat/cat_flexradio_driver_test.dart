@@ -15,6 +15,7 @@ import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_audio/halo_audio.dart' show AudioSocket;
 import 'package:ham2k_logger/services/cat/cat_service.dart' show catStaleAfter;
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
@@ -121,6 +122,11 @@ class _FakeMeterSocket implements FlexMeterSocket {
   @override
   int get port => 4993;
 
+  @override
+  AudioSocket? get audioSocket => null;
+  @override
+  String get radioAddress => '127.0.0.1';
+
   /// What was sent to the radio, as (port, bytes).
   final sent = <(int, List<int>)>[];
 
@@ -190,6 +196,169 @@ void main() {
       sliceA.teardown();
       sliceB.teardown();
       async.flushTimers();
+    });
+  });
+
+  // HaLo's own station on the radio: captured on RadioRoom (4.3.16), where
+  // `client gui` answers the id the radio keeps the station's slices by,
+  // and each station letters its own slices from A.
+  group("HaLo's own station", () {
+    List<String> commands() => [for (final line in sink.sent) line.substring(line.indexOf('|') + 1).trim()];
+
+    FlexRadio station({String? clientId, void Function(String id)? onClientId}) =>
+        FlexRadio(send: sink.send, gui: true, clientId: clientId, onClientId: onClientId, station: 'Chirimena');
+
+    void say(FlexRadio radio, String lines) => radio.handleData(Uint8List.fromList(utf8.encode(lines)));
+
+    test('registers as a station under the id it keeps, binding to nobody, and keeps a new id', () {
+      fakeAsync((async) {
+        final kept = <String>[];
+        final radio = station(onClientId: kept.add);
+        final slice = radio.attach(_FakeSink(), receiver: 'own-A')..startUpdates();
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        expect(commands().take(3), ['client gui', 'client program Ham2K', 'client station Chirimena']);
+        say(radio, 'R1|0|1DF30D74-47DB-40D5-AF88-CE793CCC1ABE\n');
+        expect(kept, ['1DF30D74-47DB-40D5-AF88-CE793CCC1ABE'], reason: 'without it the radio cannot bring the slices back');
+        say(radio, 'S5AC2F980|client 0x1C61D553 connected client_id=E3B15246-859B-4A25-AE02-A6F11F7ED30C program=SmartSDR-Win station=CUBAGUA\n');
+        say(radio, 'S5AC2F980|slice 0 in_use=1 client_handle=0x1C61D553 index_letter=A RF_frequency=14.074000\n');
+        expect(commands().where((c) => c.startsWith('client bind')), isEmpty, reason: "its slices are its own, not SmartSDR's");
+        sink.sent.clear();
+        (slice as FlexRadioSession).renameStation('Shack-Mac');
+        expect(commands(), ['client station Shack-Mac'], reason: 'renamed in every client at once, without a reconnect');
+        slice.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('a slice of its own is found by its letter among its own slices, whatever number the radio gives it', () {
+      fakeAsync((async) {
+        final radio = station(clientId: '1DF30D74');
+        final sinkA = _FakeSink();
+        final own = radio.attach(sinkA, receiver: 'own-A') as FlexRadioSession;
+        own.startUpdates();
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        expect(commands().first, 'client gui 1DF30D74');
+        // SmartSDR's slice A is slice 0; HaLo's own A is slice 2.
+        say(radio, 'S5AC2F980|slice 0 in_use=1 client_handle=0x1C61D553 index_letter=A RF_frequency=14.074000\n');
+        say(radio, 'S5AC2F980|slice 2 in_use=1 client_handle=0x5AC2F980 index_letter=A RF_frequency=14.100000\n');
+        expect(own.slice, 2);
+        expect(sinkA.readings.map((r) => r.freqKHz), [14100], reason: "SmartSDR's slice A is not HaLo's");
+        sink.sent.clear();
+        own.setFrequency(14105);
+        expect(commands(), ['slice tune 2 14.105000']);
+        own.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // Refused, the station holds no slice of HaLo's: said as a slice the
+    // radio is not running, it sends the operator to the wrong remedy.
+    // Kept, the number would tune the other station's slice that took it.
+    test("HaLo's own slice, once the radio closes it, does not follow the slice that takes its number", () {
+      fakeAsync((async) {
+        final radio = station(clientId: '1DF30D74');
+        final own = radio.attach(_FakeSink(), receiver: 'own-A') as FlexRadioSession;
+        own.startUpdates();
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        say(radio, 'S5AC2F980|slice 2 in_use=1 client_handle=0x5AC2F980 index_letter=A\n');
+        expect(own.slice, 2);
+        say(radio, 'S5AC2F980|slice 2 in_use=0\n');
+        say(radio, 'S5AC2F980|slice 2 in_use=1 client_handle=0x1C61D553 index_letter=A\n');
+        expect(own.slice, -1);
+        own.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('a station the radio refuses says so on its slices, and keys nothing', () {
+      fakeAsync((async) {
+        final sinkA = _FakeSink();
+        final radio = station(clientId: '1DF30D74');
+        final own = radio.attach(sinkA, receiver: 'own-A') as FlexRadioSession;
+        own.startUpdates();
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        say(radio, 'R1|50000016|\n');
+        expect(sinkA.problems.last, 'The radio refused HaLo as a station');
+        expect(own.cannotTransmit, isNotNull);
+        own.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // Asked for as the station's connection comes up, before the radio's
+    // handshake: sent then, the radio refuses it, and nothing opens.
+    test('a slice asked for before the handshake is opened once the radio has said hello', () {
+      fakeAsync((async) {
+        final radio = station(clientId: '1DF30D74');
+        final own = radio.attach(_FakeSink(), receiver: 'own-A') as FlexRadioSession;
+        own.startUpdates();
+        String? letter;
+        own.openSlice().then((value) => letter = value);
+        async.flushMicrotasks();
+        expect(commands().where((c) => c.startsWith('display pan create')), isEmpty);
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        async.flushMicrotasks();
+        final create = sink.sent.lastWhere((line) => line.contains('display pan create'));
+        say(radio, 'R${create.substring(1, create.indexOf('|'))}|0|0x40000003,0x42000003\n');
+        say(radio, 'S5AC2F980|slice 3 in_use=1 client_handle=0x5AC2F980 index_letter=B pan=0x40000003\n');
+        async.flushMicrotasks();
+        expect(letter, 'B');
+        own.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('a close the radio refuses answers false, and one of a slice it has not described sends nothing', () {
+      fakeAsync((async) {
+        final radio = station(clientId: '1DF30D74');
+        final own = radio.attach(_FakeSink(), receiver: 'own-A') as FlexRadioSession;
+        own.startUpdates();
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        bool? closed;
+        own.closeSlice().then((value) => closed = value);
+        async.flushMicrotasks();
+        expect(closed, isFalse, reason: 'not described yet: nothing to close');
+        say(radio, 'S5AC2F980|slice 2 in_use=1 client_handle=0x5AC2F980 index_letter=A pan=0x40000002\n');
+        closed = null;
+        own.closeSlice().then((value) => closed = value);
+        final remove = sink.sent.lastWhere((line) => line.contains('display pan remove'));
+        say(radio, 'R${remove.substring(1, remove.indexOf('|'))}|50000016|\n');
+        async.flushMicrotasks();
+        expect(closed, isFalse);
+        own.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('opens a slice with the panadapter it comes with, and answers its letter; closes it with its panadapter', () {
+      fakeAsync((async) {
+        final radio = station(clientId: '1DF30D74');
+        final own = radio.attach(_FakeSink(), receiver: 'own-A') as FlexRadioSession;
+        own.startUpdates();
+        say(radio, '${_handshakeLines.join('\n')}\nS5AC2F980|radio slices=2 panadapters=2\n');
+        expect(own.freeSlices, 2);
+        String? letter;
+        own.openSlice().then((value) => letter = value);
+        final create = sink.sent.lastWhere((line) => line.contains('display pan create'));
+        say(radio, 'R${create.substring(1, create.indexOf('|'))}|0|0x40000003,0x42000003\n');
+        say(radio, 'S5AC2F980|slice 3 in_use=1 client_handle=0x5AC2F980 index_letter=B pan=0x40000003 RF_frequency=14.100000\n');
+        async.flushMicrotasks();
+        expect(letter, 'B');
+        final b = radio.attach(_FakeSink(), receiver: 'own-B') as FlexRadioSession;
+        sink.sent.clear();
+        b.closeSlice();
+        expect(commands(), ['display pan remove 0x40000003']);
+        b.teardown();
+        own.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
     });
   });
 

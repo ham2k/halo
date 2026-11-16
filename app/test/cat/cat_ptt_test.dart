@@ -38,6 +38,23 @@ class _FakePtt implements PttSession {
   void teardown() {}
 }
 
+/// A radio the operator talks through HaLo on: what keys it for their voice
+/// is [talked], and [plain] what keys it with its own mic.
+class _FakeTalk extends _FakePtt implements TalkPttSession {
+  final talked = <bool>[];
+  bool refuse = false;
+
+  @override
+  bool get talksThroughHalo => true;
+
+  @override
+  bool setPttTalking(bool on) {
+    if (on && refuse) return false;
+    talked.add(on);
+    return true;
+  }
+}
+
 void main() {
   late _FakePtt radio;
   late CatPtt ptt;
@@ -246,6 +263,62 @@ void main() {
       radio.onSet = (_) => throw StateError('port closed');
       expect(ptt.key(radio, owner: client), isFalse, reason: 'a client told OK believes it is on the air');
       expect(ptt.held.value, isFalse);
+    });
+  });
+
+  group('talking through HaLo', () {
+    // The operator speaks into the station's microphone, not the radio's:
+    // keyed plainly, the radio sends its own mic, which nobody is speaking
+    // into. A CAT server client keys for a digital-mode program that sends
+    // its own DAX audio, which HaLo's stream would take the place of.
+    late _FakeTalk talk;
+    setUp(() => talk = _FakeTalk());
+
+    test("the operator's key and its release go through the microphone", () {
+      fakeAsync((async) {
+        expect(ptt.key(talk), isTrue);
+        ptt.release();
+        expect(talk.talked, [true, false]);
+        expect(talk.sent, isEmpty);
+      });
+    });
+
+    test("a client's key keys the radio plainly, and comes off the same way", () {
+      fakeAsync((async) {
+        final client = Object();
+        expect(ptt.key(talk, owner: client), isTrue);
+        ptt.release(owner: client);
+        expect(talk.sent, [true, false]);
+        expect(talk.talked, isEmpty);
+      });
+    });
+
+    // Keyed plainly for the program, the radio would carry the program's
+    // audio, or its own mic, under the operator's key.
+    test("the operator taking a client's key talks through the microphone; one the microphone cannot carry drops it", () {
+      fakeAsync((async) {
+        expect(ptt.key(talk, owner: Object()), isTrue);
+        expect(ptt.key(talk), isTrue);
+        expect(talk.talked, [true]);
+        ptt.release();
+        expect(talk.talked, [true, false]);
+
+        expect(ptt.key(talk, owner: Object()), isTrue);
+        talk.refuse = true;
+        expect(ptt.key(talk), isFalse);
+        expect(ptt.held.value, isFalse);
+        expect(talk.sent.last, isFalse, reason: "the program's key comes off");
+      });
+    });
+
+    test('a key the microphone cannot carry keys nothing, and holds no key', () {
+      fakeAsync((async) {
+        talk.refuse = true;
+        expect(ptt.key(talk), isFalse);
+        expect(ptt.held.value, isFalse);
+        expect(talk.sent, isEmpty, reason: "never the radio's own mic instead");
+        expect(ptt.release(), isFalse, reason: 'nothing to unkey');
+      });
     });
   });
 }

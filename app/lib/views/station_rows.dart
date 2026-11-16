@@ -58,6 +58,10 @@ class CurrentTransceiverTile extends StatelessWidget {
   /// Which receiver of its radio this is, as a pill beside the name, as the
   /// picker's rows show it ([TransceiverRow.channel]).
   final String? channel;
+
+  /// Closes that receiver on the radio, from an X on its pill: a slice of
+  /// HaLo's own on a Flex. Null for one HaLo does not own.
+  final VoidCallback? onCloseChannel;
   final String connection;
   final EquipmentType? transportType;
 
@@ -80,6 +84,7 @@ class CurrentTransceiverTile extends StatelessWidget {
     super.key,
     required this.displayName,
     this.channel,
+    this.onCloseChannel,
     required this.connection,
     this.transportType,
     this.picker,
@@ -97,7 +102,7 @@ class CurrentTransceiverTile extends StatelessWidget {
     final theme = Theme.of(context);
     final connected = state.status == EquipmentStatus.connected;
     final busy = state.status == EquipmentStatus.connecting || state.status == EquipmentStatus.disconnecting;
-    final trouble = state.status == EquipmentStatus.error ? state.error : state.problem;
+    final trouble = state.status == EquipmentStatus.error ? state.error : state.problem ?? (connected ? state.audioProblem : null);
     final small = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
     // Connected, but the radio has stopped answering: shown as the loss it
     // is — the unplugged plug, whose tap reconnects, and a red word where a
@@ -123,7 +128,13 @@ class CurrentTransceiverTile extends StatelessWidget {
                   ),
                   if (channel case final channel?) ...[
                     const SizedBox(width: Space.md),
-                    StationPill(label: channel, background: theme.colorScheme.surfaceContainerHighest, foreground: theme.colorScheme.onSurfaceVariant),
+                    StationPill(
+                      label: channel,
+                      background: theme.colorScheme.surfaceContainerHighest,
+                      foreground: theme.colorScheme.onSurfaceVariant,
+                      onClose: onCloseChannel,
+                      closeLabel: context.t.settings.station.flexCloseSlice,
+                    ),
                   ],
                 ],
               ),
@@ -516,7 +527,7 @@ class EquipmentTile extends StatelessWidget {
     // the radio isn't running). It takes the same whole-row treatment as a
     // failure, for the same reason: a reason squeezed beside the frequency
     // it explains the absence of is not a reason.
-    final trouble = state.status == EquipmentStatus.error ? state.error : state.problem;
+    final trouble = state.status == EquipmentStatus.error ? state.error : state.problem ?? (connected ? state.audioProblem : null);
     final failed = trouble != null;
     final diagnostic = developerMode ? state.diagnostic : null;
     // Whether the second line has anything on it: equipment with no reading
@@ -783,20 +794,39 @@ class StationPill extends StatelessWidget {
   final Color background;
   final Color foreground;
 
-  const StationPill({super.key, required this.label, required this.background, required this.foreground});
+  /// An X at the pill's end that closes what it names, [closeLabel] for a
+  /// screen reader; none without it.
+  final VoidCallback? onClose;
+  final String? closeLabel;
+
+  const StationPill({super.key, required this.label, required this.background, required this.foreground, this.onClose, this.closeLabel});
 
   @override
   Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.labelSmall?.copyWith(color: foreground);
+    final text = Text(label, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: style);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xxs),
+      padding: EdgeInsetsDirectional.fromSTEB(Space.md, Space.xxs, onClose == null ? Space.md : Space.xs, Space.xxs),
       decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(10)),
-      child: Text(
-        label,
-        maxLines: 1,
-        softWrap: false,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: foreground),
-      ),
+      child: switch (onClose) {
+        null => text,
+        final close => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(child: text),
+            const SizedBox(width: Space.xs),
+            Semantics(
+              button: true,
+              label: closeLabel,
+              child: InkWell(
+                onTap: close,
+                customBorder: const CircleBorder(),
+                child: Icon(MdiIcons.close, size: 14, color: foreground),
+              ),
+            ),
+          ],
+        ),
+      },
     );
   }
 }
