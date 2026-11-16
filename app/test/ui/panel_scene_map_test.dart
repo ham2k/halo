@@ -11,7 +11,7 @@
 
 import 'dart:math' as math;
 
-import 'package:flutter/gestures.dart' show PointerDeviceKind, PointerScaleEvent, PointerScrollEvent;
+import 'package:flutter/gestures.dart' show GestureBinding, PointerDeviceKind, PointerScaleEvent, PointerScrollEvent;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart' show SemanticsAction, SemanticsNode;
 import 'package:flutter_test/flutter_test.dart';
@@ -500,6 +500,50 @@ void main() {
   });
 
   group('the control', () {
+    // Every signal the map takes is one the scene around it never sees: a
+    // sideways swipe taken as a zoom of nothing would stop a scene that
+    // scrolls sideways scrolling over the map, and send a zoom and a pan that
+    // changed nothing.
+    testWidgets('a sideways swipe is left to the scene, and a wheel turned up or down is the map\'s', (tester) async {
+      final events = <Map<String, dynamic>>[];
+      final outer = <Offset>[];
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: Listener(
+                onPointerSignal: (e) {
+                  if (e is PointerScrollEvent) GestureBinding.instance.pointerSignalResolver.register(e, (_) => outer.add(e.scrollDelta));
+                },
+                child: SizedBox(
+                  width: 400,
+                  height: 400,
+                  child: PanelSceneView(
+                    scene: PanelScene(_doc()),
+                    home: const GridLocation(40, -100),
+                    onEvent: (e) async {
+                      events.add(e);
+                      return {};
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      final box = tester.getRect(find.byType(SceneMapView));
+      tester.binding.handlePointerEvent(PointerScrollEvent(position: box.center, scrollDelta: const Offset(40, 3)));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(outer, [const Offset(40, 3)]);
+      expect(events, isEmpty);
+      tester.binding.handlePointerEvent(PointerScrollEvent(position: box.center, scrollDelta: const Offset(0, -40)));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(outer, hasLength(1));
+      expect(events.map((e) => e['gesture']), contains('zoom'));
+    });
+
     // A browser with its accessibility layer on hands a click on a widget
     // that offers a tap action to that action, at the widget's middle: every
     // click would land there, whatever marker or place was clicked.

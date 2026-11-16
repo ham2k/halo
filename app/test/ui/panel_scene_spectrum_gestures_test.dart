@@ -114,6 +114,7 @@ Future<List<Map<String, dynamic>>> _show(
   Map<String, dynamic> spectrum = const {},
   Map<String, dynamic> Function(Map<String, dynamic> control)? document,
   double width = 400,
+  Widget Function(Widget box)? around,
 }) async {
   final events = <Map<String, dynamic>>[];
   // No level strip unless a test asks: these measure across the whole box.
@@ -122,34 +123,36 @@ Future<List<Map<String, dynamic>>> _show(
     TranslationProvider(
       child: MaterialApp(
         home: Scaffold(
-          body: SizedBox(
-            width: width,
-            height: 300,
-            child: DockPaneVisibility(
-              visible: true,
-              child: PanelSceneView(
-                scene: PanelScene(
-                  document?.call(control) ??
-                      {
-                        'version': 1,
-                        'width': width,
-                        'height': 300,
-                        'values': const <String, num>{},
-                        'layers': const <Object>[],
-                        'controls': [control],
-                        'layout': {
-                          'column': [
-                            {'control': 'pan', 'flex': 1},
-                          ],
-                          'crossAxisAlignment': 'stretch',
+          body: (around ?? (box) => box)(
+            SizedBox(
+              width: width,
+              height: 300,
+              child: DockPaneVisibility(
+                visible: true,
+                child: PanelSceneView(
+                  scene: PanelScene(
+                    document?.call(control) ??
+                        {
+                          'version': 1,
+                          'width': width,
+                          'height': 300,
+                          'values': const <String, num>{},
+                          'layers': const <Object>[],
+                          'controls': [control],
+                          'layout': {
+                            'column': [
+                              {'control': 'pan', 'flex': 1},
+                            ],
+                            'crossAxisAlignment': 'stretch',
+                          },
                         },
-                      },
+                  ),
+                  onEvent: (e) async {
+                    events.add(e);
+                    return {};
+                  },
+                  spectrum: radio,
                 ),
-                onEvent: (e) async {
-                  events.add(e);
-                  return {};
-                },
-                spectrum: radio,
               ),
             ),
           ),
@@ -2488,6 +2491,160 @@ void main() {
     await _tap(tester, _onPan(tester, .5));
     // Fingers left by a fifth of the box: the window right by a fifth of its 50 kHz.
     expect(radio.tunes.last.$1, closeTo(14060000, 200));
+  });
+
+  // A browser hands a trackpad's pinch over as scale signals, never as the
+  // pan-zoom a native trackpad sends: read only as a pan-zoom, a pinch in a
+  // browser zooms nothing.
+  testWidgets('a browser\'s trackpad pinch zooms about the pointer, as a native one does', (tester) async {
+    final radio = _Radio();
+    await _show(tester, radio);
+    final at = _onPan(tester, .25);
+    tester.binding.handlePointerEvent(PointerScaleEvent(position: at, scale: 1.5));
+    tester.binding.handlePointerEvent(PointerScaleEvent(position: at, scale: 4 / 3));
+    await tester.pump(const Duration(milliseconds: 400));
+    await _tap(tester, _onPan(tester, .9));
+    // Twice as close, 14.025 MHz staying a quarter of the way across: a 50 kHz window from 14.0125 MHz,
+    // its 90% at 14.0575 MHz, tuned to the step; about the middle, it would be 14.070 MHz.
+    expect(radio.tunes.last.$1, closeTo(14057500, 600));
+  });
+
+  // Each step of a browser's pinch is a small scale of its own. Taken against
+  // the window drawn, the steps of a pinch the scene hears add up to no more
+  // than the last one: the window the scene keeps never moves under them.
+  testWidgets('a browser\'s pinch that the scene hears sends the width all its steps add up to', (tester) async {
+    final events = await _show(
+      tester,
+      _Radio(),
+      spectrum: const {
+        'gestures': {'zoom': 'event'},
+      },
+    );
+    for (var i = 0; i < 3; i++) {
+      tester.binding.handlePointerEvent(PointerScaleEvent(position: _onPan(tester, .5), scale: 1.25));
+    }
+    await tester.pump(const Duration(milliseconds: 400));
+    final zooms = events.where((e) => e['gesture'] == 'zoom').toList();
+    expect(zooms.last['phase'], 'commit');
+    expect(zooms.last['value'] as double, closeTo(100000 / (1.25 * 1.25 * 1.25), 2));
+  });
+
+  // A browser's pinch ends only when its steps stop: a grip kept past that
+  // would carry the first pinch's scale into the next, here halving a width
+  // the scene asked to halve once.
+  testWidgets('a second browser pinch the scene hears starts from the window, not from where the first left off', (tester) async {
+    final events = await _show(
+      tester,
+      _Radio(),
+      spectrum: const {
+        'gestures': {'zoom': 'event'},
+      },
+    );
+    for (var pinch = 0; pinch < 2; pinch++) {
+      tester.binding.handlePointerEvent(PointerScaleEvent(position: _onPan(tester, .5), scale: 2));
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+    final commits = [
+      for (final e in events)
+        if (e['gesture'] == 'zoom' && e['phase'] == 'commit') e['value'] as double,
+    ];
+    expect(commits, [closeTo(50000, 2), closeTo(50000, 2)]);
+  });
+
+  // A pan and a pinch the scene hears each end in a commit: settled as one,
+  // the pinch's would stand in for the pan's, and the scene would never hear
+  // where the pan stopped.
+  testWidgets('a pan the scene hears, then a browser pinch, each send their own commit', (tester) async {
+    final events = await _show(
+      tester,
+      _Radio(),
+      spectrum: const {
+        'gestures': {'zoom': 'event', 'pan': 'event'},
+      },
+    );
+    final at = _onPan(tester, .5);
+    tester.binding.handlePointerEvent(PointerScrollEvent(position: at, scrollDelta: const Offset(80, 0)));
+    tester.binding.handlePointerEvent(PointerScaleEvent(position: at, scale: 2));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(
+      [
+        for (final e in events)
+          if (e['phase'] == 'commit') e['gesture'],
+      ],
+      ['pan', 'zoom'],
+    );
+  });
+
+  // A browser's pinch has no start of its own: held past the place it took
+  // hold, the grip would zoom the next pinch, begun elsewhere, about the first.
+  testWidgets('a browser\'s pinch begun elsewhere zooms about where it took hold, not about the last', (tester) async {
+    final radio = _Radio();
+    await _show(tester, radio);
+    final first = _onPan(tester, .25);
+    tester.binding.handlePointerEvent(PointerScaleEvent(position: first, scale: 1.5));
+    tester.binding.handlePointerEvent(PointerScaleEvent(position: first, scale: 4 / 3));
+    tester.binding.handlePointerEvent(PointerScaleEvent(position: _onPan(tester, .75), scale: 1.25));
+    await tester.pump(const Duration(milliseconds: 400));
+    await _tap(tester, _onPan(tester, .9));
+    // 50 kHz from 14.0125 MHz, then 40 kHz with 14.050 MHz kept three quarters across: from 14.020 MHz,
+    // its 90% at 14.056 MHz. About the first pinch's 14.025 MHz, it would be 14.051 MHz.
+    expect(radio.tunes.last.$1, closeTo(14056000, 600));
+  });
+
+  // The wheel moves the window under a pinch's grip: kept, the next step
+  // would put the window back where the pinch had left it, undoing the pan.
+  testWidgets('a pan between two browser pinches stands: the second zooms the window the pan left', (tester) async {
+    final radio = _Radio();
+    await _show(tester, radio);
+    final at = _onPan(tester, .5);
+    tester.binding.handlePointerEvent(PointerScaleEvent(position: at, scale: 2));
+    tester.binding.handlePointerEvent(PointerScrollEvent(position: at, scrollDelta: const Offset(80, 0)));
+    tester.binding.handlePointerEvent(PointerScaleEvent(position: at, scale: 1.25));
+    await tester.pump(const Duration(milliseconds: 400));
+    await _tap(tester, _onPan(tester, .5));
+    // 50 kHz about 14.050 MHz, panned 80 pixels at 125 Hz each to 14.060 MHz, then zoomed about that.
+    expect(radio.tunes.last.$1, closeTo(14060000, 600));
+  });
+
+  // Pinched on past the narrowest window, the steps it took there change
+  // nothing: counted, the pinch turned back would do nothing until it had
+  // undone them all.
+  testWidgets('a browser\'s pinch turned back from the narrowest window widens it at once', (tester) async {
+    final radio = _Radio();
+    await _show(tester, radio, spectrum: const {'minWidthHz': 10000});
+    final at = _onPan(tester, .5);
+    tester.binding.handlePointerEvent(PointerScaleEvent(position: at, scale: 100));
+    tester.binding.handlePointerEvent(PointerScaleEvent(position: at, scale: 0.5));
+    await tester.pump(const Duration(milliseconds: 400));
+    await _tap(tester, _onPan(tester, .9));
+    // 20 kHz about 14.050 MHz, its 90% at 14.058 MHz; still at the narrowest 10 kHz, 14.054 MHz.
+    expect(radio.tunes.last.$1, closeTo(14058000, 600));
+  });
+
+  // A pinch the band scope takes is one the scene around it never sees: with
+  // its zoom off, taking it anyway would zoom nothing and stop the scene
+  // zooming or scrolling by it over the band scope.
+  testWidgets('a scene that turns the zoom off gets a browser\'s pinch over the band scope', (tester) async {
+    final radio = _Radio();
+    final outer = <double>[];
+    await _show(
+      tester,
+      radio,
+      spectrum: const {
+        'gestures': {'zoom': 'off'},
+      },
+      around: (box) => Listener(
+        onPointerSignal: (e) {
+          if (e is PointerScaleEvent) GestureBinding.instance.pointerSignalResolver.register(e, (_) => outer.add(e.scale));
+        },
+        child: box,
+      ),
+    );
+    tester.binding.handlePointerEvent(PointerScaleEvent(position: _onPan(tester, .5), scale: 2));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(outer, [2]);
+    await _tap(tester, _onPan(tester, .9));
+    expect(radio.tunes.last.$1, closeTo(14090000, 200));
   });
 
   testWidgets('a trackpad swipe across the frequency turns the dial like the wheel, a notch for each wheel notch of travel', (tester) async {

@@ -532,9 +532,9 @@ void main() {
       );
       await tester.pump();
       final box = tester.getRect(find.byType(SceneRotatorView));
-      tester.binding.handlePointerEvent(PointerScrollEvent(position: box.center, scrollDelta: const Offset(40, 0)));
+      tester.binding.handlePointerEvent(PointerScrollEvent(position: box.center, scrollDelta: const Offset(40, 3)));
       await tester.pump(const Duration(milliseconds: 400));
-      expect(outer, [const Offset(40, 0)]);
+      expect(outer, [const Offset(40, 3)]);
       expect(events, isEmpty);
       tester.binding.handlePointerEvent(PointerScrollEvent(position: box.center, scrollDelta: const Offset(0, -40)));
       await tester.pump(const Duration(milliseconds: 400));

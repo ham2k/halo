@@ -413,6 +413,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
   /// move and the scene where it left the window.
   void _settle() {
     _settleTimer?.cancel();
+    _signalPinch = null;
     if (_heard case (final gesture, final value)) {
       _heard = null;
       widget.onGesture?.call(gesture, 'commit', value);
@@ -779,6 +780,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
   /// wheel turned up or down over the spectrum is the spectrum's, scrolling
   /// scene or not.
   void _signal(PointerSignalEvent event) {
+    if (browserPinchScale(event) case final scale?) return _browserPinch(event, scale);
     if (event is! PointerScrollEvent) return;
     final d = event.scrollDelta;
     final sideways = d.dx.abs() > d.dy.abs();
@@ -786,8 +788,40 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
     final does = _scrollDoes(sideways);
     if (does == null) return;
     GestureBinding.instance.pointerSignalResolver.register(event, (_) {
+      // A browser's pinch ends where the wheel takes over, its commit its own.
+      if (_signalPinch != null) _settle();
       _scrollBy(does, sideways ? Offset(d.dx, 0) : Offset(0, d.dy), event.localPosition);
       if (does != SceneSpectrumScroll.pan) return;
+      _settleTimer?.cancel();
+      _settleTimer = Timer(const Duration(milliseconds: 300), _settle);
+    });
+  }
+
+  /// A browser's trackpad pinch, a step at a time: it zooms about the
+  /// pointer, as a native trackpad's pinch does, and the window settles once
+  /// the steps stop.
+  void _browserPinch(PointerSignalEvent event, double scale) {
+    if (_gestures.zoom == SceneSpectrumGesture.off) return;
+    GestureBinding.instance.pointerSignalResolver.register(event, (_) {
+      final x = _canonicalAt(event.localPosition).dx;
+      // A pinch never moves the pointer: a step somewhere else is a new pinch.
+      if (_signalPinch case final held? when (held.x - x).abs() > 2) _settle();
+      // One grip for the whole pinch, as a native one keeps: each step scales
+      // the window the pinch took hold of, not the one drawn, which lags the
+      // radio and, where the scene hears the zoom, never follows it.
+      if (_signalPinch == null) {
+        // What the wheel left settling ends first, its commit its own.
+        if (_settleTimer?.isActive ?? false) _settle();
+        _signalPinch = _gripAt(x, zoom: true);
+        _signalScale = 1;
+        _stopGlide();
+      }
+      final grip = _signalPinch;
+      if (grip == null) return;
+      _signalScale *= scale;
+      _zoom(grip, grip.width / _signalScale);
+      // Held at the width it reached: past a limit, a pinch turned back widens at once.
+      _signalScale = grip.width / _clampWidth(grip.width / _signalScale);
       _settleTimer?.cancel();
       _settleTimer = Timer(const Duration(milliseconds: 300), _settle);
     });

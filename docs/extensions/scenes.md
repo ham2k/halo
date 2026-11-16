@@ -1002,7 +1002,8 @@ is turned there as it lands, the way any other turn is.
   once and holds it for 2 seconds while the rotator's own report catches
   up; as an event, `commit` with the bearing as `value`. A click on a
   decoration that acts is that decoration's.
-- `zoom` is the mouse wheel, a trackpad's two-finger scroll or a pinch.
+- `zoom` is the mouse wheel, a trackpad's two-finger scroll up or down,
+  or a pinch; a scroll mostly sideways is the scene's.
   It sends `commit` with `gesture: 'zoom'` and the zoom as `value` once it
   settles. The app's whole-map button sends a zoom of `0`.
 - `pan` is a drag that starts on the station, which moves it within the
@@ -1170,8 +1171,9 @@ The control's own `event`, where it has one, hears the rest, as `commit`:
   view's middle;
 - `gesture: 'reset'` from the app's button, back to the scene's view.
 
-A drag pans, the mouse wheel, a trackpad's two-finger scroll and a pinch
-zoom about the pointer. `gestures` takes `zoom` and `pan`, each `native`
+A drag pans, the mouse wheel, a trackpad's two-finger scroll up or down and
+a pinch zoom about the pointer, a scroll mostly sideways being the scene's.
+`gestures` takes `zoom` and `pan`, each `native`
 (the default) or `off`, and `zoom` also `center`, about the view's middle
 however the pointer or a pinch lies: a rotator's map, centred on the
 station, keeps it there. To keep the operator's view, store the last

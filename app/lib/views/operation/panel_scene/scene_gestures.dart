@@ -2,14 +2,23 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // How a scene's controls read the pointer beyond a click: a scroll's step,
-// the drag that zooms a scrolling scene, and the regions a spectrum's drags
-// and double taps belong to (docs/design/panel-scenes.md).
+// a browser's pinch, the drag that zooms a scrolling scene, and the regions
+// a spectrum's drags and double taps belong to (docs/design/panel-scenes.md).
 
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 
 import 'scene_model.dart';
+
+/// A browser's trackpad pinch, one step of it: the factor that step scales by, or null for any
+/// other signal and for one that changes nothing. A browser hands a pinch over as these signals,
+/// never as the pan-zoom a native trackpad sends, so the scale gesture never sees it: a control
+/// that zooms by a pinch reads this beside its pan-zoom.
+double? browserPinchScale(PointerSignalEvent event) => switch (event) {
+  PointerScaleEvent(:final scale) when scale > 0 && scale != 1 => scale,
+  _ => null,
+};
 
 /// A drag along one axis, claimed only where [allowedAt] says it may begin: a scrolling scene's
 /// `zoom` strip, or the part of a spectrum that pans or zooms. Deeper than the scroll view, it wins

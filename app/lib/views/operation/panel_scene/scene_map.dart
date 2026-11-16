@@ -24,6 +24,7 @@ import '../world_map/map_camera.dart';
 import '../world_map/map_projection.dart';
 import '../world_map/world_geometry.dart' show TurningShapes, fillRings;
 import '../../../tools/distance_format.dart';
+import 'scene_gestures.dart';
 import 'scene_images.dart';
 import 'scene_map_globe.dart';
 import 'scene_map_labels.dart';
@@ -460,10 +461,12 @@ class _SceneMapViewState extends State<SceneMapView> {
   void _onPointerSignal(PointerSignalEvent e) {
     if (_spec.zoomGesture == 'off' || widget.disabled) return;
     final steps = switch (e) {
-      PointerScrollEvent(:final scrollDelta) => -scrollDelta.dy / 200,
-      // A trackpad's pinch in a browser: it never reaches the scale gesture.
-      PointerScaleEvent(:final scale) when scale > 0 => math.log(scale) / math.ln2,
-      _ => null,
+      // Mostly sideways, a swipe asks for no zoom: it is the scene's, which may scroll by it.
+      PointerScrollEvent(:final scrollDelta) => scrollDelta.dy != 0 && scrollDelta.dy.abs() >= scrollDelta.dx.abs() ? -scrollDelta.dy / 200 : null,
+      _ => switch (browserPinchScale(e)) {
+        final scale? => math.log(scale) / math.ln2,
+        null => null,
+      },
     };
     if (steps == null) return;
     GestureBinding.instance.pointerSignalResolver.register(e, (event) {

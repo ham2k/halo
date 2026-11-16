@@ -308,6 +308,10 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   /// Held here, not in the recognizers' handlers, which every build replaces.
   _Grip? _grip, _pinch, _trackpad;
 
+  /// A browser's pinch under way: where it took hold, and how far its steps have scaled since.
+  _Grip? _signalPinch;
+  double _signalScale = 1;
+
   /// A drag of the tuned frequency's line.
   _Dial? _dial;
 
@@ -827,8 +831,9 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     _pannedAtVfo = null;
     _recenters = null;
     _sweepBeforeNarrowing = null;
-    // Another radio's: a dial held, a wheel's run, a tune or a glide on its way would land on this one.
+    // Another radio's: a dial held, a wheel's run, a browser's pinch, a tune or a glide on its way would land on this one.
     _heldVfo = _wheelHz = _tunePending = _releaseAt = _followedVfo = _labelledVfo = null;
+    _signalPinch = null;
     _tuneTimer?.cancel();
     _stopGlide();
     _rowPeak = null;

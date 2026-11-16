@@ -24,6 +24,7 @@ import '../../../services/cat/equipment.dart' show EquipmentStatus, rotatorArriv
 import '../../../tools/distance_format.dart' show fmtDistance, fmtGrouped;
 import '../../station_rows.dart' show StationConnectionToggle;
 import '../world_map/map_projection.dart';
+import 'scene_gestures.dart';
 import 'scene_model.dart';
 import 'scene_rotator_frame.dart';
 import 'scene_world.dart';
@@ -564,13 +565,11 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
   void _onPointerSignal(PointerSignalEvent e) {
     if (_spec.zoomGesture == 'off' || widget.disabled) return;
     final factor = switch (e) {
-      PointerScrollEvent(:final scrollDelta) => math.exp(-scrollDelta.dy / 400),
-      // A trackpad's pinch in a browser: it never reaches the scale gesture.
-      PointerScaleEvent(:final scale) when scale > 0 => scale,
-      _ => null,
+      // Mostly sideways, a swipe asks for no zoom: it is the scene's, which may scroll by it.
+      PointerScrollEvent(:final scrollDelta) => scrollDelta.dy != 0 && scrollDelta.dy.abs() >= scrollDelta.dx.abs() ? math.exp(-scrollDelta.dy / 400) : null,
+      _ => browserPinchScale(e),
     };
-    // A sideways swipe asks for no zoom: it is the scene's, which may scroll by it.
-    if (factor == null || factor == 1) return;
+    if (factor == null) return;
     GestureBinding.instance.pointerSignalResolver.register(e, (_) {
       final zoom = (_zoomNow * factor).clamp(_spec.zoomMin, _spec.zoomMax).toDouble();
       // Turned on past a limit it is still the map's, as the wheel over a band
