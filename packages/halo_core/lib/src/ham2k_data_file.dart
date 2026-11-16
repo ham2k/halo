@@ -162,16 +162,14 @@ Future<Ham2kSyncResult> syncHam2kDataFile({
   }
 
   final response = await fetch(Uri.parse(url), goneIsAnswer: false);
-  final updated = nowMillis();
-  var imported = 0;
+  final writer = await CategoryRowsWriter.start(lookups, key: key, category: category, force: force, existing: existing);
   var batch = <LookupRow>[];
   Future<void> flush() async {
     if (batch.isEmpty) return;
-    if (imported == 0) await onSnapshotWrites();
-    await lookups.insertLookupBatch(batch);
-    imported += batch.length;
+    if (writer.written == 0) await onSnapshotWrites();
+    await writer.write(batch);
     batch = [];
-    onRows?.call(imported);
+    onRows?.call(writer.written);
   }
 
   await for (final line in response.body.transform(utf8.decoder).transform(const LineSplitter())) {
@@ -183,17 +181,14 @@ Future<Ham2kSyncResult> syncHam2kDataFile({
       continue;
     }
     if (record is! Map<String, dynamic>) continue;
-    final row = fields.row(record, category: category, updated: updated, json: line);
+    final row = fields.row(record, category: category, updated: writer.updated, json: line);
     if (row == null) continue;
     batch.add(row);
     if (batch.length >= batchSize) await flush();
   }
   await flush();
 
-  final shrank = dataFileImportShrinkage(key, imported: imported, existing: existing, forced: force);
-  if (shrank != null && !force) throw shrank;
-  // An empty snapshot's first write is this sweep.
-  if (imported == 0) await onSnapshotWrites();
-  await lookups.deleteCategoryStale(category, updated);
-  return Ham2kSyncResult(Ham2kSyncKind.snapshot, response.version, imported, forcedShrink: shrank);
+  // An empty snapshot's first write is the sweep.
+  final shrank = await writer.finish(beforeSweep: writer.written == 0 ? onSnapshotWrites : null);
+  return Ham2kSyncResult(Ham2kSyncKind.snapshot, response.version, writer.written, forcedShrink: shrank);
 }

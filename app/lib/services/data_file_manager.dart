@@ -1397,11 +1397,9 @@ class DataFileManager {
     // off the backend and the operator's screen, as it does for that one.
     if (host == null) throw ExtensionHostException('extension host disposed');
 
-    final updatedFlag = nowMillis();
-    final existing = await lookups.countCategory(category);
+    final writer = await CategoryRowsWriter.start(lookups, key: key, category: category, force: force);
     final chunkSize = 5000;
     final statusKey = 'dataFile:$key';
-    var imported = 0;
 
     for (var start = 0; start < items.length; start += chunkSize) {
       final end = start + chunkSize < items.length ? start + chunkSize : items.length;
@@ -1433,8 +1431,8 @@ class DataFileManager {
         // and the caller already treats a failed data file as a failed sync.
         //
         // Throwing here also protects what is already in the table. Skipping
-        // instead would let the loop run to the `deleteCategoryStale` below
-        // with nothing imported, which sweeps every row that this run did not
+        // instead would let the loop run to the writer's sweep below with
+        // nothing imported, which deletes every row that this run did not
         // stamp — a mapper that returned nothing would WIPE the whole
         // category. Bailing out leaves the partial import in place (same primary key,
         // insertOrReplace, so no duplicates), skips the sweep, and leaves
@@ -1446,48 +1444,18 @@ class DataFileManager {
         );
       }
 
-      final lookupRows = <LookupRow>[];
-      for (final item in response) {
-        if (item is Map) {
-          final entryKey = item['key'] as String?;
-          if (entryKey != null) {
-            lookupRows.add(
-              LookupRow(
-                category: category,
-                subCategory: item['subCategory'] as String?,
-                key: entryKey,
-                name: item['name'] as String?,
-                lat: (item['lat'] as num?)?.toDouble(),
-                lon: (item['lon'] as num?)?.toDouble(),
-                flags: item['flags'] as int?,
-                data: item['data'] != null ? jsonEncode(item['data']) : null,
-                updated: updatedFlag,
-              ),
-            );
-          }
-        }
-      }
-      if (lookupRows.isNotEmpty) {
-        await lookups.insertLookupBatch(lookupRows);
-        imported += lookupRows.length;
-      }
+      await writer.write(lookupRowsFromMapped(response, category: category, updated: writer.updated));
     }
 
     // The rows this import did write stay when it throws: each replaced its own key.
-    final shrank = dataFileImportShrinkage(key, imported: imported, existing: existing, forced: force);
-    if (shrank != null) {
-      if (!force) throw shrank;
-      ErrorReportingService.report(shrank, StackTrace.current, context: 'data-files:forced-shrink');
-    }
-
-    // Clean up any stale records not updated in this run
-    await lookups.deleteCategoryStale(category, updatedFlag);
+    final shrank = await writer.finish();
+    if (shrank != null) ErrorReportingService.report(shrank, StackTrace.current, context: 'data-files:forced-shrink');
 
     if (showProgress) {
       statusBar?.setProgress(
         key: statusKey,
         title: label,
-        text: t.dataFiles.importedRecords(count: imported, label: label),
+        text: t.dataFiles.importedRecords(count: writer.written, label: label),
         value: 1.0,
       );
     }

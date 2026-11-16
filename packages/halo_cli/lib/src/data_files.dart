@@ -7,10 +7,11 @@
 // This is the app's DataFileManager pipeline reduced to what a one-shot
 // command needs: fetch, map in chunks, write rows, sweep what this run did
 // not stamp — unless the run mapped far fewer rows than the cache holds (the
-// guard both hosts share, dataFileImportShrinkage). Left out on purpose,
-// because they are the APP's concerns and none of them changes what a row
-// ends up containing: scheduling and max-age, ETag/304 caching (a CLI sync
-// is always an explicit "get it now"), the status bar, and error notices.
+// write, guard and sweep both hosts share, halo_core's CategoryRowsWriter).
+// Left out on purpose, because they are the APP's concerns and none of them
+// changes what a row ends up containing: scheduling and max-age, ETag/304
+// caching (a CLI sync is always an explicit "get it now"), the status bar,
+// and error notices.
 //
 // A `ham2k` data file is the exception to "get it now" meaning the whole
 // file: its version is kept beside the raw cache, and the next sync asks for
@@ -369,11 +370,7 @@ class DataFileSync {
   }
 
   Future<DataFileResult> _mapAndWrite(DataFileDef def, HookRef mapping, String argKey, List<Object?> items, {Map<String, Object?>? extraArgs}) async {
-    // Stamps every row this run touches, so the sweep below can delete
-    // exactly what the source dropped.
-    final updatedFlag = nowMillis();
-    final existing = await store.repository.countCategory(def.category);
-    var imported = 0;
+    final writer = await CategoryRowsWriter.start(store.repository, key: def.key, category: def.category, force: force);
 
     for (var start = 0; start < items.length; start += chunkSize) {
       final end = start + chunkSize < items.length ? start + chunkSize : items.length;
@@ -395,37 +392,11 @@ class DataFileSync {
         );
       }
 
-      final rows = <LookupRow>[];
-      for (final item in mapped) {
-        if (item is! Map) continue;
-        final key = item['key'] as String?;
-        if (key == null) continue;
-        rows.add(
-          LookupRow(
-            category: def.category,
-            subCategory: item['subCategory'] as String?,
-            key: key,
-            name: item['name'] as String?,
-            lat: (item['lat'] as num?)?.toDouble(),
-            lon: (item['lon'] as num?)?.toDouble(),
-            flags: item['flags'] as int?,
-            data: item['data'] != null ? jsonEncode(item['data']) : null,
-            updated: updatedFlag,
-          ),
-        );
-      }
-      if (rows.isNotEmpty) {
-        await store.repository.insertLookupBatch(rows);
-        imported += rows.length;
-      }
+      await writer.write(lookupRowsFromMapped(mapped, category: def.category, updated: writer.updated));
     }
 
-    final shrank = dataFileImportShrinkage(def.key, imported: imported, existing: existing, forced: force);
-    if (shrank != null) {
-      if (!force) throw shrank;
-      stderr.writeln('halo-ext: $shrank');
-    }
-    await store.repository.deleteCategoryStale(def.category, updatedFlag);
-    return DataFileResult(key: def.key, category: def.category, rows: imported);
+    final shrank = await writer.finish();
+    if (shrank != null) stderr.writeln('halo-ext: $shrank');
+    return DataFileResult(key: def.key, category: def.category, rows: writer.written);
   }
 }

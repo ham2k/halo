@@ -18,6 +18,7 @@
 import 'dart:convert';
 import 'dart:io' show ContentType;
 
+import 'app_clock.dart';
 import 'db/database.dart';
 import 'dev_log.dart';
 import 'repo/lookup_repository.dart';
@@ -165,12 +166,73 @@ class DataFileImportShrank implements Exception {
 DataFileImportShrank? dataFileImportShrinkage(String key, {required int imported, required int existing, bool forced = false}) =>
     imported < existing * minDataFileImportShare ? DataFileImportShrank(key, imported: imported, existing: existing, forced: forced) : null;
 
-/// Writes [rows], all stamped [updated], as [category]'s, replacing what it
-/// held: rows this import did not write are swept, unless it brought far
-/// fewer than the category held ([dataFileImportShrinkage]), which throws
-/// unless [force]d — before the sweep, or a short file would empty the
-/// category. A forced shrink goes through, and is answered for the caller to
-/// report. [onRows] hears the count written so far.
+/// One import replacing [category]'s rows, written as they arrive: every
+/// import that replaces a category, in either host, ends here, so the shrink
+/// guard and the stale sweep are one piece of code (a ham2k delta changes
+/// rows in place and sweeps nothing). [start] counts what the category holds; [write]
+/// adds rows, each stamped [updated]; [finish] sweeps the rows this import
+/// did not write, unless it brought far fewer than the category held
+/// ([dataFileImportShrinkage]), which throws unless [force]d — before the
+/// sweep, or a short file would empty the category. A forced shrink goes
+/// through, and is answered for the host to report.
+///
+/// An import that fails before [finish] leaves what it wrote, each row
+/// replacing its own key, and sweeps nothing: the next one redoes the file.
+class CategoryRowsWriter {
+  CategoryRowsWriter._(this._lookups, this.key, this.category, this._existing, {required this.updated, required this.force});
+
+  /// [updated] defaults to now; a host that built its rows before starting
+  /// passes the stamp they carry instead.
+  /// [existing] is the category's count when the host has just taken it.
+  static Future<CategoryRowsWriter> start(
+    LookupRepository lookups, {
+    required String key,
+    required String category,
+    required bool force,
+    int? updated,
+    int? existing,
+  }) async => CategoryRowsWriter._(lookups, key, category, existing ?? await lookups.countCategory(category), updated: updated ?? nowMillis(), force: force);
+
+  final LookupRepository _lookups;
+  final String key;
+  final String category;
+  final int _existing;
+
+  /// The stamp every row of this import carries: [finish] sweeps the rest.
+  final int updated;
+  final bool force;
+
+  /// The rows written so far.
+  int get written => _written;
+  var _written = 0;
+
+  /// Every row must be [category]'s and carry [updated]: one stamped
+  /// otherwise counts toward the guard and is then swept by [finish], so the
+  /// import would delete what it just wrote.
+  Future<void> write(List<LookupRow> rows) async {
+    if (rows.isEmpty) return;
+    for (final row in rows) {
+      if (row.category != category || row.updated != updated) {
+        throw StateError('$key: a row for ${row.category} stamped ${row.updated} written to $category stamped $updated');
+      }
+    }
+    await _lookups.insertLookupBatch(rows);
+    _written += rows.length;
+  }
+
+  /// [beforeSweep] runs once the guard has let the import through, before
+  /// the sweep deletes anything.
+  Future<DataFileImportShrank?> finish({Future<void> Function()? beforeSweep}) async {
+    final shrank = dataFileImportShrinkage(key, imported: _written, existing: _existing, forced: force);
+    if (shrank != null && !force) throw shrank;
+    await beforeSweep?.call();
+    await _lookups.deleteCategoryStale(category, updated);
+    return shrank;
+  }
+}
+
+/// [CategoryRowsWriter] for rows already in hand, all stamped [updated],
+/// written [batchSize] at a time. [onRows] hears the count written so far.
 Future<DataFileImportShrank?> replaceCategoryRows(
   LookupRepository lookups,
   String key,
@@ -181,16 +243,43 @@ Future<DataFileImportShrank?> replaceCategoryRows(
   void Function(int written)? onRows,
   int batchSize = 5000,
 }) async {
-  final existing = await lookups.countCategory(category);
+  final writer = await CategoryRowsWriter.start(lookups, key: key, category: category, force: force, updated: updated);
   for (var start = 0; start < rows.length; start += batchSize) {
     final end = start + batchSize < rows.length ? start + batchSize : rows.length;
-    await lookups.insertLookupBatch(rows.sublist(start, end));
+    await writer.write(rows.sublist(start, end));
     onRows?.call(end);
   }
-  final shrank = dataFileImportShrinkage(key, imported: rows.length, existing: existing, forced: force);
-  if (shrank != null && !force) throw shrank;
-  await lookups.deleteCategoryStale(category, updated);
-  return shrank;
+  return writer.finish();
+}
+
+/// The rows a data-file mapper answered (`dataFileMapCsvBatch`,
+/// `dataFileMapJsonBatch`), as [category]'s, stamped [updated]. An entry
+/// that is not an object, or has no `key`, names no row and is skipped; a
+/// field of the wrong kind — a `key`, `name` or `subCategory` that is not
+/// text, `flags` that is not an integer — throws, failing the import: a
+/// mapper that writes its keys as numbers would otherwise import nothing and
+/// look fine.
+List<LookupRow> lookupRowsFromMapped(List<dynamic> mapped, {required String category, required int updated}) {
+  final rows = <LookupRow>[];
+  for (final item in mapped) {
+    if (item is! Map) continue;
+    final key = item['key'] as String?;
+    if (key == null) continue;
+    rows.add(
+      LookupRow(
+        category: category,
+        subCategory: item['subCategory'] as String?,
+        key: key,
+        name: item['name'] as String?,
+        lat: (item['lat'] as num?)?.toDouble(),
+        lon: (item['lon'] as num?)?.toDouble(),
+        flags: item['flags'] as int?,
+        data: item['data'] != null ? jsonEncode(item['data']) : null,
+        updated: updated,
+      ),
+    );
+  }
+  return rows;
 }
 
 final _dataFileKeyPattern = RegExp(r'^[a-z0-9][a-z0-9_-]{0,127}$');
