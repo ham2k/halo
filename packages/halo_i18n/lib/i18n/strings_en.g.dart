@@ -2793,6 +2793,9 @@ class Translations$operationLocationScreen$en {
 	/// en: 'GPS from ${device}'
 	String peerGps({required Object device}) => 'GPS from ${device}';
 
+	/// en: 'GPS from ${receiver}'
+	String receiverGps({required Object receiver}) => 'GPS from ${receiver}';
+
 	/// en: 'Locating…'
 	String get locating => 'Locating…';
 
@@ -7162,6 +7165,11 @@ class Translations$settings$station$en {
 	/// en: 'Antenna in Use'
 	String get antennaInUse => 'Antenna in Use';
 
+	/// en: 'Location From'
+	String get locationFrom => 'Location From';
+
+	late final Translations$settings$station$systemLocation$en systemLocation = Translations$settings$station$systemLocation$en.internal(_root);
+
 	/// en: 'Spectrum From'
 	String get scopeInUse => 'Spectrum From';
 
@@ -7342,6 +7350,9 @@ class Translations$settings$station$en {
 
 	/// en: 'MIDI Controller'
 	String get newMidiController => 'MIDI Controller';
+
+	/// en: 'GPS Receiver (USB or Serial)'
+	String get newGpsReceiver => 'GPS Receiver (USB or Serial)';
 
 	late final Translations$settings$station$midi$en midi = Translations$settings$station$midi$en.internal(_root);
 
@@ -7733,6 +7744,21 @@ class Translations$settings$station$en {
 	String connectionDevices({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: '${count} device',
 		other: '${count} devices',
+	);
+
+	/// en: '${grid} · ${satellites}'
+	String gpsFix({required Object grid, required Object satellites}) => '${grid} · ${satellites}';
+
+	/// en: 'Searching for satellites'
+	String get gpsSearching => 'Searching for satellites';
+
+	/// en: 'Searching · ${satellites}'
+	String gpsSearchingWith({required Object satellites}) => 'Searching · ${satellites}';
+
+	/// en: '(one) {${count} satellite} (other) {${count} satellites}'
+	String gpsSatellites({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} satellite',
+		other: '${count} satellites',
 	);
 
 	/// en: 'User'
@@ -10938,6 +10964,9 @@ class Translations$settings$station$models$en {
 	/// en: 'WinKeyer'
 	String get winkeyer => 'WinKeyer';
 
+	/// en: 'GPS Receiver'
+	String get nmeaGps => 'GPS Receiver';
+
 	/// en: 'Simulated Radio'
 	String get placeholderRadio => 'Simulated Radio';
 
@@ -11051,6 +11080,30 @@ class Translations$settings$station$transports$en {
 
 	/// en: 'Through its Everyware server'
 	String get everywareServer => 'Through its Everyware server';
+}
+
+// Path: settings.station.systemLocation
+class Translations$settings$station$systemLocation$en {
+	Translations$settings$station$systemLocation$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Windows Location Services'
+	String get windows => 'Windows Location Services';
+
+	/// en: 'macOS Location Services'
+	String get macos => 'macOS Location Services';
+
+	/// en: 'Linux Location Services'
+	String get linux => 'Linux Location Services';
+
+	/// en: 'Browser Location'
+	String get browser => 'Browser Location';
+
+	/// en: 'Device Location'
+	String get device => 'Device Location';
 }
 
 // Path: settings.station.antennaTypes
@@ -13603,6 +13656,7 @@ extension on Translations {
 			'settings.station.models.key' => 'CW Key',
 			'settings.station.models.midiController' => 'MIDI Controller',
 			'settings.station.models.winkeyer' => 'WinKeyer',
+			'settings.station.models.nmeaGps' => 'GPS Receiver',
 			'settings.station.models.placeholderRadio' => 'Simulated Radio',
 			'settings.station.models.placeholderRadioNodeName' => 'Simulated Radio',
 			'settings.station.models.simulatedRotator' => 'Simulated Rotator',
@@ -13709,6 +13763,12 @@ extension on Translations {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'This radio is connected to ${device}. Its connection and settings are configured on that device.',
 			'settings.station.antennaInUse' => 'Antenna in Use',
+			'settings.station.locationFrom' => 'Location From',
+			'settings.station.systemLocation.windows' => 'Windows Location Services',
+			'settings.station.systemLocation.macos' => 'macOS Location Services',
+			'settings.station.systemLocation.linux' => 'Linux Location Services',
+			'settings.station.systemLocation.browser' => 'Browser Location',
+			'settings.station.systemLocation.device' => 'Device Location',
 			'settings.station.scopeInUse' => 'Spectrum From',
 			'settings.station.scopeRadiosOwn' => 'The radio\'s own scope',
 			'settings.station.keyInUse' => 'CW Keying',
@@ -13782,6 +13842,7 @@ extension on Translations {
 			'settings.station.newKey' => 'New Key',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL or compatible)',
 			'settings.station.newMidiController' => 'MIDI Controller',
+			'settings.station.newGpsReceiver' => 'GPS Receiver (USB or Serial)',
 			'settings.station.midi.name' => 'Name',
 			'settings.station.midi.device' => 'Device',
 			'settings.station.midi.deviceNone' => 'Choose a device',
@@ -13978,6 +14039,10 @@ extension on Translations {
 			'settings.station.rotctldTroubleshooting' => 'This connects to a **rotctld daemon you run yourself**, not to the rotator directly — Hamlib\'s backend talks to the controller and supports most of them.\n\n- **The daemon must already be running**, e.g. `rotctld -m 601 -r /dev/ttyUSB0` for a GS-232A. Find your controller\'s model number with `rotctl -l`.\n- **From another machine**, allow port 4533 through that machine\'s firewall. rotctld listens on every address unless started with `-T`.\n- **Port** is 4533 unless you started the daemon with `-t`.\n- **PstRotator** answers too, with **Gpredict** selected as its tracker and Tracking on.\n- Turns go only as far as the limits rotctld enforces, which it reports itself — set them with `-C min_az=…,max_az=…` when starting it. The offsets here are for a controller whose zero is not true north.',
 			'settings.station.connectionRouted' => ({required Object port, required Object antenna}) => '${port}: ${antenna}',
 			'settings.station.connectionDevices' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} device', other: '${count} devices', ), 
+			'settings.station.gpsFix' => ({required Object grid, required Object satellites}) => '${grid} · ${satellites}',
+			'settings.station.gpsSearching' => 'Searching for satellites',
+			'settings.station.gpsSearchingWith' => ({required Object satellites}) => 'Searching · ${satellites}',
+			'settings.station.gpsSatellites' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} satellite', other: '${count} satellites', ), 
 			'settings.station.everywareUser' => 'User',
 			'settings.station.everywareUserDescription' => 'Only when the server asks for a login. Leave it blank otherwise.',
 			'settings.station.everywarePassword' => 'Password',
@@ -14067,6 +14132,8 @@ extension on Translations {
 			'settings.developer.trackStable' => 'Stable',
 			'settings.developer.trackUnstable' => 'Unstable',
 			'settings.developer.trackBleeding' => 'Bleeding',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.checkingTrack' => ({required Object track}) => 'Checking "${track}" for a code push…',
 			'settings.developer.patchDownloaded' => 'Code push downloaded — restart the app to apply it.',
 			'settings.developer.noNewPatch' => ({required Object track}) => 'No new code push on "${track}".',
@@ -14079,8 +14146,6 @@ extension on Translations {
 			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => 'Could not register: ${error}',
 			'settings.developer.diagnostics' => 'Diagnostics',
 			'settings.developer.importExport' => 'Import / Export',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.systemInformation' => 'System Information',
 			'settings.developer.appVersion' => 'App Version',
 			'settings.developer.dataFolder' => 'Data Folder',
@@ -14464,6 +14529,7 @@ extension on Translations {
 			'operationLocationScreen.suggestedLocations' => 'Suggested Locations',
 			'operationLocationScreen.deviceGps' => 'Device GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS from ${device}',
+			'operationLocationScreen.receiverGps' => ({required Object receiver}) => 'GPS from ${receiver}',
 			'operationLocationScreen.locating' => 'Locating…',
 			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',
@@ -14580,6 +14646,8 @@ extension on Translations {
 			'adifImport.newContacts' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} new contact', other: '${formatted} new contacts', ), 
 			'adifImport.merging' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} will merge with an existing contact', other: '${formatted} will merge with existing contacts', ), 
 			'adifImport.unusable' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} cannot be imported (no callsign)', other: '${formatted} cannot be imported (no callsign)', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} needs a closer look', other: '${formatted} need a closer look', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'References could not be recovered for ${count} contact', other: 'References could not be recovered for ${formatted} contacts', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${programs} references may be incomplete for ${count} contact', other: '${programs} references may be incomplete for ${formatted} contacts', ), 
@@ -14593,8 +14661,6 @@ extension on Translations {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Warning: this ADIF has QSOs from ${calls}, but they will be imported as ${station} if you continue.',
 			'adifImport.stationCallJoin' => ' and ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} has no date and cannot be imported', other: '${formatted} have no date and cannot be imported', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.activationFound' => ({required Object refs}) => 'This file records an activation of ${refs}.',
 			'adifImport.addActivation' => 'Add it to this operation',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Only ${written} of ${planned} could be applied — the log changed while you were deciding.',

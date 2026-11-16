@@ -663,6 +663,7 @@ const _defaultModels = [
   antennaModel,
   keyModel,
   winkeyerModel,
+  nmeaGpsModel,
   midiControllerModel,
   ...sdrModels,
   ...greenHeronModels,

@@ -279,6 +279,14 @@ abstract class RotatorSink {
   void reportRotator(RotatorPosition position);
 }
 
+/// Where a GPS receiver's session reports its fix — a sink of its own, as
+/// [RotatorSink] is.
+abstract class GpsSink {
+  /// What the receiver said, each time it says it — a fix, or that it has
+  /// none yet.
+  void reportGps(GpsReading reading);
+}
+
 /// An SO2R switcher: the box that routes two radios to one operator's
 /// headphones (docs/design/cat.md § The SO2R switcher). Audio only, for now.
 abstract class So2rSwitchSession implements EquipmentSession {

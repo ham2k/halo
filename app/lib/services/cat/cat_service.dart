@@ -97,6 +97,7 @@ part 'cat_k4.dart';
 part 'cat_credentials.dart';
 part 'cat_everyware.dart';
 part 'cat_devices.dart';
+part 'cat_gps.dart';
 
 /// Bump when the stored shape changes in a way a reader has to know about.
 ///
@@ -228,7 +229,7 @@ String uniqueEquipmentName(String base, Iterable<String> taken) {
 }
 
 class CatService extends ChangeNotifier
-    with _NodeVfos, _RadioControls, _Discovery, _VfoSnap, _PeerOffers, _KeyingSurface, _So2r, _So2rAudio, _Positions, _Capabilities
+    with _NodeVfos, _RadioControls, _Discovery, _VfoSnap, _PeerOffers, _KeyingSurface, _So2r, _So2rAudio, _Positions, _Capabilities, _Gps
     implements PeerStationRadios, KeyingStation {
   @override
   final SettingsService _settings;
@@ -427,8 +428,8 @@ class CatService extends ChangeNotifier
       if (_autoConnectTargets.contains(uuid)) ?_nodes[uuid],
   ];
 
-  /// The nodes an automatic reconnect aims at: radio1 and radio2, and the key
-  /// in use when it is a device of its own. All are what the app depends on,
+  /// The nodes an automatic reconnect aims at: radio1 and radio2, the key in
+  /// use when it is a device of its own, the GPS receiver. All the app needs,
   /// and none should wait for a button. A K4 also restores the logical
   /// receivers sharing either radio's physical connection.
   Set<String> get _autoConnectTargets {
@@ -436,6 +437,7 @@ class CatService extends ChangeNotifier
       ?_localRadio1,
       ?radio2,
       ?_so2rSwitchNode,
+      ?gpsReceiver,
       ..._k4SiblingIds(_localRadio1),
       ..._k4SiblingIds(radio2),
       for (final keyer in {designatedFor(kCategoryKey), if (radio2 != null) designatedFor(kCategoryKey, radio: radio2)})
@@ -856,6 +858,7 @@ class CatService extends ChangeNotifier
     ..._positions.toJson(),
     ..._legacyKeys(),
     'so2rSwitch': _so2rSwitch,
+    'gpsSource': _gpsSource,
     'nodes': {for (final node in _nodes.values) node.uuid: _storedNode(node)},
     if (_forwarded.isNotEmpty) 'forwarded': _forwarded,
   });
@@ -934,6 +937,7 @@ class CatService extends ChangeNotifier
       // antenna's reason: only a radio of this station's, since neither a
       // peer's nor "no radio" has a spectrum here for it to stand in for.
       if (category == kCategorySdr && _radio1 is LocalRadio) _designateNow(kCapabilityScope, stored.uuid);
+      if (category == kCategoryGps) _gpsReceiverAdded(stored.uuid);
       // A remote K4 is both its receivers.
       if (_isK4Remote(stored)) _settleDeviceIds();
     });
@@ -1087,6 +1091,7 @@ class CatService extends ChangeNotifier
     // off a radio that is going with it — and a keyer that is NOT the node
     // being removed goes on sending regardless.
     _withKeyInUseTidied(() {
+      _gpsReceiverRemoving(uuid);
       _nodes.remove(uuid);
       final removed = _runtimes.remove(uuid);
       removed?.cancelSdrTimers();

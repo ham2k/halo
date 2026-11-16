@@ -4581,6 +4581,72 @@ the ring against a tone the package's host build writes.
 An RTL-SDR has no USB path: librtlsdr is GPL-2.0, and a sandboxed macOS app
 cannot load a copy the operator installed.
 
+## GPS receivers
+
+A USB GPS dongle or a serial puck — a VFAN UG-353, a GlobalSat BU-353, anything built on a u-blox
+or SiRF chip — is a Station Configuration node of its own category, `gpsReceiver`, on the serial
+transport. None of the desktop operating systems hands such a receiver's position to an app:
+Windows' location service reads only receivers that ship a sensor driver for it, macOS's never reads
+an external one, and Linux's GeoClue needs configuring by hand. Each shows up as a plain serial
+port (`COM3`, `/dev/cu.usbmodem…`, `/dev/ttyACM0`), which the CAT layer already knows how to open
+on every desktop platform, on Android, and through Web Serial in a Chromium browser.
+
+**The wire is NMEA 0183** (`drivers/nmea_codec.dart`, one parse per line): a receiver streams text
+sentences once a second from the moment the port opens, and the session only listens. Two sentences are read, GGA
+and RMC, from any talker — a multi-constellation receiver reports its combined fix as `GN`, not
+`GP`. GGA's quality 0 and RMC's status `V` are "no fix", reported as a reading with no position
+rather than as silence: a receiver indoors is still there, and says so every second. A receiver
+claiming a fix whose position does not read is dropped instead — reported as "searching", it would
+send the operator outdoors for a fix the receiver already has. A sentence without a matching
+checksum is dropped, since a lost digit moves the station hundreds of kilometres, and every
+receiver sends one. Every well-formed sentence counts as the receiver being alive, GSV and GSA
+included; a device on the wrong port printing lines of its own goes "not responding".
+
+**Accuracy is the receiver's HDOP times 5 m** (`gpsRangeErrorMetres`), two HDOP for a receiver that
+has not said. Conservative on purpose: the setup sheet keeps the most accurate fix it sees and
+refuses one vaguer than 500 m ([locations.md](locations.md)), so a receiver claiming better than
+it is would outrank a fix that really was. A receiver that sends GGA is read from GGA alone: RMC
+carries no HDOP, and reading both would report twice a second, the RMC with the previous second's
+satellites. RMC answers only for a receiver set to send nothing else.
+
+**Which source places the station is the station's pick, not a radio's** (`cat_gps.dart`). With
+a receiver configured, Current Configuration shows a Location From line offering each receiver and
+the operating system's own service, named as the operator knows it on that platform ("Windows
+Location Services", "macOS Location Services"…). Unanswered, the first receiver is picked, and
+the newest receiver set up takes over from an earlier pick, the operating system included —
+setting one up is the operator saying where the fix should come from. The picked receiver is an
+automatic connection target, like the radio in use, and the only one kept connected: picking
+another source, or setting up a new receiver, lets the old one go (not as the operator's
+Disconnect), so its serial port is free for gpsd or another program; the new pick is connected
+at once, even one the operator had disconnected (picking it is asking for it), and removing the
+picked one connects whichever takes over.
+
+**A connected receiver outranks the operating system rather than backing it up.**
+`GpsReceiverFeed` hands the picked receiver's state to `LocationService.setReceiver`, which closes
+the OS stream and stops asking for its permission while one is set. Connected with no fix reads
+`determining`: falling back to the OS there would put a Wi-Fi estimate on screen every time the
+receiver is indoors. A receiver that is not connected, or has gone quiet behind a port still open,
+is no receiver, and the operating system answers again — unplugged, or not reconnected after a web
+page load (the web reconnects nothing on its own), it would otherwise leave the station unlocated
+with a working location service right there. That return opens the OS stream without asking for
+permission: it is the receiver going, not the operator asking for a fix, and the listener may be
+peer sharing, which never prompts. The stale mark clears the reading, so the first sentence after
+a silence cannot serve the old fix as new, and an `available` from a receiver is always a live
+one: the setup sheet's capture rule holds unchanged. The Location screen names the receiver its fix
+comes from.
+
+**Readings are filtered where they arrive** (`gpsReadingSupersedes`, in `onGps`): a fix gained or
+lost, a move of 50 m — the OS stream's own `distanceFilter` — a more accurate fix wherever it is,
+or a search's satellite count changing. A receiver standing still wanders a few metres every
+second, and each report would wake every listener of the station, re-run the nearby search and go
+out to paired devices; accuracy counts so the setup sheet still sees a receiver's fix improve as it
+settles.
+
+Android offers receivers too, through USB OTG like a radio's serial cable, and one picked there
+replaces the phone's own GPS, by the same rule. iOS has no serial transport, so no receiver. Not
+yet: `gpsd` and NMEA over TCP or UDP, which a Linux machine running `gpsd` (it holds the device) or
+a phone sharing its GPS would need.
+
 ## MIDI controllers
 
 Behind `EXP MIDI` (private). A knob box, DJ controller or footswitch is a Station Configuration

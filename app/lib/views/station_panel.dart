@@ -12,6 +12,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -1004,10 +1005,11 @@ class StationPanel extends StatelessWidget {
               ),
           ],
         ];
-        // The operator's, under both sets: what puts the two radios in the
-        // headphones.
+        // The operator's and the station's, under both sets: what puts the
+        // two radios in the headphones, and where the station is.
         final operatorLines = [
           if (radio2 != null && (_cat.so2rSwitchNodes.isNotEmpty || _cat.so2rAudioRadio != null)) _so2rSwitchLine(context, inset: detailsInset),
+          if (_cat.gpsReceiverNodes.isNotEmpty) _gpsSourceLine(context, inset: detailsInset),
         ];
 
         return StationExpansionScope(

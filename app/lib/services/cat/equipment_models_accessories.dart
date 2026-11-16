@@ -16,6 +16,7 @@ import 'drivers/rotctld_driver.dart';
 import 'drivers/winkeyer_driver.dart';
 import 'drivers/key_driver.dart';
 import 'drivers/midi_controller_driver.dart';
+import 'drivers/nmea_gps_driver.dart';
 import 'drivers/otrsp_driver.dart';
 import 'drivers/sierra_coax_driver.dart';
 import 'drivers/simulated_rotator_driver.dart';
@@ -302,6 +303,22 @@ const midiControllerModel = EquipmentModel(
 );
 
 String _midiControllerModelName() => t.settings.station.models.midiController;
+
+/// Any GPS receiver speaking NMEA over a serial (USB) port — see
+/// nmea_gps_driver.dart. 9600 baud is a prefill rather than an override: it
+/// is what the u-blox dongles most of these are built on send, but a SiRF
+/// puck sends 4800 and some receivers are set faster, so the picker stays.
+const nmeaGpsModel = EquipmentModel(
+  key: 'nmea-gps',
+  category: kCategoryGps,
+  name: _nmeaGpsModelName,
+  hiddenFromCatalog: true,
+  variants: [
+    EquipmentVariant(key: 'nmea-gps-serial', driver: NmeaGpsDriver(), transport: SerialTransport(), defaultConfig: {'baudRate': 9600}),
+  ],
+);
+
+String _nmeaGpsModelName() => t.settings.station.models.nmeaGps;
 
 /// A K1EL Winkeyer over its own serial (USB) port — see winkeyer_driver.dart.
 /// Offered from the Add dialog's "Other Equipment" rows beside a plain key,

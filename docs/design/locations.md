@@ -185,6 +185,10 @@ a metre (`gpsLocationData`), and the grid beside it is the rounded point's at
 Grid Precision. Device GPS on the Location screen stores a fix the same way,
 and offers one only while the service is `available`.
 
+"The device's position" is the station's GPS receiver where one is picked
+([cat.md § GPS receivers](cat.md#gps-receivers)) and the operating system's
+otherwise. Either is a `gps` location, captured by the same rules.
+
 A device's first answer is often its worst — a cached position, a Wi-Fi or
 IP estimate — so while the sheet stays open, the fix that session captured
 is replaced by any more accurate one, and a fix vaguer than 500 m is never

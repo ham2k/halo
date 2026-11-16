@@ -44,6 +44,7 @@ extension _EquipmentStore on CatService {
       _moveSdrLinks();
     }
     if (stored['so2rSwitch'] case final String pick when pick == so2rSwitchRadios || _nodes.containsKey(pick)) _so2rSwitch = pick;
+    if (stored['gpsSource'] case final String pick when pick == gpsSourceSystem || _nodes.containsKey(pick)) _gpsSource = pick;
   }
 
   /// A blob written before positions existed: which radio drove `vfoA`, SO2R's

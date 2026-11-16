@@ -362,13 +362,22 @@ extension _EditorAnnotations on StationPanel {
   }
 
   /// What the equipment itself has said, in a line: a radio's mode and
-  /// frequency, where a rotator points, what a switch routes, how many
-  /// devices a server carries. Null before it has said any of it.
+  /// frequency, where a rotator points, where a GPS receiver is or that it
+  /// is still searching, what a switch routes, how many devices a server
+  /// carries. Null before it has said any of it.
   String? _liveSummary(BuildContext context, EquipmentNode node, EquipmentState state) {
     final st = context.t.settings.station;
     final vfo = state.vfo;
     if (vfo.freqKHz != null || vfo.mode != null) return [?vfo.mode, if (vfo.freqKHz case final khz?) fmtFreq(khz)].join('  ');
     if (state.rotator case final position?) return _rotatorReading(st, position, elevation: rotatorHasElevation(node.config), short: false);
+    if (state.gps case final gps?) {
+      final satellites = gps.satellites == null ? null : st.gpsSatellites(count: gps.satellites!);
+      if (gps.hasFix) {
+        final grid = gridForLocation(gps.latitude!, gps.longitude!);
+        return satellites == null ? grid : st.gpsFix(grid: grid, satellites: satellites);
+      }
+      return satellites == null ? st.gpsSearching : st.gpsSearchingWith(satellites: satellites);
+    }
     if (state.switchPorts.isNotEmpty) {
       return [
         for (final port in state.switchPorts)

@@ -1237,6 +1237,7 @@ class _Translations$operationLocationScreen$qro extends Translations$operationLo
 	@override String get suggestedLocations => 'SUGGESTED LOCATIONS';
 	@override String get deviceGps => 'DEVICE GPS';
 	@override String peerGps({required Object device}) => 'GPS FROM ${device}';
+	@override String receiverGps({required Object receiver}) => 'GPS FROM ${receiver}';
 	@override String get locating => 'LOCATING…';
 	@override String get gpsUnavailable => 'LOCATION UNAVAILABLE';
 	@override String get permissionDenied => 'LOCATION PERMISSION DENIED';
@@ -3208,6 +3209,8 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} IS ON ANOTHER DEVICE';
 	@override String peerRadioElsewhereMessage({required Object device}) => 'THIS RADIO IS CONNECTED TO ${device}. ITS CONNECTION AND SETTINGS ARE CONFIGURED ON THAT DEVICE.';
 	@override String get antennaInUse => 'ANTENNA IN USE';
+	@override String get locationFrom => 'LOCATION FROM';
+	@override late final _Translations$settings$station$systemLocation$qro systemLocation = _Translations$settings$station$systemLocation$qro._(_root);
 	@override String get scopeInUse => 'SPECTRUM FROM';
 	@override String get scopeRadiosOwn => 'THE RADIO\'S OWN SCOPE';
 	@override String get keyInUse => 'CW KEYING';
@@ -3269,6 +3272,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get newKey => 'NEW KEY';
 	@override String get newKeyer => 'WINKEYER (K1EL OR COMPATIBLE)';
 	@override String get newMidiController => 'MIDI CONTROLLER';
+	@override String get newGpsReceiver => 'GPS RECEIVER (USB OR SERIAL)';
 	@override late final _Translations$settings$station$midi$qro midi = _Translations$settings$station$midi$qro._(_root);
 	@override String keyViaRadio({required Object radio}) => 'CAT KEYER IN ${radio}';
 	@override String keyOnDevice({required Object device}) => 'KEY ON ${device}';
@@ -3401,6 +3405,13 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String connectionDevices({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
 		one: '${count} DEVICE',
 		other: '${count} DEVICES',
+	);
+	@override String gpsFix({required Object grid, required Object satellites}) => '${grid} · ${satellites}';
+	@override String get gpsSearching => 'SEARCHING FOR SATELLITES';
+	@override String gpsSearchingWith({required Object satellites}) => 'SEARCHING · ${satellites}';
+	@override String gpsSatellites({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} SATELLITE',
+		other: '${count} SATELLITES',
 	);
 	@override String get everywareUser => 'USER';
 	@override String get everywareUserDescription => 'ONLY WHEN THE SERVER ASKS FOR A LOGIN. LEAVE IT BLANK OTHERWISE.';
@@ -4901,6 +4912,7 @@ class _Translations$settings$station$models$qro extends Translations$settings$st
 	@override String get key => 'CW KEY';
 	@override String get midiController => 'MIDI CONTROLLER';
 	@override String get winkeyer => 'WINKEYER';
+	@override String get nmeaGps => 'GPS RECEIVER';
 	@override String get placeholderRadio => 'SIMULATED RADIO';
 	@override String get placeholderRadioNodeName => 'SIMULATED RADIO';
 	@override String get simulatedRotator => 'SIMULATED ROTATOR';
@@ -4945,6 +4957,20 @@ class _Translations$settings$station$transports$qro extends Translations$setting
 	@override String get placeholder => 'PLACEHOLDER';
 	@override String get usb => 'USB';
 	@override String get everywareServer => 'THROUGH ITS EVERYWARE SERVER';
+}
+
+// Path: settings.station.systemLocation
+class _Translations$settings$station$systemLocation$qro extends Translations$settings$station$systemLocation$en {
+	_Translations$settings$station$systemLocation$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get windows => 'WINDOWS LOCATION SERVICES';
+	@override String get macos => 'MACOS LOCATION SERVICES';
+	@override String get linux => 'LINUX LOCATION SERVICES';
+	@override String get browser => 'BROWSER LOCATION';
+	@override String get device => 'DEVICE LOCATION';
 }
 
 // Path: settings.station.antennaTypes
@@ -7259,6 +7285,7 @@ extension on TranslationsQro {
 			'settings.station.models.key' => 'CW KEY',
 			'settings.station.models.midiController' => 'MIDI CONTROLLER',
 			'settings.station.models.winkeyer' => 'WINKEYER',
+			'settings.station.models.nmeaGps' => 'GPS RECEIVER',
 			'settings.station.models.placeholderRadio' => 'SIMULATED RADIO',
 			'settings.station.models.placeholderRadioNodeName' => 'SIMULATED RADIO',
 			'settings.station.models.simulatedRotator' => 'SIMULATED ROTATOR',
@@ -7365,6 +7392,12 @@ extension on TranslationsQro {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} IS ON ANOTHER DEVICE',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'THIS RADIO IS CONNECTED TO ${device}. ITS CONNECTION AND SETTINGS ARE CONFIGURED ON THAT DEVICE.',
 			'settings.station.antennaInUse' => 'ANTENNA IN USE',
+			'settings.station.locationFrom' => 'LOCATION FROM',
+			'settings.station.systemLocation.windows' => 'WINDOWS LOCATION SERVICES',
+			'settings.station.systemLocation.macos' => 'MACOS LOCATION SERVICES',
+			'settings.station.systemLocation.linux' => 'LINUX LOCATION SERVICES',
+			'settings.station.systemLocation.browser' => 'BROWSER LOCATION',
+			'settings.station.systemLocation.device' => 'DEVICE LOCATION',
 			'settings.station.scopeInUse' => 'SPECTRUM FROM',
 			'settings.station.scopeRadiosOwn' => 'THE RADIO\'S OWN SCOPE',
 			'settings.station.keyInUse' => 'CW KEYING',
@@ -7438,6 +7471,7 @@ extension on TranslationsQro {
 			'settings.station.newKey' => 'NEW KEY',
 			'settings.station.newKeyer' => 'WINKEYER (K1EL OR COMPATIBLE)',
 			'settings.station.newMidiController' => 'MIDI CONTROLLER',
+			'settings.station.newGpsReceiver' => 'GPS RECEIVER (USB OR SERIAL)',
 			'settings.station.midi.name' => 'NAME',
 			'settings.station.midi.device' => 'DEVICE',
 			'settings.station.midi.deviceNone' => 'CHOOSE A DEVICE',
@@ -7634,6 +7668,10 @@ extension on TranslationsQro {
 			'settings.station.rotctldTroubleshooting' => 'THIS CONNECTS TO A **ROTCTLD DAEMON YOU RUN YOURSELF**, NOT TO THE ROTATOR DIRECTLY — HAMLIB\'S BACKEND TALKS TO THE CONTROLLER AND SUPPORTS MOST OF THEM.\n\n- **THE DAEMON MUST ALREADY BE RUNNING**, E.G. `rotctld -m 601 -r /dev/ttyUSB0` FOR A GS-232A. FIND YOUR CONTROLLER\'S MODEL NUMBER WITH `rotctl -l`.\n- **FROM ANOTHER MACHINE**, ALLOW PORT 4533 THROUGH THAT MACHINE\'S FIREWALL. ROTCTLD LISTENS ON EVERY ADDRESS UNLESS STARTED WITH `-T`.\n- **PORT** IS 4533 UNLESS YOU STARTED THE DAEMON WITH `-t`.\n- **PSTROTATOR** ANSWERS TOO, WITH **GPREDICT** SELECTED AS ITS TRACKER AND TRACKING ON.\n- TURNS GO ONLY AS FAR AS THE LIMITS ROTCTLD ENFORCES, WHICH IT REPORTS ITSELF — SET THEM WITH `-C min_az=…,max_az=…` WHEN STARTING IT. THE OFFSETS HERE ARE FOR A CONTROLLER WHOSE ZERO IS NOT TRUE NORTH.',
 			'settings.station.connectionRouted' => ({required Object port, required Object antenna}) => '${port}: ${antenna}',
 			'settings.station.connectionDevices' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} DEVICE', other: '${count} DEVICES', ), 
+			'settings.station.gpsFix' => ({required Object grid, required Object satellites}) => '${grid} · ${satellites}',
+			'settings.station.gpsSearching' => 'SEARCHING FOR SATELLITES',
+			'settings.station.gpsSearchingWith' => ({required Object satellites}) => 'SEARCHING · ${satellites}',
+			'settings.station.gpsSatellites' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} SATELLITE', other: '${count} SATELLITES', ), 
 			'settings.station.everywareUser' => 'USER',
 			'settings.station.everywareUserDescription' => 'ONLY WHEN THE SERVER ASKS FOR A LOGIN. LEAVE IT BLANK OTHERWISE.',
 			'settings.station.everywarePassword' => 'PASSWORD',
@@ -7723,6 +7761,8 @@ extension on TranslationsQro {
 			'settings.developer.trackStable' => 'STABLE',
 			'settings.developer.trackUnstable' => 'UNSTABLE',
 			'settings.developer.trackBleeding' => 'BLEEDING',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.checkingTrack' => ({required Object track}) => 'CHECKING "${track}" FOR A CODE PUSH…',
 			'settings.developer.patchDownloaded' => 'CODE PUSH DOWNLOADED — RESTART THE APP TO APPLY IT.',
 			'settings.developer.noNewPatch' => ({required Object track}) => 'NO NEW CODE PUSH ON "${track}".',
@@ -7735,8 +7775,6 @@ extension on TranslationsQro {
 			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => 'COULD NOT REGISTER: ${error}',
 			'settings.developer.diagnostics' => 'DIAGNOSTICS',
 			'settings.developer.importExport' => 'IMPORT / EXPORT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.systemInformation' => 'SYSTEM INFORMATION',
 			'settings.developer.appVersion' => 'APP VERSION',
 			'settings.developer.dataFolder' => 'DATA FOLDER',
@@ -8120,6 +8158,7 @@ extension on TranslationsQro {
 			'operationLocationScreen.suggestedLocations' => 'SUGGESTED LOCATIONS',
 			'operationLocationScreen.deviceGps' => 'DEVICE GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS FROM ${device}',
+			'operationLocationScreen.receiverGps' => ({required Object receiver}) => 'GPS FROM ${receiver}',
 			'operationLocationScreen.locating' => 'LOCATING…',
 			'operationLocationScreen.gpsUnavailable' => 'LOCATION UNAVAILABLE',
 			'operationLocationScreen.permissionDenied' => 'LOCATION PERMISSION DENIED',
@@ -8236,6 +8275,8 @@ extension on TranslationsQro {
 			'adifImport.newContacts' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} NEW CONTACT', other: '${formatted} NEW CONTACTS', ), 
 			'adifImport.merging' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} WILL MERGE WITH AN EXISTING CONTACT', other: '${formatted} WILL MERGE WITH EXISTING CONTACTS', ), 
 			'adifImport.unusable' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} CANNOT BE IMPORTED (NO CALLSIGN)', other: '${formatted} CANNOT BE IMPORTED (NO CALLSIGN)', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} NEEDS A CLOSER LOOK', other: '${formatted} NEED A CLOSER LOOK', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'REFERENCES COULD NOT BE RECOVERED FOR ${count} CONTACT', other: 'REFERENCES COULD NOT BE RECOVERED FOR ${formatted} CONTACTS', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${programs} REFERENCES MAY BE INCOMPLETE FOR ${count} CONTACT', other: '${programs} REFERENCES MAY BE INCOMPLETE FOR ${formatted} CONTACTS', ), 
@@ -8249,8 +8290,6 @@ extension on TranslationsQro {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'WARNING: THIS ADIF HAS QSOS FROM ${calls}, BUT THEY WILL BE IMPORTED AS ${station} IF YOU CONTINUE.',
 			'adifImport.stationCallJoin' => ' AND ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} HAS NO DATE AND CANNOT BE IMPORTED', other: '${formatted} HAVE NO DATE AND CANNOT BE IMPORTED', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.activationFound' => ({required Object refs}) => 'THIS FILE RECORDS AN ACTIVATION OF ${refs}.',
 			'adifImport.addActivation' => 'ADD IT TO THIS OPERATION',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'ONLY ${written} OF ${planned} COULD BE APPLIED — THE LOG CHANGED WHILE YOU WERE DECIDING.',

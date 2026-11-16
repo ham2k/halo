@@ -2456,6 +2456,7 @@
         "key": "CW Key",
         "midiController": "MIDI Controller",
         "winkeyer": "WinKeyer",
+        "nmeaGps": "GPS Receiver",
         "placeholderRadio": "Simulated Radio",
         "placeholderRadioNodeName": "Simulated Radio",
         "simulatedRotator": "Simulated Rotator",
@@ -2575,6 +2576,14 @@
       "peerRadioElsewhereTitle": "${radio} is on another device",
       "peerRadioElsewhereMessage": "This radio is connected to ${device}. Its connection and settings are configured on that device.",
       "antennaInUse": "Antenna in Use",
+      "locationFrom": "Location From",
+      "systemLocation": {
+        "windows": "Windows Location Services",
+        "macos": "macOS Location Services",
+        "linux": "Linux Location Services",
+        "browser": "Browser Location",
+        "device": "Device Location"
+      },
       "scopeInUse": "Spectrum From",
       "scopeRadiosOwn": "The radio's own scope",
       "keyInUse": "CW Keying",
@@ -2652,6 +2661,7 @@
       "newKey": "New Key",
       "newKeyer": "WinKeyer (K1EL or compatible)",
       "newMidiController": "MIDI Controller",
+      "newGpsReceiver": "GPS Receiver (USB or Serial)",
       "midi": {
         "name": "Name",
         "device": "Device",
@@ -2860,6 +2870,13 @@
       "connectionDevices": {
         "one": "${count} device",
         "other": "${count} devices"
+      },
+      "gpsFix": "${grid} · ${satellites}",
+      "gpsSearching": "Searching for satellites",
+      "gpsSearchingWith": "Searching · ${satellites}",
+      "gpsSatellites": {
+        "one": "${count} satellite",
+        "other": "${count} satellites"
       },
       "everywareUser": "User",
       "everywareUserDescription": "Only when the server asks for a login. Leave it blank otherwise.",
@@ -3431,6 +3448,7 @@
     "suggestedLocations": "Suggested Locations",
     "deviceGps": "Device GPS",
     "peerGps": "GPS from ${device}",
+    "receiverGps": "GPS from ${receiver}",
     "locating": "Locating…",
     "gpsUnavailable": "Location unavailable",
     "permissionDenied": "Location permission denied",

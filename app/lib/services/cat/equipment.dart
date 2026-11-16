@@ -71,6 +71,12 @@ const kCategoryStationController = 'stationController';
 /// controllers). Nothing in CAT connects to it: MidiService binds its device.
 const kCategoryMidi = 'midiController';
 
+/// A GPS receiver — a USB dongle or a serial puck speaking NMEA — that
+/// places the station where the operating system cannot
+/// (docs/design/cat.md § GPS receivers). Its state is the fix, live and never
+/// persisted, like a rotator's heading.
+const kCategoryGps = 'gpsReceiver';
+
 /// Old [EquipmentNode.typeKey] values, mapped to what the catalogue calls
 /// them now.
 ///
@@ -617,6 +623,58 @@ class RotatorPosition {
   String toString() => 'RotatorPosition($azimuth${elevation == null ? '' : '/$elevation'}${beamWidth == null ? '' : ' ±${beamWidth! ~/ 2}'})';
 }
 
+/// What a GPS receiver last said about where it is — see [GpsSink].
+///
+/// [latitude] and [longitude] are null while it has no fix: a receiver
+/// indoors talks every second and places nothing, and that is worth showing
+/// as "searching" rather than as a receiver that has gone quiet.
+@immutable
+class GpsReading {
+  final double? latitude;
+  final double? longitude;
+
+  /// Horizontal dilution of precision — the receiver's own figure for how
+  /// well its satellites pin the position down. Null when it has not said.
+  final double? hdop;
+
+  /// Satellites used in the fix. Null when the receiver has not said.
+  final int? satellites;
+
+  /// Metres above mean sea level. Null when the receiver has not said.
+  final double? altitude;
+
+  const GpsReading({this.latitude, this.longitude, this.hdop, this.satellites, this.altitude});
+
+  bool get hasFix => latitude != null && longitude != null;
+
+  /// A horizontal accuracy, in metres, for a receiver that states no error
+  /// estimate of its own: [hdop] times [gpsRangeErrorMetres], and two of
+  /// them for a receiver that has not said its HDOP either.
+  double get accuracyMetres => (hdop ?? 2) * gpsRangeErrorMetres;
+
+  @override
+  bool operator ==(Object other) =>
+      other is GpsReading &&
+      other.latitude == latitude &&
+      other.longitude == longitude &&
+      other.hdop == hdop &&
+      other.satellites == satellites &&
+      other.altitude == altitude;
+
+  @override
+  int get hashCode => Object.hash(latitude, longitude, hdop, satellites, altitude);
+
+  @override
+  String toString() => 'GpsReading(${hasFix ? '$latitude,$longitude' : 'no fix'}, hdop $hdop, $satellites sats)';
+}
+
+/// The range error a consumer GPS is usually quoted at, in metres: what one
+/// unit of HDOP costs in horizontal accuracy. Conservative on purpose — the
+/// location rules keep the MOST accurate fix they see and refuse a vague one
+/// (docs/design/locations.md), so a receiver claiming better than it is would
+/// outrank a fix that really was.
+const double gpsRangeErrorMetres = 5;
+
 /// How close, in degrees, a rotator's azimuth has to come to its target to
 /// count as there. Controllers coast and settle a degree or two short, and
 /// report whole degrees; a target held until it is hit exactly could be held
@@ -744,6 +802,10 @@ class EquipmentState {
   /// everything that is not a rotator, and for one that has not said yet.
   final RotatorPosition? rotator;
 
+  /// What a GPS receiver last said — see [GpsReading]. Null for everything
+  /// that is not a GPS receiver, and for one that has not said yet.
+  final GpsReading? gps;
+
   /// Where a rotator was last told to turn to, in true degrees, until it gets
   /// there ([rotatorArrived]), is stopped, or stands still short of it for
   /// [rotatorStalledAfterReadings]. Null when it was not told, so a heading
@@ -782,6 +844,7 @@ class EquipmentState {
     this.switchAntennas = const [],
     this.switchPorts = const [],
     this.rotator,
+    this.gps,
     this.rotatorTarget,
     this.voiceMemories,
     this.spectrum,
@@ -811,6 +874,8 @@ class EquipmentState {
     List<SwitchAntenna>? switchAntennas,
     List<SwitchPort>? switchPorts,
     RotatorPosition? rotator,
+    GpsReading? gps,
+    bool clearGps = false,
     RotatorPosition? rotatorTarget,
     bool clearRotatorTarget = false,
     List<VoiceMemory>? voiceMemories,
@@ -843,6 +908,7 @@ class EquipmentState {
     switchAntennas: switchAntennas ?? this.switchAntennas,
     switchPorts: switchPorts ?? this.switchPorts,
     rotator: rotator ?? this.rotator,
+    gps: clearGps ? null : (gps ?? this.gps),
     rotatorTarget: clearRotatorTarget ? null : (rotatorTarget ?? this.rotatorTarget),
     voiceMemories: voiceMemories ?? this.voiceMemories,
     spectrum: clearSpectrum ? null : (spectrum ?? this.spectrum),

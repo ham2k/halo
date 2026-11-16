@@ -290,6 +290,9 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   // The FYI area's SWR message, for whichever radio connects below or later.
   services.swrWatch.start();
   services.styleWatch.start();
+  // Before the reconnect too, so the receiver's first fix reaches the
+  // location service as the receiver connects.
+  services.gpsReceiverFeed.start();
   watchSyncPurchases(services);
 
   // Reconnect the designated radio (docs/design/cat.md). Not awaited: the

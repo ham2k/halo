@@ -1237,6 +1237,7 @@ class _Translations$operationLocationScreen$cw extends Translations$operationLoc
 	@override String get suggestedLocations => '··· ··— ——· ——· · ··· — · —·· / ·—·· ——— —·—· ·— — ·· ——— —· ···';
 	@override String get deviceGps => '—·· · ···— ·· —·—· · / ——· ·——· ···';
 	@override String peerGps({required Object device}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${device}';
+	@override String receiverGps({required Object receiver}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${receiver}';
 	@override String get locating => '·—·· ——— —·—· ·— — ·· —· ——· …';
 	@override String get gpsUnavailable => '·—·· ——— —·—· ·— — ·· ——— —· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·';
 	@override String get permissionDenied => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —·· · —· ·· · —··';
@@ -3208,6 +3209,8 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} / ·· ··· / ——— —· / ·— —· ——— — ···· · ·—· / —·· · ···— ·· —·—· ·';
 	@override String peerRadioElsewhereMessage({required Object device}) => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ·· ··· / —·—· ——— —· —· · —·—· — · —·· / — ——— / ${device} ·—·—·— / ·· — ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— —· —·· / ··· · — — ·· —· ——· ··· / ·— ·—· · / —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· / ——— —· / — ···· ·— — / —·· · ···— ·· —·—· · ·—·—·—';
 	@override String get antennaInUse => '·— —· — · —· —· ·— / ·· —· / ··— ··· ·';
+	@override String get locationFrom => '·—·· ——— —·—· ·— — ·· ——— —· / ··—· ·—· ——— ——';
+	@override late final _Translations$settings$station$systemLocation$cw systemLocation = _Translations$settings$station$systemLocation$cw._(_root);
 	@override String get scopeInUse => '··· ·——· · —·—· — ·—· ··— —— / ··—· ·—· ——— ——';
 	@override String get scopeRadiosOwn => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ——— ·—— —· / ··· —·—· ——— ·——· ·';
 	@override String get keyInUse => '—·—· ·—— / —·— · —·—— ·· —· ——·';
@@ -3269,6 +3272,7 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get newKey => '—· · ·—— / —·— · —·——';
 	@override String get newKeyer => '·—— ·· —· —·— · —·—— · ·—· / —·——· —·— ·———— · ·—·· / ——— ·—· / —·—· ——— —— ·——· ·— — ·· —··· ·—·· · —·——·—';
 	@override String get newMidiController => '—— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·';
+	@override String get newGpsReceiver => '——· ·——· ··· / ·—· · —·—· · ·· ···— · ·—· / —·——· ··— ··· —··· / ——— ·—· / ··· · ·—· ·· ·— ·—·· —·——·—';
 	@override late final _Translations$settings$station$midi$cw midi = _Translations$settings$station$midi$cw._(_root);
 	@override String keyViaRadio({required Object radio}) => '—·—· ·— — / —·— · —·—— · ·—· / ·· —· / ${radio}';
 	@override String keyOnDevice({required Object device}) => '—·— · —·—— / ——— —· / ${device}';
@@ -3401,6 +3405,13 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String connectionDevices({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
 		one: '${count} / —·· · ···— ·· —·—· ·',
 		other: '${count} / —·· · ···— ·· —·—· · ···',
+	);
+	@override String gpsFix({required Object grid, required Object satellites}) => '${grid} / · / ${satellites}';
+	@override String get gpsSearching => '··· · ·— ·—· —·—· ···· ·· —· ——· / ··—· ——— ·—· / ··· ·— — · ·—·· ·—·· ·· — · ···';
+	@override String gpsSearchingWith({required Object satellites}) => '··· · ·— ·—· —·—· ···· ·· —· ——· / · / ${satellites}';
+	@override String gpsSatellites({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '${count} / ··· ·— — · ·—·· ·—·· ·· — ·',
+		other: '${count} / ··· ·— — · ·—·· ·—·· ·· — · ···',
 	);
 	@override String get everywareUser => '··— ··· · ·—·';
 	@override String get everywareUserDescription => '——— —· ·—·· —·—— / ·—— ···· · —· / — ···· · / ··· · ·—· ···— · ·—· / ·— ··· —·— ··· / ··—· ——— ·—· / ·— / ·—·· ——— ——· ·· —· ·—·—·— / ·—·· · ·— ···— · / ·· — / —··· ·—·· ·— —· —·— / ——— — ···· · ·—· ·—— ·· ··· · ·—·—·—';
@@ -4901,6 +4912,7 @@ class _Translations$settings$station$models$cw extends Translations$settings$sta
 	@override String get key => '—·—· ·—— / —·— · —·——';
 	@override String get midiController => '—— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·';
 	@override String get winkeyer => '·—— ·· —· —·— · —·—— · ·—·';
+	@override String get nmeaGps => '——· ·——· ··· / ·—· · —·—· · ·· ···— · ·—·';
 	@override String get placeholderRadio => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ·— —·· ·· ———';
 	@override String get placeholderRadioNodeName => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ·— —·· ·· ———';
 	@override String get simulatedRotator => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ——— — ·— — ——— ·—·';
@@ -4945,6 +4957,20 @@ class _Translations$settings$station$transports$cw extends Translations$settings
 	@override String get placeholder => '·——· ·—·· ·— —·—· · ···· ——— ·—·· —·· · ·—·';
 	@override String get usb => '··— ··· —···';
 	@override String get everywareServer => '— ···· ·—· ——— ··— ——· ···· / ·· — ··· / · ···— · ·—· —·—— ·—— ·— ·—· · / ··· · ·—· ···— · ·—·';
+}
+
+// Path: settings.station.systemLocation
+class _Translations$settings$station$systemLocation$cw extends Translations$settings$station$systemLocation$en {
+	_Translations$settings$station$systemLocation$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get windows => '·—— ·· —· —·· ——— ·—— ··· / ·—·· ——— —·—· ·— — ·· ——— —· / ··· · ·—· ···— ·· —·—· · ···';
+	@override String get macos => '—— ·— —·—· ——— ··· / ·—·· ——— —·—· ·— — ·· ——— —· / ··· · ·—· ···— ·· —·—· · ···';
+	@override String get linux => '·—·· ·· —· ··— —··— / ·—·· ——— —·—· ·— — ·· ——— —· / ··· · ·—· ···— ·· —·—· · ···';
+	@override String get browser => '—··· ·—· ——— ·—— ··· · ·—· / ·—·· ——— —·—· ·— — ·· ——— —·';
+	@override String get device => '—·· · ···— ·· —·—· · / ·—·· ——— —·—· ·— — ·· ——— —·';
 }
 
 // Path: settings.station.antennaTypes
@@ -7259,6 +7285,7 @@ extension on TranslationsCw {
 			'settings.station.models.key' => '—·—· ·—— / —·— · —·——',
 			'settings.station.models.midiController' => '—— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·',
 			'settings.station.models.winkeyer' => '·—— ·· —· —·— · —·—— · ·—·',
+			'settings.station.models.nmeaGps' => '——· ·——· ··· / ·—· · —·—· · ·· ···— · ·—·',
 			'settings.station.models.placeholderRadio' => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ·— —·· ·· ———',
 			'settings.station.models.placeholderRadioNodeName' => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ·— —·· ·· ———',
 			'settings.station.models.simulatedRotator' => '··· ·· —— ··— ·—·· ·— — · —·· / ·—· ——— — ·— — ——— ·—·',
@@ -7365,6 +7392,12 @@ extension on TranslationsCw {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} / ·· ··· / ——— —· / ·— —· ——— — ···· · ·—· / —·· · ···— ·· —·—· ·',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ·· ··· / —·—· ——— —· —· · —·—· — · —·· / — ——— / ${device} ·—·—·— / ·· — ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— —· —·· / ··· · — — ·· —· ——· ··· / ·— ·—· · / —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· / ——— —· / — ···· ·— — / —·· · ···— ·· —·—· · ·—·—·—',
 			'settings.station.antennaInUse' => '·— —· — · —· —· ·— / ·· —· / ··— ··· ·',
+			'settings.station.locationFrom' => '·—·· ——— —·—· ·— — ·· ——— —· / ··—· ·—· ——— ——',
+			'settings.station.systemLocation.windows' => '·—— ·· —· —·· ——— ·—— ··· / ·—·· ——— —·—· ·— — ·· ——— —· / ··· · ·—· ···— ·· —·—· · ···',
+			'settings.station.systemLocation.macos' => '—— ·— —·—· ——— ··· / ·—·· ——— —·—· ·— — ·· ——— —· / ··· · ·—· ···— ·· —·—· · ···',
+			'settings.station.systemLocation.linux' => '·—·· ·· —· ··— —··— / ·—·· ——— —·—· ·— — ·· ——— —· / ··· · ·—· ···— ·· —·—· · ···',
+			'settings.station.systemLocation.browser' => '—··· ·—· ——— ·—— ··· · ·—· / ·—·· ——— —·—· ·— — ·· ——— —·',
+			'settings.station.systemLocation.device' => '—·· · ···— ·· —·—· · / ·—·· ——— —·—· ·— — ·· ——— —·',
 			'settings.station.scopeInUse' => '··· ·——· · —·—· — ·—· ··— —— / ··—· ·—· ——— ——',
 			'settings.station.scopeRadiosOwn' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ——— ·—— —· / ··· —·—· ——— ·——· ·',
 			'settings.station.keyInUse' => '—·—· ·—— / —·— · —·—— ·· —· ——·',
@@ -7438,6 +7471,7 @@ extension on TranslationsCw {
 			'settings.station.newKey' => '—· · ·—— / —·— · —·——',
 			'settings.station.newKeyer' => '·—— ·· —· —·— · —·—— · ·—· / —·——· —·— ·———— · ·—·· / ——— ·—· / —·—· ——— —— ·——· ·— — ·· —··· ·—·· · —·——·—',
 			'settings.station.newMidiController' => '—— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·',
+			'settings.station.newGpsReceiver' => '——· ·——· ··· / ·—· · —·—· · ·· ···— · ·—· / —·——· ··— ··· —··· / ——— ·—· / ··· · ·—· ·· ·— ·—·· —·——·—',
 			'settings.station.midi.name' => '—· ·— —— ·',
 			'settings.station.midi.device' => '—·· · ···— ·· —·—· ·',
 			'settings.station.midi.deviceNone' => '—·—· ···· ——— ——— ··· · / ·— / —·· · ···— ·· —·—· ·',
@@ -7634,6 +7668,10 @@ extension on TranslationsCw {
 			'settings.station.rotctldTroubleshooting' => '— ···· ·· ··· / —·—· ——— —· —· · —·—· — ··· / — ——— / ·— / ** ·—· ——— — —·—· — ·—·· —·· / —·· ·— · —— ——— —· / —·—— ——— ··— / ·—· ··— —· / —·—— ——— ··— ·—· ··· · ·—·· ··—· ** ——··—— / —· ——— — / — ——— / — ···· · / ·—· ——— — ·— — ——— ·—· / —·· ·· ·—· · —·—· — ·—·· —·—— / — / ···· ·— —— ·—·· ·· —··· ·————· ··· / —··· ·— —·—· —·— · —· —·· / — ·— ·—·· —·— ··· / — ——— / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·— —· —·· / ··· ··— ·——· ·——· ——— ·—· — ··· / —— ——— ··· — / ——— ··—· / — ···· · —— ·—·—·—\n\n—····— / ** — ···· · / —·· ·— · —— ——— —· / —— ··— ··· — / ·— ·—·· ·—· · ·— —·· —·—— / —··· · / ·—· ··— —· —· ·· —· ——· ** ——··—— / · ·—·—·— ——· ·—·—·— / `rotctld -m 601 -r /dev/ttyUSB0` / ··—· ——— ·—· / ·— / ——· ··· —····— ··——— ···—— ··——— ·— ·—·—·— / ··—· ·· —· —·· / —·—— ——— ··— ·—· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· ·————· ··· / —— ——— —·· · ·—·· / —· ··— —— —··· · ·—· / ·—— ·· — ···· / `rotctl -l` ·—·—·—\n—····— / ** ··—· ·—· ——— —— / ·— —· ——— — ···· · ·—· / —— ·— —·—· ···· ·· —· · ** ——··—— / ·— ·—·· ·—·· ——— ·—— / ·——· ——— ·—· — / ····— ····· ···—— ···—— / — ···· ·—· ——— ··— ——· ···· / — ···· ·— — / —— ·— —·—· ···· ·· —· · ·————· ··· / ··—· ·· ·—· · ·—— ·— ·—·· ·—·· ·—·—·— / ·—· ——— — —·—· — ·—·· —·· / ·—·· ·· ··· — · —· ··· / ——— —· / · ···— · ·—· —·—— / ·— —·· —·· ·—· · ··· ··· / ··— —· ·—·· · ··· ··· / ··· — ·— ·—· — · —·· / ·—— ·· — ···· / `-T` ·—·—·—\n—····— / ** ·——· ——— ·—· — ** / ·· ··· / ····— ····· ···—— ···—— / ··— —· ·—·· · ··· ··· / —·—— ——— ··— / ··· — ·— ·—· — · —·· / — ···· · / —·· ·— · —— ——— —· / ·—— ·· — ···· / `-t` ·—·—·—\n—····— / ** ·——· ··· — ·—· ——— — ·— — ——— ·—· ** / ·— —· ··· ·—— · ·—· ··· / — ——— ——— ——··—— / ·—— ·· — ···· / ** ——· ·——· ·—· · —·· ·· —·—· — ** / ··· · ·—·· · —·—· — · —·· / ·— ··· / ·· — ··· / — ·—· ·— —·—· —·— · ·—· / ·— —· —·· / — ·—· ·— —·—· —·— ·· —· ——· / ——— —· ·—·—·—\n—····— / — ··— ·—· —· ··· / ——· ——— / ——— —· ·—·· —·—— / ·— ··· / ··—· ·— ·—· / ·— ··· / — ···· · / ·—·· ·· —— ·· — ··· / ·—· ——— — —·—· — ·—·· —·· / · —· ··—· ——— ·—· —·—· · ··· ——··—— / ·—— ···· ·· —·—· ···· / ·· — / ·—· · ·——· ——— ·—· — ··· / ·· — ··· · ·—·· ··—· / — / ··· · — / — ···· · —— / ·—— ·· — ···· / `-C min_az=…,max_az=…` / ·—— ···· · —· / ··· — ·— ·—· — ·· —· ——· / ·· — ·—·—·— / — ···· · / ——— ··—· ··—· ··· · — ··· / ···· · ·—· · / ·— ·—· · / ··—· ——— ·—· / ·— / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·—— ···· ——— ··· · / ——·· · ·—· ——— / ·· ··· / —· ——— — / — ·—· ··— · / —· ——— ·—· — ···· ·—·—·—',
 			'settings.station.connectionRouted' => ({required Object port, required Object antenna}) => '${port} ———··· / ${antenna}',
 			'settings.station.connectionDevices' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / —·· · ···— ·· —·—· ·', other: '${count} / —·· · ···— ·· —·—· · ···', ), 
+			'settings.station.gpsFix' => ({required Object grid, required Object satellites}) => '${grid} / · / ${satellites}',
+			'settings.station.gpsSearching' => '··· · ·— ·—· —·—· ···· ·· —· ——· / ··—· ——— ·—· / ··· ·— — · ·—·· ·—·· ·· — · ···',
+			'settings.station.gpsSearchingWith' => ({required Object satellites}) => '··· · ·— ·—· —·—· ···· ·· —· ——· / · / ${satellites}',
+			'settings.station.gpsSatellites' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ··· ·— — · ·—·· ·—·· ·· — ·', other: '${count} / ··· ·— — · ·—·· ·—·· ·· — · ···', ), 
 			'settings.station.everywareUser' => '··— ··· · ·—·',
 			'settings.station.everywareUserDescription' => '——— —· ·—·· —·—— / ·—— ···· · —· / — ···· · / ··· · ·—· ···— · ·—· / ·— ··· —·— ··· / ··—· ——— ·—· / ·— / ·—·· ——— ——· ·· —· ·—·—·— / ·—·· · ·— ···— · / ·· — / —··· ·—·· ·— —· —·— / ——— — ···· · ·—· ·—— ·· ··· · ·—·—·—',
 			'settings.station.everywarePassword' => '·——· ·— ··· ··· ·—— ——— ·—· —··',
@@ -7723,6 +7761,8 @@ extension on TranslationsCw {
 			'settings.developer.trackStable' => '··· — ·— —··· ·—·· ·',
 			'settings.developer.trackUnstable' => '··— —· ··· — ·— —··· ·—·· ·',
 			'settings.developer.trackBleeding' => '—··· ·—·· · · —·· ·· —· ——·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.checkingTrack' => ({required Object track}) => '—·—· ···· · —·—· —·— ·· —· ——· / ·—··—· ${track} ·—··—· / ··—· ——— ·—· / ·— / —·—· ——— —·· · / ·——· ··— ··· ···· …',
 			'settings.developer.patchDownloaded' => '—·—· ——— —·· · / ·——· ··— ··· ···· / —·· ——— ·—— —· ·—·· ——— ·— —·· · —·· / — / ·—· · ··· — ·— ·—· — / — ···· · / ·— ·——· ·——· / — ——— / ·— ·——· ·——· ·—·· —·—— / ·· — ·—·—·—',
 			'settings.developer.noNewPatch' => ({required Object track}) => '—· ——— / —· · ·—— / —·—· ——— —·· · / ·——· ··— ··· ···· / ——— —· / ·—··—· ${track} ·—··—· ·—·—·—',
@@ -7735,8 +7775,6 @@ extension on TranslationsCw {
 			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—· · ——· ·· ··· — · ·—· ———··· / ${error}',
 			'settings.developer.diagnostics' => '—·· ·· ·— ——· —· ——— ··· — ·· —·—· ···',
 			'settings.developer.importExport' => '·· —— ·——· ——— ·—· — / —··—· / · —··— ·——· ——— ·—· —',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.systemInformation' => '··· —·—— ··· — · —— / ·· —· ··—· ——— ·—· —— ·— — ·· ——— —·',
 			'settings.developer.appVersion' => '·— ·——· ·——· / ···— · ·—· ··· ·· ——— —·',
 			'settings.developer.dataFolder' => '—·· ·— — ·— / ··—· ——— ·—·· —·· · ·—·',
@@ -8120,6 +8158,7 @@ extension on TranslationsCw {
 			'operationLocationScreen.suggestedLocations' => '··· ··— ——· ——· · ··· — · —·· / ·—·· ——— —·—· ·— — ·· ——— —· ···',
 			'operationLocationScreen.deviceGps' => '—·· · ···— ·· —·—· · / ——· ·——· ···',
 			'operationLocationScreen.peerGps' => ({required Object device}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${device}',
+			'operationLocationScreen.receiverGps' => ({required Object receiver}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${receiver}',
 			'operationLocationScreen.locating' => '·—·· ——— —·—· ·— — ·· —· ——· …',
 			'operationLocationScreen.gpsUnavailable' => '·—·· ——— —·—· ·— — ·· ——— —· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'operationLocationScreen.permissionDenied' => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —·· · —· ·· · —··',
@@ -8236,6 +8275,8 @@ extension on TranslationsCw {
 			'adifImport.newContacts' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / —· · ·—— / —·—· ——— —· — ·— —·—· —', other: '${formatted} / —· · ·—— / —·—· ——— —· — ·— —·—· — ···', ), 
 			'adifImport.merging' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ·—— ·· ·—·· ·—·· / —— · ·—· ——· · / ·—— ·· — ···· / ·— —· / · —··— ·· ··· — ·· —· ——· / —·—· ——— —· — ·— —·—· —', other: '${formatted} / ·—— ·· ·—·· ·—·· / —— · ·—· ——· · / ·—— ·· — ···· / · —··— ·· ··· — ·· —· ——· / —·—· ——— —· — ·— —·—· — ···', ), 
 			'adifImport.unusable' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / —·—· ·— —· —· ——— — / —··· · / ·· —— ·——· ——— ·—· — · —·· / —·——· —· ——— / —·—· ·— ·—·· ·—·· ··· ·· ——· —· —·——·—', other: '${formatted} / —·—· ·— —· —· ——— — / —··· · / ·· —— ·——· ——— ·—· — · —·· / —·——· —· ——— / —·—· ·— ·—·· ·—·· ··· ·· ——· —· —·——·—', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / —· · · —·· ··· / ·— / —·—· ·—·· ——— ··· · ·—· / ·—·· ——— ——— —·—', other: '${formatted} / —· · · —·· / ·— / —·—· ·—·· ——— ··· · ·—· / ·—·· ——— ——— —·—', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '·—· · ··—· · ·—· · —· —·—· · ··· / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · —·—· ——— ···— · ·—· · —·· / ··—· ——— ·—· / ${count} / —·—· ——— —· — ·— —·—· —', other: '·—· · ··—· · ·—· · —· —·—· · ··· / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · —·—· ——— ···— · ·—· · —·· / ··—· ——— ·—· / ${formatted} / —·—· ——— —· — ·— —·—· — ···', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${programs} / ·—· · ··—· · ·—· · —· —·—· · ··· / —— ·— —·—— / —··· · / ·· —· —·—· ——— —— ·——· ·—·· · — · / ··—· ——— ·—· / ${count} / —·—· ——— —· — ·— —·—· —', other: '${programs} / ·—· · ··—· · ·—· · —· —·—· · ··· / —— ·— —·—— / —··· · / ·· —· —·—· ——— —— ·——· ·—·· · — · / ··—· ——— ·—· / ${formatted} / —·—· ——— —· — ·— —·—· — ···', ), 
@@ -8249,8 +8290,6 @@ extension on TranslationsCw {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '·—— ·— ·—· —· ·· —· ——· ———··· / — ···· ·· ··· / ·— —·· ·· ··—· / ···· ·— ··· / ——·— ··· ——— ··· / ··—· ·—· ——— —— / ${calls} ——··—— / —··· ··— — / — ···· · —·—— / ·—— ·· ·—·· ·—·· / —··· · / ·· —— ·——· ——— ·—· — · —·· / ·— ··· / ${station} / ·· ··—· / —·—— ——— ··— / —·—· ——— —· — ·· —· ··— · ·—·—·—',
 			'adifImport.stationCallJoin' => '·— —· —··',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ···· ·— ··· / —· ——— / —·· ·— — · / ·— —· —·· / —·—· ·— —· —· ——— — / —··· · / ·· —— ·——· ——— ·—· — · —··', other: '${formatted} / ···· ·— ···— · / —· ——— / —·· ·— — · / ·— —· —·· / —·—· ·— —· —· ——— — / —··· · / ·· —— ·——· ——— ·—· — · —··', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.activationFound' => ({required Object refs}) => '— ···· ·· ··· / ··—· ·· ·—·· · / ·—· · —·—· ——— ·—· —·· ··· / ·— —· / ·— —·—· — ·· ···— ·— — ·· ——— —· / ——— ··—· / ${refs} ·—·—·—',
 			'adifImport.addActivation' => '·— —·· —·· / ·· — / — ——— / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => '——— —· ·—·· —·—— / ${written} / ——— ··—· / ${planned} / —·—· ——— ··— ·—·· —·· / —··· · / ·— ·——· ·——· ·—·· ·· · —·· / — / — ···· · / ·—·· ——— ——· / —·—· ···· ·— —· ——· · —·· / ·—— ···· ·· ·—·· · / —·—— ——— ··— / ·—— · ·—· · / —·· · —·—· ·· —·· ·· —· ——· ·—·—·—',

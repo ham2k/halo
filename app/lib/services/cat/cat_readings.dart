@@ -37,7 +37,10 @@ extension _Readings on CatService {
       if (current == null || current.state.status != EquipmentStatus.connected) return;
       if (current.state.stale) return;
       trafficLog?.note(_logLabel(uuid), 'nothing heard for ${staleAfter.inSeconds} s: marked not responding');
-      _setState(uuid, current.state.copyWith(stale: true));
+      // A GPS fix goes with it: when the receiver speaks again, the first
+      // sentence back clears the mark, and a fix held from before the
+      // silence would be served as a live one from wherever it was taken.
+      _setState(uuid, current.state.copyWith(stale: true, clearGps: true));
       _armSilentDrop(uuid, current, silentDropAfter - staleAfter);
     });
   }

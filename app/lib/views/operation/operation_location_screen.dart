@@ -319,10 +319,12 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
                 ),
                 // A fix served on a peer's behalf is named as such — calling the
                 // phone's position "Device GPS" would tell the operator this
-                // machine can do something it cannot.
-                title: Text(switch (location.peerPositionDeviceName) {
-                  final device? => t.peerGps(device: device),
-                  null => t.deviceGps,
+                // machine can do something it cannot — and so is one from the
+                // station's receiver, which the operator chose over this one.
+                title: Text(switch ((location.peerPositionDeviceName, location.receiverName)) {
+                  (final device?, _) => t.peerGps(device: device),
+                  (null, final receiver?) => t.receiverGps(receiver: receiver),
+                  (null, null) => t.deviceGps,
                 }),
                 subtitle: Text(gpsSubtitle),
                 // Live fixes only: the service keeps its last position while it

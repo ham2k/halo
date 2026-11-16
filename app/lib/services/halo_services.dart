@@ -61,6 +61,7 @@ import 'cat/equipment.dart' show EquipmentNode, EquipmentStatus, kCategoryTransc
 import 'cat/cat_service.dart';
 import 'cat/operating_style.dart';
 import 'cat/style_watch.dart';
+import 'cat/gps_receiver_feed.dart';
 import 'cat/swr_watch.dart';
 import 'app_storage.dart' show appDataDirectory;
 import 'cat/computer_voice_keyer.dart' show HaloVoiceAudio;
@@ -507,6 +508,9 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
   /// widget test of what those states put on screen has no other way in.
   final LocationService? _locationOverride;
   late final LocationService location = _locationOverride ?? LocationService();
+
+  /// The station's GPS receiver, as [location]'s answer. Started by the boot.
+  late final GpsReceiverFeed gpsReceiverFeed = GpsReceiverFeed(cat: cat, location: location);
 
   /// Injectable like [_exportsOverride]: the real one reads
   /// `AppLinks().uriLinkStream`, a platform channel with no implementation

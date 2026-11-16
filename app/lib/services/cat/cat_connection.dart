@@ -403,6 +403,14 @@ extension _Connection on CatService {
         if (!moved && !done) return;
         _setState(uuid, state.copyWith(rotator: position, clearRotatorTarget: done));
       },
+      onGps: (reading) {
+        // Not _noteAlive: the session reports every sentence alive itself,
+        // the ones that carry no position included. Filtered here, where it
+        // arrives, so a receiver standing still does not wake every listener
+        // of the station every second.
+        if (runtime.connection != connection || !gpsReadingSupersedes(stateFor(uuid).gps, reading)) return;
+        _setState(uuid, stateFor(uuid).copyWith(gps: reading));
+      },
       onTuner: (status) {
         if (runtime.connection != connection || stateFor(uuid).tuner == status) return;
         runtime.noteTuner(status);

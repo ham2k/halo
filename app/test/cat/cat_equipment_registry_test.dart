@@ -337,6 +337,7 @@ void main() {
       'dxlab-commander-tcp',
       'placeholder-radio',
       'winkeyer-serial',
+      'nmea-gps-serial',
       'antenna-genius-tcp',
       'sierra-coax-serial',
       'gs232a-serial',
@@ -1008,6 +1009,7 @@ void main() {
     // An Everyware server repeats every heading and switch position on its
     // own, and its devices hear only what it pushes.
     // The simulators push as a real controller polled fast enough would look.
+    // A GPS receiver streams its sentences every second, unasked.
     const pushes = {
       'flexradio',
       'placeholder-radio',
@@ -1015,6 +1017,7 @@ void main() {
       'simulated-switch',
       'antenna-genius',
       'winkeyer',
+      'nmea-gps',
       'rtl-tcp',
       'spyserver',
       'sdr-usb',

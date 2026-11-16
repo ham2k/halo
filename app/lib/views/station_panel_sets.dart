@@ -141,6 +141,32 @@ extension _SetRows on StationPanel {
     );
   }
 
+  /// Where the station's position comes from: one of its GPS receivers, or
+  /// the operating system's own location service, named as the operator
+  /// knows it on this platform (docs/design/cat.md § GPS receivers).
+  Widget _gpsSourceLine(BuildContext context, {required EdgeInsets inset}) {
+    final st = context.t.settings.station;
+    final system = switch (defaultTargetPlatform) {
+      _ when kIsWeb => st.systemLocation.browser,
+      TargetPlatform.windows => st.systemLocation.windows,
+      TargetPlatform.macOS => st.systemLocation.macos,
+      TargetPlatform.linux => st.systemLocation.linux,
+      _ => st.systemLocation.device,
+    };
+    return Padding(
+      padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
+      child: DesignationDropdown(
+        key: ValueKey('gpsSource:${_cat.gpsReceiver}'),
+        label: st.locationFrom,
+        nodes: _cat.gpsReceiverNodes,
+        selected: _cat.gpsReceiver,
+        displayName: _displayName,
+        noneLabel: system,
+        onChanged: (uuid) => unawaited(_cat.setGpsSource(uuid)),
+      ),
+    );
+  }
+
   /// Set B's own antenna or key, from [nodes]: the picks are per radio, and
   /// a contact logged on Radio B, or a message keyed from its set, uses
   /// these.

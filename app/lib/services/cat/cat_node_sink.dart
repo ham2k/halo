@@ -16,6 +16,7 @@ class _NodeSink
         PassbandSink,
         RadioAntennaSink,
         RotatorSink,
+        GpsSink,
         TransmitAudioSink,
         BinaryFramesSink,
         So2rSwitchSink {
@@ -43,6 +44,7 @@ class _NodeSink
   final void Function(Passband?) onPassband;
   final void Function(RadioAntennas?) onAntennas;
   final void Function(RotatorPosition) onRotator;
+  final void Function(GpsReading) onGps;
   final void Function(So2rAudio) onSo2rAudio;
   final void Function(List<int> bytes) onSend;
 
@@ -72,6 +74,7 @@ class _NodeSink
     required this.onPassband,
     required this.onAntennas,
     required this.onRotator,
+    required this.onGps,
     required this.onSo2rAudio,
   });
 
@@ -167,6 +170,9 @@ class _NodeSink
 
   @override
   void reportRotator(RotatorPosition position) => onRotator(position);
+
+  @override
+  void reportGps(GpsReading reading) => onGps(reading);
 
   @override
   void reportSo2rAudio(So2rAudio audio) => onSo2rAudio(audio);
