@@ -16,7 +16,7 @@ interface PanelHook {
   render(args: PanelRenderArgs, ctx): Promise<PanelContent>
   onEvent?(args: PanelRenderArgs & { event: PanelSceneEvent }, ctx): Promise<PanelSceneEventResult>
 }
-// PanelDescriptor:  { key, title, description?, icon?, preview?, on?, form?, multiple?, config?, initialConfig?, file? }
+// PanelDescriptor:  { key, title, description?, icon?, preview?, on?, form?, multiple?, expandable?, config?, initialConfig?, file? }
 // PanelRenderArgs:  { panelKey, operation, qso?, qsoCount, config, reason, environment?, clock?, instanceId? }
 // PanelContent:     { kind: 'markdown' | 'svg' | 'html', content, title?, triggers?, form?, menu? }
 //                 | { kind: 'scene', scene, title?, triggers?, form?, menu? }
@@ -172,6 +172,10 @@ against this operation.
   its own id and its own config. What you owe an instanceable panel is a
   `title` on the render result; without one every pane reads the same
   descriptor title.
+- **`expandable`** (API 27), `false`, keeps the pane from showing full size.
+  The operator double-taps a pane's title to see it over most of the window,
+  and back. Leave it on unless your content gains nothing from the room,
+  such as a single line of status that would sit alone in a large card.
 - **`preview`** is a still image for the list of panels: an SVG document or
   a `data:` URI, never a URL, since the list renders offline.
 - **`config`** (API 23) names keys a placement keeps beyond its `form`'s

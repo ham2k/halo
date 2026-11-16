@@ -154,6 +154,9 @@ Widget host({
   ManualTimeHooks? manualTime,
   Widget? trailing,
   ThemeData? appTheme,
+  // What holds the panel in the app — a full-size card, say — for a test
+  // about what the panel lets through to it.
+  Widget Function(Widget controls)? holder,
 }) {
   // A radio already tuned to a band, because that is the ordinary state of
   // a station on the air — and because logging refuses a contact carrying
@@ -219,7 +222,7 @@ Widget host({
       body: Column(
         children: [
           if (prefs?.aboveLog != true) const Expanded(child: SizedBox.shrink()),
-          controls,
+          holder?.call(controls) ?? controls,
           ?trailing,
           if (prefs?.aboveLog == true) const Expanded(child: SizedBox.shrink()),
         ],

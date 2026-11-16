@@ -20,9 +20,13 @@ extension _WipeAndUndo on _LoggingControlsState {
   /// unsaved changes and ends the editing session entirely
   /// (ham2k/halo-dist#199), unlike Revert, which discards changes and
   /// stays in edit mode.
-  void _handleEscape() {
-    if (_fieldsLocked) return;
-    if (widget.session.escapeClaimed?.call() ?? false) return;
+  ///
+  /// Answers whether the press was spent here. One with nothing left to back
+  /// out of goes on to whatever holds the panel — a full-size card closing
+  /// (docs/design/layouts.md, "Full size") — rather than being swallowed.
+  bool _handleEscape() {
+    if (_fieldsLocked) return false;
+    if (widget.session.escapeClaimed?.call() ?? false) return true;
     // An open exchange menu takes the first Escape, and takes it whether or not
     // the operator has touched the highlight: with a menu up, Escape means "not
     // that" — and what Escape does below throws away work (a discarded edit, a
@@ -30,7 +34,7 @@ extension _WipeAndUndo on _LoggingControlsState {
     // dropdown is not a recoverable mistake.
     if (_exchange.menuOpen) {
       _exchange.dismissMenu();
-      return;
+      return true;
     }
     // An open secondary control takes the next one, and goes all the way back
     // to the main fields — where Down and Enter stop at the pill, Escape is
@@ -39,9 +43,19 @@ extension _WipeAndUndo on _LoggingControlsState {
     // priority over the destructive layers below.
     if (_selectedControlKey != null) {
       _onSelectControl(null);
-      return;
+      return true;
     }
-    if (widget.session.editingQso != null) widget.session.onEditCanceled?.call();
+    if (widget.session.editingQso == null) return false;
+    widget.session.onEditCanceled?.call();
+    return true;
+  }
+
+  /// Escape, as [_handleEscape] answers it; null for any other key. A key
+  /// handler rather than a `CallbackShortcuts` entry, which claims its key
+  /// whether or not anything happened — matched by the same activator.
+  KeyEventResult? _escapeKey(KeyEvent event) {
+    if (!const SingleActivator(LogicalKeyboardKey.escape).accepts(event, HardwareKeyboard.instance)) return null;
+    return _handleEscape() ? KeyEventResult.handled : KeyEventResult.ignored;
   }
 
   /// The panel's modifier chords, which are the second button's gestures on

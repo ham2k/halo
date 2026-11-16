@@ -776,6 +776,28 @@ void main() {
     expect(find.byIcon(MdiIcons.undo), findsNothing, reason: 'nothing was wiped, so there is nothing to offer back');
   });
 
+  // A full-size logging pane closes on the Escape that finds nothing left to
+  // back out of here; one swallowed regardless would leave it open for good.
+  testWidgets('an Escape with nothing to back out of goes on to whatever holds the panel', (tester) async {
+    var reached = 0;
+    await tester.pumpWidget(
+      host(
+        holder: (controls) => Focus(
+          onKeyEvent: (node, event) {
+            if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) reached++;
+            return KeyEventResult.ignored;
+          },
+          child: controls,
+        ),
+      ),
+    );
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(reached, 1);
+  });
+
   testWidgets('Alt+W wipes the entry and offers the same undo as the wipe button', (tester) async {
     await tester.pumpWidget(host());
 

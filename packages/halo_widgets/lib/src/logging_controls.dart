@@ -1170,7 +1170,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final exchangeMenu = _exchange.openMenu;
     final panel = CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.escape): _handleEscape,
         // Enter picks a highlighted suggestion instead of logging — see
         // `_handleEnter`. Bound here AND on the exchange field's own
         // `onSubmitted`, because a single-line TextField consumes Enter itself
@@ -1433,7 +1432,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // still cross the boundary freely — only keyboard traversal is confined.
     return FocusScope(
       node: _focusBackstop.panelScope,
-      child: Focus(canRequestFocus: false, skipTraversal: true, onKeyEvent: (node, event) => _handleChord(event), child: panel),
+      child: Focus(canRequestFocus: false, skipTraversal: true, onKeyEvent: (node, event) => _escapeKey(event) ?? _handleChord(event), child: panel),
     );
   }
 

@@ -6,6 +6,7 @@
 
 upcoming:
   changes:
+    - "New full-size panels: double-click a panel's title to enlarge it"
     - "Improved spots list: rows hold still while you scroll, touch or point at it"
     - "Links from other apps ask before tuning the radio, filling in a contact or opening an operation"
     - "Improved POTA export: one file for every park of an n-fer"

@@ -3933,6 +3933,11 @@ export interface PanelDescriptor {
   /// with nothing to do on your side. Give each one a `title` in the render
   /// result, or every tab reads the same.
   multiple?: boolean
+  /// Whether a double tap on the pane's title shows it full size, over the
+  /// rest of the panels. Default true; set false for content that only
+  /// spreads out over more room rather than using it (extension API 27). An
+  /// older app has no full-size view.
+  expandable?: boolean
   /// The panel's own configuration, in the same declarative field schema a
   /// SimpleSettingsPanel uses and rendered by the same core form renderer.
   /// Values are host-persisted per panel and handed back in

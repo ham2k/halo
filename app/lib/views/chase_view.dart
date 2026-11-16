@@ -734,24 +734,26 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      appBar: AppBar(
-        flexibleSpace: windowHeaderGestureArea(),
-        leadingWidth: HomeRailLogo.headerReserveOf(context),
-        leading: const SizedBox.shrink(),
-        // None: the title opens with the sheet's dots, whose own padding is
-        // the gap after the mark. The editing title has no dots, and takes
-        // Home's gap instead.
-        titleSpacing: layoutEditing ? Space.xl : 0,
-        // Rebuilt with the sheet's slide on its own — the dots and the gap
-        // follow it frame by frame, and nothing else in the view does.
-        title: layoutEditing
-            ? editingLayoutTitle(context)
-            : AnimatedBuilder(animation: _sheetAnimation ?? kAlwaysDismissedAnimation, builder: (context, _) => _buildTitle(context, operation, goals)),
-        actions: [
-          ?viewOptionsButton(context, editing: layoutEditing),
-          ...layoutHeaderControls(context),
-          windowsCaptionSpacer(context),
-        ],
+      appBar: quietWhileFullSize(
+        AppBar(
+          flexibleSpace: windowHeaderGestureArea(),
+          leadingWidth: HomeRailLogo.headerReserveOf(context),
+          leading: const SizedBox.shrink(),
+          // None: the title opens with the sheet's dots, whose own padding is
+          // the gap after the mark. The editing title has no dots, and takes
+          // Home's gap instead.
+          titleSpacing: layoutEditing ? Space.xl : 0,
+          // Rebuilt with the sheet's slide on its own — the dots and the gap
+          // follow it frame by frame, and nothing else in the view does.
+          title: layoutEditing
+              ? editingLayoutTitle(context)
+              : AnimatedBuilder(animation: _sheetAnimation ?? kAlwaysDismissedAnimation, builder: (context, _) => _buildTitle(context, operation, goals)),
+          actions: [
+            ?viewOptionsButton(context, editing: layoutEditing),
+            ...layoutHeaderControls(context),
+            windowsCaptionSpacer(context),
+          ],
+        ),
       ),
       body: BesideRail(
         child: PaneSafeArea.root(

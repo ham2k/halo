@@ -1165,7 +1165,9 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
             // keyboard with its own bottom spacer (see LoggingControls); the
             // Quick Lookup / branding panes do the same on Home.
             resizeToAvoidBottomInset: false,
-            appBar: _headerAppBar(context, operation: operation, isTwoPane: isTwoPane, editingHeader: editingHeader, headerLines: headerLines),
+            appBar: quietWhileFullSize(
+              _headerAppBar(context, operation: operation, isTwoPane: isTwoPane, editingHeader: editingHeader, headerLines: headerLines),
+            ),
             body: FileSuggestions(
               suggestions: [
                 FileDestination(

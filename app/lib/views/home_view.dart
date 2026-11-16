@@ -904,146 +904,148 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
       // right — and a two-pane split reflects through. Each keeps its content
       // above the keyboard itself (HomeQuickLookup / BrandingPane).
       resizeToAvoidBottomInset: false,
-      appBar: AppBar(
-        flexibleSpace: windowHeaderGestureArea(),
-        // Room for the mark, which the WINDOW draws over this corner (see
-        // [HomeRailLogo]) — the same with the rail out or not.
-        leadingWidth: HomeRailLogo.headerReserveOf(context),
-        // The same gap from the mark as every destination's title, so a
-        // header's title stands in one place whichever destination is up.
-        titleSpacing: Space.xl,
-        leading: const SizedBox.shrink(),
-        // "Power Logger" / "Portable Logger" is the in-app main-screen
-        // title — independent of the OS-level app name ("Ham2K Logger" on
-        // desktop, "HaLo" on mobile; see macos/Runner/Configs/AppInfo.xcconfig,
-        // ios/Runner/Info.plist, android's AndroidManifest.xml).
-        title: layoutEditing
-            ? editingLayoutTitle(context)
-            : LayoutBuilder(
-                builder: (context, constraints) {
-                  // Measured against the space the TITLE actually gets, not the
-                  // window's width: the leading reserve for the rail's mark and the
-                  // trailing actions both vary, so a window-width breakpoint would
-                  // stack a header that had room and keep one that did not.
-                  final trailingWidth = devLabel.isNotEmpty
-                      ? textWidth(context, devLabel, _headerDevLabelStyle(theme))
-                      // The art's own width needs the SVG loaded; this estimate is
-                      // enough to choose a layout with.
-                      : _headerEditionBadgeHeight * ham2kEditionBadgeWidthRatio;
-                  // Height is checked as well as width, and the AppBar's own bar is
-                  // the budget: the title is laid out with an INFINITE height and
-                  // its box then clamped to the toolbar with the child centred in
-                  // it, so a title taller than the bar spills over the header
-                  // silently — no overflow stripes, no thrown error, release too.
-                  // When two lines will not fit, the one-line row is the safer
-                  // answer: it is only ever as tall as its tallest child, and gives
-                  // up width through `shrinkToFit` instead.
-                  final trailingHeight = devLabel.isNotEmpty
-                      ? spansHeight(context, [TextSpan(text: devLabel)], _headerDevLabelStyle(theme))
-                      : _headerEditionBadgeHeight;
-                  final stackedHeight = spansHeight(context, [TextSpan(text: ham2kProductName)], _headerStackedNameStyle) + _headerStackGap + trailingHeight;
-                  // A dev label always goes UNDER the name — it names the session,
-                  // and reads as a subtitle rather than as part of the product name.
-                  // The edition badge only stacks when the line runs out of room.
-                  final stacked =
-                      _headerTrailing(theme, inline: true) != null &&
-                      (devLabel.isNotEmpty ||
-                          constraints.maxWidth.isFinite &&
-                              textWidth(context, ham2kProductName, const TextStyle()) + Space.md + trailingWidth > constraints.maxWidth) &&
-                      stackedHeight <= (theme.appBarTheme.toolbarHeight ?? kToolbarHeight);
+      appBar: quietWhileFullSize(
+        AppBar(
+          flexibleSpace: windowHeaderGestureArea(),
+          // Room for the mark, which the WINDOW draws over this corner (see
+          // [HomeRailLogo]) — the same with the rail out or not.
+          leadingWidth: HomeRailLogo.headerReserveOf(context),
+          // The same gap from the mark as every destination's title, so a
+          // header's title stands in one place whichever destination is up.
+          titleSpacing: Space.xl,
+          leading: const SizedBox.shrink(),
+          // "Power Logger" / "Portable Logger" is the in-app main-screen
+          // title — independent of the OS-level app name ("Ham2K Logger" on
+          // desktop, "HaLo" on mobile; see macos/Runner/Configs/AppInfo.xcconfig,
+          // ios/Runner/Info.plist, android's AndroidManifest.xml).
+          title: layoutEditing
+              ? editingLayoutTitle(context)
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Measured against the space the TITLE actually gets, not the
+                    // window's width: the leading reserve for the rail's mark and the
+                    // trailing actions both vary, so a window-width breakpoint would
+                    // stack a header that had room and keep one that did not.
+                    final trailingWidth = devLabel.isNotEmpty
+                        ? textWidth(context, devLabel, _headerDevLabelStyle(theme))
+                        // The art's own width needs the SVG loaded; this estimate is
+                        // enough to choose a layout with.
+                        : _headerEditionBadgeHeight * ham2kEditionBadgeWidthRatio;
+                    // Height is checked as well as width, and the AppBar's own bar is
+                    // the budget: the title is laid out with an INFINITE height and
+                    // its box then clamped to the toolbar with the child centred in
+                    // it, so a title taller than the bar spills over the header
+                    // silently — no overflow stripes, no thrown error, release too.
+                    // When two lines will not fit, the one-line row is the safer
+                    // answer: it is only ever as tall as its tallest child, and gives
+                    // up width through `shrinkToFit` instead.
+                    final trailingHeight = devLabel.isNotEmpty
+                        ? spansHeight(context, [TextSpan(text: devLabel)], _headerDevLabelStyle(theme))
+                        : _headerEditionBadgeHeight;
+                    final stackedHeight = spansHeight(context, [TextSpan(text: ham2kProductName)], _headerStackedNameStyle) + _headerStackGap + trailingHeight;
+                    // A dev label always goes UNDER the name — it names the session,
+                    // and reads as a subtitle rather than as part of the product name.
+                    // The edition badge only stacks when the line runs out of room.
+                    final stacked =
+                        _headerTrailing(theme, inline: true) != null &&
+                        (devLabel.isNotEmpty ||
+                            constraints.maxWidth.isFinite &&
+                                textWidth(context, ham2kProductName, const TextStyle()) + Space.md + trailingWidth > constraints.maxWidth) &&
+                        stackedHeight <= (theme.appBarTheme.toolbarHeight ?? kToolbarHeight);
 
-                  if (stacked) {
-                    // Two lines, name over badge. No baseline to align to here, so
-                    // the badge goes in raw — no WidgetSpan, no optical nudge, both
-                    // of which exist only to place it against the name beside it.
-                    return Column(
+                    if (stacked) {
+                      // Two lines, name over badge. No baseline to align to here, so
+                      // the badge goes in raw — no WidgetSpan, no optical nudge, both
+                      // of which exist only to place it against the name beside it.
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          shrinkToFitText(Text(ham2kProductName, style: _headerStackedNameStyle)),
+                          const SizedBox(height: _headerStackGap),
+                          shrinkToFit(_headerTrailing(theme, inline: false)!),
+                        ],
+                      );
+                    }
+
+                    return Row(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      // The trailing slot carries one of two things, and they want
+                      // different alignments. The edition wordmark goes on the product
+                      // name's BASELINE (plus its nudge) — bottom-aligning would drop
+                      // it by the name's whole descent. The dev label keeps the
+                      // box-bottom alignment it has always had: baseline-aligning
+                      // would lift it by the difference of the two descents, and it
+                      // reads right where it is. `shrinkToFitText` rebuilds its Text
+                      // at the smaller size, so its baseline stays true; `shrinkToFit`
+                      // is a FittedBox, which forwards its child's baseline UNSCALED —
+                      // exact at scale 1, and the header stacks before the trailing
+                      // slot is ever squeezed, which is what keeps it there.
+                      crossAxisAlignment: devLabel.isNotEmpty ? CrossAxisAlignment.end : CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
                       children: [
-                        shrinkToFitText(Text(ham2kProductName, style: _headerStackedNameStyle)),
-                        const SizedBox(height: _headerStackGap),
-                        shrinkToFit(_headerTrailing(theme, inline: false)!),
+                        // The product name gets priority over the edition badge/dev
+                        // label when the header is too narrow to fit both at full size
+                        // — a 3:1 flex split shrinks the trailing group
+                        // first and further, rather than shrinking both equally.
+                        Flexible(flex: 3, child: shrinkToFitText(Text(ham2kProductName))),
+                        if (_headerTrailing(theme, inline: true) case final trailing?) ...[
+                          const SizedBox(width: Space.md),
+                          Flexible(child: shrinkToFit(trailing)),
+                        ],
                       ],
                     );
-                  }
-
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    // The trailing slot carries one of two things, and they want
-                    // different alignments. The edition wordmark goes on the product
-                    // name's BASELINE (plus its nudge) — bottom-aligning would drop
-                    // it by the name's whole descent. The dev label keeps the
-                    // box-bottom alignment it has always had: baseline-aligning
-                    // would lift it by the difference of the two descents, and it
-                    // reads right where it is. `shrinkToFitText` rebuilds its Text
-                    // at the smaller size, so its baseline stays true; `shrinkToFit`
-                    // is a FittedBox, which forwards its child's baseline UNSCALED —
-                    // exact at scale 1, and the header stacks before the trailing
-                    // slot is ever squeezed, which is what keeps it there.
-                    crossAxisAlignment: devLabel.isNotEmpty ? CrossAxisAlignment.end : CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      // The product name gets priority over the edition badge/dev
-                      // label when the header is too narrow to fit both at full size
-                      // — a 3:1 flex split shrinks the trailing group
-                      // first and further, rather than shrinking both equally.
-                      Flexible(flex: 3, child: shrinkToFitText(Text(ham2kProductName))),
-                      if (_headerTrailing(theme, inline: true) case final trailing?) ...[
-                        const SizedBox(width: Space.md),
-                        Flexible(child: shrinkToFit(trailing)),
-                      ],
-                    ],
-                  );
-                },
-              ),
-        actions: [
-          // The settings cog, for the one arrangement with no rail to put it
-          // in. Two ways to the same screen, one of them a permanent fixture
-          // of the other's chrome, is how an operator learns to distrust
-          // both — so it goes away as the rail arrives, fading AND closing up
-          // in step with it rather than leaving a hole where it stood.
-          TweenAnimationBuilder<double>(
-            tween: Tween<double>(end: railPresent ? 0 : 1),
-            duration: layoutAnimationDuration,
-            curve: layoutAnimationCurve,
-            builder: (context, t, child) => t == 0
-                ? const SizedBox.shrink()
-                : ClipRect(
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      widthFactor: t,
-                      child: Opacity(opacity: t, child: child),
+                  },
+                ),
+          actions: [
+            // The settings cog, for the one arrangement with no rail to put it
+            // in. Two ways to the same screen, one of them a permanent fixture
+            // of the other's chrome, is how an operator learns to distrust
+            // both — so it goes away as the rail arrives, fading AND closing up
+            // in step with it rather than leaving a hole where it stood.
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: railPresent ? 0 : 1),
+              duration: layoutAnimationDuration,
+              curve: layoutAnimationCurve,
+              builder: (context, t, child) => t == 0
+                  ? const SizedBox.shrink()
+                  : ClipRect(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        widthFactor: t,
+                        child: Opacity(opacity: t, child: child),
+                      ),
                     ),
-                  ),
-            child: IconButton(
-              // Named, because on this arrangement it is the ONLY way into
-              // Settings and the app shows no hover tooltips
-              // (docs/design/user-interface.md) — an icon button's accessible
-              // name is the only place it says what it is.
-              icon: Icon(MdiIcons.cogOutline, semanticLabel: context.t.settings.title),
-              mouseCursor: SystemMouseCursors.click,
-              onPressed: () => homeRail.destination = HomeDestination.settings,
+              child: IconButton(
+                // Named, because on this arrangement it is the ONLY way into
+                // Settings and the app shows no hover tooltips
+                // (docs/design/user-interface.md) — an icon button's accessible
+                // name is the only place it says what it is.
+                icon: Icon(MdiIcons.cogOutline, semanticLabel: context.t.settings.title),
+                mouseCursor: SystemMouseCursors.click,
+                onPressed: () => homeRail.destination = HomeDestination.settings,
+              ),
             ),
-          ),
-          // The railless header is a phone's, with the product name and the
-          // cog already in it: the profile name and the way into layout
-          // editing wait for the rail, which is one tap on the logo away.
-          if (railPresent && !layoutSheetOpen) HeaderProfileLabel(settings: widget.services.settings),
-          // The VIEW's own layout options, and the only route to Restore
-          // Defaults — without it an operator who rearranges Home into
-          // something they dislike, or drops a pane, has no way back to the
-          // arrangement it ships with. Null unless editing.
-          ?viewOptionsButton(context, editing: layoutEditing),
-          // `layoutEditing` keeps them through a rail toggled away MID-EDIT:
-          // once editing these are the plus, the switcher, Discard and Save,
-          // and an edit that loses them halfway through has lost the way to
-          // add a panel and the only way out.
-          if (railPresent || layoutEditing) ...layoutHeaderControls(context),
-          // Editing, the controls end in their own gap after Save, the same in
-          // the sheet's copy; a second one here would move Save when it opens.
-          if (!layoutEditing) const SizedBox(width: Space.md),
-          windowsCaptionSpacer(context),
-        ],
+            // The railless header is a phone's, with the product name and the
+            // cog already in it: the profile name and the way into layout
+            // editing wait for the rail, which is one tap on the logo away.
+            if (railPresent && !layoutSheetOpen) HeaderProfileLabel(settings: widget.services.settings),
+            // The VIEW's own layout options, and the only route to Restore
+            // Defaults — without it an operator who rearranges Home into
+            // something they dislike, or drops a pane, has no way back to the
+            // arrangement it ships with. Null unless editing.
+            ?viewOptionsButton(context, editing: layoutEditing),
+            // `layoutEditing` keeps them through a rail toggled away MID-EDIT:
+            // once editing these are the plus, the switcher, Discard and Save,
+            // and an edit that loses them halfway through has lost the way to
+            // add a panel and the only way out.
+            if (railPresent || layoutEditing) ...layoutHeaderControls(context),
+            // Editing, the controls end in their own gap after Save, the same in
+            // the sheet's copy; a second one here would move Save when it opens.
+            if (!layoutEditing) const SizedBox(width: Space.md),
+            windowsCaptionSpacer(context),
+          ],
+        ),
       ),
       // Quick Lookup UNDER the layout and inside this view, full width beside
       // the rail's own Settings cap: it is the home layer's chrome, so an

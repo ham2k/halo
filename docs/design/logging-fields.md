@@ -1660,7 +1660,11 @@ specifically to the callsign field, a "start a fresh QSO" gesture. It stops ther
 QSO being composed is never wiped by Escape, because Escape is aimed at menus
 and open controls all day long and one press too many must not cost a
 contact. It never walks back *in* either: in particular a second Escape does
-not re-select the QSO the first one deselected, which it used to do.
+not re-select the QSO the first one deselected. An Escape with nothing left
+to back out of is not spent, though: the panel lets it go on to whatever
+holds it, and a full-size logging pane closes on it
+([layouts.md](layouts.md#full-size)). Swallowed, it would leave that pane
+with no Escape out at all.
 
 The **system back** — Android's back button or gesture, and a keyboard's Back
 key, which many tablet keyboards send from their Escape key — stops a keying

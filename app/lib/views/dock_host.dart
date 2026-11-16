@@ -25,6 +25,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import '../services/cat/cat_service.dart';
 import '../services/cat/equipment.dart';
+import 'app_shell/system_back.dart';
 import 'operation/panel_scene/cat_rotator_source.dart';
 import 'operation/panel_scene/cat_spectrum_source.dart';
 import 'operation/panel_scene/scene_images.dart' show sceneImagesFor;
@@ -408,11 +409,71 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     // the runtime restarts when an extension is enabled or disabled, and a
     // view is rebuilt from scratch either way.
     unawaited(dockServices.panels.refreshExtensionPanels());
+    // Here, before the view's own initState registers anything: handlers are
+    // asked newest first, so a view's back that stops keying is asked before
+    // this one, which is asked before the Navigator.
+    systemBack.addHandler(_putFullSizeBack);
+  }
+
+  /// Whether a pane of this view's dock is showing full size.
+  final _dockFullSize = ValueNotifier<bool>(false);
+
+  void _onFullSizeChanged(String? id) {
+    if (!mounted) return;
+    final open = id != null;
+    if (open == _dockFullSize.value) return;
+    // The macOS traffic-light mask is a bright patch of header colour, and
+    // over a dimmed header it reads as a stray box; it learns of a dimming
+    // route from the navigator, and the card is not one.
+    open ? enterBlurredModal() : exitBlurredModal();
+    _dockFullSize.value = open;
+  }
+
+  /// The view's [header], under the card's barrier while a pane is full
+  /// size: dimmed like the rest of the view, its controls taking no input,
+  /// and a click on it closing the card as one anywhere else outside the
+  /// card does. The card covers the dock alone, and the header's controls —
+  /// the layout button, the operation sheet, a switcher — act on what is
+  /// behind it.
+  PreferredSizeWidget quietWhileFullSize(PreferredSizeWidget header) => PreferredSize(
+    preferredSize: header.preferredSize,
+    child: ValueListenableBuilder<bool>(
+      valueListenable: _dockFullSize,
+      builder: (context, fullSize, child) => Stack(
+        children: [
+          IgnorePointer(ignoring: fullSize, child: child),
+          if (fullSize)
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => dockKey.currentState?.closeFullSize(),
+                // The card's close box is the dismissal a screen reader gets.
+                excludeFromSemantics: true,
+                child: ColoredBox(color: haloBarrierColor(context)),
+              ),
+            ),
+        ],
+      ),
+      child: header,
+    ),
+  );
+
+  /// The system back puts a full-size pane back rather than leaving the
+  /// view. (A dock Home has put away closes its own card.)
+  bool _putFullSizeBack() {
+    if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
+    final dock = dockKey.currentState;
+    if (dock?.fullSizeModule == null) return false;
+    dock!.closeFullSize();
+    return true;
   }
 
   @override
   void dispose() {
     _mountedHosts.remove(this);
+    systemBack.removeHandler(_putFullSizeBack);
+    if (_dockFullSize.value) exitBlurredModal();
+    _dockFullSize.dispose();
     dockServices.panels.removeListener(_onPanelCatalogChanged);
     dockServices.cat.removeListener(_onEquipmentChanged);
     for (final klass in _dockClasses.values) {
@@ -1212,6 +1273,14 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           if (dockServices.panels[id] case final panel? when panel.minWidth != null || panel.minHeight != null)
             id: Size(panel.minWidth ?? 0, panel.minHeight ?? 0),
       },
+      unexpandableModules: {
+        for (final id in inLayout)
+          if (dockServices.panels[id]?.expandable == false) id,
+      },
+      fullSizeCloseLabel: context.t.common.close,
+      // Escape stops a transmission before it closes anything (cat.md).
+      fullSizeEscapeClaimed: () => dockServices.cat.escapeStoppedKeying,
+      onFullSizeChanged: _onFullSizeChanged,
       // Only after the dock has actually dropped it — it refuses for the last
       // module, and forgetting a pane that is still on screen would wipe what
       // the operator can see.
@@ -1271,7 +1340,16 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           open: (context, file) => importLayoutFile(context, this, file),
         ),
       ],
-      child: dock,
+      // Refusing the pop while a pane is full size is what tells the engine
+      // the app takes the back at all: at the first route, with nothing
+      // refusing, a predictive back leaves the app without asking. The
+      // press itself goes to [_putFullSizeBack], which is asked before the
+      // Navigator, so no PopScope's refusal handler ever runs for it.
+      child: ValueListenableBuilder<bool>(
+        valueListenable: _dockFullSize,
+        builder: (context, fullSize, child) => PopScope(canPop: !fullSize, child: child!),
+        child: dock,
+      ),
     );
   }
 }

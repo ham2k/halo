@@ -20,6 +20,7 @@ import 'tab_chrome.dart';
 import 'theme.dart' show textWidth;
 
 import 'dock_chrome.dart';
+import 'dock_full_size.dart' show DoubleTapListener;
 
 /// A tab's action while the dock is being USED, painted quiet and coming up
 /// to full strength under the pointer.
@@ -133,6 +134,17 @@ class DockTab extends StatelessWidget {
   final Widget? action;
 
   final VoidCallback onTap;
+
+  /// Shows the pane full size, on a double tap of a [solo] title. Null where
+  /// it cannot be: while editing, a tab is a grab handle, and some panes
+  /// refuse ([DockLayoutView.unexpandableModules]).
+  ///
+  /// A solo title only: a real tab is a semantics button, and with the web's
+  /// accessibility DOM on a click on one arrives as a semantics tap with no
+  /// pointer events for [DoubleTapListener] to see. A tab's double tap is
+  /// counted from [onTap] instead, by the dock.
+  final VoidCallback? onDoubleTap;
+
   final String moduleId;
   final ValueChanged<String> onDragStarted;
   final VoidCallback onDragEnded;
@@ -149,6 +161,7 @@ class DockTab extends StatelessWidget {
     required this.pinned,
     required this.action,
     required this.onTap,
+    this.onDoubleTap,
     required this.moduleId,
     required this.onDragStarted,
     required this.onDragEnded,
@@ -329,7 +342,7 @@ class DockTab extends StatelessWidget {
             ),
           ),
         ),
-        if (action != null) _actionSlot(context, available: available),
+        if (action != null) DoubleTapListener.exclude(child: _actionSlot(context, available: available)),
       ],
     );
   }
@@ -421,7 +434,7 @@ class DockTab extends StatelessWidget {
     // no Draggable at all: one that merely refuses still enters the gesture
     // arena against the tap, so tabs would answer a click late — or not at
     // all, once the pointer moved a few pixels first.
-    if (!editing) return tab;
+    if (!editing) return solo ? DoubleTapListener(onDoubleTap: onDoubleTap, child: tab) : tab;
     // A Material rather than a DecoratedBox: it becomes the nearest one above
     // the tab's InkWell, so hover and press still land ON the fill instead of
     // splashing on the strip underneath, out of sight.

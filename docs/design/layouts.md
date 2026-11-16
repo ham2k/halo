@@ -975,6 +975,75 @@ why the tab simply never becomes draggable, rather than a drop being refused
 after the operator has already carried it to the target. Wide pins nothing:
 the arrangement there always has room for logging alongside whatever else.
 
+### Full size
+
+**A double tap on a pane's title shows it full size**, and another on the
+full-size title bar puts it back. The pane is drawn in a card over the dock —
+everything under the view's header — less a dialog's margins: its side
+inset and a little above and below, but no width cap, since the point is
+room. On XS / S it fills the dock, as a Modal Pane fills the screen there.
+The view's header goes under the barrier too (`DockHost.quietWhileFullSize`):
+dimmed, its controls taking no input, and a click on it closing the card
+as one anywhere outside the card does. Its controls act on what is behind
+the card, and a layout edit or the operation sheet started from under it is
+not what a click on a dimmed view means anywhere else. The macOS
+traffic-light mask hides for it (`enterBlurredModal`), as it does for a
+dimming route, which the card is not.
+The card is headed by the pane's own title bar, the same `DockTab` a pane
+alone in its group carries, action included, with a close box at its far
+end, and nothing under the pane: no footer, no Done. The close box, a tap
+outside the card, Escape and the back button also put it back. A double
+click on the title's action runs the action and nothing else
+(`DoubleTapListener.exclude`). Escape comes last in line: a dialog over the
+card takes it first, then a transmission it stops (which is all that press
+does), then whatever in the pane answers it — the logger's menus and open
+controls, one per press — and the card closes on the press that finds
+nothing else to do. The back button stops a transmission first too: the
+dock's handler (`DockHost`, on `systemBack`) is registered before the view's
+own, and handlers are asked newest first. While a pane is full size the host
+also refuses the pop (`PopScope`), which is what tells the engine the app
+takes the back at all: at the first route, with nothing refusing, a
+predictive back would leave the app without asking. The press itself never
+reaches that refusal — the handler takes it first — so the per-destination
+`PopScope`s Home keeps do not run for it.
+
+- **The pane moves; it is not copied.** Every pane sits in a `GlobalKey` of the
+  dock's, and showing one full size moves it into the card with its State —
+  a map keeps its zoom, a list its scroll, a field its half-typed call. A copy
+  would start over, and a second copy of an extension panel would cross the
+  bridge twice. Its slot stays empty, under the barrier, until it comes back.
+- **In the dock's own Stack, not a route or the window's overlay.** The view
+  holding the dock stays the current route, so what it does only while
+  current goes on with a pane full size — the Operation view's CW, VFO and
+  MIDI message keys, its back-to-stop-keying, its keep-awake hold — where a
+  pushed route would have silenced all of it mid-pileup. And the card is
+  under everything the view wraps its dock in: its theme, density and font
+  scale, its pointer listener, the Offstage Home puts a hidden destination
+  in, the keyboard inset its panes already handle. A card in the window's
+  overlay would be outside all of those, each to be put back by hand.
+  What the dock does itself: the barrier, `BlockSemantics` so nothing under
+  it is reachable by a screen reader (or, with the web's accessibility DOM
+  on, by a click), the keyboard (the card's `FocusScope` takes it on
+  opening, and on closing hands it back to what had it before unless it has
+  moved within the pane), and `revealModule` putting the card away before it
+  surfaces another pane, which would otherwise be filled under the barrier.
+- **The double tap stays out of the gesture arena.** A
+  `GestureDetector.onDoubleTap` holds the arena for the double-tap timeout,
+  and every single tap on a tab would select its pane that much late. A tab
+  counts its own taps instead — the dock sees two on one tab within the
+  timeout — and a solo title, which has no tap, watches pointers go by
+  (`DoubleTapListener`). Not pointers for a tab: it is a semantics button,
+  and with the web's accessibility DOM on (every dev web build) a click on
+  one arrives as a semantics tap with no pointer events at all.
+- **Not while editing** — a tab is a grab handle then — **not for a container
+  tab**, and **not for a panel that declines**: `PanelDefinition.expandable`,
+  an extension descriptor's `expandable: false`
+  ([panels.md](../extensions/panels.md)). A headerless pane has no title to
+  double-tap. A pane that leaves the arrangement, a layout edit that begins,
+  or a dock put away (`TickerMode` off: a Home destination the operator has
+  left) puts a full-size pane back in the same build; a dock that goes away
+  altogether (the host's swap at the two-pane boundary) tells the host so.
+
 ### A tab can hold a split
 
 A tab's content is ordinarily a pane. Dropping on the **upper or lower half of
@@ -1475,6 +1544,7 @@ not add it.
 | The root density scope, and the header's snap | `app/lib/views/app_shell/halo_app.dart` (`_LayoutDensityFromWindow`) |
 | Resizable split with draggable divider | `packages/halo_widgets/lib/src/resizable_split_view.dart` |
 | Modal Panes (`showModalPane`) | `packages/halo_widgets/lib/src/modal_pane.dart` |
+| A pane shown full size | `packages/halo_widgets/lib/src/dock_full_size.dart`, drawn over the dock by `DockLayoutViewState.showFullSize` |
 | Persisted pane widths (`layoutDimension`) | `app/lib/services/settings_service.dart` |
 | Home's dock, panels and narrow fallback | `app/lib/views/home_view.dart` |
 | The navigation rail | `app/lib/views/home_navigation_rail.dart` |

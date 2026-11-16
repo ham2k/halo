@@ -264,6 +264,12 @@ class PanelDefinition {
   final double? minWidth;
   final double? minHeight;
 
+  /// Whether a double tap on the pane's title shows it full size
+  /// (docs/design/layouts.md). On unless the panel says otherwise: an
+  /// extension's descriptor `expandable: false`, for content that only
+  /// spreads out over the room rather than using it.
+  final bool expandable;
+
   const PanelDefinition({
     required this.id,
     required this.title,
@@ -281,6 +287,7 @@ class PanelDefinition {
     this.views = const {},
     this.minWidth,
     this.minHeight,
+    this.expandable = true,
     this.configKeys = const [],
     this.initialConfig = const {},
     this.file,
@@ -311,6 +318,7 @@ class PanelDefinition {
     views: views,
     minWidth: minWidth,
     minHeight: minHeight,
+    expandable: expandable,
     configKeys: configKeys,
     initialConfig: initialConfig,
     file: file,
@@ -339,6 +347,7 @@ class PanelDefinition {
       _formFieldsEqual.equals(other.formFields, formFields) &&
       other.minWidth == minWidth &&
       other.minHeight == minHeight &&
+      other.expandable == expandable &&
       listEquals(other.configKeys, configKeys) &&
       _formFieldsEqual.equals(other.initialConfig, initialConfig) &&
       other.file == file;
@@ -428,6 +437,7 @@ class PanelDefinition {
             }(),
       ],
       multiple: entry['multiple'] == true,
+      expandable: entry['expandable'] != false,
       configKeys: [
         for (final key in _list(entry['config']))
           if (key is String && key.isNotEmpty)

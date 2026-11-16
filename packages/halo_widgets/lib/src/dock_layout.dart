@@ -25,8 +25,10 @@
 // the caller keys it; the keep-alive bucket subtleties of TabBarView don't
 // apply here).
 
+import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart' show kDoubleTapTimeout;
 import 'package:flutter/material.dart';
 
 import 'density.dart';
@@ -37,9 +39,12 @@ import 'ui_scale.dart';
 
 import 'dock_chrome.dart';
 import 'dock_drop_targets.dart';
+import 'dock_full_size.dart';
 import 'dock_model.dart';
 import 'dock_regions.dart';
 import 'dock_tab.dart';
+
+part 'dock_layout_full_size.dart';
 
 /// Whether the pane reading this is the one on top of its tab group. Every
 /// pane in a group stays MOUNTED (the group is an IndexedStack, so a
@@ -204,6 +209,21 @@ class DockLayoutView extends StatefulWidget {
   /// after the operator has already carried it somewhere.
   final Set<String> pinnedModuleIds;
 
+  /// Modules that do not go full size on a double tap of their title
+  /// ([DockLayoutViewState.showFullSize]): panels that opted out.
+  final Set<String> unexpandableModules;
+
+  /// What a screen reader calls the full-size view's close box.
+  final String fullSizeCloseLabel;
+
+  /// A pane gone full size (its id) or back (null): the card covers the
+  /// dock alone, and the host quiets its own controls around it.
+  final ValueChanged<String?>? onFullSizeChanged;
+
+  /// Whether the Escape being handled already stopped a transmission, so
+  /// it does not also close a full-size pane.
+  final bool Function()? fullSizeEscapeClaimed;
+
   const DockLayoutView({
     super.key,
     required this.initialSpec,
@@ -219,6 +239,10 @@ class DockLayoutView extends StatefulWidget {
     this.initialState = DockState.empty,
     this.onStateChanged,
     this.pinnedModuleIds = const {},
+    this.unexpandableModules = const {},
+    this.fullSizeCloseLabel = 'Close',
+    this.fullSizeEscapeClaimed,
+    this.onFullSizeChanged,
   });
 
   /// True when [spec]'s modules are exactly [moduleIds] — the guard a view
@@ -237,7 +261,8 @@ class DockLayoutView extends StatefulWidget {
 /// Public so a view can hold a `GlobalKey<DockLayoutViewState>` and call
 /// [revealModule] — a programmatic tab selection (surfacing command output,
 /// a tapped spot's logging pane, the call-info detail).
-class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProviderStateMixin {
+class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProviderStateMixin, _DockFullSize {
+  @override
   late DockNode _spec = widget.initialSpec;
 
   /// Drives a just-dropped pane from nothing to its share, so the layout is
@@ -381,6 +406,8 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   /// No-op when the module isn't in the layout. Not persisted — a reveal is
   /// programmatic, not a user arrangement choice.
   void revealModule(String id) {
+    // Not under the card: a spot's call would land in a pane nobody can see.
+    if (_fullSize != null && _fullSize != id) closeFullSize();
     // Selects at EVERY level on the way down, not just where the module sits:
     // a pane inside a container is only on screen once the container's own tab
     // is showing too, so a reveal that stopped at the innermost group would
@@ -412,6 +439,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   /// Every module in the layout, in visual order — what a layout editor
   /// lists. Read from the LIVE tree, not the caller's `initialSpec`, which
   /// stopped being the arrangement the moment the user moved anything.
+  @override
   List<String> get modules => _spec.collectModules();
 
   /// The live arrangement, for a test that needs to see the tree rather than
@@ -969,6 +997,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
 
   @override
   Widget build(BuildContext context) {
+    _settleFullSize();
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -977,6 +1006,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         if (_dragging != null)
           for (final region in const [DockRegion.left, DockRegion.right, DockRegion.top, DockRegion.bottom])
             _positionedEdge(region, DockEdgeDropTarget(region: region, onDrop: (id) => _handleEdgeDrop(id, region))),
+        if (_fullSize case final id?) _buildFullSize(id),
       ],
     );
   }
@@ -1035,7 +1065,8 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     // Under this group's header, a container's top is as much "at the top"
     // as the dock's own: a peek drawn above it would cover that tab strip.
     if (group.nested[slot] case final subtree?) return _buildNode(subtree, atTop: atTop || showHeader);
-    final pane = widget.children[slot] ?? _missingPane(slot);
+    // Empty while the pane is showing full size: it is the card's then.
+    final pane = slot == _fullSize ? const SizedBox.shrink() : KeyedSubtree(key: _paneKey(slot), child: widget.children[slot] ?? _missingPane(slot));
     // While editing, the pane's own contents take no pointer input. A pane is
     // a block to be moved then, and its insides are a picture of what the
     // block holds: a drag begun inside the log would otherwise be taken by the
@@ -1475,7 +1506,9 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         onTap: () {
           setState(() => group.selected = index);
           _emitState();
+          _countTabTap(id);
         },
+        onDoubleTap: solo && _mayShowFullSize(id) ? () => showFullSize(id) : null,
         moduleId: id,
         onDragStarted: (id) {
           setState(() => _dragging = id);
@@ -1492,6 +1525,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
   /// A module in the arrangement that the caller supplied no widget for.
   /// Renders as nothing, but says so: an empty pane where a pane was asked
   /// for otherwise reads as a broken panel rather than a missing one.
+  @override
   Widget _missingPane(String id) {
     assert(() {
       debugPrint('[dock] no child widget supplied for module "$id" — rendering an empty pane');

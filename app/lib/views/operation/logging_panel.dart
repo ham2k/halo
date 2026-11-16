@@ -5,7 +5,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show LogicalKeyboardKey;
+import 'package:flutter/services.dart' show HardwareKeyboard, LogicalKeyboardKey;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -811,9 +811,9 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
     return rows < 1 ? 1 : rows;
   }
 
-  /// Escape reaching here (not `LoggingControls`' own `CallbackShortcuts`)
-  /// means focus is elsewhere in this panel — the QSO list, or nowhere at
-  /// all; Escape must deselect regardless of what has focus.
+  /// Escape anywhere in this panel but a logging field — the QSO list, the
+  /// controls' scope focused for want of a field, or nowhere at all — and
+  /// not spent on anything closer.
   ///
   /// It only ever deselects, never toggles: a second press must not
   /// re-select the QSO the first had just dropped (an undo on a second
@@ -825,13 +825,27 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
   /// its view can never hold focus and `LoggingControls`' own Escape guard
   /// never gets a chance to run — this mirrors that guard here so Escape
   /// doesn't close the read-only view it's meant to protect.
-  void _handlePanelEscape() {
+  ///
+  /// Answers whether the press was spent here; one with nothing to deselect
+  /// goes on to whatever holds the panel, a full-size card closing.
+  /// Whether the keyboard is in a logging field, whose controls have had the
+  /// Escape and left it alone. Not this panel's to spend on a deselect: with
+  /// SO2R, one pressed in the idle set would drop the QSO the other set is
+  /// editing. A scope focused for want of a field is not a field.
+  bool _escapeFromLoggingField() {
+    final node = FocusManager.instance.primaryFocus;
+    if (node == null || node is FocusScopeNode) return false;
+    return node.context?.findAncestorWidgetOfExactType<LoggingControls>() != null;
+  }
+
+  bool _handlePanelEscape() {
     // An Escape OperationView's key handler spent on stopping keying is spent
     // here too — the same rule LoggingSession.escapeClaimed carries into the
     // fields.
-    if (widget.services.cat.escapeStoppedKeying) return;
-    if (_selectedQso == null || _controller.isFieldsLocked) return;
+    if (widget.services.cat.escapeStoppedKeying) return true;
+    if (_selectedQso == null || _controller.isFieldsLocked) return false;
     setState(() => _selectedQso = null);
+    return true;
   }
 
   /// Only rebuild when a numbers-row setting actually changes —
@@ -1326,10 +1340,9 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
 
     // Escape deselecting a QSO regardless of what has focus (e.g. the QSO
     // was selected via a list tap, which never focuses anything inside
-    // LoggingControls). LoggingControls' own
-    // CallbackShortcuts, closer to the compose form's fields, still handles
-    // Escape whenever focus IS there (discard-typed-changes) —
-    // this one only fires when that inner one doesn't.
+    // LoggingControls). LoggingControls' own key handler, closer to the
+    // compose form's fields, has Escape first whenever focus IS there
+    // (discard-typed-changes), and this one leaves alone what it passed on.
     final listBox = KeyedSubtree(
       key: _listBoxKey,
       child: Focus(
@@ -1385,8 +1398,16 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         ],
       ),
     );
-    final panel = CallbackShortcuts(
-      bindings: {const SingleActivator(LogicalKeyboardKey.escape): _handlePanelEscape},
+    // Not a CallbackShortcuts, which claims Escape whether or not anything
+    // happened: one with nothing to deselect goes on, to a full-size card.
+    final panel = Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onKeyEvent: (node, event) {
+        if (!const SingleActivator(LogicalKeyboardKey.escape).accepts(event, HardwareKeyboard.instance)) return KeyEventResult.ignored;
+        if (_escapeFromLoggingField()) return KeyEventResult.ignored;
+        return _handlePanelEscape() ? KeyEventResult.handled : KeyEventResult.ignored;
+      },
       child: Column(children: widget.controlsAboveLog ? [controls, listPane] : [listPane, controls]),
     );
 
