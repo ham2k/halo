@@ -34,6 +34,7 @@ import 'hang_watchdog.dart';
 import 'error_reporting_service.dart';
 import 'extensions/extension_dev_client.dart' show DevServerState;
 import 'extensions/extension_force_disable.dart' show forceDisabledBeforeStart, keepForceDisabledFromBoot;
+import 'extensions/extension_gone_since.dart' show updateExtensionGoneSince;
 import 'extensions/extension_service.dart';
 import 'flags_service.dart' show fetchFlagsDefaultsBeforeStart;
 import 'unclean_quit.dart';
@@ -388,8 +389,14 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
           // here would repeat on every single offline boot.
           await services.dataFiles.syncAllDataFiles(notifyOnFailure: false);
           // After the enabled extensions have refreshed their data-file ownership
-          // records, drop the data of any extension disabled long enough ago.
-          await services.dataFiles.purgeStaleExtensionData(settings.extensionDisabledSince);
+          // records, drop the data of any extension gone from the app: an
+          // uninstall's at once, one a build stopped carrying a week on.
+          final goneSince = await updateExtensionGoneSince(
+            settings: settings,
+            available: services.extensions.availableExtensions,
+            owners: services.dataFiles.dataFileOwners,
+          );
+          await services.dataFiles.purgeGoneExtensionData(goneSince, stillGone: (key) => settings.extensionGoneSince.containsKey(key));
         })
         .catchError((Object e) {
           debugPrint('[boot] failed to initialize data files: $e');

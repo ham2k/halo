@@ -3384,8 +3384,8 @@
     "importedData": "IMPORTED DATA FOR ${label}.",
     "cleanedUpTitle": "CLEANED UP EXTENSION DATA",
     "removedData": {
-      "one": "REMOVED DATA FOR ${count} DATA FILE FROM DISABLED EXTENSIONS.",
-      "other": "REMOVED DATA FOR ${count} DATA FILES FROM DISABLED EXTENSIONS."
+      "one": "REMOVED DATA FOR ${count} DATA FILE FROM EXTENSIONS NO LONGER INSTALLED.",
+      "other": "REMOVED DATA FOR ${count} DATA FILES FROM EXTENSIONS NO LONGER INSTALLED."
     },
     "recordsProgress": "${end} / ${total} RECORDS",
     "recordsSoFar": {

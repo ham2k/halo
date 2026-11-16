@@ -56,7 +56,7 @@ keep these tables complete, because they are what an audit greps against:
 | `data_file_manager.dart` — `data_file_updated_*` | Persists, and outlives the travel that wrote it |
 | `switch_accounts_dialog.dart` — the challenge clock | Compared against the server's `challenge_expires_at` |
 | `peer_trust.dart` — `pairedAtMillis`, `lastSeenAtMillis` | Per-peer, and outlives the session that paired |
-| `extension_disabled_since.dart` — `extensionDisabledSince` | Persists; it gates a 7-day purge grace window |
+| `extension_gone_since.dart` — `extensionGoneSince` | Persists; it gates the 7-day grace before a gone extension's data is purged |
 | `catalog_service.dart` — `catalogUpdateCheckedAt` | Persists; it throttles the unattended catalog check to once a day, and a travelled stamp would either spam the catalog or silence the check for the length of the offset |
 | `geoshape_service.dart` — the cached shape's stamp | Persists, and outlives the travel that wrote it |
 

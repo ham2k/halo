@@ -282,9 +282,10 @@ mixin _ExtensionInstalls {
   /// unstable releases after a stable one updates it. A revocation
   /// of another version is over. And a catalog install of a key the store
   /// did not have — the built-in that moved to the catalog, switched off by
-  /// the operator while it was built in — drops the operator's override and
-  /// the disabled-since stamp so it runs; an UPDATE keeps both, because a
-  /// switch the operator turned off is not a newer version's to turn on.
+  /// the operator while it was built in — drops the operator's override so it
+  /// runs; an UPDATE keeps it, because a switch the operator turned off is
+  /// not a newer version's to turn on. Any install clears the gone-since
+  /// stamp: installed, the extension is here.
   Future<void> _recordInstall(InspectedBundle bundle, {required bool fresh}) async {
     final currentSettings = settings;
     if (currentSettings == null) return;
@@ -305,11 +306,13 @@ mixin _ExtensionInstalls {
     await liftInstallRecordsForNewVersion(currentSettings, bundle.key, bundle.version);
     final intended = currentSettings.extensionsInstalled;
     if (intended[bundle.key] != bundle.name) await currentSettings.setExtensionsInstalled({...intended, bundle.key: bundle.name});
+    // Installed, it is here: an uninstall's stamp would purge its data at the
+    // next launch.
+    final goneSince = currentSettings.extensionGoneSince;
+    if (goneSince.remove(bundle.key) != null) await currentSettings.setExtensionGoneSince(goneSince);
     if (provenance == null || !fresh) return;
     final overrides = currentSettings.extensionOverrides;
     if (overrides.remove(bundle.key) != null) await currentSettings.setExtensionOverrides(overrides);
-    final disabledSince = currentSettings.extensionDisabledSince;
-    if (disabledSince.remove(bundle.key) != null) await currentSettings.setExtensionDisabledSince(disabledSince);
   }
 
   /// Removes an installed extension and reboots without it.
@@ -819,7 +822,7 @@ mixin _ExtensionInstalls {
   }
 
   /// Recomputes which extensions should be loaded (overrides + experiment
-  /// gates), re-stamps disabledSince, and restarts the runtime — but only
+  /// gates), prunes the choices of extensions no longer here, and restarts the runtime — but only
   /// when the effective set actually changes (and the runtime is up; a
   /// pending boot picks the fresh state up on its own). Call after flipping
   /// an experiment; most toggles gate nothing and return cheaply.
@@ -830,7 +833,7 @@ mixin _ExtensionInstalls {
     // set: without this, an EXP preview within the kernel cache's TTL of a
     // flip still offers the direction the flip just took.
     invalidateHookContext();
-    await updateExtensionDisabledSince(settings: currentSettings, available: availableExtensions, isActive: isExtensionActive);
+    await pruneForgottenExtensionChoices(settings: currentSettings, available: availableExtensions);
     // Judged after any replacement in flight — an install's, another toggle's.
     // That one read the set before this change landed: compared against
     // now, its host is null and the change looks like a boot's to pick up,

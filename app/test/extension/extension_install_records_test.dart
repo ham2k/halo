@@ -124,19 +124,19 @@ void main() {
     // expectation fails.
     final (extensions, settings, store) = await setup({
       'extensionOverrides': {'ki2d-my-clock': false},
-      'extensionDisabledSince': {'ki2d-my-clock': 1234},
+      'extensionGoneSince': {'ki2d-my-clock': 0},
     });
     await extensions.installBundle(await fromCatalog(store, fixture, '1.2.3'));
     expect(settings.extensionOverrides, isEmpty);
-    expect(settings.extensionDisabledSince, isEmpty);
+    expect(settings.extensionGoneSince, isEmpty, reason: 'installed, it is here: an uninstall stamp would purge its data');
     expect(settings.extensionInstalledFrom['ki2d-my-clock']?['version'], '1.2.3');
 
     await settings.setExtensionOverrides({'ki2d-my-clock': false});
-    await settings.setExtensionDisabledSince({'ki2d-my-clock': 5678});
+    await settings.setExtensionGoneSince({'ki2d-my-clock': 0});
     final newer = rebuilt((m) => {...m, 'version': '1.3.0'});
     await extensions.installBundle(await fromCatalog(store, newer, '1.3.0'));
     expect(settings.extensionOverrides, {'ki2d-my-clock': false});
-    expect(settings.extensionDisabledSince, {'ki2d-my-clock': 5678});
+    expect(settings.extensionGoneSince, isEmpty, reason: 'an update is an install too');
     expect(settings.extensionInstalledFrom['ki2d-my-clock']?['version'], '1.3.0');
   });
 

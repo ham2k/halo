@@ -18,7 +18,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/extensions/bundle_storage_io.dart';
 import 'package:ham2k_logger/services/extensions/catalog_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_catalog_migration.dart';
-import 'package:ham2k_logger/services/extensions/extension_disabled_since.dart';
+import 'package:ham2k_logger/services/extensions/extension_gone_since.dart';
 import 'package:ham2k_logger/services/extensions/extension_info.dart';
 import 'package:ham2k_logger/services/extensions/extension_relevance.dart';
 import 'package:ham2k_logger/services/extensions/installed_extensions.dart';
@@ -582,39 +582,67 @@ void main() {
     });
   });
 
-  group('the disabled-since stamp', () {
-    // Judged by KEY: should the list ever hold a key twice, the inactive copy
-    // would stamp the key its live twin runs under, and seven days on the
-    // purge deletes the running extension's downloaded data.
+  group('the gone-since stamp', () {
+    // The purge deletes an extension's downloaded data once it is stamped
+    // and the grace has passed: a stamp on an extension that is still here,
+    // however long switched off, deletes data its operator may turn back on.
     const asset = ExtensionInfo(key: 'ham2k-lookup', file: 'ham2k-lookup.js', core: false, name: 'Lookup');
-    const installed = ExtensionInfo(key: 'ham2k-lookup', file: 'ham2k-lookup.js', core: false, name: 'Lookup', source: ExtensionSource.installed);
-    bool assetIsLive(ExtensionInfo info) => info.source == ExtensionSource.asset;
 
-    test('a key with two entries is judged by the one that is live', () async {
+    test('an extension that is here is never stamped, switched off or not', () async {
       final settings = await _settings();
-      await updateExtensionDisabledSince(settings: settings, available: const [asset, installed], isActive: assetIsLive);
-      expect(settings.extensionDisabledSince.containsKey('ham2k-lookup'), isFalse);
+      await settings.setExtensionsInstalled({'ki2d-clock': 'Clock'});
+      await settings.setExtensionOverrides({'ham2k-lookup': false, 'ki2d-clock': false});
+      final stamps = await updateExtensionGoneSince(settings: settings, available: const [asset], owners: {'ham2k-lookup', 'ki2d-clock'});
+      expect(stamps, isEmpty);
+      expect(settings.extensionGoneSince, isEmpty);
     });
 
-    test('and by the live one whichever order the two arrive in', () async {
-      final settings = await _settings();
-      await updateExtensionDisabledSince(settings: settings, available: const [installed, asset], isActive: assetIsLive);
-      expect(settings.extensionDisabledSince.containsKey('ham2k-lookup'), isFalse);
-    });
-
-    test('a key with no live entry is still stamped', () async {
-      final settings = await _settings();
-      await updateExtensionDisabledSince(settings: settings, available: const [asset, installed], isActive: (_) => false);
-      expect(settings.extensionDisabledSince.containsKey('ham2k-lookup'), isTrue);
-    });
-
-    test('a retired built-in is stamped, so the purge clears what it left', () async {
+    test('a retired built-in that owns data is stamped, so the purge clears what it left', () async {
       // It never runs again, and nothing lists it: unstamped, the data files
       // it downloaded would stay on disk beside its twin's for good.
       final settings = await _settings();
-      await updateExtensionDisabledSince(settings: settings, available: const [installed], isActive: (_) => true);
-      expect(settings.extensionDisabledSince.keys, containsAll(['pota', 'wca', 'qp']));
+      final stamps = await updateExtensionGoneSince(settings: settings, available: const [asset], owners: {'pota', 'ham2k-lookup'});
+      expect(stamps.keys, ['pota']);
     });
+
+    test('a stamp keeps its day, goes when the extension is back, and goes with its data', () async {
+      final settings = await _settings();
+      await settings.setExtensionGoneSince({'ki2d-gone': 1000, 'ki2d-back': 2000, 'ki2d-no-data': 3000});
+      await settings.setExtensionsInstalled({'ki2d-back': 'Back'});
+      final stamps = await updateExtensionGoneSince(settings: settings, available: const [asset], owners: {'ki2d-gone', 'ki2d-back'});
+      expect(stamps, {'ki2d-gone': 1000}, reason: 'a later launch must not restart the grace');
+    });
+
+    test('an uninstall is stamped for the next launch, which purges it at once', () async {
+      final settings = await _settings();
+      await settings.setExtensionsInstalled({'ki2d-clock': 'Clock'});
+      await settings.forgetExtension('ki2d-clock');
+      await settings.forgetExtensionInstalls({'ki2d-clock'});
+      expect(settings.extensionGoneSince, {'ki2d-clock': kGoneAtUninstall});
+      final stamps = await updateExtensionGoneSince(settings: settings, available: const [asset], owners: {'ki2d-clock'});
+      expect(stamps, {'ki2d-clock': kGoneAtUninstall}, reason: 'the purge takes it at once, no grace');
+    });
+
+    test('nothing is stamped, and no stamp handed on, while the extension index has not loaded', () async {
+      // An empty list there means "not loaded yet": read as "nothing exists",
+      // every owner would be stamped gone, and a stamp an extension back in
+      // the app should have shed would reach the purge.
+      final settings = await _settings();
+      await settings.setExtensionGoneSince({'ki2d-back': 1000});
+      expect(await updateExtensionGoneSince(settings: settings, available: const [], owners: {'ham2k-lookup', 'ki2d-back'}), isEmpty);
+      expect(settings.extensionGoneSince, {'ki2d-back': 1000}, reason: 'kept for a launch that can judge it');
+    });
+
+    test('the stamps of the switched-off rule are cleared', () async {
+      SharedPreferences.setMockInitialValues({'extensionDisabledSince': '{"pota": 1000}'});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      await updateExtensionGoneSince(settings: settings, available: const [asset], owners: const {});
+      expect(settings.prefs.containsKey('extensionDisabledSince'), isFalse);
+    });
+  });
+
+  group('pruning forgotten choices', () {
+    const asset = ExtensionInfo(key: 'ham2k-lookup', file: 'ham2k-lookup.js', core: false, name: 'Lookup');
 
     test('a pre-loaded bundle no longer installed keeps its switch', () async {
       // Pruned, it reads as on, and the next app update carrying a newer copy
@@ -622,18 +650,8 @@ void main() {
       final settings = await _settings();
       await settings.setExtensionPreloaded({'ham2k-wwff': '0.2.0'});
       await settings.setExtensionOverrides({'ham2k-wwff': false, 'ki2d-gone': false});
-      await updateExtensionDisabledSince(settings: settings, available: const [asset], isActive: (_) => true);
+      await pruneForgottenExtensionChoices(settings: settings, available: const [asset]);
       expect(settings.extensionOverrides, {'ham2k-wwff': false}, reason: 'pruning still runs for the rest');
-    });
-
-    test('a twin no longer installed keeps its stamp, so the purge still clears its data', () async {
-      // One fetched from the catalog rather than pre-loaded, then taken out
-      // switched off. Pruned, the stamp is gone before the grace period ends,
-      // and the purge never visits its downloaded data.
-      final settings = await _settings();
-      await settings.setExtensionDisabledSince({'ham2k-wca': 1000});
-      await updateExtensionDisabledSince(settings: settings, available: const [asset], isActive: (_) => true);
-      expect(settings.extensionDisabledSince['ham2k-wca'], 1000);
     });
   });
 }

@@ -15,6 +15,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:ham2k_logger/services/extensions/extension_gone_since.dart' show kGoneAtUninstall;
 import 'package:ham2k_logger/services/app_storage.dart' show kDataFilesDirName;
 import 'package:ham2k_logger/services/data_file_manager.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
@@ -985,14 +986,14 @@ REF-002,Summit Two,45.56,-122.78
       return m;
     }
 
-    test('purges data of an extension disabled beyond the grace period', () async {
+    test('purges data of an extension gone from the app beyond the grace period', () async {
       final m = await syncPotaDataFile();
       expect(await lookups.getLookup('pota', 'US-0001'), isNotNull);
       expect(prefs.getString('data_file_ownership'), contains('pota'));
 
       final now = DateTime.fromMillisecondsSinceEpoch(1000 * 24 * 3600 * 1000);
-      // Disabled 8 days ago → past the 7-day grace.
-      await m.purgeStaleExtensionData({'pota': now.subtract(const Duration(days: 8)).millisecondsSinceEpoch}, now: now);
+      // Gone 8 days ago → past the 7-day grace.
+      await m.purgeGoneExtensionData({'pota': now.subtract(const Duration(days: 8)).millisecondsSinceEpoch}, now: now);
 
       expect(await lookups.getLookup('pota', 'US-0001'), isNull, reason: 'stale data purged');
       expect(prefs.getString('data_file_ownership'), isNot(contains('pota')), reason: 'ownership pruned');
@@ -1002,17 +1003,38 @@ REF-002,Summit Two,45.56,-122.78
       expect(notice.text, contains('1 data file'));
     });
 
-    test('keeps data of an extension disabled within the grace period', () async {
+    test('keeps data of an extension gone within the grace period', () async {
       final m = await syncPotaDataFile();
       final now = DateTime.fromMillisecondsSinceEpoch(1000 * 24 * 3600 * 1000);
-      await m.purgeStaleExtensionData({'pota': now.subtract(const Duration(days: 3)).millisecondsSinceEpoch}, now: now);
-      expect(await lookups.getLookup('pota', 'US-0001'), isNotNull, reason: 'recent disable keeps data');
+      await m.purgeGoneExtensionData({'pota': now.subtract(const Duration(days: 3)).millisecondsSinceEpoch}, now: now);
+      expect(await lookups.getLookup('pota', 'US-0001'), isNotNull, reason: 'an update may bring it back within the week');
     });
 
-    test('leaves an enabled extension (no disabledSince entry) untouched', () async {
+    // The operator removed it: nothing is coming back for its data, and the
+    // next launch is when the purge first runs.
+    test('purges an uninstalled extension\'s data at once', () async {
       final m = await syncPotaDataFile();
-      await m.purgeStaleExtensionData(const {});
+      await m.purgeGoneExtensionData({'pota': kGoneAtUninstall});
+      expect(await lookups.getLookup('pota', 'US-0001'), isNull);
+    });
+
+    // The boot sync runs alongside the operator: one reinstalled after the
+    // stamps were read would otherwise lose its data the moment it is back.
+    test('keeps the data of an extension no longer gone by the time its turn comes', () async {
+      final m = await syncPotaDataFile();
+      await m.purgeGoneExtensionData({'pota': kGoneAtUninstall}, stillGone: (_) => false);
       expect(await lookups.getLookup('pota', 'US-0001'), isNotNull);
+    });
+
+    test('leaves an extension that is here (no stamp) untouched', () async {
+      final m = await syncPotaDataFile();
+      await m.purgeGoneExtensionData(const {});
+      expect(await lookups.getLookup('pota', 'US-0001'), isNotNull);
+    });
+
+    test('names the extensions it holds data for', () async {
+      final m = await syncPotaDataFile();
+      expect(m.dataFileOwners, {'pota'});
     });
 
     // A catalog twin fills its retired built-in's lookup category under a data
@@ -1054,7 +1076,7 @@ REF-002,Summit Two,45.56,-122.78
       expect(await lookups.getLookup('pota', 'US-0001'), isNotNull, reason: 'the premise: the twin has filled the category');
 
       final now = DateTime.fromMillisecondsSinceEpoch(1000 * 24 * 3600 * 1000);
-      await m.purgeStaleExtensionData({'pota': now.subtract(const Duration(days: 8)).millisecondsSinceEpoch}, now: now);
+      await m.purgeGoneExtensionData({'pota': now.subtract(const Duration(days: 8)).millisecondsSinceEpoch}, now: now);
 
       expect(await lookups.getLookup('pota', 'US-0001'), isNotNull, reason: 'ham2k-pota still fills the category');
       expect(prefs.getString('data_file_updated_pota-all-parks'), isNull, reason: 'the retired entry itself is still cleaned up');

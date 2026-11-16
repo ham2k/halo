@@ -152,13 +152,14 @@ ordinary update and clears it. Only an installed extension is ever put
 aside; a core one that will not evaluate is a defect in the app, and
 skipping it would ship an install quietly missing part of itself. A refused
 extension is treated like a revoked one in everything else: it keeps its
-switch, and its downloaded data expires on the same clock as any extension
-the app is not loading. A failure that names no bundle (a kernel that will
+switch, and, still installed, its downloaded data. A failure that names no bundle (a kernel that will
 not load, an extension that throws while activating) puts nothing aside and
 is reported. A twin fills the same lookup categories its built-in did,
-under data-file keys of its own; each retired built-in is stamped disabled,
-so a week on the stale-data purge clears the data files it left, leaving
-alone the rows a live extension's data file still fills.
+under data-file keys of its own; each retired built-in is stamped gone from
+the app, so a week on the purge clears the data files it left, leaving
+alone the rows a live extension's data file still fills. An extension the
+operator uninstalls is stamped too, for the purge at the next launch, with
+no week's grace; one switched off keeps its data however long.
 
 ## Installing from the catalog
 

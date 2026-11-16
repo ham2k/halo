@@ -105,7 +105,9 @@ void main() {
     expect(enabled('qrz'), isTrue, reason: 'override true beats enabledByDefault false');
   });
 
-  test('disabling stamps disabledSince; re-enabling clears it', () async {
+  // A switched-off extension keeps its downloaded data: the operator may turn
+  // it back on, any day, and expect its lookups to be there.
+  test('disabling an extension stamps nothing for the data purge', () async {
     SharedPreferences.setMockInitialValues({});
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
@@ -114,27 +116,19 @@ void main() {
     HaLoServices(db, settings, extensions: extensions);
 
     await extensions.setExtensionsEnabled({'pota': false});
-    expect(settings.extensionDisabledSince.keys, contains('pota'));
-    // qrz defaults off → also stamped by the recompute.
-    expect(settings.extensionDisabledSince.keys, contains('qrz'));
-
-    await extensions.setExtensionsEnabled({'pota': true});
-    expect(settings.extensionDisabledSince.keys, isNot(contains('pota')));
+    expect(settings.extensionGoneSince, isEmpty);
     await db.close();
   });
 
   test('a key naming an extension deleted from the build is pruned, once the index has loaded', () async {
     // What a migrated install looks like after the extension it toggled is
     // later removed from the build entirely (not just disabled) — e.g. HamDB.
-    SharedPreferences.setMockInitialValues({'extensionOverrides': '{"gone": false, "pota": true}', 'extensionDisabledSince': '{"gone": 1000, "sota": 2000}'});
+    SharedPreferences.setMockInitialValues({'extensionOverrides': '{"gone": false, "pota": true}'});
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
-    // 'gone' is absent from the index. 'sota' stays disabled throughout (no
-    // override, enabledByDefault: false), so its disabledSince entry must
-    // survive the prune untouched — isolating what's under test from the
-    // pre-existing per-extension stamp/clear loop above.
+    // 'gone' is absent from the index.
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'Parks on the Air'),
       ExtensionInfo(key: 'sota', file: 'sota.js', core: false, name: 'Summits on the Air', enabledByDefault: false),
@@ -144,9 +138,7 @@ void main() {
     await extensions.applyExtensionAvailability();
 
     expect(settings.extensionOverrides.containsKey('gone'), isFalse);
-    expect(settings.extensionDisabledSince.containsKey('gone'), isFalse);
     expect(settings.extensionOverrides['pota'], isTrue, reason: 'a key for a still-known extension is untouched');
-    expect(settings.extensionDisabledSince['sota'], 2000, reason: 'a key for a still-known extension is untouched');
   });
 
   test('never prunes before the extension index has loaded — an empty availableExtensions means unloaded, not empty', () async {
@@ -194,14 +186,13 @@ void main() {
     await extensions.applyExtensionAvailability();
     expect(extensions.isExtensionAvailable(gated), isFalse);
     expect(settings.extensionOverrides['gated-panel'], isTrue, reason: 'gating must not rewrite overrides');
-    // Gated counts as disabled for the data-purge grace clock.
-    expect(settings.extensionDisabledSince.keys, contains('gated-panel'));
+    // Gated, it is still here: its data is not stamped for the purge.
+    expect(settings.extensionGoneSince, isEmpty);
 
     await settings.setExperimentEnabled('an-experiment', true);
     await extensions.applyExtensionAvailability();
     expect(extensions.isExtensionAvailable(gated), isTrue);
     expect(extensions.isExtensionEnabled(gated), isTrue);
-    expect(settings.extensionDisabledSince.keys, isNot(contains('gated-panel')));
   });
 
   test('listActiveExtensions surfaces the kernel-info listing', () async {

@@ -16,6 +16,7 @@ import 'app_storage.dart';
 import 'data_file_errors.dart';
 import 'data_file_fetch_url.dart';
 import 'error_reporting_service.dart';
+import 'extensions/extension_gone_since.dart' show kGoneAtUninstall, kGoneGrace;
 import 'extensions/extension_service.dart';
 import 'ham2k_data_files.dart';
 import 'sqlite_data_files.dart';
@@ -693,8 +694,8 @@ class DataFileManager {
           matched++;
 
           // Remember which extension owns this data file (and its lookup
-          // category) so the stale-data purge can find it later, when the
-          // extension is disabled and can no longer describe itself.
+          // category) so the purge can find it later, when the extension is
+          // gone from the app and can no longer describe itself.
           await _recordOwnership(key, def);
 
           final maxAgeDays = def['maxAgeInDays'] as int? ?? 14;
@@ -1164,9 +1165,9 @@ class DataFileManager {
     }
   }
 
-  /// `{dataFileKey: {ext, category}}` — persisted so the stale-data purge
-  /// can identify (and delete) a disabled extension's data even though the
-  /// extension is no longer loaded to describe it.
+  /// `{dataFileKey: {ext, category}}` — persisted so the purge can identify
+  /// (and delete) a gone extension's data even though the extension is no
+  /// longer loaded to describe it.
   Map<String, dynamic> _ownership() {
     final raw = prefs.getString(_ownershipKey);
     if (raw == null || raw.isEmpty) return {};
@@ -1191,8 +1192,8 @@ class DataFileManager {
   /// Purges the disk cache/etag/last-updated prefs of a dataFile key whose
   /// owning extension is still enabled and loaded, but no longer registers
   /// that key — e.g. a call-notes `customFiles` entry whose URL (and so
-  /// derived identifier) changed. Distinct from [purgeStaleExtensionData],
-  /// which only acts on entire DISABLED extensions; without this, the OLD
+  /// derived identifier) changed. Distinct from [purgeGoneExtensionData],
+  /// which only acts on entire extensions gone from the app; without this, the OLD
   /// identifier's cache/prefs would persist on disk forever, since no other
   /// path ever revisits a key that stopped being registered.
   /// [entries] is [syncAllDataFiles]'s own `getDefinition` fan-out — the set
@@ -1231,10 +1232,11 @@ class DataFileManager {
       final owner = entry.value;
       if (owner is! Map) continue;
       final liveKeys = currentKeysByExtension[owner['ext']];
-      // The extension didn't appear in this sync pass at all (disabled, or
-      // the runtime isn't up) — purgeStaleExtensionData handles that case on
-      // its own schedule; nothing to do here unless it's currently loaded
-      // and simply dropped this one key.
+      // The extension didn't appear in this sync pass at all (switched off,
+      // gone, or the runtime isn't up): nothing to judge here unless it's
+      // currently loaded and simply dropped this one key. A switched-off one
+      // keeps its keys until it runs again; a gone one is
+      // purgeGoneExtensionData's.
       if (liveKeys == null || liveKeys.contains(entry.key)) continue;
       final key = entry.key;
       final category = owner['category'] as String? ?? key;
@@ -1249,17 +1251,31 @@ class DataFileManager {
     }
   }
 
-  /// Purges the downloaded data of extensions that have been DISABLED for at
-  /// least [grace] (default 7 days) — their lookup rows, raw cache files,
-  /// and bookkeeping prefs. Data of extensions that are enabled, or
-  /// recently disabled (a re-enable inside the window keeps everything), is
-  /// left untouched. [disabledSince] is `settings.extensionDisabledSince`.
+  /// The extensions data files were downloaded for, by the ownership
+  /// records: what the gone-since stamps are kept for.
+  Set<String> get dataFileOwners => {
+    for (final owner in _ownership().values)
+      if (owner is Map && owner['ext'] is String) owner['ext'] as String,
+  };
+
+  /// Purges the downloaded data of extensions gone from the app for at least
+  /// [grace] — their lookup rows, raw cache files, and bookkeeping prefs. An
+  /// uninstall is stamped [kGoneAtUninstall], so it goes at once. An
+  /// installed extension is never stamped, so its data stays however long it
+  /// is switched off. [goneSince] is what `updateExtensionGoneSince` answers.
   /// Runs at startup, after the runtime is up and the enabled extensions
-  /// have refreshed their ownership records.
-  Future<void> purgeStaleExtensionData(Map<String, int> disabledSince, {Duration grace = const Duration(days: 7), DateTime? now}) async {
+  /// have refreshed their ownership records. [stillGone] is asked again
+  /// before each extension's data goes: the boot sync runs alongside the
+  /// operator, and one reinstalled since [goneSince] was read is here.
+  Future<void> purgeGoneExtensionData(
+    Map<String, int> goneSince, {
+    Duration grace = kGoneGrace,
+    DateTime? now,
+    bool Function(String extension)? stillGone,
+  }) async {
     final cutoff = (now ?? nowLocal()).millisecondsSinceEpoch - grace.inMilliseconds;
     final staleExtensions = {
-      for (final e in disabledSince.entries)
+      for (final e in goneSince.entries)
         if (e.value <= cutoff) e.key,
     };
     if (staleExtensions.isEmpty) return;
@@ -1279,9 +1295,10 @@ class DataFileManager {
     for (final entry in all.entries.toList()) {
       final owner = entry.value;
       if (owner is! Map || !staleExtensions.contains(owner['ext'])) continue;
+      if (stillGone != null && !stillGone(owner['ext'] as String)) continue;
       final key = entry.key;
       final category = owner['category'] as String? ?? key;
-      debugPrint('[data-file] Purging data for $key (extension ${owner['ext']} disabled > ${grace.inDays}d)');
+      debugPrint('[data-file] Purging data for $key (extension ${owner['ext']} gone from the app)');
       await _purgeDataFileData(key, category, keepRows: liveCategories.contains(category));
       all.remove(key);
       purged++;
@@ -1303,7 +1320,7 @@ class DataFileManager {
   /// The Dart-side deletion a data file leaves behind — lookup rows, raw
   /// cache file, and etag/last-update prefs. Unlike [removeDataFile] it does
   /// NOT call the extension's `onRemoveRawData` hook (a purge targets
-  /// DISABLED extensions, which aren't loaded to receive it) and uses the
+  /// extensions gone from the app, which aren't loaded to receive it) and uses the
   /// recorded lookup category rather than assuming it equals the key.
   /// [keepRows] leaves the category's lookup rows to another data file that
   /// still fills them.

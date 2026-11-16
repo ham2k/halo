@@ -20,7 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/services/extensions/bundle_storage_io.dart';
 import 'package:ham2k_logger/services/extensions/catalog_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_catalog_migration.dart';
-import 'package:ham2k_logger/services/extensions/extension_disabled_since.dart';
+import 'package:ham2k_logger/services/extensions/extension_gone_since.dart';
 import 'package:ham2k_logger/services/extensions/extension_relevance.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/extensions/installed_extensions.dart';
@@ -113,10 +113,9 @@ void main() {
     final (_, settings, _) = await setup();
     await settings.setExtensionsInstalled({'ham2k-sota': 'SOTA'});
     await settings.setExtensionOverrides({'ham2k-sota': false, 'long-gone': true});
-    await updateExtensionDisabledSince(
+    await pruneForgottenExtensionChoices(
       settings: settings,
       available: const [ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'POTA')],
-      isActive: (_) => true,
     );
     expect(settings.extensionOverrides, {'ham2k-sota': false});
   });

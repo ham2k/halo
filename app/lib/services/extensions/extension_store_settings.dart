@@ -19,6 +19,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'extension_force_disable.dart' show ExtensionForceDisable, forceDisabledFromJson, kForceDisabledPrefsKey;
+import 'extension_gone_since.dart' show kGoneAtUninstall;
 import 'installed_extensions.dart' show CatalogChannel;
 
 /// [id] with [from]'s hook key swapped for [to]'s, when it is a panel id of
@@ -174,20 +175,28 @@ mixin ExtensionStoreSettings on ChangeNotifier {
     notifyListeners();
   }
 
-  /// When each currently-disabled extension was disabled ({key: epochMillis}).
-  /// A disabled extension's downloaded data (data files) is KEPT so a
-  /// re-enable is instant; only after it's been disabled for the grace
-  /// period does DataFileManager purge that data. Stamped/cleared by
-  /// ExtensionService as extensions toggle; an entry vanishes on re-enable.
-  static const _extensionDisabledSinceKey = 'extensionDisabledSince';
+  /// Since when each extension that owns downloaded data has been gone from
+  /// the app ({key: epochMillis}, extension_gone_since.dart): its data is
+  /// purged once the grace has passed, at once for an uninstall
+  /// ([kGoneAtUninstall]). An installed extension is never stamped, however
+  /// long it stays switched off.
+  static const _extensionGoneSinceKey = 'extensionGoneSince';
 
-  Map<String, int> get extensionDisabledSince => {
-    for (final e in jsonMapPref(_extensionDisabledSinceKey).entries)
+  /// A pref no code reads, which an install may still hold: removed by
+  /// [forgetLegacyExtensionStamps].
+  static const _legacyDisabledSinceKey = 'extensionDisabledSince';
+
+  Future<void> forgetLegacyExtensionStamps() async {
+    if (prefs.containsKey(_legacyDisabledSinceKey)) await prefs.remove(_legacyDisabledSinceKey);
+  }
+
+  Map<String, int> get extensionGoneSince => {
+    for (final e in jsonMapPref(_extensionGoneSinceKey).entries)
       if (e.value is int) e.key: e.value as int,
   };
 
-  Future<void> setExtensionDisabledSince(Map<String, int> disabledSince) async {
-    await prefs.setString(_extensionDisabledSinceKey, jsonEncode(disabledSince));
+  Future<void> setExtensionGoneSince(Map<String, int> goneSince) async {
+    await prefs.setString(_extensionGoneSinceKey, jsonEncode(goneSince));
     notifyListeners();
   }
 
@@ -197,7 +206,7 @@ mixin ExtensionStoreSettings on ChangeNotifier {
   /// The record is what waives the `ham2k-` key refusal for that key on
   /// every read, so it is written ONLY by an install whose bytes matched the
   /// catalog listing's sha256, and any other install of the same key clears
-  /// it. Same shape and same top-level placement as [extensionDisabledSince].
+  /// it. Same shape and same top-level placement as [extensionGoneSince].
   static const _extensionInstalledFromKey = 'extensionInstalledFrom';
 
   Map<String, Map<String, String>> get extensionInstalledFrom => {
@@ -280,7 +289,7 @@ mixin ExtensionStoreSettings on ChangeNotifier {
   }
 
   /// The installed releases the catalog has revoked (`{key: {version, note}}`,
-  /// the shape of [extensionDisabledSince]). Its own bit, apart from the
+  /// the shape of [extensionGoneSince]). Its own bit, apart from the
   /// operator's override: a revoked version does not run whatever the
   /// switch says (ExtensionService.isExtensionEnabled), and the record — not
   /// the switch — is what says the operator has already been told. Written
@@ -354,18 +363,16 @@ mixin ExtensionStoreSettings on ChangeNotifier {
     if (overrides.remove(key) != null) {
       await prefs.setString(_extensionOverridesKey, jsonEncode(overrides));
     }
-    // Otherwise a reinstall inherits a disabled-since stamp from an extension
-    // that no longer exists, and the data purge counts from the wrong day.
-    final disabledSince = extensionDisabledSince;
-    if (disabledSince.remove(key) != null) {
-      await prefs.setString(_extensionDisabledSinceKey, jsonEncode(disabledSince));
-    }
+    // Its downloaded data goes at the next purge, at launch (a reinstall
+    // before then clears the stamp and keeps it): the data files are named
+    // by an extension that is no longer loaded to list them.
+    await prefs.setString(_extensionGoneSinceKey, jsonEncode({...extensionGoneSince, key: kGoneAtUninstall}));
     await _dropInstallRecords({key});
   }
 
   /// Drops what records [keys] as installed, and keeps what the operator set
-  /// for each — its override and disabled-since stamp here, its settings and
-  /// credentials elsewhere — for bundles taken out of the store that are not
+  /// for each — its override here, its settings and credentials elsewhere —
+  /// for bundles taken out of the store that are not
   /// being uninstalled: should one come back, it comes back as they left it.
   /// Where each came from goes too, its release track with it: left behind,
   /// the record waives the `ham2k-` refusal for a file claiming the key.

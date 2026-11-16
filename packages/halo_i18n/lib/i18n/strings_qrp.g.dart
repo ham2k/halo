@@ -1152,8 +1152,8 @@ class _Translations$dataFiles$qrp extends Translations$dataFiles$en {
 	@override String importedData({required Object label}) => 'imported data for ${label}.';
 	@override String get cleanedUpTitle => 'cleaned up extension data';
 	@override String removedData({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'removed data for ${count} data file from disabled extensions.',
-		other: 'removed data for ${count} data files from disabled extensions.',
+		one: 'removed data for ${count} data file from extensions no longer installed.',
+		other: 'removed data for ${count} data files from extensions no longer installed.',
 	);
 	@override String recordsProgress({required Object end, required Object total}) => '${end} / ${total} records';
 	@override String recordsSoFar({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
@@ -8105,7 +8105,7 @@ extension on TranslationsQrp {
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'imported ${count} record for ${label}.', other: 'imported ${count} records for ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'imported data for ${label}.',
 			'dataFiles.cleanedUpTitle' => 'cleaned up extension data',
-			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'removed data for ${count} data file from disabled extensions.', other: 'removed data for ${count} data files from disabled extensions.', ), 
+			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'removed data for ${count} data file from extensions no longer installed.', other: 'removed data for ${count} data files from extensions no longer installed.', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',
 			'dataFiles.recordsSoFar' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} record', other: '${count} records', ), 
 			'dataFiles.definitionUnavailable' => 'the file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. try again in a moment.',

@@ -3384,8 +3384,8 @@
     "importedData": "Imported data for ${label}.",
     "cleanedUpTitle": "Cleaned up extension data",
     "removedData": {
-      "one": "Removed data for ${count} data file from disabled extensions.",
-      "other": "Removed data for ${count} data files from disabled extensions."
+      "one": "Removed data for ${count} data file from extensions no longer installed.",
+      "other": "Removed data for ${count} data files from extensions no longer installed."
     },
     "recordsProgress": "${end} / ${total} records",
     "recordsSoFar": {

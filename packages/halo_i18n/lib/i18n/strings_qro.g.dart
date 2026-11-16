@@ -1152,8 +1152,8 @@ class _Translations$dataFiles$qro extends Translations$dataFiles$en {
 	@override String importedData({required Object label}) => 'IMPORTED DATA FOR ${label}.';
 	@override String get cleanedUpTitle => 'CLEANED UP EXTENSION DATA';
 	@override String removedData({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
-		one: 'REMOVED DATA FOR ${count} DATA FILE FROM DISABLED EXTENSIONS.',
-		other: 'REMOVED DATA FOR ${count} DATA FILES FROM DISABLED EXTENSIONS.',
+		one: 'REMOVED DATA FOR ${count} DATA FILE FROM EXTENSIONS NO LONGER INSTALLED.',
+		other: 'REMOVED DATA FOR ${count} DATA FILES FROM EXTENSIONS NO LONGER INSTALLED.',
 	);
 	@override String recordsProgress({required Object end, required Object total}) => '${end} / ${total} RECORDS';
 	@override String recordsSoFar({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
@@ -8105,7 +8105,7 @@ extension on TranslationsQro {
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'IMPORTED ${count} RECORD FOR ${label}.', other: 'IMPORTED ${count} RECORDS FOR ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'IMPORTED DATA FOR ${label}.',
 			'dataFiles.cleanedUpTitle' => 'CLEANED UP EXTENSION DATA',
-			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'REMOVED DATA FOR ${count} DATA FILE FROM DISABLED EXTENSIONS.', other: 'REMOVED DATA FOR ${count} DATA FILES FROM DISABLED EXTENSIONS.', ), 
+			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'REMOVED DATA FOR ${count} DATA FILE FROM EXTENSIONS NO LONGER INSTALLED.', other: 'REMOVED DATA FOR ${count} DATA FILES FROM EXTENSIONS NO LONGER INSTALLED.', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} RECORDS',
 			'dataFiles.recordsSoFar' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} RECORD', other: '${count} RECORDS', ), 
 			'dataFiles.definitionUnavailable' => 'THE FILE\'S SOURCE DIDN\'T PROVIDE A DEFINITION — ITS EXTENSION MAY BE MID-RESTART OR MISCONFIGURED. TRY AGAIN IN A MOMENT.',

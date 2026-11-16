@@ -2601,10 +2601,10 @@ class Translations$dataFiles$en {
 	/// en: 'Cleaned up extension data'
 	String get cleanedUpTitle => 'Cleaned up extension data';
 
-	/// en: '(one) {Removed data for ${count} data file from disabled extensions.} (other) {Removed data for ${count} data files from disabled extensions.}'
+	/// en: '(one) {Removed data for ${count} data file from extensions no longer installed.} (other) {Removed data for ${count} data files from extensions no longer installed.}'
 	String removedData({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
-		one: 'Removed data for ${count} data file from disabled extensions.',
-		other: 'Removed data for ${count} data files from disabled extensions.',
+		one: 'Removed data for ${count} data file from extensions no longer installed.',
+		other: 'Removed data for ${count} data files from extensions no longer installed.',
 	);
 
 	/// en: '${end} / ${total} records'
@@ -14476,7 +14476,7 @@ extension on Translations {
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} record for ${label}.', other: 'Imported ${count} records for ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Imported data for ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Cleaned up extension data',
-			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Removed data for ${count} data file from disabled extensions.', other: 'Removed data for ${count} data files from disabled extensions.', ), 
+			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Removed data for ${count} data file from extensions no longer installed.', other: 'Removed data for ${count} data files from extensions no longer installed.', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',
 			'dataFiles.recordsSoFar' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} record', other: '${count} records', ), 
 			'dataFiles.definitionUnavailable' => 'The file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.',

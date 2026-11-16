@@ -36,7 +36,7 @@ import 'extension_messages.dart';
 import 'extension_dialog_gate.dart';
 import 'extension_ref_results.dart';
 import 'extension_catalog_migration.dart';
-import 'extension_disabled_since.dart';
+import 'extension_gone_since.dart';
 import 'extension_secrets.dart';
 import 'extension_chasing.dart';
 import 'extension_scoring.dart';
@@ -545,14 +545,11 @@ class ExtensionService
         final visible = visibleSecretsFor(info, secrets);
         if (visible.isNotEmpty) extensionSecrets[info.key] = visible;
       }
-      // Boot is a gating site too: an experiment can change between runs
-      // (or an update can gate an extension that used to load), and nothing
-      // else stamps disabledSince before the stale-data purge reads it —
-      // without this, a gated-at-startup extension's purge grace clock
-      // never starts.
-      final settingsForStamps = settings;
-      if (settingsForStamps != null) {
-        await updateExtensionDisabledSince(settings: settingsForStamps, available: availableExtensions, isActive: isExtensionActive);
+      // Boot is when an extension the build stopped carrying is first seen
+      // missing, so its choices are pruned here too.
+      final settingsForPrune = settings;
+      if (settingsForPrune != null) {
+        await pruneForgottenExtensionChoices(settings: settingsForPrune, available: availableExtensions);
       }
       // The manifest's declared host-call capabilities (`requiresLocation`,
       // `requiresRadio*`; see extensions/build-config.mjs).
