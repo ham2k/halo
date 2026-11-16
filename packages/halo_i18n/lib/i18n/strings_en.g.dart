@@ -6462,6 +6462,15 @@ class Translations$settings$station$en {
 	/// en: 'Port must be between 1 and 65535'
 	String get portInvalid => 'Port must be between 1 and 65535';
 
+	/// en: 'Listen on Port'
+	String get listenPort => 'Listen on Port';
+
+	/// en: 'The port the app sharing the GPS is set to send to.'
+	String get listenPortDescription => 'The port the app sharing the GPS is set to send to.';
+
+	/// en: 'Listening on port ${port}'
+	String listeningOn({required Object port}) => 'Listening on port ${port}';
+
 	/// en: 'Connect'
 	String get connect => 'Connect';
 
@@ -6933,6 +6942,24 @@ class Translations$settings$station$en {
 	/// en: 'Cannot find the radio over the network. Check its address and that it's powered on and reachable.'
 	String get connectFailedNetwork => 'Cannot find the radio over the network. Check its address and that it\'s powered on and reachable.';
 
+	/// en: 'Port ${port} on this device is already in use. Close whatever else listens on it, or change the port.'
+	String connectFailedListenPort({required Object port}) => 'Port ${port} on this device is already in use. Close whatever else listens on it, or change the port.';
+
+	/// en: 'Could not listen on port ${port}. Pick a port from 1024 to 65535.'
+	String connectFailedListen({required Object port}) => 'Could not listen on port ${port}. Pick a port from 1024 to 65535.';
+
+	/// en: 'Could not listen on port ${port}: ${detail}'
+	String connectFailedListenDetail({required Object port, required Object detail}) => 'Could not listen on port ${port}: ${detail}';
+
+	/// en: 'gpsd has no GPS receiver'
+	String get gpsdNoDevice => 'gpsd has no GPS receiver';
+
+	/// en: 'gpsd refused: ${message}'
+	String gpsdSaid({required Object message}) => 'gpsd refused: ${message}';
+
+	/// en: 'Waiting for NMEA data'
+	String get gpsWaiting => 'Waiting for NMEA data';
+
 	/// en: 'Port ${port} on this device is already in use, and the answers arrive there. Close whatever else listens on it — another PstRotator node included — or change the port.'
 	String connectFailedReplyPort({required Object port}) => 'Port ${port} on this device is already in use, and the answers arrive there. Close whatever else listens on it — another PstRotator node included — or change the port.';
 
@@ -7165,8 +7192,11 @@ class Translations$settings$station$en {
 	/// en: 'Antenna in Use'
 	String get antennaInUse => 'Antenna in Use';
 
-	/// en: 'Location From'
-	String get locationFrom => 'Location From';
+	/// en: 'Choose where the location comes from'
+	String get chooseLocationSource => 'Choose where the location comes from';
+
+	/// en: 'Take the location from ${name}'
+	String locationFromThis({required Object name}) => 'Take the location from ${name}';
 
 	late final Translations$settings$station$systemLocation$en systemLocation = Translations$settings$station$systemLocation$en.internal(_root);
 
@@ -7351,8 +7381,11 @@ class Translations$settings$station$en {
 	/// en: 'MIDI Controller'
 	String get newMidiController => 'MIDI Controller';
 
-	/// en: 'GPS Receiver (USB or Serial)'
-	String get newGpsReceiver => 'GPS Receiver (USB or Serial)';
+	/// en: 'GPS Receiver (USB, Serial or Network)'
+	String get newGpsReceiver => 'GPS Receiver (USB, Serial or Network)';
+
+	/// en: 'gpsd (GPS Daemon)'
+	String get newGpsd => 'gpsd (GPS Daemon)';
 
 	late final Translations$settings$station$midi$en midi = Translations$settings$station$midi$en.internal(_root);
 
@@ -10967,6 +11000,9 @@ class Translations$settings$station$models$en {
 	/// en: 'GPS Receiver'
 	String get nmeaGps => 'GPS Receiver';
 
+	/// en: 'gpsd'
+	String get gpsd => 'gpsd';
+
 	/// en: 'Simulated Radio'
 	String get placeholderRadio => 'Simulated Radio';
 
@@ -11050,6 +11086,9 @@ class Translations$settings$station$transports$en {
 
 	/// en: 'Network/WiFi'
 	String get network => 'Network/WiFi';
+
+	/// en: 'Network/WiFi (Incoming)'
+	String get networkListen => 'Network/WiFi (Incoming)';
 
 	/// en: 'TCI'
 	String get tci => 'TCI';
@@ -13429,6 +13468,9 @@ extension on Translations {
 			'settings.station.port' => 'Port',
 			'settings.station.hostRequired' => 'An address is required',
 			'settings.station.portInvalid' => 'Port must be between 1 and 65535',
+			'settings.station.listenPort' => 'Listen on Port',
+			'settings.station.listenPortDescription' => 'The port the app sharing the GPS is set to send to.',
+			'settings.station.listeningOn' => ({required Object port}) => 'Listening on port ${port}',
 			'settings.station.connect' => 'Connect',
 			'settings.station.disconnect' => 'Disconnect',
 			'settings.station.remove' => 'Remove',
@@ -13586,6 +13628,12 @@ extension on Translations {
 			'settings.station.connectFailedUnsupported' => 'No driver recognizes this USB adapter\'s chip. If you know which chip it is, choose it under USB chip driver in Advanced Settings.',
 			'settings.station.connectFailedLines' => 'RTS/DTR could not be held as set, so the port was closed. Another program may have left hardware handshaking on — unplug and replug the cable.',
 			'settings.station.connectFailedNetwork' => 'Cannot find the radio over the network. Check its address and that it\'s powered on and reachable.',
+			'settings.station.connectFailedListenPort' => ({required Object port}) => 'Port ${port} on this device is already in use. Close whatever else listens on it, or change the port.',
+			'settings.station.connectFailedListen' => ({required Object port}) => 'Could not listen on port ${port}. Pick a port from 1024 to 65535.',
+			'settings.station.connectFailedListenDetail' => ({required Object port, required Object detail}) => 'Could not listen on port ${port}: ${detail}',
+			'settings.station.gpsdNoDevice' => 'gpsd has no GPS receiver',
+			'settings.station.gpsdSaid' => ({required Object message}) => 'gpsd refused: ${message}',
+			'settings.station.gpsWaiting' => 'Waiting for NMEA data',
 			'settings.station.connectFailedReplyPort' => ({required Object port}) => 'Port ${port} on this device is already in use, and the answers arrive there. Close whatever else listens on it — another PstRotator node included — or change the port.',
 			'settings.station.connectFailedTimeout' => 'The radio didn\'t respond in time. Check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
@@ -13609,6 +13657,8 @@ extension on Translations {
 			'settings.station.models.tenTecEagle' => 'Ten-Tec Eagle (599)',
 			'settings.station.models.tenTecOrion' => 'Ten-Tec Orion (565)',
 			'settings.station.models.tenTecOrionII' => 'Ten-Tec Orion II (566)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.sotacat' => 'SOTAcat (Elecraft KX2/KX3)',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Generic',
 			'settings.station.models.icomGeneric' => 'Icom - Generic',
@@ -13618,8 +13668,6 @@ extension on Translations {
 			'settings.station.models.ts480hx' => 'Kenwood TS-480HX',
 			'settings.station.models.ts2000' => 'Kenwood TS-2000',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
 			'settings.station.models.tx500' => 'Lab599 TX-500',
 			'settings.station.models.tx500mp' => 'Lab599 TX-500MP',
@@ -13657,6 +13705,7 @@ extension on Translations {
 			'settings.station.models.midiController' => 'MIDI Controller',
 			'settings.station.models.winkeyer' => 'WinKeyer',
 			'settings.station.models.nmeaGps' => 'GPS Receiver',
+			'settings.station.models.gpsd' => 'gpsd',
 			'settings.station.models.placeholderRadio' => 'Simulated Radio',
 			'settings.station.models.placeholderRadioNodeName' => 'Simulated Radio',
 			'settings.station.models.simulatedRotator' => 'Simulated Rotator',
@@ -13682,6 +13731,7 @@ extension on Translations {
 			'settings.station.models.airspyHf' => 'Airspy HF+',
 			'settings.station.models.spyServer' => 'SpyServer (any receiver)',
 			'settings.station.transports.network' => 'Network/WiFi',
+			'settings.station.transports.networkListen' => 'Network/WiFi (Incoming)',
 			'settings.station.transports.tci' => 'TCI',
 			'settings.station.transports.secureNetwork' => 'Secure Network/WiFi',
 			'settings.station.transports.usbSerial' => 'USB Serial',
@@ -13763,7 +13813,8 @@ extension on Translations {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'This radio is connected to ${device}. Its connection and settings are configured on that device.',
 			'settings.station.antennaInUse' => 'Antenna in Use',
-			'settings.station.locationFrom' => 'Location From',
+			'settings.station.chooseLocationSource' => 'Choose where the location comes from',
+			'settings.station.locationFromThis' => ({required Object name}) => 'Take the location from ${name}',
 			'settings.station.systemLocation.windows' => 'Windows Location Services',
 			'settings.station.systemLocation.macos' => 'macOS Location Services',
 			'settings.station.systemLocation.linux' => 'Linux Location Services',
@@ -13842,7 +13893,8 @@ extension on Translations {
 			'settings.station.newKey' => 'New Key',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL or compatible)',
 			'settings.station.newMidiController' => 'MIDI Controller',
-			'settings.station.newGpsReceiver' => 'GPS Receiver (USB or Serial)',
+			'settings.station.newGpsReceiver' => 'GPS Receiver (USB, Serial or Network)',
+			'settings.station.newGpsd' => 'gpsd (GPS Daemon)',
 			'settings.station.midi.name' => 'Name',
 			'settings.station.midi.device' => 'Device',
 			'settings.station.midi.deviceNone' => 'Choose a device',
@@ -14119,6 +14171,8 @@ extension on Translations {
 			'settings.profiles.section' => 'Section',
 			'settings.search.clear' => 'Clear',
 			'settings.search.hint' => 'Search preferences',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.developerModeDescription' => 'Enable developer warnings, debug logs, and tools.',
 			'settings.developer.experiments' => 'Experiments',
 			'settings.developer.showIdleMetrics' => 'Show idle metrics',
@@ -14132,8 +14186,6 @@ extension on Translations {
 			'settings.developer.trackStable' => 'Stable',
 			'settings.developer.trackUnstable' => 'Unstable',
 			'settings.developer.trackBleeding' => 'Bleeding',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.checkingTrack' => ({required Object track}) => 'Checking "${track}" for a code push…',
 			'settings.developer.patchDownloaded' => 'Code push downloaded — restart the app to apply it.',
 			'settings.developer.noNewPatch' => ({required Object track}) => 'No new code push on "${track}".',
@@ -14633,6 +14685,8 @@ extension on Translations {
 			'qsonImport.description' => 'Create a new operation from a QSON file, as Developer Mode exports one here or in PoLo.',
 			'qsonImport.importing' => ({required Object filename}) => 'Importing ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Could not import ${filename}: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Could not open a file to import: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} is not UTF-8 text, so it is not a QSON file',
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} is not a JSON file, so it is not a QSON file',
@@ -14646,8 +14700,6 @@ extension on Translations {
 			'adifImport.newContacts' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} new contact', other: '${formatted} new contacts', ), 
 			'adifImport.merging' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} will merge with an existing contact', other: '${formatted} will merge with existing contacts', ), 
 			'adifImport.unusable' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} cannot be imported (no callsign)', other: '${formatted} cannot be imported (no callsign)', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} needs a closer look', other: '${formatted} need a closer look', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'References could not be recovered for ${count} contact', other: 'References could not be recovered for ${formatted} contacts', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${programs} references may be incomplete for ${count} contact', other: '${programs} references may be incomplete for ${formatted} contacts', ), 

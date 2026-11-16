@@ -2967,6 +2967,9 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get port => 'port';
 	@override String get hostRequired => 'an address is required';
 	@override String get portInvalid => 'port must be between 1 and 65535';
+	@override String get listenPort => 'listen on port';
+	@override String get listenPortDescription => 'the port the app sharing the gps is set to send to.';
+	@override String listeningOn({required Object port}) => 'listening on port ${port}';
 	@override String get connect => 'connect';
 	@override String get disconnect => 'disconnect';
 	@override String get remove => 'remove';
@@ -3124,6 +3127,12 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get connectFailedUnsupported => 'no driver recognizes this usb adapter\'s chip. if you know which chip it is, choose it under usb chip driver in advanced settings.';
 	@override String get connectFailedLines => 'rts/dtr could not be held as set, so the port was closed. another program may have left hardware handshaking on — unplug and replug the cable.';
 	@override String get connectFailedNetwork => 'cannot find the radio over the network. check its address and that it\'s powered on and reachable.';
+	@override String connectFailedListenPort({required Object port}) => 'port ${port} on this device is already in use. close whatever else listens on it, or change the port.';
+	@override String connectFailedListen({required Object port}) => 'could not listen on port ${port}. pick a port from 1024 to 65535.';
+	@override String connectFailedListenDetail({required Object port, required Object detail}) => 'could not listen on port ${port}: ${detail}';
+	@override String get gpsdNoDevice => 'gpsd has no gps receiver';
+	@override String gpsdSaid({required Object message}) => 'gpsd refused: ${message}';
+	@override String get gpsWaiting => 'waiting for nmea data';
 	@override String connectFailedReplyPort({required Object port}) => 'port ${port} on this device is already in use, and the answers arrive there. close whatever else listens on it — another pstrotator node included — or change the port.';
 	@override String get connectFailedTimeout => 'the radio didn\'t respond in time. check it\'s powered on and reachable.';
 	@override late final _Translations$settings$station$models$qrp models = _Translations$settings$station$models$qrp._(_root);
@@ -3209,7 +3218,8 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} is on another device';
 	@override String peerRadioElsewhereMessage({required Object device}) => 'this radio is connected to ${device}. its connection and settings are configured on that device.';
 	@override String get antennaInUse => 'antenna in use';
-	@override String get locationFrom => 'location from';
+	@override String get chooseLocationSource => 'choose where the location comes from';
+	@override String locationFromThis({required Object name}) => 'take the location from ${name}';
 	@override late final _Translations$settings$station$systemLocation$qrp systemLocation = _Translations$settings$station$systemLocation$qrp._(_root);
 	@override String get scopeInUse => 'spectrum from';
 	@override String get scopeRadiosOwn => 'the radio\'s own scope';
@@ -3272,7 +3282,8 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get newKey => 'new key';
 	@override String get newKeyer => 'winkeyer (k1el or compatible)';
 	@override String get newMidiController => 'midi controller';
-	@override String get newGpsReceiver => 'gps receiver (usb or serial)';
+	@override String get newGpsReceiver => 'gps receiver (usb, serial or network)';
+	@override String get newGpsd => 'gpsd (gps daemon)';
 	@override late final _Translations$settings$station$midi$qrp midi = _Translations$settings$station$midi$qrp._(_root);
 	@override String keyViaRadio({required Object radio}) => 'cat keyer in ${radio}';
 	@override String keyOnDevice({required Object device}) => 'key on ${device}';
@@ -4913,6 +4924,7 @@ class _Translations$settings$station$models$qrp extends Translations$settings$st
 	@override String get midiController => 'midi controller';
 	@override String get winkeyer => 'winkeyer';
 	@override String get nmeaGps => 'gps receiver';
+	@override String get gpsd => 'gpsd';
 	@override String get placeholderRadio => 'simulated radio';
 	@override String get placeholderRadioNodeName => 'simulated radio';
 	@override String get simulatedRotator => 'simulated rotator';
@@ -4947,6 +4959,7 @@ class _Translations$settings$station$transports$qrp extends Translations$setting
 
 	// Translations
 	@override String get network => 'network/wifi';
+	@override String get networkListen => 'network/wifi (incoming)';
 	@override String get tci => 'tci';
 	@override String get secureNetwork => 'secure network/wifi';
 	@override String get usbSerial => 'usb serial';
@@ -7058,6 +7071,9 @@ extension on TranslationsQrp {
 			'settings.station.port' => 'port',
 			'settings.station.hostRequired' => 'an address is required',
 			'settings.station.portInvalid' => 'port must be between 1 and 65535',
+			'settings.station.listenPort' => 'listen on port',
+			'settings.station.listenPortDescription' => 'the port the app sharing the gps is set to send to.',
+			'settings.station.listeningOn' => ({required Object port}) => 'listening on port ${port}',
 			'settings.station.connect' => 'connect',
 			'settings.station.disconnect' => 'disconnect',
 			'settings.station.remove' => 'remove',
@@ -7215,6 +7231,12 @@ extension on TranslationsQrp {
 			'settings.station.connectFailedUnsupported' => 'no driver recognizes this usb adapter\'s chip. if you know which chip it is, choose it under usb chip driver in advanced settings.',
 			'settings.station.connectFailedLines' => 'rts/dtr could not be held as set, so the port was closed. another program may have left hardware handshaking on — unplug and replug the cable.',
 			'settings.station.connectFailedNetwork' => 'cannot find the radio over the network. check its address and that it\'s powered on and reachable.',
+			'settings.station.connectFailedListenPort' => ({required Object port}) => 'port ${port} on this device is already in use. close whatever else listens on it, or change the port.',
+			'settings.station.connectFailedListen' => ({required Object port}) => 'could not listen on port ${port}. pick a port from 1024 to 65535.',
+			'settings.station.connectFailedListenDetail' => ({required Object port, required Object detail}) => 'could not listen on port ${port}: ${detail}',
+			'settings.station.gpsdNoDevice' => 'gpsd has no gps receiver',
+			'settings.station.gpsdSaid' => ({required Object message}) => 'gpsd refused: ${message}',
+			'settings.station.gpsWaiting' => 'waiting for nmea data',
 			'settings.station.connectFailedReplyPort' => ({required Object port}) => 'port ${port} on this device is already in use, and the answers arrive there. close whatever else listens on it — another pstrotator node included — or change the port.',
 			'settings.station.connectFailedTimeout' => 'the radio didn\'t respond in time. check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'flexradio (smartsdr)',
@@ -7238,6 +7260,8 @@ extension on TranslationsQrp {
 			'settings.station.models.tenTecEagle' => 'ten-tec eagle (599)',
 			'settings.station.models.tenTecOrion' => 'ten-tec orion (565)',
 			'settings.station.models.tenTecOrionII' => 'ten-tec orion ii (566)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.sotacat' => 'sotacat (elecraft kx2/kx3)',
 			'settings.station.models.yaesuGeneric' => 'yaesu - generic',
 			'settings.station.models.icomGeneric' => 'icom - generic',
@@ -7247,8 +7271,6 @@ extension on TranslationsQrp {
 			'settings.station.models.ts480hx' => 'kenwood ts-480hx',
 			'settings.station.models.ts2000' => 'kenwood ts-2000',
 			'settings.station.models.qmx' => 'qrp labs qmx',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.fx4cr' => 'bg2fx fx-4cr',
 			'settings.station.models.tx500' => 'lab599 tx-500',
 			'settings.station.models.tx500mp' => 'lab599 tx-500mp',
@@ -7286,6 +7308,7 @@ extension on TranslationsQrp {
 			'settings.station.models.midiController' => 'midi controller',
 			'settings.station.models.winkeyer' => 'winkeyer',
 			'settings.station.models.nmeaGps' => 'gps receiver',
+			'settings.station.models.gpsd' => 'gpsd',
 			'settings.station.models.placeholderRadio' => 'simulated radio',
 			'settings.station.models.placeholderRadioNodeName' => 'simulated radio',
 			'settings.station.models.simulatedRotator' => 'simulated rotator',
@@ -7311,6 +7334,7 @@ extension on TranslationsQrp {
 			'settings.station.models.airspyHf' => 'airspy hf+',
 			'settings.station.models.spyServer' => 'spyserver (any receiver)',
 			'settings.station.transports.network' => 'network/wifi',
+			'settings.station.transports.networkListen' => 'network/wifi (incoming)',
 			'settings.station.transports.tci' => 'tci',
 			'settings.station.transports.secureNetwork' => 'secure network/wifi',
 			'settings.station.transports.usbSerial' => 'usb serial',
@@ -7392,7 +7416,8 @@ extension on TranslationsQrp {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'this radio is connected to ${device}. its connection and settings are configured on that device.',
 			'settings.station.antennaInUse' => 'antenna in use',
-			'settings.station.locationFrom' => 'location from',
+			'settings.station.chooseLocationSource' => 'choose where the location comes from',
+			'settings.station.locationFromThis' => ({required Object name}) => 'take the location from ${name}',
 			'settings.station.systemLocation.windows' => 'windows location services',
 			'settings.station.systemLocation.macos' => 'macos location services',
 			'settings.station.systemLocation.linux' => 'linux location services',
@@ -7471,7 +7496,8 @@ extension on TranslationsQrp {
 			'settings.station.newKey' => 'new key',
 			'settings.station.newKeyer' => 'winkeyer (k1el or compatible)',
 			'settings.station.newMidiController' => 'midi controller',
-			'settings.station.newGpsReceiver' => 'gps receiver (usb or serial)',
+			'settings.station.newGpsReceiver' => 'gps receiver (usb, serial or network)',
+			'settings.station.newGpsd' => 'gpsd (gps daemon)',
 			'settings.station.midi.name' => 'name',
 			'settings.station.midi.device' => 'device',
 			'settings.station.midi.deviceNone' => 'choose a device',
@@ -7748,6 +7774,8 @@ extension on TranslationsQrp {
 			'settings.profiles.section' => 'section',
 			'settings.search.clear' => 'clear',
 			'settings.search.hint' => 'search preferences',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.developerModeDescription' => 'enable developer warnings, debug logs, and tools.',
 			'settings.developer.experiments' => 'experiments',
 			'settings.developer.showIdleMetrics' => 'show idle metrics',
@@ -7761,8 +7789,6 @@ extension on TranslationsQrp {
 			'settings.developer.trackStable' => 'stable',
 			'settings.developer.trackUnstable' => 'unstable',
 			'settings.developer.trackBleeding' => 'bleeding',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.checkingTrack' => ({required Object track}) => 'checking "${track}" for a code push…',
 			'settings.developer.patchDownloaded' => 'code push downloaded — restart the app to apply it.',
 			'settings.developer.noNewPatch' => ({required Object track}) => 'no new code push on "${track}".',
@@ -8262,6 +8288,8 @@ extension on TranslationsQrp {
 			'qsonImport.description' => 'create a new operation from a qson file, as developer mode exports one here or in polo.',
 			'qsonImport.importing' => ({required Object filename}) => 'importing ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'could not import ${filename}: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.pickerFailed' => ({required Object error}) => 'could not open a file to import: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} is not utf-8 text, so it is not a qson file',
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} is not a json file, so it is not a qson file',
@@ -8275,8 +8303,6 @@ extension on TranslationsQrp {
 			'adifImport.newContacts' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} new contact', other: '${formatted} new contacts', ), 
 			'adifImport.merging' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} will merge with an existing contact', other: '${formatted} will merge with existing contacts', ), 
 			'adifImport.unusable' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} cannot be imported (no callsign)', other: '${formatted} cannot be imported (no callsign)', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} needs a closer look', other: '${formatted} need a closer look', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'references could not be recovered for ${count} contact', other: 'references could not be recovered for ${formatted} contacts', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${programs} references may be incomplete for ${count} contact', other: '${programs} references may be incomplete for ${formatted} contacts', ), 

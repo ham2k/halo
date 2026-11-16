@@ -338,6 +338,9 @@ void main() {
       'placeholder-radio',
       'winkeyer-serial',
       'nmea-gps-serial',
+      'nmea-gps-tcp',
+      'nmea-gps-udp',
+      'gpsd-tcp',
       'antenna-genius-tcp',
       'sierra-coax-serial',
       'gs232a-serial',
@@ -1009,7 +1012,8 @@ void main() {
     // An Everyware server repeats every heading and switch position on its
     // own, and its devices hear only what it pushes.
     // The simulators push as a real controller polled fast enough would look.
-    // A GPS receiver streams its sentences every second, unasked.
+    // A GPS receiver streams its sentences every second, unasked, and gpsd
+    // relays them the same way once asked to.
     const pushes = {
       'flexradio',
       'placeholder-radio',
@@ -1018,6 +1022,7 @@ void main() {
       'antenna-genius',
       'winkeyer',
       'nmea-gps',
+      'gpsd',
       'rtl-tcp',
       'spyserver',
       'sdr-usb',

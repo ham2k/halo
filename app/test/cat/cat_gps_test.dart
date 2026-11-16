@@ -239,11 +239,12 @@ void main() {
     late SettingsService settings;
     late RadioService radio;
 
-    CatService launch({Duration staleAfter = catStaleAfter}) {
+    CatService launch({Duration staleAfter = catStaleAfter, Duration? silentDropAfter}) {
       final service = CatService(
         settings,
         radio: radio,
         staleAfter: staleAfter,
+        silentDropAfter: silentDropAfter ?? staleAfter * 4,
         registry: EquipmentRegistry(
           models: [
             EquipmentModel(
@@ -356,6 +357,22 @@ void main() {
       await pumpEventQueue();
       expect(notified, 0);
       expect(cat.stateFor(node.uuid).gps!.satellites, 7, reason: 'the reading held is the one last reported');
+    });
+
+    test('a receiver that goes silent is dropped and connected again', () async {
+      // A phone sharing over TCP that goes to sleep leaves a half-open
+      // socket: nothing would ever close it, and the station would stay on
+      // the operating system's location after the phone woke up.
+      cat = launch(staleAfter: const Duration(milliseconds: 50), silentDropAfter: const Duration(milliseconds: 150));
+      final node = await cat.addNode(typeKey: 'gps-fake');
+      await pumpEventQueue();
+      for (var i = 0; i < 5; i++) {
+        transport.opened.single.feed('$_ggaFix\r\n');
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      expect(transport.opened, hasLength(2));
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
     });
 
     test('picking a receiver the operator disconnected connects it', () async {

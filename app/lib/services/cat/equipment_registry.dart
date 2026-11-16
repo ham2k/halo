@@ -54,6 +54,7 @@ import 'transports/serial_tcp_transport.dart';
 import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
 import 'transports/everyware_transport.dart';
+import 'transports/udp_listen_transport.dart';
 import 'transports/udp_transport.dart';
 import 'transports/websocket_transport.dart';
 import 'transports/k4_remote_transport.dart';
@@ -543,6 +544,7 @@ String? transportLabelFor(String transportKey) {
   final labels = t.settings.station.transports;
   return switch (transportKey) {
     TcpTransport.transportKey || UdpTransport.transportKey || EverywareServerTransport.transportKey => labels.network,
+    UdpListenTransport.transportKey => labels.networkListen,
     // Not a way of plugging in: the device is reached through its server.
     EverywareDeviceTransport.transportKey => labels.everywareServer,
     WebSocketTransport.transportKey => labels.tci,
@@ -576,6 +578,7 @@ String? transportIconNameFor(String transportKey) => switch (transportKey) {
   TcpTransport.transportKey ||
   SerialTcpTransport.transportKey ||
   UdpTransport.transportKey ||
+  UdpListenTransport.transportKey ||
   IcomNetworkTransport.transportKey ||
   K4RemoteTransport.transportKey ||
   WebSocketTransport.transportKey ||
@@ -664,6 +667,7 @@ const _defaultModels = [
   keyModel,
   winkeyerModel,
   nmeaGpsModel,
+  gpsdModel,
   midiControllerModel,
   ...sdrModels,
   ...greenHeronModels,
@@ -695,6 +699,7 @@ class EquipmentRegistry {
           {
             TcpTransport.transportKey: const TcpTransport(),
             UdpTransport.transportKey: const UdpTransport(portConfigKey: 'udpPort', replyPortOffset: 1),
+            UdpListenTransport.transportKey: const UdpListenTransport(),
             K4RemoteTransport.transportKey: const K4RemoteTransport(),
             SerialTransport.transportKey: const SerialTransport(),
             BluetoothSerialTransport.transportKey: const BluetoothSerialTransport(),

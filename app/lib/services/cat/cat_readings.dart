@@ -62,12 +62,15 @@ extension _Readings on CatService {
   /// again) comes back the same way; dropping either reconnects it once a
   /// minute for good while changing nothing. A radio that does work for a
   /// while after each connect gets [_silentDropsInARow] drops before it is
-  /// left to the operator. Only radio1 and radio2: a keyer device reports
-  /// nothing while idle, so silence there is not a dead link.
+  /// left to the operator. Only radio1 and radio2, and the GPS receiver
+  /// placing the station, which talks every second: a keyer device reports
+  /// nothing while idle, so silence there is not a dead link. A receiver
+  /// shared over TCP by a phone that went to sleep leaves a half-open
+  /// socket that nothing else would ever close.
   void _armSilentDrop(String uuid, _NodeRuntime runtime, Duration after) {
     runtime.silenceTimer?.cancel();
     runtime.silenceTimer = null;
-    if (!isRadio1(uuid) && !isRadio2(uuid)) return;
+    if (!isRadio1(uuid) && !isRadio2(uuid) && uuid != gpsReceiver) return;
     final connection = runtime.connection;
     final since = runtime.answeringSinceMillis, heard = runtime.lastHeardMillis;
     if (connection == null || since == null || heard == null) return;
@@ -79,7 +82,7 @@ extension _Readings on CatService {
       // Designation can move while the timer runs, and a radio that is no
       // longer designated is never reconnected: dropping it would leave it
       // off for good.
-      if (!isRadio1(uuid) && !isRadio2(uuid)) return;
+      if (!isRadio1(uuid) && !isRadio2(uuid) && uuid != gpsReceiver) return;
       // RF in the CAT cable silences a radio exactly while it transmits, so
       // a radio the app is keying is not judged by its silence until the
       // key is released — [_restartSilentDrops] then gives it a whole window.

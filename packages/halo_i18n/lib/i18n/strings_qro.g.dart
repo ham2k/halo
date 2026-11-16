@@ -2967,6 +2967,9 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get port => 'PORT';
 	@override String get hostRequired => 'AN ADDRESS IS REQUIRED';
 	@override String get portInvalid => 'PORT MUST BE BETWEEN 1 AND 65535';
+	@override String get listenPort => 'LISTEN ON PORT';
+	@override String get listenPortDescription => 'THE PORT THE APP SHARING THE GPS IS SET TO SEND TO.';
+	@override String listeningOn({required Object port}) => 'LISTENING ON PORT ${port}';
 	@override String get connect => 'CONNECT';
 	@override String get disconnect => 'DISCONNECT';
 	@override String get remove => 'REMOVE';
@@ -3124,6 +3127,12 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get connectFailedUnsupported => 'NO DRIVER RECOGNIZES THIS USB ADAPTER\'S CHIP. IF YOU KNOW WHICH CHIP IT IS, CHOOSE IT UNDER USB CHIP DRIVER IN ADVANCED SETTINGS.';
 	@override String get connectFailedLines => 'RTS/DTR COULD NOT BE HELD AS SET, SO THE PORT WAS CLOSED. ANOTHER PROGRAM MAY HAVE LEFT HARDWARE HANDSHAKING ON — UNPLUG AND REPLUG THE CABLE.';
 	@override String get connectFailedNetwork => 'CANNOT FIND THE RADIO OVER THE NETWORK. CHECK ITS ADDRESS AND THAT IT\'S POWERED ON AND REACHABLE.';
+	@override String connectFailedListenPort({required Object port}) => 'PORT ${port} ON THIS DEVICE IS ALREADY IN USE. CLOSE WHATEVER ELSE LISTENS ON IT, OR CHANGE THE PORT.';
+	@override String connectFailedListen({required Object port}) => 'COULD NOT LISTEN ON PORT ${port}. PICK A PORT FROM 1024 TO 65535.';
+	@override String connectFailedListenDetail({required Object port, required Object detail}) => 'COULD NOT LISTEN ON PORT ${port}: ${detail}';
+	@override String get gpsdNoDevice => 'GPSD HAS NO GPS RECEIVER';
+	@override String gpsdSaid({required Object message}) => 'GPSD REFUSED: ${message}';
+	@override String get gpsWaiting => 'WAITING FOR NMEA DATA';
 	@override String connectFailedReplyPort({required Object port}) => 'PORT ${port} ON THIS DEVICE IS ALREADY IN USE, AND THE ANSWERS ARRIVE THERE. CLOSE WHATEVER ELSE LISTENS ON IT — ANOTHER PSTROTATOR NODE INCLUDED — OR CHANGE THE PORT.';
 	@override String get connectFailedTimeout => 'THE RADIO DIDN\'T RESPOND IN TIME. CHECK IT\'S POWERED ON AND REACHABLE.';
 	@override late final _Translations$settings$station$models$qro models = _Translations$settings$station$models$qro._(_root);
@@ -3209,7 +3218,8 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} IS ON ANOTHER DEVICE';
 	@override String peerRadioElsewhereMessage({required Object device}) => 'THIS RADIO IS CONNECTED TO ${device}. ITS CONNECTION AND SETTINGS ARE CONFIGURED ON THAT DEVICE.';
 	@override String get antennaInUse => 'ANTENNA IN USE';
-	@override String get locationFrom => 'LOCATION FROM';
+	@override String get chooseLocationSource => 'CHOOSE WHERE THE LOCATION COMES FROM';
+	@override String locationFromThis({required Object name}) => 'TAKE THE LOCATION FROM ${name}';
 	@override late final _Translations$settings$station$systemLocation$qro systemLocation = _Translations$settings$station$systemLocation$qro._(_root);
 	@override String get scopeInUse => 'SPECTRUM FROM';
 	@override String get scopeRadiosOwn => 'THE RADIO\'S OWN SCOPE';
@@ -3272,7 +3282,8 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get newKey => 'NEW KEY';
 	@override String get newKeyer => 'WINKEYER (K1EL OR COMPATIBLE)';
 	@override String get newMidiController => 'MIDI CONTROLLER';
-	@override String get newGpsReceiver => 'GPS RECEIVER (USB OR SERIAL)';
+	@override String get newGpsReceiver => 'GPS RECEIVER (USB, SERIAL OR NETWORK)';
+	@override String get newGpsd => 'GPSD (GPS DAEMON)';
 	@override late final _Translations$settings$station$midi$qro midi = _Translations$settings$station$midi$qro._(_root);
 	@override String keyViaRadio({required Object radio}) => 'CAT KEYER IN ${radio}';
 	@override String keyOnDevice({required Object device}) => 'KEY ON ${device}';
@@ -4913,6 +4924,7 @@ class _Translations$settings$station$models$qro extends Translations$settings$st
 	@override String get midiController => 'MIDI CONTROLLER';
 	@override String get winkeyer => 'WINKEYER';
 	@override String get nmeaGps => 'GPS RECEIVER';
+	@override String get gpsd => 'GPSD';
 	@override String get placeholderRadio => 'SIMULATED RADIO';
 	@override String get placeholderRadioNodeName => 'SIMULATED RADIO';
 	@override String get simulatedRotator => 'SIMULATED ROTATOR';
@@ -4947,6 +4959,7 @@ class _Translations$settings$station$transports$qro extends Translations$setting
 
 	// Translations
 	@override String get network => 'NETWORK/WIFI';
+	@override String get networkListen => 'NETWORK/WIFI (INCOMING)';
 	@override String get tci => 'TCI';
 	@override String get secureNetwork => 'SECURE NETWORK/WIFI';
 	@override String get usbSerial => 'USB SERIAL';
@@ -7058,6 +7071,9 @@ extension on TranslationsQro {
 			'settings.station.port' => 'PORT',
 			'settings.station.hostRequired' => 'AN ADDRESS IS REQUIRED',
 			'settings.station.portInvalid' => 'PORT MUST BE BETWEEN 1 AND 65535',
+			'settings.station.listenPort' => 'LISTEN ON PORT',
+			'settings.station.listenPortDescription' => 'THE PORT THE APP SHARING THE GPS IS SET TO SEND TO.',
+			'settings.station.listeningOn' => ({required Object port}) => 'LISTENING ON PORT ${port}',
 			'settings.station.connect' => 'CONNECT',
 			'settings.station.disconnect' => 'DISCONNECT',
 			'settings.station.remove' => 'REMOVE',
@@ -7215,6 +7231,12 @@ extension on TranslationsQro {
 			'settings.station.connectFailedUnsupported' => 'NO DRIVER RECOGNIZES THIS USB ADAPTER\'S CHIP. IF YOU KNOW WHICH CHIP IT IS, CHOOSE IT UNDER USB CHIP DRIVER IN ADVANCED SETTINGS.',
 			'settings.station.connectFailedLines' => 'RTS/DTR COULD NOT BE HELD AS SET, SO THE PORT WAS CLOSED. ANOTHER PROGRAM MAY HAVE LEFT HARDWARE HANDSHAKING ON — UNPLUG AND REPLUG THE CABLE.',
 			'settings.station.connectFailedNetwork' => 'CANNOT FIND THE RADIO OVER THE NETWORK. CHECK ITS ADDRESS AND THAT IT\'S POWERED ON AND REACHABLE.',
+			'settings.station.connectFailedListenPort' => ({required Object port}) => 'PORT ${port} ON THIS DEVICE IS ALREADY IN USE. CLOSE WHATEVER ELSE LISTENS ON IT, OR CHANGE THE PORT.',
+			'settings.station.connectFailedListen' => ({required Object port}) => 'COULD NOT LISTEN ON PORT ${port}. PICK A PORT FROM 1024 TO 65535.',
+			'settings.station.connectFailedListenDetail' => ({required Object port, required Object detail}) => 'COULD NOT LISTEN ON PORT ${port}: ${detail}',
+			'settings.station.gpsdNoDevice' => 'GPSD HAS NO GPS RECEIVER',
+			'settings.station.gpsdSaid' => ({required Object message}) => 'GPSD REFUSED: ${message}',
+			'settings.station.gpsWaiting' => 'WAITING FOR NMEA DATA',
 			'settings.station.connectFailedReplyPort' => ({required Object port}) => 'PORT ${port} ON THIS DEVICE IS ALREADY IN USE, AND THE ANSWERS ARRIVE THERE. CLOSE WHATEVER ELSE LISTENS ON IT — ANOTHER PSTROTATOR NODE INCLUDED — OR CHANGE THE PORT.',
 			'settings.station.connectFailedTimeout' => 'THE RADIO DIDN\'T RESPOND IN TIME. CHECK IT\'S POWERED ON AND REACHABLE.',
 			'settings.station.models.flexRadio' => 'FLEXRADIO (SMARTSDR)',
@@ -7238,6 +7260,8 @@ extension on TranslationsQro {
 			'settings.station.models.tenTecEagle' => 'TEN-TEC EAGLE (599)',
 			'settings.station.models.tenTecOrion' => 'TEN-TEC ORION (565)',
 			'settings.station.models.tenTecOrionII' => 'TEN-TEC ORION II (566)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.sotacat' => 'SOTACAT (ELECRAFT KX2/KX3)',
 			'settings.station.models.yaesuGeneric' => 'YAESU - GENERIC',
 			'settings.station.models.icomGeneric' => 'ICOM - GENERIC',
@@ -7247,8 +7271,6 @@ extension on TranslationsQro {
 			'settings.station.models.ts480hx' => 'KENWOOD TS-480HX',
 			'settings.station.models.ts2000' => 'KENWOOD TS-2000',
 			'settings.station.models.qmx' => 'QRP LABS QMX',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
 			'settings.station.models.tx500' => 'LAB599 TX-500',
 			'settings.station.models.tx500mp' => 'LAB599 TX-500MP',
@@ -7286,6 +7308,7 @@ extension on TranslationsQro {
 			'settings.station.models.midiController' => 'MIDI CONTROLLER',
 			'settings.station.models.winkeyer' => 'WINKEYER',
 			'settings.station.models.nmeaGps' => 'GPS RECEIVER',
+			'settings.station.models.gpsd' => 'GPSD',
 			'settings.station.models.placeholderRadio' => 'SIMULATED RADIO',
 			'settings.station.models.placeholderRadioNodeName' => 'SIMULATED RADIO',
 			'settings.station.models.simulatedRotator' => 'SIMULATED ROTATOR',
@@ -7311,6 +7334,7 @@ extension on TranslationsQro {
 			'settings.station.models.airspyHf' => 'AIRSPY HF+',
 			'settings.station.models.spyServer' => 'SPYSERVER (ANY RECEIVER)',
 			'settings.station.transports.network' => 'NETWORK/WIFI',
+			'settings.station.transports.networkListen' => 'NETWORK/WIFI (INCOMING)',
 			'settings.station.transports.tci' => 'TCI',
 			'settings.station.transports.secureNetwork' => 'SECURE NETWORK/WIFI',
 			'settings.station.transports.usbSerial' => 'USB SERIAL',
@@ -7392,7 +7416,8 @@ extension on TranslationsQro {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} IS ON ANOTHER DEVICE',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'THIS RADIO IS CONNECTED TO ${device}. ITS CONNECTION AND SETTINGS ARE CONFIGURED ON THAT DEVICE.',
 			'settings.station.antennaInUse' => 'ANTENNA IN USE',
-			'settings.station.locationFrom' => 'LOCATION FROM',
+			'settings.station.chooseLocationSource' => 'CHOOSE WHERE THE LOCATION COMES FROM',
+			'settings.station.locationFromThis' => ({required Object name}) => 'TAKE THE LOCATION FROM ${name}',
 			'settings.station.systemLocation.windows' => 'WINDOWS LOCATION SERVICES',
 			'settings.station.systemLocation.macos' => 'MACOS LOCATION SERVICES',
 			'settings.station.systemLocation.linux' => 'LINUX LOCATION SERVICES',
@@ -7471,7 +7496,8 @@ extension on TranslationsQro {
 			'settings.station.newKey' => 'NEW KEY',
 			'settings.station.newKeyer' => 'WINKEYER (K1EL OR COMPATIBLE)',
 			'settings.station.newMidiController' => 'MIDI CONTROLLER',
-			'settings.station.newGpsReceiver' => 'GPS RECEIVER (USB OR SERIAL)',
+			'settings.station.newGpsReceiver' => 'GPS RECEIVER (USB, SERIAL OR NETWORK)',
+			'settings.station.newGpsd' => 'GPSD (GPS DAEMON)',
 			'settings.station.midi.name' => 'NAME',
 			'settings.station.midi.device' => 'DEVICE',
 			'settings.station.midi.deviceNone' => 'CHOOSE A DEVICE',
@@ -7748,6 +7774,8 @@ extension on TranslationsQro {
 			'settings.profiles.section' => 'SECTION',
 			'settings.search.clear' => 'CLEAR',
 			'settings.search.hint' => 'SEARCH PREFERENCES',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.developerModeDescription' => 'ENABLE DEVELOPER WARNINGS, DEBUG LOGS, AND TOOLS.',
 			'settings.developer.experiments' => 'EXPERIMENTS',
 			'settings.developer.showIdleMetrics' => 'SHOW IDLE METRICS',
@@ -7761,8 +7789,6 @@ extension on TranslationsQro {
 			'settings.developer.trackStable' => 'STABLE',
 			'settings.developer.trackUnstable' => 'UNSTABLE',
 			'settings.developer.trackBleeding' => 'BLEEDING',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.checkingTrack' => ({required Object track}) => 'CHECKING "${track}" FOR A CODE PUSH…',
 			'settings.developer.patchDownloaded' => 'CODE PUSH DOWNLOADED — RESTART THE APP TO APPLY IT.',
 			'settings.developer.noNewPatch' => ({required Object track}) => 'NO NEW CODE PUSH ON "${track}".',
@@ -8262,6 +8288,8 @@ extension on TranslationsQro {
 			'qsonImport.description' => 'CREATE A NEW OPERATION FROM A QSON FILE, AS DEVELOPER MODE EXPORTS ONE HERE OR IN POLO.',
 			'qsonImport.importing' => ({required Object filename}) => 'IMPORTING ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'COULD NOT IMPORT ${filename}: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.pickerFailed' => ({required Object error}) => 'COULD NOT OPEN A FILE TO IMPORT: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} IS NOT UTF-8 TEXT, SO IT IS NOT A QSON FILE',
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} IS NOT A JSON FILE, SO IT IS NOT A QSON FILE',
@@ -8275,8 +8303,6 @@ extension on TranslationsQro {
 			'adifImport.newContacts' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} NEW CONTACT', other: '${formatted} NEW CONTACTS', ), 
 			'adifImport.merging' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} WILL MERGE WITH AN EXISTING CONTACT', other: '${formatted} WILL MERGE WITH EXISTING CONTACTS', ), 
 			'adifImport.unusable' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} CANNOT BE IMPORTED (NO CALLSIGN)', other: '${formatted} CANNOT BE IMPORTED (NO CALLSIGN)', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} NEEDS A CLOSER LOOK', other: '${formatted} NEED A CLOSER LOOK', ), 
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'REFERENCES COULD NOT BE RECOVERED FOR ${count} CONTACT', other: 'REFERENCES COULD NOT BE RECOVERED FOR ${formatted} CONTACTS', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${programs} REFERENCES MAY BE INCOMPLETE FOR ${count} CONTACT', other: '${programs} REFERENCES MAY BE INCOMPLETE FOR ${formatted} CONTACTS', ), 

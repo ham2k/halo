@@ -315,11 +315,14 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
           // catalogue.
           variants: widget.supportedVariants(winkeyerModel),
         ),
-      // Beside the keyer, for the same reason: a make-less thing with a
-      // cable, which an operator looks for by what it is. Only where this
-      // device has serial ports to reach one through.
+      // Beside the keyer, for the same reason: a make-less thing, which an
+      // operator looks for by what it is. Only where this device has a way
+      // to reach one — a serial port or a socket; the web build has neither
+      // a socket nor, outside Chromium, a serial port.
       if (widget.supportedVariants(nmeaGpsModel) case final variants when variants.isNotEmpty)
         _AddRow(title: st.newGpsReceiver, icon: MdiIcons.crosshairsGps, choice: const AddChoice.model(nmeaGpsModel), variants: variants),
+      if (widget.supportedVariants(gpsdModel) case final variants when variants.isNotEmpty)
+        _AddRow(title: st.newGpsd, icon: MdiIcons.crosshairsGps, choice: const AddChoice.model(gpsdModel), variants: variants),
       ...switches,
       ...rotators,
       ...so2rSwitches,

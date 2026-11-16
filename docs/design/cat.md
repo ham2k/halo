@@ -4610,9 +4610,10 @@ carries no HDOP, and reading both would report twice a second, the RMC with the 
 satellites. RMC answers only for a receiver set to send nothing else.
 
 **Which source places the station is the station's pick, not a radio's** (`cat_gps.dart`). With
-a receiver configured, Current Configuration shows a Location From line offering each receiver and
-the operating system's own service, named as the operator knows it on that platform ("Windows
-Location Services", "macOS Location Services"…). Unanswered, the first receiver is picked, and
+a receiver configured, Current Configuration shows a row for it under both logging sets, shaped
+like a radio's — the picker, the GPS glyph, the source in use with its fix, and its plug — offering
+each receiver and the operating system's own service, named as the operator knows it on that
+platform ("Windows Location Services", "macOS Location Services"…). Unanswered, the first receiver is picked, and
 the newest receiver set up takes over from an earlier pick, the operating system included —
 setting one up is the operator saying where the fix should come from. The picked receiver is an
 automatic connection target, like the radio in use, and the only one kept connected: picking
@@ -4643,9 +4644,50 @@ out to paired devices; accuracy counts so the setup sheet still sees a receiver'
 settles.
 
 Android offers receivers too, through USB OTG like a radio's serial cable, and one picked there
-replaces the phone's own GPS, by the same rule. iOS has no serial transport, so no receiver. Not
-yet: `gpsd` and NMEA over TCP or UDP, which a Linux machine running `gpsd` (it holds the device) or
-a phone sharing its GPS would need.
+replaces the phone's own GPS, by the same rule. iOS has no serial transport, so a receiver there is
+one reached over the network, below.
+
+### Over the network, and gpsd
+
+The same NMEA session reads a receiver that is not plugged in here, two ways, as two more pairings
+of the GPS Receiver entry. **TCP** connects to a port that serves NMEA — a phone app sharing its
+GPS, a serial server with the receiver on it — prefilled with NMEA's registered port, 10110, and
+storing it under `tcpPort`, since `port` is the serial device's path. **UDP** is for a sender that
+pushes datagrams instead: `UdpListenTransport` (`transports/udp_listen_transport*.dart`) binds a
+port here, 10110 again, takes every datagram from any sender — the phone is whatever address the
+network gave it today, and the operator has no host to name — and sends nothing back. The port is
+not shared (`reuseAddress: false`): a datagram reaches one of the sockets sharing a port, so a
+chart plotter listening beside it would take some of the fixes. Held, the bind fails and says so,
+after a few tries a tenth of a second apart, since this node's own socket closed on a reconnect is
+released only after `close` returns. One way round it cannot be stopped: on Windows, a program
+binding after this one with `SO_REUSEADDR` takes the port over, since Dart has no exclusive bind,
+and the receiver then reads as gone quiet. Any other bind failure, and a port outside 1–65535
+(`0` would bind any port, connect, and hear nothing ever), is worded as the port with the OS's own
+detail rather than as a network that cannot be reached. Neither has sockets on the web.
+
+A sender pushing datagrams may end each without a line ending, so the session ends a sentence at
+the `$` starting the next as well as at a line ending; such a datagram's last sentence waits for the
+next one. It decodes Latin-1, which takes every byte, and keeps no more than 4 KB waiting for an
+end.
+
+**gpsd** is an entry of its own (`drivers/gpsd_driver.dart`), on `localhost:2947` by default:
+most Linux machines run it for a plugged-in receiver, and then it holds the device, so nothing else
+can open the port. On connect the session asks for the receiver's NMEA
+(`?WATCH={"enable":true,"nmea":true}`), which gpsd writes for a receiver speaking a binary protocol
+of its own too, and reads it with the NMEA session unchanged — accuracy stays HDOP × 5 m rather
+than gpsd's own error estimate, one parser rather than two. Of gpsd's own JSON it reads only what
+the NMEA cannot say, which would otherwise read as a receiver gone quiet: DEVICES with none listed
+(gpsd has no receiver), and ERROR (gpsd refused what it was asked), both shown on the row. gpsd
+sends DEVICES only when asked, so a DEVICE — a receiver plugged in or pulled out later — asks again,
+and NMEA arriving at all clears "no receiver", since gpsd relays nothing else. The `$` that ends a
+sentence does not split a line opening with `{`, whose JSON strings may hold one.
+
+**Connected and nothing heard is not "searching".** A receiver without a fix still reports one
+every second, so the row says "Waiting for NMEA data" until the first GGA or RMC: a firewall, a
+sender aimed at another address or port, a port that is not NMEA. And the picked receiver is
+dropped and reconnected when it goes silent, as a radio is (`_armSilentDrop`): it talks every
+second, and a phone that went to sleep while sharing over TCP leaves a half-open socket nothing
+else would ever close.
 
 ## MIDI controllers
 

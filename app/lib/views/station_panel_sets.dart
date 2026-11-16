@@ -143,8 +143,10 @@ extension _SetRows on StationPanel {
 
   /// Where the station's position comes from: one of its GPS receivers, or
   /// the operating system's own location service, named as the operator
-  /// knows it on this platform (docs/design/cat.md § GPS receivers).
-  Widget _gpsSourceLine(BuildContext context, {required EdgeInsets inset}) {
+  /// knows it on this platform (docs/design/cat.md § GPS receivers). The
+  /// radio row's shape — picker, glyph, the receiver, its plug — since a
+  /// receiver is equipment the operator connects like a radio.
+  Widget _gpsSourceRow(BuildContext context) {
     final st = context.t.settings.station;
     final system = switch (defaultTargetPlatform) {
       _ when kIsWeb => st.systemLocation.browser,
@@ -153,17 +155,79 @@ extension _SetRows on StationPanel {
       TargetPlatform.linux => st.systemLocation.linux,
       _ => st.systemLocation.device,
     };
-    return Padding(
-      padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
-      child: DesignationDropdown(
-        key: ValueKey('gpsSource:${_cat.gpsReceiver}'),
-        label: st.locationFrom,
-        nodes: _cat.gpsReceiverNodes,
-        selected: _cat.gpsReceiver,
-        displayName: _displayName,
-        noneLabel: system,
-        onChanged: (uuid) => unawaited(_cat.setGpsSource(uuid)),
-      ),
+    return TransceiverMenu(
+      rows: (context, close) {
+        void pick(String? uuid) {
+          close();
+          unawaited(_cat.setGpsSource(uuid));
+        }
+
+        return [
+          for (final node in _cat.gpsReceiverNodes)
+            TransceiverRow(
+              name: _displayName(node),
+              connection: connectionTextFor(context, _cat.typeFor(node), node.config),
+              transportType: _cat.typeFor(node),
+              category: kCategoryGps,
+              glyphLabel: st.locationFromThis(name: _displayName(node)),
+              selected: _cat.gpsReceiver == node.uuid,
+              connected: _cat.stateFor(node.uuid).status == EquipmentStatus.connected,
+              onSelect: () => pick(node.uuid),
+              onEdit: () => pick(node.uuid),
+            ),
+          TransceiverRow(
+            name: system,
+            connection: '',
+            category: kCategoryGps,
+            glyphLabel: st.locationFromThis(name: system),
+            selected: _cat.gpsReceiver == null,
+            onSelect: () => pick(null),
+            onEdit: () => pick(null),
+          ),
+        ];
+      },
+      builder: (context, toggle) {
+        final picker = SizedBox.square(
+          dimension: transceiverPickerWidth,
+          child: IconButton(
+            icon: Icon(MdiIcons.menuDown, semanticLabel: st.chooseLocationSource),
+            onPressed: toggle,
+          ),
+        );
+        final uuid = _cat.gpsReceiver;
+        final node = uuid == null ? null : _cat.nodeFor(uuid);
+        if (node == null) {
+          return CurrentRowFrame(
+            leading: picker,
+            child: ListTile(
+              leading: const TransceiverGlyph.bare(inUse: true, category: kCategoryGps),
+              title: Text(system, style: const TextStyle(fontWeight: FontWeight.bold)),
+              onTap: toggle,
+              mouseCursor: SystemMouseCursors.click,
+            ),
+          );
+        }
+        final state = _cat.stateFor(node.uuid);
+        return CurrentTransceiverTile(
+          displayName: _displayName(node),
+          connection: connectionTextFor(context, _cat.typeFor(node), node.config),
+          transportType: _cat.typeFor(node),
+          category: kCategoryGps,
+          state: state,
+          // No reading at all is not a search: a receiver without a fix
+          // still reports one every second, so nothing yet is nothing heard —
+          // a firewall, a sender aimed elsewhere, a port that is not NMEA.
+          reading: switch (state.gps) {
+            final gps? => _gpsReading(context, gps),
+            null => st.gpsWaiting,
+          },
+          unconfigured: _cat.typeFor(node)?.isUnconfigured(node.config) ?? false,
+          onEdit: () => _editEquipment(context, node),
+          onConnect: () => _cat.connect(node.uuid),
+          onDisconnect: () => _cat.disconnect(node.uuid),
+          picker: picker,
+        );
+      },
     );
   }
 

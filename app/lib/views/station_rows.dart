@@ -69,6 +69,13 @@ class CurrentTransceiverTile extends StatelessWidget {
   final VoidCallback onConnect;
   final VoidCallback onDisconnect;
 
+  /// See [TransceiverGlyph.category].
+  final String category;
+
+  /// What the equipment is doing, while connected, for equipment that is not
+  /// a radio — a GPS receiver's fix. A radio's is its [RadioReading].
+  final String? reading;
+
   const CurrentTransceiverTile({
     super.key,
     required this.displayName,
@@ -81,6 +88,8 @@ class CurrentTransceiverTile extends StatelessWidget {
     required this.onEdit,
     required this.onConnect,
     required this.onDisconnect,
+    this.category = kCategoryTransceiver,
+    this.reading,
   });
 
   @override
@@ -99,7 +108,7 @@ class CurrentTransceiverTile extends StatelessWidget {
       leading: picker,
       trailing: RowPlug(busy: busy, connected: connected && !lost, onConnect: unconfigured ? null : onConnect, onDisconnect: onDisconnect),
       child: ListTile(
-        leading: const TransceiverGlyph.bare(inUse: true),
+        leading: TransceiverGlyph.bare(inUse: true, category: category),
         title: Row(
           children: [
             Expanded(
@@ -154,6 +163,8 @@ class CurrentTransceiverTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     )
+                  : reading != null
+                  ? Text(reading!, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyMedium)
                   : RadioReading(state: state),
             ),
             Flexible(
@@ -209,6 +220,13 @@ class TransceiverRow extends StatelessWidget {
   /// The radio's [RowPlug], on an inventory row.
   final RowPlug? plug;
 
+  /// See [TransceiverGlyph.category].
+  final String category;
+
+  /// What the glyph says to a screen reader, for a row that picks something
+  /// other than the main VFO.
+  final String? glyphLabel;
+
   /// The radio's live state, on an inventory row: its second line is then
   /// what the radio is doing in place of [connection] — its reading while
   /// connected, why it failed or is misconfigured, that it is [unconfigured],
@@ -240,6 +258,8 @@ class TransceiverRow extends StatelessWidget {
     this.unconfigured = false,
     this.set,
     this.connected = false,
+    this.category = kCategoryTransceiver,
+    this.glyphLabel,
   });
 
   @override
@@ -256,7 +276,8 @@ class TransceiverRow extends StatelessWidget {
       leading: TransceiverGlyph(
         inUse: selected,
         set: set,
-        semanticLabel: selected ? st.mainVfo : st.makeMainVfo(name: name),
+        category: category,
+        semanticLabel: glyphLabel ?? (selected ? st.mainVfo : st.makeMainVfo(name: name)),
         onPressed: selected ? null : onSelect,
       ),
       title: Row(
@@ -934,9 +955,17 @@ class TransceiverGlyph extends StatelessWidget {
   /// set's picker shows it.
   final String? set;
 
-  const TransceiverGlyph({super.key, required this.inUse, this.semanticLabel, this.onPressed, this.set}) : _bare = false;
+  /// What the row picks: a transceiver, or a GPS receiver on the Location
+  /// From row, which is the same row with another glyph.
+  final String category;
 
-  const TransceiverGlyph.bare({super.key, required this.inUse}) : semanticLabel = null, onPressed = null, set = null, _bare = true;
+  const TransceiverGlyph({super.key, required this.inUse, this.semanticLabel, this.onPressed, this.set, this.category = kCategoryTransceiver}) : _bare = false;
+
+  const TransceiverGlyph.bare({super.key, required this.inUse, this.category = kCategoryTransceiver})
+    : semanticLabel = null,
+      onPressed = null,
+      set = null,
+      _bare = true;
 
   @override
   Widget build(BuildContext context) {
@@ -949,7 +978,7 @@ class TransceiverGlyph extends StatelessWidget {
     final Widget icon = switch (box) {
       final box? => Icon(box, size: _rowButtonIconSize, color: scheme.primary, semanticLabel: semanticLabel),
       null => Icon(
-        iconForCategory(kCategoryTransceiver),
+        iconForCategory(category),
         size: _rowButtonIconSize,
         color: inUse ? scheme.primary : scheme.onSurface.withValues(alpha: 0.38),
         semanticLabel: semanticLabel,

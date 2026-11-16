@@ -16,6 +16,7 @@ import 'drivers/rotctld_driver.dart';
 import 'drivers/winkeyer_driver.dart';
 import 'drivers/key_driver.dart';
 import 'drivers/midi_controller_driver.dart';
+import 'drivers/gpsd_driver.dart';
 import 'drivers/nmea_gps_driver.dart';
 import 'drivers/otrsp_driver.dart';
 import 'drivers/sierra_coax_driver.dart';
@@ -27,6 +28,7 @@ import 'transports/none_transport.dart';
 import 'transports/placeholder_transport.dart';
 import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
+import 'transports/udp_listen_transport.dart';
 import 'transports/udp_transport.dart';
 
 const _winkeyerSerialKey = 'winkeyer-serial';
@@ -304,10 +306,18 @@ const midiControllerModel = EquipmentModel(
 
 String _midiControllerModelName() => t.settings.station.models.midiController;
 
-/// Any GPS receiver speaking NMEA over a serial (USB) port — see
-/// nmea_gps_driver.dart. 9600 baud is a prefill rather than an override: it
-/// is what the u-blox dongles most of these are built on send, but a SiRF
-/// puck sends 4800 and some receivers are set faster, so the picker stays.
+/// NMEA's own registered port, 10110: what the phone apps and serial servers
+/// that share a GPS over the network offer first, where they let it be set.
+const _nmeaNetworkPort = 10110;
+
+/// Any GPS receiver speaking NMEA — see nmea_gps_driver.dart — over a serial
+/// (USB) port, or over the network: a TCP port to connect to (a phone app,
+/// a serial server), or datagrams pushed to a port here.
+///
+/// 9600 baud is a prefill rather than an override: it is what the u-blox
+/// dongles most of these are built on send, but a SiRF puck sends 4800 and
+/// some receivers are set faster, so the picker stays. The TCP port has its
+/// own key, since `port` is the serial device's path.
 const nmeaGpsModel = EquipmentModel(
   key: 'nmea-gps',
   category: kCategoryGps,
@@ -315,10 +325,33 @@ const nmeaGpsModel = EquipmentModel(
   hiddenFromCatalog: true,
   variants: [
     EquipmentVariant(key: 'nmea-gps-serial', driver: NmeaGpsDriver(), transport: SerialTransport(), defaultConfig: {'baudRate': 9600}),
+    EquipmentVariant(
+      key: 'nmea-gps-tcp',
+      driver: NmeaGpsDriver(),
+      transport: TcpTransport(portConfigKey: 'tcpPort'),
+      defaultConfig: {'tcpPort': _nmeaNetworkPort},
+    ),
+    EquipmentVariant(key: 'nmea-gps-udp', driver: NmeaGpsDriver(), transport: UdpListenTransport(), defaultConfig: {udpListenPortConfigKey: _nmeaNetworkPort}),
   ],
 );
 
 String _nmeaGpsModelName() => t.settings.station.models.nmeaGps;
+
+/// gpsd, on this computer by default — see gpsd_driver.dart. Its own entry
+/// rather than a way of connecting a receiver: what the operator picks is a
+/// program they run, and it is reached over TCP like the receiver's own
+/// network entry, which the transport picker could not tell apart.
+const gpsdModel = EquipmentModel(
+  key: 'gpsd',
+  category: kCategoryGps,
+  name: _gpsdModelName,
+  hiddenFromCatalog: true,
+  variants: [
+    EquipmentVariant(key: 'gpsd-tcp', driver: GpsdDriver(), transport: TcpTransport(), defaultConfig: {'host': 'localhost', 'port': gpsdDefaultPort}),
+  ],
+);
+
+String _gpsdModelName() => t.settings.station.models.gpsd;
 
 /// A K1EL Winkeyer over its own serial (USB) port — see winkeyer_driver.dart.
 /// Offered from the Add dialog's "Other Equipment" rows beside a plain key,

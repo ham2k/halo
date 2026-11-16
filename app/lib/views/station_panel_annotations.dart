@@ -370,14 +370,7 @@ extension _EditorAnnotations on StationPanel {
     final vfo = state.vfo;
     if (vfo.freqKHz != null || vfo.mode != null) return [?vfo.mode, if (vfo.freqKHz case final khz?) fmtFreq(khz)].join('  ');
     if (state.rotator case final position?) return _rotatorReading(st, position, elevation: rotatorHasElevation(node.config), short: false);
-    if (state.gps case final gps?) {
-      final satellites = gps.satellites == null ? null : st.gpsSatellites(count: gps.satellites!);
-      if (gps.hasFix) {
-        final grid = gridForLocation(gps.latitude!, gps.longitude!);
-        return satellites == null ? grid : st.gpsFix(grid: grid, satellites: satellites);
-      }
-      return satellites == null ? st.gpsSearching : st.gpsSearchingWith(satellites: satellites);
-    }
+    if (state.gps case final gps?) return _gpsReading(context, gps);
     if (state.switchPorts.isNotEmpty) {
       return [
         for (final port in state.switchPorts)
@@ -389,6 +382,18 @@ extension _EditorAnnotations on StationPanel {
       return st.connectionDevices(count: state.channels.length);
     }
     return null;
+  }
+
+  /// A GPS receiver's reading, in a line: its square and satellites, or that
+  /// it is still searching.
+  String _gpsReading(BuildContext context, GpsReading gps) {
+    final st = context.t.settings.station;
+    final satellites = gps.satellites == null ? null : st.gpsSatellites(count: gps.satellites!);
+    if (gps.hasFix) {
+      final grid = gridForLocation(gps.latitude!, gps.longitude!);
+      return satellites == null ? grid : st.gpsFix(grid: grid, satellites: satellites);
+    }
+    return satellites == null ? st.gpsSearching : st.gpsSearchingWith(satellites: satellites);
   }
 
   /// The Current State section for a saved rotator: where it points, a

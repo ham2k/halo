@@ -1009,7 +1009,16 @@ class StationPanel extends StatelessWidget {
         // two radios in the headphones, and where the station is.
         final operatorLines = [
           if (radio2 != null && (_cat.so2rSwitchNodes.isNotEmpty || _cat.so2rAudioRadio != null)) _so2rSwitchLine(context, inset: detailsInset),
-          if (_cat.gpsReceiverNodes.isNotEmpty) _gpsSourceLine(context, inset: detailsInset),
+          // On a Material of the ground's own colour, as Radio B's row is: the
+          // block's ColoredBox would hide the tiles' ink.
+          if (_cat.gpsReceiverNodes.isNotEmpty)
+            Material(
+              color: rigGround,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: Space.md),
+                child: _gpsSourceRow(context),
+              ),
+            ),
         ];
 
         return StationExpansionScope(
