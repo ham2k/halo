@@ -237,6 +237,9 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
 
   /// How far a trackpad's two-finger scroll has gone since it began, in pixels.
   double _scrolled = 0;
+
+  /// A wheel's or a browser pinch's zoom, sent once the signals stop.
+  Timer? _zoomSettle;
   Offset _dragFrom = Offset.zero;
   _Drawn? _dragging;
   double _dragStart = 0;
@@ -300,6 +303,7 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
   @override
   void dispose() {
     widget.source?.changes.removeListener(_onChange);
+    _zoomSettle?.cancel();
     _world.dispose();
     _spinner?.dispose();
     for (final art in _pictures.values) {
@@ -480,6 +484,8 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
     // a trackpad's scroll as the wheel does.
     if (e.pointerCount >= 2 || e.kind == PointerDeviceKind.trackpad) {
       _mode = _spec.zoomGesture == 'off' ? _DragMode.none : _DragMode.pinch;
+      // A wheel's zoom still to be sent would land mid-pinch, and the pinch's end sends the zoom.
+      if (_mode == _DragMode.pinch) _zoomSettle?.cancel();
       return;
     }
     // The station first: the heading starts there, and taken by it a drag
@@ -556,19 +562,28 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
   }
 
   void _onPointerSignal(PointerSignalEvent e) {
-    if (e is! PointerScrollEvent || _spec.zoomGesture == 'off' || widget.disabled) return;
-    GestureBinding.instance.pointerSignalResolver.register(e, (event) {
-      final dy = (event as PointerScrollEvent).scrollDelta.dy;
-      setState(() => _zoom = (_zoomNow * math.exp(-dy / 400)).clamp(_spec.zoomMin, _spec.zoomMax).toDouble());
-      _wheelSettle?.cancel();
-      _wheelSettle = Timer(const Duration(milliseconds: 300), () {
+    if (_spec.zoomGesture == 'off' || widget.disabled) return;
+    final factor = switch (e) {
+      PointerScrollEvent(:final scrollDelta) => math.exp(-scrollDelta.dy / 400),
+      // A trackpad's pinch in a browser: it never reaches the scale gesture.
+      PointerScaleEvent(:final scale) when scale > 0 => scale,
+      _ => null,
+    };
+    // A sideways swipe asks for no zoom: it is the scene's, which may scroll by it.
+    if (factor == null || factor == 1) return;
+    GestureBinding.instance.pointerSignalResolver.register(e, (_) {
+      final zoom = (_zoomNow * factor).clamp(_spec.zoomMin, _spec.zoomMax).toDouble();
+      // Turned on past a limit it is still the map's, as the wheel over a band
+      // scope is, but there is no new zoom to send.
+      if (zoom == _zoomNow) return;
+      setState(() => _zoom = zoom);
+      _zoomSettle?.cancel();
+      _zoomSettle = Timer(const Duration(milliseconds: 300), () {
         if (!mounted) return;
         widget.onGesture?.call('zoom', _zoomNow, null);
       });
     });
   }
-
-  Timer? _wheelSettle;
 
   void _onHover(PointerHoverEvent e) {
     final frame = _frame;
@@ -581,6 +596,8 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
   /// All the way out, unpanned. Reported as a zoom of 0, for a scene that
   /// keeps the operator's view to forget it rather than give it back.
   void _resetView() {
+    // A zoom's settle still to come would send the zoom it left, undoing the reset.
+    _zoomSettle?.cancel();
     setState(() {
       _zoom = _spec.zoomMin;
       _pan = Offset.zero;
@@ -841,6 +858,10 @@ class _SceneRotatorViewState extends State<SceneRotatorView> with SingleTickerPr
                     onHover: _onHover,
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
+                      // A click is a point on the map. Offered as a tap action, a browser with
+                      // its accessibility layer on delivers every click as one at the middle,
+                      // where the station is, and the rotator turns south whatever was clicked.
+                      excludeFromSemantics: true,
                       onTapUp: _onTapUp,
                       onScaleStart: _onScaleStart,
                       onScaleUpdate: _onScaleUpdate,

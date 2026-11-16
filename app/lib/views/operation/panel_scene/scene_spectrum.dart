@@ -992,6 +992,10 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
               onPointerCancel: _touchUp,
               child: RawGestureDetector(
                 behavior: HitTestBehavior.opaque,
+                // A click is a frequency. Offered as a tap action, a browser with its
+                // accessibility layer on delivers every click as one at the middle,
+                // tuning the radio there whatever was clicked; the label above stays.
+                excludeFromSemantics: true,
                 gestures: _recognizers(axis: scale != null),
                 child: Stack(
                   fit: StackFit.expand,

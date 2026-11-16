@@ -573,6 +573,9 @@ class _SceneMapViewState extends State<SceneMapView> {
                     onHover: _onHover,
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
+                      // A click is a place on the map. Offered as a tap action, a browser with
+                      // its accessibility layer on delivers every click as one at the middle.
+                      excludeFromSemantics: true,
                       onTapUp: _onTapUp,
                       // With nothing to do, no recognizer at all: one that
                       // only ignores a drag still wins it from a scroll round the map.

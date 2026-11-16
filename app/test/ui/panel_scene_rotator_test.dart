@@ -4,12 +4,14 @@
 // A scene's `rotatorMap` control: the host draws the rotator on a map of the
 // world and places the scene's decorations on it by bearing and distance.
 
-import 'package:flutter/gestures.dart' show PointerDeviceKind;
+import 'package:flutter/gestures.dart' show GestureBinding, PointerDeviceKind, PointerScaleEvent, PointerScrollEvent;
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart' show SemanticsAction, SemanticsNode;
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart' show GridLocation;
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:halo_widgets/halo_widgets.dart' show MdiIcons;
 import 'package:ham2k_logger/services/cat/equipment.dart' show EquipmentStatus;
 import 'package:ham2k_logger/views/operation/panel_scene/scene_model.dart';
 import 'package:ham2k_logger/views/operation/panel_scene/scene_rotator.dart';
@@ -98,6 +100,16 @@ Map<String, dynamic> _doc({Map<String, dynamic> map = const {}, Map<String, dyna
     'crossAxisAlignment': 'stretch',
   },
 };
+
+/// Whether [node], or any node under it, offers a tap action.
+bool _tappable(SemanticsNode node) {
+  var found = node.getSemanticsData().hasAction(SemanticsAction.tap);
+  node.visitChildren((child) {
+    found = found || _tappable(child);
+    return !found;
+  });
+  return found;
+}
 
 SceneRotatorSpec _spec(Map<String, dynamic> map) => PanelScene(_doc(map: map)).controlsById['map']!.rotatorMap!;
 
@@ -454,6 +466,142 @@ void main() {
       await tester.pump();
       expect(find.text('45'), findsOneWidget);
       expect(find.text('stale'), findsOneWidget);
+    });
+
+    // A browser with its accessibility layer on hands a click on a widget
+    // that offers a tap action to that action, at the widget's middle: there
+    // a click anywhere on the map lands on the station and turns the rotator
+    // to 180.
+    testWidgets('the map offers no tap action, so a click is never taken as one at its middle', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _show(tester, _Source());
+      expect(_tappable(tester.getSemantics(find.byType(SceneRotatorView))), isFalse);
+      semantics.dispose();
+    });
+
+    // A trackpad's pinch in a browser arrives as a scale signal, which the
+    // scale gesture never sees: handled only as a wheel, it zooms nothing.
+    testWidgets('a browser\'s trackpad pinch zooms by its scale, and the zoom is sent once it settles', (tester) async {
+      final events = <Map<String, dynamic>>[];
+      await _show(
+        tester,
+        _Source(),
+        onEvent: (e) async {
+          events.add(e);
+          return {};
+        },
+      );
+      final box = tester.getRect(find.byType(SceneRotatorView));
+      tester.binding.handlePointerEvent(PointerScaleEvent(position: box.center, scale: 2));
+      tester.binding.handlePointerEvent(PointerScaleEvent(position: box.center, scale: 1.5));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(events.single['gesture'], 'zoom');
+      expect(events.single['value'] as double, closeTo(3, 1e-9));
+    });
+
+    // Every signal the map takes is one the scene around it never sees: a
+    // sideways swipe taken for a zoom of 1 would stop a scene that scrolls
+    // sideways scrolling over the map, and send a zoom that changed nothing.
+    testWidgets('a sideways swipe is left to the scene, and a wheel turned up or down is the map\'s', (tester) async {
+      final events = <Map<String, dynamic>>[];
+      final outer = <Offset>[];
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: Listener(
+                onPointerSignal: (e) {
+                  if (e is PointerScrollEvent) GestureBinding.instance.pointerSignalResolver.register(e, (_) => outer.add(e.scrollDelta));
+                },
+                child: SizedBox(
+                  width: 300,
+                  height: 320,
+                  child: PanelSceneView(
+                    scene: PanelScene(_doc()),
+                    rotator: _Source(),
+                    onEvent: (e) async {
+                      events.add(e);
+                      return {};
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      final box = tester.getRect(find.byType(SceneRotatorView));
+      tester.binding.handlePointerEvent(PointerScrollEvent(position: box.center, scrollDelta: const Offset(40, 0)));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(outer, [const Offset(40, 0)]);
+      expect(events, isEmpty);
+      tester.binding.handlePointerEvent(PointerScrollEvent(position: box.center, scrollDelta: const Offset(0, -40)));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(outer, hasLength(1));
+      expect(events.single['gesture'], 'zoom');
+    });
+
+    // At the widest view a wheel turned further out zooms nothing: a zoom sent
+    // for it would tell the scene of a change that never happened.
+    testWidgets('a wheel turned out past the widest view sends no zoom', (tester) async {
+      final events = <Map<String, dynamic>>[];
+      await _show(
+        tester,
+        _Source(),
+        onEvent: (e) async {
+          events.add(e);
+          return {};
+        },
+      );
+      final box = tester.getRect(find.byType(SceneRotatorView));
+      tester.binding.handlePointerEvent(PointerScrollEvent(position: box.center, scrollDelta: const Offset(0, 120)));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(events, isEmpty);
+    });
+
+    // The pinch is taken apart from the scale gesture, so the scene's `off`
+    // has to reach it too: checked after picking the signal, a pinch would
+    // zoom a map whose scene draws its own zoom.
+    testWidgets('a scene that turns the zoom off is not zoomed by a pinch', (tester) async {
+      final events = <Map<String, dynamic>>[];
+      await _show(
+        tester,
+        _Source(),
+        map: {
+          'gestures': {'zoom': 'off'},
+        },
+        onEvent: (e) async {
+          events.add(e);
+          return {};
+        },
+      );
+      final box = tester.getRect(find.byType(SceneRotatorView));
+      tester.binding.handlePointerEvent(PointerScaleEvent(position: box.center, scale: 2));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(events, isEmpty);
+    });
+
+    // The zoom a pinch sends waits for the pinch to stop; still waiting when
+    // the whole map is asked for, it would land after the reset's 0 and
+    // undo it.
+    testWidgets('the whole-map button drops the zoom a pinch has yet to send', (tester) async {
+      final events = <Map<String, dynamic>>[];
+      await _show(
+        tester,
+        _Source(),
+        map: {'actions': true},
+        onEvent: (e) async {
+          events.add(e);
+          return {};
+        },
+      );
+      final box = tester.getRect(find.byType(SceneRotatorView));
+      tester.binding.handlePointerEvent(PointerScaleEvent(position: box.center, scale: 2));
+      await tester.pump();
+      await tester.tap(find.byIcon(MdiIcons.fitToScreenOutline));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(events.where((e) => e['gesture'] == 'zoom').map((e) => e['value']), [0]);
     });
   });
 

@@ -11,6 +11,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart' show SemanticsAction, SemanticsNode;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
@@ -276,6 +277,27 @@ void main() {
       }),
       throwsFormatException,
     );
+  });
+
+  // A browser with its accessibility layer on hands a quick click on a widget
+  // that offers a tap action to that action, at the widget's middle: every
+  // click would tune the radio to the middle of the window.
+  testWidgets('the band scope offers no tap action, so a click is never taken as one at its middle', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await _show(tester, _Radio());
+    bool tappable(SemanticsNode node) {
+      var found = node.getSemanticsData().hasAction(SemanticsAction.tap);
+      node.visitChildren((child) {
+        found = found || tappable(child);
+        return !found;
+      });
+      return found;
+    }
+
+    final node = tester.getSemantics(find.byType(SceneSpectrumView));
+    expect(node.label, 'Panadapter');
+    expect(tappable(node), isFalse);
+    semantics.dispose();
   });
 
   testWidgets('a click on an API 17 panel tunes the radio itself, and the extension hears nothing of it', (tester) async {

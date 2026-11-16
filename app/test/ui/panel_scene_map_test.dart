@@ -13,6 +13,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart' show PointerDeviceKind, PointerScaleEvent, PointerScrollEvent;
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart' show SemanticsAction, SemanticsNode;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart' show GridLocation;
 import 'package:halo_i18n/halo_i18n.dart';
@@ -499,6 +500,25 @@ void main() {
   });
 
   group('the control', () {
+    // A browser with its accessibility layer on hands a click on a widget
+    // that offers a tap action to that action, at the widget's middle: every
+    // click would land there, whatever marker or place was clicked.
+    testWidgets('the map offers no tap action, so a click is never taken as one at its middle', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _show(tester);
+      bool tappable(SemanticsNode node) {
+        var found = node.getSemanticsData().hasAction(SemanticsAction.tap);
+        node.visitChildren((child) {
+          found = found || tappable(child);
+          return !found;
+        });
+        return found;
+      }
+
+      expect(tappable(tester.getSemantics(find.byType(SceneMapView))), isFalse);
+      semantics.dispose();
+    });
+
     testWidgets('a click on a marker with an event sends it, with the marker\'s id and place', (tester) async {
       final events = await _show(
         tester,
