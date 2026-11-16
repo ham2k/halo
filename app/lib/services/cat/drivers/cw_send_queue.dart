@@ -276,13 +276,20 @@ class CwSendQueue {
   /// behind it.
   bool get sending => _timer != null;
 
-  /// Queues [text] after whatever is already going out. Nothing sendable in
-  /// it, nothing happens.
-  void enqueue(String text) {
+  /// The message whose chunks are going out, by its [enqueue] id.
+  int? get currentId => _current?.id;
+
+  /// The id the next message [enqueue] takes will have.
+  int get nextId => _nextId;
+
+  /// Queues [text] after whatever is already going out, and answers its id.
+  /// Nothing sendable in it, nothing happens, and null.
+  int? enqueue(String text) {
     final sanitized = sanitizeCwText(text);
     final chunks = splitCwText(sanitized, maxChunkLength);
-    if (chunks.isEmpty) return;
-    _pending.add(_Message(_nextId++, sanitized, chunks));
+    if (chunks.isEmpty) return null;
+    final id = _nextId++;
+    _pending.add(_Message(id, sanitized, chunks));
     if (_timer == null) {
       _sendNext();
     } else {
@@ -290,6 +297,7 @@ class CwSendQueue {
       // right away, rather than when its turn comes.
       _reportCurrent();
     }
+    return id;
   }
 
   /// [_current]'s timeline at the speed in force when it started — kept so

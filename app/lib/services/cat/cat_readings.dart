@@ -80,13 +80,16 @@ extension _Readings on CatService {
       // RF in the CAT cable silences a radio exactly while it transmits, so
       // a radio the app is keying is not judged by its silence until the
       // key is released — [_restartSilentDrops] then gives it a whole window.
-      if (_nodeTransmitting(uuid)) return _armSilentDrop(uuid, runtime, silentDropAfter);
+      // Any receiver of it counts: a drop closes the connection they share
+      // ([_dropSilent]), and with it the other receiver's over.
+      final receivers = entriesOf(deviceEntryFor(uuid));
+      if (receivers.any(_nodeTransmitting)) return _armSilentDrop(uuid, runtime, silentDropAfter);
       // Keyed some other way (its mic, a footswitch, VOX), all the radio said
       // was that it went on the air. Held off longer, not forever: a radio
       // switched off mid-over says the same.
       final silentFor = realNowMillis() - heard;
       final keyedLimit = (silentDropAfter * _silentWhileKeyedWindows).inMilliseconds;
-      if (runtime.state.telemetry.isTransmitting && silentFor < keyedLimit) {
+      if (receivers.any((id) => stateFor(id).telemetry.isTransmitting) && silentFor < keyedLimit) {
         return _armSilentDrop(uuid, runtime, Duration(milliseconds: keyedLimit - silentFor));
       }
       final shortSession = heard - since < (silentDropAfter * _healthySessionWindows).inMilliseconds;
@@ -120,6 +123,7 @@ extension _Readings on CatService {
   /// burst, leaving two logins back to back against the radio.
   Future<void> _dropSilent(String uuid, _NodeRuntime runtime) async {
     final ours = runtime.attemptSeq + 1;
+    if (runtime.connection case final SharedReceiverConnection shared) shared.drop('silent');
     await disconnect(uuid, byUser: false);
     if (runtime.attemptSeq != ours) return;
     _autoReconnectAfterDrop(uuid);

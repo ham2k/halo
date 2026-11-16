@@ -3031,6 +3031,7 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get civAddressDescription => 'hex, as shown in the radio\'s ci-v menu. the ic-705 ships as a4.';
 	@override String get civAddressInvalid => 'a ci-v address is two hex digits, 01 to ff';
 	@override String flexSliceLabel({required Object letter}) => 'slice ${letter}';
+	@override String flexSliceOnStation({required Object letter, required Object station}) => 'slice ${letter} on ${station}';
 	@override String get flexSliceInvalid => 'pick one of the radio\'s slices, a through h';
 	@override String flexSliceMissing({required Object letter}) => 'slice ${letter} is not in use on this radio — pick another slice, or create it in smartsdr';
 	@override String get channelNotInUse => 'not in use';
@@ -7096,6 +7097,7 @@ extension on TranslationsQrp {
 			'settings.station.civAddressDescription' => 'hex, as shown in the radio\'s ci-v menu. the ic-705 ships as a4.',
 			'settings.station.civAddressInvalid' => 'a ci-v address is two hex digits, 01 to ff',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'slice ${letter}',
+			'settings.station.flexSliceOnStation' => ({required Object letter, required Object station}) => 'slice ${letter} on ${station}',
 			'settings.station.flexSliceInvalid' => 'pick one of the radio\'s slices, a through h',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => 'slice ${letter} is not in use on this radio — pick another slice, or create it in smartsdr',
 			'settings.station.channelNotInUse' => 'not in use',
@@ -7219,9 +7221,9 @@ extension on TranslationsQrp {
 			'settings.station.models.ts480hx' => 'kenwood ts-480hx',
 			'settings.station.models.ts2000' => 'kenwood ts-2000',
 			'settings.station.models.qmx' => 'qrp labs qmx',
-			'settings.station.models.fx4cr' => 'bg2fx fx-4cr',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.fx4cr' => 'bg2fx fx-4cr',
 			'settings.station.models.tx500' => 'lab599 tx-500',
 			'settings.station.models.tx500mp' => 'lab599 tx-500mp',
 			'settings.station.models.qcx' => 'qrp labs qcx',
@@ -7733,9 +7735,9 @@ extension on TranslationsQrp {
 			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => 'could not register: ${error}',
 			'settings.developer.diagnostics' => 'diagnostics',
 			'settings.developer.importExport' => 'import / export',
-			'settings.developer.systemInformation' => 'system information',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.systemInformation' => 'system information',
 			'settings.developer.appVersion' => 'app version',
 			'settings.developer.dataFolder' => 'data folder',
 			'settings.developer.worktree' => 'worktree',
@@ -8247,9 +8249,9 @@ extension on TranslationsQrp {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'warning: this adif has qsos from ${calls}, but they will be imported as ${station} if you continue.',
 			'adifImport.stationCallJoin' => ' and ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} has no date and cannot be imported', other: '${formatted} have no date and cannot be imported', ), 
-			'adifImport.activationFound' => ({required Object refs}) => 'this file records an activation of ${refs}.',
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.activationFound' => ({required Object refs}) => 'this file records an activation of ${refs}.',
 			'adifImport.addActivation' => 'add it to this operation',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'only ${written} of ${planned} could be applied — the log changed while you were deciding.',
 			'adifImport.busy' => 'an import is already running. wait for it to finish before starting another.',

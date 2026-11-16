@@ -69,7 +69,6 @@ void main() {
 
   setUp(() {
     FlexDaxSwitch.forgetOwed();
-    FlexRadioSession.forgetSessions();
     FlexSo2rAudio.forget();
     sink = _Sink();
   });

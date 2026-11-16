@@ -1149,8 +1149,8 @@ void main() {
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
     // The row where the operator checks which receiver logs must say which.
-    expect(find.text('My K4 · Sub'), findsOneWidget);
-    await tester.tap(find.text('My K4 · Sub'));
+    expect(find.text('Sub'), findsOneWidget);
+    await tester.tap(find.text('My K4'));
     await tester.pumpAndSettle();
     // The Sub's own editor would offer a name nothing shows, and retyping it
     // off the secure link would take the K4's Main with it.
@@ -1406,12 +1406,13 @@ void main() {
     );
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
-    expect(find.text('Shack Flex · Slice B'), findsOneWidget, reason: 'the radio in use, and which of its slices');
+    expect(find.text('Shack Flex'), findsOneWidget);
+    expect(find.text('Slice B'), findsOneWidget, reason: 'the radio in use, and which of its slices');
     await tester.tap(find.text('1 transceiver'));
     await tester.pumpAndSettle();
-    expect(find.text('Slice B'), findsNothing);
+    expect(find.text('Slice B'), findsOneWidget, reason: "the current row's, and none on the inventory's");
     expect(find.text('Slice A'), findsNothing);
-    expect(find.text('Shack Flex'), findsOneWidget, reason: 'one row for the radio');
+    expect(find.text('Shack Flex'), findsNWidgets(2), reason: 'the current row, and one inventory row for the radio');
   });
 
   testWidgets('a node whose type no longer exists says so instead of vanishing', (tester) async {

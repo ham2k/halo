@@ -6654,6 +6654,9 @@ class Translations$settings$station$en {
 	/// en: 'Slice ${letter}'
 	String flexSliceLabel({required Object letter}) => 'Slice ${letter}';
 
+	/// en: 'Slice ${letter} on ${station}'
+	String flexSliceOnStation({required Object letter, required Object station}) => 'Slice ${letter} on ${station}';
+
 	/// en: 'Pick one of the radio's slices, A through H'
 	String get flexSliceInvalid => 'Pick one of the radio\'s slices, A through H';
 
@@ -13438,6 +13441,7 @@ extension on Translations {
 			'settings.station.civAddressDescription' => 'Hex, as shown in the radio\'s CI-V menu. The IC-705 ships as A4.',
 			'settings.station.civAddressInvalid' => 'A CI-V address is two hex digits, 01 to FF',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => 'Slice ${letter}',
+			'settings.station.flexSliceOnStation' => ({required Object letter, required Object station}) => 'Slice ${letter} on ${station}',
 			'settings.station.flexSliceInvalid' => 'Pick one of the radio\'s slices, A through H',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => 'Slice ${letter} is not in use on this radio — pick another slice, or create it in SmartSDR',
 			'settings.station.channelNotInUse' => 'not in use',
@@ -13561,9 +13565,9 @@ extension on Translations {
 			'settings.station.models.ts480hx' => 'Kenwood TS-480HX',
 			'settings.station.models.ts2000' => 'Kenwood TS-2000',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
-			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
 			'settings.station.models.tx500' => 'Lab599 TX-500',
 			'settings.station.models.tx500mp' => 'Lab599 TX-500MP',
 			'settings.station.models.qcx' => 'QRP Labs QCX',
@@ -14075,9 +14079,9 @@ extension on Translations {
 			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => 'Could not register: ${error}',
 			'settings.developer.diagnostics' => 'Diagnostics',
 			'settings.developer.importExport' => 'Import / Export',
-			'settings.developer.systemInformation' => 'System Information',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.systemInformation' => 'System Information',
 			'settings.developer.appVersion' => 'App Version',
 			'settings.developer.dataFolder' => 'Data Folder',
 			'settings.developer.worktree' => 'Worktree',
@@ -14589,9 +14593,9 @@ extension on Translations {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Warning: this ADIF has QSOs from ${calls}, but they will be imported as ${station} if you continue.',
 			'adifImport.stationCallJoin' => ' and ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} has no date and cannot be imported', other: '${formatted} have no date and cannot be imported', ), 
-			'adifImport.activationFound' => ({required Object refs}) => 'This file records an activation of ${refs}.',
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.activationFound' => ({required Object refs}) => 'This file records an activation of ${refs}.',
 			'adifImport.addActivation' => 'Add it to this operation',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Only ${written} of ${planned} could be applied — the log changed while you were deciding.',
 			'adifImport.busy' => 'An import is already running. Wait for it to finish before starting another.',

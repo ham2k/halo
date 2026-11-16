@@ -2295,6 +2295,7 @@
       "civAddressDescription": "Hex, as shown in the radio's CI-V menu. The IC-705 ships as A4.",
       "civAddressInvalid": "A CI-V address is two hex digits, 01 to FF",
       "flexSliceLabel(letter)": "Slice ${letter}",
+      "flexSliceOnStation(letter, station)": "Slice ${letter} on ${station}",
       "flexSliceInvalid": "Pick one of the radio's slices, A through H",
       "flexSliceMissing(letter)": "Slice ${letter} is not in use on this radio — pick another slice, or create it in SmartSDR",
       "channelNotInUse": "not in use",

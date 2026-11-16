@@ -285,7 +285,7 @@ void main() {
     final lease = await future;
     lease.send(ascii.encode('FA;'));
     expect(h.events, ['send:FA;']);
-    expect(messages.any((message) => message.contains('cat:log-send:k4-shared')), isTrue);
+    expect(messages.any((message) => message.contains('cat:log-send:shared')), isTrue);
     await lease.close();
     expect(h.events, containsAllInOrder(['owner-teardown', 'send:RX;', 'physical-close']));
   });
@@ -383,6 +383,25 @@ void main() {
     expect(h.owners, hasLength(2));
   });
 
+  // A receiver gone silent is the link gone dead: released alone, its
+  // sibling keeps the dead connection alive, and the reconnect leases it
+  // again and goes on hearing nothing.
+  test('a receiver that finds the link dead closes it for its siblings, and a reconnect opens a new one', () async {
+    final h = _Harness();
+    final mainFuture = h.acquire(), subFuture = h.acquire(receiver: 'sub');
+    h.succeed();
+    final main = await mainFuture, sub = await subFuture;
+    main.createSession(_Sink(), receiver: 'main');
+    sub.createSession(_Sink(), receiver: 'sub');
+    main.drop('silent');
+    await Future.wait([main.closed, sub.closed]);
+    expect(sub.closeReason, 'silent');
+    final retry = h.acquire();
+    expect(h.attempts, hasLength(2), reason: 'not the dead one');
+    h.succeed(1);
+    await retry;
+  });
+
   test('a physical drop closes every receiver and a retry gets a fresh entry before drain', () async {
     final h = _Harness();
     final mainFuture = h.acquire(), subFuture = h.acquire(receiver: 'sub');
@@ -476,7 +495,7 @@ void main() {
     h.owners.single.throwNext = true;
     physical.receive('malformed;');
     physical.receive('PONG;');
-    expect(logged.any((line) => line.contains('cat:handle-data:k4-shared')), isTrue);
+    expect(logged.any((line) => line.contains('cat:handle-data:shared')), isTrue);
     expect(data, ['malformed;', 'PONG;']);
     expect(physical.closeCalls, 0);
   });

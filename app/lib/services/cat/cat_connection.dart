@@ -157,7 +157,16 @@ extension _Connection on CatService {
             )
           : _isEverywareDevice(node)
           ? _everywareDeviceConnection(node)
-          : await transport.connect(type.targetFor(config), cancel: cancel);
+          : switch (_isFlex(node) ? _flexAddressOf(node) : null) {
+              final address? => await _flexConnections.acquire(
+                key: address,
+                target: type.targetFor(_flexRadioConfig(node)),
+                config: type.driverConfig(_flexRadioConfig(node)),
+                open: transport.connect,
+                cancel: cancel,
+              ),
+              null => await transport.connect(type.targetFor(config), cancel: cancel),
+            };
     } on CatCancelledException {
       // A newer connect (or a disconnect) owns this node now — not a
       // failure, and not ours to report.
@@ -202,7 +211,9 @@ extension _Connection on CatService {
         droppedBecause = why;
         trafficLog?.note(_logLabel(uuid), why);
         // Closed without clearing runtime.connection, so the close is handled
-        // as the server's own drop, and reconnected like one.
+        // as the server's own drop, and reconnected like one. A shared one
+        // is closed for every receiver on it.
+        if (connection case final SharedReceiverConnection shared) shared.drop(why);
         unawaited(connection.close());
       },
       onSend: (bytes) => trafficLog?.sent(_logLabel(uuid), bytes),
@@ -316,6 +327,7 @@ extension _Connection on CatService {
         if (stateFor(uuid).problem == message) return;
         if (message != null) trafficLog?.note(_logLabel(uuid), 'problem: $message');
         _setState(uuid, stateFor(uuid).copyWith(problem: message, clearProblem: message == null));
+        _flexSliceProblem(uuid);
       },
       onChannels: (channels) {
         if (runtime.connection != connection) return;
@@ -416,8 +428,8 @@ extension _Connection on CatService {
     // IC-705's network controller address, for one.
     final EquipmentSession session;
     try {
-      session = connection is K4ReceiverConnection
-          ? connection.createSession(sink, receiver: _k4Receiver(node))
+      session = connection is SharedReceiverConnection
+          ? connection.createSession(sink, receiver: _isK4Remote(node) ? _k4Receiver(node) : '${FlexRadioDriver.sliceFromConfig(config)}')
           : type.driver.createSession(sink, type.driverConfig(config));
     } catch (e, st) {
       // A shared connection can end while its lease is awaiting attachment.
@@ -438,8 +450,9 @@ extension _Connection on CatService {
     runtime.subscription = connection.data.listen((chunk) {
       // Not an SDR's IQ: megabytes a second of it would fill the log in
       // moments and end the recording of the CAT traffic it exists for.
-      // Shared K4 CAT is recorded once at the physical connection boundary.
-      if (type.category != kCategorySdr && connection is! K4ReceiverConnection) trafficLog?.received(_logLabel(uuid), chunk);
+      // A shared connection's traffic is recorded once, at the physical
+      // connection, not once per receiver leasing it.
+      if (type.category != kCategorySdr && connection is! SharedReceiverConnection) trafficLog?.received(_logLabel(uuid), chunk);
       runtime.heard(chunk);
       try {
         session.handleData(chunk);

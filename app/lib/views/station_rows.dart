@@ -54,6 +54,10 @@ class _StationExpansionScopeState extends State<StationExpansionScope> {
 /// plug out in the margins ([CurrentRowFrame]).
 class CurrentTransceiverTile extends StatelessWidget {
   final String displayName;
+
+  /// Which receiver of its radio this is, as a pill beside the name, as the
+  /// picker's rows show it ([TransceiverRow.channel]).
+  final String? channel;
   final String connection;
   final EquipmentType? transportType;
 
@@ -68,6 +72,7 @@ class CurrentTransceiverTile extends StatelessWidget {
   const CurrentTransceiverTile({
     super.key,
     required this.displayName,
+    this.channel,
     required this.connection,
     this.transportType,
     this.picker,
@@ -98,10 +103,20 @@ class CurrentTransceiverTile extends StatelessWidget {
         title: Row(
           children: [
             Expanded(
-              child: Text(
-                displayName,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      displayName,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  if (channel case final channel?) ...[
+                    const SizedBox(width: Space.md),
+                    StationPill(label: channel, background: theme.colorScheme.surfaceContainerHighest, foreground: theme.colorScheme.onSurfaceVariant),
+                  ],
+                ],
               ),
             ),
             if (transportType case final type?) ...[

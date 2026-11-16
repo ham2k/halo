@@ -57,7 +57,7 @@ extension _SetRows on StationPanel {
             if (_cat.typeFor(node)?.category == kCategoryTransceiver) ...[
               TransceiverRow(
                 name: _displayName(node),
-                channel: _cat.typeFor(node)?.describeChannel(node.config),
+                channel: _cat.channelNameFor(node),
                 connection: connectionTextFor(context, _cat.typeFor(node), node.config),
                 transportType: _cat.typeFor(node),
                 selected: _cat.isRadio2(node.uuid),
@@ -93,7 +93,8 @@ extension _SetRows on StationPanel {
           );
         }
         return CurrentTransceiverTile(
-          displayName: st.so2rRadioName(radio: 'B', name: _cat.radioNameFor(node)),
+          displayName: st.so2rRadioName(radio: 'B', name: _displayName(node)),
+          channel: _cat.channelNameFor(node),
           connection: connectionTextFor(context, _cat.typeFor(node), node.config),
           transportType: _cat.typeFor(node),
           state: _cat.stateFor(node.uuid),
@@ -215,14 +216,12 @@ extension _SetRows on StationPanel {
   /// After the last of a Flex's entries, a row for each slice open on the
   /// radio that has none yet: picking it adds it ([CatService.addFlexSlice])
   /// and picks it. Where the radio's slices are held by more than one
-  /// program, each says whose it is.
+  /// station, each says whose it is ([CatDevices.flexSliceName]).
   List<Widget> _flexSliceRows(BuildContext context, EquipmentNode node, void Function(String uuid) pick) {
     final device = _cat.deviceEntryFor(node.uuid);
     final listed = _cat.nodeFor(device);
     if (listed == null || _cat.entriesOf(device).last != node.uuid) return const [];
-    final st = context.t.settings.station;
     final slices = _cat.flexSlicesToAdd(device);
-    final holders = {for (final slice in slices) slice.usedBy};
     void add(String key) => unawaited(
       _cat.addFlexSlice(device, key).then((id) {
         if (id != null) pick(id);
@@ -232,8 +231,8 @@ extension _SetRows on StationPanel {
       for (final slice in slices)
         TransceiverRow(
           name: _displayName(listed),
-          channel: st.flexSliceLabel(letter: slice.label),
-          connection: holders.length > 1 && slice.usedBy != null ? slice.usedBy! : connectionTextFor(context, _cat.typeFor(listed), listed.config),
+          channel: _cat.flexSliceName(device, slice.key),
+          connection: connectionTextFor(context, _cat.typeFor(listed), listed.config),
           transportType: _cat.typeFor(listed),
           selected: false,
           onSelect: () => add(slice.key),

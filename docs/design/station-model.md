@@ -560,9 +560,11 @@ Each is a full task. Nothing is visible to the operator before phase 3.
    and the radio picker listing the slices the radio has. The Flex and Everyware are verified on
    hardware, the K4 against fakes and captures only.
    *Status: the first stage is built, with the owner's order being the configured one (§ 8.1). Of
-   the second, the Flex's nodes are merged into one device, and the radio picker lists the slices
-   the radio has open, or last said it had while it is off; each slice still opens a connection
-   of its own.*
+   the second, the Flex's nodes are merged into one device, the radio picker lists the slices
+   the radio has open, or last said it had while it is off, and the slices share one connection,
+   each a facade on the radio's session (cat.md, "One connection, several receivers"). A slice
+   closed on the radio that nothing uses is dropped. Slices held by two GUI clients still share
+   the one connection, bound to the first slice's owner.*
 5. **Split, a second receiver, diversity** (§ 5.2). New in the app's VFO, the drivers and the
    logging fields; nothing reads or sets split today.
 6. **Owned receivers and scopes.** The Flex as its own GUI client (HALO-766).

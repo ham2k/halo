@@ -837,7 +837,8 @@ class StationPanel extends StatelessWidget {
           );
         }
         return CurrentTransceiverTile(
-          displayName: so2r ? st.so2rRadioName(radio: 'A', name: _cat.radioNameFor(node)) : _cat.radioNameFor(node),
+          displayName: so2r ? st.so2rRadioName(radio: 'A', name: _displayName(node)) : _displayName(node),
+          channel: _cat.channelNameFor(node),
           connection: connectionTextFor(context, _cat.typeFor(node), node.config),
           transportType: _cat.typeFor(node),
           state: _cat.stateFor(node.uuid),
@@ -869,7 +870,7 @@ class StationPanel extends StatelessWidget {
         if (_cat.typeFor(node)?.category == kCategoryTransceiver) ...[
           TransceiverRow(
             name: _displayName(node),
-            channel: _cat.typeFor(node)?.describeChannel(node.config),
+            channel: _cat.channelNameFor(node),
             connection: connectionTextFor(context, _cat.typeFor(node), node.config),
             transportType: _cat.typeFor(node),
             selected: _cat.isRadio1(node.uuid),

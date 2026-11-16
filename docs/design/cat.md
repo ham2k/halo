@@ -167,6 +167,35 @@ The **protocol codec stays one shared pure file per protocol family**. Duplicati
 duplicating frame parsing duplicates parsing bugs. Polo's evidence is unambiguous — its pure codec
 files were its highest-confidence code, and every bug it had to fix lived in an I/O layer.
 
+### One connection, several receivers
+
+A remote K4 and a FlexRadio are each one connection however many of their receivers the station
+uses. `SharedConnectionPool` (transports/shared_connection.dart) holds one physical connection per
+radio, keyed by what names the radio (the K4's pairing identity, the Flex's host and port), and
+leases it to each receiver's node. One owner speaks the protocol on it (`K4SharedSession`,
+`FlexRadio`) and reads the wire once; each node's session is a facade the owner hands out, which
+routes its receiver's reports to its own node. The last lease released closes the connection.
+
+The reason is the radio's, not tidiness. The K4 has one auto-info stream, one key queue and one
+transmitter to own. A Flex's second `sub slice all` breaks the audio of the slices the first one
+covers, in the operator's headphones, and a meter socket, DAX stream and client binding are each
+one per connection. What is the radio's — the K4's TX owner, the Flex's transmitter, CWX buffer
+and DVK — has one owner at a time among the receivers, and what it reports reaches every node of
+it.
+
+The leases must agree on how the connection is opened: a Flex's slices take their host, port and
+driver settings from the radio's own entry, never their own, so a slice's computer voice
+settings cannot make it ask for a different connection.
+
+A Flex slice entry that nothing of the operator's is on — no set logs from it, no position has
+picked it, it has no picks or settings of its own — goes once its connection has settled that the
+radio is not running that slice: closed in SmartSDR, say. Slice A is the radio's own entry and
+stays; a slice a set logs from stays and says it is not open.
+
+A receiver that finds the connection dead (gone silent, or its driver says so) closes it for every
+receiver on it: released alone, the other receivers would keep the dead connection open, and its
+reconnect would lease the same one again.
+
 ### Drivers never touch app state
 
 A session is constructed with an `EquipmentSink` — `send` and `report` — and never sees a socket,
@@ -1288,8 +1317,9 @@ and a polled rig is asked at its meter cadence (`telemetryInterval`), as fast as
   memory asked for and not yet heard starting (`CatKeying.voiceStarting`) is on the air too.
 - **An operator's message stops the other radio's** — its message and any sequence it is part
   of (`CatKeying.interrupt`) — and goes once that rig says it is receiving: keyed at once, the two
-  overlap, and on two slices of one Flex the stopped slice's unkey lands after the new key and
-  drops it. What the operator keyed on the other radio and is still waiting there goes too. That
+  would overlap. On two slices of one Flex, an unkey from the slice that no longer holds the key
+  lifts nothing the other slice keyed; a CW or DVK stop from either stops the radio's one buffer,
+  as the operator's Escape must. What the operator keyed on the other radio and is still waiting there goes too. That
   holds unless the station's setting *Messages queued
   instead of interrupting* (`SettingsService.so2rQueueMessages`, off by default, in the
   preferences' Keyer section) is on: then it waits its turn like a repeat. A message that reaches

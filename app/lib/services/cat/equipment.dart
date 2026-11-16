@@ -334,6 +334,11 @@ class EquipmentChannel {
   /// same as nobody holding it — see [heldByUnknown].
   final String? usedBy;
 
+  /// Who has this channel, in a word: the holder's station name, or its
+  /// program where it gave none — "CUBAGUA". What tells two radios' worth
+  /// of slices apart when two stations share one radio.
+  final String? holder;
+
   /// Something holds this channel and the equipment has not said what.
   ///
   /// Its own flag because the difference decides the operator's answer: an
@@ -343,7 +348,16 @@ class EquipmentChannel {
   /// inventory at all, because by then they believe they checked.
   final bool heldByUnknown;
 
-  const EquipmentChannel({required this.key, required this.label, this.inUse = false, this.freqKHz, this.mode, this.usedBy, this.heldByUnknown = false});
+  const EquipmentChannel({
+    required this.key,
+    required this.label,
+    this.inUse = false,
+    this.freqKHz,
+    this.mode,
+    this.usedBy,
+    this.holder,
+    this.heldByUnknown = false,
+  });
 
   @override
   bool operator ==(Object other) =>
@@ -354,10 +368,11 @@ class EquipmentChannel {
       other.freqKHz == freqKHz &&
       other.mode == mode &&
       other.usedBy == usedBy &&
+      other.holder == holder &&
       other.heldByUnknown == heldByUnknown;
 
   @override
-  int get hashCode => Object.hash(key, label, inUse, freqKHz, mode, usedBy, heldByUnknown);
+  int get hashCode => Object.hash(key, label, inUse, freqKHz, mode, usedBy, holder, heldByUnknown);
 
   @override
   String toString() =>

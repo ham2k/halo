@@ -144,18 +144,20 @@ Uint8List _levelPacket({required int id, required double dbm}) {
 }
 
 extension on FlexRadioSession {
-  void feed(String text) => handleData(Uint8List.fromList(utf8.encode(text)));
+  /// The radio's wire, which every slice on it hears.
+  void feed(String text) => radio.handleData(Uint8List.fromList(utf8.encode(text)));
 }
 
 void main() {
   late _FakeSink sink;
   late FlexRadioSession session;
+  FlexRadio? shared;
 
   setUp(() {
     FlexDaxSwitch.forgetOwed();
-    FlexRadioSession.forgetSessions();
     sink = _FakeSink();
     session = FlexRadioSession(sink);
+    shared = null;
   });
 
   bool sentAny(String fragment) => sink.sent.any((line) => line.contains(fragment));
@@ -164,13 +166,32 @@ void main() {
   /// under, for the acknowledgement a test answers it with.
   int seqOf(String fragment) => int.parse(RegExp(r'^C(\d+)\|').firstMatch(sink.sent.lastWhere((line) => line.contains(fragment)))![1]!);
 
-  /// A session on one slice of the radio at `flex.test`, past its handshake:
-  /// two of them are SO2R's two radios on one Flex.
+  /// A slice of the radio at `flex.test`, past its handshake: two of them
+  /// are SO2R's two radios on one Flex, sharing its one connection, whose
+  /// commands [sink] hears whichever slice sent them.
   FlexRadioSession onRadio(_FakeSink by, int slice) {
-    final rig = FlexRadioSession(by, slice: slice, meterHost: 'flex.test', openMeterSocket: (host, onData, onError) async => null);
-    rig.feed('${_handshakeLines.join('\n')}\n');
-    return rig;
+    final radio = shared ??= (FlexRadio(send: sink.send, meterHost: 'flex.test', openMeterSocket: (host, onData, onError) async => null)
+      ..handleData(Uint8List.fromList(utf8.encode('${_handshakeLines.join('\n')}\n'))));
+    return radio.attach(by, receiver: '$slice') as FlexRadioSession;
   }
+
+  // A slice starting on a connection whose refresh is still arriving: the
+  // radio has described other slices, not yet this one, which is no
+  // verdict — and a slice nothing uses is removed on that verdict.
+  test('a slice the radio has not described yet is not called missing until its refresh has settled', () {
+    fakeAsync((async) {
+      final sliceA = onRadio(_FakeSink(), 0)..startUpdates();
+      sliceA.feed('S5AC2F980|slice 0 in_use=1 RF_frequency=14.074000\n');
+      final sinkB = _FakeSink();
+      final sliceB = onRadio(sinkB, 1)..startUpdates();
+      expect(sinkB.problems.whereType<String>(), isEmpty);
+      async.elapse(const Duration(seconds: 4));
+      expect(sinkB.problems.last, contains('Slice B'));
+      sliceA.teardown();
+      sliceB.teardown();
+      async.flushTimers();
+    });
+  });
 
   group('handshake', () {
     test('defers the slice subscription until the handle (H) line, not the version (V) line', () {
@@ -649,7 +670,7 @@ void main() {
         expect(opens, 1);
         expect(sink.diagnostics.where((note) => note?.contains('receive meter') ?? false), hasLength(1));
 
-        session.teardown();
+        session.stopUpdates();
         session.startUpdates();
         async.flushMicrotasks();
         expect(opens, 2);
@@ -701,6 +722,61 @@ void main() {
         });
       });
     }
+
+    // The radio describes each meter once per connection: a slice attaching
+    // after that, kept to what it heard itself, never reads its LEVEL.
+    test("a slice attaching to a connection already running reads its LEVEL from what the radio said before it was there", () {
+      fakeAsync((async) {
+        void Function(Uint8List)? deliver;
+        final radio = FlexRadio(
+          send: sink.send,
+          meterHost: '10.0.0.5',
+          openMeterSocket: (host, onData, onError) async {
+            deliver = onData;
+            return _FakeMeterSocket();
+          },
+        );
+        final sliceA = radio.attach(_FakeSink(), receiver: '0')..startUpdates();
+        radio.handleData(Uint8List.fromList(utf8.encode('${_handshakeLines.join('\n')}\n')));
+        async.flushMicrotasks();
+        radio.handleData(Uint8List.fromList(utf8.encode('S3555AEC|meter 14.src=SLC#14.num=1#14.nam=LEVEL#14.unit=dBm#14.fps=10#\n')));
+        final sinkB = _FakeSink();
+        final sliceB = radio.attach(sinkB, receiver: '1')..startUpdates();
+        deliver!(_levelPacket(id: 14, dbm: -80));
+        expect(sinkB.meterReports, [(RadioMeter.signalDbm, -80)]);
+        sliceA.teardown();
+        sliceB.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // Both slices wanting a display before the handshake: each holding back
+    // for the other subscribes neither, and both displays wait for good.
+    test('two slices with a display open subscribe to the pans once between them, and the last to close withdraws it', () {
+      List<String> commands() => [for (final line in sink.sent) line.substring(line.indexOf('|') + 1).trim()];
+      fakeAsync((async) {
+        final radio = FlexRadio(send: sink.send, meterHost: '10.0.0.5', openMeterSocket: (host, onData, onError) async => _FakeMeterSocket());
+        final sliceA = radio.attach(_FakeSink(), receiver: '0') as FlexRadioSession;
+        final sliceB = radio.attach(_FakeSink(), receiver: '1') as FlexRadioSession;
+        for (final slice in [sliceA, sliceB]) {
+          slice
+            ..startUpdates()
+            ..startSpectrum();
+        }
+        radio.handleData(Uint8List.fromList(utf8.encode('${_handshakeLines.join('\n')}\n')));
+        async.flushMicrotasks();
+        expect(commands().where((c) => c == 'sub pan all'), hasLength(1));
+        sliceA.stopSpectrum();
+        expect(commands(), isNot(contains('unsub pan all')), reason: "slice B's display is still open");
+        sliceB.stopSpectrum();
+        expect(commands().where((c) => c == 'unsub pan all'), hasLength(1));
+        sliceA.teardown();
+        sliceB.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
 
     test('a platform with no socket to give is asked once', () {
       fakeAsync((async) {
@@ -1303,6 +1379,52 @@ void main() {
 
     // `xmit` keys whichever slice holds the transmit flag: keyed from a
     // slice without it, Radio B's message goes out on Radio A's frequency.
+    // On one connection, the stopped slice's unkey can arrive after the
+    // other slice keyed; sent, it would unkey the other slice's message. A
+    // CW or DVK stop is the operator's Escape, which every slice shows as
+    // sending, and stops whatever is going.
+    test("an unkey from the slice that no longer holds the key lifts nothing; a CW stop from either stops the one buffer", () {
+      fakeAsync((async) {
+        final sliceA = onRadio(_FakeSink(), 0);
+        final sliceB = onRadio(_FakeSink(), 1);
+        sliceA.feed('S5AC2F980|slice 0 in_use=1 RF_frequency=14.074000 tx=1\nS5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 tx=0\n');
+        sliceA.setPtt(true);
+        sliceB.setPtt(true);
+        sink.sent.clear();
+        sliceA.setPtt(false);
+        expect(commands(), isNot(contains('xmit 0')));
+        sliceB.setPtt(false);
+        expect(commands(), contains('xmit 0'), reason: 'the slice that holds the key lifts it');
+        sliceB.sendCw('TEST');
+        sink.sent.clear();
+        sliceA.stopCw();
+        expect(commands(), contains('cwx clear'));
+        sliceA.teardown();
+        sliceB.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // One CWX buffer: a message goes out on the slice that queued it, not
+    // on whichever slice queued last.
+    test('CW queued from two slices goes out each on its own slice', () {
+      fakeAsync((async) {
+        final sliceA = onRadio(_FakeSink(), 0);
+        final sliceB = onRadio(_FakeSink(), 1);
+        sliceA.feed('S5AC2F980|slice 0 in_use=1 tx=1\nS5AC2F980|slice 1 in_use=1 tx=0\n');
+        sink.sent.clear();
+        sliceA.sendCw('ONE');
+        sliceA.sendCw('TWO');
+        sliceB.sendCw('THREE');
+        async.elapse(const Duration(seconds: 30));
+        final cw = commands().where((c) => c.startsWith('cwx send') || c.startsWith('slice set')).toList();
+        expect(cw, ['cwx send "ONE"', 'cwx send "TWO"', 'slice set 1 tx=1', 'cwx send "THREE"']);
+        sliceA.teardown();
+        sliceB.teardown();
+        async.flushTimers();
+      });
+    });
+
     test("keying a slice while the other radio's slice holds the transmit flag takes it first", () {
       fakeAsync((async) {
         final sliceA = onRadio(_FakeSink(), 0);
@@ -1679,11 +1801,12 @@ void main() {
       });
     });
 
-    // Two slices of one radio, as SO2R's two radios, are two sessions on one
-    // transmitter. The slice that never keyed reading the other's DAX as one
-    // left by a closed session turns it off before the radio has keyed, and
-    // the message goes out as mic hiss.
-    group('two slices of one radio', () {
+    // Two connections to one radio, each with a slice of its own (two
+    // stations' slices), are two switches on one transmitter. The connection
+    // that never keyed reading the other's DAX as one left by a closed
+    // session turns it off before the radio has keyed, and the message goes
+    // out as mic hiss.
+    group('two connections to one radio', () {
       List<String> sentBy(_FakeSink by) => [for (final line in by.sent) line.substring(line.indexOf('|') + 1).trim()];
       FlexRadioSession open(_FakeSink by, int slice) {
         final rig = FlexRadioSession(by, slice: slice, meterHost: 'flex.test', openMeterSocket: (host, onData, onError) async => null);

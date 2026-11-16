@@ -12,6 +12,7 @@ import '../../error_reporting_service.dart';
 import '../driver.dart';
 import '../equipment.dart';
 import '../spectrum.dart';
+import '../transports/shared_connection.dart' show SharedConnectionOwner;
 import 'cat_ascii_codec.dart';
 import 'cw_send_queue.dart';
 import 'k4_codec.dart';
@@ -29,7 +30,7 @@ part 'k4_shared_session_receiver.dart';
 /// One CAT command owner for all logical receivers on a physical K4 link.
 /// The connection pool alone owns its lifetime; receiver facades never close
 /// the connection or initialize another AI stream, key queue, or TX owner.
-class K4SharedSession implements EquipmentSink {
+class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
   final void Function(List<int>) _sendBytes;
   final Stream<K4RemotePanPacket> _pan;
   final Map<String, dynamic> _config;
@@ -82,6 +83,7 @@ class K4SharedSession implements EquipmentSink {
   /// offered as the voice keyer's output.
   bool _audioRefused = false;
 
+  @override
   EquipmentSession attach(EquipmentSink sink, {required String receiver}) {
     if (_disposed || _closing) throw StateError('K4 session is closed');
     final selected = parseK4Receiver(receiver);
@@ -199,6 +201,7 @@ class K4SharedSession implements EquipmentSink {
   }
 
   /// Called once by the physical connection, regardless of lease count.
+  @override
   void handleData(Uint8List bytes) {
     if (_disposed || _closing) return;
     _radio.handleData(bytes);
@@ -386,6 +389,7 @@ class K4SharedSession implements EquipmentSink {
   }
 
   /// Only the physical owner's final release may tear down shared keying.
+  @override
   void teardown() {
     if (_disposed || _closing) return;
     _closing = true;

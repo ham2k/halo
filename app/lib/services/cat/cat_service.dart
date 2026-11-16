@@ -40,6 +40,7 @@ import 'radio_proof.dart';
 import 'spectrum.dart';
 import 'station_positions.dart';
 import 'transports/k4_shared_connection.dart';
+import 'transports/shared_connection.dart';
 import 'transports/everyware_transport.dart';
 import 'drivers/everyware_devices.dart' show BearingFollower, EverywareDirectionalSession, FrequencyFollower;
 import 'drivers/everyware_codec.dart' show EverywareSwitchKind;
@@ -47,7 +48,7 @@ import 'drivers/everyware_server.dart';
 import 'transports/k4_remote_transport.dart';
 import 'transports/sdr_usb_transport.dart' show SdrUsbConnection, SdrUsbTransport;
 import 'drivers/kenwood_driver.dart' show KenwoodDriver;
-import 'drivers/flexradio_driver.dart' show FlexRadioDriver;
+import 'drivers/flexradio_driver.dart' show FlexRadio, FlexRadioDriver;
 import 'drivers/k4_receiver_codec.dart' show K4Receiver;
 import 'drivers/k4_shared_session_config.dart' show k4ReceiverConfigKey;
 import 'discovery.dart';
@@ -248,6 +249,14 @@ class CatService extends ChangeNotifier
   @override
   final Map<String, _NodeRuntime> _runtimes = {};
   late final _k4Connections = K4SharedConnectionPool(onSend: _logK4Sent, onReceive: _logK4Received);
+
+  /// A Flex's one connection, which each of its slices leases
+  /// ([_flexAddressOf] names the radio).
+  late final _flexConnections = SharedConnectionPool(
+    createOwner: (connection, send, config) => FlexRadio.fromConfig(config, send: send),
+    onSend: _logFlexSent,
+    onReceive: _logFlexReceived,
+  );
 
   /// Set by [dispose]. The reconnect loop parks on an uncancellable delay,
   /// so it can outlive the service and must check before touching it again.
@@ -1013,7 +1022,9 @@ class CatService extends ChangeNotifier
   /// Slice [key] of the Flex [deviceId] as an entry of it, made now if it
   /// has none: picking an open slice is what adds it. Answers its id, or
   /// null when the device is gone, which leaves nothing to pick. Listed
-  /// after the device's other entries, where the picker offered it.
+  /// after the device's other entries, where the picker offered it, and
+  /// connected when the radio is: it joins the radio's one connection, as
+  /// the radio's plug opens every slice.
   Future<String?> addFlexSlice(String deviceId, String key) async {
     final id = CapabilityAddress(deviceId, kCapabilityReceiver, key: key).toString();
     final device = _nodes[deviceId];
@@ -1029,12 +1040,16 @@ class CatService extends ChangeNotifier
           uuid: id,
           typeKey: device.typeKey,
           name: device.name,
-          config: {...device.config, FlexRadioDriver.sliceConfigKey: key}..remove(flexKnownSlicesConfigKey),
+          // The radio's settings, not slice A's own: a set's computer voice
+          // settings on slice A are not this slice's.
+          config: {..._flexRadioConfig(device), FlexRadioDriver.sliceConfigKey: key},
         );
       }
     }
     await _save();
     notifyListeners();
+    final live = entriesOf(deviceId).any((entry) => const {EquipmentStatus.connected, EquipmentStatus.connecting}.contains(stateFor(entry).status));
+    if (live) unawaited(connect(id));
     return id;
   }
 
@@ -1445,6 +1460,7 @@ class CatService extends ChangeNotifier
       unawaited(runtime.spectrum?.close());
     }
     unawaited(_k4Connections.dispose());
+    unawaited(_flexConnections.dispose());
     // After the teardowns, whose synchronous prefix clears cwProgress for
     // the designated radio — a notifier disposed first would be notified.
     // Before the notifiers they report into are disposed.

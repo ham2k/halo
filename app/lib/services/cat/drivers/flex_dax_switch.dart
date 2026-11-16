@@ -40,8 +40,10 @@ class FlexDaxSwitch {
   /// the whole launch, not by the session: a link that drops mid-message
   /// hands the restore to the next session, rather than leaving DAX on, and
   /// with it the operator's mic dead, for good. Owned while that session
-  /// lives: two slices of one radio are two sessions on one transmitter, and
-  /// one settling the other's DAX turns it off under the other's message.
+  /// lives: two connections to one radio (two stations' slices, each on a
+  /// connection of its own) are two switches on one transmitter, and one
+  /// settling the other's DAX turns it off under the other's message. The
+  /// slices sharing one connection share its one switch.
   static final _owedByHost = <String, FlexDaxSwitch?>{};
   bool _owedHere = false;
 
@@ -113,7 +115,7 @@ class FlexDaxSwitch {
   void daxReported(bool dax) {
     _dax = dax;
     // Off under a message this switch keyed: a restore sent before the key,
-    // this session's or the other slice's on its own connection, landed
+    // this connection's or another connection's to the same radio, landed
     // after this message's `dax=1`, and the message goes out as mic hiss.
     if (!dax && _owed && !_restoreSent && keyedByUs()) return send('transmit set dax=1');
     _settle();
@@ -140,8 +142,8 @@ class FlexDaxSwitch {
   void beforeKey() {
     // A restore on its way makes the radio's last `dax=1` stale: keyed on
     // that word without a `dax=1` of its own, the message goes out on the
-    // mic once the restore lands. Only while still owed here: a restore the
-    // other slice took over is never seen to settle by this switch, and
+    // mic once the restore lands. Only while still owed here: a restore
+    // another connection took over is never seen to settle by this switch, and
     // trusted for good it would claim DAX the operator turned on later.
     final restoring = _owed && _restoreSent;
     // A restore still waiting for the last message's unkey is for that
@@ -151,14 +153,14 @@ class FlexDaxSwitch {
     _restoreSent = false;
     // A new message's restore is a new one: the tries left from the last are
     // not this one's, and kept, an SO2R run that hands the debt back and
-    // forth between two slices runs out of them and leaves DAX on.
+    // forth between two connections runs out of them and leaves DAX on.
     _tries = 0;
     _fallback?.cancel();
     _keyedSinceKey = false;
     _keyedThisSession = true;
-    // Owed by the other slice's session, DAX is the app's and not the
+    // Owed by another connection's switch, DAX is the app's and not the
     // operator's: this message takes the debt over, and turns DAX on again
-    // in case that session's restore is already on its way.
+    // in case that connection's restore is already on its way.
     final taken = _owedElsewhere;
     if (_dax != true || taken || restoring) {
       _owed = true;
@@ -170,7 +172,7 @@ class FlexDaxSwitch {
   /// while a message's DAX is still owed back. Its restore waits for the
   /// radio to be receiving, which a key straight after the message keeps
   /// it from being, and the over goes out with the mic dead. Taken over
-  /// from the other slice's session as [beforeKey] does: one transmitter.
+  /// from another connection's switch as [beforeKey] does: one transmitter.
   void beforePlainKey() {
     // A key asserted again while held has had its restore; sent again, each
     // would reset the tries, and a DAX that never goes off is never reported.
@@ -240,7 +242,7 @@ class FlexDaxSwitch {
   void _restore() {
     _armed = false;
     _fallback?.cancel();
-    // Taken over by the other slice's message since this was armed.
+    // Taken over by another connection's message since this was armed.
     if (!_owed) return;
     if (_tries >= _maxTries) {
       // Reported once, and not tried again: the operator has to turn it off.

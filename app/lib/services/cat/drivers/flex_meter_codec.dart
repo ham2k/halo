@@ -27,7 +27,11 @@ class FlexMeterCodec {
     }
   }
 
-  double? signal(Uint8List packet) {
+  /// The receive level of [of], [slice] when not given: one codec reads
+  /// every slice's, since the radio describes each meter once per
+  /// connection.
+  double? signal(Uint8List packet, {int? of}) {
+    final slice = of ?? this.slice;
     double? result;
     for (final (m, value) in _readings(packet)) {
       if (m['src'] == 'SLC' && m['num'] == '$slice' && m['nam'] == 'LEVEL' && m['unit']?.toLowerCase() == 'dbm') result = value;

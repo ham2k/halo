@@ -4,7 +4,8 @@
 // Speaks the FlexRadio SmartSDR API: a line-oriented protocol over a single
 // TCP stream, mixing command/response pairs ("C<seq>|command" /
 // "R<seq>|code|result") with unsolicited status pushes ("S<handle>|...").
-// We track slice 0's frequency and mode.
+// One connection is the radio ([FlexRadio], flex_radio.dart); each slice the
+// station uses is a [FlexRadioSession] on it.
 //
 // Ported from app-polo's FlexRadioDriver.js, which was verified against a
 // live FLEX-6600. Two deliberate divergences: readings go to a sink
@@ -34,6 +35,9 @@ import 'flex_spectrum.dart';
 import 'flex_dax_switch.dart';
 import 'flex_dax_tx.dart';
 import '../transports/flex_meter_socket.dart';
+import '../transports/shared_connection.dart';
+
+part 'flex_radio.dart';
 
 /// App mode names → SmartSDR's, where the spellings differ. SmartSDR calls
 /// its data sidebands `DIGU`/`DIGL`; the app names them the way every other
@@ -177,6 +181,14 @@ const _dvkPlayMargin = Duration(seconds: 3);
 /// radio's unnamed memory.
 String _dvkDefaultName(int id) => 'Recording $id';
 
+/// One slice of a [FlexRadio], as one node's session: what it reads, tunes
+/// and keys is its slice, and whatever is the radio's goes through the
+/// radio it is attached to.
+///
+/// Built alone, it is a radio with one slice on its own connection — what
+/// [FlexRadioDriver.createSession] makes and the driver's tests speak to.
+/// Built by [FlexRadio.attach], it is one of the slices sharing that
+/// radio's connection, and the radio, not it, reads the wire.
 class FlexRadioSession
     implements
         TransceiverSession,
@@ -198,173 +210,45 @@ class FlexRadioSession
   /// the operator never transmitted on.
   final int slice;
 
-  FlexRadioSession(this._sink, {this.slice = 0, this.meterHost, this.openMeterSocket = FlexMeterSocket.open, this.voiceMemoryCeiling = voiceActivityCeiling});
-  final String? meterHost;
+  final FlexRadio _radio;
 
-  /// How the receive-meter UDP socket is opened. A parameter because the real
-  /// one binds a port and resolves a host, which no test of what the session
-  /// does WITH the socket — or without one — can do.
-  final Future<FlexMeterSocket?> Function(String host, void Function(Uint8List data) onData, void Function(Object error, StackTrace stack) onError)
-  openMeterSocket;
-  late final _meters = FlexMeterCodec(slice);
+  /// Whether this session reads the wire itself: a radio of its own.
+  final bool _ownsWire;
+
+  FlexRadioSession(
+    EquipmentSink sink, {
+    this.slice = 0,
+    String? meterHost,
+    Future<FlexMeterSocket?> Function(String host, void Function(Uint8List data) onData, void Function(Object error, StackTrace stack) onError)
+        openMeterSocket =
+        FlexMeterSocket.open,
+    Duration voiceMemoryCeiling = voiceActivityCeiling,
+  }) : _sink = sink,
+       _ownsWire = true,
+       _radio = FlexRadio(send: sink.send, meterHost: meterHost, openMeterSocket: openMeterSocket, voiceMemoryCeiling: voiceMemoryCeiling) {
+    _radio._sessions.add(this);
+  }
+
+  FlexRadioSession._on(this._radio, this._sink, {required this.slice}) : _ownsWire = false {
+    _radio._sessions.add(this);
+  }
+
+  String? get meterHost => _radio.meterHost;
+
+  /// The radio this slice is on, which reads the wire for every slice of it.
+  @visibleForTesting
+  FlexRadio get radio => _radio;
+
+  /// Whether this slice wants updates: started and not yet stopped.
+  bool _active = false;
+
   final _signalThrottle = FlexSignalThrottle();
-  final _powerThrottle = FlexSignalThrottle(decimals: 1);
-  final _swrThrottle = FlexSignalThrottle(decimals: 1);
-  FlexMeterSocket? _meterSocket;
-  bool _openingMeters = false;
-  int _meterGeneration = 0;
 
-  /// Set once an open has failed, or answered with no socket (the web), so
-  /// that nothing retries a host that cannot be resolved — a 5 s lookup and
-  /// a diagnostic each time. A fresh subscription ([_stopMeters]) tries again.
-  bool _metersUnavailable = false;
-
-  void _startMeters() {
-    if (meterHost == null || _openingMeters || _metersUnavailable) return;
-    if (_meterSocket != null) {
-      _sendCommand('sub meter all');
-      _sendCommand('meter list');
-      return;
+  void _meterPacket(Uint8List data, int now) {
+    if (_radio._meters.signal(data, of: slice) case final dbm?) {
+      if (_signalThrottle.accept(dbm, now) case final value?) _sink.reportMeter(RadioMeter.signalDbm, value);
     }
-    _openingMeters = true;
-    final generation = _meterGeneration;
-    void failed(Object error, StackTrace stack) {
-      if (generation == _meterGeneration && _wantUpdates) {
-        _sink.reportDiagnostic('Flex receive meter unavailable: $error');
-      }
-    }
-
-    unawaited(
-      openMeterSocket(meterHost!, (data) {
-        if (generation != _meterGeneration || !_wantUpdates) return;
-        if (_spectrum.packet(data)) return;
-        // The real clock: a rate limit on wire data must not travel.
-        final now = realNowMillis();
-        if (_meters.signal(data) case final dbm?) {
-          if (_signalThrottle.accept(dbm, now) case final value?) _sink.reportMeter(RadioMeter.signalDbm, value);
-        }
-        final tx = _meters.transmit(data);
-        if (tx.watts case final watts?) {
-          if (_powerThrottle.accept(watts, now) case final value?) _sink.reportMeter(RadioMeter.powerOut, value);
-        }
-        if (tx.swr case final swr?) {
-          if (_swrThrottle.accept(swr, now) case final value?) _sink.reportMeter(RadioMeter.swr, value);
-        }
-      }, failed).then(
-        (socket) {
-          if (generation != _meterGeneration || !_wantUpdates) {
-            socket?.close();
-            return;
-          }
-          _openingMeters = false;
-          _meterSocket = socket;
-          _metersUnavailable = socket == null;
-          if (socket == null) _spectrum.socketUnavailable();
-          if (socket != null) {
-            _sendCommand('client udpport ${socket.port}');
-            _sendCommand('sub meter all');
-            _sendCommand('meter list');
-            _spectrum.socketReady();
-          }
-        },
-        onError: (Object error, StackTrace stack) {
-          if (generation == _meterGeneration) {
-            _openingMeters = false;
-            _metersUnavailable = true;
-            _spectrum.socketUnavailable();
-          }
-          failed(error, stack);
-        },
-      ),
-    );
   }
-
-  void _stopMeters() {
-    // The DAX audio goes out on the same socket.
-    _daxOutput?.lost();
-    _daxOutput = null;
-    _meterGeneration++;
-    _openingMeters = false;
-    _metersUnavailable = false;
-    if (_meterSocket != null && _handshakeDone) _sendCommand('unsub meter all');
-    if (_meterSocket != null) _spectrum.socketLost();
-    _meterSocket?.close();
-    _meterSocket = null;
-  }
-
-  int _seq = 1;
-
-  /// What the radio last said about each slice, by index. Rebuilt from the
-  /// status stream, never from configuration.
-  final Map<int, _SliceStatus> _slices = {};
-  final Map<String, String> _clientIds = {};
-  String? _boundClientId;
-
-  // SmartSDR v3+ power belongs to a GUI client. Follow the owner of OUR
-  // slice, not the first client discovered (there may be several operators).
-  void _bindTrackedClient() {
-    final handle = _slices[slice]?.clientHandle?.toLowerCase();
-    final id = _clientIds[handle];
-    if (id == null || id == _boundClientId || !_handshakeDone || !_wantUpdates) return;
-    _boundClientId = id;
-    _sendCommand('client bind client_id=$id');
-    _sendCommand('sub tx all');
-  }
-
-  /// `program`/`station` per client handle, from the `client` status object.
-  /// A slice names its owner only by handle, so without this the answer to
-  /// "who has slice B" is a hex number.
-  final Map<String, String> _clients = {};
-
-  Timer? _settleTimer;
-
-  /// The radio rejects "sub" commands until the handshake (the `H<handle>`
-  /// line) has been seen, so a subscription requested before then is
-  /// remembered and sent once the handshake lands.
-  bool _handshakeDone = false;
-  bool _wantUpdates = false;
-  Timer? _pingTimer;
-  Timer? _powerRefreshTimer;
-
-  /// Re-reads the tuner while it tunes: the radio may not echo a status to
-  /// the client that asked, and a tune's outcome is the line that matters.
-  Timer? _atuRefreshTimer;
-
-  final _framer = LineFramer();
-
-  /// What the radio last said its keyer runs at — `cwx wpm=` on the CWX
-  /// status, or `speed=` on the transmit one.
-  int? _keyerSpeed;
-
-  /// CWX buffers text on the radio, so a message goes over in one `cwx
-  /// send`; the queue still paces one MESSAGE behind another, which keeps
-  /// the app's picture of what is keying honest (the indicator shows what
-  /// the radio is on, not what it has been handed). Spaces travel as 0x7F —
-  /// the API's own rule, since a space ends the command's argument.
-  late final _cwQueue = CwSendQueue(
-    maxChunkLength: _cwxChunkLength,
-    send: (chunk) {
-      if (cannotTransmit != null) return;
-      _takeTx();
-      _sendCommand('cwx send "${chunk.replaceAll(' ', '\x7F')}"');
-    },
-    speedWpm: () => _keyerSpeed,
-    onProgress: _sink.reportCwProgress,
-  );
-
-  /// Answers the sequence number the command went out under, which its
-  /// `R<seq>|` reply names. [onReply], when given, is handed that reply's
-  /// code and body.
-  int _sendCommand(String command, {void Function(int code, String body)? onReply}) {
-    final seq = _seq++;
-    if (onReply != null) _replies[seq] = onReply;
-    _sink.send(utf8.encode('C$seq|$command\n'));
-    return seq;
-  }
-
-  /// Answers awaited by sequence number — the only commands whose answer
-  /// carries something, like a stream id.
-  final _replies = <int, void Function(int code, String body)>{};
 
   /// An extension's raw commands, one per line, each numbered like the
   /// driver's own: a line is a command without its `C<seq>|`, and its answer
@@ -373,19 +257,10 @@ class FlexRadioSession
   /// a tune, filter or antenna change no status, and a re-read would break
   /// the slice's audio ([flexRadioPingInterval]).
   @override
-  int sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
-    final commands = rawCommandLines(bytes);
-    for (final command in commands) {
-      final seq = _sendCommand(command);
-      if (onAnswer != null) _rawReplies[seq] = (line) => onAnswer(utf8.encode('$line\n'));
-    }
-    return commands.length;
-  }
-
-  final _rawReplies = <int, void Function(String line)>{};
+  int sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) => _radio._sendRaw(bytes, onAnswer: onAnswer);
 
   late final _spectrum = FlexDaxSpectrum(
-    send: _sendCommand,
+    send: (command, {onReply}) => _radio._sendForSpectrum(this, command, onReply: onReply),
     sink: switch (_sink) {
       final SpectrumSink sink => sink,
       _ => null,
@@ -409,375 +284,61 @@ class FlexRadioSession
   @override
   bool setSpectrum(SpectrumRequest request) => _spectrum.set(request);
 
-  /// Once per session: re-subscribing to a slice breaks its audio
-  /// ([flexRadioPingInterval]).
-  void _subscribe() {
-    // Each subscription answers with a full status refresh, so this is also
-    // when a slice that does not exist can be told apart from one that has
-    // simply not been mentioned yet.
-    _armSettleTimer();
-    _sendCommand('sub slice all');
-    _sendCommand('sub tx all');
-    // Not for tuning anything: a slice identifies its owner by handle only,
-    // so this is the only way to answer "who else is on slice B" with a
-    // program and a station name rather than a hex handle.
-    _sendCommand('sub client all');
-    // The keyer speed: `cwx wpm=` arrives on this subscription, with the
-    // refresh, so the speed is known without asking for it.
-    _sendCommand('sub cwx all');
-    // The voice keyer's slots — names and lengths — and what it is doing.
-    _sendCommand('sub dvk all');
-    // Whether the radio's licence lets it play them: the DVK is a
-    // SmartSDR+ feature.
-    _sendCommand('sub license all');
-    // The tuner: `atu status=… atu_enabled=…`.
-    _sendCommand('sub atu all');
-    _spectrum.subscribe();
-    _bindTrackedClient();
-    _startMeters();
-  }
-
-  void _unsubscribe() {
-    _sendCommand('unsub slice all');
-    _sendCommand('unsub tx all');
-    _sendCommand('unsub client all');
-    _sendCommand('unsub cwx all');
-    _sendCommand('unsub dvk all');
-    _sendCommand('unsub license all');
-    _sendCommand('unsub atu all');
-  }
-
-  void _armSettleTimer() {
-    _settleTimer?.cancel();
-    _settleTimer = Timer(_sliceRefreshSettle, _settle);
-  }
-
-  void _startPeriodicTimers() {
-    _pingTimer ??= Timer.periodic(flexRadioPingInterval, (_) {
-      if (_wantUpdates && _handshakeDone) _sendCommand('ping');
-    });
-  }
-
-  void _stopPeriodicTimers() {
-    _stopMeters();
-    _powerRefreshTimer?.cancel();
-    _powerRefreshTimer = null;
-    _atuRefreshTimer?.cancel();
-    _atuRefreshTimer = null;
-    _pingTimer?.cancel();
-    _pingTimer = null;
-    _settleTimer?.cancel();
-    _settleTimer = null;
-  }
-
   @override
   void handleData(Uint8List chunk) {
-    for (final line in _framer.add(chunk)) {
-      _handleLine(line);
-    }
+    if (_ownsWire) _radio.handleData(chunk);
   }
 
-  void _handleLine(String line) {
-    if (line.isEmpty) return;
-    final metadata = _meterMetadataLine.firstMatch(line);
-    if (metadata != null) _meters.metadata(metadata[1]!);
-    if (line.startsWith('H')) {
-      _handleHandshakeLine(line);
-    } else if (line.startsWith('S')) {
-      _handleStatusLine(line);
-    } else if (_replyPattern.firstMatch(line) case final reply?) {
-      final seq = int.parse(reply[1]!), code = int.tryParse(reply[2]!, radix: 16);
-      _handleReply(seq, code ?? 0);
-      _replies.remove(seq)?.call(code ?? -1, reply[3]!);
-      _rawReplies.remove(seq)?.call(line);
-      // A command acknowledgement: the radio answered, so it is alive. WHICH
-      // command does not matter — the ping exists only so that there is one
-      // to answer while the dial is still. Status and acknowledgements share
-      // this one socket, which is what lets an acknowledgement stand in for
-      // a reading here (see [EquipmentSink.reportAlive]).
-      _sink.reportAlive();
-    }
-    // 'V' is the version banner; nothing to do with it yet.
-  }
-
-  static final _handshakePattern = RegExp(r'^H[0-9a-fA-F]+$');
-  static final _replyPattern = RegExp(r'^R(\d+)\|([0-9A-Fa-f]*)\|?(.*)$');
-  static final _panPattern = RegExp(r'^S[0-9a-fA-F]+\|display pan (0x[0-9a-fA-F]+) (.+)$');
-  static final _streamPattern = RegExp(r'^S[0-9a-fA-F]+\|stream (0x[0-9a-fA-F]+) (.+)$');
-  static final _slicePattern = RegExp(r'^S[0-9a-fA-F]+\|slice (\d+) (.+)$');
-  static final _transmitPattern = RegExp(r'^S[0-9a-fA-F]+\|transmit (.+)$');
-
-  /// Meter metadata arrives two ways, and both carry the `meter ` token —
-  /// captured from a FLEX-6600 on 4.2.20: pushed as `S<handle>|meter 13.src=…`
-  /// after `sub meter all`, and as the `meter list` reply, `R<seq>|0|meter 1.src=…`.
-  static final _meterMetadataLine = RegExp(r'^[SR][^|]+\|(?:0\|)?meter (.+)$');
-  static final _cwxPattern = RegExp(r'^S[0-9a-fA-F]+\|cwx (.+)$');
-  static final _interlockPattern = RegExp(r'^S[0-9a-fA-F]+\|interlock (.+)$');
-
-  /// Captured from a FLEX-6600 on 4.2.20, on `sub atu all`:
-  /// `atu status=TUNE_SUCCESSFUL atu_enabled=1 memories_enabled=1 using_mem=1`.
-  static final _atuPattern = RegExp(r'^S[0-9a-fA-F]+\|atu (.+)$');
-  static final _clientPattern = RegExp(r'^S[0-9a-fA-F]+\|client (0x[0-9a-fA-F]+) (.+)$');
-
-  /// Captured from a FLEX-6600 on 4.2.20, on `sub dvk all`:
-  /// `dvk status=idle enabled=1`, then one `dvk added id=3 name="59-NY-TU"
-  /// duration=2165` per slot. `status=` also reads `playback`, `recording`,
-  /// `preview` and `disabled`, with an `id=`.
-  static final _dvkPattern = RegExp(r'^S[0-9a-fA-F]+\|dvk (.+)$');
-
-  /// Captured from a FLEX-6600 on 4.2.20, one of a burst answering
-  /// `sub license all` at once: `license feature name=DIGITAL_VOICE_KEYER
-  /// enabled=1 reason=PLUS`.
-  static final _licenseFeaturePattern = RegExp(r'^S[0-9a-fA-F]+\|license feature (.+)$');
-
-  void _handleHandshakeLine(String line) {
-    if (_handshakeDone || !_handshakePattern.hasMatch(line)) return;
-    _handshakeDone = true;
-    if (meterHost case final at?) (_sessionsByHost[at] ??= {}).add(this);
-    if (_wantUpdates) _subscribe();
-  }
-
-  void _handleStatusLine(String line) {
-    final sliceMatch = _slicePattern.firstMatch(line);
-    if (sliceMatch != null) {
-      _handleSliceLine(sliceMatch);
-      return;
-    }
-    final clientMatch = _clientPattern.firstMatch(line);
-    if (clientMatch != null) {
-      _handleClientLine(clientMatch);
-      return;
-    }
-    if (_panPattern.firstMatch(line) case final pan?) {
-      final rest = pan[2]!;
-      _spectrum.panStatus(pan[1]!.toLowerCase(), rest == 'removed' ? const {'removed': '1'} : _parseFields(rest));
-      return;
-    }
-    if (_streamPattern.firstMatch(line) case final stream?) {
-      final rest = stream[2]!;
-      _spectrum.streamStatus(stream[1]!.toLowerCase(), rest == 'removed' ? const {'removed': '1'} : _parseFields(rest));
-      return;
-    }
-    final transmitMatch = _transmitPattern.firstMatch(line);
-    if (transmitMatch != null) _handleTransmitLine(transmitMatch);
-    final cwxMatch = _cwxPattern.firstMatch(line);
-    if (cwxMatch != null) _handleCwxLine(cwxMatch);
-    final interlockMatch = _interlockPattern.firstMatch(line);
-    if (interlockMatch != null) _handleInterlockLine(interlockMatch);
-    final dvkMatch = _dvkPattern.firstMatch(line);
-    if (dvkMatch != null) _handleDvkLine(dvkMatch.group(1)!);
-    final licenseMatch = _licenseFeaturePattern.firstMatch(line);
-    if (licenseMatch != null) _handleLicenseFeatureLine(licenseMatch.group(1)!);
-    final atuMatch = _atuPattern.firstMatch(line);
-    if (atuMatch != null) _handleAtuLine(atuMatch.group(1)!);
-  }
-
-  /// A push carries only what changed, so both fields are kept between lines.
-  String? _atuStatus;
-  bool? _atuEnabled;
-
-  void _handleAtuLine(String rest) {
-    final fields = _parseFields(rest);
-    _atuStatus = fields['status']?.toUpperCase() ?? _atuStatus;
-    if (fields['atu_enabled'] case final enabled?) _atuEnabled = enabled == '1';
-    // `atu_enabled=0` is a radio without the tuner fitted, or with it
-    // switched off in its setup: either way, nothing to put in line.
-    final status = _atuEnabled == false
-        ? null
-        : switch (_atuStatus) {
-            'TUNE_IN_PROGRESS' => TunerStatus.tuning,
-            'TUNE_SUCCESSFUL' || 'TUNE_OK' => TunerStatus.inline,
-            'TUNE_FAIL' || 'TUNE_ABORTED' => TunerStatus.failed,
-            null => null,
-            // TUNE_BYPASS, TUNE_MANUAL_BYPASS, TUNE_FAIL_BYPASS, TUNE_NOT_STARTED, NONE.
-            _ => TunerStatus.bypassed,
-          };
-    if (_atuEnabled == null && status == null) return;
-    if (_sink case final TunerSink sink) sink.reportTuner(status);
-    if (status == TunerStatus.tuning) _refreshAtu(const Duration(seconds: 1));
-  }
-
-  void _refreshAtu(Duration after) {
-    if (!_wantUpdates || !_handshakeDone || _atuRefreshTimer != null) return;
-    _atuRefreshTimer = Timer(after, () {
-      _atuRefreshTimer = null;
-      if (_wantUpdates && _handshakeDone) _sendCommand('sub atu all');
-    });
-  }
-
-  /// A Flex has no "in line" switch: its tuner engages by tuning, which keys
-  /// a carrier — briefly, from its memory for the frequency when it has one
-  /// and memories are on. Bypass transmits nothing.
-  @override
-  void setTuner({required bool inline}) {
-    _sendCommand(inline ? 'atu start' : 'atu bypass');
-    _refreshAtu(const Duration(milliseconds: 300));
-  }
-
-  /// In line already is the tune here.
-  @override
-  bool get canStartTune => false;
-
-  @override
-  void startTune() {}
-
-  @override
-  void stopTune() {}
-
-  /// `interlock state=TRANSMITTING …`, on the `tx` subscription this driver
-  /// already takes — so a Flex costs nothing at all to watch, unlike every
-  /// polled radio here.
-  ///
-  /// Three of the eight documented states count as keyed, not one. RF is
-  /// either about to be on the antenna (`PTT_REQUESTED`), on it
-  /// (`TRANSMITTING`), or still on it while the radio winds down
-  /// (`UNKEY_REQUESTED`) — and what reads this is the rule that no relay
-  /// moves under RF, where the cost of being early is nothing and the cost
-  /// of being late is a burnt relay.
-  void _handleInterlockLine(RegExpMatch match) {
-    final state = _parseFields(match.group(1)!)['state']?.toUpperCase();
-    // A push carries only what changed: a line with no `state=` says
-    // nothing about transmitting rather than saying "receiving".
-    if (state == null) return;
-    final transmitting = const {'PTT_REQUESTED', 'TRANSMITTING', 'UNKEY_REQUESTED'}.contains(state);
-    _transmitting = transmitting;
-    _daxSwitch.interlock(transmitting: transmitting, onAir: state == 'TRANSMITTING');
+  /// The radio said something about this slice: [freqKHz] and [mode] are
+  /// what changed. [whole] is this slice starting on a radio that has
+  /// already described it, whose node hears all of it.
+  void _sliceChanged({double? freqKHz, String? mode, bool whole = false}) {
+    final status = _radio._slices[slice];
+    _so2rAudio.apply(_sliceAudio);
     _reportOnAir();
+    _spectrum.slicePan(status?.pan?.toLowerCase());
+    _checkTrackedSlice();
+    final reading = whole ? VfoReading(freqKHz: status?.freqKHz, mode: status?.mode) : VfoReading(freqKHz: freqKHz, mode: mode);
+    if (!reading.isEmpty) _sink.report(reading);
+    // `filter_lo=100 filter_hi=2800`, as RadioRoom (FLEX-6600, 4.2.20) states
+    // them: already Hz from the slice frequency, the convention [Passband] uses.
+    if (status case _SliceStatus(:final filterLo?, :final filterHi?) when filterLo < filterHi) {
+      if (_sink case final PassbandSink sink) sink.reportPassband(Passband(filterLo, filterHi));
+    }
+    // `rxant=ANT1 txant=ANT1 ant_list=ANT1,ANT2,RX_A,RX_B,XVTA,XVTB tx_ant_list=ANT1,ANT2,XVTA,XVTB`,
+    // as RadioRoom (FLEX-6600, 4.2.20) states slice A: a slice picks each independently.
+    if (status case _SliceStatus(:final rxPorts?, :final txPorts?, :final rxant, :final txant)) {
+      if (_sink case final RadioAntennaSink sink) sink.reportAntennas(RadioAntennas(rxPorts: rxPorts, txPorts: txPorts, rx: rxant, tx: txant, separate: true));
+    }
   }
-
-  /// What the interlock last said. It speaks for the whole radio, which has
-  /// one transmitter whatever slice it is on.
-  bool? _transmitting;
 
   /// What [_reportOnAir] last said, so a restatement is not re-reported —
   /// SmartSDR refreshes the whole object on every subscribe.
   bool? _reportedOnAir;
 
   /// This slice is on the air while the radio is, unless the transmit flag
-  /// is on the slice of another of the app's radios: two slices of one radio,
-  /// as SO2R's two radios, are not both transmitting when one is — nor is a
-  /// slice the radio does not have, which keys nothing ([cannotTransmit]). The flag on
-  /// a slice no session reads is a split set up on the radio, and the
-  /// transmitter is this radio's — what reads this is the rule that no relay
-  /// moves under RF.
+  /// is on another of the app's slices of this radio: two slices of one
+  /// radio, as SO2R's two radios, are not both transmitting when one is —
+  /// nor is a slice the radio does not have, which keys nothing
+  /// ([cannotTransmit]). The flag on a slice no session reads is a split set
+  /// up on the radio, and the transmitter is this radio's — what reads this
+  /// is the rule that no relay moves under RF.
   void _reportOnAir() {
-    final interlock = _transmitting;
+    final interlock = _radio._transmitting;
     if (interlock == null) return;
-    final onAir = interlock && !_txOnAnotherRadio;
+    final onAir = interlock && !_radio._txOnAnotherSlice(this);
     if (onAir == _reportedOnAir) return;
     _reportedOnAir = onAir;
     _sink.reportTransmitting(onAir);
   }
 
   /// Moves the radio's transmit flag to this slice from another of the app's
-  /// radios. `xmit`, `cwx send` and a DVK playback all go out on whichever
+  /// slices. `xmit`, `cwx send` and a DVK playback all go out on whichever
   /// slice holds it, so without this Radio B's message goes out on Radio A's
   /// frequency. A flag on a slice no session reads is the operator's split,
   /// and stays where it is.
   void _takeTx() {
-    if (_txOnAnotherRadio) _sendCommand('slice set $slice tx=1');
-  }
-
-  /// The open sessions on each radio, by its address, from the handshake to
-  /// the teardown.
-  static final _sessionsByHost = <String, Set<FlexRadioSession>>{};
-
-  /// Forgets every open session: the tests' way to start each from a radio
-  /// no other test's session is still on.
-  @visibleForTesting
-  static void forgetSessions() => _sessionsByHost.clear();
-
-  /// Whether the transmit flag is on a slice another session on this radio
-  /// reads from.
-  bool get _txOnAnotherRadio {
-    if (_slices[slice]?.tx == true) return false;
-    final others = _sessionsByHost[meterHost] ?? const <FlexRadioSession>{};
-    return _slices.entries.any((e) => e.value.tx == true && others.any((other) => !identical(other, this) && other.slice == e.key));
-  }
-
-  /// `cwx wpm=25 break_in_delay=…`, on the CWX subscription — the speed
-  /// `cw wpm` sets and the front panel's knob turns. `sent=` and the erase
-  /// fields arrive here too and are not read: the indicator estimates its
-  /// progress the same way for every radio (cw_send_queue.dart).
-  void _handleCwxLine(RegExpMatch match) {
-    final wpm = int.tryParse(_parseFields(match.group(1)!)['wpm'] ?? '');
-    if (wpm != null) _reportKeyerSpeed(wpm);
-  }
-
-  void _reportKeyerSpeed(int wpm) {
-    _keyerSpeed = wpm;
-    _sink.reportKeyerSpeed(wpm);
-  }
-
-  void _handleSliceLine(RegExpMatch match) {
-    // e.g. "S40000001|slice 0 RF_frequency=14.250000 mode=USB in_use=1 ..."
-    final index = int.tryParse(match.group(1)!);
-    if (index == null) return;
-    _handleSliceFields(index, _parseFields(match.group(2)!));
-  }
-
-  /// A slice's status, as the radio pushes it or as an acknowledged
-  /// [_changeSlice] stands in for the push it does not send.
-  void _handleSliceFields(int index, Map<String, String> fields) {
-    // Flex reports MHz; we speak kHz throughout (see `Vfo.freq`). Keep the
-    // decimals — down to Hz precision — rather than rounding to whole kHz.
-    double? freqKHz;
-    final rawFrequency = fields['RF_frequency'];
-    if (rawFrequency != null) {
-      final mhz = double.tryParse(rawFrequency);
-      if (mhz != null) freqKHz = double.parse((mhz * 1000).toStringAsFixed(3));
-    }
-    final rawMode = fields['mode']?.toUpperCase();
-    final mode = rawMode == null ? null : appModesByFlexMode[rawMode] ?? rawMode;
-
-    // A status push carries only what CHANGED, so each field falls back to
-    // what this slice last said rather than to null — treating an absent
-    // `mode=` as "no mode" would blank the inventory on every retune.
-    final previous = _slices[index];
-    // `removed=1` is how a slice being torn down is announced; the fields
-    // that would describe it are gone by then, so nothing is merged.
-    if (fields['removed'] == '1') {
-      _slices.remove(index);
-    } else {
-      _slices[index] = _SliceStatus(
-        label: fields['index_letter'] ?? previous?.label ?? FlexRadioDriver.sliceLabel(index),
-        inUse: fields['in_use'] != null ? fields['in_use'] == '1' : previous?.inUse,
-        freqKHz: freqKHz ?? previous?.freqKHz,
-        mode: mode ?? previous?.mode,
-        clientHandle: fields['client_handle'] ?? previous?.clientHandle,
-        tx: fields['tx'] != null ? fields['tx'] == '1' : previous?.tx,
-        pan: fields['pan'] ?? previous?.pan,
-        filterLo: int.tryParse(fields['filter_lo'] ?? '') ?? previous?.filterLo,
-        filterHi: int.tryParse(fields['filter_hi'] ?? '') ?? previous?.filterHi,
-        rxant: fields['rxant'] ?? previous?.rxant,
-        txant: fields['txant'] ?? previous?.txant,
-        rxPorts: fields['ant_list']?.split(',').where((p) => p.isNotEmpty).toList() ?? previous?.rxPorts,
-        txPorts: fields['tx_ant_list']?.split(',').where((p) => p.isNotEmpty).toList() ?? previous?.txPorts,
-        audioPan: int.tryParse(fields['audio_pan'] ?? '') ?? previous?.audioPan,
-        audioMute: fields['audio_mute'] != null ? fields['audio_mute'] == '1' : previous?.audioMute,
-      );
-    }
-    _publishChannels();
-
-    if (index != slice) return;
-    _so2rAudio.apply(_sliceAudio);
-    _reportOnAir();
-    _spectrum.slicePan(_slices[index]?.pan?.toLowerCase());
-    _bindTrackedClient();
-    _checkTrackedSlice();
-
-    final reading = VfoReading(freqKHz: freqKHz, mode: mode);
-    if (!reading.isEmpty) _sink.report(reading);
-    // `filter_lo=100 filter_hi=2800`, as RadioRoom (FLEX-6600, 4.2.20) states
-    // them: already Hz from the slice frequency, the convention [Passband] uses.
-    if (_slices[index] case _SliceStatus(:final filterLo?, :final filterHi?) when filterLo < filterHi) {
-      if (_sink case final PassbandSink sink) sink.reportPassband(Passband(filterLo, filterHi));
-    }
-    // `rxant=ANT1 txant=ANT1 ant_list=ANT1,ANT2,RX_A,RX_B,XVTA,XVTB tx_ant_list=ANT1,ANT2,XVTA,XVTB`,
-    // as RadioRoom (FLEX-6600, 4.2.20) states slice A: a slice picks each independently.
-    if (_slices[index] case _SliceStatus(:final rxPorts?, :final txPorts?, :final rxant, :final txant)) {
-      if (_sink case final RadioAntennaSink sink) sink.reportAntennas(RadioAntennas(rxPorts: rxPorts, txPorts: txPorts, rx: rxant, tx: txant, separate: true));
-    }
+    if (_radio._txOnAnotherSlice(this)) _radio._sendCommand('slice set $slice tx=1');
   }
 
   /// The slice's own audio level (0–100) and mute. Its RF gain is the
@@ -786,13 +347,13 @@ class FlexRadioSession
   ReceiveLevels get receiveLevels => (af: true, rf: false, mute: true);
 
   @override
-  void setAfGain(double level) => _sendCommand('slice set $slice audio_level=${receiveLevelOn(level, 100)}');
+  void setAfGain(double level) => _radio._sendCommand('slice set $slice audio_level=${receiveLevelOn(level, 100)}');
 
   @override
   void setRfGain(double level) {}
 
   @override
-  void setMute(bool muted) => _sendCommand('slice set $slice audio_mute=${muted ? 1 : 0}');
+  void setMute(bool muted) => _radio._sendCommand('slice set $slice audio_mute=${muted ? 1 : 0}');
 
   /// The slice's receive and transmit antennas, each its own setting.
   @override
@@ -808,32 +369,6 @@ class FlexRadioSession
   @override
   void setPassband(Passband passband) {
     _changeSlice('filt $slice ${passband.lowHz} ${passband.highHz}', {'filter_lo': '${passband.lowHz}', 'filter_hi': '${passband.highHz}'});
-  }
-
-  /// e.g. "S5AC2F980|client 0x1C61D553 connected program=SmartSDR-Win
-  /// station=SHACK-PC", and "…|client 0x1C61D553 disconnected …" on the way
-  /// out.
-  void _handleClientLine(RegExpMatch match) {
-    final handle = match.group(1)!.toLowerCase();
-    final rest = match.group(2)!;
-    if (rest.startsWith('disconnected')) {
-      _clients.remove(handle);
-      final removedId = _clientIds.remove(handle);
-      if (removedId == _boundClientId) _boundClientId = null;
-      _publishChannels();
-      return;
-    }
-    final fields = _parseFields(rest);
-    final id = fields['client_id'];
-    if (id != null && RegExp(r'^[a-zA-Z0-9-]{1,128}$').hasMatch(id)) _clientIds[handle] = id;
-    _bindTrackedClient();
-    final program = fields['program'];
-    final station = fields['station'];
-    // A client that names neither still gets an entry: an empty name is how
-    // a slice says "held, by something I cannot name", and dropping the line
-    // would leave that slice looking free.
-    _clients[handle] = [?program, if (station != null) '($station)'].join(' ');
-    _publishChannels();
   }
 
   /// The tracked slice not being in use is a configuration mistake the
@@ -855,26 +390,20 @@ class FlexRadioSession
   /// Reported unconditionally rather than on transitions: `CatService`
   /// dedupes what it holds, and a driver keeping its own copy of what it
   /// last said is what [EquipmentSink.reportDiagnostic]'s own note forbids.
-  /// The settled verdict, and one more `sub slice all` when the radio has
-  /// described no slice at all: a subscription refused or lost at connect
-  /// would otherwise read as "no slices" for the whole session. Once — this
-  /// does not re-arm the settle — since re-subscribing breaks the audio of
-  /// any slice the radio does have ([flexRadioPingInterval]); a slice it then
-  /// describes clears the verdict.
-  void _settle() {
-    _checkTrackedSlice();
-    if (_slices.isEmpty && _wantUpdates && _handshakeDone) _sendCommand('sub slice all');
-  }
-
   void _checkTrackedSlice() {
-    if (_slices.isEmpty) {
+    final slices = _radio._slices;
+    if (slices.isEmpty) {
       _sink.reportProblem(t.settings.station.flexNoSlices);
       return;
     }
-    final inUse = _slices[slice]?.inUse;
+    final inUse = slices[slice]?.inUse;
+    // Not described while the refresh is still arriving: a slice starting on
+    // a connection whose other slices the radio has just described is not
+    // missing yet.
+    if (!slices.containsKey(slice) && !_radio._settled) return;
     // Mentioned, but the radio never said whether it runs: no verdict to
     // give, so whatever was last reported stands.
-    if (_slices.containsKey(slice) && inUse == null) return;
+    if (slices.containsKey(slice) && inUse == null) return;
     _sliceMissing = inUse != true;
     _sink.reportProblem(cannotTransmit);
   }
@@ -887,60 +416,6 @@ class FlexRadioSession
   /// has described its slices without it.
   @override
   String? get cannotTransmit => _sliceMissing ? t.settings.station.flexSliceMissing(letter: FlexRadioDriver.sliceLabel(slice)) : null;
-
-  void _publishChannels() {
-    _sink.reportChannels([
-      for (var index = 0; index < FlexRadioDriver.sliceLabels.length; index++)
-        if (_slices[index] case final status?)
-          EquipmentChannel(
-            key: '$index',
-            label: status.label,
-            // A slice the radio described without saying whether it runs is
-            // shown as running: it has an entry, which no idle slice gets.
-            inUse: status.inUse ?? true,
-            freqKHz: status.freqKHz,
-            mode: status.mode,
-            usedBy: _nonEmpty(_clients[status.clientHandle?.toLowerCase()]),
-            // A handle we cannot resolve is the dangerous case, not a
-            // harmless one: `sub client all` may have been refused, or the
-            // radio may format a handle differently in the two places it
-            // appears. Either way something IS on this slice.
-            heldByUnknown: status.clientHandle != null && _nonEmpty(_clients[status.clientHandle!.toLowerCase()]) == null,
-          )
-        else
-          EquipmentChannel(key: '$index', label: FlexRadioDriver.sliceLabel(index)),
-    ]);
-  }
-
-  /// Current power from the bound client's transmit state. A subscription
-  /// also returns saved per-band settings; those are not current readings.
-  /// Verified against FLEX-6600: unbound returned 1 W, bound returned 60 W.
-  void _handleTransmitLine(RegExpMatch match) {
-    if (match.group(1)!.startsWith('band ')) return;
-    final fields = _parseFields(match.group(1)!);
-    // The transmit object carries the keyer speed as `speed=` alongside
-    // the CWX subscription's `wpm=`; either is the same knob.
-    if (fields['dax'] case final dax?) _daxSwitch.daxReported(dax == '1');
-    if (fields['tune'] case final tune?) {
-      if (_sink case final TuneCarrierSink sink) sink.reportTuneCarrier(tune == '1');
-    }
-    final speed = int.tryParse(fields['speed'] ?? '');
-    if (speed != null) _reportKeyerSpeed(speed);
-    final rfpower = fields['rfpower'];
-    if (rfpower == null) return;
-    final watts = num.tryParse(rfpower);
-    if (watts != null) _sink.reportPower(watts);
-  }
-
-  Map<String, String> _parseFields(String text) {
-    final fields = <String, String>{};
-    for (final pair in text.trim().split(' ')) {
-      final separator = pair.indexOf('=');
-      if (separator <= 0) continue;
-      fields[pair.substring(0, separator)] = pair.substring(separator + 1);
-    }
-    return fields;
-  }
 
   @override
   void setFrequency(double freqKHz) {
@@ -957,14 +432,14 @@ class FlexRadioSession
   void setMode(String mode) {
     final flexMode = flexModesByAppMode[mode.toUpperCase()] ?? mode.toUpperCase(), command = 'slice set $slice mode=$flexMode';
     if (!isModeName(flexMode)) return;
-    _sendCommand(
+    _radio._sendCommand(
       command,
       onReply: (code, _) {
-        if (code == 0 || !_wantUpdates || !_handshakeDone) return;
+        if (code == 0 || !_active || !_radio._handshakeDone) return;
         // As a refused tune does ([_changeSlice]): the app shows the mode as
         // set before the radio answers.
         _reportRefusal(command, code);
-        if (_slices[slice]?.mode case final mode?) _sink.report(VfoReading(mode: mode));
+        if (_radio._slices[slice]?.mode case final mode?) _sink.report(VfoReading(mode: mode));
       },
     );
   }
@@ -989,7 +464,7 @@ class FlexRadioSession
   /// with no push would otherwise leave it there.
   void _changeSlice(String command, Map<String, String> fields) {
     late final int seq;
-    seq = _sendCommand(
+    seq = _radio._sendCommand(
       command,
       onReply: (code, _) {
         final current = {
@@ -999,14 +474,14 @@ class FlexRadioSession
         for (final key in current.keys) {
           _latestSliceChange.remove(key);
         }
-        if (!_wantUpdates || !_handshakeDone) return;
+        if (!_active || !_radio._handshakeDone) return;
         if (code == 0) {
-          if (current.isNotEmpty) _handleSliceFields(slice, current);
+          if (current.isNotEmpty) _radio._handleSliceFields(slice, current);
           return;
         }
         _reportRefusal(command, code);
-        if (current.containsKey('RF_frequency') && _slices[slice]?.freqKHz != null) {
-          _sink.report(VfoReading(freqKHz: _slices[slice]!.freqKHz));
+        if (current.containsKey('RF_frequency') && _radio._slices[slice]?.freqKHz != null) {
+          _sink.report(VfoReading(freqKHz: _radio._slices[slice]!.freqKHz));
         }
       },
     );
@@ -1018,34 +493,35 @@ class FlexRadioSession
   void _reportRefusal(String command, int code) => _sink.reportDiagnostic('Flex refused "$command": 0x${code.toRadixString(16).toUpperCase()}');
 
   @override
-  void setPower(num watts) {
-    _sendCommand('transmit set rfpower=${watts.round().clamp(0, 100)}');
-    // The radio sends the client that set the power no status for it, and
-    // re-subscribing to `tx`, unlike to a slice, is silent. Coalesce slider
-    // bursts.
-    if (!_wantUpdates || !_handshakeDone || _powerRefreshTimer != null) return;
-    _powerRefreshTimer = Timer(const Duration(milliseconds: 100), () {
-      _powerRefreshTimer = null;
-      if (_wantUpdates && _handshakeDone) _sendCommand('sub tx all');
-    });
-  }
+  void setPower(num watts) => _radio._setPower(watts);
+
+  /// A Flex has no "in line" switch: its tuner engages by tuning, which keys
+  /// a carrier — briefly, from its memory for the frequency when it has one
+  /// and memories are on. Bypass transmits nothing.
+  @override
+  void setTuner({required bool inline}) => _radio._setTuner(inline: inline);
+
+  /// In line already is the tune here.
+  @override
+  bool get canStartTune => false;
 
   @override
-  void sendCw(String text) => _cwQueue.enqueue(text);
-
-  /// A real stop, unlike Yaesu's: `cwx clear` empties the radio's buffer,
-  /// so only the character in flight completes.
-  @override
-  void stopCw() {
-    _cwQueue.clear();
-    _sendCommand('cwx clear');
-  }
+  void startTune() {}
 
   @override
-  bool get cwSending => _cwQueue.sending;
+  void stopTune() {}
 
   @override
-  void dropQueuedCw(int id) => _cwQueue.dropPending(id);
+  void sendCw(String text) => _radio._sendCw(this, text);
+
+  @override
+  void stopCw() => _radio._stopCw();
+
+  @override
+  bool get cwSending => _radio._cwQueue.sending;
+
+  @override
+  void dropQueuedCw(int id) => _radio._cwQueue.dropPending(id);
 
   @override
   ({int min, int max}) get keyerSpeedRange => (min: _flexKeyerSpeedMin, max: _flexKeyerSpeedMax);
@@ -1053,76 +529,39 @@ class FlexRadioSession
   /// The radio answers a `cw wpm` with a `cwx wpm=` status push, which is
   /// the read-back the other drivers have to ask for.
   @override
-  void setKeyerSpeed(int wpm) => _sendCommand('cw wpm ${wpm.clamp(_flexKeyerSpeedMin, _flexKeyerSpeedMax)}');
+  void setKeyerSpeed(int wpm) => _radio._sendCommand('cw wpm ${wpm.clamp(_flexKeyerSpeedMin, _flexKeyerSpeedMax)}');
 
   /// Nothing to ask: the speed is pushed. Re-subscribing answers with a
   /// full refresh, which carries it.
   @override
-  void refreshKeyerSpeed() {
-    if (_handshakeDone && _wantUpdates) _sendCommand('sub cwx all');
-  }
+  void refreshKeyerSpeed() => _radio._refreshKeyerSpeed();
 
-  /// Whether the app keyed the radio, so [teardown] can unkey it.
-  bool _keyedByUs = false;
-
-  /// Keys the radio's transmit slice, which need not be [slice]: `xmit`
-  /// names none. Whether it keyed comes back as the interlock push
-  /// ([_handleInterlockLine]).
+  /// Keys the radio on this slice: the transmit flag comes here first, since
+  /// `xmit` names none. Whether it keyed comes back as the interlock push.
   @override
   void setPtt(bool on) {
     if (on && cannotTransmit != null) return;
-    if (on) _daxSwitch.beforePlainKey();
-    _key(on);
+    if (on) _radio._daxSwitch.beforePlainKey();
+    _radio._key(this, on);
   }
 
-  void _key(bool on) {
-    // Set before a key and cleared only after an unkey: either one that
-    // throws leaves [teardown] an unkey to send.
-    _keyedByUs |= on;
-    if (on) _takeTx();
-    _sendCommand('xmit ${on ? 1 : 0}');
-    _keyedByUs = on;
-  }
+  late final _so2rAudio = FlexSo2rAudio(slice: slice, host: () => meterHost, send: _radio._sendCommand);
 
-  late final _so2rAudio = FlexSo2rAudio(slice: slice, host: () => meterHost, send: _sendCommand);
-
-  FlexSliceAudio get _sliceAudio => (pan: _slices[slice]?.audioPan, mute: _slices[slice]?.audioMute);
+  FlexSliceAudio get _sliceAudio => (pan: _radio._slices[slice]?.audioPan, mute: _radio._slices[slice]?.audioMute);
 
   @override
   void setSo2rEar(So2rEar? ear) => _so2rAudio.set(ear, _sliceAudio);
 
-  late final _daxSwitch = FlexDaxSwitch(
-    host: () => meterHost,
-    send: _sendCommand,
-    transmitting: () => _transmitting,
-    keyedByUs: () => _keyedByUs,
-    diagnose: _sink.reportDiagnostic,
-  );
-
   @override
   bool get switchesToComputerAudio => true;
-
-  /// The DAX transmit stream this session opened, if any — lost with the
-  /// socket it is sent on.
-  FlexDaxOutput? _daxOutput;
 
   /// Not once the UDP socket the audio goes on has failed to open — the web
   /// has none.
   @override
-  bool get sendsTransmitAudio => meterHost != null && !_metersUnavailable;
+  bool get sendsTransmitAudio => _radio._sendsTransmitAudio;
 
   @override
-  AudioOutput? openTransmitAudio(PcmDecoder decode) {
-    final socket = _meterSocket;
-    if (socket == null || !_handshakeDone) return null;
-    _daxOutput?.close();
-    return _daxOutput = FlexDaxOutput(
-      send: (command, {onReply}) => _sendCommand(command, onReply: onReply),
-      sendPacket: (packet) => socket.send(packet, flexDaxPort),
-      decode: decode,
-      diagnose: (what) => _sink.reportDiagnostic('Flex DAX $what'),
-    );
-  }
+  AudioOutput? openTransmitAudio(PcmDecoder decode) => _radio._openTransmitAudio(decode);
 
   /// DAX on for the message and off again after, unless the operator had it
   /// on already (flex_dax_switch.dart).
@@ -1133,293 +572,70 @@ class FlexRadioSession
       return;
     }
     if (on) {
-      _daxSwitch.beforeKey();
-      _key(true);
+      _radio._daxSwitch.beforeKey();
+      _radio._key(this, true);
     } else {
-      _key(false);
-      _daxSwitch.afterUnkey();
+      _radio._key(this, false);
+      _radio._daxSwitch.afterUnkey();
     }
   }
 
-  // ------------------------------------------------------- voice keyer (DVK)
-  //
-  // Per FlexRadio's API reference for the DVK
-  // (https://github.com/flexradio/smartsdr-api-docs/wiki/TCPIP-dvk): every
-  // state change — the radio ending a play or a recording by itself included
-  // — is pushed to every client on `sub dvk all`, so the status drives the
-  // activity and nothing is polled.
-
   /// The memory length the entry pinned, or [voiceActivityCeiling]: what
   /// bounds a RECORDING, as a backstop to the radio's own ten-second limit.
-  /// A play is bounded by its slot's own length instead ([_activityCeiling]).
+  /// A play is bounded by its slot's own length instead.
   @override
-  final Duration voiceMemoryCeiling;
+  Duration get voiceMemoryCeiling => _radio.voiceMemoryCeiling;
 
-  /// None once the radio says the DVK is unavailable — its licence off, or
-  /// its status disabled: it is then a radio with no voice keyer, its keys
-  /// disabled and F1-F8 left to whatever else they do, not a radio whose
-  /// every memory is refused.
   @override
-  int get voiceMemoryCount => _dvkLicensed == false || _dvkDisabled ? 0 : maxVoiceMemories;
+  int get voiceMemoryCount => _radio._voiceMemoryCount;
 
   @override
   bool get canRecordVoice => true;
 
-  /// Every slot the radio has described, by id — all twelve, though only
-  /// the first [maxVoiceMemories] are reported.
-  final Map<int, VoiceMemory> _dvkSlots = {};
-
-  /// What was last reported, so a refresh that changed nothing is not
-  /// reported again.
-  List<VoiceMemory>? _reportedSlots;
-
-  /// Whether the radio is licensed for the DVK: the licence line's
-  /// `enabled=`, or a `50004001` answer to any `dvk` command. Null until
-  /// either has said — unknown is offered.
-  bool? _dvkLicensed;
-
-  /// `status=disabled` or `enabled=0` on the status line, which the API
-  /// reference defines as the DVK being unavailable.
-  bool _dvkDisabled = false;
-
-  /// The `dvk` starts still awaiting their `R` line, by sequence number, each
-  /// with the [_voiceStarts] it began — a refusal is about THAT start, and a
-  /// later play of the same memory is not the one refused.
-  final Map<int, ({int memory, int start})> _dvkStarts = {};
-
-  /// Counts starts, so a reply can tell its own from a later one.
-  int _voiceStarts = 0;
-
-  /// The `dvk set_name` commands still awaiting their `R` line: memory by
-  /// sequence number.
-  final Map<int, int> _dvkRenames = {};
-
-  /// The bound for the activity [_voice] is about to start, set just before
-  /// each start — the tracker asks for it as it starts.
-  Duration _activityCeiling = voiceActivityCeiling;
-
-  late final VoiceActivityTracker _voice = VoiceActivityTracker(
-    report: _sink.reportVoiceActivity,
-    stop: stopVoice,
-    ceiling: () => _activityCeiling,
-    onCeiling: (limit) => _sink.reportDiagnostic('DVK stopped at the ${limit.inSeconds} s ceiling'),
-  );
-
-  /// The four forms the API reference gives: `status=…`, `added …`,
-  /// `deleted id=…`, and the bare `id=… name=… duration=…` update the radio
-  /// pushes after a recording, a rename or a clear.
-  void _handleDvkLine(String text) {
-    final fields = _parseQuotedFields(text);
-    final id = int.tryParse(fields['id'] ?? '');
-    final status = fields['status'];
-    if (status != null) {
-      _handleDvkStatus(status, id, enabled: fields['enabled']);
-      return;
-    }
-    if (id == null) return;
-    if (text.startsWith('deleted')) {
-      _dvkSlots.remove(id);
-    } else {
-      final previous = _dvkSlots[id];
-      final name = fields['name'] ?? previous?.name ?? '';
-      _dvkSlots[id] = VoiceMemory(
-        memory: id,
-        name: name == _dvkDefaultName(id) ? '' : name,
-        durationMs: int.tryParse(fields['duration'] ?? '') ?? previous?.durationMs ?? 0,
-      );
-    }
-    _reportSlots();
-  }
-
-  /// An unavailable keyer reports holding none — which is also what tells
-  /// the surfaces, through the state, that [voiceMemoryCount] just changed.
-  void _reportSlots() {
-    final slots = [for (var n = 1; n <= voiceMemoryCount; n++) _dvkSlots[n] ?? VoiceMemory(memory: n)];
-    if (listEquals(slots, _reportedSlots)) return;
-    _reportedSlots = slots;
-    _sink.reportVoiceMemories(slots);
-  }
-
-  /// What the keyer is doing, against what the app asked it to do. A status
-  /// naming another slot, or `preview` (another client auditioning one), is
-  /// as much "not ours" as `idle` is.
-  void _handleDvkStatus(String status, int? id, {String? enabled}) {
-    final disabled = status == 'disabled' || enabled == '0';
-    if (disabled != _dvkDisabled) {
-      _dvkDisabled = disabled;
-      _reportSlots();
-    }
-    final activity = _voice.activity;
-    if (activity == null) return;
-    final ours = id == null || id == activity.memory;
-    final going = ours && (activity.recording ? status == 'recording' : status == 'playback');
-    if (going) {
-      _voice.confirm();
-    } else {
-      _voice.endFromPoll();
-    }
-  }
-
-  void _handleLicenseFeatureLine(String text) {
-    final fields = _parseFields(text);
-    if (fields['name']?.toLowerCase() != 'digital_voice_keyer') return;
-    final licensed = switch (fields['enabled']) {
-      '1' => true,
-      '0' => false,
-      _ => null,
-    };
-    if (licensed == null) return;
-    _setLicensed(licensed);
-  }
-
-  void _setLicensed(bool licensed) {
-    _dvkLicensed = licensed;
-    _reportSlots();
-  }
-
-  /// What the API reference answers a `dvk` command with, on a radio
-  /// without the feature licence — every `dvk` command, `sub dvk all` aside.
-  static const _dvkNotLicensed = 0x50004001;
-
-  /// A non-zero answer to a start is the radio refusing it — no licence, an
-  /// unparseable command, no such slot — which no status would say: nothing
-  /// starts, so nothing changes. One to a rename leaves the slot showing a
-  /// name the radio never took, so the slots are asked for again.
-  void _handleReply(int seq, int code) {
-    final start = _dvkStarts.remove(seq);
-    final renamed = _dvkRenames.remove(seq);
-    if (code == 0 || (start == null && renamed == null)) return;
-    if (code == _dvkNotLicensed) _setLicensed(false);
-    final hex = '0x${code.toRadixString(16).toUpperCase()}';
-    if (renamed != null) {
-      _sink.reportDiagnostic('DVK refused to rename memory $renamed: $hex');
-      if (_handshakeDone && _wantUpdates) _sendCommand('sub dvk all');
-      return;
-    }
-    _sink.reportDiagnostic('DVK refused memory ${start!.memory}: $hex');
-    if (start.start == _voiceStarts) _voice.refuse();
-  }
-
-  /// An EMPTY slot is refused here rather than sent: the API reference says
-  /// a play of one answers `0` and can leave the radio keyed. So is any slot
-  /// while [cannotTransmit]: the play would go out on another slice.
   @override
-  void playVoiceMemory(int n) {
-    final slot = _dvkSlots[n];
-    if ((slot != null && slot.durationMs == 0) || cannotTransmit != null) {
-      stopVoice();
-      _activityCeiling = voiceMemoryCeiling;
-      _voice.start(VoiceActivity(memory: n));
-      _voice.refuse();
-      return;
-    }
-    final length = slot?.durationMs ?? 0;
-    _startVoice('dvk playback_start id=$n', VoiceActivity(memory: n), length > 0 ? Duration(milliseconds: length) + _dvkPlayMargin : voiceMemoryCeiling);
-  }
+  void playVoiceMemory(int n) => _radio._playVoiceMemory(this, n);
 
   @override
-  void recordVoiceMemory(int n) => _startVoice('dvk rec_start id=$n', VoiceActivity(memory: n, recording: true), voiceMemoryCeiling);
+  void recordVoiceMemory(int n) => _radio._recordVoiceMemory(this, n);
 
-  /// Whatever is going is stopped first: the API reference warns that an
-  /// operation started over another can leave the DVK inconsistent, and once
-  /// the tracker follows the new one, nothing would stop the old one.
-  void _startVoice(String command, VoiceActivity activity, Duration ceiling) {
-    stopVoice();
-    // After the stop, so the flag does not move under a playback on the air.
-    if (!activity.recording) _takeTx();
-    _activityCeiling = ceiling;
-    _dvkStarts[_sendCommand(command)] = (memory: activity.memory, start: ++_voiceStarts);
-    _voice.start(activity);
-  }
-
-  /// The stops name no slot: there is one DVK, doing one thing. A recording
-  /// stopped is saved, and the radio pushes the slot's new length.
+  /// Whichever slice started it: there is one DVK, which every slice shows
+  /// playing, as [stopCw] stops the one CWX buffer.
   @override
-  void stopVoice() {
-    final activity = _voice.activity;
-    if (activity == null) return;
-    _sendCommand(activity.recording ? 'dvk rec_stop' : 'dvk playback_stop');
-    _voice.end();
-  }
+  void stopVoice() => _radio.stopVoice();
 
-  /// The longest name the radio takes inside its quotes.
-  static const _dvkNameMax = 61;
-
-  /// Shown at once, as the radio will hold it: no `"` or `|`, which the API
-  /// reference forbids, runs of spaces collapsed the way the radio collapses
-  /// them, and no longer than it takes. The radio pushes the slot back
-  /// renamed; a refusal re-reads it ([_handleReply]).
   @override
-  void renameVoiceMemory(int n, String name) {
-    var clean = name.replaceAll(RegExp(r'["|]'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (clean.length > _dvkNameMax) clean = clean.substring(0, _dvkNameMax).trimRight();
-    _dvkRenames[_sendCommand('dvk set_name id=$n name="${clean.isEmpty ? _dvkDefaultName(n) : clean}"')] = n;
-    final previous = _dvkSlots[n];
-    _dvkSlots[n] = VoiceMemory(memory: n, name: clean, durationMs: previous?.durationMs ?? 0);
-    _reportSlots();
-  }
-
-  /// [_parseFields] for a line whose values may be quoted with spaces in
-  /// them — a DVK slot's name.
-  static Map<String, String> _parseQuotedFields(String text) => {
-    for (final match in RegExp(r'(\w+)=(?:"([^"]*)"|(\S*))').allMatches(text)) match[1]!: match[2] ?? match[3]!,
-  };
+  void renameVoiceMemory(int n, String name) => _radio._renameVoiceMemory(n, name);
 
   /// FlexRadio pushes status on its own — "starting updates" just means
-  /// subscribing.
+  /// subscribing, which the radio does once for all its slices.
   @override
-  void startUpdates() {
-    _wantUpdates = true;
-    if (_handshakeDone) _subscribe();
-    // Armed here too, not only in _subscribe: a handshake that never lands
-    // (or lands in a shape the pattern does not match) means no subscribe,
-    // and every path that would say so hangs off the subscribe that never
-    // happened. The staleness watchdog would eventually flag the row, but
-    // with the same word it uses for an unplugged radio.
-    _armSettleTimer();
-    _startPeriodicTimers();
-  }
+  void startUpdates() => _radio._start(this);
 
   @override
-  void stopUpdates() {
-    if (!_wantUpdates) return;
-    _wantUpdates = false;
-    _stopPeriodicTimers();
-    if (_handshakeDone) _unsubscribe();
-  }
+  void stopUpdates() => _radio._stop(this);
 
   /// Null: this radio pushes a slice status the moment the dial moves, so a
   /// quiet VFO is a still one.
   @override
   Duration? get expectedUpdateInterval => null;
 
+  bool _left = false;
+
+  /// What this slice set on the radio, put back as it leaves: its audio
+  /// pan and mute, its spectrum's stream.
+  void _leaveSlice() {
+    if (_left) return;
+    _left = true;
+    _so2rAudio.teardown(_sliceAudio);
+    _spectrum.teardown();
+  }
+
   @override
   void teardown() {
-    // First: a send below that throws on a dead socket would otherwise leave
-    // this session's slice counted as another radio's for the whole launch.
-    _sessionsByHost[meterHost]?.remove(this);
-    if (_keyedByUs) {
-      // First, and sent even though the connection is closing: nothing else
-      // will unkey this radio.
-      _keyedByUs = false;
-      _sendCommand('xmit 0');
-    }
-    _daxSwitch.teardown();
-    _so2rAudio.teardown(_sliceAudio);
-    // A memory transmits, and nothing else will stop it once this client
-    // is gone.
-    stopVoice();
-    _voice.dispose();
-    _dvkStarts.clear();
-    _dvkRenames.clear();
-    _spectrum.teardown();
-    // Answers to a connection that is closing would come to nobody.
-    _replies.clear();
-    _rawReplies.clear();
-    _cwQueue.clear();
-    _stopPeriodicTimers();
-    if (_wantUpdates && _handshakeDone) _unsubscribe();
-    _wantUpdates = false;
+    _radio._release(this);
+    _leaveSlice();
+    _radio._detach(this);
+    if (_ownsWire) _radio.teardown();
   }
 }
 

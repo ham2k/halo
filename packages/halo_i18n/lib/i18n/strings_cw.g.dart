@@ -3031,6 +3031,7 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get civAddressDescription => '···· · —··— ——··—— / ·— ··· / ··· ···· ——— ·—— —· / ·· —· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / —·—· ·· —····— ···— / —— · —· ··— ·—·—·— / — ···· · / ·· —·—· —····— ——··· ————— ····· / ··· ···· ·· ·——· ··· / ·— ··· / ·— ····— ·—·—·—';
 	@override String get civAddressInvalid => '·— / —·—· ·· —····— ···— / ·— —·· —·· ·—· · ··· ··· / ·· ··· / — ·—— ——— / ···· · —··— / —·· ·· ——· ·· — ··· ——··—— / ————— ·———— / — ——— / ··—· ··—·';
 	@override String flexSliceLabel({required Object letter}) => '··· ·—·· ·· —·—· · / ${letter}';
+	@override String flexSliceOnStation({required Object letter, required Object station}) => '··· ·—·· ·· —·—· · / ${letter} / ——— —· / ${station}';
 	@override String get flexSliceInvalid => '·——· ·· —·—· —·— / ——— —· · / ——— ··—· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ··· ·—·· ·· —·—· · ··· ——··—— / ·— / — ···· ·—· ——— ··— ——· ···· / ····';
 	@override String flexSliceMissing({required Object letter}) => '··· ·—·· ·· —·—· · / ${letter} / ·· ··· / —· ——— — / ·· —· / ··— ··· · / ——— —· / — ···· ·· ··· / ·—· ·— —·· ·· ——— / — / ·——· ·· —·—· —·— / ·— —· ——— — ···· · ·—· / ··· ·—·· ·· —·—· · ——··—— / ——— ·—· / —·—· ·—· · ·— — · / ·· — / ·· —· / ··· —— ·— ·—· — ··· —·· ·—·';
 	@override String get channelNotInUse => '—· ——— — / ·· —· / ··— ··· ·';
@@ -7096,6 +7097,7 @@ extension on TranslationsCw {
 			'settings.station.civAddressDescription' => '···· · —··— ——··—— / ·— ··· / ··· ···· ——— ·—— —· / ·· —· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / —·—· ·· —····— ···— / —— · —· ··— ·—·—·— / — ···· · / ·· —·—· —····— ——··· ————— ····· / ··· ···· ·· ·——· ··· / ·— ··· / ·— ····— ·—·—·—',
 			'settings.station.civAddressInvalid' => '·— / —·—· ·· —····— ···— / ·— —·· —·· ·—· · ··· ··· / ·· ··· / — ·—— ——— / ···· · —··— / —·· ·· ——· ·· — ··· ——··—— / ————— ·———— / — ——— / ··—· ··—·',
 			'settings.station.flexSliceLabel' => ({required Object letter}) => '··· ·—·· ·· —·—· · / ${letter}',
+			'settings.station.flexSliceOnStation' => ({required Object letter, required Object station}) => '··· ·—·· ·· —·—· · / ${letter} / ——— —· / ${station}',
 			'settings.station.flexSliceInvalid' => '·——· ·· —·—· —·— / ——— —· · / ——— ··—· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ··· ·—·· ·· —·—· · ··· ——··—— / ·— / — ···· ·—· ——— ··— ——· ···· / ····',
 			'settings.station.flexSliceMissing' => ({required Object letter}) => '··· ·—·· ·· —·—· · / ${letter} / ·· ··· / —· ——— — / ·· —· / ··— ··· · / ——— —· / — ···· ·· ··· / ·—· ·— —·· ·· ——— / — / ·——· ·· —·—· —·— / ·— —· ——— — ···· · ·—· / ··· ·—·· ·· —·—· · ——··—— / ——— ·—· / —·—· ·—· · ·— — · / ·· — / ·· —· / ··· —— ·— ·—· — ··· —·· ·—·',
 			'settings.station.channelNotInUse' => '—· ——— — / ·· —· / ··— ··· ·',
@@ -7219,9 +7221,9 @@ extension on TranslationsCw {
 			'settings.station.models.ts480hx' => '—·— · —· ·—— ——— ——— —·· / — ··· —····— ····— ———·· ————— ···· —··—',
 			'settings.station.models.ts2000' => '—·— · —· ·—— ——— ——— —·· / — ··· —····— ··——— ————— ————— —————',
 			'settings.station.models.qmx' => '——·— ·—· ·——· / ·—·· ·— —··· ··· / ——·— —— —··—',
-			'settings.station.models.fx4cr' => '—··· ——· ··——— ··—· —··— / ··—· —··— —····— ····— —·—· ·—·',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.fx4cr' => '—··· ——· ··——— ··—· —··— / ··—· —··— —····— ····— —·—· ·—·',
 			'settings.station.models.tx500' => '·—·· ·— —··· ····· ————· ————· / — —··— —····— ····· ————— —————',
 			'settings.station.models.tx500mp' => '·—·· ·— —··· ····· ————· ————· / — —··— —····— ····· ————— ————— —— ·——·',
 			'settings.station.models.qcx' => '——·— ·—· ·——· / ·—·· ·— —··· ··· / ——·— —·—· —··—',
@@ -7733,9 +7735,9 @@ extension on TranslationsCw {
 			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—· · ——· ·· ··· — · ·—· ———··· / ${error}',
 			'settings.developer.diagnostics' => '—·· ·· ·— ——· —· ——— ··· — ·· —·—· ···',
 			'settings.developer.importExport' => '·· —— ·——· ——— ·—· — / —··—· / · —··— ·——· ——— ·—· —',
-			'settings.developer.systemInformation' => '··· —·—— ··· — · —— / ·· —· ··—· ——— ·—· —— ·— — ·· ——— —·',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.systemInformation' => '··· —·—— ··· — · —— / ·· —· ··—· ——— ·—· —— ·— — ·· ——— —·',
 			'settings.developer.appVersion' => '·— ·——· ·——· / ···— · ·—· ··· ·· ——— —·',
 			'settings.developer.dataFolder' => '—·· ·— — ·— / ··—· ——— ·—·· —·· · ·—·',
 			'settings.developer.worktree' => '·—— ——— ·—· —·— — ·—· · ·',
@@ -8247,9 +8249,9 @@ extension on TranslationsCw {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '·—— ·— ·—· —· ·· —· ——· ———··· / — ···· ·· ··· / ·— —·· ·· ··—· / ···· ·— ··· / ——·— ··· ——— ··· / ··—· ·—· ——— —— / ${calls} ——··—— / —··· ··— — / — ···· · —·—— / ·—— ·· ·—·· ·—·· / —··· · / ·· —— ·——· ——— ·—· — · —·· / ·— ··· / ${station} / ·· ··—· / —·—— ——— ··— / —·—· ——— —· — ·· —· ··— · ·—·—·—',
 			'adifImport.stationCallJoin' => '·— —· —··',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ···· ·— ··· / —· ——— / —·· ·— — · / ·— —· —·· / —·—· ·— —· —· ——— — / —··· · / ·· —— ·——· ——— ·—· — · —··', other: '${formatted} / ···· ·— ···— · / —· ——— / —·· ·— — · / ·— —· —·· / —·—· ·— —· —· ——— — / —··· · / ·· —— ·——· ——— ·—· — · —··', ), 
-			'adifImport.activationFound' => ({required Object refs}) => '— ···· ·· ··· / ··—· ·· ·—·· · / ·—· · —·—· ——— ·—· —·· ··· / ·— —· / ·— —·—· — ·· ···— ·— — ·· ——— —· / ——— ··—· / ${refs} ·—·—·—',
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.activationFound' => ({required Object refs}) => '— ···· ·· ··· / ··—· ·· ·—·· · / ·—· · —·—· ——— ·—· —·· ··· / ·— —· / ·— —·—· — ·· ···— ·— — ·· ——— —· / ——— ··—· / ${refs} ·—·—·—',
 			'adifImport.addActivation' => '·— —·· —·· / ·· — / — ——— / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => '——— —· ·—·· —·—— / ${written} / ——— ··—· / ${planned} / —·—· ——— ··— ·—·· —·· / —··· · / ·— ·——· ·——· ·—·· ·· · —·· / — / — ···· · / ·—·· ——— ——· / —·—· ···· ·— —· ——· · —·· / ·—— ···· ·· ·—·· · / —·—— ——— ··— / ·—— · ·—· · / —·· · —·—· ·· —·· ·· —· ——· ·—·—·—',
 			'adifImport.busy' => '·— —· / ·· —— ·——· ——— ·—· — / ·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / ·—· ··— —· —· ·· —· ——· ·—·—·— / ·—— ·— ·· — / ··—· ——— ·—· / ·· — / — ——— / ··—· ·· —· ·· ··· ···· / —··· · ··—· ——— ·—· · / ··· — ·— ·—· — ·· —· ——· / ·— —· ——— — ···· · ·—· ·—·—·—',

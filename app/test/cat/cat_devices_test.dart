@@ -18,7 +18,6 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/computer_voice_keyer.dart' show voiceOutputConfigKey;
-import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/flexradio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
@@ -254,6 +253,7 @@ void main() {
               'host': 'flex.local',
               'port': 4992,
               'slice': '0',
+              voiceOutputConfigKey: 'Set A speakers',
               flexKnownSlicesConfigKey: [
                 {'key': '0', 'label': 'A'},
                 {'key': '2', 'label': 'C', 'usedBy': 'Maestro'},
@@ -265,9 +265,110 @@ void main() {
       expect(cat.flexSlicesToAdd('flex-a').map((slice) => (slice.key, slice.usedBy)), [('2', 'Maestro')], reason: 'slice A has its entry already');
       final added = (await cat.addFlexSlice('flex-a', '2'))!;
       expect(added, 'flex-a/rx:2');
-      expect(cat.nodeFor(added)!.config, {'host': 'flex.local', 'port': 4992, 'slice': '2'});
+      expect(cat.nodeFor(added)!.config, {'host': 'flex.local', 'port': 4992, 'slice': '2'}, reason: "the radio's settings, not slice A's sound devices");
       expect(cat.flexSlicesToAdd('flex-a'), isEmpty);
       expect(cat.radioNameFor(cat.nodeFor(added)!), 'Shack Flex · Slice C');
+    });
+
+    test("name each slice by the radio's letter, and by its station while two stations hold the radio's slices", () async {
+      // Each station letters its own slices from A: under multiFLEX two
+      // slices are both "Slice A", and only the station tells them apart.
+      Future<CatService> holding(List<Map<String, String>> open) => load({
+        'version': 4,
+        'nodes': {
+          'flex-a': {
+            ...flex('0'),
+            'config': {...flex('0')['config'] as Map<String, dynamic>, flexKnownSlicesConfigKey: open},
+          },
+          'flex-b': flex('1'),
+        },
+      });
+      var cat = await holding([
+        {'key': '0', 'label': 'A', 'holder': 'CUBAGUA'},
+        {'key': '1', 'label': 'B', 'holder': 'CUBAGUA'},
+        {'key': '2', 'label': 'A', 'holder': 'chirimena'},
+      ]);
+      expect(cat.channelNameFor(cat.nodeFor('flex-a')!), 'Slice A on CUBAGUA');
+      expect(cat.radioNameFor(cat.nodeFor('flex-a/rx:1')!), 'Shack Flex · Slice B on CUBAGUA');
+      expect(cat.flexSliceName('flex-a', '2'), 'Slice A on chirimena', reason: "the radio's letter, not one from its index");
+      cat = await holding([
+        {'key': '0', 'label': 'A', 'holder': 'CUBAGUA'},
+        {'key': '1', 'label': 'B', 'holder': 'CUBAGUA'},
+      ]);
+      expect(cat.channelNameFor(cat.nodeFor('flex-a/rx:1')!), 'Slice B', reason: 'one station: the letter says it all');
+    });
+
+    test('share one connection to the radio, which no slice opens again', () async {
+      // Two connections are two subscriptions, and the second `sub slice
+      // all` breaks the first slice's audio in the operator's headphones.
+      final radio = _FakeFlexRadio();
+      final cat = await load({
+        'version': 4,
+        'nodes': {
+          'flex-a': {...flex('0'), 'typeKey': _fakeFlexTypeKey},
+          'flex-b': {...flex('1'), 'typeKey': _fakeFlexTypeKey},
+        },
+      }, registry: radio.registry);
+      await cat.connect('flex-a');
+      await cat.connect('flex-a/rx:1');
+      expect(radio.opened, 1);
+      radio.say(
+        'S1|slice 0 in_use=1 RF_frequency=14.074000 mode=DIGU\n'
+        'S1|slice 1 in_use=1 RF_frequency=7.030000 mode=CW\n'
+        'S1|slice 2 in_use=1 RF_frequency=21.074000 mode=DIGU\n',
+      );
+      await pumpEventQueue();
+      expect(cat.stateFor('flex-a').vfo.freqKHz, 14074);
+      expect(cat.stateFor('flex-a/rx:1').vfo.freqKHz, 7030, reason: 'each slice reads its own from the one stream');
+      final added = (await cat.addFlexSlice('flex-a', '2'))!;
+      await pumpEventQueue();
+      expect(cat.stateFor(added).status, EquipmentStatus.connected, reason: 'a slice picked while the radio is on joins it');
+      expect(radio.opened, 1);
+      await cat.disconnect(added);
+      await cat.disconnect('flex-a');
+      expect(radio.closed, 0, reason: 'slice B still holds it');
+      await cat.disconnect('flex-a/rx:1');
+      await pumpEventQueue();
+      expect(radio.closed, 1);
+    });
+
+    test('lose a slice closed on the radio that nothing uses, and keep one a set logs from', () async {
+      // Left behind, every slice ever opened and closed in SmartSDR would
+      // stay listed, each saying it is not open.
+      final radio = _FakeFlexRadio();
+      final cat = await load({
+        'version': 4,
+        'nodes': {
+          'flex-a': {...flex('0'), 'typeKey': _fakeFlexTypeKey},
+          'flex-b': {...flex('1'), 'typeKey': _fakeFlexTypeKey},
+          'flex-c': {...flex('2'), 'typeKey': _fakeFlexTypeKey},
+          'flex-d': {
+            ...flex('3'),
+            'typeKey': _fakeFlexTypeKey,
+            'config': {...flex('3')['config'] as Map<String, dynamic>, voiceOutputConfigKey: 'Set B speakers'},
+          },
+        },
+        'positions': {
+          'b': {
+            'radio': {'local': 'flex-c'},
+            'slots': <String, dynamic>{},
+          },
+        },
+        'sets': {'B': 'b'},
+      }, registry: radio.registry);
+      expect(cat.radio2, 'flex-a/rx:2');
+      for (final id in cat.entriesOf('flex-a')) {
+        await cat.connect(id);
+      }
+      radio.say('S1|slice 0 in_use=0\nS1|slice 1 in_use=0\nS1|slice 2 in_use=0\nS1|slice 3 in_use=0\nS1|slice 1 in_use=1\nS1|slice 1 in_use=0\n');
+      await pumpEventQueue();
+      expect(cat.entriesOf('flex-a'), [
+        'flex-a',
+        'flex-a/rx:2',
+        'flex-a/rx:3',
+      ], reason: "slice A is the radio's, slice C is set B's, slice D holds settings of its own");
+      expect(cat.stateFor('flex-a/rx:2').problem, isNotNull, reason: 'kept, and saying why it hears nothing');
+      expect((await saved())['nodes'].keys, isNot(contains('flex-a/rx:1')));
     });
 
     test('keep the slices the radio says are open, from whichever slice says so, for the picker while it is off', () async {
@@ -282,16 +383,18 @@ void main() {
         },
       }, registry: radio.registry);
       await cat.connect('flex-a/rx:1');
-      radio.sinks.single.reportChannels(const [
-        EquipmentChannel(key: '0', label: 'A', inUse: true),
-        EquipmentChannel(key: '1', label: 'B', inUse: true),
-        EquipmentChannel(key: '2', label: 'C', inUse: true, usedBy: 'Maestro'),
-        EquipmentChannel(key: '3', label: 'D', inUse: false),
-      ]);
+      radio.say(
+        'S1|client 0x2 connected program=Maestro\n'
+        'S1|slice 0 in_use=1 index_letter=A\n'
+        'S1|slice 1 in_use=1 index_letter=B\n'
+        'S1|slice 2 in_use=1 index_letter=C client_handle=0x2\n'
+        'S1|slice 3 in_use=0 index_letter=D\n',
+      );
+      await pumpEventQueue();
       expect((await saved())['nodes']['flex-a']['config'][flexKnownSlicesConfigKey], [
         {'key': '0', 'label': 'A'},
         {'key': '1', 'label': 'B'},
-        {'key': '2', 'label': 'C', 'usedBy': 'Maestro'},
+        {'key': '2', 'label': 'C', 'usedBy': 'Maestro', 'holder': 'Maestro'},
       ], reason: "slice B's report lands on the device, and only the open slices");
       await cat.disconnect('flex-a/rx:1');
       expect(cat.flexSlicesToAdd('flex-a').map((slice) => slice.key), ['2']);
@@ -348,12 +451,14 @@ void main() {
 
 const _fakeFlexTypeKey = 'fake-flex';
 
-/// A Flex whose sessions say nothing on their own: the test speaks for the
-/// radio through the sink each connection was handed.
+/// A Flex the test speaks for, on a link that counts its connections. It
+/// never says its handshake, so no subscription, and no meter socket, is
+/// opened for it.
 class _FakeFlexRadio {
-  final sinks = <EquipmentSink>[];
+  int opened = 0, closed = 0;
+  _FakeConnection? _connection;
 
-  late final _transport = _FakeLink();
+  late final _transport = _FakeLink(this);
 
   late final EquipmentRegistry registry = EquipmentRegistry(
     models: [
@@ -361,41 +466,44 @@ class _FakeFlexRadio {
         key: 'fake-flex',
         category: kCategoryTransceiver,
         name: () => 'Fake Flex',
-        variants: [EquipmentVariant(key: _fakeFlexTypeKey, driver: _FakeFlexDriver(sinks), transport: _transport)],
+        variants: [EquipmentVariant(key: _fakeFlexTypeKey, driver: const FlexRadioDriver(), transport: _transport)],
       ),
     ],
     transports: {_transport.key: _transport},
   );
-}
 
-class _FakeFlexDriver extends FlexRadioDriver {
-  final List<EquipmentSink> sinks;
-
-  _FakeFlexDriver(this.sinks);
-
-  @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
-    sinks.add(sink);
-    return _QuietSession();
-  }
-}
-
-class _QuietSession implements EquipmentSession {
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
+  void say(String text) => _connection!._data.add(Uint8List.fromList(utf8.encode(text)));
 }
 
 class _FakeLink extends EquipmentTransport {
+  final _FakeFlexRadio radio;
+
+  _FakeLink(this.radio);
+
   @override
   String get key => 'fake-flex-link';
 
+  /// A network link's own fields, as the real one's: what a slice takes from
+  /// its radio rather than holding as its own.
   @override
-  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async => _FakeConnection();
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => const [
+    {'type': 'field', 'key': 'host'},
+    {'type': 'field', 'key': 'port'},
+  ];
+
+  @override
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async {
+    radio.opened++;
+    return radio._connection = _FakeConnection(radio);
+  }
 }
 
 class _FakeConnection implements EquipmentConnection {
+  final _FakeFlexRadio radio;
   final _data = StreamController<Uint8List>();
   final _closed = Completer<void>();
+
+  _FakeConnection(this.radio);
 
   @override
   Stream<Uint8List> get data => _data.stream;
@@ -405,7 +513,9 @@ class _FakeConnection implements EquipmentConnection {
   void send(List<int> bytes) {}
   @override
   Future<void> close() async {
-    if (!_closed.isCompleted) _closed.complete();
+    if (_closed.isCompleted) return;
+    radio.closed++;
+    _closed.complete();
     unawaited(_data.close());
   }
 }

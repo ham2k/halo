@@ -70,6 +70,33 @@ extension _Devices on CatService {
     return '${host.trim().toLowerCase()}:$port';
   }
 
+  /// What every slice of the Flex [node] is part of shares, and so what its
+  /// one connection is opened with: the device's connection settings, not
+  /// a slice's own (its slice, its computer voice settings).
+  Map<String, dynamic> _flexRadioConfig(EquipmentNode node) {
+    final device = _nodes[deviceEntryFor(node.uuid)] ?? node;
+    final shared = _flexSharedKeys(device);
+    return {
+      for (final MapEntry(:key, :value) in device.config.entries)
+        if (shared.contains(key)) key: value,
+    };
+  }
+
+  /// The config keys a Flex's slices take from its device: its connection
+  /// settings and the driver's, except which slice.
+  Set<String> _flexSharedKeys(EquipmentNode device) => switch (typeFor(device)) {
+    final type? => {...type.transport.recognizedConfigKeys, ...type.driver.recognizedConfigKeys}..remove(FlexRadioDriver.sliceConfigKey),
+    null => const {},
+  };
+
+  void _logFlexSent(String address, List<int> bytes) {
+    if (_flexDeviceOf(address) case final device?) trafficLog?.sent(_logLabel(device), bytes);
+  }
+
+  void _logFlexReceived(String address, List<int> bytes) {
+    if (_flexDeviceOf(address) case final device?) trafficLog?.received(_logLabel(device), bytes);
+  }
+
   /// The id of the Flex at [address]: its slice A's entry.
   String? _flexDeviceOf(String address) =>
       _nodes.values.firstWhereOrNull((node) => _isFlex(node) && _flexAddressOf(node) == address && FlexRadioDriver.sliceFromConfig(node.config) == 0)?.uuid;
@@ -82,9 +109,8 @@ extension _Devices on CatService {
   /// put set A's sound devices on set B and reconnect set B's slice mid-QSO.
   Future<void> _flexSlicesFollow(String deviceId) async {
     final device = _nodes[deviceId];
-    final type = device == null ? null : typeFor(device);
-    if (device == null || type == null || type.driver is! FlexRadioDriver) return;
-    final shared = {...type.transport.recognizedConfigKeys, ...type.driver.recognizedConfigKeys}..remove(FlexRadioDriver.sliceConfigKey);
+    if (device == null || !_isFlex(device)) return;
+    final shared = _flexSharedKeys(device);
     for (final id in entriesOf(deviceId).skip(1)) {
       final entry = _nodes[id];
       if (entry == null) continue;
@@ -103,6 +129,42 @@ extension _Devices on CatService {
     }
   }
 
+  /// A slice of a Flex its connection has settled is not open on the radio
+  /// ([FlexRadioSession.cannotTransmit]) goes, when nothing of the
+  /// operator's is on it: no set logs from it, no position has picked it,
+  /// it has no picks of its own (an antenna, a key) and no settings of its
+  /// own (a set's computer voice settings). A slice closed in SmartSDR
+  /// leaves no entry behind, and the picker offers it again once it is
+  /// open. Slice A never goes, being the radio's own entry; a slice a set
+  /// logs from stays, and says it is not open.
+  void _flexSliceProblem(String uuid) {
+    if (!_flexSliceDisposable(uuid)) return;
+    // Not from inside the session's own report: removing disconnects it. And
+    // only if still so: the same chunk can close the slice and open it again.
+    scheduleMicrotask(() {
+      if (!_flexSliceDisposable(uuid)) return;
+      trafficLog?.note(_logLabel(uuid), 'slice not open on the radio: entry removed');
+      unawaited(_removeOne(uuid));
+    });
+  }
+
+  bool _flexSliceDisposable(String uuid) {
+    final node = _nodes[uuid];
+    if (node == null || !_isFlex(node) || deviceEntryFor(uuid) == uuid) return false;
+    final notOpen = switch (_runtimes[uuid]?.session) {
+      final TransmitGatedSession session => session.cannotTransmit,
+      _ => null,
+    };
+    if (notOpen == null) return false;
+    final radio = LocalRadio(uuid);
+    if ([kSetA, kSetB].any((set) => _positions.radioOf(set) == radio) || _so2rSwitch == uuid) return false;
+    if (_positions.positionOf(radio)?.slots.isNotEmpty ?? false) return false;
+    if (_positions.all.any((position) => position.slots.values.contains(uuid))) return false;
+    final device = _nodes[deviceEntryFor(uuid)];
+    final own = {if (device != null) ..._flexSharedKeys(device), FlexRadioDriver.sliceConfigKey};
+    return node.config.keys.every(own.contains);
+  }
+
   /// A Flex entry reported the radio's slices: the open ones are kept on its
   /// device, for the picker to offer while the radio is off. Only on a
   /// change, so the repeats the radio sends write nothing.
@@ -114,7 +176,7 @@ extension _Devices on CatService {
     if (device == null) return;
     final open = [
       for (final channel in channels)
-        if (channel.inUse) {'key': channel.key, 'label': channel.label, 'usedBy': ?channel.usedBy},
+        if (channel.inUse) {'key': channel.key, 'label': channel.label, 'usedBy': ?channel.usedBy, 'holder': ?channel.holder},
     ];
     if (const DeepCollectionEquality().equals(device.config[flexKnownSlicesConfigKey], open)) return;
     _nodes[deviceId] = device.copyWith(config: {...device.config, flexKnownSlicesConfigKey: open});
@@ -242,33 +304,61 @@ extension CatDevices on CatService {
   String radioNameFor(EquipmentNode node) {
     final name = displayNameFor(node);
     if (entriesOf(deviceEntryFor(node.uuid)).length < 2) return name;
-    return switch (typeFor(node)?.describeChannel(node.config)) {
+    return switch (channelNameFor(node)) {
       final receiver? => '$name · $receiver',
       null => name,
     };
   }
 
-  /// The slices of the Flex [deviceId] a picker can add: those open on the
-  /// radio with no entry yet, as a connected entry of it reports them, or as
-  /// it last reported them while none is. Empty for anything else.
-  List<EquipmentChannel> flexSlicesToAdd(String deviceId) {
+  /// Which receiver of its radio [node] is, as a picker's row says beside
+  /// its name: "Sub", "Slice B", or "Slice A on CUBAGUA" for a Flex whose
+  /// slices two stations hold ([flexSliceName]). Null for a radio that has
+  /// one.
+  String? channelNameFor(EquipmentNode node) {
+    if (!_isFlex(node)) return typeFor(node)?.describeChannel(node.config);
+    return flexSliceName(deviceEntryFor(node.uuid), '${FlexRadioDriver.sliceFromConfig(node.config)}');
+  }
+
+  /// Slice [key] of the Flex [deviceId], as the radio letters it and, while
+  /// its open slices are held by more than one station, whose it is:
+  /// "Slice A on CUBAGUA". Each station letters its own slices from A, so
+  /// under multiFLEX two slices are both "Slice A", and the station is what
+  /// tells them apart.
+  String flexSliceName(String deviceId, String key) {
+    final open = _flexOpenSlices(deviceId);
+    final letter = open[key]?.label ?? FlexRadioDriver.sliceLabel(int.tryParse(key) ?? 0);
+    final holders = {for (final slice in open.values) ?slice.holder};
+    return switch (open[key]?.holder) {
+      final holder? when holders.length > 1 => t.settings.station.flexSliceOnStation(letter: letter, station: holder),
+      _ => t.settings.station.flexSliceLabel(letter: letter),
+    };
+  }
+
+  /// The slices open on the Flex [deviceId], by key: as a connected entry of
+  /// it reports them, or as it last reported them while none is.
+  Map<String, EquipmentChannel> _flexOpenSlices(String deviceId) {
     final device = _nodes[deviceId];
-    if (device == null || !_isFlex(device)) return const [];
-    final entries = entriesOf(deviceId);
-    final taken = {for (final id in entries) '${FlexRadioDriver.sliceFromConfig(_nodes[id]?.config ?? const {})}'};
+    if (device == null || !_isFlex(device)) return const {};
     final live = <String, EquipmentChannel>{
-      for (final id in entries)
+      for (final id in entriesOf(deviceId))
         for (final channel in stateFor(id).channels)
           if (channel.inUse) channel.key: channel,
     };
-    final known = [
+    if (live.isNotEmpty) return live;
+    return {
       if (device.config[flexKnownSlicesConfigKey] case final List<Object?> list)
         for (final slice in list)
           if (slice case {'key': final String key, 'label': final String label})
-            EquipmentChannel(key: key, label: label, inUse: true, usedBy: slice['usedBy'] as String?),
-    ];
+            key: EquipmentChannel(key: key, label: label, inUse: true, usedBy: slice['usedBy'] as String?, holder: slice['holder'] as String?),
+    };
+  }
+
+  /// The slices of the Flex [deviceId] a picker can add: those open on the
+  /// radio with no entry yet. Empty for anything else.
+  List<EquipmentChannel> flexSlicesToAdd(String deviceId) {
+    final taken = {for (final id in entriesOf(deviceId)) '${FlexRadioDriver.sliceFromConfig(_nodes[id]?.config ?? const {})}'};
     return [
-      for (final channel in live.isNotEmpty ? live.values : known)
+      for (final channel in _flexOpenSlices(deviceId).values)
         if (!taken.contains(channel.key)) channel,
     ];
   }
