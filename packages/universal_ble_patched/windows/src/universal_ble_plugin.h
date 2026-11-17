@@ -144,24 +144,26 @@ private:
 
   fire_and_forget InitializeAsync();
   fire_and_forget ConnectAsync(uint64_t bluetooth_address);
+  // A coroutine takes its arguments by value: the platform-channel message a
+  // reference would point into is freed when the handler returns, which is at
+  // the coroutine's first suspension.
   fire_and_forget SetNotifiableAsync(
-      const std::string &device_id, const std::string &service,
-      const std::string &characteristic,
-      const BleInputProperty &ble_input_property,
+      std::string device_id, std::string service, std::string characteristic,
+      BleInputProperty ble_input_property,
       std::function<void(std::optional<FlutterError> reply)> result);
-  fire_and_forget PairAsync(const std::string &device_id,
+  fire_and_forget PairAsync(std::string device_id,
                             std::function<void(ErrorOr<bool> reply)> result);
   fire_and_forget
-  CustomPairAsync(const std::string &device_id,
+  CustomPairAsync(std::string device_id,
                   std::function<void(ErrorOr<bool> reply)> result);
   static fire_and_forget GetSystemDevicesAsync(
       std::vector<std::string> with_services,
       std::function<void(ErrorOr<flutter::EncodableList> reply)> result);
   static fire_and_forget
-  IsPairedAsync(const std::string &device_id,
+  IsPairedAsync(std::string device_id,
                 std::function<void(ErrorOr<bool> reply)> result);
   fire_and_forget DiscoverServicesAsync(
-      const std::string &device_id, bool with_descriptors,
+      std::string device_id, bool with_descriptors,
       std::function<void(ErrorOr<flutter::EncodableList> reply)> result);
 
   void
@@ -185,6 +187,10 @@ private:
                                std::optional<std::string> error = std::nullopt);
   void NotifyConnectionException(uint64_t bluetooth_address,
                                  const std::string &error_message);
+  // `connected_devices_` and the agents in it are the UI thread's alone. A
+  // WinRT event arrives on a thread-pool thread, and hops here through
+  // `ui_thread_handler_` before touching them; a coroutine that awaits is back
+  // on the UI thread before it looks a device up again.
   void CleanConnection(uint64_t bluetooth_address);
   void ResetState();
   void

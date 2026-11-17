@@ -3,7 +3,8 @@
 //
 // Guards the vendored `universal_ble` copy: that Windows resolves to it rather
 // than to the published package, and that the hunks inside it survive — the
-// UI-thread hop's teardown gate, its atomic `hwnd_`, and the Release PDB flags.
+// UI-thread hop's teardown gate, its atomic `hwnd_`, the Release PDB flags, and
+// the asynchronous code's ownership of what it reads after it suspends.
 //
 // All of it is invisible to every other signal, for the same reason the
 // webview override tests exist (see webview_plugin_overrides_test.dart):
@@ -58,6 +59,15 @@ String _vendored(String relativePath) {
     );
   }
   return file.readAsStringSync();
+}
+
+/// The body of [function] in [source]: from its signature to the first line
+/// that closes a top-level block.
+String _body(String source, String function) {
+  final start = source.indexOf(function);
+  if (start < 0) fail('No $function in the vendored plugin');
+  final rest = source.substring(start);
+  return rest.substring(0, rest.indexOf('\n}'));
 }
 
 void main() {
@@ -176,5 +186,62 @@ void main() {
           'so dropping just this line defeats the hunk while the /Zi check '
           'above stays green',
     );
+  });
+
+  test('no coroutine takes a string by reference', () {
+    // A platform-channel handler that starts a coroutine returns at the
+    // coroutine's first suspension, and the message its strings live in is
+    // freed then: a reference parameter read after that reads freed memory,
+    // as an error path's log line does whenever the device makes it fail.
+    final header = _vendored('windows/src/universal_ble_plugin.h');
+    final source = _vendored('windows/src/universal_ble_plugin.cpp');
+    final declarations = RegExp(r'fire_and_forget\s+(?:UniversalBlePlugin::)?\w+\(([^)]*)\)');
+    for (final match in [...declarations.allMatches(header), ...declarations.allMatches(source)]) {
+      expect(match.group(1), isNot(contains(RegExp(r'std::string\s*&'))), reason: match.group(0));
+    }
+  });
+
+  test('no completion handler captures by reference', () {
+    // A .Completed handler runs on a thread-pool thread after the call that
+    // set it up has returned, and with it the strings `[&` would refer to.
+    final source = _vendored('windows/src/universal_ble_plugin.cpp');
+    expect(source, isNot(contains('.Completed([&')));
+  });
+
+  test('a disconnect seen on an event thread is cleaned up on the UI thread', () {
+    // The device map and its agents are the UI thread's alone. Cleaned up
+    // straight from a WinRT event, an agent is destroyed while the UI thread
+    // is in the middle of a write or a disconnect that is using it.
+    final source = _vendored('windows/src/universal_ble_plugin.cpp');
+    for (final handler in ['void UniversalBlePlugin::BluetoothLeDeviceConnectionStatusChanged(', 'void UniversalBlePlugin::NotifyConnectionException(']) {
+      final body = _body(source, handler);
+      expect(body, contains('CleanConnection('), reason: handler);
+      expect(
+        body.indexOf('ui_thread_handler_.Post('),
+        allOf(greaterThanOrEqualTo(0), lessThan(body.indexOf('CleanConnection('))),
+        reason: '$handler must post its cleanup to the UI thread',
+      );
+    }
+  });
+
+  test('a notification subscription finds its device again after the descriptor write', () {
+    // The device can disconnect while the write is out, and its agent be
+    // destroyed with it: a reference into the agent held across the await
+    // writes the new subscription into freed memory.
+    final body = _body(_vendored('windows/src/universal_ble_plugin.cpp'), 'UniversalBlePlugin::SetNotifiableAsync(');
+    final firstAwait = body.indexOf('co_await');
+    expect(body.substring(0, firstAwait), isNot(contains('auto &gatt_char')));
+    final after = body.substring(body.indexOf('co_await ui_thread;'));
+    expect(after, contains('connected_devices_.find('));
+  });
+
+  test('service discovery reads no agent once it has suspended', () {
+    // The rest of the loop runs in the background, by when the agent and its
+    // map may be gone: the services are copied out before the first await.
+    final body = _body(_vendored('windows/src/universal_ble_plugin.cpp'), 'UniversalBlePlugin::DiscoverServicesAsync(');
+    // The outermost loop the first await sits in, from its `for` line on.
+    final beforeAwait = body.substring(0, body.indexOf('co_await'));
+    final loop = RegExp(r'^    for \(', multiLine: true).allMatches(beforeAwait).last.start;
+    expect(body.substring(loop), isNot(contains('it->second')));
   });
 }

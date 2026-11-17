@@ -1,13 +1,13 @@
 # Vendored `universal_ble` 2.1.1
 
 A copy of `universal_ble` 2.1.1 from pub.dev, minus `example/` and `test/`,
-carrying two real patches to its Windows code. `app/pubspec.yaml` and
+carrying patches to its Windows code. `app/pubspec.yaml` and
 `app_dist/pubspec.yaml` both point `universal_ble` at this directory.
 
-Half of what is here is ported from upstream `main` and will arrive on its own
-in a future release; the other half upstream has not fixed. The re-vendoring
-notes at the bottom say which is which, because taking upstream's newer copy of
-`ui_thread_handler.hpp` wholesale would silently drop the half they do not have.
+One of them is ported from upstream `main` and will arrive on its own in a
+future release; the rest upstream has not fixed. The re-vendoring notes at the
+bottom say which is which, because taking upstream's newer copy of a file
+wholesale would silently drop the hunks they do not have.
 
 ## What HALO-290 turned out to be, and what this package is not
 
@@ -88,6 +88,31 @@ so any failure short of terminating leaves it false forever and
 line. `peer_ble_io.dart` polls that getter and gives up on BLE, so the user
 sees "Bluetooth unavailable" for a failure nothing recorded.
 
+## What asynchronous code may still read
+
+Three hunks in `windows/src/universal_ble_plugin.cpp` and its header, none of
+which upstream has:
+
+- **Coroutines take their arguments by value.** `SetNotifiableAsync`,
+  `PairAsync`, `CustomPairAsync`, `IsPairedAsync` and `DiscoverServicesAsync`
+  are started from platform-channel handlers, which return at the coroutine's
+  first suspension and free the message the strings live in. Upstream takes
+  them as `const std::string &` and reads them again after the `co_await`,
+  in a log line on every error path.
+- **No `.Completed` handler captures by reference.** It runs on a thread-pool
+  thread after the call that set it up has returned: `ReadValue` and
+  `WriteValue` capture copies of the strings their failure lines name.
+- **The device map is the UI thread's alone.** `CleanConnection` destroys an
+  agent, and upstream calls it straight from `ConnectionStatusChanged` and the
+  notification handler's error path, on WinRT's threads, while the UI thread
+  may be inside `WriteValue` or `Disconnect` using that agent. Both now post
+  the cleanup through `ui_thread_handler_`. `ConnectAsync` returns to the UI
+  thread before inserting; `SetNotifiableAsync` returns to it after the
+  descriptor write and finds the device again rather than writing the
+  subscription through a reference held across the await; and
+  `DiscoverServicesAsync` copies the services out before its loop suspends
+  into the background.
+
 ## Release PDBs
 
 `windows/CMakeLists.txt` adds `/Zi` (compile) and `/DEBUG` (link) for Release.
@@ -127,6 +152,10 @@ Copy the new package over this directory (keep dropping `example/` and
    `~UniversalBlePlugin` in `universal_ble_plugin.cpp`. Ordering is the whole
    point; placed after `ClearServices()` it closes nothing.
 4. **The two Release-PDB lines** in `windows/CMakeLists.txt`.
+5. **What asynchronous code may still read**, above: the by-value coroutine
+   parameters (header and definitions), the explicit `.Completed` captures, the
+   posted cleanups, and the re-lookups in `ConnectAsync`, `SetNotifiableAsync`
+   and `DiscoverServicesAsync`. **Upstream has none of it.**
 
 Deliberately NOT applied, and tracked above: upstream's try/catch around
 `InitializeAsync`. If a re-vendor brings a copy that has it, **keep theirs** --
