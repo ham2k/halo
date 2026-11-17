@@ -68,7 +68,15 @@ const _userPotaInfo = ExtensionInfo(key: 'ki2d-pota', file: 'ki2d-pota.js', core
 
 /// Mentions POTA in its keywords, as State Parks does; the loose search
 /// would match it, and a scope must not.
-const _lookalikeInfo = ExtensionInfo(key: 'lookalike', file: 'lookalike.js', core: false, name: 'Parks Lookalike', keywords: ['pota'], enabledByDefault: false);
+const _lookalikeInfo = ExtensionInfo(
+  key: 'lookalike',
+  file: 'lookalike.js',
+  core: false,
+  name: 'Parks Lookalike',
+  keywords: ['pota'],
+  hooks: ['activity'],
+  enabledByDefault: false,
+);
 
 class _ScopedExtensions extends ExtensionServiceWithFakeHost {
   _ScopedExtensions({required this.controls}) : super(FakeExtensionHost({}));

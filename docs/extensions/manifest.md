@@ -148,8 +148,12 @@ ship a regional extension as a worldwide one.
 | `hooks` | Every category the extension registers, `ref:<type>` entries included. The app reads this list without evaluating the bundle. |
 | `adifFieldsScope` | `"always"`: the full ADIF export asks this extension's `adifFields` about every contact, not only the ones carrying a reference it handles. |
 
-Three entries in `hooks` do more than describe:
+Four entries in `hooks` do more than describe:
 
+- **`activity`** must be listed by an extension that registers one. The
+  operation sheet offers to switch on, or install from the catalog, only an
+  extension that lists it, and the build fails a bundle that registers one
+  its manifest does not declare.
 - **`settingsPanel`** must be listed by an extension that registers one. The
   catalog decides what to review by it, and the app does not show a panel
   its manifest leaves out.

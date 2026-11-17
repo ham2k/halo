@@ -20,7 +20,7 @@ import 'package:ham2k_logger/views/operation/activities_view.dart';
 
 import '../support/halo_test_support.dart';
 
-const _parksInfo = ExtensionInfo(key: 'parks', file: 'parks.js', core: false, name: 'Parks Everywhere', enabledByDefault: false);
+const _parksInfo = ExtensionInfo(key: 'parks', file: 'parks.js', core: false, name: 'Parks Everywhere', hooks: ['activity'], enabledByDefault: false);
 
 /// Answers from whatever "data" it has been given, as a real extension's
 /// search answers from its downloaded files.

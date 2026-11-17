@@ -348,7 +348,7 @@ export async function buildExtension(esbuild, { dir, entry = "src/index.ts", out
   )
 
   await checkKernelName({ bundle: join(out, "index.js"), manifest })
-  await checkSettingsPanelDeclared({ bundle: join(out, "index.js"), manifest, dir })
+  await checkDeclaredHooks({ bundle: join(out, "index.js"), manifest, dir })
 
   // The packer reads both from one directory, so the manifest the bundle was
   // built against is the manifest that ships with it. Copied rather than left
@@ -407,16 +407,18 @@ export async function withAboutFiles(manifest, dir) {
   return folded
 }
 
-/// Fails the build when the bundle registers a `settingsPanel` hook its
-/// manifest's `hooks` does not list.
+/// Fails the build when the bundle registers a `settingsPanel` or `activity`
+/// hook its manifest's `hooks` does not list.
 ///
-/// The app shows an installed extension's settings panel only when its
-/// manifest declares the hook (docs/extensions/settings.md), so the panel
-/// would build, pack, publish and install cleanly and then never appear —
-/// with nothing but a line in the app's console to say why.
+/// The app reads both from the manifest without running the bundle: it shows
+/// an installed extension's settings panel only when the manifest declares it
+/// (docs/extensions/settings.md), and offers a switched-off or uninstalled
+/// extension from an operation's setup only when the manifest lists
+/// `activity` (docs/extensions/manifest.md). Undeclared, either would build,
+/// pack, publish and install cleanly and then never appear.
 ///
 /// Asked of the code rather than the source: the bundle is evaluated against
-/// a recording stand-in for the kernel and activated, so a panel registered
+/// a recording stand-in for the kernel and activated, so a hook registered
 /// from a loop or behind an await counts the same as a literal one. The
 /// libraries the host carries come from the author's own node_modules.
 ///
@@ -442,7 +444,7 @@ async function checkKernelName({ bundle, manifest }) {
   )
 }
 
-async function checkSettingsPanelDeclared({ bundle, manifest, dir }) {
+async function checkDeclaredHooks({ bundle, manifest, dir }) {
   const require = createRequire(resolve(dir, "noop.js"))
   const sharedModules = new Proxy(
     {},
@@ -522,6 +524,12 @@ async function checkSettingsPanelDeclared({ bundle, manifest, dir }) {
       `the extension registers a settings panel, but ${MANIFEST_ENTRY} does not list "settingsPanel" in "hooks" — ` +
         `the app would never show the panel. Add it to "hooks", and say where it goes with "settings" ` +
         `(docs/extensions/settings.md).`,
+    )
+  }
+  if (registered.has("activity") && !(manifest.hooks ?? []).includes("activity")) {
+    throw new BuildError(
+      `the extension registers an activity, but ${MANIFEST_ENTRY} does not list "activity" in "hooks" — ` +
+        `the app would never offer it from an operation's setup. Add it to "hooks" (docs/extensions/manifest.md).`,
     )
   }
 }

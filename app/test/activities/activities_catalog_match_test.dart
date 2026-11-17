@@ -33,7 +33,7 @@ CatalogEntry _entry(
   String name, {
   String? description,
   List<String> keywords = const [],
-  List<String> hooks = const [],
+  List<String> hooks = const ['activity'],
   ExtensionRelevance? relevance,
 }) => CatalogEntry(
   key: key,
@@ -182,7 +182,7 @@ void main() {
     });
 
     test('a scope word ranks as an exact match, ahead of a keyword that only starts with it', () {
-      final parks = _entry('ham2k-pota', 'Parks on the Air', hooks: const ['ref:pota']);
+      final parks = _entry('ham2k-pota', 'Parks on the Air', hooks: const ['activity', 'ref:pota']);
       final blurb = _entry('aa-potato', 'Aardvark', keywords: const ['potato']);
       expect(keysFor([blurb, parks], 'pota'), ['ham2k-pota', 'aa-potato']);
     });
@@ -195,8 +195,16 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
-      ExtensionInfo(key: 'aa-cqww', file: 'a.js', core: false, name: 'Aardvark World Wide', description: 'CW, SSB and RTTY', enabledByDefault: false),
-      ExtensionInfo(key: 'zz-ss', file: 'z.js', core: false, name: 'Zulu Sweepstakes', keywords: ['ss'], enabledByDefault: false),
+      ExtensionInfo(
+        key: 'aa-cqww',
+        file: 'a.js',
+        core: false,
+        name: 'Aardvark World Wide',
+        description: 'CW, SSB and RTTY',
+        hooks: ['activity'],
+        enabledByDefault: false,
+      ),
+      ExtensionInfo(key: 'zz-ss', file: 'z.js', core: false, name: 'Zulu Sweepstakes', keywords: ['ss'], hooks: ['activity'], enabledByDefault: false),
     ]);
     final matched = notRunningExtensionsMatching(extensions, 'ss', operatorGeo: null, now: DateTime.utc(2026, 11, 8));
     expect(matched.map((e) => e.key), ['zz-ss', 'aa-cqww']);
@@ -231,6 +239,7 @@ void main() {
           core: false,
           name: 'QSO Parties',
           keywords: ['texas'],
+          hooks: ['activity'],
           source: ExtensionSource.installed,
           enabledByDefault: false,
         ),
@@ -242,6 +251,48 @@ void main() {
     expect(find.textContaining('Install '), findsNothing);
     // It is the tier above's to offer, and it still does.
     expect(find.text('Enable QSO Parties').hitTestable(), findsOneWidget);
+  });
+
+  testWidgets('an extension that adds no activity is offered neither as an install nor as an enable', (tester) async {
+    // The box is the Activity Types search. A weather panel or a QRZ lookup
+    // matches "weather" or "qrz" by name as well as any activity would, and
+    // installing or enabling one from here adds nothing to the operation.
+    final (services, operation, catalog) = await _harness(
+      catalog: [
+        _entry('ki2d-weather-panel', 'Weather Panel', hooks: const ['panel']),
+        _entry('ham2k-weather-qso-party', 'Weather QSO Party'),
+      ],
+      available: const [
+        ExtensionInfo(
+          key: 'ham2k-weather-lookup',
+          file: 'index.js',
+          core: false,
+          name: 'Weather Lookup',
+          hooks: ['lookup'],
+          source: ExtensionSource.installed,
+          enabledByDefault: false,
+        ),
+        ExtensionInfo(
+          key: 'ham2k-weather-parks',
+          file: 'index.js',
+          core: false,
+          name: 'Weather Parks',
+          hooks: ['activity'],
+          source: ExtensionSource.installed,
+          enabledByDefault: false,
+        ),
+      ],
+    );
+    await _pump(tester, services, operation);
+    await _type(tester, 'weather');
+
+    expect(catalog.fetches, 1);
+    expect(find.text('Install Weather Panel'), findsNothing);
+    expect(find.text('Enable Weather Lookup'), findsNothing);
+    // The same search still offers the activities it matches, so the two
+    // above are missing for what they hook, not because nothing matched.
+    expect(find.text('Install Weather QSO Party').hitTestable(), findsOneWidget);
+    expect(find.text('Enable Weather Parks').hitTestable(), findsOneWidget);
   });
 
   testWidgets('an empty box asks the catalog nothing', (tester) async {
@@ -318,6 +369,25 @@ void main() {
     // Every party claims `ref:qp/<its own>`; read as a plain claim they would
     // all answer for this one reference.
     expect(find.text('Install Texas QSO Party'), findsNothing);
+  });
+
+  testWidgets('a reference nothing handles is not answered by an extension that adds no activity', (tester) async {
+    // A `ref:` claim without an `activity` hook brings no control to clear the
+    // red row, so installing it from here would leave the row as red as before.
+    final (services, operation, _) = await _harness(
+      catalog: [
+        _entry('ki2d-ny-spots', 'New York Spots', hooks: const ['spots', 'ref:qp/ny']),
+        _entry('ham2k-new-york-qso-party', 'New York QSO Party', hooks: const ['activity', 'ref:nyqp', 'ref:qp/ny']),
+      ],
+      refs: const [
+        {'type': 'qp', 'ref': 'NY', 'name': 'New York QSO Party'},
+      ],
+    );
+    await _pump(tester, services, operation);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Install New York Spots'), findsNothing);
+    expect(find.text('Install New York QSO Party').hitTestable(), findsOneWidget);
   });
 
   testWidgets('an operation whose activities all load asks the catalog nothing', (tester) async {

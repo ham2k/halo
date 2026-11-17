@@ -431,6 +431,28 @@ test("a settings panel the manifest's hooks do not list fails the build", async 
   assert.equal(warn.mock.callCount(), 0)
 })
 
+test("an activity the manifest's hooks do not list fails the build", async (t) => {
+  // The operation sheet offers an extension the app has switched off, or the
+  // catalog has, only when its manifest lists `activity`; this one would
+  // publish, install and run, and never be offered where operators look.
+  const warn = t.mock.method(console, "warn", () => {})
+  const dir = await settingsPanelExtension({
+    hooks: ["ref:w7abcLake"],
+    activation: `globalThis.__halo.defineExtension({ key: "w7abc-t", onActivation({ registerHook }) { registerHook("activity", { hook: {} }) } })`,
+  })
+
+  await assert.rejects(
+    () => buildExtension(build, { dir }),
+    (e: Error) => {
+      assert.ok(e instanceof BuildError)
+      assert.match(e.message, /registers an activity/)
+      assert.match(e.message, /"activity" in "hooks"/)
+      return true
+    },
+  )
+  assert.equal(warn.mock.callCount(), 0)
+})
+
 test("a settings panel the manifest declares builds", async (t) => {
   const warn = t.mock.method(console, "warn", () => {})
   const { outDir } = await buildExtension(build, { dir: await settingsPanelExtension({ hooks: ["settingsPanel"] }) })

@@ -8,7 +8,7 @@
 
 import 'package:collection/collection.dart' show ListEquality, mergeSort;
 
-import 'package:halo_core/halo_core.dart' show Hooks, matchesWordStart;
+import 'package:halo_core/halo_core.dart' show HookCategories, Hooks, matchesWordStart;
 import 'extension_relevance.dart';
 import 'settings_placement.dart';
 
@@ -212,6 +212,14 @@ List<T> rankSearchHits<T extends ExtensionSearchable>(
 String activityScopeWord(String refType) => refType.replaceFirst(_activationSuffix, '').toLowerCase();
 
 final _activationSuffix = RegExp(r'Activation$');
+
+/// Whether an extension whose manifest declares [hooks] belongs among the
+/// operation sheet's offers — enable or install, from the search box or for
+/// a reference nothing handles — at all: it registers an `activity` hook,
+/// which is what puts controls in an operation's setup. A panel, lookup,
+/// spots source or award registers none, and offering one there adds
+/// nothing to the operation however well its name matched the box.
+bool hooksAddActivity(List<String> hooks) => hooks.contains(HookCategories.activity);
 
 /// The words the activity search box scopes the extension [key] by, lowercased:
 /// the [activityScopeWord] of every plain `ref:<type>` its manifest [hooks]

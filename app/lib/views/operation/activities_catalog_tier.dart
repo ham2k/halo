@@ -24,7 +24,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../../services/extensions/catalog_service.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/extensions/extension_relevance.dart';
-import '../../services/extensions/extension_info.dart' show activityScopeWordsOf, hooksClaimRef, rankSearchHits;
+import '../../services/extensions/extension_info.dart' show activityScopeWordsOf, hooksAddActivity, hooksClaimRef, rankSearchHits;
 import '../../services/halo_services.dart';
 import '../extension_install_flow.dart';
 import '../extension_screenshots.dart';
@@ -52,7 +52,8 @@ class CatalogTier {
 
   bool _fetchStarted = false;
 
-  /// Catalog entries claiming any of [refs], minus [alreadyOffered]. What
+  /// Catalog entries claiming any of [refs] that [hooksAddActivity], minus
+  /// [alreadyOffered]. What
   /// answers an operation opened long after the extension that wrote its
   /// references left the app — the catalog carries each entry's manifest
   /// `hooks`, so a claim is readable without a byte of its code running.
@@ -64,6 +65,7 @@ class CatalogTier {
       for (final entry in listing)
         if (!available.contains(entry.key) &&
             !alreadyOffered.contains(entry.key) &&
+            hooksAddActivity(entry.hooks) &&
             refs.any((ref) => hooksClaimRef(entry.hooks, type: ref.type, code: ref.code)))
           entry,
     ];
@@ -111,6 +113,9 @@ class CatalogTier {
 /// two are what `extensionSearchCandidates` read off the box, so this tier
 /// answers the same text the two above it do.
 ///
+/// Only an extension that [hooksAddActivity] is offered: the box is the
+/// Activity Types search, not the Extensions panel's.
+///
 /// Anything in [availableKeys] is excluded whatever its state: a built-in, an
 /// installed-but-disabled or a dev-server extension belongs to one of those
 /// tiers, and offering to install over it would ask the operator to download
@@ -135,7 +140,7 @@ List<CatalogEntry> catalogExtensionsMatching(
   return rankSearchHits(
     [
       for (final entry in entries)
-        if (!availableKeys.contains(entry.key)) entry,
+        if (!availableKeys.contains(entry.key) && hooksAddActivity(entry.hooks)) entry,
     ],
     (entry) => activityScopeWordsOf(key: entry.key, hooks: entry.hooks).contains(key) ? 0 : (keyOnly ? null : entry.searchRank(search, locale: locale)),
     operator: operatorGeo,

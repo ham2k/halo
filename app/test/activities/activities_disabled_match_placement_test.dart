@@ -30,6 +30,7 @@ const _potaInfo = ExtensionInfo(
   file: 'pota.js',
   core: false,
   name: 'Parks on the Air',
+  hooks: ['activity'],
   // Off unless an override says otherwise, which is what makes it a
   // "disabled match" — see ExtensionService.isExtensionEnabled.
   enabledByDefault: false,
@@ -38,7 +39,8 @@ const _potaInfo = ExtensionInfo(
 /// Several extensions that all answer the same search, to push the section
 /// past what its default peek can show.
 List<ExtensionInfo> _manyParks(int count) => [
-  for (var i = 0; i < count; i++) ExtensionInfo(key: 'parks$i', file: 'parks$i.js', core: false, name: 'Parks Number $i', enabledByDefault: false),
+  for (var i = 0; i < count; i++)
+    ExtensionInfo(key: 'parks$i', file: 'parks$i.js', core: false, name: 'Parks Number $i', hooks: const ['activity'], enabledByDefault: false),
 ];
 
 class _NoActivityExtensions extends ExtensionServiceWithFakeHost {

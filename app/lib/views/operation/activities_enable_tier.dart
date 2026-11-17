@@ -45,11 +45,13 @@ import '../../services/extensions/extension_service.dart';
 }
 
 /// Whether the tier offers [info] at all: a non-core extension the app
-/// offers that is not running, for either reason (see the file header).
+/// offers that is not running, for either reason (see the file header), and
+/// that [hooksAddActivity].
 /// Experiment-gated extensions are excluded: enabling one from here couldn't
 /// load it anyway (the gate still holds), leaving a dead row and a scope
 /// prefix that matches nothing.
-bool _offered(ExtensionService extensions, ExtensionInfo info) => !info.core && extensions.isExtensionAvailable(info) && !extensions.isExtensionEnabled(info);
+bool _offered(ExtensionService extensions, ExtensionInfo info) =>
+    !info.core && hooksAddActivity(info.hooks) && extensions.isExtensionAvailable(info) && !extensions.isExtensionEnabled(info);
 
 /// Extensions the tier offers that match [input] — by a scope word alone
 /// (a `ref:` type they declare, or their key: [activityScopeWordsOf]) when

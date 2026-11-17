@@ -292,7 +292,9 @@ no term) and every other extension to search for the text `pota`; `pota
 bear mtn` asks the type's extensions for `bear mtn` and every other one for
 the whole text, in two round trips kept apart so a fan-out that runs out of
 time cannot cost the named type its answers. A switched-off or
-not-yet-installed extension is offered from the same words.
+not-yet-installed extension is offered from the same words, when its
+manifest's `hooks` lists `activity`; the build refuses a bundle that
+registers one its manifest does not list.
 
 ### `processQsoBeforeSave`
 
