@@ -24,6 +24,8 @@ import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_clock.dart';
+
 // Checksums computed, not copied: a wrong one here would be a test of the
 // rejection path passing for the wrong reason.
 const _ggaFix = r'$GNGGA,183014.00,4124.89630,N,07402.12340,W,1,07,1.20,152.3,M,-34.2,M,,*74';
@@ -73,7 +75,10 @@ class _FakeSink implements EquipmentSink, GpsSink {
 }
 
 class _Connection implements EquipmentConnection {
-  final _data = StreamController<Uint8List>();
+  // A cancel answered in the canceller's own zone: with no handler it returns
+  // the root zone's shared done future, which a fakeAsync test never sees
+  // complete, and a teardown awaiting it hangs there.
+  final _data = StreamController<Uint8List>(onCancel: () => Future<void>.value());
   final _closed = Completer<void>();
   @override
   Stream<Uint8List> get data => _data.stream;
@@ -318,29 +323,35 @@ void main() {
       expect(cat.stateFor(first.uuid).status, EquipmentStatus.disconnected);
     });
 
-    test('a receiver that goes quiet takes its fix with it', () async {
-      cat = launch(staleAfter: const Duration(milliseconds: 50));
-      final location = LocationService();
-      addTearDown(location.dispose);
-      final feed = GpsReceiverFeed(cat: cat, location: location)..start();
-      addTearDown(feed.dispose);
-      final node = await cat.addNode(typeKey: 'gps-fake');
-      await pumpEventQueue();
-      transport.opened.last.feed('$_ggaFix\r\n');
-      await pumpEventQueue();
-      expect(location.status, LocationStatus.available, reason: 'precondition');
+    // On fake time, with the app clock following it (time.md § 7): these
+    // assert that a silence DID happen, which a real timer running late on a
+    // loaded machine falsifies — the fix goes stale before the check that it
+    // arrived.
+    test('a receiver that goes quiet takes its fix with it', () {
+      runOnFakeClock((_) async {
+        cat = launch(staleAfter: const Duration(milliseconds: 50));
+        final location = LocationService();
+        addTearDown(location.dispose);
+        final feed = GpsReceiverFeed(cat: cat, location: location)..start();
+        addTearDown(feed.dispose);
+        final node = await cat.addNode(typeKey: 'gps-fake');
+        await pumpEventQueue();
+        transport.opened.last.feed('$_ggaFix\r\n');
+        await pumpEventQueue();
+        expect(location.status, LocationStatus.available, reason: 'precondition');
 
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-      expect(cat.stateFor(node.uuid).stale, isTrue, reason: 'precondition');
-      expect(location.receiverName, isNull, reason: 'a silent receiver hands back to the operating system');
-      expect(location.position, isNull);
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+        expect(cat.stateFor(node.uuid).stale, isTrue, reason: 'precondition');
+        expect(location.receiverName, isNull, reason: 'a silent receiver hands back to the operating system');
+        expect(location.position, isNull);
 
-      // The first sentence back is not a fix. Holding the old reading, it
-      // would put the place the silence began on screen as live.
-      transport.opened.last.feed('$_gsv\r\n');
-      await pumpEventQueue();
-      expect(location.status, LocationStatus.determining);
-      expect(location.position, isNull);
+        // The first sentence back is not a fix. Holding the old reading, it
+        // would put the place the silence began on screen as live.
+        transport.opened.last.feed('$_gsv\r\n');
+        await pumpEventQueue();
+        expect(location.status, LocationStatus.determining);
+        expect(location.position, isNull);
+      });
     });
 
     test('a receiver standing still does not wake the station every second', () async {
@@ -359,20 +370,23 @@ void main() {
       expect(cat.stateFor(node.uuid).gps!.satellites, 7, reason: 'the reading held is the one last reported');
     });
 
-    test('a receiver that goes silent is dropped and connected again', () async {
+    test('a receiver that goes silent is dropped and connected again', () {
       // A phone sharing over TCP that goes to sleep leaves a half-open
       // socket: nothing would ever close it, and the station would stay on
       // the operating system's location after the phone woke up.
-      cat = launch(staleAfter: const Duration(milliseconds: 50), silentDropAfter: const Duration(milliseconds: 150));
-      final node = await cat.addNode(typeKey: 'gps-fake');
-      await pumpEventQueue();
-      for (var i = 0; i < 5; i++) {
-        transport.opened.single.feed('$_ggaFix\r\n');
-        await Future<void>.delayed(const Duration(milliseconds: 40));
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 400));
-      expect(transport.opened, hasLength(2));
-      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+      runOnFakeClock((_) async {
+        cat = launch(staleAfter: const Duration(milliseconds: 50), silentDropAfter: const Duration(milliseconds: 150));
+        final node = await cat.addNode(typeKey: 'gps-fake');
+        await pumpEventQueue();
+        for (var i = 0; i < 5; i++) {
+          transport.opened.single.feed('$_ggaFix\r\n');
+          await Future<void>.delayed(const Duration(milliseconds: 40));
+        }
+        expect(transport.opened, hasLength(1), reason: 'answering every 40 ms, it is never dropped');
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+        expect(transport.opened, hasLength(2));
+        expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+      });
     });
 
     test('picking a receiver the operator disconnected connects it', () async {

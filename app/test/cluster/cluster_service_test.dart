@@ -621,26 +621,58 @@ void main() {
     expect(filter.matches('${'.' * (ClusterLineFilter.maxMatchedLength + 10)}X'), isFalse, reason: 'past the length a pattern looks at');
   });
 
+  // Measured against a baseline taken on the same machine in the same run,
+  // never against the wall clock: a loaded machine slows both alike, and
+  // the blowups these guard against are orders of magnitude off, not a
+  // factor of two. The fastest of a few runs each, so one run that lost the
+  // processor to the rest of the suite decides nothing.
+  int fastestMicros(void Function() body) {
+    int? fastest;
+    for (var run = 0; run < 3; run++) {
+      final watch = Stopwatch()..start();
+      body();
+      final took = watch.elapsedMicroseconds;
+      if (fastest == null || took < fastest) fastest = took;
+    }
+    return fastest! < 1 ? 1 : fastest;
+  }
+
   // The admitted worst: shapes that run slowest for what the estimate says
   // they cost, up to the budget, on the longest line a pattern sees, which
   // they never match. These run on the app's main isolate, where a shape the
-  // estimate undercounts by a factor of n takes seconds.
-  test('the slowest patterns admitted still finish a line in well under a second', () {
-    final filter = ClusterLineFilter.fromJson([
+  // estimate undercounts by a factor of n takes seconds: a hundred times the
+  // same number of plain patterns leaves room for noise and none for that.
+  test('the slowest patterns admitted cost a bounded multiple of the plainest', () {
+    final line = 'a' * ClusterLineFilter.maxMatchedLength;
+    final worst = ClusterLineFilter.fromJson([
       r'(.+){2}\x01',
       r'(.+){2}\x02',
       r'a*.*\x03',
       for (var i = 3; i < ClusterLineFilter.maxPatterns; i++) '.*\\x0${i % 8}',
     ])!;
-    final watch = Stopwatch()..start();
-    expect(filter.matches('a' * ClusterLineFilter.maxMatchedLength), isFalse);
-    expect(watch.elapsed, lessThan(const Duration(seconds: 1)));
+    final plainest = ClusterLineFilter.fromJson([for (var i = 0; i < ClusterLineFilter.maxPatterns; i++) '.*\\x0${i % 8}'])!;
+    expect(worst.matches(line), isFalse);
+    final worstMicros = fastestMicros(() => worst.matches(line));
+    final plainestMicros = fastestMicros(() => plainest.matches(line));
+    expect(worstMicros, lessThan(plainestMicros * 100), reason: 'worst ${worstMicros}us, plainest ${plainestMicros}us');
   });
 
+  // Judging that grew with each level of nesting would be thousands of times
+  // a flat pattern of the same length. The refusal must be the estimate's: one
+  // for length or syntax comes before it is reached, and times nothing.
   test('a pattern is judged at once, however deeply it nests', () {
-    final watch = Stopwatch()..start();
-    expect(() => ClusterLineFilter.fromJson(['${'(' * 66}a${')+' * 66}']), throwsFormatException);
-    expect(watch.elapsed, lessThan(const Duration(milliseconds: 100)));
+    final nested = '${'(' * 66}a${')+' * 66}';
+    final tooCostly = isA<FormatException>().having((e) => e.message, 'message', contains('could take too long'));
+    expect(() => ClusterLineFilter.fromJson([nested]), throwsA(tooCostly));
+    final nestedMicros = fastestMicros(() {
+      try {
+        ClusterLineFilter.fromJson([nested]);
+      } on FormatException catch (e) {
+        if (!e.message.contains('could take too long')) rethrow;
+      }
+    });
+    final flatMicros = fastestMicros(() => ClusterLineFilter.fromJson(['a' * nested.length]));
+    expect(nestedMicros, lessThan(flatMicros * 50), reason: 'nested ${nestedMicros}us, flat ${flatMicros}us');
   });
 
   test('line numbers keep counting across a reconnect, and the scrollback keeps its size', () {
