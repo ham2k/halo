@@ -9365,6 +9365,9 @@ class Translations$operation$layout$panels$en {
 	/// en: 'Couldn't open a connection for the picture. Check the firewall on this device.'
 	String get remoteScreenNoMedia => 'Couldn\'t open a connection for the picture. Check the firewall on this device.';
 
+	/// en: 'That device refused the connection for the picture because it came from another network address. If this device is on more than one network, use just one.'
+	String get remoteScreenWrongAddress => 'That device refused the connection for the picture because it came from another network address. If this device is on more than one network, use just one.';
+
 	/// en: 'Solar and geomagnetic conditions, with band-by-band propagation'
 	String get solarDescription => 'Solar and geomagnetic conditions, with band-by-band propagation';
 
@@ -12383,6 +12386,7 @@ extension on Translations {
 			'operation.layout.panels.remoteScreenCaptureFailed' => 'That device couldn\'t capture that screen — it may need Screen Recording permission.',
 			'operation.layout.panels.remoteScreenNoAnswer' => 'That device didn\'t respond. It may not have screen sharing turned on.',
 			'operation.layout.panels.remoteScreenNoMedia' => 'Couldn\'t open a connection for the picture. Check the firewall on this device.',
+			'operation.layout.panels.remoteScreenWrongAddress' => 'That device refused the connection for the picture because it came from another network address. If this device is on more than one network, use just one.',
 			'operation.layout.panels.solarDescription' => 'Solar and geomagnetic conditions, with band-by-band propagation',
 			'operation.layout.panels.solarUnreachable' => 'Couldn\'t reach hamqsl.com — no network? Will try again shortly.',
 			'operation.layout.panels.solarUnreadable' => 'hamqsl.com responded, but not with a reading we could use. Will try again shortly.',
@@ -12745,9 +12749,9 @@ extension on Translations {
 			'activitiesView.addToOperation' => 'Add to Operation',
 			'activitiesView.addToOperationShort' => 'Add to Op.',
 			'activitiesView.mapEmptyState' => 'No results to show on the map',
-			'activitiesView.mapEmptyStateHint' => 'Switch back to the list, or search for something else',
 			_ => null,
 		} ?? switch (path) {
+			'activitiesView.mapEmptyStateHint' => 'Switch back to the list, or search for something else',
 			'activitiesView.imports' => 'Imports',
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
@@ -13259,9 +13263,9 @@ extension on Translations {
 			'settings.radio.voiceMessages.pickDevice' => 'Choose a sound device',
 			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (not connected)',
 			'settings.radio.voiceMessages.lead' => 'Key-up delay',
-			'settings.radio.voiceMessages.tail' => 'Unkey delay',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.tail' => 'Unkey delay',
 			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
 			'settings.radio.voiceMessages.listenButton' => 'Listen',
 			'settings.radio.voiceMessages.notRecorded' => 'Not recorded',
@@ -13773,9 +13777,9 @@ extension on Translations {
 			'settings.station.icomPortsDiffer' => 'The control and serial ports must differ',
 			'settings.station.radioUser' => 'Radio username',
 			'settings.station.radioPass' => 'Radio password',
-			'settings.station.radioLoginDescription' => 'The radio\'s Network → Remote login, not your WiFi password.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.radioLoginDescription' => 'The radio\'s Network → Remote login, not your WiFi password.',
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
 			'settings.station.connectFailedBridgeClosed' => 'The bridge hung up at once. Another program at the station may have the radio\'s port: a logger, WSJT-X or rigctld.',
 			'settings.station.connectFailedBridgeSaid' => ({required Object said}) => 'The bridge hung up at once, saying “${said}”.',
@@ -14287,9 +14291,9 @@ extension on Translations {
 			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° elevation',
 			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° el',
 			'settings.station.rotatorNoReading' => 'Waiting for the controller to report its position…',
-			'settings.station.rotatorNotResponding' => 'not responding',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.rotatorNotResponding' => 'not responding',
 			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'Turning to ${heading}, as far as this rotator\'s limits allow',
 			'settings.station.rotatorTargetAzimuth' => 'Turn to azimuth',
 			'settings.station.rotatorTargetAzimuthShort' => 'Turn to az',
@@ -14801,9 +14805,9 @@ extension on Translations {
 			'confirmDevice.linkIt' => 'Link Device',
 			'switchAccounts.noAccountDetails' => 'No account details yet',
 			'switchAccounts.currentAccount' => 'Current account',
-			'switchAccounts.otherAccounts' => 'Other accounts',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.otherAccounts' => 'Other accounts',
 			'switchAccounts.linkToAnother' => 'Link to another account',
 			'switchAccounts.linkWithSibling' => 'Link with other Ham2K App',
 			'switchAccounts.linkWithPolo' => 'Link with account in older version',

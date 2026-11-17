@@ -66,6 +66,7 @@ class WebSocketPeerLinkServer implements PeerLinkServer {
         // Read BEFORE the upgrade: the request is consumed by it.
         final isMedia = request.uri.path == mediaPath;
         final ticket = request.uri.queryParameters['ticket'] ?? '';
+        final from = request.connectionInfo?.remoteAddress.address;
         // A media upgrade with no ticket cannot be matched to anything and
         // is refused here rather than accepted and dropped later — an open
         // socket nobody owns is a socket nobody closes.
@@ -82,7 +83,7 @@ class WebSocketPeerLinkServer implements PeerLinkServer {
             return;
           }
           if (isMedia) socket.pingInterval = mediaPingInterval;
-          final link = WebSocketPeerLink(socket);
+          final link = WebSocketPeerLink(socket, remoteAddress: from);
           if (isMedia) {
             _mediaController.add(PeerMediaConnection(ticket: ticket, link: link));
           } else {
@@ -167,7 +168,7 @@ Future<PeerLink> dialPeerLink(String address, int port, {Duration timeout = cons
     },
   );
   if (mediaTicket != null) socket.pingInterval = WebSocketPeerLinkServer.mediaPingInterval;
-  return WebSocketPeerLink(socket);
+  return WebSocketPeerLink(socket, remoteAddress: address);
 }
 
 /// A [PeerLink] over one WebSocket. Same contract as CAT's
@@ -175,7 +176,7 @@ Future<PeerLink> dialPeerLink(String address, int port, {Duration timeout = cons
 /// through [closed], and [close] is idempotent.
 @visibleForTesting
 class WebSocketPeerLink implements PeerLink {
-  WebSocketPeerLink(this._socket) {
+  WebSocketPeerLink(this._socket, {this.remoteAddress}) {
     _subscription = _socket.listen(
       (data) {
         if (_controller.isClosed) return;
@@ -197,6 +198,10 @@ class WebSocketPeerLink implements PeerLink {
   }
 
   final WebSocket _socket;
+
+  @override
+  final String? remoteAddress;
+
   final _controller = StreamController<List<int>>();
   final _closedCompleter = Completer<void>();
   StreamSubscription<dynamic>? _subscription;

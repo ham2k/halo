@@ -19,6 +19,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:drift/native.dart';
@@ -26,6 +27,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/location_service.dart';
+import 'package:ham2k_logger/services/peer/peer_beacon_types.dart';
 import 'package:ham2k_logger/services/peer/peer_channels.dart';
 import 'package:ham2k_logger/services/peer/peer_link_types.dart';
 import 'package:ham2k_logger/services/peer/peer_screen_views.dart';
@@ -214,17 +216,13 @@ const _window = PeerScreenSource(id: 'window:99', name: 'WSJT-X', kind: 'window'
 
 /// A media link from [viewer] to [producer], dialled by hand exactly the way
 /// `PeerScreenViews._dialMedia` does it — through the viewer's own network,
-/// to the address the VIEWER's service heard the producer's beacon from. Over
-/// loopback both addresses would be the same string and a swap would go
+/// to the address of the viewer's control session with the producer. Over
+/// loopback every address would be the same string and a swap would go
 /// unnoticed; the segment keys its listeners by address, so a dial to the
 /// wrong one finds nothing.
 Future<PeerLink> _dialMedia(_Device viewer, _Device producer, PeerScreenGrant grant) {
-  // A peer first heard as an INBOUND session has a runtime with no address
-  // until its beacon lands, and `paired()` waits on sessions, not beacons —
-  // which production answers with `peerUnreachable` and a retry, and a
-  // bare null-check would answer with a stack trace.
-  final address = viewer.service.peers[producer.deviceId]?.beacon.address;
-  expect(address, isNotNull, reason: 'the viewer has not heard the producer\'s beacon yet');
+  final address = viewer.service.lanAddressOf(producer.deviceId);
+  expect(address, isNotNull, reason: 'the viewer has no LAN session with the producer');
   return viewer.service.network.dial(address!, grant.port, mediaTicket: grant.ticket);
 }
 
@@ -952,6 +950,128 @@ void main() {
     await waitFor('the producer sees the media link', () => shackDevice.screens.hasMediaLink(viewerDevice.deviceId));
     return client;
   }
+
+  test('a beacon claiming the producer from elsewhere does not move where the media link is dialled', () async {
+    // The ticket is the media link's only credential and travels in the
+    // dial. A beacon is whatever the last datagram claiming the producer's
+    // id said, from wherever it came, so dialling a beacon's address hands
+    // the ticket to anything on the segment that sends one.
+    await paired();
+    await sharing([_display.id]);
+    await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
+    final spoof = utf8.encode(jsonEncode(PeerBeacon(deviceId: 'device-b', deviceName: 'Shack PC', port: shack.service.linkServerPort!).toJson()));
+    const elsewhere = '10.0.0.250';
+    void flood() => lan.sendRaw(spoof, port: fakeBeaconPort, from: elsewhere);
+    flood();
+    await waitFor('the tablet hears the spoof', () => tablet.service.peers['device-b']?.beacon.address == elsewhere);
+
+    const target = PeerScreenTarget('device-b', 'display:1');
+    tablet.views.subscribe('remoteScreen#1', target);
+    var seq = 0;
+    await waitFor('a frame lands in the pane', () {
+      // Out-shouting the producer's own beacon, every poll.
+      flood();
+      shack.capture.emit('display:1', ++seq, [seq & 0xFF]);
+      return tablet.views.viewFor(target)?.frame != null;
+    });
+    expect(tablet.service.peers['device-b']?.beacon.address, elsewhere, reason: 'the beacon the dial ignored is the spoofed one');
+  }, timeout: const Timeout(Duration(seconds: 90)));
+
+  test('a media link presenting a good ticket from another address is refused, and the ticket stays good', () async {
+    // The ticket crosses the network in the clear, so whoever saw it can
+    // present it. The producer admits the media link only from the address
+    // the viewer's control session runs over — and spending the ticket on
+    // the refusal would let that same device lock the viewer out by
+    // presenting every ticket first.
+    await paired();
+    await sharing([_display.id]);
+    PeerScreenGrant? grant;
+    tablet.channels.dispose();
+    tablet.service.onEphemeral = (peer, message) => grant ??= message.screenGrantOrNull;
+    await shack.screens.handleSubscribe('device-a', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5, acks: true));
+    await waitFor('the grant arrives', () => grant != null);
+
+    final stolen = await lan.host().network.dial(shack.host.address, grant!.port, mediaTicket: grant!.ticket);
+    var closed = false;
+    unawaited(stolen.closed.then((_) => closed = true));
+    stolen.inbound.listen((_) {});
+
+    await waitFor('the producer closes it', () => closed, timeout: const Duration(seconds: 5));
+    expect(shack.screens.hasMediaLink('device-a'), isFalse);
+
+    final viewer = await _dialMedia(tablet, shack, grant!);
+    addTearDown(viewer.close);
+    await waitFor('the viewer\'s own link is admitted', () => shack.screens.hasMediaLink('device-a'), timeout: const Duration(seconds: 5));
+  });
+
+  test('a viewer whose media links leave from another address is told why, and stops asking', () async {
+    // Every link such a viewer dials is refused, yet each dial succeeds, so
+    // it re-asks every few seconds. Were each re-ask to push the producer's
+    // deadline back, the pane would say "Connecting…" for as long as it was
+    // open, the capture restarting on every round, and nothing would say why.
+    await paired();
+    await sharing([_display.id]);
+    await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
+    const target = PeerScreenTarget('device-b', 'display:1');
+
+    tablet.views.retryDelay = _waitedOut;
+    shack.screens.mediaDeadline = _waitedOut * 4;
+    tablet.host.mediaFrom = '10.0.0.200';
+    tablet.views.subscribe('remoteScreen#1', target);
+
+    await waitFor('the producer says why', () => tablet.views.viewFor(target)?.status == PeerScreenViewStatus.refused, timeout: const Duration(seconds: 10));
+    expect(tablet.views.viewFor(target)!.refusal, 'wrongAddress');
+    expect(shack.screens.isWatched('display:1'), isFalse);
+
+    // Several retry rounds: a viewer still asking would be watching again.
+    await Future<void>.delayed(_waitedOut * 4);
+    expect(shack.screens.isWatched('display:1'), isFalse, reason: 'a refused viewer must not ask again');
+    expect(tablet.views.viewFor(target)!.refusal, 'wrongAddress');
+  });
+
+  test('a stranger presenting the ticket of a viewer that cannot dial does not make it give up', () async {
+    // The producer cannot tell the stranger's link from the viewer's own, so
+    // it answers "wrong address" when its deadline runs out. Taken at its
+    // word, that stops a viewer that was only briefly unreachable, and
+    // sends the operator to their network settings for a firewall.
+    await paired();
+    await sharing([_display.id]);
+    await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
+    const target = PeerScreenTarget('device-b', 'display:1');
+    PeerScreenGrant? grant;
+    String? answered;
+    final deliver = tablet.service.onEphemeral;
+    tablet.service.onEphemeral = (peer, message) {
+      grant ??= message.screenGrantOrNull;
+      if (message.type == PeerMessageType.screenRefuse) answered ??= message.fields['reason'] as String?;
+      deliver?.call(peer, message);
+    };
+    // Every refusal the pane shows: the failing dial's own retry replaces
+    // it within one retry delay, too soon to be caught by polling.
+    final shown = <String?>[];
+    tablet.views.addListener(() {
+      final view = tablet.views.viewFor(target);
+      if (view?.status == PeerScreenViewStatus.refused) shown.add(view!.refusal);
+    });
+
+    tablet.views.retryDelay = _waitedOut;
+    // Long enough for the stranger to arrive before it, however loaded the
+    // machine: an earlier deadline answers "noMedia" and proves nothing.
+    shack.screens.mediaDeadline = const Duration(seconds: 5);
+    tablet.host.dialFailure = const SocketException('Connection refused');
+    tablet.views.subscribe('remoteScreen#1', target);
+    await waitFor('the grant arrives', () => grant != null);
+    final stolen = await lan.host().network.dial(shack.host.address, grant!.port, mediaTicket: grant!.ticket);
+    stolen.inbound.listen((_) {});
+
+    await waitFor('the producer gives up', () => answered != null, timeout: const Duration(seconds: 15));
+    expect(answered, 'wrongAddress', reason: 'precondition: the producer blames the address');
+    await waitFor('the pane shows it', () => shown.isNotEmpty);
+    expect(shown.first, 'noMedia');
+
+    tablet.host.dialFailure = null;
+    await waitFor('the viewer, still asking, gets through', () => shack.screens.hasMediaLink('device-a'), timeout: const Duration(seconds: 10));
+  });
 
   test('pacing works on a capture whose sequence numbers do not start at one', () async {
     // A high-water mark differenced against an acknowledgement is not a count

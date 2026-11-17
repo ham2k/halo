@@ -4102,6 +4102,7 @@ class _Translations$operation$layout$panels$qro extends Translations$operation$l
 	@override String get remoteScreenCaptureFailed => 'THAT DEVICE COULDN\'T CAPTURE THAT SCREEN — IT MAY NEED SCREEN RECORDING PERMISSION.';
 	@override String get remoteScreenNoAnswer => 'THAT DEVICE DIDN\'T RESPOND. IT MAY NOT HAVE SCREEN SHARING TURNED ON.';
 	@override String get remoteScreenNoMedia => 'COULDN\'T OPEN A CONNECTION FOR THE PICTURE. CHECK THE FIREWALL ON THIS DEVICE.';
+	@override String get remoteScreenWrongAddress => 'THAT DEVICE REFUSED THE CONNECTION FOR THE PICTURE BECAUSE IT CAME FROM ANOTHER NETWORK ADDRESS. IF THIS DEVICE IS ON MORE THAN ONE NETWORK, USE JUST ONE.';
 	@override String get solarDescription => 'SOLAR AND GEOMAGNETIC CONDITIONS, WITH BAND-BY-BAND PROPAGATION';
 	@override String get solarUnreachable => 'COULDN\'T REACH HAMQSL.COM — NO NETWORK? WILL TRY AGAIN SHORTLY.';
 	@override String get solarUnreadable => 'HAMQSL.COM RESPONDED, BUT NOT WITH A READING WE COULD USE. WILL TRY AGAIN SHORTLY.';
@@ -5908,6 +5909,7 @@ extension on TranslationsQro {
 			'operation.layout.panels.remoteScreenCaptureFailed' => 'THAT DEVICE COULDN\'T CAPTURE THAT SCREEN — IT MAY NEED SCREEN RECORDING PERMISSION.',
 			'operation.layout.panels.remoteScreenNoAnswer' => 'THAT DEVICE DIDN\'T RESPOND. IT MAY NOT HAVE SCREEN SHARING TURNED ON.',
 			'operation.layout.panels.remoteScreenNoMedia' => 'COULDN\'T OPEN A CONNECTION FOR THE PICTURE. CHECK THE FIREWALL ON THIS DEVICE.',
+			'operation.layout.panels.remoteScreenWrongAddress' => 'THAT DEVICE REFUSED THE CONNECTION FOR THE PICTURE BECAUSE IT CAME FROM ANOTHER NETWORK ADDRESS. IF THIS DEVICE IS ON MORE THAN ONE NETWORK, USE JUST ONE.',
 			'operation.layout.panels.solarDescription' => 'SOLAR AND GEOMAGNETIC CONDITIONS, WITH BAND-BY-BAND PROPAGATION',
 			'operation.layout.panels.solarUnreachable' => 'COULDN\'T REACH HAMQSL.COM — NO NETWORK? WILL TRY AGAIN SHORTLY.',
 			'operation.layout.panels.solarUnreadable' => 'HAMQSL.COM RESPONDED, BUT NOT WITH A READING WE COULD USE. WILL TRY AGAIN SHORTLY.',
@@ -6270,9 +6272,9 @@ extension on TranslationsQro {
 			'activitiesView.addToOperation' => 'ADD TO OPERATION',
 			'activitiesView.addToOperationShort' => 'ADD TO OP.',
 			'activitiesView.mapEmptyState' => 'NO RESULTS TO SHOW ON THE MAP',
-			'activitiesView.mapEmptyStateHint' => 'SWITCH BACK TO THE LIST, OR SEARCH FOR SOMETHING ELSE',
 			_ => null,
 		} ?? switch (path) {
+			'activitiesView.mapEmptyStateHint' => 'SWITCH BACK TO THE LIST, OR SEARCH FOR SOMETHING ELSE',
 			'activitiesView.imports' => 'IMPORTS',
 			'loggingControls.timeUtc' => 'TIME (UTC)',
 			'loggingControls.date' => 'DATE',
@@ -6784,9 +6786,9 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.pickDevice' => 'CHOOSE A SOUND DEVICE',
 			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (NOT CONNECTED)',
 			'settings.radio.voiceMessages.lead' => 'KEY-UP DELAY',
-			'settings.radio.voiceMessages.tail' => 'UNKEY DELAY',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.tail' => 'UNKEY DELAY',
 			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} MS',
 			'settings.radio.voiceMessages.listenButton' => 'LISTEN',
 			'settings.radio.voiceMessages.notRecorded' => 'NOT RECORDED',
@@ -7298,9 +7300,9 @@ extension on TranslationsQro {
 			'settings.station.icomPortsDiffer' => 'THE CONTROL AND SERIAL PORTS MUST DIFFER',
 			'settings.station.radioUser' => 'RADIO USERNAME',
 			'settings.station.radioPass' => 'RADIO PASSWORD',
-			'settings.station.radioLoginDescription' => 'THE RADIO\'S NETWORK → REMOTE LOGIN, NOT YOUR WIFI PASSWORD.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.radioLoginDescription' => 'THE RADIO\'S NETWORK → REMOTE LOGIN, NOT YOUR WIFI PASSWORD.',
 			'settings.station.radioUserRequired' => 'THE RADIO\'S REMOTE-CONTROL USERNAME IS REQUIRED',
 			'settings.station.connectFailedBridgeClosed' => 'THE BRIDGE HUNG UP AT ONCE. ANOTHER PROGRAM AT THE STATION MAY HAVE THE RADIO\'S PORT: A LOGGER, WSJT-X OR RIGCTLD.',
 			'settings.station.connectFailedBridgeSaid' => ({required Object said}) => 'THE BRIDGE HUNG UP AT ONCE, SAYING “${said}”.',
@@ -7812,9 +7814,9 @@ extension on TranslationsQro {
 			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° ELEVATION',
 			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° EL',
 			'settings.station.rotatorNoReading' => 'WAITING FOR THE CONTROLLER TO REPORT ITS POSITION…',
-			'settings.station.rotatorNotResponding' => 'NOT RESPONDING',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.rotatorNotResponding' => 'NOT RESPONDING',
 			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'TURNING TO ${heading}, AS FAR AS THIS ROTATOR\'S LIMITS ALLOW',
 			'settings.station.rotatorTargetAzimuth' => 'TURN TO AZIMUTH',
 			'settings.station.rotatorTargetAzimuthShort' => 'TURN TO AZ',
@@ -8326,9 +8328,9 @@ extension on TranslationsQro {
 			'confirmDevice.linkIt' => 'LINK DEVICE',
 			'switchAccounts.noAccountDetails' => 'NO ACCOUNT DETAILS YET',
 			'switchAccounts.currentAccount' => 'CURRENT ACCOUNT',
-			'switchAccounts.otherAccounts' => 'OTHER ACCOUNTS',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.otherAccounts' => 'OTHER ACCOUNTS',
 			'switchAccounts.linkToAnother' => 'LINK TO ANOTHER ACCOUNT',
 			'switchAccounts.linkWithSibling' => 'LINK WITH OTHER HAM2K APP',
 			'switchAccounts.linkWithPolo' => 'LINK WITH ACCOUNT IN OLDER VERSION',

@@ -759,6 +759,7 @@
         "remoteScreenCaptureFailed": "That device couldn't capture that screen — it may need Screen Recording permission.",
         "remoteScreenNoAnswer": "That device didn't respond. It may not have screen sharing turned on.",
         "remoteScreenNoMedia": "Couldn't open a connection for the picture. Check the firewall on this device.",
+        "remoteScreenWrongAddress": "That device refused the connection for the picture because it came from another network address. If this device is on more than one network, use just one.",
         "solarDescription": "Solar and geomagnetic conditions, with band-by-band propagation",
         "solarUnreachable": "Couldn't reach hamqsl.com — no network? Will try again shortly.",
         "solarUnreadable": "hamqsl.com responded, but not with a reading we could use. Will try again shortly.",

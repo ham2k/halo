@@ -28,4 +28,11 @@ abstract class PeerLink {
 
   /// Idempotent.
   Future<void> close();
+
+  /// The IP address at the far end, or null for a transport that has none
+  /// (BLE). For a link this side dialled, the address it dialled; for one it
+  /// accepted, the address the connection came from. Anything else a peer
+  /// opens to this device on its behalf is tied to this address, never to
+  /// one a beacon names, since anything on the segment can send a beacon.
+  String? get remoteAddress;
 }

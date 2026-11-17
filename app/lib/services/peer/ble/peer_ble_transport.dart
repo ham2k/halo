@@ -483,6 +483,10 @@ class PeerBleLink implements PeerLink {
   /// Names this link in log lines — the address or central id.
   final String label;
 
+  /// None: a BLE link has no IP address, so nothing is tied to it.
+  @override
+  String? get remoteAddress => null;
+
   /// Puts one packet on the air. A throw means the connection is gone and
   /// closes the link.
   final Future<void> Function(Uint8List packet) sendPacket;

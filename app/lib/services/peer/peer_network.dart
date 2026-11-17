@@ -33,7 +33,8 @@ abstract class PeerNetwork {
 
   /// With [mediaTicket], a media link (HALO-369): the same listener a
   /// control link dials, told apart by its path and admitted by the ticket
-  /// rather than by a hello. Every dial the peer layer makes goes through
+  /// rather than by a hello, and only from the address of the dialler's
+  /// control session with that listener ([PeerLink.remoteAddress]). Every dial the peer layer makes goes through
   /// here — a direct `dialPeerLink` from app code is the bug, because it is
   /// the one socket a test segment cannot carry.
   Future<PeerLink> dial(String address, int port, {String? mediaTicket});

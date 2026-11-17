@@ -62,8 +62,9 @@ class PeerScreens extends ChangeNotifier {
   StreamSubscription<PeerMediaConnection>? _mediaSubscription;
 
   /// Unredeemed tickets, ticket → the peer it was minted for. A ticket is
-  /// consumed the moment a media link presents it, so a leaked one buys
-  /// nothing after the peer has dialled.
+  /// spent when a media link from that peer's session address presents it,
+  /// so a leaked one buys nothing after the peer has dialled; one presented
+  /// from anywhere else is refused and stays the peer's.
   final Map<String, String> _tickets = {};
 
   /// One media link per PEER, not per source: a frame names its own source
@@ -142,6 +143,15 @@ class PeerScreens extends ChangeNotifier {
   /// encode and discard frames for nobody, which is the one thing the class
   /// comment says it exists to prevent.
   final Map<String, Timer> _awaitingMedia = {};
+
+  /// Peers in [_awaitingMedia] whose media link has arrived from an address
+  /// other than their session's. Such a link is closed on the spot, but the
+  /// peer is told only when its deadline runs out: anything that saw the
+  /// ticket can present it from elsewhere, and a refusal sent then would
+  /// turn away the peer's own link, which may still be on its way. While
+  /// set, a resubscribe does not push the deadline back — the viewer
+  /// re-asks every few seconds, so otherwise it would never run out.
+  final Set<String> _misaddressed = {};
 
   /// Generous: it spans several of a viewer's own retry rounds, so an
   /// ordinary slow dial is never mistaken for one that will not arrive.
@@ -577,7 +587,7 @@ class PeerScreens extends ChangeNotifier {
       return;
     }
 
-    if (!_mediaLinks.containsKey(peerDeviceId)) _armMediaDeadline(peerDeviceId);
+    if (!_mediaLinks.containsKey(peerDeviceId) && !_misaddressed.contains(peerDeviceId)) _armMediaDeadline(peerDeviceId);
     final ticket = _ticketFor(peerDeviceId);
     peers.sendEphemeralTo(
       peerDeviceId,
@@ -611,6 +621,7 @@ class PeerScreens extends ChangeNotifier {
   /// Everything a peer held, and its media link. What a lost session means.
   Future<void> forgetPeer(String peerDeviceId) async {
     _awaitingMedia.remove(peerDeviceId)?.cancel();
+    _misaddressed.remove(peerDeviceId);
     unawaited(_mediaAcks.remove(peerDeviceId)?.cancel());
     _pacedFlows.removeWhere((key) => key.startsWith('$peerDeviceId/'));
     _forgetFlowsOf(peerDeviceId);
@@ -657,8 +668,8 @@ class PeerScreens extends ChangeNotifier {
   /// establishing triggers), and the viewer dials exactly once — so a second
   /// mint that invalidated the first would have it dial a ticket the
   /// producer no longer knows, be refused, and retry into the same race for
-  /// good. One per peer also keeps this from accumulating bearer tokens: it
-  /// is consumed when a link presents it, and dropped with the peer.
+  /// good. One per peer also keeps this from accumulating tickets: it is
+  /// spent when the peer's own link presents it, and dropped with the peer.
   String _ticketFor(String peerDeviceId) {
     for (final entry in _tickets.entries) {
       if (entry.value == peerDeviceId) return entry.key;
@@ -668,9 +679,10 @@ class PeerScreens extends ChangeNotifier {
 
   String _mintTicket(String peerDeviceId) {
     // 128 bits from a secure source. It admits a socket that carries no
-    // hello, so it is the only thing standing between a media link and
-    // whatever else is on this network segment — and unlike the control
-    // link's trust, it cannot fall back on the operator confirming anything.
+    // hello, so it and the address check are all that stand between a
+    // media link and whatever else is on this network segment — and unlike
+    // the control link's trust, it cannot fall back on the operator
+    // confirming anything.
     final bytes = List<int>.generate(16, (_) => _random.nextInt(256));
     final ticket = base64Url.encode(bytes);
     _tickets[ticket] = peerDeviceId;
@@ -681,25 +693,41 @@ class PeerScreens extends ChangeNotifier {
     _awaitingMedia.remove(peerDeviceId)?.cancel();
     _awaitingMedia[peerDeviceId] = Timer(mediaDeadline, () {
       _awaitingMedia.remove(peerDeviceId);
+      final reason = _misaddressed.remove(peerDeviceId) ? 'wrongAddress' : 'noMedia';
       if (_mediaLinks.containsKey(peerDeviceId)) return;
       for (final entry in _watchers.entries) {
-        if (entry.value.contains(peerDeviceId)) _refuse(peerDeviceId, entry.key, 'noMedia');
+        if (entry.value.contains(peerDeviceId)) _refuse(peerDeviceId, entry.key, reason);
       }
       unawaited(removeAllFor(peerDeviceId));
     });
   }
 
   void _onMediaConnection(PeerMediaConnection connection) {
-    // Consumed on presentation, whether or not it is good: a ticket that
-    // survived a failed match would be a token an attacker could keep
-    // guessing against.
-    final peerDeviceId = _tickets.remove(connection.ticket);
-    if (peerDeviceId == null || !peers.hasLanSession(peerDeviceId)) {
+    final peerDeviceId = _tickets[connection.ticket];
+    if (peerDeviceId == null) {
       debugPrint('[peer] refused a media link presenting an unknown ticket');
       unawaited(connection.link.close());
       return;
     }
+    // From the address the peer's LAN session runs over, and nowhere else:
+    // the ticket crosses the network in the clear, so holding it does not
+    // show the link is the peer's. A mismatch leaves the ticket for the
+    // peer, so a device that saw it cannot spend it first; a guess cannot
+    // pass this check either, so nothing is lost by keeping it. A viewer
+    // whose connections leave from another interface than its beacons is
+    // refused here, and told why when its deadline runs out
+    // ([_misaddressed]).
+    final from = connection.link.remoteAddress;
+    final expected = peers.lanAddressOf(peerDeviceId);
+    if (from == null || from != expected) {
+      debugPrint('[peer] refused a media link for $peerDeviceId from $from; its session is with $expected');
+      if (_awaitingMedia.containsKey(peerDeviceId)) _misaddressed.add(peerDeviceId);
+      unawaited(connection.link.close());
+      return;
+    }
+    _tickets.remove(connection.ticket);
     _awaitingMedia.remove(peerDeviceId)?.cancel();
+    _misaddressed.remove(peerDeviceId);
     unawaited(_mediaAcks.remove(peerDeviceId)?.cancel());
     // Whatever was outstanding went down with the link it was written to.
     // A half-open socket accepts writes that reach nobody, so those frames
@@ -949,6 +977,7 @@ class PeerScreens extends ChangeNotifier {
       timer.cancel();
     }
     _awaitingMedia.clear();
+    _misaddressed.clear();
     for (final subscription in _mediaAcks.values) {
       unawaited(subscription.cancel());
     }

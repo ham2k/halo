@@ -10,6 +10,7 @@
 // depends on the machine's network, never collides with a HaLo running on
 // the standard port, and never puts a broadcast on the operator's LAN.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
@@ -22,7 +23,7 @@ import '../support/peer_network_fakes.dart';
 import '../support/wait_for.dart';
 
 class _Device {
-  _Device(this.deviceId, this.name, FakeHost host) {
+  _Device(this.deviceId, this.name, this.host) {
     db = HaLoDatabase(NativeDatabase.memory());
     outbox = PeerOutbox(db);
     // Wired exactly as HaLoServices._onLocalWrite does. Without this the
@@ -51,6 +52,7 @@ class _Device {
 
   final String deviceId;
   final String name;
+  final FakeHost host;
   late final HaLoDatabase db;
   late final PeerOutbox outbox;
   late final OperationsRepository operations;
@@ -337,6 +339,52 @@ void main() {
     await deviceB.service.revokeTrust('device-a');
     expect(await deviceB.service.trust.isTrusted('device-a'), isFalse);
     expect(deviceB.service.peers['device-a']?.session, isNull);
+  });
+
+  test('forgetting the device this side dials does not dial it again', () async {
+    // The close at the end of a forget is a plain close, which schedules a
+    // redial like any other; cancelled before it, the redial still comes,
+    // and reaches a device the operator just forgot.
+    final op = await sharedOperation();
+    await deviceA.service.trust.trust('device-b', name: 'Phone');
+    await deviceB.service.trust.trust('device-a', name: 'Laptop');
+    await deviceA.service.setOpenOperation(op);
+    await deviceB.service.setOpenOperation(op);
+    await waitFor('the link to go live', () => deviceA.service.peers['device-b']?.session?.state == PeerSessionState.live);
+
+    await deviceA.service.revokeTrust('device-b');
+    final runtime = deviceA.service.peers['device-b'];
+    expect(runtime, isNotNull, reason: 'precondition: a device still announcing stays listed');
+    expect(runtime!.retryTimer?.isActive ?? false, isFalse);
+  });
+
+  test('forgetting a device closes a session that claims it but never finished its handshake', () async {
+    // Something on the segment dials B claiming A's id and holds back its
+    // `trusted`. B trusts the id, so the session holds B's trust, but it
+    // never establishes and so is never filed under A: it is in no peer
+    // list, and forgetting A by its runtime alone would leave it open, free
+    // to establish later.
+    final op = await sharedOperation();
+    await deviceB.service.trust.trust('device-a', name: 'Laptop');
+    await deviceB.service.setOpenOperation(op);
+    await waitFor('B to listen', () => deviceB.service.linkServerPort != null);
+
+    final link = await lan.host().network.dial(deviceB.host.address, deviceB.service.linkServerPort!);
+    var closed = false;
+    unawaited(link.closed.then((_) => closed = true));
+    link.inbound.listen((_) {});
+    link.send(PeerMessage.hello(deviceId: 'device-a', deviceName: 'Laptop').encode());
+    await pumpEventQueue();
+    expect(deviceB.service.peers['device-a']?.session, isNull, reason: 'precondition: the session is not filed under the peer');
+    expect(closed, isFalse);
+
+    await deviceB.service.revokeTrust('device-a');
+
+    await waitFor('the half-open session to close', () => closed, timeout: const Duration(seconds: 2));
+    // The closed session names its peer, and would be filed under it: a
+    // device never heard announcing, listed and redialled just after it was
+    // forgotten.
+    expect(deviceB.service.peers, isNot(contains('device-a')));
   });
 
   test('a peer arriving and then going away announces both edges', () async {

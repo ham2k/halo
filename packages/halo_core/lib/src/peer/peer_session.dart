@@ -418,6 +418,11 @@ class PeerSession {
 
   Future<void> _maybeEstablish() async {
     if (!_localTrusts || !_peerTrustsUs || _established || _closed) return;
+    // Set in the same tick the last `trusted` is handled, with no await in
+    // between: ephemeral messages bypass the queue and are dropped until
+    // this is set, and the peer sends its snapshots the moment IT
+    // establishes. A forgotten device is handled by closing its sessions
+    // (`PeerService.revokeTrust`), not by asking the store again here.
     _established = true;
     // Before _syncStateChanged, which sets the state this notification
     // should not clobber — and snapshots sent from here must already pass
@@ -499,10 +504,10 @@ class PeerSession {
 
   /// The peer wants this device's outbox for an operation from `sinceSeq` on.
   Future<void> _onCatchUp(PeerMessage message) async {
-    // Trust is checked on the SENDING side too, not just when admitting a
-    // peer: a `catchUp` arriving before this side has decided anything must
-    // not extract the log by skipping the handshake.
-    if (!_localTrusts) return;
+    // Established, not merely trusted by this side: a peer that sends its
+    // hello and never its `trusted` is in no peer list, so nothing on screen
+    // would show the log being read.
+    if (!_established) return;
     final operationUuid = message.operationUuid;
     // Only the operation this side currently has open is served. A peer
     // asking for anything else — stale, confused, or probing — gets silence,
@@ -539,7 +544,7 @@ class PeerSession {
   }
 
   Future<void> _onEvents(PeerMessage message) async {
-    if (!_localTrusts || _peer == null) return;
+    if (!_established) return;
     final operationUuid = message.operationUuid;
     // Only the catch-up actually in train is applied: a batch must name the
     // operation this side asked for, which is the one the peer declared.
@@ -605,7 +610,7 @@ class PeerSession {
   }
 
   Future<void> _onAck(PeerMessage message) async {
-    if (!_localTrusts) return;
+    if (!_established) return;
     final operationUuid = message.operationUuid;
     if (operationUuid == null || operationUuid != _localSharing) return;
     final seq = message.intSeq ?? 0;

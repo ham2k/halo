@@ -378,6 +378,10 @@ class PeerScreenViews extends ChangeNotifier {
   /// the first is connecting must not open a second socket.
   final Set<String> _dialling = {};
 
+  /// Peers whose last media dial failed. A link this device never opened
+  /// was not the one a producer turned away for its address.
+  final Set<String> _dialsFailing = {};
+
   /// Targets a grant has been seen for, so "this producer does not crop" is
   /// something the producer said rather than something not yet asked.
   final Set<PeerScreenTarget> _grantedTargets = {};
@@ -654,6 +658,7 @@ class PeerScreenViews extends ChangeNotifier {
     unawaited(_mediaSubscriptions.remove(peerDeviceId)?.cancel());
     unawaited(_mediaLinks.remove(peerDeviceId)?.close());
     _dialling.remove(peerDeviceId);
+    _dialsFailing.remove(peerDeviceId);
     // The dial streak means "stuck right now". A count that spanned the
     // peer's absence would report its first failure on return as three in
     // a row — or, parked past the threshold, never report it at all.
@@ -734,12 +739,23 @@ class PeerScreenViews extends ChangeNotifier {
     unawaited(_dialMedia(peerDeviceId, grant));
   }
 
-  void onRefused(String peerDeviceId, String sourceId, String? reason) {
+  void onRefused(String peerDeviceId, String sourceId, String? refusal) {
+    // A device whose dials fail never sent the link turned away for its
+    // address: something else on the network presented its ticket. What
+    // this device failed to do is open a link at all, and it keeps asking.
+    final reason = refusal == 'wrongAddress' && _dialsFailing.contains(peerDeviceId) ? 'noMedia' : refusal;
     final target = PeerScreenTarget(peerDeviceId, sourceId);
     _answered(target);
     _resetDeliveryStats(target);
     _views[target] = (_views[target] ?? _blank(target))._with(status: PeerScreenViewStatus.refused, refusal: reason ?? 'refused');
     notifyListeners();
+    // This device's links reach the producer from another address than its
+    // session does, so every one is turned away: asking again is only
+    // turned away again, restarting the producer's capture each time.
+    if (reason == 'wrongAddress') {
+      _retries.remove(peerDeviceId)?.cancel();
+      return;
+    }
     // A capture that stopped or failed to start is a passing condition — the
     // window reopens, the permission is granted — unlike being told the
     // source is not offered, which only the operator can change. Asking
@@ -849,14 +865,14 @@ class PeerScreenViews extends ChangeNotifier {
   static String _dialStreakKey(String peerDeviceId) => 'peer-media-dial:$peerDeviceId';
 
   Future<void> _dialMedia(String peerDeviceId, PeerScreenGrant grant) async {
-    final address = peers.peers[peerDeviceId]?.beacon.address;
+    // The control session's address, never the beacon's: the producer admits
+    // a media link only from there, and the ticket goes to whoever this
+    // dials.
+    final address = peers.lanAddressOf(peerDeviceId);
     if (address == null) {
-      // A peer this device only ever heard as an INBOUND link has a runtime
-      // synthesized with no address and no port (`PeerService._onSession`),
-      // and the grant's port is useless without one. Ordinarily its beacon
-      // fills those in a second or two — so this says so and re-asks, rather
-      // than returning silently and leaving the pane at "Connecting…" for as
-      // long as the app runs.
+      // The LAN session went away between the grant and here. This says so
+      // and re-asks, rather than returning silently and leaving the pane at
+      // "Connecting…" for as long as the app runs.
       for (final target in _views.keys.toList()) {
         if (target.peerDeviceId != peerDeviceId) continue;
         _views[target] = _views[target]!._with(status: PeerScreenViewStatus.peerUnreachable);
@@ -889,9 +905,11 @@ class PeerScreenViews extends ChangeNotifier {
       notifyListeners();
       _scheduleRetry(peerDeviceId);
       _dialling.remove(peerDeviceId);
+      _dialsFailing.add(peerDeviceId);
       return;
     }
     _dialling.remove(peerDeviceId);
+    _dialsFailing.remove(peerDeviceId);
     ErrorReportingService.recordSuccess(_dialStreakKey(peerDeviceId));
 
     // The peer may have gone while this was dialling. Installing the link
@@ -914,15 +932,21 @@ class PeerScreenViews extends ChangeNotifier {
           if (_mediaLinks[peerDeviceId] != link) return;
           _mediaLinks.remove(peerDeviceId);
           unawaited(_mediaSubscriptions.remove(peerDeviceId)?.cancel());
+          var wanted = false;
           for (final target in _views.keys.toList()) {
             if (target.peerDeviceId != peerDeviceId) continue;
-            _views[target] = _views[target]!._with(status: PeerScreenViewStatus.connecting);
+            // A link dialled just before the refusal closes just after it;
+            // the refusal is the answer, and stands.
+            final view = _views[target]!;
+            if (view.status == PeerScreenViewStatus.refused && view.refusal == 'wrongAddress') continue;
+            wanted = true;
+            _views[target] = view._with(status: PeerScreenViewStatus.connecting);
             _resetDeliveryStats(target);
           }
           notifyListeners();
           // The producer stopped capturing when its end of this closed, so
           // nothing is coming without a fresh subscribe.
-          _scheduleRetry(peerDeviceId);
+          if (wanted) _scheduleRetry(peerDeviceId);
         }),
       );
     }

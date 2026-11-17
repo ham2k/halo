@@ -287,6 +287,12 @@ class PeerService extends ChangeNotifier {
     return session != null && session.established && session.link is! PeerBleLink;
   }
 
+  /// The IP address of [peerDeviceId]'s established LAN session, or null
+  /// without one. The media link is dialled to, and accepted only from, this
+  /// address: a beacon's address is whatever the last datagram claiming the
+  /// peer's id came from, and anything on the segment can send one.
+  String? lanAddressOf(String peerDeviceId) => hasLanSession(peerDeviceId) ? _peers[peerDeviceId]!.session!.link.remoteAddress : null;
+
   /// Whether [peerDeviceId] has an established session on any transport —
   /// the roster for traffic that goes wherever [allowBle] lets it.
   bool hasSession(String peerDeviceId) {
@@ -629,19 +635,38 @@ class PeerService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Withdraws trust and drops the peer's live session — a peer that stays
-  /// connected after being un-trusted would keep syncing until it happened
-  /// to disconnect.
+  /// Withdraws trust and drops every live session that claims [peerDeviceId]
+  /// — a peer that stays connected after being un-trusted would keep syncing
+  /// until it happened to disconnect. That includes sessions not filed under
+  /// the peer: one that sent its hello but never its `trusted` stays in
+  /// [_unidentifiedSessions] holding this side's trust, and would otherwise
+  /// establish after the forget with nothing on screen to show it.
   Future<void> revokeTrust(String peerDeviceId) async {
     await trust.revoke(peerDeviceId);
     // Before the close, so the drop this causes is not reported back to the
     // operator who just asked for it.
     _announcedConnections.remove(peerDeviceId);
+    // First, so the teardown below cancels what their closes set in motion:
+    // a closed session that names its peer is filed under it, which makes a
+    // runtime for a device never heard announcing and schedules a redial.
+    // All closed before any is awaited: a close marks its session closed
+    // before its first await, so none of them can establish while another's
+    // close runs, and announce a connection to a device just forgotten.
+    final heard = _peers.containsKey(peerDeviceId);
+    await Future.wait([
+      for (final session in _unidentifiedSessions.toList())
+        if (session.peer?.deviceId == peerDeviceId) session.close(),
+    ]);
+    if (!heard) _forget(peerDeviceId);
     final runtime = _peers[peerDeviceId];
     if (runtime != null) {
       runtime.attemptSeq++;
-      runtime.retryTimer?.cancel();
       await runtime.session?.close();
+      // After the close, which schedules a redial of its own — and which a
+      // slow link can hold open past that redial's delay, so a dial already
+      // under way is told to drop its link.
+      runtime.attemptSeq++;
+      runtime.retryTimer?.cancel();
       runtime.session = null;
       runtime.promptDismissed = true;
     }

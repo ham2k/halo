@@ -38,6 +38,9 @@ class _MemoryLink implements PeerLink {
   final String label;
   late _MemoryLink peer;
 
+  @override
+  String? get remoteAddress => null;
+
   final _controller = StreamController<List<int>>();
   final _closedCompleter = Completer<void>();
   bool _isClosed = false;
@@ -852,6 +855,60 @@ void main() {
       await settle();
 
       expect(received.where((m) => m.type == PeerMessageType.events), isEmpty, reason: 'an unauthenticated catchUp must not be answered with the log');
+    });
+
+    /// A device on the segment claiming a trusted id, which this side has
+    /// accepted, sharing an operation with one QSO in its outbox. What it
+    /// sends next is up to the test.
+    Future<(PeerSession, _MemoryLink, List<PeerMessage>, String)> helloFromTrustedId() async {
+      final op = await deviceA.operations.create(stationCall: 'KI2D');
+      deviceA.outbox.activeOperationUuid = op.uuid;
+      await deviceA.qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
+      await deviceA.outbox.scanNow();
+      await deviceA.trust.trust('device-b', name: 'Phone');
+
+      final links = _LinkPair();
+      final sessionA = deviceA.session(links.a, op.uuid);
+      await sessionA.start();
+      final received = <PeerMessage>[];
+      links.b.inbound.listen((raw) {
+        final message = PeerMessage.decode(raw);
+        if (message != null) received.add(message);
+      });
+      links.b.send(PeerMessage.hello(deviceId: 'device-b', deviceName: 'Phone').encode());
+      await settle();
+      expect(sessionA.localTrusts, isTrue, reason: 'precondition: this side trusts the id it was given');
+      return (sessionA, links.b, received, op.uuid);
+    }
+
+    test('a peer that sends its hello but never its trusted reads nothing', () async {
+      // Trusted by this side but never established, such a session is in no
+      // peer list, so nothing on screen shows it. Were this side's trust
+      // alone enough to serve a catch-up, it could read the open
+      // operation's log unseen.
+      final (sessionA, link, received, opUuid) = await helloFromTrustedId();
+
+      link.send(PeerMessage.catchUp(opUuid, 0).encode());
+      await settle();
+
+      expect(sessionA.established, isFalse);
+      expect(received.where((m) => m.type == PeerMessageType.events), isEmpty, reason: 'a catchUp before mutual trust must not be answered with the log');
+    });
+
+    test('a peer that sends its hello but never its trusted cannot ack its way to the log', () async {
+      // An ack is answered with the batch after it, from the operation this
+      // side shares since before the hello, with no catch-up asked for
+      // first. Gated on this side's trust alone, an ack of 0 would send the
+      // whole log to a session nothing on screen shows.
+      final (sessionA, link, received, opUuid) = await helloFromTrustedId();
+
+      link.send(PeerMessage.ack(opUuid, 0).encode());
+      await settle();
+
+      expect(sessionA.established, isFalse);
+      expect(received.where((m) => m.type == PeerMessageType.events), isEmpty, reason: 'an ack before mutual trust must not be answered with the log');
     });
 
     test('a trusted peer asking for an UNSHARED operation gets silence, not the log', () async {

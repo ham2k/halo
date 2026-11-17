@@ -158,6 +158,11 @@ class FakeHost {
   /// the transport (anything else).
   Object? dialFailure;
 
+  /// When set, media links dialled FROM this host leave from this address
+  /// rather than [address]: a device on two networks whose connections to a
+  /// peer leave by another interface than its beacons and its session.
+  String? mediaFrom;
+
   /// Hand this to `openPeerBeaconSocket(bind: host.binder)` to run the real
   /// beacon socket, retry ladder and all, over the fake segment.
   Future<RawDatagramSocket> binder(int port) async {
@@ -213,7 +218,8 @@ class _FakePeerNetwork implements PeerNetwork {
     if (mediaTicket != null && mediaTicket.isEmpty) {
       throw const WebSocketException('media link refused: no ticket');
     }
-    final (dialled, accepted) = _linkPair(host.lan);
+    final from = mediaTicket != null ? (host.mediaFrom ?? host.address) : host.address;
+    final (dialled, accepted) = _linkPair(host.lan, dialledAddress: address, fromAddress: from);
     server._accept(accepted, ticket: mediaTicket);
     return dialled;
   }
@@ -387,9 +393,9 @@ class _FakeLinkServer implements PeerLinkServer {
 
 /// Two ends of one link, each delivering into the other, registered on
 /// [lan] so [FakeLan.openLinks] can count them.
-(PeerLink, PeerLink) _linkPair(FakeLan lan) {
-  final a = _FakeLink();
-  final b = _FakeLink();
+(PeerLink, PeerLink) _linkPair(FakeLan lan, {required String dialledAddress, required String fromAddress}) {
+  final a = _FakeLink(dialledAddress);
+  final b = _FakeLink(fromAddress);
   a._peer = b;
   b._peer = a;
   lan._links.addAll([a, b]);
@@ -399,6 +405,11 @@ class _FakeLinkServer implements PeerLinkServer {
 /// Message-oriented, like every real `PeerLink`: one `send` is exactly one
 /// element on the far side's `inbound`, never joined and never split.
 class _FakeLink implements PeerLink {
+  _FakeLink(this.remoteAddress);
+
+  @override
+  final String remoteAddress;
+
   _FakeLink? _peer;
   final _controller = StreamController<List<int>>();
   final _closedCompleter = Completer<void>();

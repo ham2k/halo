@@ -463,8 +463,8 @@ class PeerScreenSubscription {
 
 /// The producer's answer to a subscription: where to collect the frames.
 ///
-/// The ticket is a one-time bearer token for exactly one (peer, source)
-/// pair. It exists because the media link carries no `hello` and therefore
+/// The ticket admits one media link for one peer, and only from the address
+/// of that peer's control link. It exists because the media link carries no `hello` and therefore
 /// cannot be admitted the way the control link is — the control link, which
 /// IS trusted and established, is what hands it over. It does not make the
 /// media link authenticated in any sense the control link is not; it makes

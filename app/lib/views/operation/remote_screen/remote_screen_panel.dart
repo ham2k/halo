@@ -375,6 +375,7 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
         'captureFailed' => t.remoteScreenCaptureFailed,
         'noAnswer' => t.remoteScreenNoAnswer,
         'noMedia' => t.remoteScreenNoMedia,
+        'wrongAddress' => t.remoteScreenWrongAddress,
         'stalled' => t.remoteScreenStalled,
         _ => t.remoteScreenRefused,
       },

@@ -145,6 +145,26 @@ true — no lookup cache exists in `extensions/core/lookups` or
 `ExtensionService`). Offline *datasets* are covered by the `dataFile` hook;
 this is about per-callsign lookup results.
 
+## Peer devices authenticate nothing and talk in the clear
+
+A paired device is known only by the device id it claims, which its own
+beacons broadcast, and the link runs over plain `ws://` and unencrypted BLE
+(`peer_protocol.dart`'s header states the model). Anything on the segment can
+replay a paired id to read the open operation's log, write to it, or tune
+and key a radio a peer offers. Anything that can watch the traffic sees the
+log, GPS fixes, screen frames and the media ticket. That is accepted while
+peer sync sits behind the `p2p` experiment, on a LAN of the operator's own
+devices.
+
+**Trigger:** before `p2p` ships without its experiment gate, or before peer
+traffic runs over the server relay or any network the operator does not
+control. The fix is a key pair per install, held in the platform keychain:
+pairing records the peer's public key, and every session proves it with a
+fresh challenge over a channel that also encrypts. That is Noise inside the
+existing framing, so BLE gets the same protection, or `wss://` with pinned
+certificates. The media ticket then moves into that channel rather than the
+URL, and `peerProtocolVersion` is bumped.
+
 ## Deferred from the 2026-07-14 architecture review
 
 All P0/P1 findings from the 2026-07-14 architecture review were fixed in its

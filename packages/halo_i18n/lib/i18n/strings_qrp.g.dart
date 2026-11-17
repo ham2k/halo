@@ -4102,6 +4102,7 @@ class _Translations$operation$layout$panels$qrp extends Translations$operation$l
 	@override String get remoteScreenCaptureFailed => 'that device couldn\'t capture that screen — it may need screen recording permission.';
 	@override String get remoteScreenNoAnswer => 'that device didn\'t respond. it may not have screen sharing turned on.';
 	@override String get remoteScreenNoMedia => 'couldn\'t open a connection for the picture. check the firewall on this device.';
+	@override String get remoteScreenWrongAddress => 'that device refused the connection for the picture because it came from another network address. if this device is on more than one network, use just one.';
 	@override String get solarDescription => 'solar and geomagnetic conditions, with band-by-band propagation';
 	@override String get solarUnreachable => 'couldn\'t reach hamqsl.com — no network? will try again shortly.';
 	@override String get solarUnreadable => 'hamqsl.com responded, but not with a reading we could use. will try again shortly.';
@@ -5908,6 +5909,7 @@ extension on TranslationsQrp {
 			'operation.layout.panels.remoteScreenCaptureFailed' => 'that device couldn\'t capture that screen — it may need screen recording permission.',
 			'operation.layout.panels.remoteScreenNoAnswer' => 'that device didn\'t respond. it may not have screen sharing turned on.',
 			'operation.layout.panels.remoteScreenNoMedia' => 'couldn\'t open a connection for the picture. check the firewall on this device.',
+			'operation.layout.panels.remoteScreenWrongAddress' => 'that device refused the connection for the picture because it came from another network address. if this device is on more than one network, use just one.',
 			'operation.layout.panels.solarDescription' => 'solar and geomagnetic conditions, with band-by-band propagation',
 			'operation.layout.panels.solarUnreachable' => 'couldn\'t reach hamqsl.com — no network? will try again shortly.',
 			'operation.layout.panels.solarUnreadable' => 'hamqsl.com responded, but not with a reading we could use. will try again shortly.',
@@ -6270,9 +6272,9 @@ extension on TranslationsQrp {
 			'activitiesView.addToOperation' => 'add to operation',
 			'activitiesView.addToOperationShort' => 'add to op.',
 			'activitiesView.mapEmptyState' => 'no results to show on the map',
-			'activitiesView.mapEmptyStateHint' => 'switch back to the list, or search for something else',
 			_ => null,
 		} ?? switch (path) {
+			'activitiesView.mapEmptyStateHint' => 'switch back to the list, or search for something else',
 			'activitiesView.imports' => 'imports',
 			'loggingControls.timeUtc' => 'time (utc)',
 			'loggingControls.date' => 'date',
@@ -6784,9 +6786,9 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.pickDevice' => 'choose a sound device',
 			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (not connected)',
 			'settings.radio.voiceMessages.lead' => 'key-up delay',
-			'settings.radio.voiceMessages.tail' => 'unkey delay',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.tail' => 'unkey delay',
 			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
 			'settings.radio.voiceMessages.listenButton' => 'listen',
 			'settings.radio.voiceMessages.notRecorded' => 'not recorded',
@@ -7298,9 +7300,9 @@ extension on TranslationsQrp {
 			'settings.station.icomPortsDiffer' => 'the control and serial ports must differ',
 			'settings.station.radioUser' => 'radio username',
 			'settings.station.radioPass' => 'radio password',
-			'settings.station.radioLoginDescription' => 'the radio\'s network → remote login, not your wifi password.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.radioLoginDescription' => 'the radio\'s network → remote login, not your wifi password.',
 			'settings.station.radioUserRequired' => 'the radio\'s remote-control username is required',
 			'settings.station.connectFailedBridgeClosed' => 'the bridge hung up at once. another program at the station may have the radio\'s port: a logger, wsjt-x or rigctld.',
 			'settings.station.connectFailedBridgeSaid' => ({required Object said}) => 'the bridge hung up at once, saying “${said}”.',
@@ -7812,9 +7814,9 @@ extension on TranslationsQrp {
 			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° elevation',
 			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° el',
 			'settings.station.rotatorNoReading' => 'waiting for the controller to report its position…',
-			'settings.station.rotatorNotResponding' => 'not responding',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.rotatorNotResponding' => 'not responding',
 			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'turning to ${heading}, as far as this rotator\'s limits allow',
 			'settings.station.rotatorTargetAzimuth' => 'turn to azimuth',
 			'settings.station.rotatorTargetAzimuthShort' => 'turn to az',
@@ -8326,9 +8328,9 @@ extension on TranslationsQrp {
 			'confirmDevice.linkIt' => 'link device',
 			'switchAccounts.noAccountDetails' => 'no account details yet',
 			'switchAccounts.currentAccount' => 'current account',
-			'switchAccounts.otherAccounts' => 'other accounts',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.otherAccounts' => 'other accounts',
 			'switchAccounts.linkToAnother' => 'link to another account',
 			'switchAccounts.linkWithSibling' => 'link with other ham2k app',
 			'switchAccounts.linkWithPolo' => 'link with account in older version',
