@@ -3040,6 +3040,7 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get flexNewSliceRefused => '— ···· · / ·—· ·— —·· ·· ——— / —·· ·· —·· / —· ——— — / ——— ·——· · —· / ·— / —· · ·—— / ··· ·—·· ·· —·—· ·';
 	@override String get flexCloseSliceRefused => '— ···· · / ·—· ·— —·· ·· ——— / —·· ·· —·· / —· ——— — / —·—· ·—·· ——— ··· · / — ···· · / ··· ·—·· ·· —·—· ·';
 	@override String get flexStationRefused => '— ···· · / ·—· ·— —·· ·· ——— / ·—· · ··—· ··— ··· · —·· / ···· ·— ·—·· ——— / ·— ··· / ·— / ··· — ·— — ·· ——— —·';
+	@override String flexSliceOtherStation({required Object station}) => '—· ——— — / —·— · —·—— · —·· ———··· / ··· — ·· ·—·· ·—·· / — ·—· —·—— ·· —· ——· / — ——— / ·—· · ·— —·—· ···· / ${station} ——··—— / ·—— ···· ——— / —·—· ——— —· — ·—· ——— ·—·· ··· / — ···· · / ··· ·—·· ·· —·—· ·';
 	@override String audioProblemOutput({required Object name}) => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / — ···· · / ——— ··— — ·——· ··— — / ${name} / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —··';
 	@override String get audioProblemOutputOpen => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / — ···· · / ·— ··— —·· ·· ——— / ——— ··— — ·——· ··— — / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —·';
 	@override String get audioProblemRoute => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / ···· ·— ·—·· ——— / —·—· ——— ··— ·—·· —·· / —· ——— — / ·—· ——— ··— — · / ·· — ··· / ·— ··— —·· ·· ———';
@@ -7181,6 +7182,7 @@ extension on TranslationsCw {
 			'settings.station.flexNewSliceRefused' => '— ···· · / ·—· ·— —·· ·· ——— / —·· ·· —·· / —· ——— — / ——— ·——· · —· / ·— / —· · ·—— / ··· ·—·· ·· —·—· ·',
 			'settings.station.flexCloseSliceRefused' => '— ···· · / ·—· ·— —·· ·· ——— / —·· ·· —·· / —· ——— — / —·—· ·—·· ——— ··· · / — ···· · / ··· ·—·· ·· —·—· ·',
 			'settings.station.flexStationRefused' => '— ···· · / ·—· ·— —·· ·· ——— / ·—· · ··—· ··— ··· · —·· / ···· ·— ·—·· ——— / ·— ··· / ·— / ··· — ·— — ·· ——— —·',
+			'settings.station.flexSliceOtherStation' => ({required Object station}) => '—· ——— — / —·— · —·—— · —·· ———··· / ··· — ·· ·—·· ·—·· / — ·—· —·—— ·· —· ——· / — ——— / ·—· · ·— —·—· ···· / ${station} ——··—— / ·—— ···· ——— / —·—· ——— —· — ·—· ——— ·—·· ··· / — ···· · / ··· ·—·· ·· —·—· ·',
 			'settings.station.audioProblemOutput' => ({required Object name}) => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / — ···· · / ——— ··— — ·——· ··— — / ${name} / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —··',
 			'settings.station.audioProblemOutputOpen' => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / — ···· · / ·— ··— —·· ·· ——— / ——— ··— — ·——· ··— — / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —·',
 			'settings.station.audioProblemRoute' => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / ···· ·— ·—·· ——— / —·—· ——— ··— ·—·· —·· / —· ——— — / ·—· ——— ··— — · / ·· — ··· / ·— ··— —·· ·· ———',
@@ -7296,9 +7298,9 @@ extension on TranslationsCw {
 			'settings.station.radioUser' => '·—· ·— —·· ·· ——— / ··— ··· · ·—· —· ·— —— ·',
 			'settings.station.radioPass' => '·—· ·— —·· ·· ——— / ·——· ·— ··· ··· ·—— ——— ·—· —··',
 			'settings.station.radioLoginDescription' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / —· · — ·—— ——— ·—· —·— / → / ·—· · —— ——— — · / ·—·· ——— ——· ·· —· ——··—— / —· ——— — / —·—— ——— ··— ·—· / ·—— ·· ··—· ·· / ·——· ·— ··· ··· ·—— ——— ·—· —·· ·—·—·—',
-			'settings.station.radioUserRequired' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·—· · —— ——— — · —····— —·—· ——— —· — ·—· ——— ·—·· / ··— ··· · ·—· —· ·— —— · / ·· ··· / ·—· · ——·— ··— ·· ·—· · —··',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.radioUserRequired' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·—· · —— ——— — · —····— —·—· ——— —· — ·—· ——— ·—·· / ··— ··· · ·—· —· ·— —— · / ·· ··· / ·—· · ——·— ··— ·· ·—· · —··',
 			'settings.station.connectFailedBridgeClosed' => '— ···· · / —··· ·—· ·· —·· ——· · / ···· ··— —· ——· / ··— ·——· / ·— — / ——— —· —·—· · ·—·—·— / ·— —· ——— — ···· · ·—· / ·——· ·—· ——— ——· ·—· ·— —— / ·— — / — ···· · / ··· — ·— — ·· ——— —· / —— ·— —·—— / ···· ·— ···— · / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·——· ——— ·—· — ———··· / ·— / ·—·· ——— ——· ——· · ·—· ——··—— / ·—— ··· ·——— — —····— —··— / ——— ·—· / ·—· ·· ——· —·—· — ·—·· —·· ·—·—·—',
 			'settings.station.connectFailedBridgeSaid' => ({required Object said}) => '— ···· · / —··· ·—· ·· —·· ——· · / ···· ··— —· ——· / ··— ·——· / ·— — / ——— —· —·—· · ——··—— / ··· ·— —·—— ·· —· ——· / “ ${said} ” ·—·—·—',
 			'settings.station.connectFailedBusy' => '—·· · ···— ·· —·—· · / ·· ··· / ·· —· / ··— ··· ·',
@@ -7810,9 +7812,9 @@ extension on TranslationsCw {
 			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees} ° / · ·—··',
 			'settings.station.rotatorNoReading' => '·—— ·— ·· — ·· —· ——· / ··—· ——— ·—· / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / — ——— / ·—· · ·——· ——— ·—· — / ·· — ··· / ·——· ——— ··· ·· — ·· ——— —· …',
 			'settings.station.rotatorNotResponding' => '—· ——— — / ·—· · ··· ·——· ——— —· —·· ·· —· ——·',
-			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => '— ··— ·—· —· ·· —· ——· / — ——— / ${heading} ——··—— / ·— ··· / ··—· ·— ·—· / ·— ··· / — ···· ·· ··· / ·—· ——— — ·— — ——— ·—· ·————· ··· / ·—·· ·· —— ·· — ··· / ·— ·—·· ·—·· ——— ·——',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => '— ··— ·—· —· ·· —· ——· / — ——— / ${heading} ——··—— / ·— ··· / ··—· ·— ·—· / ·— ··· / — ···· ·· ··· / ·—· ——— — ·— — ——— ·—· ·————· ··· / ·—·· ·· —— ·· — ··· / ·— ·—·· ·—·· ——— ·——',
 			'settings.station.rotatorTargetAzimuth' => '— ··— ·—· —· / — ——— / ·— ——·· ·· —— ··— — ····',
 			'settings.station.rotatorTargetAzimuthShort' => '— ··— ·—· —· / — ——— / ·— ——··',
 			'settings.station.rotatorTargetElevation' => '— ··— ·—· —· / — ——— / · ·—·· · ···— ·— — ·· ——— —·',
@@ -8324,9 +8326,9 @@ extension on TranslationsCw {
 			'switchAccounts.currentAccount' => '—·—· ··— ·—· ·—· · —· — / ·— —·—· —·—· ——— ··— —· —',
 			'switchAccounts.otherAccounts' => '——— — ···· · ·—· / ·— —·—· —·—· ——— ··— —· — ···',
 			'switchAccounts.linkToAnother' => '·—·· ·· —· —·— / — ——— / ·— —· ——— — ···· · ·—· / ·— —·—· —·—· ——— ··— —· —',
-			'switchAccounts.linkWithSibling' => '·—·· ·· —· —·— / ·—— ·· — ···· / ——— — ···· · ·—· / ···· ·— —— ··——— —·— / ·— ·——· ·——·',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.linkWithSibling' => '·—·· ·· —· —·— / ·—— ·· — ···· / ——— — ···· · ·—· / ···· ·— —— ··——— —·— / ·— ·——· ·——·',
 			'switchAccounts.linkWithPolo' => '·—·· ·· —· —·— / ·—— ·· — ···· / ·— —·—· —·—· ——— ··— —· — / ·· —· / ——— ·—·· —·· · ·—· / ···— · ·—· ··· ·· ——— —·',
 			'switchAccounts.linkWithSiblingDescription' => '—·—— ——— ··— / ···· ·— ···— · / ·— —· ——— — ···· · ·—· / ···· ·— —— ··——— —·— / ·— ·——· ·——· / ·· —· ··· — ·— ·—·· ·—·· · —·· ·—·—·— / ·—·· ·· —· —·— / ·—— ·· — ···· / — ···· · / ·— —·—· —·—· ——— ··— —· — / ·· —· / ··— ··· · / — ···· · ·—· · ·—·—·—',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => '·— ·——· ·——· ·—· ——— ···— · / — ···· · / ·—· · ——·— ··— · ··· — / ·· —· / ${app} ——··—— / — ···· · —· / —·—· ——— —— · / —··· ·— —·—· —·— / ···· · ·—· · ·—·—·—',

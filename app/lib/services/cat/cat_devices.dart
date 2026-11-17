@@ -88,7 +88,98 @@ extension _Devices on CatService {
   /// What [node]'s connection is opened with: the radio's settings, and for
   /// HaLo's own slice, HaLo's station: the id the radio keeps its slices
   /// by, and the name others see it as.
-  Map<String, dynamic> _flexConnectionConfig(EquipmentNode node) => {..._flexRadioConfig(node), if (_ownedFlexSlice(node) != null) flexGuiConfigKey: true};
+  Map<String, dynamic> _flexConnectionConfig(EquipmentNode node) => {
+    ..._flexRadioConfig(node),
+    if (_ownedFlexSlice(node) != null) flexGuiConfigKey: true,
+    flexBindConfigKey: ?_flexSliceStation(node),
+  };
+
+  /// Which of the radio's connections [node] rides, as its pool key: HaLo's
+  /// own station's, the one bound to the station holding its slice, or —
+  /// for a slice no station is known to hold yet — the one that binds to
+  /// the owner of the first slice it is asked to follow.
+  String _flexPoolKey(EquipmentNode node, String address) => switch ((_ownedFlexSlice(node), _flexSliceStation(node))) {
+    (_?, _) => '$address#station',
+    (null, final station?) => '$address#$station',
+    (null, null) => address,
+  };
+
+  /// The station holding [node]'s slice, by the radio's id for it, as the
+  /// radio last said; null for HaLo's own slice, and for one the radio has
+  /// not described as held.
+  ///
+  /// A slice held by a station the radio has not listed yet (it describes
+  /// its slices before its stations as a connection opens) keeps the one it
+  /// was last known to be held by: read as held by none, it would move off
+  /// its station's connection, and back once the station is listed, at
+  /// every connect.
+  String? _flexSliceStation(EquipmentNode node) {
+    if (_ownedFlexSlice(node) != null) return null;
+    final deviceId = deviceEntryFor(node.uuid);
+    final key = '${FlexRadioDriver.sliceFromConfig(node.config)}';
+    final slice = _flexOpenSlices(deviceId)[key];
+    final id = slice != null && slice.heldByUnknown ? _flexKnownHolder(deviceId, key) : slice?.holderId;
+    if (slice == null || id == null || id.isEmpty || _isHalos(deviceId, slice)) return null;
+    return id;
+  }
+
+  /// Who the Flex [deviceId] last said holds slice [key], by its id.
+  String? _flexKnownHolder(String deviceId, String key) => switch (_nodes[deviceId]?.config[flexKnownSlicesConfigKey]) {
+    final List<Object?> known => known.whereType<Map<Object?, Object?>>().firstWhereOrNull((slice) => slice['key'] == key)?['holderId'] as String?,
+    _ => null,
+  };
+
+  /// Each connected slice of [deviceId] on a connection other than the one
+  /// for its station ([_flexPoolKey]) — one connected before the radio said
+  /// whose it is, or whose station changed — connects again, onto its own.
+  ///
+  /// Only onto a station the radio has named for it: a slice not described
+  /// yet, as each connection's refresh arrives one slice at a time, stays
+  /// where it is, or every connect would move the others off and back.
+  void _flexSlicesRebind(String deviceId) {
+    bool moves(String id) {
+      final node = _nodes[id];
+      final address = node == null ? null : _flexAddressOf(node);
+      final station = node == null ? null : _flexSliceStation(node);
+      final key = _runtimes[id]?.flexPoolKey;
+      final status = stateFor(id).status;
+      return address != null &&
+          station != null &&
+          key != null &&
+          key != '$address#$station' &&
+          (status == EquipmentStatus.connected || status == EquipmentStatus.connecting);
+    }
+
+    // Once the report that said so has reached every entry's state, which
+    // is what says whose each slice is; not from inside it, since
+    // disconnecting closes the session reporting it; and one after another,
+    // since the last to leave the old connection closes it under any still
+    // on it. A report while a pass runs asks for another, which looks again.
+    final device = _runtimeFor(deviceId);
+    device.flexRebindAgain = true;
+    if (device.flexRebinding) return;
+    device.flexRebinding = true;
+    scheduleMicrotask(() async {
+      try {
+        while (device.flexRebindAgain) {
+          device.flexRebindAgain = false;
+          for (final id in entriesOf(deviceId).where(moves).toList()) {
+            try {
+              if (_runtimes[id]?.userDisconnected ?? true) continue;
+              await disconnect(id, byUser: false);
+              // The operator's Disconnect during the teardown stands.
+              if (_runtimes[id]?.userDisconnected ?? true) continue;
+              await connect(id);
+            } catch (e, st) {
+              ErrorReportingService.report(e, st, context: 'cat:flex-rebind:$id');
+            }
+          }
+        }
+      } finally {
+        device.flexRebinding = false;
+      }
+    });
+  }
 
   /// The config keys a Flex's connection is opened with: its transport's
   /// and the driver's, except which slice.
@@ -111,7 +202,8 @@ extension _Devices on CatService {
     };
   }
 
-  /// A pool key names the radio, and HaLo's station on it after a `#`.
+  /// A pool key names the radio, and after a `#` the station a connection
+  /// is for: HaLo's own, or the one it is bound to.
   void _logFlexSent(String key, List<int> bytes) {
     if (_flexDeviceOf(key.split('#').first) case final device?) trafficLog?.sent(_logLabel(device), bytes);
   }
@@ -267,11 +359,13 @@ extension _Devices on CatService {
     final node = _nodes[uuid];
     // HaLo's own slices close only when the operator closes them.
     if (node == null || !_isFlex(node) || deviceEntryFor(uuid) == uuid || _ownedFlexSlice(node) != null) return false;
-    final notOpen = switch (_runtimes[uuid]?.session) {
-      final TransmitGatedSession session => session.cannotTransmit,
-      _ => null,
+    // Closed on the radio, and not merely kept from transmitting: a slice
+    // waiting for its station's connection is open, and goes nowhere.
+    final closed = switch (_runtimes[uuid]?.session) {
+      final FlexRadioSession session => session.sliceClosed,
+      _ => false,
     };
-    if (notOpen == null) return false;
+    if (!closed) return false;
     final radio = LocalRadio(uuid);
     if ([kSetA, kSetB].any((set) => _positions.radioOf(set) == radio) || _so2rSwitch == uuid) return false;
     if (_positions.positionOf(radio)?.slots.isNotEmpty ?? false) return false;
@@ -294,9 +388,13 @@ extension _Devices on CatService {
       for (final channel in channels)
         if (channel.inUse) {'key': channel.key, 'label': channel.label, 'usedBy': ?channel.usedBy, 'holder': ?channel.holder, 'holderId': ?channel.holderId},
     ];
+    // Not while a slice names a station the radio has not listed yet: that
+    // is the radio still opening the connection, not saying nobody holds it.
+    if (channels.any((channel) => channel.inUse && channel.heldByUnknown)) return;
     if (const DeepCollectionEquality().equals(device.config[flexKnownSlicesConfigKey], open)) return;
     _nodes[deviceId] = device.copyWith(config: {...device.config, flexKnownSlicesConfigKey: open});
     unawaited(_save());
+    _flexSlicesRebind(deviceId);
   }
 
   /// The id of the remote K4 whose connection is [identity]: its Main's.

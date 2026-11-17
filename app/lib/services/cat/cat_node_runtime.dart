@@ -13,6 +13,15 @@ class _NodeRuntime {
   EquipmentState state = const EquipmentState();
   EquipmentConnection? connection;
   EquipmentSession? session;
+
+  /// The Flex connection this node leases, by its pool key: which station
+  /// it was bound to when it connected.
+  String? flexPoolKey;
+
+  /// On a Flex's device entry: its slices are being moved onto their
+  /// stations' connections.
+  bool flexRebinding = false;
+  bool flexRebindAgain = false;
   StreamSubscription<Uint8List>? subscription;
   CatCancelToken? cancel;
 

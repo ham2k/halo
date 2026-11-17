@@ -537,6 +537,76 @@ void main() {
     });
   });
 
+  // Captured on RadioRoom (4.3.16) under multiFLEX: each station has its own
+  // transmit slice, its own power, its own DAX channels, and `xmit 1` keys
+  // the bound station's transmit slice, whichever slice HaLo meant.
+  group('multiFLEX', () {
+    const cubagua = 'S5AC2F980|client 0x3DFA9A2A connected client_id=CUBA-ID program=SmartSDR-Win station=CUBAGUA\n';
+    const chirimena = 'S5AC2F980|client 0x13A3B2B3 connected client_id=CHIRI-ID program=AetherSDR station=chirimena\n';
+    void say(FlexRadio radio, String lines) => radio.handleData(Uint8List.fromList(utf8.encode(lines)));
+
+    test("a connection for a station binds to it, not to the owner of the first slice it follows", () {
+      fakeAsync((async) {
+        final radio = FlexRadio(send: sink.send, bindTo: 'CHIRI-ID');
+        final slice = radio.attach(_FakeSink(), receiver: '1') as FlexRadioSession;
+        slice.startUpdates();
+        say(radio, '${_handshakeLines.join('\n')}\n$cubagua');
+        say(radio, 'S5AC2F980|slice 1 in_use=1 client_handle=0x3DFA9A2A index_letter=A tx=1\n');
+        expect(sink.sent.where((line) => line.contains('client bind')), isEmpty, reason: 'its station not listed yet');
+        expect(slice.cannotTransmit, contains('CUBAGUA'), reason: 'unbound, a key would be nobody\'s');
+        say(radio, chirimena);
+        expect(sink.sent.where((line) => line.contains('client bind')).single, contains('client_id=CHIRI-ID'));
+        slice.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // Keyed through this binding, it would transmit on the bound station's
+    // slice: another frequency, another operator's.
+    test("a slice another station holds is not keyed through this one's binding, and says whose it is", () {
+      fakeAsync((async) {
+        final radio = FlexRadio(send: sink.send);
+        final mine = radio.attach(_FakeSink(), receiver: '1') as FlexRadioSession;
+        final theirs = radio.attach(_FakeSink(), receiver: '0') as FlexRadioSession;
+        mine.startUpdates();
+        theirs.startUpdates();
+        say(radio, '${_handshakeLines.join('\n')}\n$cubagua$chirimena');
+        say(radio, 'S5AC2F980|slice 1 in_use=1 client_handle=0x3DFA9A2A index_letter=A tx=1\n');
+        say(radio, 'S5AC2F980|slice 0 in_use=1 client_handle=0x13A3B2B3 index_letter=A tx=1\n');
+        expect(sink.sent.where((line) => line.contains('client bind')).single, contains('client_id=CUBA-ID'));
+        expect(mine.cannotTransmit, isNull);
+        expect(theirs.cannotTransmit, contains('chirimena'));
+        mine.teardown();
+        theirs.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // Moved, the flag takes the other station's transmitter off its own slice.
+    test("another station's transmit slice is its own, not a flag to move", () {
+      fakeAsync((async) {
+        final radio = FlexRadio(send: sink.send);
+        final a = radio.attach(_FakeSink(), receiver: '1') as FlexRadioSession;
+        final b = radio.attach(_FakeSink(), receiver: '0') as FlexRadioSession;
+        a.startUpdates();
+        b.startUpdates();
+        say(radio, '${_handshakeLines.join('\n')}\n$cubagua$chirimena');
+        say(radio, 'S5AC2F980|slice 1 in_use=1 client_handle=0x3DFA9A2A index_letter=A tx=0\n');
+        say(radio, 'S5AC2F980|slice 2 in_use=1 client_handle=0x3DFA9A2A index_letter=B tx=1\n');
+        say(radio, 'S5AC2F980|slice 0 in_use=1 client_handle=0x13A3B2B3 index_letter=A tx=1\n');
+        a.setPtt(true);
+        expect(sink.sent.where((line) => line.contains('tx=1')), isEmpty, reason: "CUBAGUA's flag is on slice 2, no set's: the operator's split");
+        a.setPtt(false);
+        a.teardown();
+        b.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+  });
+
   group('GUI client power', () {
     test('binds to the tracked slice owner regardless of discovery order', () {
       for (final clientFirst in [false, true]) {

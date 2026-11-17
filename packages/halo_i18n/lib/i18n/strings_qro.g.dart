@@ -3040,6 +3040,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get flexNewSliceRefused => 'THE RADIO DID NOT OPEN A NEW SLICE';
 	@override String get flexCloseSliceRefused => 'THE RADIO DID NOT CLOSE THE SLICE';
 	@override String get flexStationRefused => 'THE RADIO REFUSED HALO AS A STATION';
+	@override String flexSliceOtherStation({required Object station}) => 'NOT KEYED: STILL TRYING TO REACH ${station}, WHO CONTROLS THE SLICE';
 	@override String audioProblemOutput({required Object name}) => 'NOT HEARD HERE: THE OUTPUT ${name} IS NOT CONNECTED';
 	@override String get audioProblemOutputOpen => 'NOT HEARD HERE: THE AUDIO OUTPUT WOULD NOT OPEN';
 	@override String get audioProblemRoute => 'NOT HEARD HERE: HALO COULD NOT ROUTE ITS AUDIO';
@@ -7181,6 +7182,7 @@ extension on TranslationsQro {
 			'settings.station.flexNewSliceRefused' => 'THE RADIO DID NOT OPEN A NEW SLICE',
 			'settings.station.flexCloseSliceRefused' => 'THE RADIO DID NOT CLOSE THE SLICE',
 			'settings.station.flexStationRefused' => 'THE RADIO REFUSED HALO AS A STATION',
+			'settings.station.flexSliceOtherStation' => ({required Object station}) => 'NOT KEYED: STILL TRYING TO REACH ${station}, WHO CONTROLS THE SLICE',
 			'settings.station.audioProblemOutput' => ({required Object name}) => 'NOT HEARD HERE: THE OUTPUT ${name} IS NOT CONNECTED',
 			'settings.station.audioProblemOutputOpen' => 'NOT HEARD HERE: THE AUDIO OUTPUT WOULD NOT OPEN',
 			'settings.station.audioProblemRoute' => 'NOT HEARD HERE: HALO COULD NOT ROUTE ITS AUDIO',
@@ -7296,9 +7298,9 @@ extension on TranslationsQro {
 			'settings.station.radioUser' => 'RADIO USERNAME',
 			'settings.station.radioPass' => 'RADIO PASSWORD',
 			'settings.station.radioLoginDescription' => 'THE RADIO\'S NETWORK → REMOTE LOGIN, NOT YOUR WIFI PASSWORD.',
-			'settings.station.radioUserRequired' => 'THE RADIO\'S REMOTE-CONTROL USERNAME IS REQUIRED',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.radioUserRequired' => 'THE RADIO\'S REMOTE-CONTROL USERNAME IS REQUIRED',
 			'settings.station.connectFailedBridgeClosed' => 'THE BRIDGE HUNG UP AT ONCE. ANOTHER PROGRAM AT THE STATION MAY HAVE THE RADIO\'S PORT: A LOGGER, WSJT-X OR RIGCTLD.',
 			'settings.station.connectFailedBridgeSaid' => ({required Object said}) => 'THE BRIDGE HUNG UP AT ONCE, SAYING “${said}”.',
 			'settings.station.connectFailedBusy' => 'DEVICE IS IN USE',
@@ -7810,9 +7812,9 @@ extension on TranslationsQro {
 			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° EL',
 			'settings.station.rotatorNoReading' => 'WAITING FOR THE CONTROLLER TO REPORT ITS POSITION…',
 			'settings.station.rotatorNotResponding' => 'NOT RESPONDING',
-			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'TURNING TO ${heading}, AS FAR AS THIS ROTATOR\'S LIMITS ALLOW',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'TURNING TO ${heading}, AS FAR AS THIS ROTATOR\'S LIMITS ALLOW',
 			'settings.station.rotatorTargetAzimuth' => 'TURN TO AZIMUTH',
 			'settings.station.rotatorTargetAzimuthShort' => 'TURN TO AZ',
 			'settings.station.rotatorTargetElevation' => 'TURN TO ELEVATION',
@@ -8324,9 +8326,9 @@ extension on TranslationsQro {
 			'switchAccounts.currentAccount' => 'CURRENT ACCOUNT',
 			'switchAccounts.otherAccounts' => 'OTHER ACCOUNTS',
 			'switchAccounts.linkToAnother' => 'LINK TO ANOTHER ACCOUNT',
-			'switchAccounts.linkWithSibling' => 'LINK WITH OTHER HAM2K APP',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.linkWithSibling' => 'LINK WITH OTHER HAM2K APP',
 			'switchAccounts.linkWithPolo' => 'LINK WITH ACCOUNT IN OLDER VERSION',
 			'switchAccounts.linkWithSiblingDescription' => 'YOU HAVE ANOTHER HAM2K APP INSTALLED. LINK WITH THE ACCOUNT IN USE THERE.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'APPROVE THE REQUEST IN ${app}, THEN COME BACK HERE.',

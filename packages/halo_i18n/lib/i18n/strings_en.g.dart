@@ -6681,6 +6681,9 @@ class Translations$settings$station$en {
 	/// en: 'The radio refused HaLo as a station'
 	String get flexStationRefused => 'The radio refused HaLo as a station';
 
+	/// en: 'Not keyed: Still trying to reach ${station}, who controls the slice'
+	String flexSliceOtherStation({required Object station}) => 'Not keyed: Still trying to reach ${station}, who controls the slice';
+
 	/// en: 'Not heard here: the output ${name} is not connected'
 	String audioProblemOutput({required Object name}) => 'Not heard here: the output ${name} is not connected';
 
@@ -13652,6 +13655,7 @@ extension on Translations {
 			'settings.station.flexNewSliceRefused' => 'The radio did not open a new slice',
 			'settings.station.flexCloseSliceRefused' => 'The radio did not close the slice',
 			'settings.station.flexStationRefused' => 'The radio refused HaLo as a station',
+			'settings.station.flexSliceOtherStation' => ({required Object station}) => 'Not keyed: Still trying to reach ${station}, who controls the slice',
 			'settings.station.audioProblemOutput' => ({required Object name}) => 'Not heard here: the output ${name} is not connected',
 			'settings.station.audioProblemOutputOpen' => 'Not heard here: the audio output would not open',
 			'settings.station.audioProblemRoute' => 'Not heard here: HaLo could not route its audio',
@@ -13767,9 +13771,9 @@ extension on Translations {
 			'settings.station.radioUser' => 'Radio username',
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s Network → Remote login, not your WiFi password.',
-			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
 			'settings.station.connectFailedBridgeClosed' => 'The bridge hung up at once. Another program at the station may have the radio\'s port: a logger, WSJT-X or rigctld.',
 			'settings.station.connectFailedBridgeSaid' => ({required Object said}) => 'The bridge hung up at once, saying “${said}”.',
 			'settings.station.connectFailedBusy' => 'Device is in use',
@@ -14281,9 +14285,9 @@ extension on Translations {
 			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° el',
 			'settings.station.rotatorNoReading' => 'Waiting for the controller to report its position…',
 			'settings.station.rotatorNotResponding' => 'not responding',
-			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'Turning to ${heading}, as far as this rotator\'s limits allow',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'Turning to ${heading}, as far as this rotator\'s limits allow',
 			'settings.station.rotatorTargetAzimuth' => 'Turn to azimuth',
 			'settings.station.rotatorTargetAzimuthShort' => 'Turn to az',
 			'settings.station.rotatorTargetElevation' => 'Turn to elevation',
@@ -14795,9 +14799,9 @@ extension on Translations {
 			'switchAccounts.currentAccount' => 'Current account',
 			'switchAccounts.otherAccounts' => 'Other accounts',
 			'switchAccounts.linkToAnother' => 'Link to another account',
-			'switchAccounts.linkWithSibling' => 'Link with other Ham2K App',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.linkWithSibling' => 'Link with other Ham2K App',
 			'switchAccounts.linkWithPolo' => 'Link with account in older version',
 			'switchAccounts.linkWithSiblingDescription' => 'You have another Ham2K app installed. Link with the account in use there.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Approve the request in ${app}, then come back here.',

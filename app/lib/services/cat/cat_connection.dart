@@ -158,10 +158,10 @@ extension _Connection on CatService {
           : _isEverywareDevice(node)
           ? _everywareDeviceConnection(node)
           : switch (_isFlex(node) ? _flexAddressOf(node) : null) {
-              // HaLo's own slices ride HaLo's station on the radio, a
-              // connection of its own beside the one bound to another's.
+              // HaLo's own slices ride HaLo's station on the radio, and
+              // another station's slices a connection bound to that station.
               final address? => await _flexConnections.acquire(
-                key: _ownedFlexSlice(node) == null ? address : '$address#station',
+                key: runtime.flexPoolKey = _flexPoolKey(node, address),
                 target: type.targetFor(_flexRadioConfig(node)),
                 config: type.driverConfig(_flexConnectionConfig(node)),
                 open: transport.connect,

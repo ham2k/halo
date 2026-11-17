@@ -56,6 +56,7 @@ import 'drivers/flexradio_driver.dart'
         FlexRadio,
         FlexRadioDriver,
         FlexRadioSession,
+        flexBindConfigKey,
         flexClientIdConfigKey,
         flexGuiConfigKey,
         flexOwnSliceConfigKey,

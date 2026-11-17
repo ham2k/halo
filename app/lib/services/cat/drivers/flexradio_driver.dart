@@ -93,6 +93,12 @@ const flexOwnSlicePrefix = 'own-';
 const flexGuiConfigKey = 'flexGui';
 const flexClientIdConfigKey = 'flexClientId';
 
+/// The station a bound connection speaks for, by the radio's id for it:
+/// under multiFLEX a key, the power read back and a DAX channel are each
+/// the bound station's own, so a slice is followed on a connection bound
+/// to the station that holds it.
+const flexBindConfigKey = 'flexBind';
+
 /// What the operator calls this computer on the radio, kept on the radio's
 /// entry; absent for the computer's own name.
 const flexStationNameConfigKey = 'flexStationName';
@@ -479,6 +485,7 @@ class FlexRadioSession
   /// The radio has described its slices, and [slice] is not among those
   /// open — [_checkTrackedSlice]'s verdict.
   bool _sliceMissing = false;
+  bool get sliceClosed => _sliceMissing;
 
   /// Null before any verdict: the slice is presumed open until the radio
   /// has described its slices without it.
@@ -487,7 +494,10 @@ class FlexRadioSession
       ? t.settings.station.flexStationRefused
       : _sliceMissing
       ? t.settings.station.flexSliceMissing(letter: ownLetter ?? FlexRadioDriver.sliceLabel(slice))
-      : null;
+      : switch (_radio._otherStation(this)) {
+          final station? => t.settings.station.flexSliceOtherStation(station: station),
+          null => null,
+        };
 
   /// Nothing to HaLo's own slice before the radio has said which it is
   /// ([slice] is -1): the radio refuses a slice it does not have. The slice

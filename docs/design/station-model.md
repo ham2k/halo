@@ -563,8 +563,9 @@ Each is a full task. Nothing is visible to the operator before phase 3.
    the second, the Flex's nodes are merged into one device, the radio picker lists the slices
    the radio has open, or last said it had while it is off, and the slices share one connection,
    each a facade on the radio's session (cat.md, "One connection, several receivers"). A slice
-   closed on the radio that nothing uses is dropped. Slices held by two GUI clients still share
-   the one connection, bound to the first slice's owner.*
+   closed on the radio that nothing uses is dropped. Slices held by two stations (multiFLEX)
+   ride a connection each, bound to its station, since a key, the power and a DAX channel are
+   each the bound station's own (cat.md, "A Flex with several stations").*
 5. **Split, a second receiver, diversity** (§ 5.2). New in the app's VFO, the drivers and the
    logging fields; nothing reads or sets split today.
 6. **Owned receivers and scopes.** The Flex as its own GUI client (HALO-766).
@@ -585,10 +586,6 @@ Phases 5 to 10 do not depend on each other and can be reordered.
 
 ## 12. Open questions
 
-- **When a Flex needs its second connection.** A non-GUI client binds to one GUI client, and the
-  driver binds to the owner of its slice today. Two slices held by two stations (multiFLEX) get a
-  connection each (§ 3). What one bound connection can and cannot do for a slice another client
-  holds, and so exactly when the second is opened, is to settle by capture in phase 4.
 - **Flex diversity and antenna constraints.** Which models run a diversity pair, and which slices
   share a receive antenna because they share a front end, are the radio's to report. Neither is
   verified on hardware.

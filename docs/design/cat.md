@@ -187,6 +187,18 @@ The leases must agree on how the connection is opened: a Flex's slices take thei
 driver settings from the radio's own entry, never their own, so a slice's computer voice
 settings cannot make it ask for a different connection.
 
+**A Flex with several stations (multiFLEX).** Each GUI station on a Flex has its own transmit
+slice, its own `transmit` object (the power read back, the TX frequency), its own DAX channel
+numbers, and `xmit 1` keys the transmit slice of the station a client is bound to (captured on a
+FLEX-6600, 4.3.16). Any binding can read and tune any slice. So a slice is followed on a
+connection bound to the station holding it: the pool keys one per station, `host:port#<client
+id>`, from the station the radio last said holds the slice, and that connection binds to it by
+its id. A slice no station is known to hold yet rides the plain `host:port` connection, bound to
+the owner of the first slice it follows, and moves onto its station's once the radio says whose
+it is. On a connection bound to another station, a slice is not keyed (it reads why), gets no
+DAX stream, and its station's slices alone count when a free DAX channel is chosen or the TX
+flag moved.
+
 **HaLo's own station on a Flex.** "New Slice" in the radio pickers, offered while the radio has a
 slice free, registers HaLo as a GUI client of the radio (`client gui`, program `Ham2K`, station
 this computer's name or the one the Flex's editor gives it) on a connection of its own, beside the

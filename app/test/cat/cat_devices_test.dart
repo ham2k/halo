@@ -347,6 +347,44 @@ void main() {
       expect(radio.closed, 1);
     });
 
+    // Under multiFLEX a key, the power read back and a DAX channel are each
+    // the bound station's: followed through another's binding, a slice keys
+    // that station's transmitter and plays its audio.
+    test("slices two stations hold ride a connection each, and a slice found to be another station's moves onto its own", () async {
+      final radio = _FakeFlexRadio();
+      final cat = await load({
+        'version': 4,
+        'nodes': {
+          'flex-a': {...flex('0'), 'typeKey': _fakeFlexTypeKey},
+          'flex-b': {...flex('1'), 'typeKey': _fakeFlexTypeKey},
+        },
+      }, registry: radio.registry);
+      await cat.connect('flex-a');
+      await cat.connect('flex-a/rx:1');
+      expect(radio.opened, 1, reason: 'neither slice known to be anyone\'s yet');
+      radio.say(
+        'V1.4.0.0\nH5AC2F980\n'
+        'S1|client 0x3DFA9A2A connected client_id=CUBA-ID program=SmartSDR-Win station=CUBAGUA\n'
+        'S1|client 0x13A3B2B3 connected client_id=CHIRI-ID program=AetherSDR station=chirimena\n'
+        'S1|slice 0 in_use=1 client_handle=0x13A3B2B3 index_letter=A\n'
+        'S1|slice 1 in_use=1 client_handle=0x3DFA9A2A index_letter=A\n',
+      );
+      await pumpEventQueue();
+      expect(radio.opened, 3, reason: "each onto its own station's connection");
+      expect(cat.stateFor('flex-a').status, EquipmentStatus.connected);
+      expect(cat.stateFor('flex-a/rx:1').status, EquipmentStatus.connected);
+      // A connection's refresh describes its slices one at a time, and before
+      // it lists its stations: read as held by nobody, a slice would move
+      // off its station's connection, and back, at every connect.
+      radio.say('V1.4.0.0\nH5AC2F980\nS1|slice 1 in_use=1 client_handle=0x3DFA9A2A index_letter=A\n');
+      await pumpEventQueue();
+      radio.say('S1|client 0x3DFA9A2A connected client_id=CUBA-ID program=SmartSDR-Win station=CUBAGUA\n');
+      await pumpEventQueue();
+      expect(radio.opened, 3, reason: "no move while the radio is still saying whose each slice is");
+      await cat.disconnect('flex-a');
+      await cat.disconnect('flex-a/rx:1');
+    });
+
     test('lose a slice closed on the radio that nothing uses, and keep one a set logs from', () async {
       // Left behind, every slice ever opened and closed in SmartSDR would
       // stay listed, each saying it is not open.

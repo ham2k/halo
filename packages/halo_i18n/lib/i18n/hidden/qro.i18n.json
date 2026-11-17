@@ -2303,6 +2303,7 @@
       "flexNewSliceRefused": "THE RADIO DID NOT OPEN A NEW SLICE",
       "flexCloseSliceRefused": "THE RADIO DID NOT CLOSE THE SLICE",
       "flexStationRefused": "THE RADIO REFUSED HALO AS A STATION",
+      "flexSliceOtherStation(station)": "NOT KEYED: STILL TRYING TO REACH ${station}, WHO CONTROLS THE SLICE",
       "audioProblemOutput(name)": "NOT HEARD HERE: THE OUTPUT ${name} IS NOT CONNECTED",
       "audioProblemOutputOpen": "NOT HEARD HERE: THE AUDIO OUTPUT WOULD NOT OPEN",
       "audioProblemRoute": "NOT HEARD HERE: HALO COULD NOT ROUTE ITS AUDIO",

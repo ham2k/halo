@@ -33,6 +33,10 @@ class FlexRadio implements SharedConnectionOwner {
   /// client, owning the slices it opens) rather than bound to another's.
   final bool gui;
 
+  /// The station this connection binds to, by the radio's id for it; null
+  /// for one that binds to the owner of the first slice it follows.
+  final String? bindTo;
+
   /// The id the radio gave HaLo's station, under which it keeps the
   /// station's slices and panadapters between connections; null for one
   /// never registered. A new one is handed to [onClientId] to keep.
@@ -49,6 +53,7 @@ class FlexRadio implements SharedConnectionOwner {
     this.openMeterSocket = FlexMeterSocket.open,
     this.voiceMemoryCeiling = voiceActivityCeiling,
     this.gui = false,
+    this.bindTo,
     this.clientId,
     this.onClientId,
     this.station,
@@ -66,6 +71,7 @@ class FlexRadio implements SharedConnectionOwner {
     meterHost: config['host'] as String?,
     voiceMemoryCeiling: voiceCeilingFromConfig(config),
     gui: config[flexGuiConfigKey] == true,
+    bindTo: config[flexBindConfigKey] as String?,
     clientId: clientId,
     onClientId: onClientId,
     station: station,
@@ -545,7 +551,12 @@ class FlexRadio implements SharedConnectionOwner {
     if (gui || !_handshakeDone || !_wantUpdates) return;
     for (final session in _sessions) {
       final handle = _slices[session.slice]?.clientHandle?.toLowerCase();
-      final id = _clientIds[handle];
+      // Its own station's, once the radio lists it: bound before, the
+      // radio refuses the bind.
+      final id = switch (bindTo) {
+        final station? => _clientIds.containsValue(station) ? station : null,
+        null => _clientIds[handle],
+      };
       if (id == null) continue;
       if (id == _boundClientId) return;
       _boundClientId = id;
@@ -553,6 +564,7 @@ class FlexRadio implements SharedConnectionOwner {
       _sendCommand('sub tx all');
       for (final session in _sessions.toList()) {
         session._updateAudioStreams();
+        session._checkTrackedSlice();
       }
       return;
     }
@@ -713,7 +725,12 @@ class FlexRadio implements SharedConnectionOwner {
       _clients.remove(handle);
       _holders.remove(handle);
       final removedId = _clientIds.remove(handle);
-      if (removedId == _boundClientId) _boundClientId = null;
+      if (removedId == _boundClientId) {
+        _boundClientId = null;
+        for (final session in _sessions.toList()) {
+          session._checkTrackedSlice();
+        }
+      }
       _publishChannels();
       return;
     }
@@ -985,9 +1002,31 @@ class FlexRadio implements SharedConnectionOwner {
 
   /// Whether the transmit flag is on a slice another of the app's slices on
   /// this radio reads from.
+  ///
+  /// Each station has a transmit slice of its own: a flag on another
+  /// station's slice is that station's, and not one to move.
   bool _txOnAnotherSlice(FlexRadioSession session) {
-    if (_slices[session.slice]?.tx == true) return false;
-    return _slices.entries.any((e) => e.value.tx == true && _sessions.any((other) => !identical(other, session) && other.slice == e.key));
+    final holder = _slices[session.slice];
+    if (holder?.tx == true) return false;
+    return _slices.entries.any(
+      (e) => e.value.tx == true && e.value.clientHandle == holder?.clientHandle && _sessions.any((other) => !identical(other, session) && other.slice == e.key),
+    );
+  }
+
+  /// The station holding [session]'s slice, where this connection is bound
+  /// to another: under multiFLEX the key, the power read back and a DAX
+  /// channel are each the bound station's own, so through this binding
+  /// they would be another's. Null until the radio has said both.
+  ///
+  /// So is a connection for a station not bound to it yet: unbound, a key
+  /// is nobody's.
+  String? _otherStation(FlexRadioSession session) {
+    if (gui) return null;
+    final handle = _slices[session.slice]?.clientHandle?.toLowerCase();
+    final id = _clientIds[handle];
+    if (bindTo case final station? when _boundClientId != station) return _holders[handle] ?? station;
+    if (_boundClientId == null || id == null || id == _boundClientId) return null;
+    return _holders[handle] ?? id;
   }
 
   /// Current power from the bound client's transmit state. A subscription

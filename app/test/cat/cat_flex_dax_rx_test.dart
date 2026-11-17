@@ -241,6 +241,23 @@ void main() {
     session.teardown();
   });
 
+  // Captured on RadioRoom under multiFLEX: each station numbers its own DAX
+  // channels, and a binding's `dax_channel=1` is its own station's.
+  test("another station's DAX channels are its own, and take none of this station's", () async {
+    final sink = _Sink(link);
+    final session = FlexRadioSession(sink, meterHost: '127.0.0.1');
+    void feed(String text) => session.handleData(Uint8List.fromList(utf8.encode(text)));
+    feed('V1.4.0.0\nH5AC2F980\n');
+    session.startUpdates();
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    feed('S5AC2F980|client 0x1C61D553 connected client_id=GUI-1 program=SmartSDR-Win station=CUBAGUA\n');
+    feed('S5AC2F980|client 0x13A3B2B3 connected client_id=GUI-2 program=AetherSDR station=chirimena\n');
+    feed('S5AC2F980|slice 1 in_use=1 client_handle=0x13A3B2B3 index_letter=A mode=USB dax=1\n');
+    feed('S5AC2F980|slice 0 in_use=1 client_handle=0x1C61D553 index_letter=A mode=LSB dax=0\n');
+    expect(sink.commands.keys, contains('slice set 0 dax=1'), reason: "chirimena's channel 1 is not CUBAGUA's");
+    session.teardown();
+  });
+
   test('a session heard in HaLo names the engine\'s socket as its udpport, and the slice\'s audio reaches the ears', () async {
     // End to end: the meters' socket must be the engine's, or the DAX
     // packets arrive where nothing claims them, and the stream must be made
