@@ -7,14 +7,15 @@
 upcoming:
   changes:
     - "New GPS receivers over USB, serial, network or gpsd, under Station Configuration → Add"
-    - "New full-size panels: double-click a panel's title to enlarge it"
+    - "New full-size panels: double-tap or double-click a panel's title to enlarge it"
     - "Improved spots list: rows hold still while you scroll, touch or point at it"
     - "Links from other apps ask before tuning the radio, filling in a contact or opening an operation"
     - "Improved POTA export: one file for every park of an n-fer"
     - "New POTA Park fields setting (Settings → Exports)"
-    - "New Provides line in each device's settings: what it can do"
     - "Contacts another computer's N1MM or WSJT-X sends wait in Imports until you allow it"
     - "New Slice in a FlexRadio's radio picker: HaLo opens a slice of its own"
+    - "Improved FlexRadio setup: one device in Station Configuration, its open slices in the radio picker"
+    - "Improved call suggestions: calls already logged in bold, duplicates in red, changed letters marked"
 
 "193":
   changes:
