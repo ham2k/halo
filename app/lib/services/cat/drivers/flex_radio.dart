@@ -385,10 +385,17 @@ class FlexRadio implements SharedConnectionOwner {
       return;
     }
     if (_panPattern.firstMatch(line) case final pan?) {
-      final rest = pan[2]!;
+      final id = pan[1]!.toLowerCase(), rest = pan[2]!;
       final fields = rest == 'removed' ? const {'removed': '1'} : _parseFields(rest);
+      // Merged once, before any scope reacts: merged by each in turn, a
+      // later one would put back what an earlier one wrote in reacting.
+      if (rest == 'removed') {
+        _pans.remove(id);
+      } else {
+        (_pans[id] ??= {}).addAll(fields);
+      }
       for (final session in _sessions) {
-        session._spectrum.panStatus(pan[1]!.toLowerCase(), fields);
+        session._spectrum.panStatus(id, fields);
       }
       return;
     }
@@ -828,9 +835,13 @@ class FlexRadio implements SharedConnectionOwner {
     unawaited(
       open(meterHost!, (data) {
         if (generation != _meterGeneration || !_wantUpdates) return;
+        // Every slice's scope, not the first to claim it: two slices on one
+        // pan both draw its FFT.
+        var spectrum = false;
         for (final session in _sessions.toList()) {
-          if (session._spectrum.packet(data)) return;
+          if (session._spectrum.packet(data)) spectrum = true;
         }
+        if (spectrum) return;
         // The real clock: a rate limit on wire data must not travel.
         final now = realNowMillis();
         for (final session in _sessions.toList()) {
@@ -950,22 +961,26 @@ class FlexRadio implements SharedConnectionOwner {
     _meterSocket = null;
   }
 
-  /// Whether `sub pan all` has gone out on this connection and not been
-  /// withdrawn.
+  /// Whether `sub pan all` has gone out on this connection.
   bool _panSubscribed = false;
 
+  /// Every pan as the radio has described it, with the changes HaLo made
+  /// that the radio took: the one record every slice's scope on this
+  /// connection reads, merged here alone. The radio describes a pan in full
+  /// once per subscription, sends only its changes after, and sends the
+  /// client that made a change nothing, so a scope kept to what it heard
+  /// itself misses all three.
+  final _pans = <String, Map<String, String>>{};
+
   /// A slice's spectrum's commands. The pan subscription is the
-  /// connection's: sent once, however many slices ask for it, and withdrawn
-  /// only by the last slice wanting a display, since one slice closing its
-  /// display must not end another's.
-  int _sendForSpectrum(FlexRadioSession session, String command, {void Function(int code, String body)? onReply}) {
-    switch (command) {
-      case 'sub pan all':
-        if (_panSubscribed) return 0;
-        _panSubscribed = true;
-      case 'unsub pan all':
-        if (!_panSubscribed || _sessions.any((other) => !identical(other, session) && other._spectrum.wanted)) return 0;
-        _panSubscribed = false;
+  /// connection's: sent for the first slice wanting a display, and kept for
+  /// the connection's life. Withdrawn, the radio says nothing of a pan's
+  /// changes until a new one describes it again, and a scope started
+  /// meanwhile, or as the two cross, acts on what the record last said.
+  int _sendForSpectrum(String command, {void Function(int code, String body)? onReply}) {
+    if (command == 'sub pan all') {
+      if (_panSubscribed) return 0;
+      _panSubscribed = true;
     }
     return _sendCommand(command, onReply: onReply);
   }

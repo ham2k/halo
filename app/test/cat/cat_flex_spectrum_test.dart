@@ -49,21 +49,35 @@ void main() {
   late List<void Function(int, String)> replies;
   late _Sink sink;
   late FlexDaxSpectrum spectrum;
+  late Map<String, Map<String, String>> pans;
 
   setUp(() {
     sent = [];
     replies = [];
     sink = _Sink();
+    pans = {};
     spectrum = FlexDaxSpectrum(
       send: (command, {onReply}) {
         sent.add(command);
         if (onReply != null) replies.add(onReply);
       },
       sink: sink,
+      pans: pans,
     );
     // The session's handshake: the radio refuses a `sub` before it.
     spectrum.subscribe();
   });
+
+  /// A status as the connection hands it on: merged into the record first,
+  /// which the scope only reads.
+  void status(String id, Map<String, String> fields) {
+    if (fields.containsKey('removed')) {
+      pans.remove(id);
+    } else {
+      (pans[id] ??= {}).addAll(fields);
+    }
+    spectrum.panStatus(id, fields);
+  }
 
   /// The slice's pan, as the radio describes it, with [others] holding the
   /// channels other pans already have.
@@ -72,9 +86,9 @@ void main() {
     spectrum.socketReady();
     spectrum.slicePan('0x40000000');
     for (final MapEntry(:key, :value) in others.entries) {
-      spectrum.panStatus(key, {'daxiq_channel': value});
+      status(key, {'daxiq_channel': value});
     }
-    spectrum.panStatus('0x40000000', {'center': '14.200000', 'bandwidth': '0.064120', 'daxiq_channel': channel});
+    status('0x40000000', {'center': '14.200000', 'bandwidth': '0.064120', 'daxiq_channel': channel});
   }
 
   test('a pan without a channel gets the first free one, and gets it back as it was', () {
@@ -83,7 +97,7 @@ void main() {
     replies.last(0, '20000000');
     sent.clear();
     spectrum.stop();
-    expect(sent, ['stream remove 0x20000000', 'display pan set 0x40000000 daxiq_channel=0', 'unsub pan all']);
+    expect(sent, ['stream remove 0x20000000', 'display pan set 0x40000000 daxiq_channel=0']);
   });
 
   test("a pan that already has a channel is someone else's, and keeps it", () {
@@ -93,7 +107,7 @@ void main() {
     replies.single(0, '20000000');
     sent.clear();
     spectrum.stop();
-    expect(sent, ['stream remove 0x20000000', 'unsub pan all']);
+    expect(sent, ['stream remove 0x20000000']);
   });
 
   test('every channel taken says so, and opens nothing', () {
@@ -105,7 +119,7 @@ void main() {
   test('nothing is created before the UDP socket the IQ will arrive on', () {
     spectrum.start();
     spectrum.slicePan('0x40000000');
-    spectrum.panStatus('0x40000000', {'center': '14.200000', 'daxiq_channel': '1'});
+    status('0x40000000', {'center': '14.200000', 'daxiq_channel': '1'});
     expect(sent, ['sub pan all']);
     spectrum.socketReady();
     expect(sent.last, 'stream create type=dax_iq daxiq_channel=1');
@@ -147,11 +161,41 @@ void main() {
     expect(peakHz, closeTo(14206000, 100));
   });
 
+  // Pooled to 1024 points, a 192 kHz stream's point is 164 Hz wide: two
+  // signals 200 Hz apart land in neighbouring points and read as one, and
+  // the waterfall blurs over a Retina pane.
+  test('two carriers 200 Hz apart on a 192 kHz stream are drawn apart', () {
+    ready(channel: '1');
+    replies.single(0, '20000000');
+    spectrum.streamStatus('0x20000000', {'daxiq_rate': '192000', 'payload_endian': 'little'});
+    double phase(int n, double hz) => 2 * math.pi * hz * n / 192000;
+    for (var p = 0; p < 48; p++) {
+      spectrum.packet(
+        _packet(0x20000000, [
+          for (var n = p * 512; n < (p + 1) * 512; n++) ...[
+            1000 * (math.cos(phase(n, 6000)) + math.cos(phase(n, 6200))),
+            1000 * (math.sin(phase(n, 6000)) + math.sin(phase(n, 6200))),
+          ],
+        ]),
+      );
+    }
+    final frame = sink.frames.last, levels = frame.levels;
+    int at(double hz) => ((hz - frame.lowHz) / (frame.highHz - frame.lowHz) * (levels.length - 1)).round();
+    final (a, b) = (at(14206000), at(14206200));
+    final between = [for (var i = a + 1; i < b; i++) levels[i]];
+    expect(between, isNotEmpty);
+    expect(between.reduce(math.min), lessThan(math.min(levels[a], levels[b]) - 6));
+  });
+
   test('a stream granted after a stop and a restart is handed back, and a fresh one asked for', () {
     ready(channel: '0');
     final stale = replies.last;
     spectrum.stop();
+    sent.clear();
     spectrum.start();
+    // Still recorded as taken, its own channel reads as another client's,
+    // and is never handed back.
+    expect(sent, contains('display pan set 0x40000000 daxiq_channel=1'));
     expect(sent.last, 'stream create type=dax_iq daxiq_channel=1', reason: 'the restart asks again at once');
     sent.clear();
     stale(0, '20000000');
@@ -179,7 +223,7 @@ void main() {
     replies.last(0x50000016, '');
     expect(sent, ['display pan set 0x40000000 daxiq_channel=0']);
     expect(sink.problems.last, contains('50000016'));
-    spectrum.panStatus('0x40000000', {'center': '14.201000'});
+    status('0x40000000', {'center': '14.201000'});
     expect(sent, hasLength(1));
   });
 
@@ -257,7 +301,7 @@ void main() {
     replies.last(0, '20000000');
     expect(sent.last, 'stream set 0x20000000 daxiq_rate=192000');
     spectrum.slicePan('0x40000001');
-    spectrum.panStatus('0x40000001', {'center': '7.100000', 'bandwidth': '0.064120', 'daxiq_channel': '1'});
+    status('0x40000001', {'center': '7.100000', 'bandwidth': '0.064120', 'daxiq_channel': '1'});
     replies.last(0, '20000001');
     expect(sent.last, 'stream set 0x20000001 daxiq_rate=192000');
     spectrum.stop();
@@ -275,7 +319,7 @@ void main() {
     replies.last(0x50000015, '');
     sent.clear();
     spectrum.slicePan('0x40000001');
-    spectrum.panStatus('0x40000001', {'center': '7.100000', 'bandwidth': '0.064120', 'daxiq_channel': '1'});
+    status('0x40000001', {'center': '7.100000', 'bandwidth': '0.064120', 'daxiq_channel': '1'});
     replies.last(0, '20000001');
     expect(sent.where((c) => c.contains('daxiq_rate')), isEmpty);
   });
@@ -298,7 +342,7 @@ void main() {
     spectrum.streamStatus('0x20000000', {'daxiq_rate': '192000'});
     spectrum.set(const SpectrumRequest(spanHz: 84000));
     spectrum.slicePan('0x40000001');
-    spectrum.panStatus('0x40000001', {'center': '7.100000', 'bandwidth': '0.064120', 'daxiq_channel': '1'});
+    status('0x40000001', {'center': '7.100000', 'bandwidth': '0.064120', 'daxiq_channel': '1'});
     replies.last(0, '20000001');
     expect(sent.last, 'stream set 0x20000001 daxiq_rate=192000');
   });
@@ -337,8 +381,19 @@ void main() {
     expect(sink.problems.last, contains('50000023'));
     // Not ours to give back: the radio never gave it.
     expect(sent, isNot(contains('display pan set 0x40000000 daxiq_channel=0')));
+    // Left as taken, the next display streams on a channel no pan feeds.
+    expect(pans['0x40000000']!['daxiq_channel'], '0');
     create(0, '20000000');
     expect(sent, contains('stream remove 0x20000000'), reason: 'a stream on a channel no pan feeds');
+  });
+
+  // Taken as the record's word, the channel HaLo holds reads as free, and
+  // another slice's display takes it too.
+  test('a channel the radio takes stays taken whatever a status already on its way says', () {
+    ready(channel: '0');
+    status('0x40000000', {'daxiq_channel': '0'});
+    replies[0](0, '');
+    expect(pans['0x40000000']!['daxiq_channel'], '1');
   });
 
   test('a granted stream whose IQ never arrives says so, and late IQ clears it', () {

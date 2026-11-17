@@ -43,9 +43,9 @@ Uint8List fftPacket(int pan, {required int frame, required int start, required i
   return bytes.buffer.asUint8List();
 }
 
-/// One whole 1024-bin sweep of [pan] in a single packet, at the pan's
+/// One whole 2048-bin sweep of [pan] in a single packet, at the pan's
 /// bottom row but for [peaks] (bin → row).
-Uint8List sweep(int pan, {required int frame, Map<int, int> peaks = const {}, int bins = 1024}) =>
+Uint8List sweep(int pan, {required int frame, Map<int, int> peaks = const {}, int bins = 2048}) =>
     fftPacket(pan, frame: frame, start: 0, total: bins, rows: [for (var i = 0; i < bins; i++) peaks[i] ?? 399]);
 
 void main() {
@@ -53,20 +53,34 @@ void main() {
   late Map<String, void Function(int, String)> replies;
   late _Sink sink;
   late FlexPanSpectrum spectrum;
+  late Map<String, Map<String, String>> pans;
 
   setUp(() {
     sent = [];
     replies = {};
     sink = _Sink();
+    pans = {};
     spectrum = FlexPanSpectrum(
       send: (command, {onReply}) {
         sent.add(command);
         if (onReply != null) replies[command] = onReply;
       },
       sink: sink,
+      pans: pans,
     );
     spectrum.subscribe();
   });
+
+  /// A status as the connection hands it on: merged into the record first,
+  /// which the scope only reads.
+  void status(String id, Map<String, String> fields) {
+    if (fields.containsKey('removed')) {
+      pans.remove(id);
+    } else {
+      (pans[id] ??= {}).addAll(fields);
+    }
+    spectrum.panStatus(id, fields);
+  }
 
   /// HaLo's pan as the radio describes it: 200 kHz wide on 14.074, its rows
   /// spanning -150 to -10 dBm.
@@ -74,13 +88,13 @@ void main() {
     spectrum.start();
     spectrum.socketReady();
     spectrum.slicePan('0x40000003');
-    spectrum.panStatus('0x40000003', {
+    status('0x40000003', {
       'center': '14.074000',
       'bandwidth': '0.200000',
       'min_dbm': '-150.00',
       'max_dbm': '-10.00',
       'y_pixels': '400',
-      'x_pixels': '1024',
+      'x_pixels': '2048',
       'fps': '25',
     });
   }
@@ -89,13 +103,13 @@ void main() {
     ready();
     expect(sent, [
       'sub pan all',
-      'display pan set 0x40000003 xpixels=1024',
+      'display pan set 0x40000003 xpixels=2048',
       'display pan set 0x40000003 ypixels=400',
       'display pan set 0x40000003 min_dbm=-150',
       'display pan set 0x40000003 max_dbm=-10',
     ]);
     sent.clear();
-    spectrum.panStatus('0x40000003', {'center': '14.075000'});
+    status('0x40000003', {'center': '14.075000'});
     expect(sent, isEmpty, reason: 'a status arrives several times a second, and each would shape the pan again');
   });
 
@@ -104,21 +118,21 @@ void main() {
     // Row 0 is the pan's top. Rows read as dB would put the strongest
     // signal at the bottom of the display.
     final first = [for (var i = 0; i < 600; i++) i == 300 ? 0 : 399];
-    final second = [for (var i = 0; i < 424; i++) 399];
-    expect(spectrum.packet(fftPacket(0x40000003, frame: 7, start: 0, total: 1024, rows: first)), isTrue);
+    final second = [for (var i = 0; i < 1448; i++) 399];
+    expect(spectrum.packet(fftPacket(0x40000003, frame: 7, start: 0, total: 2048, rows: first)), isTrue);
     expect(sink.frames, isEmpty, reason: 'half a sweep drawn is a sweep with half its band at zero');
-    expect(spectrum.packet(fftPacket(0x40000003, frame: 7, start: 600, total: 1024, rows: second)), isTrue);
+    expect(spectrum.packet(fftPacket(0x40000003, frame: 7, start: 600, total: 2048, rows: second)), isTrue);
     final frame = sink.frames.single;
     expect((frame.lowHz, frame.highHz), (14074000 - 100000, 14074000 + 100000));
-    expect(frame.levels, hasLength(1024));
+    expect(frame.levels, hasLength(2048));
     expect(frame.levels[300], closeTo(-10, 0.01));
     expect(frame.levels[1000], closeTo(-150, 0.01));
   });
 
   test('a sweep missing its first packet is not drawn with the next one', () {
     ready();
-    spectrum.packet(fftPacket(0x40000003, frame: 8, start: 600, total: 1024, rows: List.filled(424, 200)));
-    spectrum.packet(fftPacket(0x40000003, frame: 9, start: 600, total: 1024, rows: List.filled(424, 200)));
+    spectrum.packet(fftPacket(0x40000003, frame: 8, start: 600, total: 2048, rows: List.filled(1448, 200)));
+    spectrum.packet(fftPacket(0x40000003, frame: 9, start: 600, total: 2048, rows: List.filled(1448, 200)));
     expect(sink.frames, isEmpty, reason: "frame 9's tail and frame 8's would make one sweep of nothing");
   });
 
@@ -128,12 +142,12 @@ void main() {
   // sends 400, and every level lands twenty times too far down.
   test("a status sent before the radio took HaLo's change does not undo it", () {
     ready();
-    spectrum.panStatus('0x40000003', {'y_pixels': '20', 'x_pixels': '50'});
-    replies['display pan set 0x40000003 xpixels=1024']!(0, '');
+    status('0x40000003', {'y_pixels': '20', 'x_pixels': '50'});
+    replies['display pan set 0x40000003 xpixels=2048']!(0, '');
     replies['display pan set 0x40000003 ypixels=400']!(0, '');
     spectrum.packet(sweep(0x40000003, frame: 1, peaks: {0: 0}));
     expect(sink.frames.single.levels[1], closeTo(-150, 0.01));
-    spectrum.panStatus('0x40000003', {'y_pixels': '20'});
+    status('0x40000003', {'y_pixels': '20'});
     spectrum.packet(sweep(0x40000003, frame: 2, peaks: {0: 0}));
     expect(sink.frames, hasLength(1), reason: 'once answered, a status is news: a sweep below the last row it names is dropped, not drawn');
   });
@@ -146,7 +160,7 @@ void main() {
     for (final reply in replies.values.toList()) {
       reply(0, '');
     }
-    spectrum.panStatus('0x40000003', {'min_dbm': '-135.00', 'max_dbm': '-40.00'});
+    status('0x40000003', {'min_dbm': '-135.00', 'max_dbm': '-40.00'});
     expect(sent.last, 'display pan set 0x40000003 max_dbm=-10');
     spectrum.packet(sweep(0x40000003, frame: 1, peaks: {0: 0}));
     expect(sink.frames.single.levels[0], closeTo(-40, 0.01));
@@ -171,15 +185,15 @@ void main() {
     spectrum.set(const SpectrumRequest(spanHz: 48000));
     sent.clear();
     spectrum.slicePan('0x40000004');
-    spectrum.panStatus('0x40000004', {'center': '7.074000', 'bandwidth': '0.200000'});
+    status('0x40000004', {'center': '7.074000', 'bandwidth': '0.200000'});
     expect(sent, contains('display pan set 0x40000004 bandwidth=0.096000'));
   });
 
   test('a pan the radio removes says so, and a late answer does not bring it back', () {
     ready();
-    spectrum.panStatus('0x40000003', {'removed': '1'});
+    status('0x40000003', {'removed': '1'});
     expect(sink.problems.last, t.settings.station.spectrumNoPanadapter);
-    replies['display pan set 0x40000003 xpixels=1024']!(0, '');
+    replies['display pan set 0x40000003 xpixels=2048']!(0, '');
     sent.clear();
     spectrum.slicePan('0x40000004');
     spectrum.slicePan('0x40000003');
@@ -213,7 +227,7 @@ void main() {
   test('a change refused after the radio said something else takes what the radio said', () {
     ready();
     spectrum.set(const SpectrumRequest(centerHz: 14100000));
-    spectrum.panStatus('0x40000003', {'center': '14.050000'});
+    status('0x40000003', {'center': '14.050000'});
     replies['display pan set 0x40000003 center=14.100000']!(0x50000016, '');
     spectrum.packet(sweep(0x40000003, frame: 1));
     expect(sink.frames.single.lowHz, 14050000 - 100000);
@@ -223,11 +237,11 @@ void main() {
   // still row 0: a wall at the top of the scale.
   test('a packet that comes twice does not stand in for one that never came', () {
     ready();
-    final half = [for (var i = 0; i < 512; i++) 399];
-    spectrum.packet(fftPacket(0x40000003, frame: 3, start: 0, total: 1024, rows: half));
-    spectrum.packet(fftPacket(0x40000003, frame: 3, start: 0, total: 1024, rows: half));
+    final half = [for (var i = 0; i < 1024; i++) 399];
+    spectrum.packet(fftPacket(0x40000003, frame: 3, start: 0, total: 2048, rows: half));
+    spectrum.packet(fftPacket(0x40000003, frame: 3, start: 0, total: 2048, rows: half));
     expect(sink.frames, isEmpty);
-    spectrum.packet(fftPacket(0x40000003, frame: 3, start: 512, total: 1024, rows: half));
+    spectrum.packet(fftPacket(0x40000003, frame: 3, start: 1024, total: 2048, rows: half));
     expect(sink.frames, hasLength(1));
   });
 
@@ -238,10 +252,10 @@ void main() {
       reply(0, '');
     }
     sent.clear();
-    spectrum.panStatus('0x40000003', {'min_dbm': '-135.00', 'max_dbm': '-40.00', 'rfgain': '8', 'pre': '+8dB'});
+    status('0x40000003', {'min_dbm': '-135.00', 'max_dbm': '-40.00', 'rfgain': '8', 'pre': '+8dB'});
     expect(sent, ['display pan set 0x40000003 min_dbm=-150', 'display pan set 0x40000003 max_dbm=-10']);
     sent.clear();
-    spectrum.panStatus('0x40000003', {'min_dbm': '-150.00', 'max_dbm': '-10.00'});
+    status('0x40000003', {'min_dbm': '-150.00', 'max_dbm': '-10.00'});
     expect(sent, isEmpty);
   });
 

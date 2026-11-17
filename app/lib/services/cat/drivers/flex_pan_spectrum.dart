@@ -29,8 +29,12 @@ const flexPanSpans = [12000, 24000, 48000, 96000, 192000, 384000];
 const _minDbm = -150, _maxDbm = -10;
 
 /// The pan's points and rows: the points a sweep is drawn with, and the
-/// steps its levels come in.
-const _points = 1024, _rows = 400;
+/// steps its levels come in. 2048 points is the radio's own resolution, a
+/// 2048th of the span (RadioRoom, 4.3.16: a carrier is a 1024th of the span
+/// wide at 6 dB down whether asked for 1024, 2048 or 4096 points). Fewer
+/// pools its bins, and a waterfall stretched over a Retina pane blurs; more
+/// only interpolates. The radio sends no more than 4096 whatever is asked.
+const _points = 2048, _rows = 400;
 
 const _framesPerSecond = {SpectrumSpeed.slow: 8, SpectrumSpeed.mid: 15, SpectrumSpeed.fast: 25};
 
@@ -39,7 +43,7 @@ class FlexPanSpectrum implements FlexSliceSpectrum {
   final void Function(String command, {void Function(int code, String body)? onReply}) send;
   final SpectrumSink? sink;
 
-  FlexPanSpectrum({required this.send, required this.sink});
+  FlexPanSpectrum({required this.send, required this.sink, Map<String, Map<String, String>>? pans}) : _pans = pans ?? {};
 
   bool _wanted = false;
   @override
@@ -50,8 +54,10 @@ class FlexPanSpectrum implements FlexSliceSpectrum {
   int? _panId;
 
   /// What each pan last said, merged from pushes that carry only what
-  /// changed, and from the radio's acceptance of HaLo's own sets.
-  final _pans = <String, Map<String, String>>{};
+  /// changed, and from the radio's acceptance of HaLo's own sets: the
+  /// connection's record (FlexRadio), shared by every slice's scope on it,
+  /// into which the connection alone merges the radio's statuses.
+  final Map<String, Map<String, String>> _pans;
 
   /// What [pan] is about to be, for the width and speed the displays show:
   /// what the radio said, under HaLo's sets it has not yet answered.
@@ -117,7 +123,6 @@ class FlexPanSpectrum implements FlexSliceSpectrum {
     if (!_wanted) return;
     _wanted = false;
     _release();
-    send('unsub pan all');
     sink?.reportSpectrumProblem(null);
   }
 
@@ -168,7 +173,7 @@ class FlexPanSpectrum implements FlexSliceSpectrum {
       'display pan set $pan $field=$value',
       onReply: (code, _) {
         // A pan removed meanwhile is not brought back by its answer.
-        if (code == 0 && _pending.containsKey(pan)) (_pans[pan] ??= {})[key] = value;
+        if (code == 0) _pans[pan]?[key] = value;
         if (_pending[pan]?[key]?.$1 == number) _pending[pan]!.remove(key);
         if (pan == _pan) _reportPan();
       },
@@ -214,7 +219,6 @@ class FlexPanSpectrum implements FlexSliceSpectrum {
   @override
   void panStatus(String id, Map<String, String> fields) {
     if (fields.containsKey('removed')) {
-      _pans.remove(id);
       _pending.remove(id);
       if (id == _pan && _wanted) {
         _release();
@@ -222,7 +226,6 @@ class FlexPanSpectrum implements FlexSliceSpectrum {
       }
       return;
     }
-    (_pans[id] ??= {}).addAll(fields);
     if (id != _pan) return;
     _settle();
     if (!_wanted) return;
@@ -290,8 +293,8 @@ class FlexPanSpectrum implements FlexSliceSpectrum {
     _report(settings);
   }
 
-  /// One UDP datagram. Returns whether it was this pan's FFT, so no one
-  /// else parses it.
+  /// One UDP datagram. Returns whether it was this pan's FFT, so the meter
+  /// codec does not parse it as well.
   @override
   bool packet(Uint8List data) {
     if (data.length < 40 || _panId == null) return false;

@@ -314,12 +314,102 @@ void main() {
         for (final (pan, center) in [('0x40000002', '14.074000'), ('0x40000003', '7.074000')]) {
           say(radio, 'S5AC2F980|display pan $pan client_handle=0x5AC2F980 center=$center bandwidth=0.200000 min_dbm=-150.00 max_dbm=-10.00 y_pixels=400\n');
         }
-        expect(commands(), contains('display pan set 0x40000002 xpixels=1024'));
-        expect(commands(), contains('display pan set 0x40000003 xpixels=1024'));
+        expect(commands(), contains('display pan set 0x40000002 xpixels=2048'));
+        expect(commands(), contains('display pan set 0x40000003 xpixels=2048'));
         expect(commands().where((c) => c.contains('dax_iq') || c.contains('daxiq')), isEmpty);
-        deliver!(_fftPacket(0x40000003, [for (var i = 0; i < 1024; i++) i == 1 ? 0 : 399]));
-        deliver!(_fftPacket(0x40000002, [for (var i = 0; i < 1024; i++) i == 2 ? 0 : 399]));
+        deliver!(_fftPacket(0x40000003, [for (var i = 0; i < 2048; i++) i == 1 ? 0 : 399]));
+        deliver!(_fftPacket(0x40000002, [for (var i = 0; i < 2048; i++) i == 2 ? 0 : 399]));
         expect(sinkA.frames.map((f) => f.lowHz), [13974000]);
+        expect(sinkB.frames.map((f) => f.lowHz), [6974000]);
+        for (final own in [ownA, ownB]) {
+          own.teardown();
+        }
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // The radio sends no status to the client that moved a pan, and HaLo's
+    // slices share one client: a second scope on the same pan, kept to what
+    // the radio said, labels every sweep where the pan was.
+    test("a pan one of HaLo's slices moved is drawn where it is by another slice on it", () {
+      fakeAsync((async) {
+        void Function(Uint8List)? deliver;
+        final radio = FlexRadio(
+          send: sink.send,
+          gui: true,
+          clientId: '1DF30D74',
+          station: 'Chirimena',
+          meterHost: '10.0.0.5',
+          openMeterSocket: (host, onData, onError) async {
+            deliver = onData;
+            return _FakeMeterSocket();
+          },
+        );
+        final ownA = radio.attach(_ScopeSink(), receiver: 'own-A') as FlexRadioSession;
+        final sinkB = _ScopeSink();
+        final ownB = radio.attach(sinkB, receiver: 'own-B') as FlexRadioSession;
+        for (final own in [ownA, ownB]) {
+          own.startUpdates();
+        }
+        ownA.startSpectrum();
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        async.flushMicrotasks();
+        say(radio, 'S5AC2F980|slice 2 in_use=1 client_handle=0x5AC2F980 index_letter=A pan=0x40000002 RF_frequency=14.074000\n');
+        say(radio, 'S5AC2F980|slice 3 in_use=1 client_handle=0x5AC2F980 index_letter=B pan=0x40000002 RF_frequency=14.080000\n');
+        say(
+          radio,
+          'S5AC2F980|display pan 0x40000002 client_handle=0x5AC2F980 center=14.074000 bandwidth=0.200000 min_dbm=-150.00 max_dbm=-10.00 y_pixels=400\n',
+        );
+        ownA.setSpectrum(const SpectrumRequest(centerHz: 14100000));
+        final moved = sink.sent.lastWhere((line) => line.contains('display pan set 0x40000002 center=14.100000'));
+        say(radio, 'R${moved.substring(1, moved.indexOf('|'))}|0|\n');
+        ownB.startSpectrum();
+        deliver!(_fftPacket(0x40000002, [for (var i = 0; i < 2048; i++) i == 1 ? 0 : 399]));
+        expect(sinkB.frames.map((f) => f.lowHz), [14000000]);
+        for (final own in [ownA, ownB]) {
+          own.teardown();
+        }
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // A slice opened while another's scope runs joins a connection whose
+    // pans the radio has already described: kept to what it heard itself,
+    // its scope never shapes its pan and never draws.
+    test("a slice of its own opened while another's scope runs draws its pan from what the radio said before it was there", () {
+      fakeAsync((async) {
+        void Function(Uint8List)? deliver;
+        final radio = FlexRadio(
+          send: sink.send,
+          gui: true,
+          clientId: '1DF30D74',
+          station: 'Chirimena',
+          meterHost: '10.0.0.5',
+          openMeterSocket: (host, onData, onError) async {
+            deliver = onData;
+            return _FakeMeterSocket();
+          },
+        );
+        final ownA = radio.attach(_ScopeSink(), receiver: 'own-A') as FlexRadioSession;
+        ownA
+          ..startUpdates()
+          ..startSpectrum();
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        async.flushMicrotasks();
+        say(radio, 'S5AC2F980|slice 2 in_use=1 client_handle=0x5AC2F980 index_letter=A pan=0x40000002 RF_frequency=14.074000\n');
+        for (final (pan, center) in [('0x40000002', '14.074000'), ('0x40000003', '7.074000')]) {
+          say(radio, 'S5AC2F980|display pan $pan client_handle=0x5AC2F980 center=$center bandwidth=0.200000 min_dbm=-150.00 max_dbm=-10.00 y_pixels=400\n');
+        }
+        final sinkB = _ScopeSink();
+        final ownB = radio.attach(sinkB, receiver: 'own-B') as FlexRadioSession;
+        ownB
+          ..startUpdates()
+          ..startSpectrum();
+        say(radio, 'S5AC2F980|slice 3 in_use=1 client_handle=0x5AC2F980 index_letter=B pan=0x40000003 RF_frequency=7.074000\n');
+        expect(commands(), contains('display pan set 0x40000003 xpixels=2048'));
+        deliver!(_fftPacket(0x40000003, [for (var i = 0; i < 2048; i++) i == 1 ? 0 : 399]));
         expect(sinkB.frames.map((f) => f.lowHz), [6974000]);
         for (final own in [ownA, ownB]) {
           own.teardown();
@@ -1068,7 +1158,10 @@ void main() {
 
     // Both slices wanting a display before the handshake: each holding back
     // for the other subscribes neither, and both displays wait for good.
-    test('two slices with a display open subscribe to the pans once between them, and the last to close withdraws it', () {
+    // Withdrawn when the last closes, the radio says nothing of a pan's
+    // changes until it describes the pan again, and a display opened as the
+    // two cross acts on what the record last said.
+    test('two slices with a display open subscribe to the pans once between them, and keep it once both close', () {
       List<String> commands() => [for (final line in sink.sent) line.substring(line.indexOf('|') + 1).trim()];
       fakeAsync((async) {
         final radio = FlexRadio(send: sink.send, meterHost: '10.0.0.5', openMeterSocket: (host, onData, onError) async => _FakeMeterSocket());
@@ -1083,9 +1176,99 @@ void main() {
         async.flushMicrotasks();
         expect(commands().where((c) => c == 'sub pan all'), hasLength(1));
         sliceA.stopSpectrum();
-        expect(commands(), isNot(contains('unsub pan all')), reason: "slice B's display is still open");
         sliceB.stopSpectrum();
-        expect(commands().where((c) => c == 'unsub pan all'), hasLength(1));
+        expect(commands(), isNot(contains('unsub pan all')));
+        sliceA.teardown();
+        sliceB.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // The radio describes a pan in full once per subscription: a slice
+    // attaching after that, kept to what it heard itself, never knows its
+    // pan and its display waits for good.
+    test("a slice attaching to a connection already subscribed to the pans mirrors its pan from what the radio said before it was there", () {
+      List<String> commands() => [for (final line in sink.sent) line.substring(line.indexOf('|') + 1).trim()];
+      fakeAsync((async) {
+        void say(FlexRadio radio, String lines) => radio.handleData(Uint8List.fromList(utf8.encode(lines)));
+        final radio = FlexRadio(send: sink.send, meterHost: '10.0.0.5', openMeterSocket: (host, onData, onError) async => _FakeMeterSocket());
+        final sliceA = radio.attach(_FakeSink(), receiver: '0') as FlexRadioSession;
+        sliceA
+          ..startUpdates()
+          ..startSpectrum();
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        async.flushMicrotasks();
+        say(radio, 'S5AC2F980|display pan 0x40000000 center=14.074000 bandwidth=0.200000 daxiq_channel=1\n');
+        say(radio, 'S5AC2F980|display pan 0x40000001 center=7.123000 bandwidth=0.200000 daxiq_channel=2\n');
+        final sliceB = radio.attach(_FakeSink(), receiver: '1') as FlexRadioSession;
+        sliceB
+          ..startUpdates()
+          ..startSpectrum();
+        say(radio, 'S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 pan=0x40000001\n');
+        expect(commands(), contains('stream create type=dax_iq daxiq_channel=2'));
+        sliceA.teardown();
+        sliceB.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // Every display closing ends nothing: the radio goes on telling the
+    // connection of each pan's changes, so a display opened later mirrors
+    // the channel the pan is on now, not the one it had when the last closed.
+    test("a slice's display opened after every display closed mirrors its pan as it is now", () {
+      List<String> commands() => [for (final line in sink.sent) line.substring(line.indexOf('|') + 1).trim()];
+      fakeAsync((async) {
+        void say(FlexRadio radio, String lines) => radio.handleData(Uint8List.fromList(utf8.encode(lines)));
+        final radio = FlexRadio(send: sink.send, meterHost: '10.0.0.5', openMeterSocket: (host, onData, onError) async => _FakeMeterSocket());
+        final sliceA = radio.attach(_FakeSink(), receiver: '0') as FlexRadioSession;
+        final sliceB = radio.attach(_FakeSink(), receiver: '1') as FlexRadioSession;
+        sliceA
+          ..startUpdates()
+          ..startSpectrum();
+        sliceB.startUpdates();
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        async.flushMicrotasks();
+        say(radio, 'S5AC2F980|display pan 0x40000001 center=7.123000 bandwidth=0.200000 daxiq_channel=2\n');
+        sliceA.stopSpectrum();
+        expect(commands(), isNot(contains('unsub pan all')));
+        say(radio, 'S5AC2F980|display pan 0x40000001 daxiq_channel=3\n');
+        sliceB.startSpectrum();
+        say(radio, 'S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 pan=0x40000001\n');
+        expect(commands().where((c) => c.startsWith('stream create')), ['stream create type=dax_iq daxiq_channel=3']);
+        sliceA.teardown();
+        sliceB.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // The radio tells no client of a channel another client assigned, and
+    // HaLo's slices share one client: counted free, the channel slice A took
+    // goes to slice B's pan too, and B's stream carries A's IQ. In the
+    // radio's own order, slices before pans, A takes it while the pan's
+    // description is still being handed round.
+    test("a DAX channel one slice's display takes is taken for the next", () {
+      List<String> commands() => [for (final line in sink.sent) line.substring(line.indexOf('|') + 1).trim()];
+      fakeAsync((async) {
+        void say(FlexRadio radio, String lines) => radio.handleData(Uint8List.fromList(utf8.encode(lines)));
+        final radio = FlexRadio(send: sink.send, meterHost: '10.0.0.5', openMeterSocket: (host, onData, onError) async => _FakeMeterSocket());
+        final sliceA = radio.attach(_FakeSink(), receiver: '0') as FlexRadioSession;
+        final sliceB = radio.attach(_FakeSink(), receiver: '1') as FlexRadioSession;
+        for (final slice in [sliceA, sliceB]) {
+          slice.startUpdates();
+        }
+        sliceA.startSpectrum();
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        async.flushMicrotasks();
+        say(radio, 'S5AC2F980|slice 0 in_use=1 RF_frequency=14.074000 pan=0x40000000\n');
+        say(radio, 'S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 pan=0x40000001\n');
+        say(radio, 'S5AC2F980|display pan 0x40000000 center=14.074000 bandwidth=0.200000 daxiq_channel=0\n');
+        say(radio, 'S5AC2F980|display pan 0x40000001 center=7.123000 bandwidth=0.200000 daxiq_channel=0\n');
+        expect(commands(), contains('display pan set 0x40000000 daxiq_channel=1'));
+        sliceB.startSpectrum();
+        expect(commands(), contains('display pan set 0x40000001 daxiq_channel=2'));
         sliceA.teardown();
         sliceB.teardown();
         radio.teardown();

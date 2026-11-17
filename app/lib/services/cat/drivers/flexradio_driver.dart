@@ -331,10 +331,10 @@ class FlexRadioSession
   /// another station, the pan's FFT goes to that station alone, so the
   /// spectrum is mirrored through DAX IQ (flex_spectrum.dart).
   late final FlexSliceSpectrum _spectrum = _radio.gui
-      ? FlexPanSpectrum(send: _sendForSpectrum, sink: _spectrumSink)
-      : FlexDaxSpectrum(send: _sendForSpectrum, sink: _spectrumSink);
+      ? FlexPanSpectrum(send: _sendForSpectrum, sink: _spectrumSink, pans: _radio._pans)
+      : FlexDaxSpectrum(send: _sendForSpectrum, sink: _spectrumSink, pans: _radio._pans);
 
-  int _sendForSpectrum(String command, {void Function(int code, String body)? onReply}) => _radio._sendForSpectrum(this, command, onReply: onReply);
+  int _sendForSpectrum(String command, {void Function(int code, String body)? onReply}) => _radio._sendForSpectrum(command, onReply: onReply);
 
   SpectrumSink? get _spectrumSink => switch (_sink) {
     final SpectrumSink sink => sink,

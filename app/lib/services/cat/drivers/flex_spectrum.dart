@@ -42,8 +42,10 @@ final flexDaxIqSpans = [for (final rate in flexDaxIqRates) _visibleHalfWidth(rat
 int _visibleHalfWidth(int rate) => (rate * (1 - 2 * flexDaxIqTrim) / 2).round();
 
 /// Sweeps are pooled to at most this many points: a 192 kHz stream's
-/// 8192-point transform is far finer than any panel is wide.
-const _maxPoints = 1024;
+/// 8192-point transform is finer than any panel is wide. Fewer, and a
+/// waterfall stretched over a Retina pane blurs; the radio's own FFT of a
+/// pan HaLo owns is as fine (flex_pan_spectrum.dart).
+const _maxPoints = 2048;
 
 const _sweepsPerSecond = {SpectrumSpeed.slow: 8, SpectrumSpeed.mid: 15, SpectrumSpeed.fast: 25};
 
@@ -72,13 +74,15 @@ abstract interface class FlexSliceSpectrum {
   void socketUnavailable();
   void slicePan(String? pan);
 
-  /// `display pan 0x40000000 center=14.218000 bandwidth=0.064120 …`
+  /// `display pan 0x40000000 center=14.218000 bandwidth=0.064120 …`, its
+  /// [fields] already merged into the record the scope was given: the
+  /// connection merges each status once, before any scope reacts.
   void panStatus(String id, Map<String, String> fields);
   void streamStatus(String id, Map<String, String> fields);
 
-  /// One UDP datagram; whether it was this scope's, so neither another
-  /// slice's scope nor the meter codec takes it as well. Every slice on the
-  /// connection is offered each datagram until one claims it.
+  /// One UDP datagram; whether it was this scope's, so the meter codec does
+  /// not take it as well. Every slice's scope on the connection is offered
+  /// each datagram: two slices on one pan both draw its FFT.
   bool packet(Uint8List data);
 
   /// For [FlexRadioSession.teardown]: hands back what the scope holds over
@@ -91,7 +95,7 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
   final void Function(String command, {void Function(int code, String body)? onReply}) send;
   final SpectrumSink? sink;
 
-  FlexDaxSpectrum({required this.send, required this.sink});
+  FlexDaxSpectrum({required this.send, required this.sink, Map<String, Map<String, String>>? pans}) : _pans = pans ?? {};
 
   bool _wanted = false;
   @override
@@ -100,11 +104,15 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
   /// The pan of the slice this node follows, from the slice's status.
   String? _pan;
 
-  /// What each pan last said, merged from pushes that carry only what changed.
-  final _pans = <String, Map<String, String>>{};
+  /// What each pan last said, merged from pushes that carry only what
+  /// changed, and the changes HaLo made: the connection's record (FlexRadio),
+  /// shared by every slice's scope on it, so the channel one assigns is
+  /// taken for the others. The connection alone merges the radio's statuses.
+  final Map<String, Map<String, String>> _pans;
 
   /// The channel this session assigned to the pan, to hand back on stop —
-  /// null when the pan already had one, which is then someone else's.
+  /// null when the pan already had one, which is then another client's, or
+  /// another of this connection's slices'.
   int? _assignedChannel;
   bool _creating = false;
   String? _stream;
@@ -197,7 +205,6 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
     _wanted = false;
     _askedRate = null;
     _release();
-    send('unsub pan all');
     sink?.reportSpectrumProblem(null);
   }
 
@@ -228,7 +235,7 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
           }
         },
       );
-      (_pans[pan] ??= {})['center'] = mhz;
+      _pans[pan]?['center'] = mhz;
     }
     if (request.spanHz case final span?) {
       final rate = _askedRate = flexDaxIqRates[flexDaxIqSpans.indexOf(capabilities.snapSpan(span))];
@@ -280,11 +287,9 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
   @override
   void panStatus(String id, Map<String, String> fields) {
     if (fields.containsKey('removed')) {
-      _pans.remove(id);
       if (id == _pan) _release();
       return;
     }
-    (_pans[id] ??= {}).addAll(fields);
     if (id == _pan) _settle();
   }
 
@@ -337,10 +342,17 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
       }
       channel = free.first;
       _assignedChannel = channel;
+      // Taken at once for every other slice's scope: no status tells this
+      // client, and another choosing meanwhile would choose the same one.
+      status['daxiq_channel'] = '$channel';
       final epoch = _epoch;
       send(
         'display pan set $pan daxiq_channel=$channel',
         onReply: (code, _) {
+          // Recorded again once taken: a status already on its way names the
+          // pan as it was, and would leave the channel reading as free.
+          if (code == 0 && epoch == _epoch) _pans[pan]?['daxiq_channel'] = '$channel';
+          if (code != 0 && _pans[pan]?['daxiq_channel'] == '$channel') _pans[pan]!['daxiq_channel'] = '0';
           if (code == 0 || epoch != _epoch || !_wanted) return;
           // Not ours to give back, and the stream asked for beside it would
           // be on a channel no pan feeds.
@@ -367,7 +379,7 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
         if (code != 0 || stream.isEmpty) {
           // Refused: the channel goes back now, and the operator is told,
           // rather than a display that waits for IQ that is not coming.
-          if (_assignedChannel != null) send('display pan set $pan daxiq_channel=0');
+          if (_assignedChannel != null) _handBack(pan);
           _assignedChannel = null;
           _refused = true;
           sink?.reportSpectrumProblem(t.settings.station.spectrumStreamRefused(code: code.toRadixString(16).toUpperCase()));
@@ -399,6 +411,13 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
     },
   );
 
+  /// [pan]'s channel, given back in the record too: no status tells this
+  /// client, and every other slice's scope would count it taken.
+  void _handBack(String pan) {
+    send('display pan set $pan daxiq_channel=0');
+    _pans[pan]?['daxiq_channel'] = '0';
+  }
+
   /// Hands back what [_settle] took, in reverse.
   void _release() {
     _watchdog?.cancel();
@@ -409,7 +428,7 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
     _creating = false;
     _unclaimed.clear();
     if (_stream case final stream?) send('stream remove 0x$stream');
-    if ((_assignedChannel, _pan) case (_?, final pan?)) send('display pan set $pan daxiq_channel=0');
+    if ((_assignedChannel, _pan) case (_?, final pan?)) _handBack(pan);
     _stream = null;
     _assignedChannel = null;
     _fft = null;

@@ -4390,8 +4390,8 @@ Captured on a FLEX-6600 (4.2.20) with AetherSDR as that client:
   GUI client, brings a slice with it, and appears in the GUI client's window.
   Its data still goes there.
 - DAX IQ does reach it. `flex_spectrum.dart` assigns a free channel (1–4) to
-  the slice's pan — or uses the one it already has, which is then someone
-  else's to keep — opens `stream create type=dax_iq`, and computes the
+  the slice's pan — or uses the one it already has, which is then another
+  client's to keep, or another of HaLo's slices' — opens `stream create type=dax_iq`, and computes the
   spectrum locally (`spectrum_fft.dart`). On stop it removes the stream and
   hands back a channel it assigned.
 - The stream's status line arrives **before** the `stream create` reply, and
@@ -4431,7 +4431,9 @@ budget on it. Captured on RadioRoom (FLEX-6600, 4.3.16):
   index is in; one missing a packet is dropped, not drawn half empty.
 - The values are rows of the pan's own window, row 0 at `max_dbm` and the
   last at `min_dbm` (`y_pixels` rows): converted, a level is dBm.
-- The pan is HaLo's alone, so it is shaped for HaLo: 1024 points, 400 rows,
+- The pan is HaLo's alone, so it is shaped for HaLo: 2048 points, the
+  radio's own resolution (a 2048th of the span; more points only
+  interpolate, and the radio sends no more than 4096), 400 rows,
   and a fixed −150 to −10 dBm window, a third of a dB a row, scaled locally
   like every other radio's (§ Spectrum, `NoiseFloor`). The reference level
   stays local. The radio's waterfall tiles (0x8004) arrive too and are not
@@ -4460,10 +4462,27 @@ budget on it. Captured on RadioRoom (FLEX-6600, 4.3.16):
   ±384 kHz, and follow the displays (`SpectrumCapabilities.autoSpan`): no
   other window changes with them.
 
-Several slices share a connection, and each UDP datagram is offered to
-each slice's scope until one claims it: a scope claims only its own pan's
-FFT, or its own DAX IQ stream, and leaves the rest to the others and the
-meter codec.
+Several slices share a connection, and both ways keep one record of the
+pans per connection, which every slice's scope on it reads:
+
+- The connection subscribes to the pans (`sub pan all`) for the first
+  slice wanting a display, and keeps the subscription for its life. The
+  radio describes each pan in full once per subscription and sends only its
+  changes after, so a slice that joins later starts from the record.
+  Withdrawn when the last display closed, the radio would say nothing of a
+  pan's changes until it described the pan again, and a display opened
+  meanwhile, or as the two crossed, would act on what the record last said.
+- The connection merges each status into the record once, before any
+  scope reacts to it: merged by each in turn, a later scope would put back
+  what an earlier one wrote in reacting.
+- The radio sends the client that changed a pan nothing, and HaLo's slices
+  share one client, so HaLo's own changes go into the record as well: a
+  centre, a width or a shape the radio took, a DAX channel assigned or
+  handed back. Kept to what each heard itself, a second slice on the pan
+  would label its sweeps where the pan was, or take the same DAX channel.
+- Each UDP datagram goes to every slice's scope, so two slices on one pan
+  both draw its FFT. A scope claims only its own pan's FFT, or its own DAX
+  IQ stream; a datagram no scope claims goes to the meter codec.
 
 ### TCI: computed from the IQ stream
 
