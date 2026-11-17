@@ -119,6 +119,14 @@ void main() {
     expect(sent, ['stream remove 0x20000000']);
   });
 
+  test("another stream's IQ is left for its own slice", () {
+    ready(channel: '1');
+    replies.single(0, '20000000');
+    // Claimed here, a second slice's scope on the same connection never draws.
+    expect(spectrum.packet(_packet(0x20000001, _tone(0, 512, 6000))), isFalse);
+    expect(sink.frames, isEmpty);
+  });
+
   test('a carrier above the center lands above it, inside the trimmed edges', () {
     ready(channel: '1');
     replies.single(0, '20000000');
@@ -137,13 +145,6 @@ void main() {
     final peakHz = frame.lowHz + peak / (levels.length - 1) * (frame.highHz - frame.lowHz);
     // Mirrored, a click on the carrier would tune 12 kHz away from it.
     expect(peakHz, closeTo(14206000, 100));
-  });
-
-  test("another stream's packets are taken off the meter path but drawn nowhere", () {
-    ready(channel: '1');
-    replies.single(0, '20000000');
-    expect(spectrum.packet(_packet(0x20000001, _tone(0, 512, 0))), isTrue);
-    expect(sink.frames, isEmpty);
   });
 
   test('a stream granted after a stop and a restart is handed back, and a fresh one asked for', () {

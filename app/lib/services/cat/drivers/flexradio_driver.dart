@@ -31,6 +31,7 @@ import '../so2r_audio.dart';
 import 'flex_meter_codec.dart';
 import 'flex_slice_config.dart';
 import 'voice_activity_tracker.dart';
+import 'flex_pan_spectrum.dart';
 import 'flex_spectrum.dart';
 import 'flex_dax_switch.dart';
 import 'flex_dax_rx.dart';
@@ -326,16 +327,20 @@ class FlexRadioSession
   @override
   int sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) => _radio._sendRaw(bytes, onAnswer: onAnswer);
 
-  late final _spectrum = FlexDaxSpectrum(
-    send: (command, {onReply}) => _radio._sendForSpectrum(this, command, onReply: onReply),
-    sink: switch (_sink) {
-      final SpectrumSink sink => sink,
-      _ => null,
-    },
-  );
+  /// HaLo's own station takes the radio's FFT of its own pans. Bound to
+  /// another station, the pan's FFT goes to that station alone, so the
+  /// spectrum is mirrored through DAX IQ (flex_spectrum.dart).
+  late final FlexSliceSpectrum _spectrum = _radio.gui
+      ? FlexPanSpectrum(send: _sendForSpectrum, sink: _spectrumSink)
+      : FlexDaxSpectrum(send: _sendForSpectrum, sink: _spectrumSink);
 
-  /// The bound client's own panadapter streams never reach this one; see
-  /// flex_spectrum.dart for why the spectrum is mirrored through DAX IQ.
+  int _sendForSpectrum(String command, {void Function(int code, String body)? onReply}) => _radio._sendForSpectrum(this, command, onReply: onReply);
+
+  SpectrumSink? get _spectrumSink => switch (_sink) {
+    final SpectrumSink sink => sink,
+    _ => null,
+  };
+
   @override
   String? get spectrumUnavailable => meterHost == null ? t.settings.station.spectrumUnsupported : null;
 

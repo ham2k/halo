@@ -4,10 +4,11 @@
 // A FlexRadio's panadapter, mirrored through DAX IQ — docs/design/cat.md
 // § Spectrum.
 //
-// This app attaches to a slice another client owns (SmartSDR, AetherSDR),
-// and the radio sends a panadapter's own FFT stream only to the client that
-// owns it: a bound client gets every `display pan` status and none of the
-// data, and a `display pan create` it sends lands in the owner's window.
+// For a slice HaLo follows on another station (SmartSDR, AetherSDR); its
+// own station's slices take the radio's FFT (flex_pan_spectrum.dart). The
+// radio sends a panadapter's FFT only to the client that owns it: a bound
+// client gets every `display pan` status and none of the data, and a
+// `display pan create` it sends lands in the owner's window.
 // DAX IQ is the one stream a bound client can open on someone else's pan —
 // captured on a FLEX-6600 (4.2.20): `stream create type=dax_iq` answers with
 // a stream id and the pan's IQ follows on our UDP port. So the spectrum is
@@ -46,7 +47,46 @@ const _maxPoints = 1024;
 
 const _sweepsPerSecond = {SpectrumSpeed.slow: 8, SpectrumSpeed.mid: 15, SpectrumSpeed.fast: 25};
 
-class FlexDaxSpectrum {
+/// A slice's scope, as its session drives it: mirrored through DAX IQ here,
+/// or the radio's own FFT on HaLo's own station (flex_pan_spectrum.dart).
+abstract interface class FlexSliceSpectrum {
+  bool get wanted;
+  SpectrumCapabilities get capabilities;
+  void start();
+
+  /// From the session's own subscribe, after the handshake: the radio
+  /// refuses a `sub` before it.
+  void subscribe();
+  void stop();
+
+  /// False when nothing is running to set.
+  bool set(SpectrumRequest request);
+
+  /// The UDP socket the data arrives on is open — [FlexRadioSession] opens
+  /// it for the meters, and nothing is asked for before it.
+  void socketReady();
+  void socketLost();
+
+  /// The UDP socket could not be opened, so nothing can arrive: said,
+  /// rather than waiting on a socket that is not coming.
+  void socketUnavailable();
+  void slicePan(String? pan);
+
+  /// `display pan 0x40000000 center=14.218000 bandwidth=0.064120 …`
+  void panStatus(String id, Map<String, String> fields);
+  void streamStatus(String id, Map<String, String> fields);
+
+  /// One UDP datagram; whether it was this scope's, so neither another
+  /// slice's scope nor the meter codec takes it as well. Every slice on the
+  /// connection is offered each datagram until one claims it.
+  bool packet(Uint8List data);
+
+  /// For [FlexRadioSession.teardown]: hands back what the scope holds over
+  /// the connection while it is still open.
+  void teardown();
+}
+
+class FlexDaxSpectrum implements FlexSliceSpectrum {
   /// Sends a command; [onReply] gets the answer's code and body.
   final void Function(String command, {void Function(int code, String body)? onReply}) send;
   final SpectrumSink? sink;
@@ -54,6 +94,7 @@ class FlexDaxSpectrum {
   FlexDaxSpectrum({required this.send, required this.sink});
 
   bool _wanted = false;
+  @override
   bool get wanted => _wanted;
 
   /// The pan of the slice this node follows, from the slice's status.
@@ -119,6 +160,7 @@ class FlexDaxSpectrum {
   static const _firstPacketDeadline = Duration(seconds: 5);
   bool _heard = false;
 
+  @override
   SpectrumCapabilities get capabilities => SpectrumCapabilities(
     spansHz: flexDaxIqSpans,
     refMinDb: -30,
@@ -130,6 +172,7 @@ class FlexDaxSpectrum {
     autoSpan: true,
   );
 
+  @override
   void start() {
     if (_wanted) return;
     _wanted = true;
@@ -142,11 +185,13 @@ class FlexDaxSpectrum {
   }
 
   /// From the session's own subscribe, after the handshake.
+  @override
   void subscribe() {
     _handshakeDone = true;
     if (_wanted) send('sub pan all');
   }
 
+  @override
   void stop() {
     if (!_wanted) return;
     _wanted = false;
@@ -157,6 +202,7 @@ class FlexDaxSpectrum {
   }
 
   /// False when nothing is running to set.
+  @override
   bool set(SpectrumRequest request) {
     if (!_wanted) return false;
     if (request.refLevelDb case final ref?) _report(_settings.copyWith(refLevelDb: capabilities.snapRef(ref)));
@@ -193,12 +239,14 @@ class FlexDaxSpectrum {
 
   /// The UDP socket the IQ arrives on is open — [FlexRadioSession] opens it
   /// for the meters, and a stream created before it would send to nowhere.
+  @override
   void socketReady() {
     _socketReady = true;
     _socketFailed = false;
     _settle();
   }
 
+  @override
   void socketLost() {
     _socketReady = false;
     _socketFailed = false;
@@ -207,12 +255,14 @@ class FlexDaxSpectrum {
 
   /// The UDP socket could not be opened, so no IQ can arrive: said, rather
   /// than waiting on a socket that is not coming.
+  @override
   void socketUnavailable() {
     _socketReady = false;
     _socketFailed = true;
     if (_wanted) sink?.reportSpectrumProblem(t.settings.station.spectrumNoUdp);
   }
 
+  @override
   void slicePan(String? pan) {
     final firstWord = !_sliceSeen;
     _sliceSeen = true;
@@ -227,6 +277,7 @@ class FlexDaxSpectrum {
   }
 
   /// `display pan 0x40000000 center=14.218000 bandwidth=0.064120 … daxiq_channel=0 …`
+  @override
   void panStatus(String id, Map<String, String> fields) {
     if (fields.containsKey('removed')) {
       _pans.remove(id);
@@ -238,6 +289,7 @@ class FlexDaxSpectrum {
   }
 
   /// `stream 0x20000000 type=dax_iq daxiq_channel=1 pan=0x40000000 daxiq_rate=48000 payload_endian=little`
+  @override
   void streamStatus(String id, Map<String, String> fields) {
     final key = id.replaceFirst('0x', '').toLowerCase();
     if (key != _stream) {
@@ -366,6 +418,7 @@ class FlexDaxSpectrum {
 
   /// One UDP datagram. Returns whether it was this stream's, so the meter
   /// codec does not parse it as well.
+  @override
   bool packet(Uint8List data) {
     if (data.length < 28) return false;
     final bytes = ByteData.sublistView(data);
@@ -374,7 +427,7 @@ class FlexDaxSpectrum {
     if (header >> 28 != 1 || header & 0x08000000 == 0) return false;
     final classCode = bytes.getUint16(14);
     if (classCode < 0x02E3 || classCode > 0x02E6) return false;
-    if (bytes.getUint32(4) != _streamId) return true;
+    if (bytes.getUint32(4) != _streamId) return false;
     // The first packet ends the wait, and any word that it was not coming:
     // IQ that arrives late still arrives.
     if (!_heard) {
@@ -442,6 +495,7 @@ class FlexDaxSpectrum {
 
   /// For [FlexRadioSession.teardown]: hands the stream and the channel back
   /// over the connection while it is still open.
+  @override
   void teardown() {
     if (_wanted) _release();
     _wanted = false;

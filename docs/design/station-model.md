@@ -572,8 +572,9 @@ Each is a full task. Nothing is visible to the operator before phase 3.
    *Status: HaLo registers as a station of its own on a Flex for the slices it opens ("New Slice"
    in the radio pickers), on a connection beside the one bound to another station, and owns them;
    the radio keeps them under the id it gave HaLo's station and brings them back at the next
-   connect (cat.md, "One connection, several receivers"). The spectrum of an owned slice still
-   comes through DAX IQ, not the radio's own FFT.*
+   connect (cat.md, "One connection, several receivers"). An owned slice's scope draws the
+   radio's own FFT of its pan; a slice followed on another station's is mirrored through DAX IQ
+   (cat.md, "Flex: the radio's FFT on HaLo's own station").*
 7. **Audio and IQ as capabilities, and mixers.** A receiver's audio channels, the mixer that routes
    them (§ 6.1), and the computer's own. After the audio engine work (HALO-932) has settled what an
    audio channel is.

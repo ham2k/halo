@@ -4414,9 +4414,56 @@ Captured on a FLEX-6600 (4.2.20) with AetherSDR as that client:
   not.
 
 Mirroring shows the operator's own panadapter, which is what a logger beside
-SmartSDR or AetherSDR wants. A slice no client owns — HaLo alone on the radio
-— would instead need HaLo to be the GUI client: its own multiFLEX station,
-pan and slice, with the radio's FFT. That session mode does not exist yet.
+SmartSDR or AetherSDR wants. It is how HaLo draws a slice it follows on
+another station; its own station's slices take the radio's FFT instead.
+
+### Flex: the radio's FFT on HaLo's own station
+
+A slice HaLo opens on its own station (§ One connection, several receivers)
+comes with a panadapter HaLo owns, and the radio sends its FFT (VITA class
+0x8003, the pan's id as the stream id) to the owner alone — so
+`flex_pan_spectrum.dart` draws that, and spends no DAX IQ channel or IQ
+budget on it. Captured on RadioRoom (FLEX-6600, 4.3.16):
+
+- A sweep comes split across packets: each carries its start bin, its bin
+  count, the bin size (2), the total bins and the frame index ahead of
+  big-endian u16 values. A sweep is drawn once every bin of one frame
+  index is in; one missing a packet is dropped, not drawn half empty.
+- The values are rows of the pan's own window, row 0 at `max_dbm` and the
+  last at `min_dbm` (`y_pixels` rows): converted, a level is dBm.
+- The pan is HaLo's alone, so it is shaped for HaLo: 1024 points, 400 rows,
+  and a fixed −150 to −10 dBm window, a third of a dB a row, scaled locally
+  like every other radio's (§ Spectrum, `NoiseFloor`). The reference level
+  stays local. The radio's waterfall tiles (0x8004) arrive too and are not
+  used: HaLo draws its waterfall from the sweeps, as for every radio.
+- The radio sends no status to the client that changed a pan; its answer
+  to the command is the only word that the change took. A status already on
+  its way still names the pan as it was, and a sweep in flight was made
+  before the change, so sweeps are read by what the radio has said and
+  answered, never by what HaLo has only asked. Read by HaLo's request, the
+  radio's own window (below) puts a noise row near −120 dBm 8 dB low; read
+  by statuses alone, the first pan a station gets (50 by 20) keeps reading
+  as 20 rows tall while the radio sends 400, and every level lands twenty
+  times too low. A refusal leaves what the radio last said.
+- A sweep not as wide as the pan, or with a row past its last, is from
+  before the pan took its shape and is dropped, not drawn; the scope's
+  problem clears only for a sweep that is drawn. A pan the radio removes
+  is said to be missing.
+- The radio puts its own window (−135 to −40) back by itself, alongside a
+  change of RF gain or preamp; HaLo asks for its own again whenever a status
+  brings a different one.
+- Width, speed and centre are the pan's own (`display pan set` `bandwidth=`,
+  `fps=`, `center=`). The width and speed shown change at once, and go back
+  on a refusal. The width and speed the displays asked for are kept and
+  given to every pan as it is shaped, so one asked before the slice names
+  its pan, or for a pan the slice has left, still arrives. Spans run ±12 to
+  ±384 kHz, and follow the displays (`SpectrumCapabilities.autoSpan`): no
+  other window changes with them.
+
+Several slices share a connection, and each UDP datagram is offered to
+each slice's scope until one claims it: a scope claims only its own pan's
+FFT, or its own DAX IQ stream, and leaves the rest to the others and the
+meter codec.
 
 ### TCI: computed from the IQ stream
 

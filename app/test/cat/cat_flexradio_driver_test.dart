@@ -22,6 +22,7 @@ import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/flex_dax_switch.dart';
 import 'package:ham2k_logger/services/cat/drivers/flexradio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/cat/spectrum.dart';
 import 'package:ham2k_logger/services/cat/transports/flex_meter_socket.dart';
 
 const _handshakeLines = ['V1.4.0.0', 'H5AC2F980'];
@@ -116,6 +117,33 @@ class _FakeSink implements EquipmentSink, TunerSink, TuneCarrierSink, PassbandSi
   void reportAlive() => alive++;
 
   EquipmentChannel channel(String key) => channels.firstWhere((c) => c.key == key);
+}
+
+class _ScopeSink extends _FakeSink implements SpectrumSink {
+  final frames = <SpectrumFrame>[];
+  @override
+  void reportSpectrum(SpectrumFrame frame) => frames.add(frame);
+  @override
+  void reportSpectrumSettings(SpectrumSettings settings) {}
+  @override
+  void reportSpectrumProblem(String? message) {}
+}
+
+/// One whole sweep of [rows] for [pan], shaped like RadioRoom's FFT
+/// datagrams (class 0x8003, the pan's id as the stream id).
+Uint8List _fftPacket(int pan, List<int> rows) {
+  final bytes = ByteData((10 + (rows.length * 2 + 3) ~/ 4) * 4);
+  bytes.setUint32(0, 0x38500000 | bytes.lengthInBytes ~/ 4);
+  bytes.setUint32(4, pan);
+  bytes.setUint32(8, 0x00001c2d);
+  bytes.setUint32(12, 0x534c8003);
+  bytes.setUint16(30, rows.length);
+  bytes.setUint16(32, 2);
+  bytes.setUint16(34, rows.length);
+  for (var i = 0; i < rows.length; i++) {
+    bytes.setUint16(40 + i * 2, rows[i]);
+  }
+  return bytes.buffer.asUint8List();
 }
 
 class _FakeMeterSocket implements FlexMeterSocket {
@@ -248,6 +276,54 @@ void main() {
         own.setFrequency(14105);
         expect(commands(), ['slice tune 2 14.105000']);
         own.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // Mirrored through DAX IQ, HaLo's own slice would spend a DAX IQ
+    // channel and the radio's IQ budget on a picture the radio already sends.
+    // And with one slice's scope claiming every pan's FFT, the second slice
+    // on HaLo's station never draws.
+    test("HaLo's own slices each draw their own pan from the radio's FFT, with no DAX IQ", () {
+      fakeAsync((async) {
+        void Function(Uint8List)? deliver;
+        final radio = FlexRadio(
+          send: sink.send,
+          gui: true,
+          clientId: '1DF30D74',
+          station: 'Chirimena',
+          meterHost: '10.0.0.5',
+          openMeterSocket: (host, onData, onError) async {
+            deliver = onData;
+            return _FakeMeterSocket();
+          },
+        );
+        final sinkA = _ScopeSink(), sinkB = _ScopeSink();
+        final ownA = radio.attach(sinkA, receiver: 'own-A') as FlexRadioSession;
+        final ownB = radio.attach(sinkB, receiver: 'own-B') as FlexRadioSession;
+        for (final own in [ownA, ownB]) {
+          own
+            ..startUpdates()
+            ..startSpectrum();
+        }
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        async.flushMicrotasks();
+        say(radio, 'S5AC2F980|slice 2 in_use=1 client_handle=0x5AC2F980 index_letter=A pan=0x40000002 RF_frequency=14.074000\n');
+        say(radio, 'S5AC2F980|slice 3 in_use=1 client_handle=0x5AC2F980 index_letter=B pan=0x40000003 RF_frequency=7.074000\n');
+        for (final (pan, center) in [('0x40000002', '14.074000'), ('0x40000003', '7.074000')]) {
+          say(radio, 'S5AC2F980|display pan $pan client_handle=0x5AC2F980 center=$center bandwidth=0.200000 min_dbm=-150.00 max_dbm=-10.00 y_pixels=400\n');
+        }
+        expect(commands(), contains('display pan set 0x40000002 xpixels=1024'));
+        expect(commands(), contains('display pan set 0x40000003 xpixels=1024'));
+        expect(commands().where((c) => c.contains('dax_iq') || c.contains('daxiq')), isEmpty);
+        deliver!(_fftPacket(0x40000003, [for (var i = 0; i < 1024; i++) i == 1 ? 0 : 399]));
+        deliver!(_fftPacket(0x40000002, [for (var i = 0; i < 1024; i++) i == 2 ? 0 : 399]));
+        expect(sinkA.frames.map((f) => f.lowHz), [13974000]);
+        expect(sinkB.frames.map((f) => f.lowHz), [6974000]);
+        for (final own in [ownA, ownB]) {
+          own.teardown();
+        }
         radio.teardown();
         async.flushTimers();
       });
