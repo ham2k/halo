@@ -6,9 +6,11 @@
 // startup line, a Flex's network page, a forum post — almost always carries
 // its port, and left whole in the host field it names no host at all.
 //
-// The trap on the other side is typing: an address typed one character at a
-// time passes through `host:4` on its way to `host:4532`, and splitting there
-// would send `4` to the port field and the rest of the port into the host.
+// A typed address splits too, but only once it is finished — as the field is
+// left, or the form saved with the field still focused. Typed one character
+// at a time it passes through `host:4` on its way to `host:4532`, and
+// splitting there would send `4` to the port field and the rest of the port
+// into the host.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -86,8 +88,14 @@ void main() {
     };
 
     /// The form, with what it last submitted and every key its presenter's
-    /// `onChange` heard, in order.
-    Future<({Map<String, dynamic> submitted, List<String> changes})> pump(WidgetTester tester, {bool settingsList = false}) async {
+    /// `onChange` heard, in order. [reply] is what that presenter answers.
+    Future<({Map<String, dynamic> submitted, List<String> changes})> pump(
+      WidgetTester tester, {
+      bool settingsList = false,
+      Map<String, dynamic> form = definition,
+      Map<String, dynamic> initial = const {'host': '127.0.0.1', 'port': 4532},
+      Map<String, dynamic>? Function(String key, dynamic value)? reply,
+    }) async {
       final submitted = <String, dynamic>{};
       final changes = <String>[];
       await tester.pumpWidget(
@@ -95,12 +103,12 @@ void main() {
           home: Scaffold(
             body: SingleChildScrollView(
               child: FormRenderer(
-                formDefinition: definition,
-                initialState: const {'host': '127.0.0.1', 'port': 4532},
+                formDefinition: form,
+                initialState: initial,
                 settingsList: settingsList,
                 onChange: (key, value, state) async {
                   changes.add(key);
-                  return null;
+                  return reply?.call(key, value);
                 },
                 onSubmit: submitted.addAll,
                 onCancel: () {},
@@ -128,6 +136,126 @@ void main() {
       await tester.tap(save);
       await tester.pumpAndSettle();
       expect(form.submitted, allOf(containsPair('host', '10.0.0.5'), containsPair('port', 4992)));
+    });
+
+    /// Types [text] into Host one character at a time, as a keyboard does.
+    Future<void> typeHost(WidgetTester tester, String text) async {
+      final host = find.widgetWithText(TextField, 'Host');
+      await tester.tap(host);
+      for (var i = 1; i <= text.length; i++) {
+        await tester.enterText(host, text.substring(0, i));
+      }
+      await tester.pump();
+    }
+
+    String fieldText(WidgetTester tester, String label) => tester.widget<TextField>(find.widgetWithText(TextField, label)).controller!.text;
+
+    testWidgets('a typed address splits when the field is left, not while it is typed', (tester) async {
+      final form = await pump(tester);
+      await typeHost(tester, '10.0.0.5:4992');
+      expect(fieldText(tester, 'Host'), '10.0.0.5:4992', reason: 'still being typed');
+      expect(fieldText(tester, 'Port'), '4532');
+
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      expect(fieldText(tester, 'Host'), '10.0.0.5');
+      expect(fieldText(tester, 'Port'), '4992');
+      expect(form.changes, containsAllInOrder(['port', 'host']));
+    });
+
+    testWidgets('a typed address saved with the field still focused saves as two', (tester) async {
+      // Save takes no focus: without a split of its own, the form copies its
+      // values before the field ever hears it was left.
+      final form = await pump(tester);
+      await typeHost(tester, '10.0.0.5:4992');
+
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(form.submitted, allOf(containsPair('host', '10.0.0.5'), containsPair('port', 4992)));
+    });
+
+    testWidgets('saving waits for what the split port moves along with it', (tester) async {
+      // An Icom serial port follows its control port through the presenter's
+      // onChange, which answers after the split. Copied before that answer,
+      // the save keeps a serial port the radio never answers on.
+      final form = await pump(
+        tester,
+        form: const {
+          'title': 'Radio',
+          'elements': [
+            {'type': 'field', 'fieldType': 'text', 'key': 'host', 'label': 'Host', 'portField': 'port'},
+            {'type': 'field', 'fieldType': 'number', 'key': 'port', 'label': 'Port'},
+            {'type': 'field', 'fieldType': 'number', 'key': 'serialPort', 'label': 'Serial port'},
+          ],
+        },
+        initial: const {'host': '127.0.0.1', 'port': 50001, 'serialPort': 50002},
+        reply: (key, value) => key == 'port' ? {'serialPort': (value as int) + 1} : null,
+      );
+      await typeHost(tester, '10.0.0.5:60001');
+
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(form.submitted, allOf(containsPair('port', 60001), containsPair('serialPort', 60002)));
+    });
+
+    testWidgets('a typed address sends its port where the host field on screen says', (tester) async {
+      // The equipment editor declares a `host` per pairing, each behind its
+      // own visibleWhen and naming its own port field. The first one declared
+      // is not the one being typed into.
+      final form = await pump(
+        tester,
+        form: const {
+          'title': 'Radio',
+          'elements': [
+            {'type': 'field', 'fieldType': 'text', 'key': 'transport', 'label': 'Transport'},
+            {
+              'type': 'field',
+              'fieldType': 'text',
+              'key': 'host',
+              'label': 'Host',
+              'portField': 'tcpPort',
+              'visibleWhen': {'field': 'transport', 'equals': 'tcp'},
+            },
+            {
+              'type': 'field',
+              'fieldType': 'number',
+              'key': 'tcpPort',
+              'label': 'TCP port',
+              'visibleWhen': {'field': 'transport', 'equals': 'tcp'},
+            },
+            {
+              'type': 'field',
+              'fieldType': 'text',
+              'key': 'host',
+              'label': 'Host',
+              'portField': 'remotePort',
+              'visibleWhen': {'field': 'transport', 'equals': 'remote'},
+            },
+            {
+              'type': 'field',
+              'fieldType': 'number',
+              'key': 'remotePort',
+              'label': 'Remote port',
+              'visibleWhen': {'field': 'transport', 'equals': 'remote'},
+            },
+          ],
+        },
+        initial: const {'transport': 'remote', 'host': '127.0.0.1', 'tcpPort': 9200, 'remotePort': 9204},
+      );
+      await typeHost(tester, 'k4.example.net:9205');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      expect(fieldText(tester, 'Remote port'), '9205');
+
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(form.submitted, allOf(containsPair('host', 'k4.example.net'), containsPair('remotePort', 9205), containsPair('tcpPort', 9200)));
     });
 
     testWidgets('a host field with no portField keeps the paste whole', (tester) async {
@@ -184,6 +312,23 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Host'), '10.0.0.5:4992');
       await tester.pumpAndSettle();
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Host')).controller!.text, '10.0.0.5:4992');
+    });
+
+    testWidgets('a settings row splits a typed address as its edit dialog closes', (tester) async {
+      await pump(tester, settingsList: true);
+      await tester.tap(find.text('Host'));
+      await tester.pumpAndSettle();
+      final field = find.byType(TextField).last;
+      for (final text in ['1', '1:', '1:4', '1:49', '1:499', '1:4992']) {
+        await tester.enterText(field, text);
+      }
+      await tester.pump();
+      expect(tester.widget<TextField>(field).controller!.text, '1:4992', reason: 'typed, so nothing splits in the dialog');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('4992'), findsOneWidget);
     });
 
     testWidgets('a settings row splits the paste in its edit dialog', (tester) async {

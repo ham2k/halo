@@ -16,10 +16,10 @@ mixin _TextFields on State<FormRenderer> {
   EdgeInsetsGeometry get _rowContentPadding;
   Color? _devModeColor(Map<String, dynamic> el);
   Future<void> _handleFieldBlurOrInteraction(String key, dynamic value);
-  Iterable<String>? _getAutofillHints(String key, String fieldType);
   String _controllerTextFor(String key, dynamic value);
   void _applyFieldUpdates(Map<String, dynamic> updates);
   List<Map<String, dynamic>> get _fields;
+  bool _visibleWhenHolds(Map<String, dynamic> el);
 
   /// A text-like icon-row field (`text`/`multiline`/`email`/`callsign`/
   /// `number`/`secret`): a tappable row whose subtitle is what the setting is
@@ -211,16 +211,56 @@ mixin _TextFields on State<FormRenderer> {
     // value nothing shows, so it splits nothing.
     final portField = el['portField'];
     if (fieldType != 'text' || portField is! String || !_fields.any((field) => field['key'] == portField)) return formatters;
-    return [...?formatters, HostPortPasteFormatter(onPort: (port) => _takePastedPort(portField, port))];
+    return [...?formatters, HostPortPasteFormatter(onPort: (port) => unawaited(_takeSplitPort(portField, port)))];
   }
 
-  /// A port pasted into a host field (`portField`, see [HostPortPasteFormatter]),
+  /// A port split off a host field (`portField`: a paste, see
+  /// [HostPortPasteFormatter], or a typed address, see [_splitTypedHostPort]),
   /// landed in its own field as if the operator had typed it there — the
   /// presenter's `onChange` and validator included, so an error the port
   /// field was showing goes with the value that fixes it.
-  void _takePastedPort(String portField, int port) {
+  Future<void> _takeSplitPort(String portField, int port) {
     _applyFieldUpdates({portField: port});
-    unawaited(_handleFieldBlurOrInteraction(portField, port));
+    return _handleFieldBlurOrInteraction(portField, port);
+  }
+
+  Iterable<String>? _getAutofillHints(String key, String fieldType) {
+    if (fieldType == 'email') {
+      return const [AutofillHints.email];
+    }
+    if (fieldType == 'text') {
+      final k = key.toLowerCase();
+      if (k.contains('name')) {
+        return const [AutofillHints.name];
+      }
+      if (k.contains('phone') || k.contains('tel')) {
+        return const [AutofillHints.telephoneNumber];
+      }
+      if (k.contains('address')) {
+        return const [AutofillHints.fullStreetAddress];
+      }
+    }
+    return null;
+  }
+
+  /// A `host:port` the operator TYPED into a host field with a `portField`,
+  /// split as the field is left or the form is saved — never mid-word, where
+  /// a split would scatter the port. Saving needs its own call: Save takes
+  /// the focus away, but the field hears it was left only after the form has
+  /// copied its values. Answers the host field's value as it now stands, and
+  /// the port field's own change while it runs.
+  ///
+  /// The `portField` is the SHOWN element's: a form may declare one key under
+  /// several elements, one per choice its `visibleWhen` switches between (the
+  /// equipment editor's pairings), each sending its port somewhere else.
+  ({dynamic host, Future<void>? portChange}) _splitTypedHostPort(String key, dynamic value) {
+    final field = _fields.firstWhereOrNull((field) => field['key'] == key && _visibleWhenHolds(field)) ?? const {};
+    final portField = field['portField'];
+    final split = value is String ? splitHostPort(value) : null;
+    if (field['fieldType'] != 'text' || portField is! String || split == null) return (host: value, portChange: null);
+    if (!_fields.any((field) => field['key'] == portField && _visibleWhenHolds(field))) return (host: value, portChange: null);
+    _applyFieldUpdates({key: split.host});
+    return (host: split.host, portChange: _takeSplitPort(portField, split.port));
   }
 
   List<TextInputFormatter>? _caseAndNumberFormattersFor(String fieldType, Map<String, dynamic> el) => switch (fieldType) {

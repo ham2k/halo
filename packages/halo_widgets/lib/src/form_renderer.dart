@@ -721,6 +721,9 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
 
   @override
   Future<void> _handleFieldBlurOrInteraction(String key, dynamic value) async {
+    final split = _splitTypedHostPort(key, value);
+    value = split.host;
+    unawaited(split.portChange);
     if (widget.onChange != null) {
       try {
         final updates = await widget.onChange!(key, value, _values);
@@ -743,26 +746,6 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
     }
   }
 
-  @override
-  Iterable<String>? _getAutofillHints(String key, String fieldType) {
-    if (fieldType == 'email') {
-      return const [AutofillHints.email];
-    }
-    if (fieldType == 'text') {
-      final k = key.toLowerCase();
-      if (k.contains('name')) {
-        return const [AutofillHints.name];
-      }
-      if (k.contains('phone') || k.contains('tel')) {
-        return const [AutofillHints.telephoneNumber];
-      }
-      if (k.contains('address')) {
-        return const [AutofillHints.fullStreetAddress];
-      }
-    }
-    return null;
-  }
-
   Future<void> submit() async {
     FocusManager.instance.primaryFocus?.unfocus();
     if (_isSubmitting) return;
@@ -771,6 +754,12 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
       _errors.clear();
     });
     widget.submittingNotifier?.value = true;
+    // Copied only once the split port's own change has landed: its onChange
+    // may move a companion (an Icom serial port following its control port).
+    // A validator that throws there throws again below, onto its field.
+    try {
+      await Future.wait([for (final field in _fields) ?_splitTypedHostPort(field['key'] as String, _values[field['key']]).portChange]);
+    } catch (_) {}
 
     final errors = <String, String>{};
     final transformedValues = <String, dynamic>{..._values};
