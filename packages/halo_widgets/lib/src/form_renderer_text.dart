@@ -18,6 +18,8 @@ mixin _TextFields on State<FormRenderer> {
   Future<void> _handleFieldBlurOrInteraction(String key, dynamic value);
   Iterable<String>? _getAutofillHints(String key, String fieldType);
   String _controllerTextFor(String key, dynamic value);
+  void _applyFieldUpdates(Map<String, dynamic> updates);
+  List<Map<String, dynamic>> get _fields;
 
   /// A text-like icon-row field (`text`/`multiline`/`email`/`callsign`/
   /// `number`/`secret`): a tappable row whose subtitle is what the setting is
@@ -202,7 +204,26 @@ mixin _TextFields on State<FormRenderer> {
       ? TextCapitalization.sentences
       : TextCapitalization.none;
 
-  List<TextInputFormatter>? _inputFormattersFor(String fieldType, Map<String, dynamic> el) => switch (fieldType) {
+  List<TextInputFormatter>? _inputFormattersFor(String fieldType, Map<String, dynamic> el) {
+    final formatters = _caseAndNumberFormattersFor(fieldType, el);
+    // Not in the SDK's `FormField`: only the app's equipment editor pairs a
+    // host with its port. A key naming no field of this form would store a
+    // value nothing shows, so it splits nothing.
+    final portField = el['portField'];
+    if (fieldType != 'text' || portField is! String || !_fields.any((field) => field['key'] == portField)) return formatters;
+    return [...?formatters, HostPortPasteFormatter(onPort: (port) => _takePastedPort(portField, port))];
+  }
+
+  /// A port pasted into a host field (`portField`, see [HostPortPasteFormatter]),
+  /// landed in its own field as if the operator had typed it there — the
+  /// presenter's `onChange` and validator included, so an error the port
+  /// field was showing goes with the value that fixes it.
+  void _takePastedPort(String portField, int port) {
+    _applyFieldUpdates({portField: port});
+    unawaited(_handleFieldBlurOrInteraction(portField, port));
+  }
+
+  List<TextInputFormatter>? _caseAndNumberFormattersFor(String fieldType, Map<String, dynamic> el) => switch (fieldType) {
     // BOTH marks are admitted and then normalized, rather than a filter
     // built from the configured one. A filter admitting a single mark
     // silently drops the other, and which key the operator's keyboard

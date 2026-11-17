@@ -381,6 +381,7 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
 
   /// Every field, a group's members included: a field inside a closed fold
   /// is registered, validated and submitted like any other.
+  @override
   List<Map<String, dynamic>> get _fields => _fieldsAmong(_elements);
 
   /// The fields among [elements], a group's at any depth: a field one group

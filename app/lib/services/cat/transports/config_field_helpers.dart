@@ -11,14 +11,19 @@
 
 import 'package:halo_i18n/halo_i18n.dart';
 
-/// The plain required-hostname-or-IP field two transports collect
-/// identically (TCP's own host, and the Icom network login's host).
-Map<String, dynamic> hostConfigElement() => {
+/// The plain required-hostname-or-IP field the network transports collect
+/// identically (TCP's and UDP's own host, and the Icom network login's host).
+///
+/// [portField] names the field a pasted `host:port` sends its port to — null
+/// when the form shows no port field for it (an entry that fixes the port),
+/// and the paste then stays whole rather than losing its port unseen.
+Map<String, dynamic> hostConfigElement({String? portField}) => {
   'type': 'field',
   'fieldType': 'text',
   'key': 'host',
   'label': t.settings.station.host,
   'description': t.settings.station.hostDescription,
+  'portField': ?portField,
 };
 
 String trimmedHost(Map<String, dynamic> config) => stringFromConfig(config, 'host').trim();

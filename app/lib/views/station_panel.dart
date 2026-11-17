@@ -536,7 +536,7 @@ class StationPanel extends StatelessWidget {
       // the relay. Returning no updates leaves the form's own value where the
       // operator put it; the switch's confirmation lands in the panel behind.
       onChange: (key, value, values) async {
-        if (!isSwitchPortRoutingFormKey(key)) return typeForState(values).fieldChanged(key, value);
+        if (!isSwitchPortRoutingFormKey(key)) return typeForState(values).fieldChanged(key, value, config: values);
         if (node == null) return null;
         if (value is! String || value.isEmpty) return null;
         for (final port in _cat.stateFor(node.uuid).switchPorts) {

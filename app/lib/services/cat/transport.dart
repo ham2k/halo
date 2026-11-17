@@ -334,6 +334,8 @@ abstract class EquipmentTransport {
   /// Other fields to set when the operator changes [key] to [value] in the
   /// editor — a picked Bluetooth LE device's name beside its handle, or a
   /// serial port's control lines where the entry's [restrictions] say what
-  /// its own port needs. Null (the default) for nothing to add.
-  Map<String, dynamic>? fieldChanged(String key, dynamic value, {Map<String, dynamic> restrictions = const {}}) => null;
+  /// its own port needs. [config] is the editor's values as they stand, for a
+  /// companion that follows only a value the operator has not set. Null (the
+  /// default) for nothing to add.
+  Map<String, dynamic>? fieldChanged(String key, dynamic value, {Map<String, dynamic> restrictions = const {}, Map<String, dynamic> config = const {}}) => null;
 }

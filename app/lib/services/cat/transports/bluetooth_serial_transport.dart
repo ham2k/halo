@@ -30,7 +30,7 @@ class BluetoothSerialTransport extends SerialTransport {
 
   /// No lines to set as a port is picked, for the same reason.
   @override
-  Map<String, dynamic>? fieldChanged(String key, dynamic value, {Map<String, dynamic> restrictions = const {}}) => null;
+  Map<String, dynamic>? fieldChanged(String key, dynamic value, {Map<String, dynamic> restrictions = const {}, Map<String, dynamic> config = const {}}) => null;
 
   @override
   Map<String, dynamic> targetFor(Map<String, dynamic> config) => {

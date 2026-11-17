@@ -312,7 +312,7 @@ mixin SerialTransportConfig implements EquipmentTransport {
   /// the box says what the port will get. A port no longer present leaves
   /// the box alone: nothing says what it is.
   @override
-  Map<String, dynamic>? fieldChanged(String key, dynamic value, {Map<String, dynamic> restrictions = const {}}) {
+  Map<String, dynamic>? fieldChanged(String key, dynamic value, {Map<String, dynamic> restrictions = const {}, Map<String, dynamic> config = const {}}) {
     final restriction = restrictions['port'];
     if (key != 'port' || value is! String || restriction is! Map || restriction[serialRtsHighConfigKey] != true) return null;
     final port = withInferredSiblings(availablePorts).where((port) => port.name == value).firstOrNull;

@@ -26,7 +26,9 @@ mixin IcomNetworkTransportConfig implements EquipmentTransport {
 
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
-    if (!overrides.containsKey('host')) hostConfigElement(),
+    // An Icom address names its control port; the serial port is the one
+    // after it, and keeps its own field.
+    if (!overrides.containsKey('host')) hostConfigElement(portField: overrides.containsKey(controlPortConfigKey) ? null : controlPortConfigKey),
     if (!overrides.containsKey(controlPortConfigKey))
       {
         'type': 'field',
@@ -81,6 +83,20 @@ mixin IcomNetworkTransportConfig implements EquipmentTransport {
       default:
         return null;
     }
+  }
+
+  /// A control port moved off the factory one takes the serial port with it,
+  /// to the one after it, while the serial port is still the factory one: a
+  /// radio reached through a port forward has the pair forwarded together,
+  /// and a serial port left on the factory number logs in and then never
+  /// answers. A serial port the operator set stays where they put it.
+  @override
+  Map<String, dynamic>? fieldChanged(String key, dynamic value, {Map<String, dynamic> restrictions = const {}, Map<String, dynamic> config = const {}}) {
+    if (key != controlPortConfigKey) return null;
+    final control = value is num ? value.toInt() : null;
+    if (control == null || control < 1 || control >= 65535 || control == icomControlPort) return null;
+    if (_port(config, serialPortConfigKey, icomSerialPort) != icomSerialPort) return null;
+    return {serialPortConfigKey: control + 1};
   }
 
   @override

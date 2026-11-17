@@ -516,14 +516,17 @@ class EquipmentType {
     if (result == null || updates == null) return result;
     return EquipmentActionResult(
       message: result.message,
-      fieldUpdates: {for (final entry in updates.entries) ...?fieldChanged(entry.key, entry.value), ...updates},
+      fieldUpdates: {
+        for (final entry in updates.entries) ...?fieldChanged(entry.key, entry.value, config: {...state, ...updates}),
+        ...updates,
+      },
     );
   }
 
   /// See [EquipmentTransport.fieldChanged]. Never a field this pairing
   /// fixes: the editor renders none for it.
-  Map<String, dynamic>? fieldChanged(String key, dynamic value) {
-    final updates = transport.fieldChanged(key, value, restrictions: restrictions);
+  Map<String, dynamic>? fieldChanged(String key, dynamic value, {Map<String, dynamic> config = const {}}) {
+    final updates = transport.fieldChanged(key, value, restrictions: restrictions, config: config);
     return updates == null
         ? null
         : {

@@ -16,7 +16,7 @@ mixin TcpTransportConfig implements EquipmentTransport {
 
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
-    if (!overrides.containsKey('host')) hostConfigElement(),
+    if (!overrides.containsKey('host')) hostConfigElement(portField: overrides.containsKey(portConfigKey) ? null : portConfigKey),
     if (!overrides.containsKey(portConfigKey)) {'type': 'field', 'fieldType': 'number', 'key': portConfigKey, 'label': t.settings.station.port},
   ];
 

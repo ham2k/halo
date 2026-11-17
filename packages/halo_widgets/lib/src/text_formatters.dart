@@ -353,3 +353,47 @@ class VirtualSpaceFormatter extends TextInputFormatter {
     return newValue;
   }
 }
+
+/// A server address written as `host:port` — `10.0.0.5:4532`, `shack.local:4992`,
+/// `[fe80::1]:50001` — split in two, or null for anything else.
+///
+/// A bare IPv6 address is not one: its colons separate groups, not a port,
+/// so an address with more than one colon only splits when its host is
+/// bracketed. The port must be one a socket can name, 1–65535; anything else
+/// is not split.
+({String host, int port})? splitHostPort(String text) {
+  final match = _hostPortPattern.firstMatch(text.trim());
+  if (match == null) return null;
+  final port = int.parse(match.group(3)!);
+  if (port < 1 || port > 65535) return null;
+  return (host: match.group(1) ?? match.group(2)!, port: port);
+}
+
+final _hostPortPattern = RegExp(r'^(?:\[([^\]\s]+)\]|([^\s:\[\]]+)):(\d{1,5})$');
+
+/// Splits a pasted `host:port` ([splitHostPort]) between a host field and its
+/// port field: the field keeps the host, and [onPort] is handed the port.
+///
+/// A paste only — a change that inserts more than one character at once —
+/// because typing an address arrives one character at a time: splitting at
+/// the first digit after a colon would move it to the port field mid-word and
+/// leave the rest of the port typed into the host.
+class HostPortPasteFormatter extends TextInputFormatter {
+  const HostPortPasteFormatter({required this.onPort});
+
+  final ValueChanged<int> onPort;
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final replaced = oldValue.selection.isValid ? oldValue.selection.end - oldValue.selection.start : 0;
+    final inserted = newValue.text.length - (oldValue.text.length - replaced);
+    if (inserted < 2) return newValue;
+    final split = splitHostPort(newValue.text);
+    if (split == null) return newValue;
+    onPort(split.port);
+    return TextEditingValue(
+      text: split.host,
+      selection: TextSelection.collapsed(offset: split.host.length),
+    );
+  }
+}
