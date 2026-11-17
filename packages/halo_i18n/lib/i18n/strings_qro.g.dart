@@ -3611,7 +3611,7 @@ class _Translations$settings$developer$qro extends Translations$settings$develop
 	@override String get panelLoadFailed => 'COULD NOT LOAD THIS SETTINGS PANEL.';
 	@override String get extDevServer => 'EXTENSION DEV SERVER';
 	@override String get extensionSettings => 'EXTENSION SETTINGS';
-	@override String get extDevServerDescription => 'LOAD EXTENSIONS FROM A DEV SERVER ON YOUR NETWORK INSTEAD OF THE ONES BUILT INTO THE APP, AND RELOAD THEM AS YOU SAVE.';
+	@override String get extDevServerDescription => 'LOAD EXTENSIONS FROM A DEV SERVER ON YOUR NETWORK, AND RELOAD THEM AS YOU SAVE.';
 	@override String get extDevServerAddress => 'SERVER ADDRESS';
 	@override String get extDevServerHint => '192.168.1.20:8787';
 	@override String get extDevServerConnect => 'CONNECT';
@@ -3628,6 +3628,7 @@ class _Translations$settings$developer$qro extends Translations$settings$develop
 		one: '${count} EXTENSION FAILING TO BUILD',
 		other: '${count} EXTENSIONS FAILING TO BUILD',
 	);
+	@override String extDevServerRefused({required Object keys}) => 'NOT LOADED FROM THE SERVER, SINCE THIS APP ALREADY HAS THEM: ${keys}';
 	@override String get catalog => 'EXTENSION CATALOG';
 	@override String get catalogSearchTracks => 'CATALOG SEARCH TRACKS';
 	@override String get catalogSearchStable => 'ONLY STABLE';
@@ -7886,7 +7887,7 @@ extension on TranslationsQro {
 			'settings.developer.panelLoadFailed' => 'COULD NOT LOAD THIS SETTINGS PANEL.',
 			'settings.developer.extDevServer' => 'EXTENSION DEV SERVER',
 			'settings.developer.extensionSettings' => 'EXTENSION SETTINGS',
-			'settings.developer.extDevServerDescription' => 'LOAD EXTENSIONS FROM A DEV SERVER ON YOUR NETWORK INSTEAD OF THE ONES BUILT INTO THE APP, AND RELOAD THEM AS YOU SAVE.',
+			'settings.developer.extDevServerDescription' => 'LOAD EXTENSIONS FROM A DEV SERVER ON YOUR NETWORK, AND RELOAD THEM AS YOU SAVE.',
 			'settings.developer.extDevServerAddress' => 'SERVER ADDRESS',
 			'settings.developer.extDevServerHint' => '192.168.1.20:8787',
 			'settings.developer.extDevServerConnect' => 'CONNECT',
@@ -7897,6 +7898,7 @@ extension on TranslationsQro {
 			'settings.developer.extDevServerReconnect' => 'RECONNECT AT LAUNCH',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'LAST RELOAD: ${key} AT ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} EXTENSION FAILING TO BUILD', other: '${count} EXTENSIONS FAILING TO BUILD', ), 
+			'settings.developer.extDevServerRefused' => ({required Object keys}) => 'NOT LOADED FROM THE SERVER, SINCE THIS APP ALREADY HAS THEM: ${keys}',
 			'settings.developer.catalog' => 'EXTENSION CATALOG',
 			'settings.developer.catalogSearchTracks' => 'CATALOG SEARCH TRACKS',
 			'settings.developer.catalogSearchStable' => 'ONLY STABLE',
@@ -8325,9 +8327,9 @@ extension on TranslationsQro {
 			'switchAccounts.noAccountDetails' => 'NO ACCOUNT DETAILS YET',
 			'switchAccounts.currentAccount' => 'CURRENT ACCOUNT',
 			'switchAccounts.otherAccounts' => 'OTHER ACCOUNTS',
-			'switchAccounts.linkToAnother' => 'LINK TO ANOTHER ACCOUNT',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.linkToAnother' => 'LINK TO ANOTHER ACCOUNT',
 			'switchAccounts.linkWithSibling' => 'LINK WITH OTHER HAM2K APP',
 			'switchAccounts.linkWithPolo' => 'LINK WITH ACCOUNT IN OLDER VERSION',
 			'switchAccounts.linkWithSiblingDescription' => 'YOU HAVE ANOTHER HAM2K APP INSTALLED. LINK WITH THE ACCOUNT IN USE THERE.',

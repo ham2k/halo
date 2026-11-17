@@ -11,7 +11,7 @@ import 'dart:convert';
 
 import 'package:collection/collection.dart' show mergeSort;
 import 'package:crypto/crypto.dart' show sha256;
-import 'package:flutter/foundation.dart' show setEquals, visibleForTesting;
+import 'package:flutter/foundation.dart' show kDebugMode, setEquals, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';

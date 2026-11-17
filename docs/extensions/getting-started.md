@@ -178,6 +178,7 @@ browser it answers "not found".
 | `--inline <pkg,…>` | Shared libraries to bundle rather than take from the app, comma-separated |
 | `--dir <path>` | The extension directory; default the current one |
 | `--force-name` | Ham2K's own extensions; waives the key convention, as `h2kext-pack`'s does |
+| `--allow-origin <origin>` | A web page that may use the server besides the app's own web build, such as `http://10.0.0.5:8080`; repeatable |
 
 `--entry` and `--inline` take what your `build.mjs` passes to `buildExtension`.
 Pass the same values, or the build you watch is not the build you ship.
@@ -194,6 +195,20 @@ Pass the same values, or the build you watch is not the build you ship.
   refuse is reported as a build error instead of being handed to the app.
 - Anything the server does not serve keeps running from the app's own
   assets, so the rest of your installed extensions are unaffected.
+- The app takes from the server only a key it has no extension for: none
+  built into the app, none installed, and none beginning `ham2k-`. Whatever
+  the app holds for a key, its logins and settings included, belongs to the
+  extension it already has. An installed copy of your own extension blocks
+  its key too, so uninstall it while you iterate; the dev server screen
+  lists the keys it did not take.
+- The app connects when you tap Connect, for as long as it runs. The next
+  launch starts on its own extensions.
+- The server answers the app, and the app's own web build in a browser.
+  A request from any other web page is refused, and a host name other than
+  this machine's own, a `.local` name or `localhost` is refused too: point
+  the app at the IP address the server prints.
+- A logged line prints as text: control characters show escaped (`\x1b`),
+  at most 1000 lines a batch and 4000 characters a line.
 
 Turn on **Settings → Developer → Developer Mode** while you work: the app
 then surfaces warnings it would otherwise keep to itself, such as the timer

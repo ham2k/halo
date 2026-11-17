@@ -35,7 +35,8 @@ import { realpathSync } from "node:fs"
 import { readFile, watch } from "node:fs/promises"
 import { createServer } from "node:http"
 import { createRequire } from "node:module"
-import { networkInterfaces } from "node:os"
+import { isIP } from "node:net"
+import { hostname, networkInterfaces } from "node:os"
 import { join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
@@ -67,7 +68,7 @@ export class DevServerError extends Error {}
 /// What the command line asked for. Throws [DevServerError] for a flag it does
 /// not know or a port it cannot listen on.
 export function parseArgs(argv) {
-  const options = { dir: process.cwd(), host: "0.0.0.0", port: DEFAULT_PORT, entry: "src/index.ts", inline: [] }
+  const options = { dir: process.cwd(), host: "0.0.0.0", port: DEFAULT_PORT, entry: "src/index.ts", inline: [], allowOrigins: [] }
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
     const value = () => {
@@ -107,6 +108,9 @@ export function parseArgs(argv) {
       case "--force-name":
         options.forceName = true
         break
+      case "--allow-origin":
+        options.allowOrigins.push(webOrigin(value()))
+        break
       case "--help":
       case "-h":
         options.help = true
@@ -118,7 +122,20 @@ export function parseArgs(argv) {
   return options
 }
 
-export const USAGE = `usage: h2kext-dev [--port <n>] [--host <address>] [--entry <file>] [--inline <pkg,…>] [--dir <path>] [--force-name]
+/// [text] as the origin a browser sends (`http://10.0.0.5:8080`, no path),
+/// which is what [originAllowed] compares; a usage error when it names none.
+export function webOrigin(text) {
+  let url
+  try {
+    url = new URL(text)
+  } catch {
+    throw new DevServerError(`--allow-origin needs a web origin such as http://10.0.0.5:8080, not "${text}"`)
+  }
+  if (url.origin === "null") throw new DevServerError(`--allow-origin needs a web origin such as http://10.0.0.5:8080, not "${text}"`)
+  return url.origin
+}
+
+export const USAGE = `usage: h2kext-dev [--port <n>] [--host <address>] [--entry <file>] [--inline <pkg,…>] [--dir <path>] [--force-name] [--allow-origin <origin>]
 
 Serves the extension in the current directory to the app's Extension Dev
 Server (Settings → Developer), rebuilding it as you save and printing what it
@@ -129,7 +146,8 @@ logs. Point the app at one of the addresses it prints.
   --entry   the entry point (default src/index.ts); pass what build.mjs passes
   --inline  shared libraries to bundle rather than take from the app; pass what build.mjs passes
   --dir     the extension directory (default the current directory)
-  --force-name  Ham2K's own extensions: waives the key convention, as h2kext-pack's does`
+  --force-name  Ham2K's own extensions: waives the key convention, as h2kext-pack's does
+  --allow-origin  a web page that may use this server besides the app's own web build (repeatable), e.g. http://10.0.0.5:8080`
 
 /// The author's own esbuild, resolved from their project rather than from
 /// wherever this file is installed: the preset is written to use the caller's
@@ -169,6 +187,7 @@ export async function createDevServer({
   entry = "src/index.ts",
   inline = [],
   forceName = false,
+  allowOrigins = [],
   log = console.log,
   warn = console.error,
 }) {
@@ -358,48 +377,52 @@ export async function createDevServer({
     }
   })()
 
-  const server = createServer(async (req, res) => {
-    const url = new URL(req.url, `http://${req.headers.host ?? "localhost"}`)
-    if (handlePreflight(req, res)) return
-
-    if (url.pathname === "/ping") return json(res, { server: SERVER_NAME, protocol: PROTOCOL, extensions: [key] })
-
-    if (url.pathname === "/index.json") return json(res, { extensions: [indexEntryFor(key, servedManifest)] })
-
-    if (url.pathname === "/events") {
-      res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" })
-      // The backlog: an extension whose first build failed is being served as
-      // [EMPTY_BUNDLE], and this is how the app learns why.
-      res.write(`data: ${JSON.stringify({ type: "hello", protocol: PROTOCOL, buildErrors: buildError === null ? {} : { [key]: buildError } })}\n\n`)
-      clients.add(res)
-      log(`${stamp()}  ▸ app connected (${clients.size} connected)`)
-      req.on("close", () => {
-        clients.delete(res)
-        log(`${stamp()}  ▪ app disconnected (${clients.size} connected)`)
-      })
-      return
-    }
-
-    if (url.pathname === "/logs" && req.method === "POST") {
-      const body = await readBody(req)
-      try {
-        for (const line of JSON.parse(body).lines ?? []) log(`${stamp()}  │ ${line}`)
-      } catch {
-        warn(`${stamp()}  ! unreadable log payload`)
+  const server = createServer(
+    serveSafely(async (req, res) => {
+      if (guardRequest(req, res, { allowOrigins })) return
+      const path = requestPath(req)
+      if (path === null) {
+        res.writeHead(400, { "content-type": "text/plain" })
+        res.end("bad request target")
+        return
       }
-      res.writeHead(204).end()
-      return
-    }
 
-    if (url.pathname === `/${key}.js`) {
-      res.writeHead(200, { "content-type": "application/javascript; charset=utf-8" })
-      res.end(source ?? EMPTY_BUNDLE)
-      return
-    }
+      if (path === "/ping") return json(res, { server: SERVER_NAME, protocol: PROTOCOL, extensions: [key] })
 
-    res.writeHead(404, { "content-type": "text/plain" })
-    res.end("not found")
-  })
+      if (path === "/index.json") return json(res, { extensions: [indexEntryFor(key, servedManifest)] })
+
+      if (path === "/events") {
+        res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" })
+        // The backlog: an extension whose first build failed is being served as
+        // [EMPTY_BUNDLE], and this is how the app learns why.
+        res.write(`data: ${JSON.stringify({ type: "hello", protocol: PROTOCOL, buildErrors: buildError === null ? {} : { [key]: buildError } })}\n\n`)
+        clients.add(res)
+        log(`${stamp()}  ▸ app connected (${clients.size} connected)`)
+        req.on("close", () => {
+          clients.delete(res)
+          log(`${stamp()}  ▪ app disconnected (${clients.size} connected)`)
+        })
+        return
+      }
+
+      if (path === "/logs" && req.method === "POST") {
+        const lines = logLinesFrom(await readBody(req))
+        if (lines === null) warn(`${stamp()}  ! unreadable log payload`)
+        for (const line of lines ?? []) log(`${stamp()}  │ ${line}`)
+        res.writeHead(204).end()
+        return
+      }
+
+      if (path === `/${key}.js`) {
+        res.writeHead(200, { "content-type": "application/javascript; charset=utf-8" })
+        res.end(source ?? EMPTY_BUNDLE)
+        return
+      }
+
+      res.writeHead(404, { "content-type": "text/plain" })
+      res.end("not found")
+    }, warn),
+  )
 
   await new Promise((resolveListen, rejectListen) => {
     server.once("error", rejectListen)
@@ -450,15 +473,68 @@ export function broadcast(clients, event) {
   }
 }
 
-/// Answers a CORS preflight and allows any origin on every response; returns
-/// true when the request was the preflight and needs nothing more. Any
-/// origin, because the app is not a browser page and this is a development
-/// tool bound to a LAN by choice. The web build preflights `POST /logs`
-/// (`content-type: application/json` is not CORS-safelisted): without this
-/// answer that preflight falls through to a 404 and log forwarding dies
-/// silently, since the app swallows a failed flush.
-export function handlePreflight(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*")
+/// Whether a page at [origin] may talk to a dev server: the app's own web
+/// build, run on this machine or deployed under ham2k.net, or one named with
+/// `--allow-origin`. Every other page open in the author's browser is refused,
+/// so none can read what is being served or write into this terminal.
+export function originAllowed(origin, allowOrigins = []) {
+  if (allowOrigins.includes(origin)) return true
+  let url
+  try {
+    url = new URL(origin)
+  } catch {
+    return false
+  }
+  if (url.origin !== origin) return false
+  if (isLoopback(url.hostname)) return url.protocol === "http:" || url.protocol === "https:"
+  return url.protocol === "https:" && (url.hostname === "ham2k.net" || url.hostname.endsWith(".ham2k.net"))
+}
+
+function isLoopback(name) {
+  return name === "localhost" || name.endsWith(".localhost") || name === "[::1]" || /^127\.\d+\.\d+\.\d+$/.test(name)
+}
+
+/// Whether a request's Host names this machine as the app reaches it: an IP
+/// address, localhost, a `.local` name, or the machine's own name. A page
+/// that points a domain of its own at this machine's address arrives under
+/// that domain, as its own origin, and is refused here instead.
+export function hostAllowed(host) {
+  if (host === undefined) return true
+  let name
+  try {
+    name = new URL(`http://${host}`).hostname.toLowerCase()
+  } catch {
+    return false
+  }
+  if (isIP(name.replace(/^\[|\]$/g, "")) !== 0 || isLoopback(name) || name.endsWith(".local")) return true
+  const own = hostname().toLowerCase()
+  return name === own || name === own.split(".")[0]
+}
+
+/// Refuses a request from a page or under a Host the dev server does not
+/// answer ([originAllowed], [hostAllowed]), answers a CORS preflight, and
+/// allows an accepted origin on the response. Returns true when the request
+/// has been answered and needs nothing more. The app itself sends no Origin
+/// unless it is the web build, which preflights `POST /logs`
+/// (`content-type: application/json` is not CORS-safelisted): without the
+/// preflight's answer, log forwarding dies silently, since the app swallows a
+/// failed flush.
+export function guardRequest(req, res, { allowOrigins = [] } = {}) {
+  const origin = req.headers.origin
+  if (!hostAllowed(req.headers.host)) {
+    res.writeHead(403, { "content-type": "text/plain" })
+    res.end("not this machine's name: point the app at its IP address\n")
+    return true
+  }
+  if (origin !== undefined) {
+    if (!originAllowed(origin, allowOrigins)) {
+      res.writeHead(403, { "content-type": "text/plain" })
+      res.end(`origin not allowed: ${origin} (start the dev server with --allow-origin ${origin} to allow it)\n`)
+      return true
+    }
+    res.setHeader("Access-Control-Allow-Origin", origin)
+    res.setHeader("Vary", "Origin")
+  }
   if (req.method !== "OPTIONS") return false
   res.writeHead(204, {
     "access-control-allow-methods": "GET, POST, OPTIONS",
@@ -467,6 +543,60 @@ export function handlePreflight(req, res) {
   })
   res.end()
   return true
+}
+
+/// The path a request asks for, or null for a request target that is not
+/// one (`//`, an absolute URL with no host). Parsed against a fixed base,
+/// never the client's Host.
+export function requestPath(req) {
+  try {
+    return new URL(req.url ?? "/", "http://localhost").pathname
+  } catch {
+    return null
+  }
+}
+
+/// Runs [handle] for a request, so that nothing it throws can end the
+/// server: the request is answered with a 500, and the server keeps serving.
+export function serveSafely(handle, warnFn = console.error) {
+  return (req, res) => {
+    Promise.resolve()
+      .then(() => handle(req, res))
+      .catch((e) => {
+        warnFn(`${stamp()}  ! ${req.method} ${String(req.url).slice(0, 200)} failed: ${e?.message ?? e}`)
+        if (!res.headersSent) res.writeHead(500, { "content-type": "text/plain" })
+        res.end()
+      })
+  }
+}
+
+/// At most this many lines per `POST /logs`, and this many characters a
+/// line; what is cut is counted, not dropped silently.
+export const LOG_LINES_MAX = 1000
+export const LOG_LINE_MAX = 4000
+
+/// The lines a `POST /logs` body asks to be printed, ready to print: an
+/// array of strings and nothing else, capped ([LOG_LINES_MAX],
+/// [LOG_LINE_MAX]), with every control character but tab shown escaped
+/// (`\x1b`). A line cannot move the cursor, clear the screen, retitle the
+/// window or reach the clipboard, nor pass for a line of the server's own.
+/// Null when the body is not that shape.
+export function logLinesFrom(body) {
+  let lines
+  try {
+    lines = JSON.parse(body).lines
+  } catch {
+    return null
+  }
+  if (!Array.isArray(lines)) return null
+  const printed = []
+  for (const line of lines.slice(0, LOG_LINES_MAX)) {
+    if (typeof line !== "string") continue
+    const shown = line.length > LOG_LINE_MAX ? `${line.slice(0, LOG_LINE_MAX)}… (${line.length - LOG_LINE_MAX} more characters)` : line
+    printed.push(shown.replace(/[\u0000-\u0008\u000a-\u001f\u007f-\u009f]/g, (c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, "0")}`))
+  }
+  if (lines.length > LOG_LINES_MAX) printed.push(`… ${lines.length - LOG_LINES_MAX} more lines`)
+  return printed
 }
 
 export function json(res, body) {

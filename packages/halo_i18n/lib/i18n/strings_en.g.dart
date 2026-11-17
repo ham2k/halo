@@ -8277,8 +8277,8 @@ class Translations$settings$developer$en {
 	/// en: 'Extension Settings'
 	String get extensionSettings => 'Extension Settings';
 
-	/// en: 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.'
-	String get extDevServerDescription => 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.';
+	/// en: 'Load extensions from a dev server on your network, and reload them as you save.'
+	String get extDevServerDescription => 'Load extensions from a dev server on your network, and reload them as you save.';
 
 	/// en: 'Server address'
 	String get extDevServerAddress => 'Server address';
@@ -8315,6 +8315,9 @@ class Translations$settings$developer$en {
 		one: '${count} extension failing to build',
 		other: '${count} extensions failing to build',
 	);
+
+	/// en: 'Not loaded from the server, since this app already has them: ${keys}'
+	String extDevServerRefused({required Object keys}) => 'Not loaded from the server, since this app already has them: ${keys}';
 
 	/// en: 'Extension Catalog'
 	String get catalog => 'Extension Catalog';
@@ -14359,7 +14362,7 @@ extension on Translations {
 			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',
 			'settings.developer.extDevServer' => 'Extension Dev Server',
 			'settings.developer.extensionSettings' => 'Extension Settings',
-			'settings.developer.extDevServerDescription' => 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.',
+			'settings.developer.extDevServerDescription' => 'Load extensions from a dev server on your network, and reload them as you save.',
 			'settings.developer.extDevServerAddress' => 'Server address',
 			'settings.developer.extDevServerHint' => '192.168.1.20:8787',
 			'settings.developer.extDevServerConnect' => 'Connect',
@@ -14370,6 +14373,7 @@ extension on Translations {
 			'settings.developer.extDevServerReconnect' => 'Reconnect at launch',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Last reload: ${key} at ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
+			'settings.developer.extDevServerRefused' => ({required Object keys}) => 'Not loaded from the server, since this app already has them: ${keys}',
 			'settings.developer.catalog' => 'Extension Catalog',
 			'settings.developer.catalogSearchTracks' => 'Catalog Search Tracks',
 			'settings.developer.catalogSearchStable' => 'Only Stable',
@@ -14798,9 +14802,9 @@ extension on Translations {
 			'switchAccounts.noAccountDetails' => 'No account details yet',
 			'switchAccounts.currentAccount' => 'Current account',
 			'switchAccounts.otherAccounts' => 'Other accounts',
-			'switchAccounts.linkToAnother' => 'Link to another account',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.linkToAnother' => 'Link to another account',
 			'switchAccounts.linkWithSibling' => 'Link with other Ham2K App',
 			'switchAccounts.linkWithPolo' => 'Link with account in older version',
 			'switchAccounts.linkWithSiblingDescription' => 'You have another Ham2K app installed. Link with the account in use there.',

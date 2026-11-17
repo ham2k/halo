@@ -3050,7 +3050,7 @@
       "panelLoadFailed": "COULD NOT LOAD THIS SETTINGS PANEL.",
       "extDevServer": "EXTENSION DEV SERVER",
       "extensionSettings": "EXTENSION SETTINGS",
-      "extDevServerDescription": "LOAD EXTENSIONS FROM A DEV SERVER ON YOUR NETWORK INSTEAD OF THE ONES BUILT INTO THE APP, AND RELOAD THEM AS YOU SAVE.",
+      "extDevServerDescription": "LOAD EXTENSIONS FROM A DEV SERVER ON YOUR NETWORK, AND RELOAD THEM AS YOU SAVE.",
       "extDevServerAddress": "SERVER ADDRESS",
       "extDevServerHint": "192.168.1.20:8787",
       "extDevServerConnect": "CONNECT",
@@ -3067,6 +3067,7 @@
         "one": "${count} EXTENSION FAILING TO BUILD",
         "other": "${count} EXTENSIONS FAILING TO BUILD"
       },
+      "extDevServerRefused": "NOT LOADED FROM THE SERVER, SINCE THIS APP ALREADY HAS THEM: ${keys}",
       "catalog": "EXTENSION CATALOG",
       "catalogSearchTracks": "CATALOG SEARCH TRACKS",
       "catalogSearchStable": "ONLY STABLE",

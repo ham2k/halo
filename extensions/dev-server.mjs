@@ -32,7 +32,21 @@ import { dirname, join } from "node:path"
 
 import { bundles, buildOptionsFor, indexEntryFor, loadHostSharedVersions, loadKnownExperiments, loadManifests, readManifest, root } from "./build-config.mjs"
 import { ABOUT_FILE } from "./tools/h2kext-build.mjs"
-import { broadcast as broadcastTo, handlePreflight, json, lanAddresses, PROTOCOL, readBody, SERVER_NAME, stamp } from "./tools/h2kext-dev.mjs"
+import {
+  broadcast as broadcastTo,
+  DevServerError,
+  guardRequest,
+  json,
+  lanAddresses,
+  logLinesFrom,
+  PROTOCOL,
+  readBody,
+  requestPath,
+  SERVER_NAME,
+  serveSafely,
+  stamp,
+  webOrigin,
+} from "./tools/h2kext-dev.mjs"
 
 const args = process.argv.slice(2)
 function argValue(name, fallback) {
@@ -51,6 +65,19 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 // 0.0.0.0 by default: a dev server only this machine can reach cannot serve the
 // device the app is running on, which is the whole point.
 const bindHost = argValue("--host", "0.0.0.0")
+// Every `--allow-origin`, each a web page that may use this server besides
+// the app's own web build (originAllowed).
+const allowOrigins = []
+for (let i = 0; i < args.length - 1; i += 1) {
+  if (args[i] !== "--allow-origin") continue
+  try {
+    allowOrigins.push(webOrigin(args[i + 1]))
+  } catch (e) {
+    if (!(e instanceof DevServerError)) throw e
+    console.error(e.message)
+    process.exit(1)
+  }
+}
 const only = argValue("--only", null)
   ?.split(",")
   .map((s) => s.trim())
@@ -229,81 +256,85 @@ watching = true
 const kernelContext = await watchKernel()
 if (kernelContext) contexts.push(kernelContext)
 
-const server = createServer(async (req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host ?? "localhost"}`)
-  if (handlePreflight(req, res)) return
-
-  if (url.pathname === "/ping") {
-    return json(res, {
-      server: SERVER_NAME,
-      protocol: PROTOCOL,
-      extensions: served.map((b) => b.key),
-    })
-  }
-
-  if (url.pathname === "/index.json") {
-    // Deliberately no `kernel` key: this server serves extensions only, and an
-    // app that took a kernel from here would be swapping the runtime out from
-    // under itself.
-    return json(res, { extensions: served.filter((b) => sources.has(b.key)).map(indexEntryFor) })
-  }
-
-  if (url.pathname === "/events") {
-    res.writeHead(200, {
-      "content-type": "text/event-stream",
-      "cache-control": "no-cache",
-      connection: "keep-alive",
-    })
-    // The backlog matters: an extension that failed its FIRST build is absent
-    // from /index.json, so the app quietly runs the version it shipped with
-    // while the author edits a file whose code is not loaded. Without this the
-    // pane would report every extension healthy and say nothing about it.
-    res.write(
-      `data: ${JSON.stringify({
-        type: "hello",
-        protocol: PROTOCOL,
-        buildErrors: Object.fromEntries(buildErrors),
-      })}\n\n`,
-    )
-    clients.add(res)
-    console.log(`${stamp()}  ▸ app connected (${clients.size} connected)`)
-    req.on("close", () => {
-      clients.delete(res)
-      console.log(`${stamp()}  ▪ app disconnected (${clients.size} connected)`)
-    })
-    return
-  }
-
-  if (url.pathname === "/logs" && req.method === "POST") {
-    // The remote console: the app forwards what its extensions logged, so an
-    // author working against a phone can read their own log lines here rather
-    // than going hunting for a device console.
-    const body = await readBody(req)
-    try {
-      for (const line of JSON.parse(body).lines ?? []) console.log(`${stamp()}  │ ${line}`)
-    } catch {
-      console.error(`${stamp()}  ! unreadable log payload`)
-    }
-    res.writeHead(204).end()
-    return
-  }
-
-  const match = url.pathname.match(/^\/([\w.-]+)\.js$/)
-  if (match) {
-    const source = sources.get(match[1])
-    if (source === undefined) {
-      res.writeHead(404, { "content-type": "text/plain" })
-      res.end(buildErrors.get(match[1]) ?? `no such extension: ${match[1]}`)
+const server = createServer(
+  serveSafely(async (req, res) => {
+    if (guardRequest(req, res, { allowOrigins })) return
+    const path = requestPath(req)
+    if (path === null) {
+      res.writeHead(400, { "content-type": "text/plain" })
+      res.end("bad request target")
       return
     }
-    res.writeHead(200, { "content-type": "application/javascript; charset=utf-8" })
-    res.end(source)
-    return
-  }
 
-  res.writeHead(404, { "content-type": "text/plain" })
-  res.end("not found")
-})
+    if (path === "/ping") {
+      return json(res, {
+        server: SERVER_NAME,
+        protocol: PROTOCOL,
+        extensions: served.map((b) => b.key),
+      })
+    }
+
+    if (path === "/index.json") {
+      // Deliberately no `kernel` key: this server serves extensions only, and an
+      // app that took a kernel from here would be swapping the runtime out from
+      // under itself.
+      return json(res, { extensions: served.filter((b) => sources.has(b.key)).map(indexEntryFor) })
+    }
+
+    if (path === "/events") {
+      res.writeHead(200, {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache",
+        connection: "keep-alive",
+      })
+      // The backlog matters: an extension that failed its FIRST build is absent
+      // from /index.json, so the app quietly runs the version it shipped with
+      // while the author edits a file whose code is not loaded. Without this the
+      // pane would report every extension healthy and say nothing about it.
+      res.write(
+        `data: ${JSON.stringify({
+          type: "hello",
+          protocol: PROTOCOL,
+          buildErrors: Object.fromEntries(buildErrors),
+        })}\n\n`,
+      )
+      clients.add(res)
+      console.log(`${stamp()}  ▸ app connected (${clients.size} connected)`)
+      req.on("close", () => {
+        clients.delete(res)
+        console.log(`${stamp()}  ▪ app disconnected (${clients.size} connected)`)
+      })
+      return
+    }
+
+    if (path === "/logs" && req.method === "POST") {
+      // The remote console: the app forwards what its extensions logged, so an
+      // author working against a phone can read their own log lines here rather
+      // than going hunting for a device console.
+      const lines = logLinesFrom(await readBody(req))
+      if (lines === null) console.error(`${stamp()}  ! unreadable log payload`)
+      for (const line of lines ?? []) console.log(`${stamp()}  │ ${line}`)
+      res.writeHead(204).end()
+      return
+    }
+
+    const match = path.match(/^\/([\w.-]+)\.js$/)
+    if (match) {
+      const source = sources.get(match[1])
+      if (source === undefined) {
+        res.writeHead(404, { "content-type": "text/plain" })
+        res.end(buildErrors.get(match[1]) ?? `no such extension: ${match[1]}`)
+        return
+      }
+      res.writeHead(200, { "content-type": "application/javascript; charset=utf-8" })
+      res.end(source)
+      return
+    }
+
+    res.writeHead(404, { "content-type": "text/plain" })
+    res.end("not found")
+  }),
+)
 
 server.listen(port, bindHost, () => {
   const failed = served.filter((b) => !sources.has(b.key))

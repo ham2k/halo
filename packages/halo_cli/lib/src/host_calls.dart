@@ -164,6 +164,19 @@ class CliHostCalls {
     this.verbose = false,
   });
 
+  /// The `kvKey` of an account call, refused unless it sits in the calling
+  /// extension's own namespace: the key itself, or the key and `_` before
+  /// anything more — the app's `accountKvKeyBelongsTo`, judged again here as
+  /// the app's host judges it, whatever the kernel already checked.
+  static String _ownAccountKvKey(String method, Map<String, dynamic> params) {
+    final kvKey = params['kvKey'];
+    final ns = params['ns'];
+    if (ns is! String || kvKey is! String || (kvKey != ns && !kvKey.startsWith('${ns}_'))) {
+      throw StateError("$method blocked: extension '${ns ?? 'unknown'}' asked for account '${kvKey ?? 'none'}', outside its own namespace");
+    }
+    return kvKey;
+  }
+
   Future<dynamic> call(String method, Map<String, dynamic> params) async {
     if (verbose) stderr.writeln('[host] $method ${_briefly(params)}');
     switch (method) {
@@ -181,10 +194,10 @@ class CliHostCalls {
         return null;
 
       case 'getAccount':
-        return config.accountFor(params['kvKey'] as String);
+        return config.accountFor(_ownAccountKvKey(method, params));
 
       case 'setAccountSession':
-        config.setAccountSession(params['kvKey'] as String, (params['session'] as Map).cast<String, Object?>());
+        config.setAccountSession(_ownAccountKvKey(method, params), (params['session'] as Map).cast<String, Object?>());
         return null;
 
       case 'translate':

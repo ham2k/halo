@@ -6,11 +6,13 @@
 // ones baked into the app, and swaps one of them in place on every save.
 //
 // It is deliberately inert unless someone turns it on and types a URL. Nothing
-// discovers a dev server and nothing connects to one on its own — this fetches
-// code the app will then execute, so the operator naming the host is the whole
-// of the trust story. Build secrets never reach a dev extension regardless
-// (ExtensionService resolves those by provenance), so the worst a wrong URL
-// costs is a broken extension until it disconnects.
+// discovers a dev server, and only a debug build connects to one at launch on
+// its own — this fetches code the app will then execute, so the operator
+// naming the host, this session, is the whole of the trust story. Build
+// secrets never reach a dev extension regardless (ExtensionService resolves
+// those by provenance), and a release build takes no key from a dev server
+// that the app already has (`devKeyRefusal`), so nothing stored for an
+// extension follows a wrong URL to its code.
 
 import 'dart:async';
 import 'dart:convert';
@@ -25,6 +27,19 @@ import 'extension_service.dart';
 const _protocolVersion = 1;
 
 enum DevServerState { disconnected, connecting, connected, failed }
+
+/// The dev server a launch connects to, or '' for none.
+///
+/// The launch [flag] first: it was typed for this launch alone, and only a
+/// debug build reads one. Else the address [saved] in Developer settings,
+/// when [reconnect] is set and developer mode is on — in a debug build only.
+/// A release build connects when the operator does, each session: an address
+/// typed once, on whatever network that was, does not keep fetching code into
+/// every launch after it.
+String devServerAtLaunch({required String flag, required bool developerMode, required bool reconnect, required String saved, bool debugBuild = kDebugMode}) {
+  if (flag.isNotEmpty) return flag;
+  return debugBuild && developerMode && reconnect ? saved : '';
+}
 
 class ExtensionDevClient extends ChangeNotifier {
   ExtensionDevClient({required this.extensions, http.Client? httpClient}) : _http = httpClient ?? http.Client(), _ownsHttpClient = httpClient == null;
@@ -53,6 +68,13 @@ class ExtensionDevClient extends ChangeNotifier {
   /// extension next builds.
   Map<String, String> get buildErrors => Map.unmodifiable(_buildErrors);
   final Map<String, String> _buildErrors = {};
+
+  /// Extensions the server offers that this build will not take from it, and
+  /// why ([ExtensionService.devServerRefusal]). The app keeps running its own
+  /// for each, which the pane has to say: otherwise saving one changes
+  /// nothing, with no reason given.
+  Map<String, String> get refused => Map.unmodifiable(_refused);
+  final Map<String, String> _refused = {};
 
   Uri? _baseUri;
   StreamSubscription<String>? _events;
@@ -99,6 +121,7 @@ class ExtensionDevClient extends ChangeNotifier {
     _state = DevServerState.connecting;
     _lastError = null;
     _buildErrors.clear();
+    _refused.clear();
     notifyListeners();
 
     try {
@@ -117,10 +140,20 @@ class ExtensionDevClient extends ChangeNotifier {
       }
 
       final index = await _getJson(base.resolve('index.json'));
-      final infos = [
+      final offered = [
         for (final entry in ((index['extensions'] as List?) ?? const []).cast<Map<String, dynamic>>()) ExtensionInfo.fromJson({...entry, 'source': 'dev'}),
       ];
-      if (infos.isEmpty) throw const FormatException('the dev server is serving no extensions');
+      if (offered.isEmpty) throw const FormatException('the dev server is serving no extensions');
+      final infos = <ExtensionInfo>[];
+      for (final info in offered) {
+        final refusal = await extensions.devServerRefusal(info.key);
+        if (refusal == null) {
+          infos.add(info);
+        } else {
+          _refused[info.key] = refusal;
+        }
+      }
+      if (infos.isEmpty) throw FormatException(_refused.values.join('; '));
 
       final bundles = <String, ({String source, ExtensionInfo info})>{};
       for (final info in infos) {
@@ -145,6 +178,7 @@ class ExtensionDevClient extends ChangeNotifier {
       _state = DevServerState.failed;
       _lastError = _describe(e);
       _servedKeys = const [];
+      _refused.clear();
       // Whatever a previous connection left loaded is now running with no
       // server behind it, and the pane is about to say "not connected" — so
       // the app must actually not be running it. Reverting to the built-in
@@ -164,6 +198,7 @@ class ExtensionDevClient extends ChangeNotifier {
     _lastError = null;
     _servedKeys = const [];
     _buildErrors.clear();
+    _refused.clear();
     notifyListeners();
     try {
       // Back to the extensions the app shipped with.
@@ -259,6 +294,12 @@ class ExtensionDevClient extends ChangeNotifier {
       // The event carries the extension's whole manifest entry, so a `domains`
       // edited between two saves applies with the code that expects it.
       final info = ExtensionInfo.fromJson({...event, 'source': 'dev'});
+      final refusal = await extensions.devServerRefusal(key);
+      if (refusal != null) {
+        _refused[key] = refusal;
+        notifyListeners();
+        return;
+      }
       final source = await _getText(base.resolve(info.file));
       await extensions.applyDevBundle(key, source: source, info: info);
       _buildErrors.remove(key);

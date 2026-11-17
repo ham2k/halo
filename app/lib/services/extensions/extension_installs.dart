@@ -43,6 +43,28 @@ List<ExtensionInfo> mergeDevExtensions(List<ExtensionInfo> fromAssets, List<Exte
   return [for (final info in fromAssets) byKey[info.key] ?? info, for (final key in unplaced) byKey[key]!];
 }
 
+/// Why a release build refuses to load [key] from a dev server, or null when
+/// it may.
+///
+/// What the app holds for an extension follows its key, not where its code
+/// came from: its stored logins, its settings, and for `ham2k-lofi` the sync
+/// device key. In a release build the dev server is whatever address the
+/// operator typed, so it may serve only a key nothing else answers to: none
+/// in [taken] (the extensions the app ships and the ones installed), and none
+/// of the names reserved for Ham2K's own extensions. A debug build waives
+/// this, which is what lets the in-repo loop iterate on `pota` itself
+/// (docs/extensions/in-repo.md#the-dev-server).
+@visibleForTesting
+String? devKeyRefusal(String key, {required Set<String> taken}) {
+  if (key.startsWith(kReservedKeyPrefix) || key == kReservedBareKey) {
+    return '"$key" is a name reserved for Ham2K\'s own extensions';
+  }
+  if (taken.contains(key)) {
+    return '"$key" is already an extension in this app; uninstall it to serve it from a dev server';
+  }
+  return null;
+}
+
 mixin _ExtensionInstalls {
   // Owned by the class or by another part of this library.
   ExtensionHost? get host;
@@ -656,10 +678,40 @@ mixin _ExtensionInstalls {
   /// Whether [key] is currently being served by a dev server.
   bool isDevExtension(String key) => _devBundles.containsKey(key);
 
+  /// Whether a dev server may replace an extension the app already has
+  /// ([devKeyRefusal]): in a debug build only.
+  @visibleForTesting
+  bool devServerMayReplace = kDebugMode;
+
+  /// Why a dev server may not serve [key] in this build, or null when it may
+  /// ([devKeyRefusal]).
+  Future<String?> devServerRefusal(String key) async {
+    if (devServerMayReplace) return null;
+    final available = _availableExtensions ?? await loadAvailableExtensions();
+    return devKeyRefusal(
+      key,
+      taken: {
+        for (final info in available)
+          if (info.source != ExtensionSource.dev) info.key,
+        ...?settings?.extensionsInstalled.keys,
+      },
+    );
+  }
+
+  /// Throws what [devServerRefusal] says about any of [keys]. Checked here as
+  /// well as by the dev client, since this is where a dev bundle takes a key.
+  Future<void> _refuseDevKeys(Iterable<String> keys) async {
+    for (final key in keys) {
+      final refusal = await devServerRefusal(key);
+      if (refusal != null) throw FormatException(refusal);
+    }
+  }
+
   /// Replaces the whole dev-served set and reboots the runtime. Used on
   /// connect and disconnect — both change WHICH extensions exist, which a
   /// per-extension reload cannot express.
   Future<void> setDevBundles(Map<String, ({String source, ExtensionInfo info})> bundles) async {
+    await _refuseDevKeys(bundles.keys);
     _devBundles
       ..clear()
       ..addAll(bundles);
@@ -675,6 +727,7 @@ mixin _ExtensionInstalls {
   /// existence changes what the app offers (an activity in Operation Setup, a
   /// settings panel), which only a reboot re-reads.
   Future<void> applyDevBundle(String key, {required String source, required ExtensionInfo info}) async {
+    await _refuseDevKeys([key]);
     // Read BEFORE the insert below: what matters is how this key was loaded
     // into the RUNNING runtime, not what it is about to become.
     final previous = _devBundles[key];

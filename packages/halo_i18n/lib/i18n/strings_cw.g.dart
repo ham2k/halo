@@ -3611,7 +3611,7 @@ class _Translations$settings$developer$cw extends Translations$settings$develope
 	@override String get panelLoadFailed => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—·· ——— ·— —·· / — ···· ·· ··· / ··· · — — ·· —· ——· ··· / ·——· ·— —· · ·—·· ·—·—·—';
 	@override String get extDevServer => '· —··— — · —· ··· ·· ——— —· / —·· · ···— / ··· · ·—· ···— · ·—·';
 	@override String get extensionSettings => '· —··— — · —· ··· ·· ——— —· / ··· · — — ·· —· ——· ···';
-	@override String get extDevServerDescription => '·—·· ——— ·— —·· / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·—· ——— —— / ·— / —·· · ···— / ··· · ·—· ···— · ·—· / ——— —· / —·—— ——— ··— ·—· / —· · — ·—— ——— ·—· —·— / ·· —· ··· — · ·— —·· / ——— ··—· / — ···· · / ——— —· · ··· / —··· ··— ·· ·—·· — / ·· —· — ——— / — ···· · / ·— ·——· ·——· ——··—— / ·— —· —·· / ·—· · ·—·· ——— ·— —·· / — ···· · —— / ·— ··· / —·—— ——— ··— / ··· ·— ···— · ·—·—·—';
+	@override String get extDevServerDescription => '·—·· ——— ·— —·· / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·—· ——— —— / ·— / —·· · ···— / ··· · ·—· ···— · ·—· / ——— —· / —·—— ——— ··— ·—· / —· · — ·—— ——— ·—· —·— ——··—— / ·— —· —·· / ·—· · ·—·· ——— ·— —·· / — ···· · —— / ·— ··· / —·—— ——— ··— / ··· ·— ···— · ·—·—·—';
 	@override String get extDevServerAddress => '··· · ·—· ···— · ·—· / ·— —·· —·· ·—· · ··· ···';
 	@override String get extDevServerHint => '·———— ————· ··——— ·—·—·— ·———— —···· ———·· ·—·—·— ·———— ·—·—·— ··——— ————— ———··· ———·· ——··· ———·· ——···';
 	@override String get extDevServerConnect => '—·—· ——— —· —· · —·—· —';
@@ -3628,6 +3628,7 @@ class _Translations$settings$developer$cw extends Translations$settings$develope
 		one: '${count} / · —··— — · —· ··· ·· ——— —· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··',
 		other: '${count} / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··',
 	);
+	@override String extDevServerRefused({required Object keys}) => '—· ——— — / ·—·· ——— ·— —·· · —·· / ··—· ·—· ——— —— / — ···· · / ··· · ·—· ···— · ·—· ——··—— / ··· ·· —· —·—· · / — ···· ·· ··· / ·— ·——· ·——· / ·— ·—·· ·—· · ·— —·· —·—— / ···· ·— ··· / — ···· · —— ———··· / ${keys}';
 	@override String get catalog => '· —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——·';
 	@override String get catalogSearchTracks => '—·—· ·— — ·— ·—·· ——— ——· / ··· · ·— ·—· —·—· ···· / — ·—· ·— —·—· —·— ···';
 	@override String get catalogSearchStable => '——— —· ·—·· —·—— / ··· — ·— —··· ·—·· ·';
@@ -7886,7 +7887,7 @@ extension on TranslationsCw {
 			'settings.developer.panelLoadFailed' => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—·· ——— ·— —·· / — ···· ·· ··· / ··· · — — ·· —· ——· ··· / ·——· ·— —· · ·—·· ·—·—·—',
 			'settings.developer.extDevServer' => '· —··— — · —· ··· ·· ——— —· / —·· · ···— / ··· · ·—· ···— · ·—·',
 			'settings.developer.extensionSettings' => '· —··— — · —· ··· ·· ——— —· / ··· · — — ·· —· ——· ···',
-			'settings.developer.extDevServerDescription' => '·—·· ——— ·— —·· / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·—· ——— —— / ·— / —·· · ···— / ··· · ·—· ···— · ·—· / ——— —· / —·—— ——— ··— ·—· / —· · — ·—— ——— ·—· —·— / ·· —· ··· — · ·— —·· / ——— ··—· / — ···· · / ——— —· · ··· / —··· ··— ·· ·—·· — / ·· —· — ——— / — ···· · / ·— ·——· ·——· ——··—— / ·— —· —·· / ·—· · ·—·· ——— ·— —·· / — ···· · —— / ·— ··· / —·—— ——— ··— / ··· ·— ···— · ·—·—·—',
+			'settings.developer.extDevServerDescription' => '·—·· ——— ·— —·· / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·—· ——— —— / ·— / —·· · ···— / ··· · ·—· ···— · ·—· / ——— —· / —·—— ——— ··— ·—· / —· · — ·—— ——— ·—· —·— ——··—— / ·— —· —·· / ·—· · ·—·· ——— ·— —·· / — ···· · —— / ·— ··· / —·—— ——— ··— / ··· ·— ···— · ·—·—·—',
 			'settings.developer.extDevServerAddress' => '··· · ·—· ···— · ·—· / ·— —·· —·· ·—· · ··· ···',
 			'settings.developer.extDevServerHint' => '·———— ————· ··——— ·—·—·— ·———— —···· ———·· ·—·—·— ·———— ·—·—·— ··——— ————— ———··· ———·· ——··· ———·· ——···',
 			'settings.developer.extDevServerConnect' => '—·—· ——— —· —· · —·—· —',
@@ -7897,6 +7898,7 @@ extension on TranslationsCw {
 			'settings.developer.extDevServerReconnect' => '·—· · —·—· ——— —· —· · —·—· — / ·— — / ·—·· ·— ··— —· —·—· ····',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => '·—·· ·— ··· — / ·—· · ·—·· ——— ·— —·· ———··· / ${key} / ·— — / ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / · —··— — · —· ··· ·· ——— —· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', other: '${count} / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', ), 
+			'settings.developer.extDevServerRefused' => ({required Object keys}) => '—· ——— — / ·—·· ——— ·— —·· · —·· / ··—· ·—· ——— —— / — ···· · / ··· · ·—· ···— · ·—· ——··—— / ··· ·· —· —·—· · / — ···· ·· ··· / ·— ·——· ·——· / ·— ·—·· ·—· · ·— —·· —·—— / ···· ·— ··· / — ···· · —— ———··· / ${keys}',
 			'settings.developer.catalog' => '· —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——·',
 			'settings.developer.catalogSearchTracks' => '—·—· ·— — ·— ·—·· ——— ——· / ··· · ·— ·—· —·—· ···· / — ·—· ·— —·—· —·— ···',
 			'settings.developer.catalogSearchStable' => '——— —· ·—·· —·—— / ··· — ·— —··· ·—·· ·',
@@ -8325,9 +8327,9 @@ extension on TranslationsCw {
 			'switchAccounts.noAccountDetails' => '—· ——— / ·— —·—· —·—· ——— ··— —· — / —·· · — ·— ·· ·—·· ··· / —·—— · —',
 			'switchAccounts.currentAccount' => '—·—· ··— ·—· ·—· · —· — / ·— —·—· —·—· ——— ··— —· —',
 			'switchAccounts.otherAccounts' => '——— — ···· · ·—· / ·— —·—· —·—· ——— ··— —· — ···',
-			'switchAccounts.linkToAnother' => '·—·· ·· —· —·— / — ——— / ·— —· ——— — ···· · ·—· / ·— —·—· —·—· ——— ··— —· —',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.linkToAnother' => '·—·· ·· —· —·— / — ——— / ·— —· ——— — ···· · ·—· / ·— —·—· —·—· ——— ··— —· —',
 			'switchAccounts.linkWithSibling' => '·—·· ·· —· —·— / ·—— ·· — ···· / ——— — ···· · ·—· / ···· ·— —— ··——— —·— / ·— ·——· ·——·',
 			'switchAccounts.linkWithPolo' => '·—·· ·· —· —·— / ·—— ·· — ···· / ·— —·—· —·—· ——— ··— —· — / ·· —· / ——— ·—·· —·· · ·—· / ···— · ·—· ··· ·· ——— —·',
 			'switchAccounts.linkWithSiblingDescription' => '—·—— ——— ··— / ···· ·— ···— · / ·— —· ——— — ···· · ·—· / ···· ·— —— ··——— —·— / ·— ·——· ·——· / ·· —· ··· — ·— ·—·· ·—·· · —·· ·—·—·— / ·—·· ·· —· —·— / ·—— ·· — ···· / — ···· · / ·— —·—· —·—· ——— ··— —· — / ·· —· / ··— ··· · / — ···· · ·—· · ·—·—·—',

@@ -89,6 +89,7 @@ npm run dev                            # every extension
 npm run dev -- --only adif,scoring     # just the ones you are working on
 npm run dev -- --port 9000             # default 8787
 npm run dev -- --host 127.0.0.1        # default 0.0.0.0, so a phone on the LAN can reach it
+npm run dev -- --allow-origin http://10.0.0.5:8080   # a web page besides the app's own web build
 ```
 
 It prints the URLs. In the app: **Settings → Developer → Extension Dev
@@ -109,10 +110,21 @@ Developer Mode need not be on:
 The server's own address answers "not found" in a browser: the app asks it
 for `/ping`, `/index.json` and each bundle, never for its root.
 
-- On connect, the app fetches the server's index and uses the dev bundle
-  **instead of** the one baked in for every extension the server offers,
-  which is what lets you iterate on `pota` itself. Anything the server does
-  not offer keeps running from the app's assets.
+- On connect, a **debug build** fetches the server's index and uses the dev
+  bundle **instead of** the one baked in for every extension the server
+  offers, which is what lets you iterate on `pota` itself. Anything the
+  server does not offer keeps running from the app's assets.
+- A **release build** takes only keys it has no extension for: none built
+  in, none installed, none beginning `ham2k-`. What the app holds for a key
+  (its logins, its settings, the sync device key `ham2k-lofi` is seeded
+  with) follows the key, and in a release build the server is whatever
+  address was typed. The Developer screen lists the keys it did not take.
+- A debug build reconnects at launch to the address saved in Developer
+  settings; a release build connects only when Connect is tapped.
+- The server answers the app and its web build (on this machine, or under
+  `ham2k.net`) and refuses a page from any other origin, or a request whose
+  Host is not an IP address, `localhost`, a `.local` name or this machine's
+  own name. Logged lines print with control characters escaped.
 - Each save pushes a reload: the old version's hooks are unregistered, the
   new source is evaluated, its `onActivation` runs. The extension's
   key-value store survives a reload. A save that does not compile pushes
@@ -163,7 +175,10 @@ stale: `cd extensions && npm run build` after every extension change. Run it
 from anywhere in the repo, or point `HALO_EXT_BUNDLES` or `--bundles` at a
 bundle directory. `--dev-server 127.0.0.1:8787` overlays a running dev
 server's extensions on the built bundles; `--verbose` names what came from
-where.
+where. A dev-served extension gets no configured secrets, but uses the
+accounts stored for the key it is served as, as in a debug build of the app:
+point `--dev-server` only at a server you run. An extension reads and writes
+only the accounts in its own namespace.
 
 It runs on the plain Dart VM, where `dart:ui` does not exist, so neither
 `halo_cli` nor anything it imports (`halo_extension_host`, `halo_core`,

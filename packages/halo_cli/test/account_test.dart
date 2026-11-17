@@ -65,10 +65,35 @@ void main() {
 
     final config = CliConfig.load(path: configPath);
     final host = CliHostCalls(config: config, index: _emptyIndex);
-    final account = await host.call('getAccount', {'kvKey': 'ham2k-qrz'}) as Map;
+    final account = await host.call('getAccount', {'ns': 'ham2k-qrz', 'kvKey': 'ham2k-qrz'}) as Map;
 
     expect((account['credentials'] as Map)['username'], 'N0DEV');
     expect(account['session'], isEmpty);
+  });
+
+  test("an extension reads and writes only the accounts in its own namespace", () async {
+    // The kernel stamps the caller's namespace beside the kvKey, and the host
+    // judges the pair again, as the app's does: a bundle served as another
+    // key, or a kernel that let a foreign kvKey through, must not be handed
+    // the QRZ login or be able to replace its session.
+    await run(['account', 'set', 'ham2k-qrz', 'username=N0DEV', 'password=hunter2']);
+    final config = CliConfig.load(path: configPath);
+    final host = CliHostCalls(config: config, index: _emptyIndex);
+
+    expect(await host.call('getAccount', {'ns': 'ham2k-qrz', 'kvKey': 'ham2k-qrz_backup'}), isA<Map>(), reason: 'its own key and `_` before more is its own');
+    for (final ns in ['ham2k-lofi', 'ham2k', null]) {
+      await expectLater(host.call('getAccount', {'ns': ns, 'kvKey': 'ham2k-qrz'}), throwsStateError, reason: 'read as $ns');
+      await expectLater(
+        host.call('setAccountSession', {
+          'ns': ns,
+          'kvKey': 'ham2k-qrz',
+          'session': {'key': 'forged'},
+        }),
+        throwsStateError,
+        reason: 'written as $ns',
+      );
+    }
+    expect(CliConfig.load(path: configPath).accountFor('ham2k-qrz')['session'], isEmpty);
   });
 
   test('a second set updates one field and keeps the rest', () async {

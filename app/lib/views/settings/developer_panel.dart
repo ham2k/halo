@@ -519,6 +519,7 @@ List<String> _devServerStatusLines(BuildContext context, ExtensionDevClient clie
         t.extDevServerConnected(count: client.servedKeys.length, keys: client.servedKeys.join(', ')),
         if (reload != null) t.extDevServerLastReload(key: reload.key, time: TimeOfDay.fromDateTime(reload.at).format(context)),
         if (failing > 0) t.extDevServerBuildErrors(count: failing),
+        if (client.refused.isNotEmpty) t.extDevServerRefused(keys: client.refused.keys.join(', ')),
       ];
   }
 }
@@ -527,7 +528,7 @@ List<String> _devServerStatusLines(BuildContext context, ExtensionDevClient clie
 /// client has one to say or extensions are failing to build.
 Widget _devServerStatus(BuildContext context, ExtensionDevClient client) {
   final theme = Theme.of(context);
-  final failing = client.lastError != null || (client.state == DevServerState.connected && client.buildErrors.isNotEmpty);
+  final failing = client.lastError != null || (client.state == DevServerState.connected && (client.buildErrors.isNotEmpty || client.refused.isNotEmpty));
   return Text(
     _devServerStatusLines(context, client).join('\n'),
     style: theme.textTheme.bodySmall?.copyWith(color: failing ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant),

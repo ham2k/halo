@@ -3611,7 +3611,7 @@ class _Translations$settings$developer$qrp extends Translations$settings$develop
 	@override String get panelLoadFailed => 'could not load this settings panel.';
 	@override String get extDevServer => 'extension dev server';
 	@override String get extensionSettings => 'extension settings';
-	@override String get extDevServerDescription => 'load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.';
+	@override String get extDevServerDescription => 'load extensions from a dev server on your network, and reload them as you save.';
 	@override String get extDevServerAddress => 'server address';
 	@override String get extDevServerHint => '192.168.1.20:8787';
 	@override String get extDevServerConnect => 'connect';
@@ -3628,6 +3628,7 @@ class _Translations$settings$developer$qrp extends Translations$settings$develop
 		one: '${count} extension failing to build',
 		other: '${count} extensions failing to build',
 	);
+	@override String extDevServerRefused({required Object keys}) => 'not loaded from the server, since this app already has them: ${keys}';
 	@override String get catalog => 'extension catalog';
 	@override String get catalogSearchTracks => 'catalog search tracks';
 	@override String get catalogSearchStable => 'only stable';
@@ -7886,7 +7887,7 @@ extension on TranslationsQrp {
 			'settings.developer.panelLoadFailed' => 'could not load this settings panel.',
 			'settings.developer.extDevServer' => 'extension dev server',
 			'settings.developer.extensionSettings' => 'extension settings',
-			'settings.developer.extDevServerDescription' => 'load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.',
+			'settings.developer.extDevServerDescription' => 'load extensions from a dev server on your network, and reload them as you save.',
 			'settings.developer.extDevServerAddress' => 'server address',
 			'settings.developer.extDevServerHint' => '192.168.1.20:8787',
 			'settings.developer.extDevServerConnect' => 'connect',
@@ -7897,6 +7898,7 @@ extension on TranslationsQrp {
 			'settings.developer.extDevServerReconnect' => 'reconnect at launch',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'last reload: ${key} at ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
+			'settings.developer.extDevServerRefused' => ({required Object keys}) => 'not loaded from the server, since this app already has them: ${keys}',
 			'settings.developer.catalog' => 'extension catalog',
 			'settings.developer.catalogSearchTracks' => 'catalog search tracks',
 			'settings.developer.catalogSearchStable' => 'only stable',
@@ -8325,9 +8327,9 @@ extension on TranslationsQrp {
 			'switchAccounts.noAccountDetails' => 'no account details yet',
 			'switchAccounts.currentAccount' => 'current account',
 			'switchAccounts.otherAccounts' => 'other accounts',
-			'switchAccounts.linkToAnother' => 'link to another account',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.linkToAnother' => 'link to another account',
 			'switchAccounts.linkWithSibling' => 'link with other ham2k app',
 			'switchAccounts.linkWithPolo' => 'link with account in older version',
 			'switchAccounts.linkWithSiblingDescription' => 'you have another ham2k app installed. link with the account in use there.',

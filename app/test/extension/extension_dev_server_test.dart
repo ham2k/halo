@@ -397,4 +397,110 @@ void main() {
       expect(mergeDevExtensions([asset, other], const []), [asset, other]);
     });
   });
+
+  group('a release build takes from a dev server only keys the app has no extension for', () {
+    // A dev bundle runs under the key it claims, and the logins, settings and
+    // (for ham2k-lofi) the sync device key the app holds for that key follow
+    // it. In a release build the server is whatever address was typed, so a
+    // key the app already has would hand all of that to its code.
+    const shipped = ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'Parks on the Air');
+    const installed = ExtensionInfo(key: 'hota-official', file: 'hota.js', core: false, name: 'HOTA', source: ExtensionSource.installed);
+
+    test('devKeyRefusal: reserved names and taken keys, nothing else', () {
+      expect(devKeyRefusal('ham2k-lofi', taken: const {}), contains('reserved'));
+      expect(devKeyRefusal('ham2k', taken: const {}), contains('reserved'));
+      expect(devKeyRefusal('pota', taken: const {'pota'}), contains('already an extension'));
+      expect(devKeyRefusal('k2hrc-dev-loop', taken: const {'pota'}), isNull);
+    });
+
+    _SpyExtensionService releaseService() => _SpyExtensionService()
+      ..devServerMayReplace = false
+      ..debugSetAvailableExtensions([shipped, installed]);
+
+    test('connecting loads the new key, and says which ones it kept', () async {
+      final stub = devServer(
+        extensions: [
+          for (final key in ['pota', 'hota-official', 'ham2k-lofi', 'k2hrc-dev-loop']) {'key': key, 'file': '$key.js', 'core': false, 'name': key},
+        ],
+      );
+      final service = releaseService();
+      final client = ExtensionDevClient(extensions: service, httpClient: stub.client);
+      addTearDown(client.dispose);
+
+      await client.connect('http://192.168.1.20:8787');
+
+      expect(client.state, DevServerState.connected, reason: client.lastError);
+      expect(service.devBundleSets.single.keys, ['k2hrc-dev-loop']);
+      expect(client.servedKeys, ['k2hrc-dev-loop']);
+      expect(client.refused.keys, unorderedEquals(['pota', 'hota-official', 'ham2k-lofi']));
+      expect(stub.requested.map((u) => u.path), isNot(contains('/pota.js')), reason: 'a refused bundle is not even fetched');
+    });
+
+    test('a server offering only keys the app has fails to connect, saying why', () async {
+      final service = releaseService();
+      final client = ExtensionDevClient(extensions: service, httpClient: devServer().client);
+      addTearDown(client.dispose);
+
+      await client.connect('http://192.168.1.20:8787');
+
+      expect(client.state, DevServerState.failed);
+      expect(client.lastError, contains('"pota" is already an extension'));
+      expect(service.devBundleSets.single, isEmpty, reason: 'back to the app\'s own extensions');
+    });
+
+    test('a reload naming a key the app has is not applied', () async {
+      final stub = devServer(
+        extensions: [
+          {'key': 'k2hrc-dev-loop', 'file': 'k2hrc-dev-loop.js', 'core': false, 'name': 'Loop'},
+        ],
+      );
+      final service = releaseService();
+      final client = ExtensionDevClient(extensions: service, httpClient: stub.client);
+      addTearDown(client.dispose);
+      await client.connect('http://192.168.1.20:8787');
+
+      client.debugHandleEventLine('data: ${jsonEncode({'type': 'reload', 'key': 'pota', 'file': 'pota.js', 'core': false, 'name': 'pota'})}');
+      await pumpEventQueue();
+
+      expect(service.applied, isEmpty);
+      expect(client.refused.keys, ['pota']);
+    });
+
+    test('the service refuses the key itself, whoever hands it the bundle', () async {
+      // The client checks first; this is the check that holds when it does not.
+      final service = ExtensionService()
+        ..devServerMayReplace = false
+        ..debugSetAvailableExtensions([shipped, installed]);
+      const dev = ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'pota', source: ExtensionSource.dev);
+
+      await expectLater(service.setDevBundles({'pota': (source: '', info: dev)}), throwsFormatException);
+      await expectLater(service.applyDevBundle('hota-official', source: '', info: dev), throwsFormatException);
+      expect(service.isDevExtension('pota'), isFalse);
+      expect(service.isDevExtension('hota-official'), isFalse);
+    });
+
+    test('a debug build may replace any of them, which the in-repo loop needs', () async {
+      final service = _SpyExtensionService()..debugSetAvailableExtensions([shipped, installed]);
+
+      expect(service.devServerMayReplace, isTrue, reason: 'tests run as a debug build');
+      expect(await service.devServerRefusal('pota'), isNull);
+      expect(await service.devServerRefusal('ham2k-lofi'), isNull);
+    });
+  });
+
+  group('devServerAtLaunch', () {
+    test('a release build connects at launch to nothing it was not told this launch', () {
+      expect(devServerAtLaunch(flag: '', developerMode: true, reconnect: true, saved: '10.0.0.5:8787', debugBuild: false), '');
+    });
+
+    test('a debug build reconnects to the saved address with developer mode on and the toggle set', () {
+      expect(devServerAtLaunch(flag: '', developerMode: true, reconnect: true, saved: '10.0.0.5:8787', debugBuild: true), '10.0.0.5:8787');
+      expect(devServerAtLaunch(flag: '', developerMode: false, reconnect: true, saved: '10.0.0.5:8787', debugBuild: true), '');
+      expect(devServerAtLaunch(flag: '', developerMode: true, reconnect: false, saved: '10.0.0.5:8787', debugBuild: true), '');
+    });
+
+    test('the launch flag outranks the saved address', () {
+      expect(devServerAtLaunch(flag: 'localhost:8787', developerMode: false, reconnect: false, saved: '10.0.0.5:8787', debugBuild: true), 'localhost:8787');
+    });
+  });
 }

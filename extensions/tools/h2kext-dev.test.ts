@@ -11,12 +11,14 @@
 import assert from "node:assert/strict"
 import { context } from "esbuild"
 import { mkdir, mkdtemp, rename, writeFile } from "node:fs/promises"
+import { request } from "node:http"
+import { connect } from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 
 // @ts-ignore — deliberately plain JS, like the tools it sits beside.
-import { createDevServer, DevServerError, EMPTY_BUNDLE, parseArgs, PROTOCOL, SERVER_NAME } from "./h2kext-dev.mjs"
+import { createDevServer, DevServerError, EMPTY_BUNDLE, LOG_LINE_MAX, LOG_LINES_MAX, parseArgs, PROTOCOL, SERVER_NAME } from "./h2kext-dev.mjs"
 // @ts-ignore
 import { findSharedModuleReferences, H2KEXT_API_VERSION, SCAFFOLD_SHARED_DEPENDENCIES } from "./h2kext.mjs"
 
@@ -324,9 +326,140 @@ test("what the app's extensions log comes back to the terminal", async () => {
 
     // The web build preflights the POST; without a 204 here that request is
     // refused and log forwarding dies silently.
-    const preflight = await fetch(`${dev.url}/logs`, { method: "OPTIONS" })
+    const preflight = await fetch(`${dev.url}/logs`, { method: "OPTIONS", headers: { origin: "http://localhost:8769" } })
     assert.equal(preflight.status, 204)
-    assert.equal(preflight.headers.get("access-control-allow-origin"), "*")
+    assert.equal(preflight.headers.get("access-control-allow-origin"), "http://localhost:8769")
+  } finally {
+    await dev.close()
+  }
+})
+
+/// One raw request, so the test chooses the Host and Origin headers a browser
+/// would send, which fetch does not let it set.
+function rawRequest(
+  url: string,
+  { method = "GET", path = "/", headers = {}, body }: { method?: string; path?: string; headers?: Record<string, string>; body?: string },
+) {
+  const { hostname, port } = new URL(url)
+  return new Promise<{ status: number; headers: Record<string, unknown> }>((resolveRequest, rejectRequest) => {
+    const req = request({ host: hostname, port, method, path, headers }, (res) => {
+      res.resume()
+      res.on("end", () => resolveRequest({ status: res.statusCode!, headers: res.headers }))
+    })
+    req.on("error", rejectRequest)
+    req.end(body)
+  })
+}
+
+test("a log line prints as text: control characters show escaped, and what is not a list of strings prints nothing", async () => {
+  // Anything on the network can post here. A line that reached the terminal
+  // raw could clear it, retitle the window, write the clipboard (OSC 52), or
+  // print what looks like the server's own "Point the app at" block.
+  const dir = await project()
+  const { dev, lines } = await serve(dir)
+  try {
+    const post = (body: unknown) => fetch(`${dev.url}/logs`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
+    await post({ lines: ["\u001b[2J\u001b]0;build ok\u0007Point the app at:\n  http://attacker:8787", "tab\there", "\u009b31m"] })
+    const printed = lines.filter((l) => l.includes("│"))
+    assert.equal(printed.length, 3, "one line in, one line out: a newline cannot start a line of its own")
+    assert.ok(
+      printed.every((l) => !/[\u0000-\u0008\u000a-\u001f\u007f-\u009f]/.test(l)),
+      JSON.stringify(printed),
+    )
+    assert.ok(printed[0].endsWith("│ \\x1b[2J\\x1b]0;build ok\\x07Point the app at:\\x0a  http://attacker:8787"))
+    assert.ok(printed[1].endsWith("│ tab\there"), "a tab is how the app indents a stack trace")
+    assert.ok(printed[2].endsWith("│ \\x9b31m"))
+
+    lines.length = 0
+    await post({ lines: "a string is not a list" })
+    await post({ lines: [42, { nested: true }] })
+    assert.ok(!lines.some((l) => l.includes("│")), JSON.stringify(lines))
+
+    lines.length = 0
+    await post({ lines: ["x".repeat(LOG_LINE_MAX + 10), ...Array(LOG_LINES_MAX + 4).fill("y")] })
+    const capped = lines.filter((l) => l.includes("│"))
+    assert.equal(capped.length, LOG_LINES_MAX + 1)
+    assert.ok(capped[0].endsWith("… (10 more characters)"))
+    assert.ok(capped.at(-1)!.endsWith("│ … 5 more lines"))
+  } finally {
+    await dev.close()
+  }
+})
+
+test("a request target the server cannot read is answered 400, and the server keeps serving", async () => {
+  const dir = await project()
+  const { dev } = await serve(dir)
+  try {
+    const { port } = new URL(dev.url)
+    const reply = await new Promise<string>((resolveReply, rejectReply) => {
+      const socket = connect(Number(port), "127.0.0.1", () => socket.end("GET // HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"))
+      let data = ""
+      socket.on("data", (chunk) => (data += chunk))
+      socket.on("end", () => resolveReply(data))
+      socket.on("error", rejectReply)
+    })
+    assert.match(reply, /^HTTP\/1\.1 400/)
+    assert.equal((await (await fetch(`${dev.url}/ping`)).json()).server, SERVER_NAME)
+  } finally {
+    await dev.close()
+  }
+})
+
+test("only the app's own web build may use the server from a browser page", async () => {
+  // Any other page the author has open could otherwise read the bundle being
+  // written, and post into this terminal; one whose domain resolves to this
+  // machine arrives as its own origin, and is told apart by its Host.
+  const dir = await project()
+  const { dev, lines } = await serve(dir)
+  try {
+    for (const origin of ["http://localhost:8769", "https://halo-dev.ham2k.net", "https://next-halo-dev.ham2k.net"]) {
+      const res = await rawRequest(dev.url, { path: "/index.json", headers: { origin } })
+      assert.equal(res.status, 200, origin)
+      assert.equal(res.headers["access-control-allow-origin"], origin)
+    }
+    for (const origin of ["https://evil.example", "http://halo-dev.ham2k.net", "https://evilham2k.net", "null"]) {
+      assert.equal((await rawRequest(dev.url, { path: "/index.json", headers: { origin } })).status, 403, origin)
+      assert.equal((await rawRequest(dev.url, { path: `/${KEY}.js`, headers: { origin } })).status, 403, origin)
+    }
+    const posted = await rawRequest(dev.url, {
+      method: "POST",
+      path: "/logs",
+      headers: { origin: "https://evil.example", "content-type": "text/plain" },
+      body: JSON.stringify({ lines: ["from a web page"] }),
+    })
+    assert.equal(posted.status, 403)
+    assert.ok(!lines.some((l) => l.includes("from a web page")))
+
+    assert.equal((await rawRequest(dev.url, { path: "/index.json", headers: { host: "rebound.example:8787" } })).status, 403)
+    for (const host of ["192.168.1.20:8787", "[::1]:8787", "localhost:8787", "studio.local:8787"]) {
+      assert.equal((await rawRequest(dev.url, { path: "/index.json", headers: { host } })).status, 200, host)
+    }
+  } finally {
+    await dev.close()
+  }
+})
+
+test("--allow-origin admits one more web page, named as a browser sends it", async () => {
+  assert.deepEqual(parseArgs(["--allow-origin", "http://10.0.0.5:8080/", "--allow-origin", "https://example.org"]).allowOrigins, [
+    "http://10.0.0.5:8080",
+    "https://example.org",
+  ])
+  assert.throws(() => parseArgs(["--allow-origin", "10.0.0.5"]), DevServerError)
+  const dir = await project()
+  const lines: string[] = []
+  const dev = await createDevServer({
+    dir,
+    esbuild: { context },
+    host: "127.0.0.1",
+    port: 0,
+    allowOrigins: ["http://10.0.0.5:8080"],
+    log: (l: string) => lines.push(l),
+    warn: (l: string) => lines.push(l),
+  })
+  try {
+    const res = await rawRequest(dev.url, { path: "/index.json", headers: { origin: "http://10.0.0.5:8080" } })
+    assert.equal(res.status, 200)
+    assert.equal(res.headers["access-control-allow-origin"], "http://10.0.0.5:8080")
   } finally {
     await dev.close()
   }

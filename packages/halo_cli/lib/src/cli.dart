@@ -46,7 +46,8 @@ Future<int> runHaloExt(List<String> argv) async {
       help:
           'Take extensions from a running `npm run dev` instead of the built bundles,\n'
           'e.g. --dev-server 127.0.0.1:8787. Overlays what that server serves onto\n'
-          'the built ones (it serves no kernel). Dev extensions get no secrets.',
+          'the built ones (it serves no kernel). Dev extensions get no configured\n'
+          'secrets, but do use the accounts stored for the keys they are served as.',
     )
     ..addOption('config', help: 'Config file (default: ${CliConfig.defaultPath}).')
     ..addOption('cache', help: 'Cache directory for downloaded reference data.')

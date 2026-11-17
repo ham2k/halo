@@ -32,7 +32,7 @@ import 'edition_keychain.dart';
 import 'hang_watchdog.dart';
 
 import 'error_reporting_service.dart';
-import 'extensions/extension_dev_client.dart' show DevServerState;
+import 'extensions/extension_dev_client.dart' show DevServerState, devServerAtLaunch;
 import 'extensions/extension_force_disable.dart' show forceDisabledBeforeStart, keepForceDisabledFromBoot;
 import 'extensions/extension_gone_since.dart' show updateExtensionGoneSince;
 import 'extensions/extension_service.dart';
@@ -364,15 +364,13 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
           // which the sync behind it fetches a 304, finds nothing to import, and the
           // session simply runs without that data (HALO-429). Sequenced here so
           // there is one runtime swap and then one load, against the runtime that
-          // will actually serve it. From the saved setting only with developer mode on
-          // AND the toggle set — no address is ever discovered, only typed. A launch
-          // flag outranks it and needs no developer mode: it was typed for this
-          // launch alone.
-          final devServer = devExtensionServer.isNotEmpty
-              ? devExtensionServer
-              : settings.developerMode && settings.extensionDevServerEnabled
-              ? settings.extensionDevServerUrl
-              : '';
+          // will actually serve it. Which address, if any, is devServerAtLaunch's.
+          final devServer = devServerAtLaunch(
+            flag: devExtensionServer,
+            developerMode: settings.developerMode,
+            reconnect: settings.extensionDevServerEnabled,
+            saved: settings.extensionDevServerUrl,
+          );
           if (devServer.isNotEmpty) {
             // Never throws — the client records a failed connection as status
             // rather than an error, so a dev server that has since been stopped
