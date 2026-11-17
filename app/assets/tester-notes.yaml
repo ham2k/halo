@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"195":
   changes:
     - "New GPS receivers over USB, serial, network or gpsd, under Station Configuration → Add"
     - "New full-size panels: double-tap or double-click a panel's title to enlarge it"
