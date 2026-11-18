@@ -338,7 +338,7 @@ class SceneMapOverlay {
 class SceneMapSpec {
   static const keys = [
     'projection', 'depth', 'atmosphere', 'home', 'origin', 'map', 'zoom', 'pan', 'styles', 'markers', 'lines', 'circles', 'images', //
-    'zoomValue', 'hoverLat', 'hoverLon', 'actions', 'gestures',
+    'zoomValue', 'hoverLat', 'hoverLon', 'actions', 'gestures', 'dwell',
   ];
 
   static const maxMarkers = 4096;
@@ -407,6 +407,11 @@ class SceneMapSpec {
 
   /// Whether the host's whole-map button is drawn.
   final bool actions;
+
+  /// How long, in milliseconds, a mouse pointer rests on the map before the
+  /// map sends `dwell` with the place under it (and `dwellEnd` once it moves
+  /// on); none, none sent. Extension API 28.
+  final int? dwellMs;
 
   /// `native` or `off`; a zoom also `center`, about the view's middle
   /// rather than the pointer.
@@ -483,6 +488,7 @@ class SceneMapSpec {
       hoverLat = json['hoverLat'] == null ? null : string(json, 'hoverLat'),
       hoverLon = json['hoverLon'] == null ? null : string(json, 'hoverLon'),
       actions = json['actions'] != false,
+      dwellMs = json['dwell'] == null ? null : number(json, 'dwell', min: 250, max: 10000).round(),
       zoomGesture = _gesture(json, 'zoom'),
       panGesture = _gesture(json, 'pan') {
     if (zoomMin > zoomMax) throw const FormatException('A map zoom min is past its max, 10 where it gives none');

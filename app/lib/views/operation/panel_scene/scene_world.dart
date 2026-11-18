@@ -568,6 +568,8 @@ class WorldMapBase {
   /// point (0, 0) falls at [origin] and one of its units is [scale] pixels.
   /// [closeness] is how many times the whole world the view is magnified:
   /// the states and provinces come in as it closes in on a country.
+  /// [onLand] paints what lies on the land, under the night and the
+  /// outlines — a scene's pictures — with the canvas as [paint] found it.
   void paint(
     Canvas canvas, {
     required Offset origin,
@@ -576,9 +578,14 @@ class WorldMapBase {
     required MapColors colors,
     required double closeness,
     required bool dark,
+    VoidCallback? onLand,
   }) {
     final paths = this.paths;
-    if (paths == null) return;
+    if (paths == null) {
+      // No world drawn: what lies on it still does, on the plain sea.
+      onLand?.call();
+      return;
+    }
     final palette = MapPalette.named(style.palette);
     canvas.save();
     canvas.translate(origin.dx, origin.dy);
@@ -588,6 +595,13 @@ class WorldMapBase {
     // Only the cells the pane shows, and the widest stroke's half past them.
     final layers = paths.within(canvas.getLocalClipBounds().inflate((math.max(0.8, borderWidth) / 2 + 1) / scale));
     canvas.drawPath(layers.land, Paint()..color = colors.land);
+    if (onLand != null) {
+      canvas.restore();
+      onLand();
+      canvas.save();
+      canvas.translate(origin.dx, origin.dy);
+      canvas.scale(scale);
+    }
     if (style.grayline) {
       // Blurred across the blend, in the projection's units as the canvas
       // is scaled: a degree is the world's breadth over 360 at the equator.
@@ -607,9 +621,14 @@ class WorldMapBase {
     final coast = style.coast ?? colors.coast;
     canvas.drawPath(paths.graticule, line(style.graticule ?? palette.graticule ?? const Color(0x66444444), 0.5));
     // From 2.5x they fade in, fully from 4x: on the whole world they are a smudge.
+    // At 60% of the borders' color, or as opaque as a scene's own color for them is.
     final divisions = ((closeness - 2.5) / 1.5).clamp(0.0, 1.0);
     final borders = style.borders ?? palette.borders ?? coast.withValues(alpha: 0.6);
-    if (divisions > 0) canvas.drawPath(layers.divisions, line((style.divisions ?? borders).withValues(alpha: divisions * 0.6), 0.5));
+    final divisionColor = switch (style.divisions) {
+      final c? => c.withValues(alpha: c.a * divisions),
+      null => borders.withValues(alpha: divisions * 0.6),
+    };
+    if (divisions > 0) canvas.drawPath(layers.divisions, line(divisionColor, 0.5));
     canvas.drawPath(layers.borders, line(borders, borderWidth));
     canvas.drawPath(layers.coast, line(coast, 0.8));
     canvas.restore();

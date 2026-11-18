@@ -601,6 +601,57 @@ void main() {
       expect(at['lat'] as double, closeTo(0, 0.5));
     });
 
+    testWidgets('a pointer resting for the scene\'s `dwell` sends where it rests, and moving on ends it', (tester) async {
+      final events = await _show(tester, map: {'dwell': 2000});
+      final box = tester.getRect(find.byType(SceneMapView));
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: box.center + const Offset(99, 0));
+      await mouse.moveTo(box.center + const Offset(99, 1));
+      await tester.pump(const Duration(milliseconds: 1500));
+      expect(events, isEmpty, reason: 'not yet two seconds');
+      await mouse.moveTo(box.center + const Offset(100, 1)); // a hand's tremor, not a move
+      await tester.pump(const Duration(milliseconds: 600));
+      final dwell = events.single;
+      expect([dwell['phase'], dwell['gesture']], ['commit', 'dwell']);
+      expect((dwell['at'] as Map)['lon'] as double, closeTo(90, 0.5));
+      await mouse.moveTo(box.center + const Offset(-50, 0));
+      await tester.pump();
+      expect(events.map((e) => e['gesture']), ['dwell', 'dwellEnd']);
+      await tester.pump(const Duration(milliseconds: 2100));
+      expect(events.map((e) => e['gesture']), ['dwell', 'dwellEnd', 'dwell'], reason: 'resting again where it went');
+      await mouse.removePointer();
+      await tester.pump();
+      expect(events.last['gesture'], 'dwellEnd', reason: 'leaving the map ends it');
+    });
+
+    testWidgets('a trackpad\'s scroll or pinch ends a dwell, as the map moves under a still cursor', (tester) async {
+      final events = await _show(tester, map: {'dwell': 1000});
+      final box = tester.getRect(find.byType(SceneMapView));
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: box.center);
+      await mouse.moveTo(box.center + const Offset(20, 0));
+      await tester.pump(const Duration(milliseconds: 1100));
+      expect(events.map((e) => e['gesture']), ['dwell']);
+      final pad = TestPointer(3, PointerDeviceKind.trackpad);
+      await tester.sendEventToBinding(pad.panZoomStart(box.center + const Offset(20, 0)));
+      await tester.pump();
+      expect(events.map((e) => e['gesture']), contains('dwellEnd'));
+      await tester.sendEventToBinding(pad.panZoomEnd());
+      await tester.pump(const Duration(seconds: 2));
+      await mouse.removePointer();
+    });
+
+    testWidgets('without `dwell` a resting pointer sends nothing', (tester) async {
+      final events = await _show(tester);
+      final box = tester.getRect(find.byType(SceneMapView));
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: box.center);
+      await mouse.moveTo(box.center + const Offset(10, 0));
+      await tester.pump(const Duration(seconds: 5));
+      expect(events, isEmpty);
+      await mouse.removePointer();
+    });
+
     testWidgets('a wheel zooms, sends where it settled, and the button takes the view back to the scene\'s', (tester) async {
       final events = await _show(tester);
       final box = tester.getRect(find.byType(SceneMapView));

@@ -87,8 +87,8 @@ import yazl from "yazl"
 /// a scene's `map` control, scene patches (an event answer's `patch` and
 /// `host.updateScene`), and scene images; 26 adds the map's `globe`
 /// projection, with its `depth` and `atmosphere`; 27 adds a panel's
-/// `expandable`.
-export const H2KEXT_API_VERSION = 27
+/// `expandable`; 28 the map's `dwell`.
+export const H2KEXT_API_VERSION = 28
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -284,6 +284,7 @@ SHARED_MODULES_BY_API[24] = SHARED_MODULES_BY_API[23]
 SHARED_MODULES_BY_API[25] = SHARED_MODULES_BY_API[24]
 SHARED_MODULES_BY_API[26] = SHARED_MODULES_BY_API[25]
 SHARED_MODULES_BY_API[27] = SHARED_MODULES_BY_API[26]
+SHARED_MODULES_BY_API[28] = SHARED_MODULES_BY_API[27]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

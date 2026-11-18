@@ -888,11 +888,14 @@ it centers on only when the scene names no place.
   piece past the edge, and again a turn the other way to reach in from the
   far one; the azimuthal breaks a line where a step jumps across the rim.
 - **Coasts and borders sharpen as the view closes in.** Both maps draw
-  Natural Earth's 1:110m land and borders (`assets/geo/world-110m.json`)
+  Natural Earth's 1:110m land, lakes and borders (`assets/geo/world-110m.json`)
   until the view is magnified 8 times (map zoom 3), and its 1:50m ones
   (`world-50m.json`, by the same `scripts/world-outlines.py`) from there,
   read the first time a view gets that close. Further out, 1:110m is as
-  fine as the pane can show, at a twelfth of the points.
+  fine as the pane can show, at a twelfth of the points. The lakes are
+  rings inside the land, holes in its even-odd fill with their shores drawn
+  as coast: the Great Lakes, Winnipeg, Baikal, Victoria and the like at
+  1:110m, and some four hundred, with their islands, at 1:50m.
 - **Only what the view shows is drawn.** The outlines are cut into cells
   10° on a side (`world_map/world_cells.dart`), once per set, in latitude
   and longitude, so they are the same cells in every projection. A frame

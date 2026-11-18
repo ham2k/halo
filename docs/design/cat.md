@@ -3601,7 +3601,7 @@ on it wrong. The world is Natural Earth's 1:110m, bundled as
 `assets/geo/world-110m.json` by `scripts/world-outlines.py`, and its 1:50m
 (`world-50m.json`) from 8x, drawn only where the view shows it
 ([panel-scenes.md](panel-scenes.md#map)). Land and night
-are filled shapes, in even-odd. The projection's rim is a single point — the
+are filled shapes, in even-odd, the lakes holes in the land. The projection's rim is a single point — the
 antipode — and a polygon round it projects inside out (New Zealand seen from
 Spain), so whenever the antipode is inside the land or the night the whole
 disc is filled with it too, which turns it back; a step of a ring near the

@@ -37,6 +37,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 23 | the rotator map control (`rotatorMap`), a `nativeButton`'s `icon` variant, an event's `bearing` and `km`, and a binding's `offset` |
 | 25 | the map control (`map`), an event's `lat` and `lon`, and the `reset` gesture; an event answer's `patch` and `host.updateScene`, changing a scene in place; `image` layers and a map's `images` |
 | 26 | the map's `globe` projection, its `depth` and `atmosphere` |
+| 28 | the map's `dwell`, and its `dwell` and `dwellEnd` gestures |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -863,8 +864,9 @@ one. Placed like a native control, it takes:
   draws a bare compass, still true and still clickable.
 - `map`: `palette` (`color`, `gray`, `muted`, `contrast`, `teal`), then any of
   `sea`, `land`, `coast`, `borders`, `divisions` (the lines between states
-  and provinces, drawn as the view closes in), `graticule` and `background`
-  over it. `grayline: false` leaves the night side unshaded; `world: false`
+  and provinces, drawn as the view closes in: at 60% of the borders'
+  color, or as opaque as a color given for them is), `graticule` and
+  `background` over it. `grayline: false` leaves the night side unshaded; `world: false`
   draws no map at all.
 - `rim`: the map's edge, a circle while the whole Earth is in view and a
   rounded box zoomed in. `color`, `width` (1.5), `background` (filled
@@ -1114,13 +1116,22 @@ like a native control, it takes:
   crossing the antimeridian. Its inside falls evenly in latitude and
   longitude between them, so a plate carrée picture given its edges (a
   propagation or weather map of the world) lands where it shows in every
-  projection, bent to fit. `opacity`, 0 to 1. Drawn over the world and its
-  night, under the circles, a later one over an earlier.
+  projection, bent to fit. `opacity`, 0 to 1. Laid on the land, under the
+  night and the coasts, borders and divisions, so a picture that shades a
+  region keeps its day and night and its lines; under the circles, a later
+  one over an earlier.
 - `zoomValue`, `hoverLat` and `hoverLon`: scene values the control writes,
   each named by the scene and declared in its `values`: the zoom, and the
   place under the pointer (the bottom of a binding's range off the world).
 - `actions: false` hides the app's button that takes the view back to the
   scene's own.
+- `dwell` (API 28): milliseconds, 250 to 10,000. A mouse pointer that rests
+  that long on the map sends `gesture: 'dwell'`, `at` where it rests; its
+  next move of more than a couple of pixels, a click, a wheel, or leaving
+  the map sends `gesture: 'dwellEnd'` once, and a rest begins again. For
+  what is worth saying about a place without a click: answer `dwell` with a
+  `patch` that adds it, and `dwellEnd` with one that takes it away. A touch
+  has no pointer to rest, so give the same by a click where it matters.
 
 A look is `fill` (a marker's or a circle's inside; a circle without one
 is its edge alone), `color` (a marker's or a circle's edge, or the line),
@@ -1169,7 +1180,9 @@ The control's own `event`, where it has one, hears the rest, as `commit`:
 - `gesture: 'zoom'` once a zoom settles, `value` the zoom;
 - `gesture: 'pan'` once a pan or a zoom settles, `at.lat` and `at.lon` the
   view's middle;
-- `gesture: 'reset'` from the app's button, back to the scene's view.
+- `gesture: 'reset'` from the app's button, back to the scene's view;
+- `gesture: 'dwell'` and `'dwellEnd'`, with `dwell` (API 28): the pointer
+  resting on the map, `at` the place, and then moving on.
 
 A drag pans, the mouse wheel, a trackpad's two-finger scroll up or down and
 a pinch zoom about the pointer, a scroll mostly sideways being the scene's.

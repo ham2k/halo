@@ -979,7 +979,7 @@ export interface PanelSceneRotatorMap {
     land?: string
     coast?: string
     borders?: string
-    /** The lines between states and provinces, drawn as the view closes in. */
+    /** The lines between states and provinces, drawn as the view closes in, as opaque as this color is. */
     divisions?: string
     graticule?: string
     background?: string
@@ -1231,11 +1231,16 @@ export interface PanelSceneMap {
   lines?: PanelSceneMapLine[]
   /** Up to 256, drawn under the lines, a later one over an earlier. */
   circles?: PanelSceneMapCircle[]
-  /** Up to 16 pictures laid on the world, under the circles, a later one over an earlier. Extension API 25. */
+  /** Up to 16 pictures laid on the land, under the night, the outlines and the circles, a later one over an earlier. Extension API 25. */
   images?: PanelSceneMapImage[]
   /** Scene values the control writes: the place under the pointer. */
   hoverLat?: string
   hoverLon?: string
+  /**
+   * Milliseconds, 250 to 10,000: a mouse pointer resting that long on the map sends `gesture: 'dwell'`
+   * with `at`, and its next move, a click, a wheel or leaving the map `gesture: 'dwellEnd'`. Extension API 28.
+   */
+  dwell?: number
 }
 
 export interface PanelSceneControl extends PanelSceneSpectrum, PanelSceneRotatorMap, PanelSceneMap {
@@ -1379,7 +1384,7 @@ export interface PanelSceneEvent {
    * A map's zoom (`value` the zoom), pan (`at.lat` and `at.lon` the view's middle) or `reset`, its
    * whole-map button, back to the scene's own view. API 25.
    */
-  gesture?: "zoom" | "pan" | "split" | "floor" | "range" | "speed" | "waterfallFloor" | "reset"
+  gesture?: "zoom" | "pan" | "split" | "floor" | "range" | "speed" | "waterfallFloor" | "reset" | "dwell" | "dwellEnd"
   /**
    * Where a band scope annotation or layer (extension API 17), or a rotator map decoration (extension
    * API 23), was clicked; on a map (extension API 25), the place clicked, or the marker's.

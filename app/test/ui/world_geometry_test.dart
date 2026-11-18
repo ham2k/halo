@@ -11,13 +11,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
-import 'dart:ui' show Offset, Rect;
+import 'dart:ui' show Canvas, Offset, PictureRecorder, Rect;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/views/map/map_grayline.dart' show antisolarPoint, capAround;
 import 'package:ham2k_logger/views/operation/panel_scene/scene_map.dart' show mapCircleFill;
-import 'package:ham2k_logger/views/operation/panel_scene/scene_world.dart' show WorldMapBase, WorldPaths, fineCloseness, nightCap;
+import 'package:ham2k_logger/views/operation/panel_scene/scene_model.dart' show SceneMapStyle;
+import 'package:ham2k_logger/views/operation/panel_scene/scene_world.dart' show WorldMapBase, WorldPaths, fineCloseness, mapColorsOf, nightCap;
 import 'package:ham2k_logger/views/operation/world_map/map_projection.dart';
 import 'package:ham2k_logger/views/operation/world_map/world_geometry.dart';
 
@@ -79,6 +80,19 @@ void main() {
         expect(ringsHold(world.land, -15, 25), isTrue, reason: 'Zambia');
         expect(ringsHold(world.land, 30, -40), isFalse, reason: 'the North Atlantic');
         expect(ringsHold(world.land, 0, -150), isFalse, reason: 'the Pacific');
+      });
+
+      // The lakes are rings of their own inside the land, holes in its
+      // even-odd fill; at 1:50m with their islands, land again.
+      test('leaves the lakes, and the cities on their shores', () {
+        expect(ringsHold(world.land, 47.7, -87.5), isFalse, reason: 'Lake Superior');
+        expect(ringsHold(world.land, 44, -87), isFalse, reason: 'Lake Michigan');
+        expect(ringsHold(world.land, 42.2, -81.2), isFalse, reason: 'Lake Erie');
+        expect(ringsHold(world.land, -1, 33), isFalse, reason: 'Lake Victoria');
+        expect(ringsHold(world.land, 53.5, 108), isFalse, reason: 'Lake Baikal');
+        expect(ringsHold(world.land, 41.85, -87.75), isTrue, reason: 'Chicago');
+        expect(ringsHold(world.land, 42.35, -83.1), isTrue, reason: 'Detroit');
+        if (asset == 'world-50m') expect(ringsHold(world.land, 45.8, -82.2), isTrue, reason: 'Manitoulin Island, in Lake Huron');
       });
 
       // A ring that crosses the antimeridian runs on past +180, and only the
@@ -264,5 +278,25 @@ void main() {
         expect(reused.contains(p), fresh.contains(p), reason: '$lat, $lon');
       }
     }
+  });
+
+  // A map drawn without the world (`world: false`) still lays a scene's
+  // pictures down, on the plain sea where the land would have been.
+  test('what lies on the land is painted with no world drawn under it', () {
+    final world = WorldMapBase(onChanged: () {}, errorContext: 'test')..project(null);
+    expect(world.paths, isNull);
+    final style = SceneMapStyle(const {'world': false});
+    var laid = 0;
+    world.paint(
+      Canvas(PictureRecorder()),
+      origin: Offset.zero,
+      scale: 1,
+      style: style,
+      colors: mapColorsOf(style, dark: false),
+      closeness: 1,
+      dark: false,
+      onLand: () => laid++,
+    );
+    expect(laid, 1);
   });
 }

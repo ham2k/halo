@@ -22,7 +22,7 @@ import 'package:halo_core/halo_core.dart' show GridLocation;
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/extensions/extension_requests.dart';
 import 'package:ham2k_logger/views/operation/panel_scene/scene_images.dart';
-import 'package:ham2k_logger/views/operation/panel_scene/scene_map.dart' show OverlayCorners, OverlaySheet;
+import 'package:ham2k_logger/views/operation/panel_scene/scene_map_overlays.dart' show OverlayCorners, OverlaySheet;
 import 'package:ham2k_logger/views/operation/panel_scene/scene_model.dart';
 import 'package:ham2k_logger/views/operation/panel_scene/scene_view.dart';
 import 'package:ham2k_logger/views/operation/world_map/map_projection.dart';
