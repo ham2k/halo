@@ -104,7 +104,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     if (bindings.claim('keyer.keyboardMode', event) != null) {
       // The CW keyer's alone: nothing keys in a Digital mode either.
       if (_keyingPhone || _keyingSuperMode == 'Digital') return false;
-      if (!keyerOrSay(context, services, keyer, () => keyer.canKeyCw)) return keyer.radio == 'B';
+      if (!cwKeyerOrSay(context, services, keyer)) return keyer.radio == 'B';
       keyer.toggleKeyboardMode();
       return true;
     }
@@ -207,7 +207,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     }
     final template = services.settings.cwMessage(n);
     if (template.trim().isEmpty) return false;
-    if (!keyerOrSay(context, services, keyer, () => keyer.canKeyCw)) return keyer.radio == 'B';
+    if (!cwKeyerOrSay(context, services, keyer)) return keyer.radio == 'B';
     _endChainsForKey(keyer);
     unawaited(_sendCwMessages([(n: n, template: template)], radio: keyer.radio, pressed: services.cat.keyMark));
     return true;
@@ -257,7 +257,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
       return;
     }
     if (templates.isEmpty) return;
-    if (!keyerOrSay(context, services, keyer, () => keyer.canKeyCw)) return;
+    if (!cwKeyerOrSay(context, services, keyer)) return;
     keyer.cancelKeyerRepeat();
     keyer.cancelVoiceSequence();
     final pressed = services.cat.keyMark;
@@ -298,7 +298,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   void _sendCwMessageFromArea(int n, String radio) {
     if (widget.services.settings.cwMessage(n).trim().isEmpty) return;
     final keyer = widget.services.cat.keyer(radio);
-    if (!keyerOrSay(context, widget.services, keyer, () => keyer.canKeyCw)) return;
+    if (!cwKeyerOrSay(context, widget.services, keyer)) return;
     if (n != 1) keyer.cancelKeyerRepeat();
     _sendCwMessageNumber(n, radio: radio);
   }

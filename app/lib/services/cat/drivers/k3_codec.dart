@@ -118,6 +118,16 @@ bool? parseK3DisplayAtuInlineParams(String params) {
   return icons & 0x10 != 0;
 }
 
+String buildK3ReadVoxCommand() => 'VX;';
+
+/// `VX1` → true: VOX on, for the mode the radio is in now — the K3 keeps it
+/// per mode. Null for anything but `0` or `1`.
+bool? parseK3VoxParams(String params) => switch (params) {
+  '0' => false,
+  '1' => true,
+  _ => null,
+};
+
 /// A hold of the ATU key, which switches the ATU between in line (AUTO) and
 /// bypassed — a toggle, with no command to set either one.
 String buildK3ToggleAtuCommand() => 'SWH19;';

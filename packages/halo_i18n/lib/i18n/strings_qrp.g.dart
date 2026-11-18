@@ -3211,6 +3211,7 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get k4RemoteHandshakeFailed => 'the k4 could not establish a secure connection. check its network password and remote access settings.';
 	@override String get k4RemoteUnreachable => 'the k4’s secure connection could not be reached. check its address, port and remote access settings.';
 	@override String get k4PowerRange => 'k4 power must be 0.1–110 w, or 0.0001–0.01 w when the transverter milliwatt output is active.';
+	@override String get k3CwVoxOff => 'vox is off for cw, so the radio sends sidetone only. tap vox on the radio to go on the air.';
 	@override String get elecraftTroubleshootingTitle => 'if the radio connects but shows no frequency';
 	@override String get elecraftTroubleshooting => 'elecraft rigs speak kenwood cat, and a kx2 and a kx3 have both been run this way — vfo in both directions, mode switching and cw zero-beat all working.\n\nif the radio does not respond, almost always one of:\n\n- **speed must match** the rate set under **rs232** in the radio\'s menu. 38400 is what these ship on. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n\n**if the frequency is right but the mode is wrong**, tell us. the kx2 and kx3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nthe k3 has not been reported either way, so please say what happens if you run one. a k4 has its own entry.';
 	@override String get lab599TroubleshootingTitle => 'if the radio connects but shows no frequency';
@@ -7496,6 +7497,7 @@ extension on TranslationsQrp {
 			'settings.station.k4RemoteHandshakeFailed' => 'the k4 could not establish a secure connection. check its network password and remote access settings.',
 			'settings.station.k4RemoteUnreachable' => 'the k4’s secure connection could not be reached. check its address, port and remote access settings.',
 			'settings.station.k4PowerRange' => 'k4 power must be 0.1–110 w, or 0.0001–0.01 w when the transverter milliwatt output is active.',
+			'settings.station.k3CwVoxOff' => 'vox is off for cw, so the radio sends sidetone only. tap vox on the radio to go on the air.',
 			'settings.station.elecraftTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.elecraftTroubleshooting' => 'elecraft rigs speak kenwood cat, and a kx2 and a kx3 have both been run this way — vfo in both directions, mode switching and cw zero-beat all working.\n\nif the radio does not respond, almost always one of:\n\n- **speed must match** the rate set under **rs232** in the radio\'s menu. 38400 is what these ship on. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n\n**if the frequency is right but the mode is wrong**, tell us. the kx2 and kx3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nthe k3 has not been reported either way, so please say what happens if you run one. a k4 has its own entry.',
 			'settings.station.lab599TroubleshootingTitle' => 'if the radio connects but shows no frequency',
@@ -7843,9 +7845,9 @@ extension on TranslationsQrp {
 			'settings.station.everywareFollowBand' => 'follow the radio\'s band',
 			'settings.station.everywareFollowBandDescription' => 'picks the position covering the main radio\'s frequency whenever it changes. others sharing the station see it switch too.',
 			'settings.station.everywareFollowBearing' => 'point toward the station being worked',
-			'settings.station.everywareFollowBearingDescription' => 'picks the direction nearest the station in the call field whenever it changes. others sharing the station see it switch too.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.everywareFollowBearingDescription' => 'picks the direction nearest the station in the call field whenever it changes. others sharing the station see it switch too.',
 			'settings.station.everywareTroubleshooting' => 'this connects to a **gh everyware server**, the program that shares a station\'s green heron rotators and switches over the network.\n\n- **port** is 17220 unless the server was set up on another one. from outside the station\'s network, the router must forward that port to the server\'s computer.\n- **user and password** only when the server has user authentication turned on. leave both blank otherwise.\n- **the server takes a limited number of clients**, four unless set otherwise. when it is full, close another client and connect again.\n- once connected, tick the rotators and switches you want under **devices**. each becomes equipment of its own, in this list and in every panel.\n- **other operators may share the station.** turning a rotator or switching an antenna here moves it for everyone.',
 			'settings.station.pstRotatorTroubleshooting' => 'pstrotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **turn on udp control** in pstrotator\'s setup menu.\n- **match the port**: communication → udp control port, 12000 unless changed. pstrotator answers on the next port up (12001), which has to be free on this device.\n- **connect pstrotator to its controller.** until it is, it answers nothing over udp.\n- **allow it through the firewall** on the pc running pstrotator, and on this device, which listens for the answers.\n- **on a mac, iphone or ipad**, ham2k logger needs local network access (settings → privacy & security → local network).',
 			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'current state: ${position}',
@@ -8357,9 +8359,9 @@ extension on TranslationsQrp {
 			'confirmDevice.codePrompt' => 'enter the code shown on the device that wants to join this account.',
 			'confirmDevice.code' => 'code',
 			'confirmDevice.lookUp' => 'look up',
-			'confirmDevice.codeNotFound' => 'no request matches that code. codes expire after 10 minutes — ask the other device for a fresh one.',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.codeNotFound' => 'no request matches that code. codes expire after 10 minutes — ask the other device for a fresh one.',
 			'confirmDevice.linkExpired' => 'that link has expired. ask the other device to show a new qr code.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'link ${device} to this account?',
 			'confirmDevice.unnamedDevice' => 'an unnamed device',

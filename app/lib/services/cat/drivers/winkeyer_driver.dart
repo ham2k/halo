@@ -224,13 +224,16 @@ class _Message {
   _Message(this.id, this.text);
 }
 
-class WinkeyerSession implements CwKeyerSession {
+class WinkeyerSession implements CwKeyerSession, KeyerPttSession {
   final EquipmentSink _sink;
 
   /// Which of the keyer's two key/PTT jacks to drive, and whether its PTT
   /// line is used at all. See [_pinConfig].
   final int keyPort;
   final bool ptt;
+
+  @override
+  bool get keysPtt => ptt;
 
   WinkeyerSession(this._sink, {this.keyPort = winkeyerDefaultKeyPort, this.ptt = false, this._speed = defaultCwSpeedWpm});
 

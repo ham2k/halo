@@ -7187,6 +7187,9 @@ class Translations$settings$station$en {
 	/// en: 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.'
 	String get k4PowerRange => 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.';
 
+	/// en: 'VOX is off for CW, so the radio sends sidetone only. Tap VOX on the radio to go on the air.'
+	String get k3CwVoxOff => 'VOX is off for CW, so the radio sends sidetone only. Tap VOX on the radio to go on the air.';
+
 	/// en: 'If the radio connects but shows no frequency'
 	String get elecraftTroubleshootingTitle => 'If the radio connects but shows no frequency';
 
@@ -13993,6 +13996,7 @@ extension on Translations {
 			'settings.station.k4RemoteHandshakeFailed' => 'The K4 could not establish a secure connection. Check its network password and remote access settings.',
 			'settings.station.k4RemoteUnreachable' => 'The K4’s secure connection could not be reached. Check its address, port and remote access settings.',
 			'settings.station.k4PowerRange' => 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.',
+			'settings.station.k3CwVoxOff' => 'VOX is off for CW, so the radio sends sidetone only. Tap VOX on the radio to go on the air.',
 			'settings.station.elecraftTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.elecraftTroubleshooting' => 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working.\n\nIf the radio does not respond, almost always one of:\n\n- **Speed must match** the rate set under **RS232** in the radio\'s menu. 38400 is what these ship on. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\n**If the frequency is right but the mode is wrong**, tell us. The KX2 and KX3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nThe K3 has not been reported either way, so please say what happens if you run one. A K4 has its own entry.',
 			'settings.station.lab599TroubleshootingTitle' => 'If the radio connects but shows no frequency',
@@ -14340,9 +14344,9 @@ extension on Translations {
 			'settings.station.everywareFollowBand' => 'Follow the radio\'s band',
 			'settings.station.everywareFollowBandDescription' => 'Picks the position covering the main radio\'s frequency whenever it changes. Others sharing the station see it switch too.',
 			'settings.station.everywareFollowBearing' => 'Point toward the station being worked',
-			'settings.station.everywareFollowBearingDescription' => 'Picks the direction nearest the station in the call field whenever it changes. Others sharing the station see it switch too.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.everywareFollowBearingDescription' => 'Picks the direction nearest the station in the call field whenever it changes. Others sharing the station see it switch too.',
 			'settings.station.everywareTroubleshooting' => 'This connects to a **GH Everyware server**, the program that shares a station\'s Green Heron rotators and switches over the network.\n\n- **Port** is 17220 unless the server was set up on another one. From outside the station\'s network, the router must forward that port to the server\'s computer.\n- **User and password** only when the server has user authentication turned on. Leave both blank otherwise.\n- **The server takes a limited number of clients**, four unless set otherwise. When it is full, close another client and connect again.\n- Once connected, tick the rotators and switches you want under **Devices**. Each becomes equipment of its own, in this list and in every panel.\n- **Other operators may share the station.** Turning a rotator or switching an antenna here moves it for everyone.',
 			'settings.station.pstRotatorTroubleshooting' => 'PstRotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **Turn on UDP Control** in PstRotator\'s Setup menu.\n- **Match the port**: Communication → UDP Control Port, 12000 unless changed. PstRotator answers on the next port up (12001), which has to be free on this device.\n- **Connect PstRotator to its controller.** Until it is, it answers nothing over UDP.\n- **Allow it through the firewall** on the PC running PstRotator, and on this device, which listens for the answers.\n- **On a Mac, iPhone or iPad**, Ham2K Logger needs Local Network access (Settings → Privacy & Security → Local Network).',
 			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'Current State: ${position}',
@@ -14854,9 +14858,9 @@ extension on Translations {
 			'confirmDevice.codePrompt' => 'Enter the code shown on the device that wants to join this account.',
 			'confirmDevice.code' => 'Code',
 			'confirmDevice.lookUp' => 'Look Up',
-			'confirmDevice.codeNotFound' => 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.codeNotFound' => 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.',
 			'confirmDevice.linkExpired' => 'That link has expired. Ask the other device to show a new QR code.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'Link ${device} to this account?',
 			'confirmDevice.unnamedDevice' => 'an unnamed device',

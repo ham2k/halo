@@ -787,6 +787,23 @@ String? cannotTransmitOn(EquipmentSession? session) => switch (session) {
   _ => null,
 };
 
+/// A radio that can tell its CW would sound only in its own sidetone: an
+/// Elecraft K3 with VOX off in CW, where neither `KY` nor its key jack
+/// transmits without PTT. Keying warns rather than refuses, unlike
+/// [TransmitGatedSession]: a footswitch on the radio's PTT still puts the CW
+/// on the air, and voice and PTT keying are unaffected.
+abstract interface class CwSidetoneSession {
+  /// Why CW keyed now would stay off the air, in the operator's words — or
+  /// null while it would go out, or while the session cannot tell.
+  String? get cwSidetoneOnly;
+}
+
+/// A keyer that keys the radio's PTT around what it sends, which puts CW on
+/// the air whatever a [CwSidetoneSession] says.
+abstract interface class KeyerPttSession {
+  bool get keysPtt;
+}
+
 /// A transceiver whose CAT can key it with its transmit audio taken from
 /// the computer rather than its microphone — what the computer's voice keyer
 /// keys with, so a radio set up for the operator's mic sends the recording

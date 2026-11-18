@@ -280,6 +280,17 @@ never in the keyer lookups: a stop, a recording (which keys nothing) and a send'
 reach the session, so a message going out when the slice closed is stopped all the same. Before
 the radio has described its slices nothing is refused: the slice is presumed there.
 
+**CW that would sound only in the sidetone is sent, and the keypress says so**
+(`CwSidetoneSession.cwSidetoneOnly`). A K3 with VOX off in CW sends `KY` text, and its key jack,
+in sidetone only until PTT is keyed. The session reads `VX;` on every poll in CW, after the poll's
+`MD` and `IF` — VOX is a front-panel key, kept per mode, and `VX` answers for the mode the radio
+is in, so an answer that arrives once those say the radio left CW is dropped. The CW keypress
+(`cwKeyerOrSay`) shows the warning and keys anyway: an operator holding PTT on the radio does go
+on the air, and voice and PTT keying are not touched. The radio is asked, not the CW Keying pick, so
+a WinKeyer on the K3's key jack is warned of too — unless it drives PTT itself, which keys the
+radio. Only a keypress warns: keyboard-mode typing after it, a repeat, a peer's request and an
+extension's send go out unwarned.
+
 ## Cancellation, and the races it prevents
 
 `EquipmentTransport.connect` takes a `CatCancelToken` **in its first signature**, deliberately.

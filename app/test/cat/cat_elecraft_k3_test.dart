@@ -425,4 +425,56 @@ void main() {
       expect(type.driver.settableModes(type.driverConfig(const {})), allOf(contains('PSK'), isNot(contains('DATA-FM'))));
     });
   });
+
+  group('CW VOX', () {
+    test('is read in CW only, and VX0 there makes the CW sidetone only', () {
+      fakeAsync((async) {
+        final session = sessionFor('k3-serial')..startUpdates();
+        receive(session, 'MD2;');
+        sink.sent.clear();
+        async.elapse(session.pollInterval);
+        expect(sink.sent, isNot(contains('VX;')), reason: 'in USB, VX answers for the voice VOX');
+        receive(session, 'MD3;');
+        sink.sent.clear();
+        async.elapse(session.pollInterval);
+        expect(sink.sent, contains('VX;'));
+        // Answered in order: a VX asked ahead of the poll's MD would be
+        // judged against the last poll's mode, and a switch out of CW since
+        // would take the voice VOX for the CW one.
+        expect(sink.sent.indexOf('VX;'), greaterThan(sink.sent.indexOf('MD;')));
+        expect(session.cwSidetoneOnly, isNull, reason: 'unread is not off');
+        receive(session, 'VX0;');
+        expect(session.cwSidetoneOnly, isNotNull);
+        receive(session, 'VX1;');
+        expect(session.cwSidetoneOnly, isNull);
+        session.teardown();
+      });
+    });
+
+    test('a VX answered outside CW is not taken for the CW VOX', () {
+      final session = sessionFor('k3-serial')..startUpdates();
+      receive(session, 'MD3;VX1;');
+      expect(session.cwSidetoneOnly, isNull);
+      // A poll's VX, asked in CW and answered after the switch to USB: the
+      // voice VOX, off by habit, which says nothing about CW.
+      receive(session, 'MD2;VX0;');
+      expect(session.cwSidetoneOnly, isNull, reason: 'outside CW there is no CW to hold off the air');
+      receive(session, 'MD3;');
+      expect(session.cwSidetoneOnly, isNull, reason: 'CW VOX is still on');
+      session.teardown();
+    });
+
+    test('the KX3 and the generic Elecraft never ask', () {
+      for (final key in ['kx3-serial', 'elecraft-serial']) {
+        fakeAsync((async) {
+          final session = sessionFor(key)..startUpdates();
+          receive(session, 'MD3;');
+          async.elapse(session.pollInterval);
+          expect(sink.sent, isNot(contains('VX;')), reason: key);
+          expect(session.cwSidetoneOnly, isNull, reason: key);
+          session.teardown();
+        });
+      }
+    });
+  });
 }

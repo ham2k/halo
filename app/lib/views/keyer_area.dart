@@ -443,7 +443,7 @@ class KeyerControls extends StatelessWidget {
                       onPressed: !keyer.canKeyCw && !typing
                           ? null
                           : () {
-                              if (typing || keyerOrSay(context, services, keyer, () => keyer.canKeyCw)) keyer.toggleKeyboardMode();
+                              if (typing || cwKeyerOrSay(context, services, keyer)) keyer.toggleKeyboardMode();
                             },
                     );
                   },
@@ -1309,6 +1309,17 @@ bool keyerOrSay(BuildContext context, HaLoServices services, RadioKeyer keyer, b
     );
   }
   return false;
+}
+
+/// [keyerOrSay] for CW, which also says when the radio would sound it in its
+/// sidetone only ([RadioKeyer.cwSidetoneOnly]) — said, and sent anyway: PTT
+/// held on the radio still puts it on the air.
+bool cwKeyerOrSay(BuildContext context, HaLoServices services, RadioKeyer keyer) {
+  if (!keyerOrSay(context, services, keyer, () => keyer.canKeyCw)) return false;
+  if (keyer.cwSidetoneOnly case final reason?) {
+    services.statusBar.showNotice(key: 'cw-sidetone-only', icon: 'alert-circle-outline', text: reason, persist: false);
+  }
+  return true;
 }
 
 /// A message or memory waiting for the other SO2R radio to fall quiet

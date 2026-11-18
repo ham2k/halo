@@ -9,6 +9,10 @@
 // out, the PTT held, with nothing on the air — and the reverse, a gate in
 // the keyer lookups, which a stop goes through too: a message sent while
 // the slice was open goes on after it closes, with nothing to stop it.
+//
+// Its milder cousin, CwSidetoneSession (a K3 with VOX off in CW), is warned
+// of and sent anyway: refusing it would stop an operator holding PTT on the
+// radio, and gating voice or PTT on it would refuse what does go out.
 
 import 'dart:async';
 import 'dart:typed_data';
@@ -19,6 +23,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
+import 'package:ham2k_logger/services/cat/drivers/winkeyer_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
@@ -52,7 +57,7 @@ class _FakeTransport extends EquipmentTransport {
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async => _FakeConnection();
 }
 
-class _GatedSession implements TransceiverSession, PttSession, CwKeyerSession, VoiceKeyerSession, TransmitGatedSession {
+class _GatedSession implements TransceiverSession, PttSession, CwKeyerSession, VoiceKeyerSession, TransmitGatedSession, CwSidetoneSession {
   _GatedSession(this.sink);
 
   final EquipmentSink sink;
@@ -60,6 +65,9 @@ class _GatedSession implements TransceiverSession, PttSession, CwKeyerSession, V
 
   @override
   String? cannotTransmit;
+
+  @override
+  String? cwSidetoneOnly;
 
   @override
   Duration? expectedUpdateInterval;
@@ -151,6 +159,12 @@ void main() {
               name: () => 'Gated Radio',
               variants: [EquipmentVariant(key: 'gated-type', driver: driver, transport: transport)],
             ),
+            EquipmentModel(
+              key: 'winkeyer',
+              category: kCategoryKeyer,
+              name: () => 'WinKeyer',
+              variants: [EquipmentVariant(key: 'winkeyer-type', driver: const WinkeyerDriver(), transport: transport)],
+            ),
           ],
           transports: {'fake': transport},
         ),
@@ -220,5 +234,65 @@ void main() {
     session.cannotTransmit = null;
     expect(keyer.canKeyCw, isTrue, reason: 'the radio able again keys again');
     await tester.runAsync(() => cat.disconnect(node.uuid));
+  });
+
+  testWidgets('CW the radio would sound in its sidetone only is sent, and the keypress says why', (tester) async {
+    final cat = services.cat;
+    final node = await cat.addNode(typeKey: 'gated-type', config: const {});
+    await tester.runAsync(() => cat.connect(node.uuid));
+    await cat.setRadio1(LocalRadio(node.uuid));
+    await cat.setDesignated(kCategoryKey, node.uuid);
+    final session = driver.sessions.single;
+    await services.settings.setVoiceKeyingSource(VoiceKeyingSource.radio);
+    final keyer = cat.keyer('A');
+    session.cwSidetoneOnly = 'VOX is off for CW';
+
+    expect(keyer.cwSidetoneOnly, 'VOX is off for CW');
+    expect(keyer.cannotTransmit, isNull);
+    expect(keyer.canKeyCw, isTrue);
+    expect(keyer.canPtt, isTrue);
+    expect(keyer.canPlayVoice, isTrue);
+
+    late BuildContext context;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (c) {
+            context = c;
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+    expect(keyerOrSay(context, services, keyer, () => keyer.canPlayVoice), isTrue);
+    expect(services.statusBar.activeNotices, isEmpty, reason: 'a voice memory goes out whatever the CW VOX');
+    expect(cwKeyerOrSay(context, services, keyer), isTrue);
+    expect(services.statusBar.activeNotices.map((n) => n.text), contains('VOX is off for CW'));
+    keyer.sendCw('CQ');
+    expect(session.commands, ['cw:CQ']);
+    await tester.runAsync(() => cat.disconnect(node.uuid));
+  });
+
+  testWidgets("a WinKeyer on the radio's key jack is warned of, unless it drives the radio's PTT", (tester) async {
+    final cat = services.cat;
+    final radio = await cat.addNode(typeKey: 'gated-type', config: const {});
+    await tester.runAsync(() => cat.connect(radio.uuid));
+    await cat.setRadio1(LocalRadio(radio.uuid));
+    driver.sessions.single.cwSidetoneOnly = 'VOX is off for CW';
+    final keyer = cat.keyer('A');
+
+    final plain = await cat.addNode(typeKey: 'winkeyer-type', config: const {winkeyerPttConfigKey: false});
+    await tester.runAsync(() => cat.connect(plain.uuid));
+    await cat.setDesignated(kCategoryKey, plain.uuid);
+    expect(keyer.cwSidetoneOnly, 'VOX is off for CW', reason: 'its key line keys the radio as the paddle would: sidetone only');
+
+    final ptt = await cat.addNode(typeKey: 'winkeyer-type', config: const {winkeyerPttConfigKey: true});
+    await tester.runAsync(() => cat.connect(ptt.uuid));
+    await cat.setDesignated(kCategoryKey, ptt.uuid);
+    expect(keyer.cwSidetoneOnly, isNull, reason: 'its PTT line puts the radio on the air: a warning there would be false on every key');
+
+    for (final node in [plain, ptt, radio]) {
+      await tester.runAsync(() => cat.disconnect(node.uuid));
+    }
   });
 }

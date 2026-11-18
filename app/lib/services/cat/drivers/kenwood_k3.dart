@@ -4,9 +4,10 @@
 // The Elecraft K3 and K3S's side of a Kenwood session
 // ([KenwoodDriver.k3Key]): the option modules `OM;` reports, which decide
 // whether its voice keyer, its antenna ports and its ATU exist; the `K31`
-// command mode its ATU state needs; and the transmit meters it reads with
-// `BG`, `TM` and `SW` rather than Kenwood's `SM`/`RM`.
-// See docs/design/cat.md § Telemetry, § Tuner and § Voice keying.
+// command mode its ATU state needs; the transmit meters it reads with `BG`,
+// `TM` and `SW` rather than Kenwood's `SM`/`RM`; and the VOX that decides
+// whether its CW goes on the air at all.
+// See docs/design/cat.md § Telemetry, § Tuner, § CW keying and § Voice keying.
 
 part of 'kenwood_driver.dart';
 
@@ -16,6 +17,7 @@ mixin _ElecraftK3 {
   void _send(String command);
   void _hold(RadioMeter meter, num value, {required bool keyed});
   void _reportTuner(TunerStatus? status);
+  VfoReading? get _lastReported;
 
   /// Pinned by the K3 and K3S entries.
   bool get _k3;
@@ -53,6 +55,10 @@ mixin _ElecraftK3 {
   /// reported: once per connection, not once per poll.
   bool _k3ModulesRejected = false;
 
+  /// VOX in CW, from `VX`, which answers for the mode the radio is in: read
+  /// only in CW. Null until read.
+  bool? _k3CwVox;
+
   void _resetK3() {
     _k3Modules = null;
     _k3SetWatts = null;
@@ -62,6 +68,7 @@ mixin _ElecraftK3 {
     _k3Extended = false;
     _k3AtuInline = null;
     _k3ModulesRejected = false;
+    _k3CwVox = null;
   }
 
   void _requestK3State() {
@@ -69,6 +76,27 @@ mixin _ElecraftK3 {
     if (_k3Modules == null) _send(buildK3ReadModulesCommand());
     if (!_k3Extended) _send(buildK3ReadCommandModeCommand());
   }
+
+  /// Every poll, not once: VOX is a front-panel key. After the poll's `MD`
+  /// and `IF`, whose answers arrive first and say whether this one is CW's.
+  void _requestK3Vox() {
+    if (_k3 && _k3InCw) _send(buildK3ReadVoxCommand());
+  }
+
+  bool get _k3InCw => switch (_lastReported?.mode) {
+    'CW' || 'CW-R' => true,
+    _ => false,
+  };
+
+  /// A `VX` answered after a switch out of CW is the new mode's VOX.
+  void _handleK3Vox(String params) {
+    final on = parseK3VoxParams(params);
+    if (on != null && _k3InCw) _k3CwVox = on;
+  }
+
+  /// With VOX off in CW, the K3 sends `KY` text and its key jack in sidetone
+  /// only, until PTT is keyed. See [CwSidetoneSession].
+  String? get cwSidetoneOnly => _k3InCw && _k3CwVox == false ? t.settings.station.k3CwVoxOff : null;
 
   /// Only the first answer is the radio's own mode: any later one may be
   /// this session's `K31` read back.

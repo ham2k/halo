@@ -397,6 +397,24 @@ class RadioKeyer {
     final uuid? => cannotTransmitOn(_cat.connectedSession(uuid)),
     null => null,
   };
+
+  /// Why CW keyed for this radio would sound only in its sidetone
+  /// ([CwSidetoneSession]) — or null. The radio is asked, whichever key
+  /// sends: a WinKeyer on its key jack is held off the air the same way —
+  /// unless it drives the radio's PTT itself, which puts the CW on the air.
+  String? get cwSidetoneOnly {
+    final key = _k.designatedKeyerNode;
+    final keyer = key == null ? null : _cat.connectedSession(key.uuid);
+    if (keyer case KeyerPttSession(keysPtt: true)) return null;
+    return switch (_uuid) {
+      final uuid? => switch (_cat.connectedSession(uuid)) {
+        final CwSidetoneSession session => session.cwSidetoneOnly,
+        _ => null,
+      },
+      null => null,
+    };
+  }
+
   bool get designatedKeyIsKeyer => _k.designatedKeyIsKeyer;
   EquipmentNode? get designatedKeyerNode => _k.designatedKeyerNode;
   int? get keyerSpeed => _k.keyerSpeed;

@@ -82,6 +82,7 @@ class KenwoodSession
     implements
         ReadBackSession,
         CwKeyerSession,
+        CwSidetoneSession,
         VoiceKeyerSession,
         ComputerAudioPttSession,
         AntennaTunerSession,
@@ -362,6 +363,7 @@ class KenwoodSession
     _send(buildKenwoodReadFrequencyCommand());
     _send(buildKenwoodReadModeCommand());
     _send(buildKenwoodReadInfoCommand());
+    _requestK3Vox();
     _send(buildKenwoodReadPowerCommand());
     _requestTuner();
     _requestPassband();
@@ -789,6 +791,8 @@ class KenwoodSession
         _handleK3Bargraph(command.params);
       case 'SW' when k3:
         _handleK3Swr(command.params);
+      case 'VX' when k3:
+        _handleK3Vox(command.params);
       case 'AR' when antennaDialect == KenwoodAntennaDialect.k3:
         _handleK3RxAntenna(command.params);
 

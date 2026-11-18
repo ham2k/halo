@@ -4,7 +4,7 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 20
-/// Strings: 56036 (2801 per locale)
+/// Strings: 56040 (2802 per locale)
 
 // coverage:ignore-file
 // ignore_for_file: type=lint, unused_import
