@@ -65,6 +65,7 @@ extension LayoutControls<T extends StatefulWidget> on DockHost<T> {
         // the value the dialog opened with reads as "already this" and is
         // dropped, even after a real commit moved it away and back.
         final panelConfig = embeddablePanel != null ? Map<String, dynamic>.of(await dockServices.panels.configFor(embeddablePanel)) : null;
+        final panelFields = embeddablePanel == null ? null : await panelFormElements(dockServices.systemLists, embeddablePanel, embedded: true);
         if (!context.mounted) return;
         unawaited(
           showPaneLayoutOptions(
@@ -116,12 +117,12 @@ extension LayoutControls<T extends StatefulWidget> on DockHost<T> {
             // options dialog, not behind a route it owns.
             panelSettingsBuilder:
                 _panelSettingsOverride(context, id) ??
-                (embeddablePanel != null && panelConfig != null
+                (embeddablePanel != null && panelConfig != null && panelFields != null
                     ? (builderContext) => ExtensionMarkdownImages.owning(
                         dockServices.extensions,
                         embeddablePanel.hookKey,
                         child: EmbeddedPanelSettingsForm(
-                          fields: embeddablePanel.formFields.where((field) => field['type'] != 'action').toList(),
+                          fields: panelFields,
                           initial: panelConfig,
                           developerMode: dockServices.settings.developerMode,
                           onFieldChange: (key, value, state) async {

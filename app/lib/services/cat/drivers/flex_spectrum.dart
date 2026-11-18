@@ -14,8 +14,6 @@
 // a stream id and the pan's IQ follows on our UDP port. So the spectrum is
 // computed here, and it shows what the operator's panadapter is pointed at.
 
-import 'dart:async';
-import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:halo_core/halo_core.dart' show nowMillis;
@@ -23,9 +21,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 import '../spectrum.dart';
 import '../spectrum_fft.dart';
-
-/// The radio's four DAX IQ channels.
-const flexDaxIqChannels = [1, 2, 3, 4];
+import 'flex_dax_iq.dart';
 
 /// The rates a DAX IQ stream runs at.
 const flexDaxIqRates = [24000, 48000, 96000, 192000];
@@ -78,7 +74,6 @@ abstract interface class FlexSliceSpectrum {
   /// [fields] already merged into the record the scope was given: the
   /// connection merges each status once, before any scope reacts.
   void panStatus(String id, Map<String, String> fields);
-  void streamStatus(String id, Map<String, String> fields);
 
   /// One UDP datagram; whether it was this scope's, so the meter codec does
   /// not take it as well. Every slice's scope on the connection is offered
@@ -90,12 +85,16 @@ abstract interface class FlexSliceSpectrum {
   void teardown();
 }
 
-class FlexDaxSpectrum implements FlexSliceSpectrum {
+class FlexDaxSpectrum implements FlexSliceSpectrum, FlexDaxIqUser {
   /// Sends a command; [onReply] gets the answer's code and body.
   final void Function(String command, {void Function(int code, String body)? onReply}) send;
   final SpectrumSink? sink;
 
-  FlexDaxSpectrum({required this.send, required this.sink, Map<String, Map<String, String>>? pans}) : _pans = pans ?? {};
+  /// The connection's DAX IQ: the pan's stream, shared with every other of
+  /// the connection's scopes on the pan.
+  final FlexDaxIq _iq;
+
+  FlexDaxSpectrum({required this.send, required this.sink, required this._iq, Map<String, Map<String, String>>? pans}) : _pans = pans ?? {};
 
   bool _wanted = false;
   @override
@@ -104,45 +103,16 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
   /// The pan of the slice this node follows, from the slice's status.
   String? _pan;
 
+  /// The pan whose IQ this scope draws, from its joining until it leaves.
+  String? _joined;
+
   /// What each pan last said, merged from pushes that carry only what
   /// changed, and the changes HaLo made: the connection's record (FlexRadio),
-  /// shared by every slice's scope on it, so the channel one assigns is
-  /// taken for the others. The connection alone merges the radio's statuses.
+  /// shared by every slice's scope on it. The connection alone merges the
+  /// radio's statuses.
   final Map<String, Map<String, String>> _pans;
 
-  /// The channel this session assigned to the pan, to hand back on stop —
-  /// null when the pan already had one, which is then another client's, or
-  /// another of this connection's slices'.
-  int? _assignedChannel;
-  bool _creating = false;
-  String? _stream;
-
-  /// [_stream] as the number a packet carries: compared as text, an id
-  /// with a leading zero would never match.
-  int? _streamId;
-
-  /// Bumped by every [_release]: a `stream create` answered after it is for
-  /// a display, or a pan, that is gone — its stream is handed straight back
-  /// rather than adopted on a channel already given up.
-  int _epoch = 0;
-
-  /// What the radio said about streams before we knew one was ours: it
-  /// pushes a new stream's status ahead of the `stream create` reply
-  /// (captured on a FLEX-6600), and that status is the only word on its rate.
-  final _unclaimed = <String, Map<String, String>>{};
-
-  /// The rate last asked for while the scope runs: sent to each stream made
-  /// for it — the one created after the ask, and a new one when the slice
-  /// moves to another pan — and forgotten when the scope stops, or when the
-  /// radio refuses it. A refused stream keeps its rate, which its status reports.
-  int? _askedRate;
-
-  /// The radio refused the stream. Not asked again until the display, or
-  /// the pan, changes: pan statuses arrive several times a second, and each
-  /// one would otherwise ask again.
-  bool _refused = false;
   int _rate = 48000;
-  bool _littleEndian = true;
   IqSpectrum? _fft;
   final _noise = NoiseFloor();
   SpectrumSettings _settings = const SpectrumSettings(speed: SpectrumSpeed.mid, refLevelDb: 0);
@@ -161,13 +131,6 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
   /// is said of a slice that has none — not of one not heard from yet.
   bool _sliceSeen = false;
 
-  /// Runs from the stream's grant to its first packet. A granted stream
-  /// whose IQ never arrives — a firewall, a network permission — is
-  /// otherwise a display that waits forever.
-  Timer? _watchdog;
-  static const _firstPacketDeadline = Duration(seconds: 5);
-  bool _heard = false;
-
   @override
   SpectrumCapabilities get capabilities => SpectrumCapabilities(
     spansHz: flexDaxIqSpans,
@@ -184,7 +147,7 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
   void start() {
     if (_wanted) return;
     _wanted = true;
-    if (_handshakeDone) send('sub pan all');
+    if (_handshakeDone) _iq.subscribe();
     // Said again on every start: a display that reopened reads the settings
     // fresh, and nothing below changes them to prompt a report.
     sink?.reportSpectrumSettings(_settings);
@@ -196,15 +159,14 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
   @override
   void subscribe() {
     _handshakeDone = true;
-    if (_wanted) send('sub pan all');
+    if (_wanted) _iq.subscribe();
   }
 
   @override
   void stop() {
     if (!_wanted) return;
     _wanted = false;
-    _askedRate = null;
-    _release();
+    _release(forget: true);
     sink?.reportSpectrumProblem(null);
   }
 
@@ -237,10 +199,7 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
       );
       _pans[pan]?['center'] = mhz;
     }
-    if (request.spanHz case final span?) {
-      final rate = _askedRate = flexDaxIqRates[flexDaxIqSpans.indexOf(capabilities.snapSpan(span))];
-      if (_stream case final stream?) _setRate(stream, rate);
-    }
+    if (request.spanHz case final span?) _iq.ask(this, flexDaxIqRates[flexDaxIqSpans.indexOf(capabilities.snapSpan(span))]);
     return true;
   }
 
@@ -286,192 +245,53 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
   /// `display pan 0x40000000 center=14.218000 bandwidth=0.064120 … daxiq_channel=0 …`
   @override
   void panStatus(String id, Map<String, String> fields) {
-    if (fields.containsKey('removed')) {
-      if (id == _pan) _release();
-      return;
-    }
-    if (id == _pan) _settle();
+    if (id != _pan) return;
+    if (fields.containsKey('removed')) return _release();
+    if (_joined == id) return _iq.settle(id);
+    _settle();
   }
 
-  /// `stream 0x20000000 type=dax_iq daxiq_channel=1 pan=0x40000000 daxiq_rate=48000 payload_endian=little`
-  @override
-  void streamStatus(String id, Map<String, String> fields) {
-    final key = id.replaceFirst('0x', '').toLowerCase();
-    if (key != _stream) {
-      if (_creating) {
-        if (_unclaimed.length >= 8 && !_unclaimed.containsKey(key)) _unclaimed.remove(_unclaimed.keys.first);
-        (_unclaimed[key] ??= {}).addAll(fields);
-      }
-      return;
-    }
-    _applyStream(fields);
-  }
-
-  void _applyStream(Map<String, String> fields) {
-    if (fields.containsKey('removed')) {
-      _stream = null;
-      _fft = null;
-      _settle();
-      return;
-    }
-    if (int.tryParse(fields['daxiq_rate'] ?? '') case final rate? when rate != _rate) {
-      _rate = rate;
-      _fft = null;
-      _report(_settings.copyWith(spanHz: _visibleHalfWidth(rate)));
-    }
-    if (fields['payload_endian'] case final endian?) _littleEndian = endian != 'big';
-  }
-
-  /// Creates the stream once everything it needs is known: the slice's pan,
-  /// what that pan says, and a socket to send to.
+  /// Joins the pan's IQ once everything it needs is known: the slice's pan,
+  /// what that pan says, and a socket for the IQ to arrive on.
   void _settle() {
-    if (!_wanted || !_socketReady || _stream != null || _creating || _refused) return;
+    if (!_wanted || !_socketReady || _joined != null) return;
     final pan = _pan;
-    final status = pan == null ? null : _pans[pan];
-    if (pan == null || status == null) {
+    if (pan == null || _pans[pan] == null) {
       if (pan == null && _sliceSeen) sink?.reportSpectrumProblem(t.settings.station.spectrumNoPanadapter);
       return;
     }
-    var channel = int.tryParse(status['daxiq_channel'] ?? '') ?? 0;
-    if (channel == 0) {
-      final taken = {for (final p in _pans.values) int.tryParse(p['daxiq_channel'] ?? '') ?? 0};
-      final free = flexDaxIqChannels.where((c) => !taken.contains(c));
-      if (free.isEmpty) {
-        sink?.reportSpectrumProblem(t.settings.station.spectrumNoDaxChannel);
-        return;
-      }
-      channel = free.first;
-      _assignedChannel = channel;
-      // Taken at once for every other slice's scope: no status tells this
-      // client, and another choosing meanwhile would choose the same one.
-      status['daxiq_channel'] = '$channel';
-      final epoch = _epoch;
-      send(
-        'display pan set $pan daxiq_channel=$channel',
-        onReply: (code, _) {
-          // Recorded again once taken: a status already on its way names the
-          // pan as it was, and would leave the channel reading as free.
-          if (code == 0 && epoch == _epoch) _pans[pan]?['daxiq_channel'] = '$channel';
-          if (code != 0 && _pans[pan]?['daxiq_channel'] == '$channel') _pans[pan]!['daxiq_channel'] = '0';
-          if (code == 0 || epoch != _epoch || !_wanted) return;
-          // Not ours to give back, and the stream asked for beside it would
-          // be on a channel no pan feeds.
-          _assignedChannel = null;
-          _release();
-          _refused = true;
-          sink?.reportSpectrumProblem(t.settings.station.spectrumStreamRefused(code: code.toRadixString(16).toUpperCase()));
-        },
-      );
-    }
-    sink?.reportSpectrumProblem(null);
-    _creating = true;
-    _unclaimed.clear();
-    final epoch = _epoch;
-    send(
-      'stream create type=dax_iq daxiq_channel=$channel',
-      onReply: (code, body) {
-        final stream = body.replaceFirst('0x', '').toLowerCase();
-        if (epoch != _epoch || !_wanted) {
-          if (code == 0 && stream.isNotEmpty) send('stream remove 0x$stream');
-          return;
-        }
-        _creating = false;
-        if (code != 0 || stream.isEmpty) {
-          // Refused: the channel goes back now, and the operator is told,
-          // rather than a display that waits for IQ that is not coming.
-          if (_assignedChannel != null) _handBack(pan);
-          _assignedChannel = null;
-          _refused = true;
-          sink?.reportSpectrumProblem(t.settings.station.spectrumStreamRefused(code: code.toRadixString(16).toUpperCase()));
-          return;
-        }
-        _stream = stream;
-        _streamId = int.tryParse(stream, radix: 16);
-        _heard = false;
-        _watchdog?.cancel();
-        _watchdog = Timer(_firstPacketDeadline, () {
-          if (_wanted && _stream == stream) sink?.reportSpectrumProblem(t.settings.station.spectrumNoUdp);
-        });
-        final early = _unclaimed.remove(stream);
-        if (early != null) _applyStream(early);
-        _unclaimed.clear();
-        // Only the new stream's own status says its rate: until it does, [_rate] is the last stream's.
-        if (_askedRate case final rate? when early?['daxiq_rate'] != '$rate') _setRate(stream, rate);
-      },
-    );
-    _report(_settings.copyWith(spanHz: _visibleHalfWidth(_rate)));
+    _joined = pan;
+    _iq.join(pan, this);
   }
 
-  /// A refusal is the rate's only for the stream still running: one for a
-  /// stream since removed says nothing about the rate asked of the next.
-  void _setRate(String stream, int rate) => send(
-    'stream set 0x$stream daxiq_rate=$rate',
-    onReply: (code, _) {
-      if (code != 0 && _stream == stream && _askedRate == rate) _askedRate = null;
-    },
-  );
-
-  /// [pan]'s channel, given back in the record too: no status tells this
-  /// client, and every other slice's scope would count it taken.
-  void _handBack(String pan) {
-    send('display pan set $pan daxiq_channel=0');
-    _pans[pan]?['daxiq_channel'] = '0';
-  }
-
-  /// Hands back what [_settle] took, in reverse.
-  void _release() {
-    _watchdog?.cancel();
-    _watchdog = null;
-    _streamId = null;
-    _epoch++;
-    _refused = false;
-    _creating = false;
-    _unclaimed.clear();
-    if (_stream case final stream?) send('stream remove 0x$stream');
-    if ((_assignedChannel, _pan) case (_?, final pan?)) _handBack(pan);
-    _stream = null;
-    _assignedChannel = null;
+  /// Leaves the pan's IQ; [forget] the rate asked too, for a scope that stops.
+  void _release({bool forget = false}) {
+    if (_joined != null || forget) _iq.leave(this, forget: forget);
+    _joined = null;
     _fft = null;
     _noise.reset();
   }
 
-  /// One UDP datagram. Returns whether it was this stream's, so the meter
-  /// codec does not parse it as well.
   @override
-  bool packet(Uint8List data) {
-    if (data.length < 28) return false;
-    final bytes = ByteData.sublistView(data);
-    final header = bytes.getUint32(0);
-    // IF data with a stream id and a class id: the shape of a DAX IQ packet.
-    if (header >> 28 != 1 || header & 0x08000000 == 0) return false;
-    final classCode = bytes.getUint16(14);
-    if (classCode < 0x02E3 || classCode > 0x02E6) return false;
-    if (bytes.getUint32(4) != _streamId) return false;
-    // The first packet ends the wait, and any word that it was not coming:
-    // IQ that arrives late still arrives.
-    if (!_heard) {
-      _heard = true;
-      _watchdog?.cancel();
-      _watchdog = null;
-      sink?.reportSpectrumProblem(null);
-    }
-    var offset = 16;
-    if ((header >> 22) & 3 != 0) offset += 4;
-    if ((header >> 20) & 3 != 0) offset += 8;
-    final end = math.min(data.length, (header & 0xffff) * 4) - (header & 0x04000000 != 0 ? 4 : 0);
-    if (end <= offset) return true;
-    final count = (end - offset) ~/ 4;
-    final samples = Float32List(count);
-    final endian = _littleEndian ? Endian.little : Endian.big;
-    for (var i = 0; i < count; i++) {
-      final sample = bytes.getFloat32(offset + i * 4, endian);
-      // One NaN would ride the noise average forever and blank the display.
-      samples[i] = sample.isFinite ? sample : 0;
-    }
-    final fft = _fft ??= IqSpectrum(size: _sizeFor(_rate), hop: _rate ~/ _sweepsPerSecond[_settings.speed ?? SpectrumSpeed.mid]!);
-    fft.add(samples, _emit);
-    return true;
+  void iqRate(int rate) {
+    _fft = null;
+    if (rate == _rate && _settings.spanHz != null) return;
+    _rate = rate;
+    _report(_settings.copyWith(spanHz: _visibleHalfWidth(rate)));
   }
+
+  @override
+  void iqSamples(Float32List interleaved) {
+    final fft = _fft ??= IqSpectrum(size: _sizeFor(_rate), hop: _rate ~/ _sweepsPerSecond[_settings.speed ?? SpectrumSpeed.mid]!);
+    fft.add(interleaved, _emit);
+  }
+
+  @override
+  void iqProblem(String? message) => sink?.reportSpectrumProblem(message);
+
+  /// Taken by the connection's [FlexDaxIq].
+  @override
+  bool packet(Uint8List data) => false;
 
   static int _sizeFor(int rate) {
     var size = 256;
@@ -516,7 +336,7 @@ class FlexDaxSpectrum implements FlexSliceSpectrum {
   /// over the connection while it is still open.
   @override
   void teardown() {
-    if (_wanted) _release();
+    if (_wanted) _release(forget: true);
     _wanted = false;
   }
 }

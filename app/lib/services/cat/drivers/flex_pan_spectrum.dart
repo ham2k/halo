@@ -55,7 +55,13 @@ class FlexPanSpectrum implements FlexSliceSpectrum, SpectrumScope {
   /// (flexradio_own_pans.dart).
   final void Function(String command, {void Function(int code, String body)? onReply})? makePan;
 
-  FlexPanSpectrum({required this.send, required this.sink, Map<String, Map<String, String>>? pans, this.ownPanAt, this.makePan}) : _pans = pans ?? {};
+  /// Told of each change to a pan the radio accepts, already in the record:
+  /// the radio says nothing of it to the client that made it, and another
+  /// of HaLo's slices on the pan would show its width and speed stale.
+  final void Function(String pan, Map<String, String> fields)? accepted;
+
+  FlexPanSpectrum({required this.send, required this.sink, Map<String, Map<String, String>>? pans, this.ownPanAt, this.makePan, this.accepted})
+    : _pans = pans ?? {};
 
   /// The pan this scope made, from the radio's answer until it is removed.
   String? _made;
@@ -255,6 +261,7 @@ class FlexPanSpectrum implements FlexSliceSpectrum, SpectrumScope {
         if (code == 0) _pans[pan]?[key] = value;
         if (_pending[pan]?[key]?.$1 == number) _pending[pan]!.remove(key);
         if (pan == _pan) _reportPan();
+        if (code == 0 && _pans.containsKey(pan)) accepted?.call(pan, {key: value});
       },
     );
     _reportPan();
@@ -319,9 +326,6 @@ class FlexPanSpectrum implements FlexSliceSpectrum, SpectrumScope {
     }
     _reportPan();
   }
-
-  @override
-  void streamStatus(String id, Map<String, String> fields) {}
 
   /// Shapes the pan once everything it needs is known: the slice's pan,
   /// what that pan says, and a socket for its FFT to arrive on.

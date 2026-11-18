@@ -3126,6 +3126,10 @@
     "gridPrecisionDescription": {
       "six": "6 DIGITS",
       "eight": "8 DIGITS"
+    },
+    "systemLists": {
+      "currentRadio": "CURRENT RADIO",
+      "radioForPosition": "RADIO FOR POSITION $position"
     }
   },
   "commands": {

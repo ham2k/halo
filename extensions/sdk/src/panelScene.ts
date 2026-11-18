@@ -395,6 +395,14 @@ export interface PanelSceneSpectrum {
    */
   maxWidthHz?: number | "radio"
   /**
+   * Draws the widest sweep the radio already sends and asks nothing of its scope: no width, no move,
+   * no span. The zoom and pan are the control's own, within `minWidthHz`–`maxWidthHz` (a hundred Hz
+   * and the sweep's width when omitted), past the sweep as within it. For a display beside the
+   * radio's own, such as a band map, that would otherwise widen the scope every other one draws.
+   * Extension API 28.
+   */
+  secondary?: boolean
+  /**
    * The window shown until the operator pans, in Hz: a band map's band, for one. Over a sweep, its
    * middle, `span` its width, the picture over the part the sweep covers. While no sweep comes — no
    * radio, a radio without a scope or with it off, or before the first sweep — the whole of it: the

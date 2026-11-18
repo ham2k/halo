@@ -218,14 +218,20 @@ reserved and ignored here.
 A field's `options` may name a system list, `$<namespace>.<list>`, that the
 app resolves before rendering: `$core.bands` (the extended band vocabulary,
 the popular bands flagged `common`) and `$core.modes` (every ADIF mode and
-submode, the main ones flagged `common`). `$core.radios`, `$core.rotators`
-and `$core.antennaSwitches` (API 23) are the station's own, each labeled by
-its name with its id as the value. A field naming a system list may add
-`none` (API 23), a label for a first option whose value is `""`: picking it
-leaves the choice unmade, where the list alone offers no way back to nothing.
-`$extensions.*` is reserved for
-lists derived at run time. An unknown name is logged and resolves to no
-options; the field renders disabled rather than failing the panel.
+submode, the main ones flagged `common`). `$core.radios`, `$core.rotators` and
+`$core.antennaSwitches` (API 23) are the station's own, each labeled by its
+name with its id as the value. `$core.radioChoices` (API 28) is for a field
+that picks the radio something shows: first the radio a logging set works, its
+value `A` or `B` as `host.readRadio` takes it ("Current Radio"; under SO2R
+"Radio for Position A" and "Radio for Position B"), then each of the station's
+radios as `$core.radios` lists them. A panel's own `form`, behind its gear and
+in its settings dialog, resolves system lists from API 28; on an older app
+such a field fails to build there, so a panel naming one there declares 28. A
+field naming a system list may add `none` (API 23), a label for a first option
+whose value is `""`: picking it leaves the choice unmade, where the list alone
+offers no way back to nothing. `$extensions.*` is reserved for lists derived
+at run time. An unknown name is logged and resolves to no options; the field
+renders disabled rather than failing the panel.
 
 ### The `secret` field type
 

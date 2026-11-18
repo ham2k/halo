@@ -550,6 +550,40 @@ void main() {
     expect(stays.tunes.single.$1, closeTo(14100000, 500));
   });
 
+  // A band map beside the radio's own band scope: told its width, the radio's scope would run as wide
+  // as the band for every display; moved or re-spanned, it would leave the others' windows.
+  testWidgets('a secondary scope asks the radio nothing as it zooms, pans and tunes: no width, no move, no span', (tester) async {
+    final radio = _Radio(recenters: true, maxWidth: 400000);
+    await _show(tester, radio, spectrum: const {'secondary': true, 'maxWidthHz': 400000, 'follow': .15});
+    await _zoomTo(tester, 400000);
+    // The dial run to the sweep's edge, which a scope following it is moved for.
+    radio.vfo = 14099500;
+    radio.notifyListeners();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.dragFrom(_onPan(tester, .3), const Offset(-1000, 0));
+    await tester.pump(const Duration(seconds: 1));
+    await _tap(tester, _onPan(tester, .99));
+    await tester.pump(const Duration(seconds: 1));
+    expect(radio.tunes, isNotEmpty, reason: 'a click still tunes');
+    expect(radio.widths.whereType<int>(), isEmpty);
+    expect(radio.recentered, isEmpty);
+    expect(radio.fitted, isEmpty);
+  });
+
+  // Held to the sweep, a band map would zoom and pan no further than whatever else shows the radio
+  // has asked of its scope.
+  testWidgets("a secondary scope zooms and pans within its own limits, whatever the sweep covers", (tester) async {
+    await _show(tester, _Radio(), spectrum: const {'secondary': true, 'maxWidthHz': 400000});
+    await _zoomTo(tester, 1000);
+    expect(_shownFrame(tester).highHz - _shownFrame(tester).lowHz, closeTo(1000, 20), reason: 'finer than the sweep has points for');
+    await _show(tester, _Radio(), spectrum: const {'secondary': true, 'maxWidthHz': 400000});
+    await _zoomTo(tester, 400000);
+    expect(_shownFrame(tester).highHz - _shownFrame(tester).lowHz, closeTo(400000, 2000));
+    await tester.dragFrom(_onPan(tester, .3), const Offset(-1000, 0));
+    await tester.pump();
+    expect(_shownMiddle(tester), greaterThan(14400000), reason: 'panned on past where the sweep leaves the window');
+  });
+
   testWidgets('a scene\'s own widest zooms past a scope that stays put, panning only until the sweep reaches the window\'s edge', (tester) async {
     final radio = _Radio();
     await _show(tester, radio, spectrum: const {'maxWidthHz': 400000});

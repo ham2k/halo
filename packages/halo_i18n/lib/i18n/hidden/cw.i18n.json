@@ -3126,6 +3126,10 @@
     "gridPrecisionDescription": {
       "six": "—···· / —·· ·· ——· ·· — ···",
       "eight": "———·· / —·· ·· ——· ·· — ···"
+    },
+    "systemLists": {
+      "currentRadio": "—·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ———",
+      "radioForPosition": "·—· ·— —·· ·· ——— / ··—· ——— ·—· / ·——· ——— ··· ·· — ·· ——— —· / $position"
     }
   },
   "commands": {

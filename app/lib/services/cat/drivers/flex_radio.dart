@@ -415,10 +415,7 @@ class FlexRadio implements SharedConnectionOwner {
     }
     if (_streamPattern.firstMatch(line) case final stream?) {
       final rest = stream[2]!;
-      final fields = rest == 'removed' ? const {'removed': '1'} : _parseFields(rest);
-      for (final session in _sessions) {
-        session._scopes.streamStatus(stream[1]!.toLowerCase(), fields);
-      }
+      _daxIq.streamStatus(stream[1]!.toLowerCase(), rest == 'removed' ? const {'removed': '1'} : _parseFields(rest));
       return;
     }
     final transmitMatch = _transmitPattern.firstMatch(line);
@@ -796,6 +793,7 @@ class FlexRadio implements SharedConnectionOwner {
     unawaited(
       open(meterHost!, (data) {
         if (generation != _meterGeneration || !_wantUpdates) return;
+        if (_daxIq.packet(data)) return;
         // Every slice's scope, not the first to claim it: two slices on one
         // pan both draw its FFT.
         var spectrum = false;
@@ -921,6 +919,18 @@ class FlexRadio implements SharedConnectionOwner {
     _meterSocket?.close();
     _meterSocket = null;
   }
+
+  /// A change HaLo made to [pan] that the radio accepted, told to every
+  /// scope as a status would be ([FlexPanSpectrum.accepted]).
+  void _panAccepted(String pan, Map<String, String> fields) {
+    for (final session in _sessions) {
+      session._scopes.panStatus(pan, fields);
+    }
+  }
+
+  /// The DAX IQ streams of the connection's pans, one a pan whatever number
+  /// of its slices' scopes draw it (flex_dax_iq.dart).
+  late final _daxIq = FlexDaxIq(send: _sendForSpectrum, pans: _pans);
 
   /// Whether `sub pan all` has gone out on this connection.
   bool _panSubscribed = false;

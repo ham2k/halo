@@ -26,6 +26,14 @@ import 'package:ham2k_logger/services/cat/spectrum.dart';
 import 'package:ham2k_logger/services/cat/transports/flex_meter_socket.dart';
 
 const _handshakeLines = ['V1.4.0.0', 'H5AC2F980'];
+
+/// The radio's answer to `sub pan all`, which it sends once it has described
+/// every pan.
+void answerPans(FlexRadio radio, List<String> sent) {
+  final line = sent.lastWhere((line) => line.contains('|sub pan all'));
+  radio.handleData(Uint8List.fromList(utf8.encode('R${line.substring(1, line.indexOf('|'))}|0|\n')));
+}
+
 const _radioStatusLine = 'S5AC2F980|radio slices=3 panadapters=3 lineout_gain=60 nickname=RadioRoom callsign=N0CALL';
 const _sliceStatusLine = 'S5AC2F980|slice 0 in_use=1 sample_rate=24000 RF_frequency=14.074000 client_handle=0x1C61D553 index_letter=A mode=DIGU wide=0';
 const _sliceStatusLineWithDecimals =
@@ -123,11 +131,28 @@ class _ScopeSink extends _FakeSink implements SpectrumSink {
   final frames = <SpectrumFrame>[];
   @override
   void reportSpectrum(SpectrumFrame frame) => frames.add(frame);
+  final spectrumSettings = <SpectrumSettings>[];
   @override
-  void reportSpectrumSettings(SpectrumSettings settings) {}
+  void reportSpectrumSettings(SpectrumSettings settings) => spectrumSettings.add(settings);
   final spectrumProblems = <String?>[];
   @override
   void reportSpectrumProblem(String? message) => spectrumProblems.add(message);
+}
+
+/// A DAX IQ datagram shaped like the FLEX-6600's (cat_flex_spectrum_test.dart),
+/// carrying [pairs] I/Q pairs of a steady carrier.
+Uint8List _daxPacket(int stream, int pairs) {
+  final words = 7 + pairs * 2 + 1;
+  final bytes = ByteData(words * 4);
+  bytes.setUint32(0, 0x1c510000 | words);
+  bytes.setUint32(4, stream);
+  bytes.setUint32(8, 0x00001c2d);
+  bytes.setUint16(12, 0x534c);
+  bytes.setUint16(14, 0x02e4);
+  for (var i = 0; i < pairs; i++) {
+    bytes.setFloat32(28 + i * 8, 1000, Endian.little);
+  }
+  return bytes.buffer.asUint8List();
 }
 
 /// One whole sweep of [rows] for [pan], shaped like RadioRoom's FFT
@@ -322,6 +347,49 @@ void main() {
         deliver!(_fftPacket(0x40000002, [for (var i = 0; i < 2048; i++) i == 2 ? 0 : 399]));
         expect(sinkA.frames.map((f) => f.lowHz), [13974000]);
         expect(sinkB.frames.map((f) => f.lowHz), [6974000]);
+        for (final own in [ownA, ownB]) {
+          own.teardown();
+        }
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // The radio sends no status to the client that made a change, and HaLo's
+    // slices share one client: another of HaLo's slices on the pan would go
+    // on showing the width and speed it had.
+    test("a pan one of HaLo's slices widens shows its new width and speed on another slice on it", () {
+      fakeAsync((async) {
+        final radio = FlexRadio(
+          send: sink.send,
+          gui: true,
+          clientId: '1DF30D74',
+          station: 'Chirimena',
+          meterHost: '10.0.0.5',
+          openMeterSocket: (host, onData, onError) async => _FakeMeterSocket(),
+        );
+        final sinkB = _ScopeSink();
+        final ownA = radio.attach(_ScopeSink(), receiver: 'own-A') as FlexRadioSession;
+        final ownB = radio.attach(sinkB, receiver: 'own-B') as FlexRadioSession;
+        for (final own in [ownA, ownB]) {
+          own
+            ..startUpdates()
+            ..startSpectrum();
+        }
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        async.flushMicrotasks();
+        say(radio, 'S5AC2F980|slice 2 in_use=1 client_handle=0x5AC2F980 index_letter=A pan=0x40000002 RF_frequency=14.074000\n');
+        say(radio, 'S5AC2F980|slice 3 in_use=1 client_handle=0x5AC2F980 index_letter=B pan=0x40000002 RF_frequency=14.080000\n');
+        say(
+          radio,
+          'S5AC2F980|display pan 0x40000002 client_handle=0x5AC2F980 center=14.074000 bandwidth=0.200000 fps=15 min_dbm=-150.00 max_dbm=-10.00 y_pixels=400\n',
+        );
+        ownA.setSpectrum(const SpectrumRequest(spanHz: 48000, speed: SpectrumSpeed.fast));
+        for (final line in sink.sent.where((line) => line.contains('display pan set 0x40000002')).toList()) {
+          say(radio, 'R${line.substring(1, line.indexOf('|'))}|0|\n');
+        }
+        expect(sinkB.spectrumSettings.last.spanHz, 48000);
+        expect(sinkB.spectrumSettings.last.speed, SpectrumSpeed.fast);
         for (final own in [ownA, ownB]) {
           own.teardown();
         }
@@ -1561,9 +1629,87 @@ void main() {
         say(radio, 'S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 pan=0x40000001\n');
         say(radio, 'S5AC2F980|display pan 0x40000000 center=14.074000 bandwidth=0.200000 daxiq_channel=0\n');
         say(radio, 'S5AC2F980|display pan 0x40000001 center=7.123000 bandwidth=0.200000 daxiq_channel=0\n');
+        answerPans(radio, sink.sent);
         expect(commands(), contains('display pan set 0x40000000 daxiq_channel=1'));
         sliceB.startSpectrum();
         expect(commands(), contains('display pan set 0x40000001 daxiq_channel=2'));
+        sliceA.teardown();
+        sliceB.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // The radio describes every pan before it answers `sub pan all`, in no
+    // order: a channel chosen as the slice's own pan is described may be one
+    // a pan described after it already has, and the two pans' IQ then mix.
+    test('a free DAX channel is chosen only once the radio has described every pan', () {
+      List<String> commands() => [for (final line in sink.sent) line.substring(line.indexOf('|') + 1).trim()];
+      fakeAsync((async) {
+        void say(FlexRadio radio, String lines) => radio.handleData(Uint8List.fromList(utf8.encode(lines)));
+        final radio = FlexRadio(send: sink.send, meterHost: '10.0.0.5', openMeterSocket: (host, onData, onError) async => _FakeMeterSocket());
+        final sliceA = radio.attach(_FakeSink(), receiver: '0') as FlexRadioSession;
+        sliceA
+          ..startUpdates()
+          ..startSpectrum();
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        async.flushMicrotasks();
+        say(radio, 'S5AC2F980|slice 0 in_use=1 RF_frequency=14.074000 pan=0x40000000\n');
+        say(radio, 'S5AC2F980|display pan 0x40000000 center=14.074000 bandwidth=0.200000 daxiq_channel=0\n');
+        say(radio, 'S5AC2F980|display pan 0x40000002 client_handle=0x41F1FBAB center=18.100000 daxiq_channel=1\n');
+        expect(commands().where((c) => c.startsWith('display pan set')), isEmpty);
+        answerPans(radio, sink.sent);
+        expect(commands(), contains('display pan set 0x40000000 daxiq_channel=2'));
+        sliceA.teardown();
+        radio.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // Two of HaLo's slices on one pan. Each stream draws on the radio's DAX
+    // budget, and the channel one slice gave the pan, handed back as that
+    // slice's display closes, would leave the other's display with no IQ.
+    test("two slices on one pan share its DAX stream, and the channel is the pan's until both displays close", () {
+      List<String> commands() => [for (final line in sink.sent) line.substring(line.indexOf('|') + 1).trim()];
+      fakeAsync((async) {
+        void say(FlexRadio radio, String lines) => radio.handleData(Uint8List.fromList(utf8.encode(lines)));
+        void Function(Uint8List)? deliver;
+        final radio = FlexRadio(
+          send: sink.send,
+          meterHost: '10.0.0.5',
+          openMeterSocket: (host, onData, onError) async {
+            deliver = onData;
+            return _FakeMeterSocket();
+          },
+        );
+        final sinkA = _ScopeSink(), sinkB = _ScopeSink();
+        final sliceA = radio.attach(sinkA, receiver: '0') as FlexRadioSession;
+        final sliceB = radio.attach(sinkB, receiver: '1') as FlexRadioSession;
+        for (final slice in [sliceA, sliceB]) {
+          slice
+            ..startUpdates()
+            ..startSpectrum();
+        }
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        async.flushMicrotasks();
+        say(radio, 'S5AC2F980|slice 0 in_use=1 RF_frequency=14.074000 pan=0x40000000\n');
+        say(radio, 'S5AC2F980|slice 1 in_use=1 RF_frequency=14.080000 pan=0x40000000\n');
+        say(radio, 'S5AC2F980|display pan 0x40000000 center=14.074000 bandwidth=0.200000 daxiq_channel=0\n');
+        answerPans(radio, sink.sent);
+        expect(commands().where((c) => c.startsWith('display pan set')), ['display pan set 0x40000000 daxiq_channel=1']);
+        expect(commands().where((c) => c.startsWith('stream create')), hasLength(1));
+        final create = sink.sent.lastWhere((line) => line.contains('stream create'));
+        say(radio, 'R${create.substring(1, create.indexOf('|'))}|0|20000000\n');
+        for (var p = 0; p < 10; p++) {
+          deliver!(_daxPacket(0x20000000, 512));
+        }
+        expect(sinkA.frames, isNotEmpty);
+        expect(sinkB.frames, isNotEmpty, reason: 'both draw the one stream');
+        sink.sent.clear();
+        sliceA.stopSpectrum();
+        expect(commands(), isEmpty, reason: "slice B's display still draws the pan");
+        sliceB.stopSpectrum();
+        expect(commands(), ['stream remove 0x20000000', 'display pan set 0x40000000 daxiq_channel=0']);
         sliceA.teardown();
         sliceB.teardown();
         radio.teardown();

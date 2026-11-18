@@ -37,7 +37,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 23 | the rotator map control (`rotatorMap`), a `nativeButton`'s `icon` variant, an event's `bearing` and `km`, and a binding's `offset` |
 | 25 | the map control (`map`), an event's `lat` and `lon`, and the `reset` gesture; an event answer's `patch` and `host.updateScene`, changing a scene in place; `image` layers and a map's `images` |
 | 26 | the map's `globe` projection, its `depth` and `atmosphere` |
-| 28 | the map's `dwell`, and its `dwell` and `dwellEnd` gestures |
+| 28 | the map's `dwell`, and its `dwell` and `dwellEnd` gestures; the band scope's `secondary` |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -642,6 +642,13 @@ a scope, the control says why instead. Placed like a native control, it takes:
   instead of the window: where the radio lets the app place it, moved just
   far enough to keep the dial that share of the sweep's own width from its
   edges.
+- `secondary` (API 28): `true` for a display beside the radio's own, such
+  as a band map. It draws the widest sweep the radio already sends and asks
+  nothing of the scope: no width, so it never widens the scope the other
+  displays draw, and no move or span. Its zoom and pan are its own, within
+  `minWidthHz` and `maxWidthHz` (a hundred Hz and the sweep's width when
+  omitted), and go past the sweep as freely as within it, the part with no
+  reading drawn as above. Clicks still tune the radio.
 - `window` (API 22): `{lowHz, highHz}`, the window shown until the operator
   pans. Over a sweep it is where the window centers, `span` its width, the
   picture over the part the sweep covers. While no sweep comes — no radio, a

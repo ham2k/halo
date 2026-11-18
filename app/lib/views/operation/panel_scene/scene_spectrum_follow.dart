@@ -132,6 +132,7 @@ extension _SpectrumFollow on _SceneSpectrumViewState {
         vfo >= sweep.lowHz &&
         vfo <= sweep.highHz &&
         width <= sweep.highHz - sweep.lowHz &&
+        !_spec.secondary &&
         !source.canRecenter(uuid)) {
       center = center.clamp(sweep.lowHz + width / 2, sweep.highHz - width / 2);
     }
@@ -169,7 +170,7 @@ extension _SpectrumFollow on _SceneSpectrumViewState {
   /// false where it went nowhere — too soon, or a scope the app cannot move.
   bool _askSweep(int now, double center) {
     final (uuid, source) = (_uuid, widget.source);
-    if (uuid == null || source == null || now - _lastRecenterMillis < 250) return false;
+    if (uuid == null || source == null || _spec.secondary || now - _lastRecenterMillis < 250) return false;
     final moved = _recenters = source.recenter(uuid, this, center.round());
     if (!moved) return false;
     _lastRecenterMillis = _sweepAskedMillis = now;

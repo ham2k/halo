@@ -22,6 +22,7 @@ import '../../services/file_pick.dart';
 import '../../services/halo_services.dart';
 import '../../services/panel_menu.dart';
 import '../../services/panel_service.dart';
+import '../../settings/system_lists.dart';
 import '../dock_layouts/layout_menu.dart' show saveTextFile;
 import 'remote_screen/remote_screen_panel.dart';
 import 'remote_screen/remote_screen_picker.dart';
@@ -52,12 +53,22 @@ bool sameConfigValue(Object? formValue, Object? stored, Object? declaredDefault)
   return formValue == null || formValue == false || formValue == '';
 }
 
+/// [panel]'s own form as the operator sees it, its system lists (`$core.radioChoices`) resolved:
+/// unresolved, a select holds a list's name where its options go and the form fails to build.
+/// [embedded] leaves out action buttons, which only a dialog of its own can run
+/// ([EmbeddedPanelSettingsForm]).
+Future<List<Map<String, dynamic>>> panelFormElements(SystemLists lists, PanelDefinition panel, {bool embedded = false}) => lists.resolveInElements([
+  for (final field in panel.formFields)
+    if (!embedded || field['type'] != 'action') field,
+]);
+
 Future<void> showPanelSettings(BuildContext context, {required HaLoServices services, required PanelDefinition panel}) async {
   final current = await services.panels.configFor(panel);
+  final elements = await panelFormElements(services.systemLists, panel);
   if (!context.mounted) return;
   final result = await showFormDialog(
     context,
-    formDefinition: {'title': panel.title, 'elements': panel.formFields},
+    formDefinition: {'title': panel.title, 'elements': elements},
     initialState: current,
     markdownImages: extensionImagesFor(services.extensions, panel.hookKey),
     developerMode: services.settings.developerMode,

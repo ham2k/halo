@@ -52,6 +52,7 @@ void wireExtensions(HaLoServices services) {
         if (services.cat.typeFor(node)?.category == category) {'label': services.cat.radioNameFor(node), 'value': node.uuid},
     ];
   };
+  services.systemLists.so2r = () => services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */;
   _wireOpStyle(services);
   _wireCluster(services);
   (services.settingsRegistry[SpottingSettings.group]! as SpottingSettingsGroup)

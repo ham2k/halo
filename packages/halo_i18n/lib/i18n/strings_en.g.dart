@@ -1919,6 +1919,7 @@ class Translations$settings$en {
 
 	late final Translations$settings$gridPrecisionOpts$en gridPrecisionOpts = Translations$settings$gridPrecisionOpts$en.internal(_root);
 	late final Translations$settings$gridPrecisionDescription$en gridPrecisionDescription = Translations$settings$gridPrecisionDescription$en.internal(_root);
+	late final Translations$settings$systemLists$en systemLists = Translations$settings$systemLists$en.internal(_root);
 }
 
 // Path: commands
@@ -8466,6 +8467,21 @@ class Translations$settings$gridPrecisionDescription$en {
 	String get eight => '8 digits';
 }
 
+// Path: settings.systemLists
+class Translations$settings$systemLists$en {
+	Translations$settings$systemLists$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Current Radio'
+	String get currentRadio => 'Current Radio';
+
+	/// en: 'Radio for Position $position'
+	String radioForPosition({required Object position}) => 'Radio for Position ${position}';
+}
+
 // Path: keyboardShortcuts.sets
 class Translations$keyboardShortcuts$sets$en {
 	Translations$keyboardShortcuts$sets$en.internal(this._root);
@@ -14479,6 +14495,8 @@ extension on Translations {
 			'settings.gridPrecisionOpts.eight' => '8 digits (FN31pr55)',
 			'settings.gridPrecisionDescription.six' => '6 digits',
 			'settings.gridPrecisionDescription.eight' => '8 digits',
+			'settings.systemLists.currentRadio' => 'Current Radio',
+			'settings.systemLists.radioForPosition' => ({required Object position}) => 'Radio for Position ${position}',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
 			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
@@ -14859,10 +14877,10 @@ extension on Translations {
 			'deepLink.allow' => 'Allow',
 			'deepLink.deny' => 'Deny',
 			'confirmDevice.title' => 'Confirm a Device',
-			'confirmDevice.codePrompt' => 'Enter the code shown on the device that wants to join this account.',
-			'confirmDevice.code' => 'Code',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.codePrompt' => 'Enter the code shown on the device that wants to join this account.',
+			'confirmDevice.code' => 'Code',
 			'confirmDevice.lookUp' => 'Look Up',
 			'confirmDevice.codeNotFound' => 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.',
 			'confirmDevice.linkExpired' => 'That link has expired. Ask the other device to show a new QR code.',

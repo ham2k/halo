@@ -555,10 +555,11 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   }
 
   /// Tells the source the width this control crops its sweeps to while it
-  /// draws them, 0 for the whole sweep.
+  /// draws them, 0 for the whole sweep; a [SceneSpectrumSpec.secondary]
+  /// control none, so its width widens no scope.
   void _showWidth() {
     final (source, uuid, width) = (widget.source, _uuid, (_viewWidth ?? _number(_spec.span))?.round());
-    final now = source == null || uuid == null ? null : (source, uuid, width == null || width <= 0 ? 0 : width);
+    final now = source == null || uuid == null || _spec.secondary ? null : (source, uuid, width == null || width <= 0 ? 0 : width);
     if (now == _shown) return;
     if (_shown case (final source, final uuid, _)) source.showWidth(uuid, this, null);
     _shown = now;

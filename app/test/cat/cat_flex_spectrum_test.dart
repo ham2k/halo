@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:ham2k_logger/services/cat/drivers/flex_dax_iq.dart';
 import 'package:ham2k_logger/services/cat/drivers/flex_spectrum.dart';
 import 'package:ham2k_logger/services/cat/spectrum.dart';
 
@@ -49,21 +50,30 @@ void main() {
   late List<void Function(int, String)> replies;
   late _Sink sink;
   late FlexDaxSpectrum spectrum;
+  late FlexDaxIq iq;
   late Map<String, Map<String, String>> pans;
+
+  /// The radio's answer to `sub pan all`, which follows its description of
+  /// every pan: kept apart from [replies], which the tests answer in turn.
+  void Function(int, String)? described;
+
+  void send(String command, {void Function(int, String)? onReply}) {
+    sent.add(command);
+    if (command == 'sub pan all') {
+      described = onReply;
+    } else if (onReply != null) {
+      replies.add(onReply);
+    }
+  }
 
   setUp(() {
     sent = [];
     replies = [];
     sink = _Sink();
     pans = {};
-    spectrum = FlexDaxSpectrum(
-      send: (command, {onReply}) {
-        sent.add(command);
-        if (onReply != null) replies.add(onReply);
-      },
-      sink: sink,
-      pans: pans,
-    );
+    described = null;
+    iq = FlexDaxIq(send: send, pans: pans);
+    spectrum = FlexDaxSpectrum(send: send, sink: sink, pans: pans, iq: iq);
     // The session's handshake: the radio refuses a `sub` before it.
     spectrum.subscribe();
   });
@@ -89,6 +99,7 @@ void main() {
       status(key, {'daxiq_channel': value});
     }
     status('0x40000000', {'center': '14.200000', 'bandwidth': '0.064120', 'daxiq_channel': channel});
+    described?.call(0, '');
   }
 
   test('a pan without a channel gets the first free one, and gets it back as it was', () {
@@ -137,16 +148,16 @@ void main() {
     ready(channel: '1');
     replies.single(0, '20000000');
     // Claimed here, a second slice's scope on the same connection never draws.
-    expect(spectrum.packet(_packet(0x20000001, _tone(0, 512, 6000))), isFalse);
+    expect(iq.packet(_packet(0x20000001, _tone(0, 512, 6000))), isFalse);
     expect(sink.frames, isEmpty);
   });
 
   test('a carrier above the center lands above it, inside the trimmed edges', () {
     ready(channel: '1');
     replies.single(0, '20000000');
-    spectrum.streamStatus('0x20000000', {'daxiq_rate': '48000', 'payload_endian': 'little'});
+    iq.streamStatus('0x20000000', {'daxiq_rate': '48000', 'payload_endian': 'little'});
     for (var p = 0; p < 10; p++) {
-      expect(spectrum.packet(_packet(0x20000000, _tone(p * 512, 512, 6000))), isTrue);
+      expect(iq.packet(_packet(0x20000000, _tone(p * 512, 512, 6000))), isTrue);
     }
     final frame = sink.frames.last;
     // The outer sixteenth of each side is the radio's filter, not the band.
@@ -167,10 +178,10 @@ void main() {
   test('two carriers 200 Hz apart on a 192 kHz stream are drawn apart', () {
     ready(channel: '1');
     replies.single(0, '20000000');
-    spectrum.streamStatus('0x20000000', {'daxiq_rate': '192000', 'payload_endian': 'little'});
+    iq.streamStatus('0x20000000', {'daxiq_rate': '192000', 'payload_endian': 'little'});
     double phase(int n, double hz) => 2 * math.pi * hz * n / 192000;
     for (var p = 0; p < 48; p++) {
-      spectrum.packet(
+      iq.packet(
         _packet(0x20000000, [
           for (var n = p * 512; n < (p + 1) * 512; n++) ...[
             1000 * (math.cos(phase(n, 6000)) + math.cos(phase(n, 6200))),
@@ -202,16 +213,16 @@ void main() {
     // Adopted, it would be a stream on a channel the stop already gave back.
     expect(sent, ['stream remove 0x20000000']);
     replies.last(0, '20000001');
-    expect(spectrum.packet(_packet(0x20000001, _tone(0, 512, 0))), isTrue);
+    expect(iq.packet(_packet(0x20000001, _tone(0, 512, 0))), isTrue);
   });
 
   test("the stream's status, pushed ahead of the reply, still sets its rate", () {
     ready(channel: '2');
     // Captured order on a FLEX-6600: the status line, then the R reply.
-    spectrum.streamStatus('0x20000000', {'type': 'dax_iq', 'daxiq_rate': '96000', 'payload_endian': 'little'});
+    iq.streamStatus('0x20000000', {'type': 'dax_iq', 'daxiq_rate': '96000', 'payload_endian': 'little'});
     replies.single(0, '20000000');
     for (var p = 0; p < 20; p++) {
-      spectrum.packet(_packet(0x20000000, _tone(p * 512, 512, 0)));
+      iq.packet(_packet(0x20000000, _tone(p * 512, 512, 0)));
     }
     // At the 48 kHz default the sweep would be drawn half as wide as it is.
     expect(sink.frames.last.highHz - sink.frames.last.lowHz, 84000);
@@ -230,9 +241,9 @@ void main() {
   test('a NaN sample is drawn as silence, not carried in the noise average', () {
     ready(channel: '1');
     replies.single(0, '20000000');
-    spectrum.streamStatus('0x20000000', {'daxiq_rate': '48000'});
+    iq.streamStatus('0x20000000', {'daxiq_rate': '48000'});
     for (var p = 0; p < 10; p++) {
-      spectrum.packet(_packet(0x20000000, p == 2 ? List.filled(1024, double.nan) : _tone(p * 512, 512, 6000)));
+      iq.packet(_packet(0x20000000, p == 2 ? List.filled(1024, double.nan) : _tone(p * 512, 512, 6000)));
     }
     expect(sink.frames.last.floorDb.isFinite, isTrue);
     expect(sink.frames.last.noiseDb!.isFinite, isTrue);
@@ -243,10 +254,10 @@ void main() {
     // asked — but kept after a refusal, every sweep would be labelled where the IQ is not.
     ready(channel: '1');
     replies.single(0, '20000000');
-    spectrum.streamStatus('0x20000000', {'daxiq_rate': '48000', 'payload_endian': 'little'});
+    iq.streamStatus('0x20000000', {'daxiq_rate': '48000', 'payload_endian': 'little'});
     void sweep() {
       for (var p = 0; p < 10; p++) {
-        spectrum.packet(_packet(0x20000000, _tone(p * 512, 512, 6000)));
+        iq.packet(_packet(0x20000000, _tone(p * 512, 512, 6000)));
       }
     }
 
@@ -271,10 +282,10 @@ void main() {
   test("the settings carry the pan's own edges, wherever the dial is", () {
     ready(channel: '1');
     replies.single(0, '20000000');
-    spectrum.streamStatus('0x20000000', {'daxiq_rate': '48000', 'payload_endian': 'little'});
+    iq.streamStatus('0x20000000', {'daxiq_rate': '48000', 'payload_endian': 'little'});
     void sweep() {
       for (var p = 0; p < 10; p++) {
-        spectrum.packet(_packet(0x20000000, _tone(p * 512, 512, 6000)));
+        iq.packet(_packet(0x20000000, _tone(p * 512, 512, 6000)));
       }
     }
 
@@ -329,7 +340,7 @@ void main() {
     replies.last(0, '20000000');
     spectrum.set(const SpectrumRequest(spanHz: 84000));
     final refuse = replies.last;
-    spectrum.streamStatus('0x20000000', {'removed': ''});
+    iq.streamStatus('0x20000000', {'removed': ''});
     final create = replies.last;
     refuse(0x50000015, '');
     create(0, '20000001');
@@ -339,7 +350,7 @@ void main() {
   test("a new stream is asked the rate even when the last one ran at it: only its own status says its rate", () {
     ready(channel: '1');
     replies.last(0, '20000000');
-    spectrum.streamStatus('0x20000000', {'daxiq_rate': '192000'});
+    iq.streamStatus('0x20000000', {'daxiq_rate': '192000'});
     spectrum.set(const SpectrumRequest(spanHz: 84000));
     spectrum.slicePan('0x40000001');
     status('0x40000001', {'center': '7.100000', 'bandwidth': '0.064120', 'daxiq_channel': '1'});
@@ -348,7 +359,11 @@ void main() {
   });
 
   test('a display opened before the handshake subscribes to pans once the session does', () {
-    final early = FlexDaxSpectrum(send: (c, {onReply}) => sent.add(c), sink: sink);
+    final early = FlexDaxSpectrum(
+      send: send,
+      sink: sink,
+      iq: FlexDaxIq(send: send, pans: {}),
+    );
     early.start();
     expect(sent, isEmpty, reason: 'the radio refuses a sub before its handshake');
     early.subscribe();
@@ -402,7 +417,7 @@ void main() {
       replies.single(0, '20000000');
       async.elapse(const Duration(seconds: 6));
       expect(sink.problems.last, t.settings.station.spectrumNoUdp);
-      spectrum.packet(_packet(0x20000000, _tone(0, 512, 0)));
+      iq.packet(_packet(0x20000000, _tone(0, 512, 0)));
       expect(sink.problems.last, isNull);
     });
   });
@@ -410,15 +425,19 @@ void main() {
   test('a stream id with a leading zero still matches its packets', () {
     ready(channel: '1');
     replies.single(0, '0a000000');
-    spectrum.streamStatus('0x0a000000', {'daxiq_rate': '48000'});
+    iq.streamStatus('0x0a000000', {'daxiq_rate': '48000'});
     for (var p = 0; p < 10; p++) {
-      spectrum.packet(_packet(0x0a000000, _tone(p * 512, 512, 0)));
+      iq.packet(_packet(0x0a000000, _tone(p * 512, 512, 0)));
     }
     expect(sink.frames, isNotEmpty);
   });
 
   test('a slice not yet heard from is not called a slice without a panadapter', () {
-    final quiet = FlexDaxSpectrum(send: (c, {onReply}) => sent.add(c), sink: sink)..subscribe();
+    final quiet = FlexDaxSpectrum(
+      send: send,
+      sink: sink,
+      iq: FlexDaxIq(send: send, pans: {}),
+    )..subscribe();
     quiet.start();
     quiet.socketReady();
     expect(sink.problems, isNot(contains(t.settings.station.spectrumNoPanadapter)));

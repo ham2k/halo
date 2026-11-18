@@ -860,6 +860,7 @@ class _Translations$settings$cw extends Translations$settings$en {
 	@override String get gridPrecision => '——· ·—· ·· —·· / ·——· ·—· · —·—· ·· ··· ·· ——— —·';
 	@override late final _Translations$settings$gridPrecisionOpts$cw gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$cw._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$cw gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$cw._(_root);
+	@override late final _Translations$settings$systemLists$cw systemLists = _Translations$settings$systemLists$cw._(_root);
 }
 
 // Path: commands
@@ -3703,6 +3704,17 @@ class _Translations$settings$gridPrecisionDescription$cw extends Translations$se
 	// Translations
 	@override String get six => '—···· / —·· ·· ——· ·· — ···';
 	@override String get eight => '———·· / —·· ·· ——· ·· — ···';
+}
+
+// Path: settings.systemLists
+class _Translations$settings$systemLists$cw extends Translations$settings$systemLists$en {
+	_Translations$settings$systemLists$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get currentRadio => '—·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ———';
+	@override String radioForPosition({required Object position}) => '·—· ·— —·· ·· ——— / ··—· ——— ·—· / ·——· ——— ··· ·· — ·· ——— —· / ${position}';
 }
 
 // Path: keyboardShortcuts.sets
@@ -7978,6 +7990,8 @@ extension on TranslationsCw {
 			'settings.gridPrecisionOpts.eight' => '———·· / —·· ·· ——· ·· — ··· / —·——· ··—· —· ···—— ·———— ·——· ·—· ····· ····· —·——·—',
 			'settings.gridPrecisionDescription.six' => '—···· / —·· ·· ——· ·· — ···',
 			'settings.gridPrecisionDescription.eight' => '———·· / —·· ·· ——· ·· — ···',
+			'settings.systemLists.currentRadio' => '—·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ———',
+			'settings.systemLists.radioForPosition' => ({required Object position}) => '·—· ·— —·· ·· ——— / ··—· ——— ·—· / ·——· ——— ··· ·· — ·· ——— —· / ${position}',
 			'commands.enableSyncFirst' => '· —· ·— —··· ·—·· · / ··· —·—— —· —·—· / ·· —· / ··· · — — ·· —· ——· ··· / ··—· ·· ·—· ··· — ·—·—·—',
 			'commands.fullResyncStarted' => '··—· ··— ·—·· ·—·· / ·—· · ··· —·—— —· —·—· / ··· — ·— ·—· — · —·· / — / ·—·· ——— —·—· ·— ·—·· / —·· ·— — ·— / ·—— ·— ··· / —··· ·— —·—· —·— · —·· / ··— ·——· / ··—· ·· ·—· ··· — ·—·—·—',
 			'commands.noDataFilesMatched' => ({required Object target}) => '—· ——— / —·· ·— — ·— / ··—· ·· ·—·· · ··· / —— ·— — —·—· ···· · —·· / ·—··—· ${target} ·—··—· ·—·—·—',
@@ -8358,10 +8372,10 @@ extension on TranslationsCw {
 			'deepLink.allow' => '·— ·—·· ·—·· ——— ·——',
 			'deepLink.deny' => '—·· · —· —·——',
 			'confirmDevice.title' => '—·—· ——— —· ··—· ·· ·—· —— / ·— / —·· · ···— ·· —·—· ·',
-			'confirmDevice.codePrompt' => '· —· — · ·—· / — ···· · / —·—· ——— —·· · / ··· ···· ——— ·—— —· / ——— —· / — ···· · / —·· · ···— ·· —·—· · / — ···· ·— — / ·—— ·— —· — ··· / — ——— / ·——— ——— ·· —· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· — ·—·—·—',
-			'confirmDevice.code' => '—·—· ——— —·· ·',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.codePrompt' => '· —· — · ·—· / — ···· · / —·—· ——— —·· · / ··· ···· ——— ·—— —· / ——— —· / — ···· · / —·· · ···— ·· —·—· · / — ···· ·— — / ·—— ·— —· — ··· / — ——— / ·——— ——— ·· —· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· — ·—·—·—',
+			'confirmDevice.code' => '—·—· ——— —·· ·',
 			'confirmDevice.lookUp' => '·—·· ——— ——— —·— / ··— ·——·',
 			'confirmDevice.codeNotFound' => '—· ——— / ·—· · ——·— ··— · ··· — / —— ·— — —·—· ···· · ··· / — ···· ·— — / —·—· ——— —·· · ·—·—·— / —·—· ——— —·· · ··· / · —··— ·——· ·· ·—· · / ·— ··—· — · ·—· / ·———— ————— / —— ·· —· ··— — · ··· / — / ·— ··· —·— / — ···· · / ——— — ···· · ·—· / —·· · ···— ·· —·—· · / ··—· ——— ·—· / ·— / ··—· ·—· · ··· ···· / ——— —· · ·—·—·—',
 			'confirmDevice.linkExpired' => '— ···· ·— — / ·—·· ·· —· —·— / ···· ·— ··· / · —··— ·——· ·· ·—· · —·· ·—·—·— / ·— ··· —·— / — ···· · / ——— — ···· · ·—· / —·· · ···— ·· —·—· · / — ——— / ··· ···· ——— ·—— / ·— / —· · ·—— / ——·— ·—· / —·—· ——— —·· · ·—·—·—',

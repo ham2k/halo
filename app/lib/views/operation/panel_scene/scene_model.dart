@@ -1230,6 +1230,7 @@ class SceneSpectrumSpec {
     'span',
     'minWidthHz',
     'maxWidthHz',
+    'secondary',
     'window',
     'centerHz',
     'gestures',
@@ -1353,6 +1354,14 @@ class SceneSpectrumSpec {
   /// only, and the sweep follows the dial rather than the window.
   final double? minWidthHz, maxWidthHz;
 
+  /// Draws whatever sweep the radio already sends — the widest — and asks
+  /// nothing of its scope: no width, no move, no span. Its zoom and pan are
+  /// its own, within [minWidthHz]–[maxWidthHz] whatever the sweep covers,
+  /// and past the sweep it shows no reading. For a display beside the
+  /// radio's own, such as a band map, that would otherwise widen the scope
+  /// every other display draws.
+  final bool secondary;
+
   /// The window shown until the operator pans, as `(low, high)` in Hz: over
   /// a sweep, its middle, [span] its width; while no sweep comes — no radio,
   /// a radio without a scope or with it off, or before the first sweep — the
@@ -1399,6 +1408,7 @@ class SceneSpectrumSpec {
       span = SceneNumber.parse(json, 'span', min: 100, max: 1e7),
       minWidthHz = _widthLimit(json, 'minWidthHz'),
       maxWidthHz = _widthLimit(json, 'maxWidthHz'),
+      secondary = json['secondary'] == true,
       window = _window(json['window']),
       centerHz = json['centerHz'] == null ? null : number(json, 'centerHz', min: 0, max: 1e12),
       annotations = json['annotations'] == null ? const [] : items(json['annotations'], 256, what: 'annotations').map(SceneSpectrumAnnotation.new).toList(),

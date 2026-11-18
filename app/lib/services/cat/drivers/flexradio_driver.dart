@@ -33,6 +33,7 @@ import 'flex_slice_config.dart';
 import 'voice_activity_tracker.dart';
 import 'flex_pan_spectrum.dart';
 import 'flex_spectrum.dart';
+import 'flex_dax_iq.dart';
 import 'flex_dax_switch.dart';
 import 'flex_dax_rx.dart';
 import 'flex_dax_talk.dart';
@@ -336,8 +337,8 @@ class FlexRadioSession
   /// another station, the pan's FFT goes to that station alone, so the
   /// spectrum is mirrored through DAX IQ (flex_spectrum.dart).
   late final FlexSliceSpectrum _spectrum = _radio.gui
-      ? FlexPanSpectrum(send: _sendForSpectrum, sink: _spectrumSink, pans: _radio._pans)
-      : FlexDaxSpectrum(send: _sendForSpectrum, sink: _spectrumSink, pans: _radio._pans);
+      ? FlexPanSpectrum(send: _sendForSpectrum, sink: _spectrumSink, pans: _radio._pans, accepted: _radio._panAccepted)
+      : FlexDaxSpectrum(send: _sendForSpectrum, sink: _spectrumSink, pans: _radio._pans, iq: _radio._daxIq);
 
   int _sendForSpectrum(String command, {void Function(int code, String body)? onReply}) => _radio._sendForSpectrum(command, onReply: onReply);
 
@@ -359,6 +360,7 @@ class FlexRadioSession
       pans: _radio._pans,
       ownPanAt: () => _radio._slices[slice]?.freqKHz,
       makePan: _radio._sweeps.make,
+      accepted: _radio._panAccepted,
     );
     _extraScopes.add(scope);
     scope.start();
@@ -811,7 +813,6 @@ class _FlexScopes {
   void socketLost() => _each((s) => s.socketLost());
   void socketUnavailable() => _each((s) => s.socketUnavailable());
   void panStatus(String id, Map<String, String> fields) => _each((s) => s.panStatus(id, fields));
-  void streamStatus(String id, Map<String, String> fields) => _each((s) => s.streamStatus(id, fields));
 
   /// Whether any of them took it, every one being offered it.
   bool packet(Uint8List data) => _all.fold(false, (taken, s) => s.packet(data) || taken);

@@ -860,6 +860,7 @@ class _Translations$settings$qrp extends Translations$settings$en {
 	@override String get gridPrecision => 'grid precision';
 	@override late final _Translations$settings$gridPrecisionOpts$qrp gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$qrp._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$qrp gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$qrp._(_root);
+	@override late final _Translations$settings$systemLists$qrp systemLists = _Translations$settings$systemLists$qrp._(_root);
 }
 
 // Path: commands
@@ -3703,6 +3704,17 @@ class _Translations$settings$gridPrecisionDescription$qrp extends Translations$s
 	// Translations
 	@override String get six => '6 digits';
 	@override String get eight => '8 digits';
+}
+
+// Path: settings.systemLists
+class _Translations$settings$systemLists$qrp extends Translations$settings$systemLists$en {
+	_Translations$settings$systemLists$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get currentRadio => 'current radio';
+	@override String radioForPosition({required Object position}) => 'radio for position ${position}';
 }
 
 // Path: keyboardShortcuts.sets
@@ -7978,6 +7990,8 @@ extension on TranslationsQrp {
 			'settings.gridPrecisionOpts.eight' => '8 digits (fn31pr55)',
 			'settings.gridPrecisionDescription.six' => '6 digits',
 			'settings.gridPrecisionDescription.eight' => '8 digits',
+			'settings.systemLists.currentRadio' => 'current radio',
+			'settings.systemLists.radioForPosition' => ({required Object position}) => 'radio for position ${position}',
 			'commands.enableSyncFirst' => 'enable sync in settings first.',
 			'commands.fullResyncStarted' => 'full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'no data files matched "${target}".',
@@ -8358,10 +8372,10 @@ extension on TranslationsQrp {
 			'deepLink.allow' => 'allow',
 			'deepLink.deny' => 'deny',
 			'confirmDevice.title' => 'confirm a device',
-			'confirmDevice.codePrompt' => 'enter the code shown on the device that wants to join this account.',
-			'confirmDevice.code' => 'code',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.codePrompt' => 'enter the code shown on the device that wants to join this account.',
+			'confirmDevice.code' => 'code',
 			'confirmDevice.lookUp' => 'look up',
 			'confirmDevice.codeNotFound' => 'no request matches that code. codes expire after 10 minutes — ask the other device for a fresh one.',
 			'confirmDevice.linkExpired' => 'that link has expired. ask the other device to show a new qr code.',

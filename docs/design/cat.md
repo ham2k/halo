@@ -4292,6 +4292,15 @@ wider one, and no more are asked for until the scope starts again. HaLo's own
 Flex station runs one as a pan of its own (below); a radio with one scope
 (Icom, K4, TCI) crops as before.
 
+A display beside the radio's own, such as a band map, is a **secondary** one
+(a scene band scope's `secondary`): it draws the session's own sweep, the
+widest, and asks no width of it, no move and no span. Counted among the
+widths, a band map showing a whole band would run the scope that wide for
+every display, and on a Flex mirrored through DAX IQ spend the radio's DAX
+budget on it. It still counts as a display wanting the scope, so the radio
+sweeps for a band map open alone. Its zoom and pan are its own, and what it
+shows past the sweep is drawn as no reading.
+
 Receivers exposed as separate logical radios each have an ordinary
 `SpectrumSession`, addressed by their own radio UUID. Demand, settings and
 problems belong to that radio, even when its physical connection is shared.
@@ -4459,11 +4468,23 @@ Captured on a FLEX-6600 (4.2.20) with AetherSDR as that client:
 - Its `display pan create` is answered with ids, but the pan belongs to the
   GUI client, brings a slice with it, and appears in the GUI client's window.
   Its data still goes there.
-- DAX IQ does reach it. `flex_spectrum.dart` assigns a free channel (1–4) to
-  the slice's pan — or uses the one it already has, which is then another
-  client's to keep, or another of HaLo's slices' — opens `stream create type=dax_iq`, and computes the
-  spectrum locally (`spectrum_fft.dart`). On stop it removes the stream and
-  hands back a channel it assigned.
+- DAX IQ does reach it. The connection (`flex_dax_iq.dart`) assigns a free
+  channel (1–4) to the slice's pan — or uses the one it already has, which is
+  then another client's to keep — opens `stream create type=dax_iq`, and each
+  slice's scope computes the spectrum locally (`spectrum_fft.dart`,
+  `flex_spectrum.dart`). The last display on the pan to close removes the
+  stream and hands back a channel the connection assigned.
+- **One stream a pan.** Every scope of the connection's on a pan draws the
+  same stream, which runs at the widest rate they ask. Each stream draws on the
+  radio's DAX IQ budget (16 units, a 192 kHz stream 8: RadioRoom, 4.3.16), so
+  two of HaLo's slices on one pan would spend twice what one does, and a
+  channel handed back by the first display to close would leave the other's
+  with no IQ.
+- **A free channel waits for every pan.** The radio describes every pan before
+  it answers `sub pan all`, in no order, so a free channel is chosen only once
+  that answer is in. Chosen as the slice's own pan was described, it could be
+  one a pan described after already has, and the two pans' IQ would mix. A pan
+  that already has a channel needs no such wait.
 - The stream's status line arrives **before** the `stream create` reply, and
   carries its rate; it is held until the reply names the stream. A reply that
   arrives after the display stopped, or the slice moved pans, is handed
@@ -4583,9 +4604,12 @@ pans per connection, which every slice's scope on it reads:
   centre, a width or a shape the radio took, a DAX channel assigned or
   handed back. Kept to what each heard itself, a second slice on the pan
   would label its sweeps where the pan was, or take the same DAX channel.
+  A change the radio takes is also told to every scope as a status would be,
+  so another slice on the pan shows its new width and speed.
 - Each UDP datagram goes to every slice's scope, so two slices on one pan
-  both draw its FFT. A scope claims only its own pan's FFT, or its own DAX
-  IQ stream; a datagram no scope claims goes to the meter codec.
+  both draw its FFT. A scope claims only its own pan's FFT; the connection's
+  DAX IQ takes its streams' datagrams and hands each to every scope on the
+  pan. A datagram neither claims goes to the meter codec.
 
 ### TCI: computed from the IQ stream
 

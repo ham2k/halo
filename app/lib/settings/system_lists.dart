@@ -16,12 +16,17 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart' as halo_core;
+import 'package:halo_i18n/halo_i18n.dart';
 
 class SystemLists {
   /// The station's equipment of one kind (`radio`, `rotator`, `antennaSwitch`), each `{label,
   /// value}` with its id as the value; null on a host with no station behind it, where the lists
   /// are empty.
   List<Map<String, dynamic>> Function(String kind)? equipment;
+
+  /// Whether the operator logs on two radios (SO2R), each logging set on a
+  /// position of its own; null where nothing says, read as not.
+  bool Function()? so2r;
 
   /// Resolves a `$name` to its options (`[{label, value, common?}]`), or
   /// null for an unknown name. Async because `$extensions.*` lists will
@@ -53,6 +58,19 @@ class SystemLists {
         return equipment?.call('rotator') ?? const [];
       case r'$core.antennaSwitches':
         return equipment?.call('antennaSwitch') ?? const [];
+      // The radio a logging set works, by its set as `readRadio` takes it (`A`, and `B` under
+      // SO2R), then each of the station's by id: a pane that follows what the operator logs on,
+      // or one that stays on a radio. Outside SO2R set B has no radio of its own to name.
+      case r'$core.radioChoices':
+        final names = t.settings.systemLists;
+        return [
+          if (so2r?.call() ?? false) ...[
+            {'label': names.radioForPosition(position: 'A'), 'value': 'A'},
+            {'label': names.radioForPosition(position: 'B'), 'value': 'B'},
+          ] else
+            {'label': names.currentRadio, 'value': 'A'},
+          ...?equipment?.call('radio'),
+        ];
       default:
         return null;
     }
