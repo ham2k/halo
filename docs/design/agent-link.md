@@ -23,6 +23,37 @@ agent app ──stdio──▶ halo-mcp ──TCP 127.0.0.1──▶ app (AgentL
   other extension: the app invokes it by that key, and only for a bundle
   shipped in the app's assets.
 
+## The command
+
+Each desktop build carries `halo-mcp` with it, and Connected Apps, in
+Settings › Integrations, gives the command for this install: on its own, as
+a Claude Code `claude mcp add` line, and as the `mcpServers` entry most
+agent apps read, each copied with a tap. It shows while the experiment is
+on, whether or not an app has been allowed yet: the operator needs the
+command before any app can ask.
+
+| Build | Command |
+| --- | --- |
+| macOS | `halo-mcp-arm64` or `halo-mcp-x64` in `Contents/MacOS`, the one for the Mac it runs on: a Dart executable cannot be made universal |
+| Windows | `halo-mcp.exe` beside the app's executable, installed or portable |
+| Linux tarball | `halo-mcp` beside the app's executable |
+| Linux AppImage | the AppImage itself, as `<AppImage> mcp`: inside it the command has a path only while it runs |
+| Development | `dart run <checkout>/packages/halo_mcp/bin/halo_mcp.dart` |
+
+Every edition but Regular adds `--edition <name>` and lists under a server
+name of its own (`ham2k-logger`, `ham2k-logger-next`, `ham2k-logger-dev`),
+so one agent app can be set up for two installs. On macOS the command runs
+outside the app's sandbox, so its tokens live in the operator's own
+Application Support rather than a container; a Mac app running from its
+disk image, or from the random folder macOS moves an app opened where it
+was downloaded, offers no command, and asks to be moved to Applications
+first, since that path is gone once it quits.
+
+The command changes only with a release: a code push replaces the app's
+Dart and nothing beside it. A change to the hello's version therefore ships
+in a release, never a code push, or the installed command stops matching
+the app it runs beside.
+
 ## The link
 
 Loopback TCP, never another interface: `127.0.0.1` on one port per

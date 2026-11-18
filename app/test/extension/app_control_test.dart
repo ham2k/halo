@@ -17,6 +17,7 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/agent_link/agent_link_command.dart';
 import 'package:ham2k_logger/services/agent_link/agent_link_model.dart';
 import 'package:ham2k_logger/services/agent_link/agent_link_service.dart';
 import 'package:ham2k_logger/services/extensions/app_control_host_calls.dart';
@@ -375,6 +376,7 @@ void main() {
       link: () => link,
       wanted: () => true,
       changes: settings,
+      command: () => null,
     );
 
     expect((await writeSettingForExtension(services, callerKey: 'mcp', key: 'agentApp:g1', value: 'change')).reason, 'invalid');
@@ -399,7 +401,7 @@ void main() {
     final link = AgentLinkService(store: store, endpoint: _NoEndpoint(), wanted: () => false, port: 0, now: () => 1);
     addTearDown(link.closeForExit);
     final integrations = IntegrationsSettingsGroup(settings)
-      ..connectedApps = ConnectedAppsSettingsGroup(link: () => link, wanted: () => true, changes: settings);
+      ..connectedApps = ConnectedAppsSettingsGroup(link: () => link, wanted: () => true, changes: settings, command: () => null);
 
     final keys = (await integrations.buildElements()).map((e) => e['key']);
     expect(keys, containsAllInOrder(['connectedApps', 'agentApp:g1']));
@@ -423,14 +425,20 @@ void main() {
     expect(settings.linkSenderDecisions['android-app://com.example.sender']?.allow, isFalse);
   });
 
-  // An operator who never allowed an agent app has nothing to manage there,
-  // and the dialog that allows one comes to them wherever they are.
-  test('Connected Apps shows only once an agent app has been allowed', () async {
+  // The setup rows are how an operator learns what to paste into an agent
+  // app, so they cannot wait for an app to be allowed: none would ever be.
+  test('Connected Apps says how to set an agent app up before any is allowed, and lists the allowed ones', () async {
     final store = _GrantStore({});
     final link = AgentLinkService(store: store, endpoint: _NoEndpoint(), wanted: () => false, port: 0, now: () => 1);
     addTearDown(link.closeForExit);
-    final group = ConnectedAppsSettingsGroup(link: () => link, wanted: () => true, changes: ChangeNotifier());
-    expect(await group.buildElements(), isEmpty);
+    const command = AgentLinkCommand(command: '/Applications/Ham2K Logger.app/Contents/MacOS/halo-mcp', args: [], serverName: 'ham2k-logger', windows: false);
+    final group = ConnectedAppsSettingsGroup(link: () => link, wanted: () => true, changes: ChangeNotifier(), command: () => command);
+    final rows = await group.buildElements();
+    expect(rows.map((e) => e['key']), containsAll(['agentSetup:command', 'agentSetup:claudeCode', 'agentSetup:json']));
+    expect(rows.firstWhere((e) => e['key'] == 'agentSetup:command')['description'], "'/Applications/Ham2K Logger.app/Contents/MacOS/halo-mcp'");
+
+    final bare = ConnectedAppsSettingsGroup(link: () => link, wanted: () => true, changes: ChangeNotifier(), command: () => null);
+    expect((await bare.buildElements()).map((e) => e['text']), contains(contains('does not include the halo-mcp command')));
 
     await store.write({
       'g1': AgentGrant(
@@ -465,8 +473,8 @@ void main() {
       for (var i = 0; i < 100 && link.failure == null; i++) {
         await Future<void>.delayed(const Duration(milliseconds: 10));
       }
-      final group = ConnectedAppsSettingsGroup(link: () => link, wanted: () => true, changes: ChangeNotifier());
-      expect((await group.buildElements()).single['text'], contains(says));
+      final group = ConnectedAppsSettingsGroup(link: () => link, wanted: () => true, changes: ChangeNotifier(), command: () => null);
+      expect((await group.buildElements()).first['text'], contains(says));
     });
   }
 

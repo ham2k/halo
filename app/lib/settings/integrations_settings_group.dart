@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The Integrations category: how other apps on this device reach this one.
-// Connected Apps lists the agent apps the operator allowed, when the agent
-// link is wired in (connected_apps_settings_group.dart). Links from Other
+// Connected Apps says how to set an agent app up and lists the ones the
+// operator allowed, when the agent link is wired in
+// (connected_apps_settings_group.dart). Links from Other
 // Apps lists every sender whose `/vfo`, `/qso` and `/operation` links the
 // operator allowed or denied for good (views/deep_link_approval.dart):
 // either answer can be changed, or removed so the links ask again.
@@ -12,7 +13,7 @@
 // (settings_command.dart), since an extension could otherwise allow a link
 // sender or an agent app for itself.
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
 import '../services/settings_service.dart';
@@ -60,8 +61,8 @@ class IntegrationsSettingsGroup extends SettingsGroup {
   String _label(String id, String label) => id == unnamedLinkSender ? t.settings.linkSenders.unknownSender : label;
 
   /// Each section shows only with something in it, and the category only
-  /// with a section: an agent app appears once allowed, a link sender once
-  /// the operator answers its link with "Don’t ask again".
+  /// with a section: Connected Apps while the agent link is wanted, a link
+  /// sender once the operator answers its link with "Don’t ask again".
   @override
   Future<List<Map<String, dynamic>>> buildElements() async {
     final connected = await _connectedApps?.buildElements() ?? const [];
@@ -107,6 +108,11 @@ class IntegrationsSettingsGroup extends SettingsGroup {
   static const _allow = 'allow';
   static const _deny = 'deny';
   static const _remove = 'remove';
+
+  @override
+  Future<void> openAction(BuildContext context, String actionKey) async {
+    if (actionKey.startsWith(ConnectedAppsSettingsGroup.setupPrefix)) await _connectedApps?.openAction(context, actionKey);
+  }
 
   @override
   Future<void> commit(String fieldKey, dynamic value) async {

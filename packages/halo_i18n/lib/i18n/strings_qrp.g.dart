@@ -2673,7 +2673,14 @@ class _Translations$settings$assistants$qrp extends Translations$settings$assist
 	@override String get on => 'watching while an operation is open';
 	@override String get off => 'off';
 	@override String get connectedApps => 'connected apps';
-	@override String get connectedAppsHint => 'agent apps on this computer, such as claude or gemini, can connect to ham2k logger using the halo-mcp command with your approval.';
+	@override String get connectedAppsHint => 'agent apps on this computer, such as claude or gemini, can connect to ham2k logger through the halo-mcp command, with your approval.';
+	@override String get setupCommand => 'the halo-mcp command';
+	@override String get setupClaudeCode => 'add to claude code';
+	@override String get setupOtherApps => 'add to another agent app';
+	@override String get setupOtherAppsDescription => 'copies the mcpservers entry that claude desktop, cursor, gemini cli and others read';
+	@override String get setupCopied => 'copied to the clipboard';
+	@override String get setupNoCommand => 'this build of ham2k logger does not include the halo-mcp command.';
+	@override String get setupMoveApp => 'ham2k logger is running from a temporary location. move it to your applications folder and open it from there to set up an agent app.';
 	@override String connectedAppsPortInUse({required Object port}) => 'another program holds port ${port}, or the system reserves it, so agent apps cannot connect.';
 	@override String connectedAppsCannotListen({required Object port}) => 'ham2k logger could not listen on port ${port}, so agent apps cannot connect. it keeps trying.';
 	@override String get appWatch => 'watch only';
@@ -7045,7 +7052,14 @@ extension on TranslationsQrp {
 			'settings.assistants.on' => 'watching while an operation is open',
 			'settings.assistants.off' => 'off',
 			'settings.assistants.connectedApps' => 'connected apps',
-			'settings.assistants.connectedAppsHint' => 'agent apps on this computer, such as claude or gemini, can connect to ham2k logger using the halo-mcp command with your approval.',
+			'settings.assistants.connectedAppsHint' => 'agent apps on this computer, such as claude or gemini, can connect to ham2k logger through the halo-mcp command, with your approval.',
+			'settings.assistants.setupCommand' => 'the halo-mcp command',
+			'settings.assistants.setupClaudeCode' => 'add to claude code',
+			'settings.assistants.setupOtherApps' => 'add to another agent app',
+			'settings.assistants.setupOtherAppsDescription' => 'copies the mcpservers entry that claude desktop, cursor, gemini cli and others read',
+			'settings.assistants.setupCopied' => 'copied to the clipboard',
+			'settings.assistants.setupNoCommand' => 'this build of ham2k logger does not include the halo-mcp command.',
+			'settings.assistants.setupMoveApp' => 'ham2k logger is running from a temporary location. move it to your applications folder and open it from there to set up an agent app.',
 			'settings.assistants.connectedAppsPortInUse' => ({required Object port}) => 'another program holds port ${port}, or the system reserves it, so agent apps cannot connect.',
 			'settings.assistants.connectedAppsCannotListen' => ({required Object port}) => 'ham2k logger could not listen on port ${port}, so agent apps cannot connect. it keeps trying.',
 			'settings.assistants.appWatch' => 'watch only',
@@ -7413,6 +7427,8 @@ extension on TranslationsQrp {
 			'settings.station.sdrIfHzDescription' => 'for an if output only: the frequency the radio\'s dial sits at on its if, such as 68330000 on an ft-817.',
 			'settings.station.sdrIfInverted' => 'if is inverted',
 			'settings.station.sdrGainDb' => 'gain (db)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.sdrGainDbDescription' => 'leave blank for the receiver\'s automatic gain.',
 			'settings.station.sdrOffsetHz' => 'frequency offset (hz)',
 			'settings.station.sdrOffsetHzDescription' => 'added to every frequency sent to the receiver, for an upconverter: 125000000 for a ham it up.',
@@ -7420,8 +7436,6 @@ extension on TranslationsQrp {
 			'settings.station.rtlDirectSampling' => 'direct sampling',
 			'settings.station.rtlDirectSamplingDescription' => 'for hf on an rtl-sdr v3 without an upconverter. an rtl-sdr v4 reaches hf without it.',
 			'settings.station.rtlDirectSamplingOff' => 'off',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rtlDirectSamplingI' => 'i branch',
 			'settings.station.rtlDirectSamplingQ' => 'q branch',
 			'settings.station.rtlTcpNotAServer' => 'this is not an rtl_tcp server',
@@ -7927,6 +7941,8 @@ extension on TranslationsQrp {
 			'settings.station.buddihexFault' => 'the rotator\'s controller reports a fault with its compass.',
 			'settings.station.buddihexTroubleshooting' => 'the buddihex rotator\'s controller answers over wifi, on udp port 4210:\n\n- **on its own wifi network**, the one it makes until it is set up (named esp- and six letters and digits), its address is 192.168.4.1. join that network on this device first.\n- **on your wifi**, once you have entered it on the controller\'s web page, use the address your router gave it: its list of devices names the controller esp- and the same six letters and digits.\n- **calibrate its heading after every power-up**: point the antenna at true north, then press calibrate north on the controller\'s web page. it forgets the calibration when it is switched off, and reports the compass\'s magnetic heading until then.\n- **on a mac, iphone or ipad**, ham2k logger needs local network access (settings → privacy & security → local network).',
 			'settings.station.rotctldRefused' => ({required Object code}) => 'rotctld refused the command (hamlib error ${code}).',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotctldReadFailed' => ({required Object code}) => 'rotctld could not read where the rotator points (hamlib error ${code}).',
 			'settings.station.rotctldPastLimits' => ({required Object code}) => 'rotctld refused that heading as past the rotator\'s limits (hamlib error ${code}). check the limits rotctld was started with.',
 			'settings.station.rotctldTimedOut' => ({required Object code}) => 'rotctld got no answer from the rotator (hamlib error ${code}). check the rotator\'s connection to the computer running rotctld.',
@@ -7934,8 +7950,6 @@ extension on TranslationsQrp {
 			'settings.station.rotctldTroubleshooting' => 'this connects to a **rotctld daemon you run yourself**, not to the rotator directly — hamlib\'s backend talks to the controller and supports most of them.\n\n- **the daemon must already be running**, e.g. `rotctld -m 601 -r /dev/ttyUSB0` for a gs-232a. find your controller\'s model number with `rotctl -l`.\n- **from another machine**, allow port 4533 through that machine\'s firewall. rotctld listens on every address unless started with `-T`.\n- **port** is 4533 unless you started the daemon with `-t`.\n- **pstrotator** answers too, with **gpredict** selected as its tracker and tracking on.\n- turns go only as far as the limits rotctld enforces, which it reports itself — set them with `-C min_az=…,max_az=…` when starting it. the offsets here are for a controller whose zero is not true north.',
 			'settings.station.connectionRouted' => ({required Object port, required Object antenna}) => '${port}: ${antenna}',
 			'settings.station.connectionDevices' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} device', other: '${count} devices', ), 
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.gpsFix' => ({required Object grid, required Object satellites}) => '${grid} · ${satellites}',
 			'settings.station.gpsSearching' => 'searching for satellites',
 			'settings.station.gpsSearchingWith' => ({required Object satellites}) => 'searching · ${satellites}',
@@ -8441,6 +8455,8 @@ extension on TranslationsQrp {
 			'operationLocationScreen.county' => 'county (optional)',
 			'versionLabel.version' => ({required Object version}) => 'version ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'patch ${patch}',
+			_ => null,
+		} ?? switch (path) {
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'no notices yet',
 			'notices.webStorageInMemory' => 'this browser could not provide persistent storage — the log lives in memory only and will be lost when this tab closes. use a current chrome, firefox, safari or edge.',
@@ -8448,8 +8464,6 @@ extension on TranslationsQrp {
 			'notices.logFromNewerBuildTitle' => 'this log needs a newer version',
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'your log was written by a newer version of halo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. install the newer version again — or, if you meant to run this build, point it at a different data folder. the log is in ${location}',
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'your log was written by a newer version of halo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. open this log with that newer version instead.',
-			_ => null,
-		} ?? switch (path) {
 			'notices.preferencesRestoredTitle' => 'settings restored from a backup',
 			'notices.preferencesRestored' => 'the settings file could not be read, so halo restored the last good copy of it. anything you changed in your previous session may need setting again. the unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'settings reset',

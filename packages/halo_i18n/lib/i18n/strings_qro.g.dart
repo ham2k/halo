@@ -2673,7 +2673,14 @@ class _Translations$settings$assistants$qro extends Translations$settings$assist
 	@override String get on => 'WATCHING WHILE AN OPERATION IS OPEN';
 	@override String get off => 'OFF';
 	@override String get connectedApps => 'CONNECTED APPS';
-	@override String get connectedAppsHint => 'AGENT APPS ON THIS COMPUTER, SUCH AS CLAUDE OR GEMINI, CAN CONNECT TO HAM2K LOGGER USING THE HALO-MCP COMMAND WITH YOUR APPROVAL.';
+	@override String get connectedAppsHint => 'AGENT APPS ON THIS COMPUTER, SUCH AS CLAUDE OR GEMINI, CAN CONNECT TO HAM2K LOGGER THROUGH THE HALO-MCP COMMAND, WITH YOUR APPROVAL.';
+	@override String get setupCommand => 'THE HALO-MCP COMMAND';
+	@override String get setupClaudeCode => 'ADD TO CLAUDE CODE';
+	@override String get setupOtherApps => 'ADD TO ANOTHER AGENT APP';
+	@override String get setupOtherAppsDescription => 'COPIES THE MCPSERVERS ENTRY THAT CLAUDE DESKTOP, CURSOR, GEMINI CLI AND OTHERS READ';
+	@override String get setupCopied => 'COPIED TO THE CLIPBOARD';
+	@override String get setupNoCommand => 'THIS BUILD OF HAM2K LOGGER DOES NOT INCLUDE THE HALO-MCP COMMAND.';
+	@override String get setupMoveApp => 'HAM2K LOGGER IS RUNNING FROM A TEMPORARY LOCATION. MOVE IT TO YOUR APPLICATIONS FOLDER AND OPEN IT FROM THERE TO SET UP AN AGENT APP.';
 	@override String connectedAppsPortInUse({required Object port}) => 'ANOTHER PROGRAM HOLDS PORT ${port}, OR THE SYSTEM RESERVES IT, SO AGENT APPS CANNOT CONNECT.';
 	@override String connectedAppsCannotListen({required Object port}) => 'HAM2K LOGGER COULD NOT LISTEN ON PORT ${port}, SO AGENT APPS CANNOT CONNECT. IT KEEPS TRYING.';
 	@override String get appWatch => 'WATCH ONLY';
@@ -7045,7 +7052,14 @@ extension on TranslationsQro {
 			'settings.assistants.on' => 'WATCHING WHILE AN OPERATION IS OPEN',
 			'settings.assistants.off' => 'OFF',
 			'settings.assistants.connectedApps' => 'CONNECTED APPS',
-			'settings.assistants.connectedAppsHint' => 'AGENT APPS ON THIS COMPUTER, SUCH AS CLAUDE OR GEMINI, CAN CONNECT TO HAM2K LOGGER USING THE HALO-MCP COMMAND WITH YOUR APPROVAL.',
+			'settings.assistants.connectedAppsHint' => 'AGENT APPS ON THIS COMPUTER, SUCH AS CLAUDE OR GEMINI, CAN CONNECT TO HAM2K LOGGER THROUGH THE HALO-MCP COMMAND, WITH YOUR APPROVAL.',
+			'settings.assistants.setupCommand' => 'THE HALO-MCP COMMAND',
+			'settings.assistants.setupClaudeCode' => 'ADD TO CLAUDE CODE',
+			'settings.assistants.setupOtherApps' => 'ADD TO ANOTHER AGENT APP',
+			'settings.assistants.setupOtherAppsDescription' => 'COPIES THE MCPSERVERS ENTRY THAT CLAUDE DESKTOP, CURSOR, GEMINI CLI AND OTHERS READ',
+			'settings.assistants.setupCopied' => 'COPIED TO THE CLIPBOARD',
+			'settings.assistants.setupNoCommand' => 'THIS BUILD OF HAM2K LOGGER DOES NOT INCLUDE THE HALO-MCP COMMAND.',
+			'settings.assistants.setupMoveApp' => 'HAM2K LOGGER IS RUNNING FROM A TEMPORARY LOCATION. MOVE IT TO YOUR APPLICATIONS FOLDER AND OPEN IT FROM THERE TO SET UP AN AGENT APP.',
 			'settings.assistants.connectedAppsPortInUse' => ({required Object port}) => 'ANOTHER PROGRAM HOLDS PORT ${port}, OR THE SYSTEM RESERVES IT, SO AGENT APPS CANNOT CONNECT.',
 			'settings.assistants.connectedAppsCannotListen' => ({required Object port}) => 'HAM2K LOGGER COULD NOT LISTEN ON PORT ${port}, SO AGENT APPS CANNOT CONNECT. IT KEEPS TRYING.',
 			'settings.assistants.appWatch' => 'WATCH ONLY',
@@ -7413,6 +7427,8 @@ extension on TranslationsQro {
 			'settings.station.sdrIfHzDescription' => 'FOR AN IF OUTPUT ONLY: THE FREQUENCY THE RADIO\'S DIAL SITS AT ON ITS IF, SUCH AS 68330000 ON AN FT-817.',
 			'settings.station.sdrIfInverted' => 'IF IS INVERTED',
 			'settings.station.sdrGainDb' => 'GAIN (DB)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.sdrGainDbDescription' => 'LEAVE BLANK FOR THE RECEIVER\'S AUTOMATIC GAIN.',
 			'settings.station.sdrOffsetHz' => 'FREQUENCY OFFSET (HZ)',
 			'settings.station.sdrOffsetHzDescription' => 'ADDED TO EVERY FREQUENCY SENT TO THE RECEIVER, FOR AN UPCONVERTER: 125000000 FOR A HAM IT UP.',
@@ -7420,8 +7436,6 @@ extension on TranslationsQro {
 			'settings.station.rtlDirectSampling' => 'DIRECT SAMPLING',
 			'settings.station.rtlDirectSamplingDescription' => 'FOR HF ON AN RTL-SDR V3 WITHOUT AN UPCONVERTER. AN RTL-SDR V4 REACHES HF WITHOUT IT.',
 			'settings.station.rtlDirectSamplingOff' => 'OFF',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rtlDirectSamplingI' => 'I BRANCH',
 			'settings.station.rtlDirectSamplingQ' => 'Q BRANCH',
 			'settings.station.rtlTcpNotAServer' => 'THIS IS NOT AN RTL_TCP SERVER',
@@ -7927,6 +7941,8 @@ extension on TranslationsQro {
 			'settings.station.buddihexFault' => 'THE ROTATOR\'S CONTROLLER REPORTS A FAULT WITH ITS COMPASS.',
 			'settings.station.buddihexTroubleshooting' => 'THE BUDDIHEX ROTATOR\'S CONTROLLER ANSWERS OVER WIFI, ON UDP PORT 4210:\n\n- **ON ITS OWN WIFI NETWORK**, THE ONE IT MAKES UNTIL IT IS SET UP (NAMED ESP- AND SIX LETTERS AND DIGITS), ITS ADDRESS IS 192.168.4.1. JOIN THAT NETWORK ON THIS DEVICE FIRST.\n- **ON YOUR WIFI**, ONCE YOU HAVE ENTERED IT ON THE CONTROLLER\'S WEB PAGE, USE THE ADDRESS YOUR ROUTER GAVE IT: ITS LIST OF DEVICES NAMES THE CONTROLLER ESP- AND THE SAME SIX LETTERS AND DIGITS.\n- **CALIBRATE ITS HEADING AFTER EVERY POWER-UP**: POINT THE ANTENNA AT TRUE NORTH, THEN PRESS CALIBRATE NORTH ON THE CONTROLLER\'S WEB PAGE. IT FORGETS THE CALIBRATION WHEN IT IS SWITCHED OFF, AND REPORTS THE COMPASS\'S MAGNETIC HEADING UNTIL THEN.\n- **ON A MAC, IPHONE OR IPAD**, HAM2K LOGGER NEEDS LOCAL NETWORK ACCESS (SETTINGS → PRIVACY & SECURITY → LOCAL NETWORK).',
 			'settings.station.rotctldRefused' => ({required Object code}) => 'ROTCTLD REFUSED THE COMMAND (HAMLIB ERROR ${code}).',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotctldReadFailed' => ({required Object code}) => 'ROTCTLD COULD NOT READ WHERE THE ROTATOR POINTS (HAMLIB ERROR ${code}).',
 			'settings.station.rotctldPastLimits' => ({required Object code}) => 'ROTCTLD REFUSED THAT HEADING AS PAST THE ROTATOR\'S LIMITS (HAMLIB ERROR ${code}). CHECK THE LIMITS ROTCTLD WAS STARTED WITH.',
 			'settings.station.rotctldTimedOut' => ({required Object code}) => 'ROTCTLD GOT NO ANSWER FROM THE ROTATOR (HAMLIB ERROR ${code}). CHECK THE ROTATOR\'S CONNECTION TO THE COMPUTER RUNNING ROTCTLD.',
@@ -7934,8 +7950,6 @@ extension on TranslationsQro {
 			'settings.station.rotctldTroubleshooting' => 'THIS CONNECTS TO A **ROTCTLD DAEMON YOU RUN YOURSELF**, NOT TO THE ROTATOR DIRECTLY — HAMLIB\'S BACKEND TALKS TO THE CONTROLLER AND SUPPORTS MOST OF THEM.\n\n- **THE DAEMON MUST ALREADY BE RUNNING**, E.G. `rotctld -m 601 -r /dev/ttyUSB0` FOR A GS-232A. FIND YOUR CONTROLLER\'S MODEL NUMBER WITH `rotctl -l`.\n- **FROM ANOTHER MACHINE**, ALLOW PORT 4533 THROUGH THAT MACHINE\'S FIREWALL. ROTCTLD LISTENS ON EVERY ADDRESS UNLESS STARTED WITH `-T`.\n- **PORT** IS 4533 UNLESS YOU STARTED THE DAEMON WITH `-t`.\n- **PSTROTATOR** ANSWERS TOO, WITH **GPREDICT** SELECTED AS ITS TRACKER AND TRACKING ON.\n- TURNS GO ONLY AS FAR AS THE LIMITS ROTCTLD ENFORCES, WHICH IT REPORTS ITSELF — SET THEM WITH `-C min_az=…,max_az=…` WHEN STARTING IT. THE OFFSETS HERE ARE FOR A CONTROLLER WHOSE ZERO IS NOT TRUE NORTH.',
 			'settings.station.connectionRouted' => ({required Object port, required Object antenna}) => '${port}: ${antenna}',
 			'settings.station.connectionDevices' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} DEVICE', other: '${count} DEVICES', ), 
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.gpsFix' => ({required Object grid, required Object satellites}) => '${grid} · ${satellites}',
 			'settings.station.gpsSearching' => 'SEARCHING FOR SATELLITES',
 			'settings.station.gpsSearchingWith' => ({required Object satellites}) => 'SEARCHING · ${satellites}',
@@ -8441,6 +8455,8 @@ extension on TranslationsQro {
 			'operationLocationScreen.county' => 'COUNTY (OPTIONAL)',
 			'versionLabel.version' => ({required Object version}) => 'VERSION ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'PATCH ${patch}',
+			_ => null,
+		} ?? switch (path) {
 			'versionLabel.build' => ({required Object build}) => 'BUILD ${build}',
 			'notices.emptyHistory' => 'NO NOTICES YET',
 			'notices.webStorageInMemory' => 'THIS BROWSER COULD NOT PROVIDE PERSISTENT STORAGE — THE LOG LIVES IN MEMORY ONLY AND WILL BE LOST WHEN THIS TAB CLOSES. USE A CURRENT CHROME, FIREFOX, SAFARI OR EDGE.',
@@ -8448,8 +8464,6 @@ extension on TranslationsQro {
 			'notices.logFromNewerBuildTitle' => 'THIS LOG NEEDS A NEWER VERSION',
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'YOUR LOG WAS WRITTEN BY A NEWER VERSION OF HALO (STORAGE VERSION ${storage}; THIS ONE UNDERSTANDS ${understood}), SO IT CANNOT BE OPENED, AND NEW CONTACTS WILL NOT BE SAVED. INSTALL THE NEWER VERSION AGAIN — OR, IF YOU MEANT TO RUN THIS BUILD, POINT IT AT A DIFFERENT DATA FOLDER. THE LOG IS IN ${location}',
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'YOUR LOG WAS WRITTEN BY A NEWER VERSION OF HALO (STORAGE VERSION ${storage}; THIS ONE UNDERSTANDS ${understood}), SO IT CANNOT BE OPENED, AND NEW CONTACTS WILL NOT BE SAVED. OPEN THIS LOG WITH THAT NEWER VERSION INSTEAD.',
-			_ => null,
-		} ?? switch (path) {
 			'notices.preferencesRestoredTitle' => 'SETTINGS RESTORED FROM A BACKUP',
 			'notices.preferencesRestored' => 'THE SETTINGS FILE COULD NOT BE READ, SO HALO RESTORED THE LAST GOOD COPY OF IT. ANYTHING YOU CHANGED IN YOUR PREVIOUS SESSION MAY NEED SETTING AGAIN. THE UNREADABLE FILE IS KEPT ALONGSIDE IT, NAMED SHARED_PREFERENCES.CORRUPT-….JSON.',
 			'notices.preferencesResetTitle' => 'SETTINGS RESET',

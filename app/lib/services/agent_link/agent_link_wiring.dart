@@ -6,6 +6,8 @@
 // Settings. Kept out of HaLoServices itself, which holds the app's every
 // service and has no room left to grow.
 
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart' show realNowMillis;
 
@@ -14,6 +16,7 @@ import '../../config/version.dart' show kEdition;
 import '../../settings/connected_apps_settings_group.dart';
 import '../../settings/integrations_settings_group.dart';
 import '../halo_services.dart';
+import 'agent_link_command.dart';
 import 'agent_link_model.dart';
 import 'agent_link_prompt.dart';
 import 'agent_link_service.dart';
@@ -21,9 +24,10 @@ import 'agent_link_service.dart';
 final _links = Expando<AgentLinkService>('agentLink');
 
 extension AgentLinkServices on HaLoServices {
-  /// Whether the link is wanted: the experiment on, in a build that can
-  /// listen.
-  bool get agentLinkWanted => !kIsWeb && settings.experimentEnabled(kAgentLinkExperiment);
+  /// Whether the link is wanted: the experiment on, in a desktop build
+  /// (docs/design/agent-link.md). A phone runs no halo-mcp to connect, so
+  /// there it would only list a setup with nothing to set up.
+  bool get agentLinkWanted => !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux) && settings.experimentEnabled(kAgentLinkExperiment);
 
   /// The link, built on first use.
   AgentLinkService get agentLink => _links[this] ??= closedOnExit<AgentLinkService>(
@@ -47,10 +51,23 @@ extension AgentLinkServices on HaLoServices {
 /// then stops watching; the link follows the setting from there. Nothing
 /// listens for an operator who never turns it on.
 void startAgentLinkWhenWanted(HaLoServices services) {
+  // The install's command cannot change while it runs: worked out once, on
+  // first showing, rather than probing the disk on every settings rebuild.
+  late final command = kIsWeb
+      ? null
+      : agentLinkCommand(
+          edition: kEdition,
+          executable: Platform.resolvedExecutable,
+          environment: Platform.environment,
+          windows: Platform.isWindows,
+          arch: dartArch(Platform.version),
+          exists: (path) => File(path).existsSync(),
+        );
   services.settingsRegistry.groups.whereType<IntegrationsSettingsGroup>().single.connectedApps = ConnectedAppsSettingsGroup(
     link: () => services.agentLink,
     wanted: () => services.agentLinkWanted,
     changes: services.settings,
+    command: () => command,
   );
   if (kIsWeb) return;
   void check() {

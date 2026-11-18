@@ -5780,8 +5780,29 @@ class Translations$settings$assistants$en {
 	/// en: 'Connected Apps'
 	String get connectedApps => 'Connected Apps';
 
-	/// en: 'Agent apps on this computer, such as Claude or Gemini, can connect to Ham2K Logger using the halo-mcp command with your approval.'
-	String get connectedAppsHint => 'Agent apps on this computer, such as Claude or Gemini, can connect to Ham2K Logger using the halo-mcp command with your approval.';
+	/// en: 'Agent apps on this computer, such as Claude or Gemini, can connect to Ham2K Logger through the halo-mcp command, with your approval.'
+	String get connectedAppsHint => 'Agent apps on this computer, such as Claude or Gemini, can connect to Ham2K Logger through the halo-mcp command, with your approval.';
+
+	/// en: 'The halo-mcp command'
+	String get setupCommand => 'The halo-mcp command';
+
+	/// en: 'Add to Claude Code'
+	String get setupClaudeCode => 'Add to Claude Code';
+
+	/// en: 'Add to another agent app'
+	String get setupOtherApps => 'Add to another agent app';
+
+	/// en: 'Copies the mcpServers entry that Claude Desktop, Cursor, Gemini CLI and others read'
+	String get setupOtherAppsDescription => 'Copies the mcpServers entry that Claude Desktop, Cursor, Gemini CLI and others read';
+
+	/// en: 'Copied to the clipboard'
+	String get setupCopied => 'Copied to the clipboard';
+
+	/// en: 'This build of Ham2K Logger does not include the halo-mcp command.'
+	String get setupNoCommand => 'This build of Ham2K Logger does not include the halo-mcp command.';
+
+	/// en: 'Ham2K Logger is running from a temporary location. Move it to your Applications folder and open it from there to set up an agent app.'
+	String get setupMoveApp => 'Ham2K Logger is running from a temporary location. Move it to your Applications folder and open it from there to set up an agent app.';
 
 	/// en: 'Another program holds port ${port}, or the system reserves it, so agent apps cannot connect.'
 	String connectedAppsPortInUse({required Object port}) => 'Another program holds port ${port}, or the system reserves it, so agent apps cannot connect.';
@@ -13610,7 +13631,14 @@ extension on Translations {
 			'settings.assistants.on' => 'Watching while an operation is open',
 			'settings.assistants.off' => 'Off',
 			'settings.assistants.connectedApps' => 'Connected Apps',
-			'settings.assistants.connectedAppsHint' => 'Agent apps on this computer, such as Claude or Gemini, can connect to Ham2K Logger using the halo-mcp command with your approval.',
+			'settings.assistants.connectedAppsHint' => 'Agent apps on this computer, such as Claude or Gemini, can connect to Ham2K Logger through the halo-mcp command, with your approval.',
+			'settings.assistants.setupCommand' => 'The halo-mcp command',
+			'settings.assistants.setupClaudeCode' => 'Add to Claude Code',
+			'settings.assistants.setupOtherApps' => 'Add to another agent app',
+			'settings.assistants.setupOtherAppsDescription' => 'Copies the mcpServers entry that Claude Desktop, Cursor, Gemini CLI and others read',
+			'settings.assistants.setupCopied' => 'Copied to the clipboard',
+			'settings.assistants.setupNoCommand' => 'This build of Ham2K Logger does not include the halo-mcp command.',
+			'settings.assistants.setupMoveApp' => 'Ham2K Logger is running from a temporary location. Move it to your Applications folder and open it from there to set up an agent app.',
 			'settings.assistants.connectedAppsPortInUse' => ({required Object port}) => 'Another program holds port ${port}, or the system reserves it, so agent apps cannot connect.',
 			'settings.assistants.connectedAppsCannotListen' => ({required Object port}) => 'Ham2K Logger could not listen on port ${port}, so agent apps cannot connect. It keeps trying.',
 			'settings.assistants.appWatch' => 'Watch only',
@@ -13978,6 +14006,8 @@ extension on Translations {
 			'settings.station.sdrIfHzDescription' => 'For an IF output only: the frequency the radio\'s dial sits at on its IF, such as 68330000 on an FT-817.',
 			'settings.station.sdrIfInverted' => 'IF is inverted',
 			'settings.station.sdrGainDb' => 'Gain (dB)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.sdrGainDbDescription' => 'Leave blank for the receiver\'s automatic gain.',
 			'settings.station.sdrOffsetHz' => 'Frequency offset (Hz)',
 			'settings.station.sdrOffsetHzDescription' => 'Added to every frequency sent to the receiver, for an upconverter: 125000000 for a Ham It Up.',
@@ -13985,8 +14015,6 @@ extension on Translations {
 			'settings.station.rtlDirectSampling' => 'Direct sampling',
 			'settings.station.rtlDirectSamplingDescription' => 'For HF on an RTL-SDR V3 without an upconverter. An RTL-SDR V4 reaches HF without it.',
 			'settings.station.rtlDirectSamplingOff' => 'Off',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rtlDirectSamplingI' => 'I branch',
 			'settings.station.rtlDirectSamplingQ' => 'Q branch',
 			'settings.station.rtlTcpNotAServer' => 'This is not an rtl_tcp server',
@@ -14492,6 +14520,8 @@ extension on Translations {
 			'settings.station.buddihexFault' => 'The rotator\'s controller reports a fault with its compass.',
 			'settings.station.buddihexTroubleshooting' => 'The BuddiHex rotator\'s controller answers over WiFi, on UDP port 4210:\n\n- **On its own WiFi network**, the one it makes until it is set up (named ESP- and six letters and digits), its address is 192.168.4.1. Join that network on this device first.\n- **On your WiFi**, once you have entered it on the controller\'s web page, use the address your router gave it: its list of devices names the controller ESP- and the same six letters and digits.\n- **Calibrate its heading after every power-up**: point the antenna at true north, then press Calibrate North on the controller\'s web page. It forgets the calibration when it is switched off, and reports the compass\'s magnetic heading until then.\n- **On a Mac, iPhone or iPad**, Ham2K Logger needs Local Network access (Settings → Privacy & Security → Local Network).',
 			'settings.station.rotctldRefused' => ({required Object code}) => 'rotctld refused the command (Hamlib error ${code}).',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotctldReadFailed' => ({required Object code}) => 'rotctld could not read where the rotator points (Hamlib error ${code}).',
 			'settings.station.rotctldPastLimits' => ({required Object code}) => 'rotctld refused that heading as past the rotator\'s limits (Hamlib error ${code}). Check the limits rotctld was started with.',
 			'settings.station.rotctldTimedOut' => ({required Object code}) => 'rotctld got no answer from the rotator (Hamlib error ${code}). Check the rotator\'s connection to the computer running rotctld.',
@@ -14499,8 +14529,6 @@ extension on Translations {
 			'settings.station.rotctldTroubleshooting' => 'This connects to a **rotctld daemon you run yourself**, not to the rotator directly — Hamlib\'s backend talks to the controller and supports most of them.\n\n- **The daemon must already be running**, e.g. `rotctld -m 601 -r /dev/ttyUSB0` for a GS-232A. Find your controller\'s model number with `rotctl -l`.\n- **From another machine**, allow port 4533 through that machine\'s firewall. rotctld listens on every address unless started with `-T`.\n- **Port** is 4533 unless you started the daemon with `-t`.\n- **PstRotator** answers too, with **Gpredict** selected as its tracker and Tracking on.\n- Turns go only as far as the limits rotctld enforces, which it reports itself — set them with `-C min_az=…,max_az=…` when starting it. The offsets here are for a controller whose zero is not true north.',
 			'settings.station.connectionRouted' => ({required Object port, required Object antenna}) => '${port}: ${antenna}',
 			'settings.station.connectionDevices' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} device', other: '${count} devices', ), 
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.gpsFix' => ({required Object grid, required Object satellites}) => '${grid} · ${satellites}',
 			'settings.station.gpsSearching' => 'Searching for satellites',
 			'settings.station.gpsSearchingWith' => ({required Object satellites}) => 'Searching · ${satellites}',
@@ -15006,6 +15034,8 @@ extension on Translations {
 			'operationLocationScreen.county' => 'County (optional)',
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'Patch ${patch}',
+			_ => null,
+		} ?? switch (path) {
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'No notices yet',
 			'notices.webStorageInMemory' => 'This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.',
@@ -15013,8 +15043,6 @@ extension on Translations {
 			'notices.logFromNewerBuildTitle' => 'This log needs a newer version',
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}',
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Open this log with that newer version instead.',
-			_ => null,
-		} ?? switch (path) {
 			'notices.preferencesRestoredTitle' => 'Settings restored from a backup',
 			'notices.preferencesRestored' => 'The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'Settings reset',
