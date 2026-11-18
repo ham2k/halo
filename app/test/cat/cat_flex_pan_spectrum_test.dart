@@ -311,4 +311,31 @@ void main() {
     spectrum.slicePan(null);
     expect(sink.problems.last, t.settings.station.spectrumNoPanadapter);
   });
+
+  // The socket coming back shapes the pan again; at the first centre a display asked, it would
+  // jump away from where the display has since moved it.
+  test("a pan of the scope's own is shaped again where a display last put it", () {
+    final own = FlexPanSpectrum(
+      send: (command, {onReply}) {
+        sent.add(command);
+        if (onReply != null) replies[command] = onReply;
+      },
+      sink: _Sink(),
+      pans: pans,
+      ownPanAt: () => 14074,
+    )..subscribe();
+    own
+      ..start()
+      ..socketReady();
+    replies['display pan create x=2048 y=400']!(0, '0x40000005,0x42000005');
+    expect(sent, contains('display pan set 0x40000005 center=14.074000'));
+    own.setSpectrum(const SpectrumRequest(centerHz: 14080000));
+    own.setSpectrum(const SpectrumRequest(centerHz: 14090000));
+    sent.clear();
+    own
+      ..socketLost()
+      ..socketReady();
+    expect(sent, contains('display pan set 0x40000005 center=14.090000'));
+    own.close();
+  });
 }

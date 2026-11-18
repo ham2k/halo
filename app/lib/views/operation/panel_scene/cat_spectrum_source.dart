@@ -64,7 +64,7 @@ class CatSpectrumSource implements SceneSpectrumSource {
   String? _radioOf(String uuid) => cat.isSdr(uuid) ? cat.linkedRadioFor(uuid) : uuid;
 
   @override
-  Stream<SpectrumFrame> frames(String uuid) => cat.spectrumFrames(uuid);
+  Stream<SpectrumFrame> frames(String uuid, Object owner) => cat.spectrumFrames(uuid, owner: owner);
 
   @override
   String? problem(String uuid) {
@@ -202,9 +202,9 @@ class CatSpectrumSource implements SceneSpectrumSource {
   bool canRecenter(String uuid) => canCommand && (cat.spectrumCapabilitiesFor(uuid)?.canRecenter ?? false);
 
   @override
-  bool recenter(String uuid, int centerHz) {
+  bool recenter(String uuid, Object owner, int centerHz) {
     if (!canRecenter(uuid)) return false;
-    return cat.setSpectrum(uuid, SpectrumRequest(centerHz: centerHz));
+    return cat.setSpectrum(uuid, SpectrumRequest(centerHz: centerHz), owner: owner);
   }
 
   /// Any panel that draws the scope, commanding the radio or not: the span

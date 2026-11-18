@@ -10,12 +10,18 @@ extension CatServiceSpectrum on CatService {
   /// starts its scope and the last one to leave stops it. The stream outlives
   /// a reconnect, so a display keeps drawing when the radio drops and comes
   /// back, and a radio that connects while one is open starts at once.
-  Stream<SpectrumFrame> spectrumFrames(String uuid) {
+  ///
+  /// [owner], the display as it names itself to [wantSpectrumWidth], gets
+  /// the sweeps of the scope run for its width: its own where the radio runs
+  /// more than one ([MultiScopeSession]), the widest otherwise. Read at each
+  /// sweep, so a display moves to a scope of its own as soon as one runs.
+  Stream<SpectrumFrame> spectrumFrames(String uuid, {Object? owner}) {
     final runtime = _runtimeFor(uuid);
-    return (runtime.spectrum ??= StreamController<SpectrumFrame>.broadcast(
+    final all = (runtime.spectrum ??= StreamController<(int, SpectrumFrame)>.broadcast(
       onListen: () => _scheduleSpectrumDemand(runtime),
       onCancel: () => _scheduleSpectrumDemand(runtime),
     )).stream;
+    return all.where((sweep) => sweep.$1 == (runtime.spectrumScopeOf[owner] ?? 0)).map((sweep) => sweep.$2);
   }
 
   /// [owner], a display drawing [uuid]'s sweeps, shows [widthHz] of them —
@@ -55,10 +61,18 @@ extension CatServiceSpectrum on CatService {
   /// radio reports them. False when no scope is running to change; a driver
   /// that throws is reported and rethrown, since "not running" would be a
   /// false answer for a scope that is.
-  bool setSpectrum(String uuid, SpectrumRequest request) {
+  ///
+  /// From [owner], a display, it changes the scope that display draws. From
+  /// no display (an extension's `setRadioSpectrum`), it changes the
+  /// session's own, whose speed and reference level every other sweep then
+  /// follows ([_followSpectrumLook]).
+  bool setSpectrum(String uuid, SpectrumRequest request, {Object? owner}) {
     final session = spectrumSessionFor(uuid);
     if (session == null) return false;
     try {
+      if (owner != null) {
+        if (_runtimes[uuid]?.spectrumScopeOf[owner] case final key?) return _runtimes[uuid]!.spectrumScopes[key]?.scope.setSpectrum(request) ?? false;
+      }
       return session.setSpectrum(request);
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:set-spectrum');
@@ -70,6 +84,7 @@ extension CatServiceSpectrum on CatService {
     SpectrumCapabilities? lastCapabilities;
     return (settings) {
       if (runtime.connection != connection) return;
+      _followSpectrumLook(runtime, settings);
       final capabilities = switch (runtime.session) {
         final SpectrumSession session => session.spectrumCapabilities,
         _ => null,
@@ -81,6 +96,28 @@ extension CatServiceSpectrum on CatService {
       lastCapabilities = capabilities;
       _setState(uuid, stateFor(uuid).copyWith(spectrum: settings));
     };
+  }
+
+  /// The speed and reference level the session's own scope reports, given
+  /// to every other sweep as it changes and to each as it opens: they are the
+  /// receiver's look, where the span and centre are each sweep's own.
+  void _followSpectrumLook(_NodeRuntime runtime, SpectrumSettings settings) {
+    final look = (settings.speed, settings.refLevelDb);
+    if (look == runtime.spectrumLook) return;
+    runtime.spectrumLook = look;
+    for (final (:scope, span: _) in runtime.spectrumScopes.values.toList()) {
+      _lookOf(runtime, scope);
+    }
+  }
+
+  void _lookOf(_NodeRuntime runtime, SpectrumScope scope) {
+    final (speed, refLevelDb) = runtime.spectrumLook ?? (null, null);
+    if (speed == null && refLevelDb == null) return;
+    try {
+      scope.setSpectrum(SpectrumRequest(speed: speed, refLevelDb: refLevelDb));
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:spectrum-scope');
+    }
   }
 
   /// Whether [uuid] is an SDR receiver rather than a radio.
@@ -244,6 +281,8 @@ extension CatServiceSpectrum on CatService {
     }
     runtime.spectrumStarted = wanted;
     runtime.spectrumSpanAsked = null;
+    _closeSpectrumScopes(runtime);
+    runtime.spectrumScopeLimit = null;
     try {
       wanted ? session.startSpectrum() : session.stopSpectrum();
     } catch (e, st) {
@@ -261,18 +300,156 @@ extension CatServiceSpectrum on CatService {
 
   /// A running scope whose span is the app's, at the narrowest span covering
   /// the widest display drawing it — asked once per change of that span, so
-  /// a radio that snaps it is not asked again on every display's coming and going.
+  /// a radio that snaps it is not asked again on every display's coming and
+  /// going. Where the radio runs more than one sweep ([MultiScopeSession]),
+  /// each narrower span shown gets one of its own, as far as the radio has
+  /// sweeps to spare; a display whose span gets none crops the narrowest
+  /// wider one.
   void _spectrumSpan(_NodeRuntime runtime, SpectrumSession session) {
     final capabilities = session.spectrumCapabilities;
-    final named = runtime.spectrumWidths.values.where((w) => w > 0);
-    if (!capabilities.autoSpan || capabilities.spansHz.isEmpty || named.isEmpty) return;
-    final widest = named.reduce((a, b) => a > b ? a : b);
-    final span = capabilities.spansHz.firstWhere((s) => s * 2 >= widest, orElse: () => capabilities.spansHz.last);
-    if (runtime.spectrumSpanAsked == span) return;
+    final named = {
+      for (final MapEntry(key: owner, value: width) in runtime.spectrumWidths.entries)
+        if (width > 0) owner: capabilities.spansHz.firstWhere((s) => s * 2 >= width, orElse: () => capabilities.spansHz.last),
+    };
+    if (!capabilities.autoSpan || capabilities.spansHz.isEmpty || named.isEmpty) {
+      _closeSpectrumScopes(runtime);
+      return;
+    }
+    final spans = named.values.toSet().toList()..sort((a, b) => b.compareTo(a));
+    final span = spans.first;
+    if (runtime.spectrumSpanAsked != span) {
+      try {
+        if (session.setSpectrum(SpectrumRequest(spanHz: span))) runtime.spectrumSpanAsked = span;
+      } catch (e, st) {
+        ErrorReportingService.report(e, st, context: 'cat:spectrum-span');
+      }
+    }
+    _spectrumScopes(runtime, session, spans.skip(1).take(runtime.spectrumScopeLimit ?? spans.length).toList());
+    // The narrowest scope at least as wide as each display's span: its own where one runs.
+    final running = [(0, span), for (final MapEntry(:key, :value) in runtime.spectrumScopes.entries) (key, value.span ?? span)]
+      ..sort((a, b) => a.$2.compareTo(b.$2));
+    runtime.spectrumScopeOf
+      ..clear()
+      ..addAll({for (final MapEntry(key: owner, value: wants) in named.entries) owner: running.firstWhere((s) => s.$2 >= wants, orElse: () => running.last).$1})
+      ..removeWhere((_, key) => key == 0);
+  }
+
+  /// One sweep beyond the session's own for each of [spans], widest first:
+  /// those already open are given new spans rather than closed and opened
+  /// again, since a zoom passes through several, and a sweep is a panadapter
+  /// on some radios.
+  void _spectrumScopes(_NodeRuntime runtime, SpectrumSession session, List<int> spans) {
+    final open = runtime.spectrumScopes.entries.toList()..sort((a, b) => (b.value.span ?? 0).compareTo(a.value.span ?? 0));
+    for (final entry in open.skip(spans.length)) {
+      runtime.spectrumScopes.remove(entry.key);
+      _closeSpectrumScope(entry.value.scope);
+    }
+    for (var i = 0; i < spans.length; i++) {
+      var key = i < open.length ? open[i].key : null;
+      if (key == null) {
+        if (session is! MultiScopeSession) return;
+        key = ++runtime.spectrumScopeKeys;
+        final sink = _SpectrumScopeSink(this, runtime, runtime.connection, key);
+        final SpectrumScope? scope;
+        try {
+          scope = session.openScope(sink);
+        } catch (e, st) {
+          ErrorReportingService.report(e, st, context: 'cat:spectrum-scope');
+          runtime.spectrumScopeLimit = runtime.spectrumScopes.length;
+          return;
+        }
+        if (scope == null) {
+          runtime.spectrumScopeLimit = runtime.spectrumScopes.length;
+          return;
+        }
+        runtime.spectrumScopes[key] = (scope: scope, span: null);
+        // Said while it was being opened, before it was one of the sweeps.
+        if (sink.opening case final message?) return _dropSpectrumScope(runtime, key, message);
+        sink.opening = null;
+        sink.opened = true;
+        _lookOf(runtime, scope);
+      }
+      final (:scope, :span) = runtime.spectrumScopes[key]!;
+      if (span == spans[i]) continue;
+      try {
+        if (scope.setSpectrum(SpectrumRequest(spanHz: spans[i]))) runtime.spectrumScopes[key] = (scope: scope, span: spans[i]);
+      } catch (e, st) {
+        ErrorReportingService.report(e, st, context: 'cat:spectrum-span');
+      }
+    }
+  }
+
+  /// A sweep beyond the session's own the radio turned down, or that failed
+  /// after it ran: closed, and no more asked for until the scope restarts.
+  /// Its displays go back to cropping a wider one.
+  void _dropSpectrumScope(_NodeRuntime runtime, int key, String message) {
+    final dropped = runtime.spectrumScopes.remove(key);
+    if (dropped == null) return;
+    // Its displays crop a wider sweep, which is not an error to the operator.
+    debugPrint('[cat] ${runtime.uuid}: a sweep at ±${dropped.span} Hz closed: $message');
+    _closeSpectrumScope(dropped.scope);
+    runtime.spectrumScopeLimit = runtime.spectrumScopes.length;
+    _scheduleSpectrumDemand(runtime);
+  }
+
+  void _closeSpectrumScopes(_NodeRuntime runtime) {
+    final open = runtime.spectrumScopes.values.toList();
+    runtime.spectrumScopes.clear();
+    runtime.spectrumScopeOf.clear();
+    for (final (:scope, span: _) in open) {
+      _closeSpectrumScope(scope);
+    }
+  }
+
+  /// For a new connection: the last one's sweeps went with its session.
+  void _forgetSpectrumScopes(_NodeRuntime runtime) {
+    runtime.spectrumScopes.clear();
+    runtime.spectrumScopeOf.clear();
+    runtime.spectrumScopeLimit = null;
+    runtime.spectrumLook = null;
+  }
+
+  void _closeSpectrumScope(SpectrumScope scope) {
     try {
-      if (session.setSpectrum(SpectrumRequest(spanHz: span))) runtime.spectrumSpanAsked = span;
+      scope.close();
     } catch (e, st) {
-      ErrorReportingService.report(e, st, context: 'cat:spectrum-span');
+      ErrorReportingService.report(e, st, context: 'cat:spectrum-scope');
+    }
+  }
+}
+
+/// Where a sweep beyond the session's own reports: its sweeps to the
+/// displays drawing it, and a problem as the end of it. Its settings are not
+/// the receiver's, which the session's own scope reports.
+class _SpectrumScopeSink implements SpectrumSink {
+  final CatService cat;
+  final _NodeRuntime runtime;
+  final EquipmentConnection? connection;
+  final int key;
+
+  _SpectrumScopeSink(this.cat, this.runtime, this.connection, this.key);
+
+  bool get _current => runtime.connection == connection && runtime.spectrumScopes.containsKey(key);
+
+  /// A problem said before [CatService] held the sweep, from inside its opening.
+  String? opening;
+  bool opened = false;
+
+  @override
+  void reportSpectrum(SpectrumFrame frame) {
+    if (_current) runtime.spectrum?.add((key, frame));
+  }
+
+  @override
+  void reportSpectrumSettings(SpectrumSettings settings) {}
+
+  @override
+  void reportSpectrumProblem(String? message) {
+    if (message == null) return;
+    if (!opened) {
+      opening ??= message;
+    } else if (_current) {
+      cat._dropSpectrumScope(runtime, key, message);
     }
   }
 }

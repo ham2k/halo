@@ -48,7 +48,42 @@ class _Transport extends EquipmentTransport {
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async => _Connection();
 }
 
-class _Scope implements TransceiverSession, SpectrumSession {
+/// A sweep beyond the session's own, as a radio with more than one runs it.
+class _Extra implements SpectrumScope {
+  final SpectrumSink sink;
+  final requests = <SpectrumRequest>[];
+  bool closed = false;
+  _Extra(this.sink);
+  @override
+  bool setSpectrum(SpectrumRequest request) {
+    requests.add(request);
+    return true;
+  }
+
+  @override
+  void close() => closed = true;
+
+  int? get span => requests.lastWhere((r) => r.spanHz != null).spanHz;
+
+  void sweep(int lowHz) => sink.reportSpectrum(SpectrumFrame(lowHz: lowHz, highHz: lowHz + 1, levels: Float32List(4), floorDb: 0, ceilingDb: 1, atMillis: 0));
+}
+
+class _Scope implements TransceiverSession, MultiScopeSession {
+  /// How many sweeps beyond its own the radio runs: none unless a test gives it some.
+  int spare = 0;
+
+  /// A problem each sweep says as it is opened, as a Flex pan does with no UDP socket.
+  String? failOnOpen;
+  final extras = <_Extra>[];
+  @override
+  SpectrumScope? openScope(SpectrumSink sink) {
+    if (extras.where((e) => !e.closed).length >= spare) return null;
+    final extra = _Extra(sink);
+    extras.add(extra);
+    if (failOnOpen case final message?) sink.reportSpectrumProblem(message);
+    return extra;
+  }
+
   final SpectrumSink sink;
   final log = <String>[];
   _Scope(this.sink);
@@ -90,7 +125,8 @@ class _Scope implements TransceiverSession, SpectrumSession {
   @override
   void setPower(num watts) {}
 
-  void sweep() => sink.reportSpectrum(SpectrumFrame(lowHz: 0, highHz: 1, levels: Float32List(4), floorDb: 0, ceilingDb: 1, atMillis: 0));
+  void sweep([int lowHz = 0]) =>
+      sink.reportSpectrum(SpectrumFrame(lowHz: lowHz, highHz: lowHz + 1, levels: Float32List(4), floorDb: 0, ceilingDb: 1, atMillis: 0));
 }
 
 class _Driver extends EquipmentDriver {
@@ -383,5 +419,153 @@ void main() {
     // A fixed scope's width is its edges, which no span narrows.
     driver.sessions.single.sink.reportSpectrumSettings(const SpectrumSettings(mode: SpectrumMode.fixed, spanHz: 40000));
     expect(source.minWidthHz(uuid), isNull);
+  });
+
+  group('several sweeps', () {
+    const spans = SpectrumCapabilities(spansHz: [10000, 20000, 40000, 80000], refMinDb: 0, refMaxDb: 1, refStepDb: 1, autoSpan: true);
+
+    // Cropped from the widest, a 20 kHz panel beside a 160 kHz map shows an eighth of its points.
+    test('a display at a narrower span draws a sweep of its own, at its span, where the radio has one to spare', () async {
+      final scope = driver.sessions.single
+        ..capabilities = spans
+        ..running = true
+        ..spare = 1;
+      final panel = Object(), map = Object();
+      final panelSweeps = <int>[], mapSweeps = <int>[];
+      final a = cat.spectrumFrames(uuid, owner: panel).listen((f) => panelSweeps.add(f.lowHz));
+      final b = cat.spectrumFrames(uuid, owner: map).listen((f) => mapSweeps.add(f.lowHz));
+      addTearDown(a.cancel);
+      addTearDown(b.cancel);
+      cat.wantSpectrumWidth(uuid, panel, 20000);
+      cat.wantSpectrumWidth(uuid, map, 160000);
+      await pumpEventQueue();
+      expect(scope.spans.last, 80000, reason: "the session's own runs at the widest");
+      expect(scope.extras.single.span, 10000, reason: 'the other at the narrowest covering the panel');
+      scope.sweep(1);
+      scope.extras.single.sweep(2);
+      await pumpEventQueue();
+      expect(
+        [panelSweeps, mapSweeps],
+        [
+          [2],
+          [1],
+        ],
+        reason: 'each display draws only its own sweep',
+      );
+    });
+
+    test('with no sweep to spare, a narrower display crops the widest', () async {
+      final scope = driver.sessions.single
+        ..capabilities = spans
+        ..running = true;
+      final panel = Object();
+      final panelSweeps = <int>[];
+      final a = cat.spectrumFrames(uuid, owner: panel).listen((f) => panelSweeps.add(f.lowHz));
+      addTearDown(a.cancel);
+      cat.wantSpectrumWidth(uuid, panel, 20000);
+      cat.wantSpectrumWidth(uuid, Object(), 160000);
+      await pumpEventQueue();
+      scope.sweep(1);
+      await pumpEventQueue();
+      expect(panelSweeps, [1]);
+    });
+
+    // A zoom drag passes through every span on its way; on a Flex each sweep is a panadapter.
+    test("a display's sweep follows its zoom without being closed and opened again, and closes when the display goes", () async {
+      final scope = driver.sessions.single
+        ..capabilities = spans
+        ..running = true
+        ..spare = 1;
+      final drawing = cat.spectrumFrames(uuid).listen((_) {});
+      addTearDown(drawing.cancel);
+      final panel = Object();
+      cat.wantSpectrumWidth(uuid, Object(), 160000);
+      for (final width in [20000, 40000, 80000]) {
+        cat.wantSpectrumWidth(uuid, panel, width);
+        await pumpEventQueue();
+      }
+      expect(scope.extras, hasLength(1));
+      expect([for (final r in scope.extras.single.requests) r.spanHz], [10000, 20000, 40000]);
+      cat.wantSpectrumWidth(uuid, panel, null);
+      await pumpEventQueue();
+      expect(scope.extras.single.closed, isTrue);
+    });
+
+    test('a sweep the radio turns down is closed, its display crops the widest, and none is asked again until the scope restarts', () async {
+      final scope = driver.sessions.single
+        ..capabilities = spans
+        ..running = true
+        ..spare = 2;
+      final panel = Object();
+      final panelSweeps = <int>[];
+      var a = cat.spectrumFrames(uuid, owner: panel).listen((f) => panelSweeps.add(f.lowHz));
+      cat.wantSpectrumWidth(uuid, panel, 20000);
+      cat.wantSpectrumWidth(uuid, Object(), 160000);
+      await pumpEventQueue();
+      scope.extras.single.sink.reportSpectrumProblem('no pan free');
+      await pumpEventQueue();
+      expect(scope.extras.single.closed, isTrue);
+      scope.sweep(1);
+      await pumpEventQueue();
+      expect(panelSweeps, [1]);
+      cat.wantSpectrumWidth(uuid, panel, 40000);
+      await pumpEventQueue();
+      expect(scope.extras, hasLength(1), reason: 'opening another would only be turned down again');
+
+      await a.cancel();
+      await pumpEventQueue();
+      a = cat.spectrumFrames(uuid, owner: panel).listen((_) {});
+      addTearDown(a.cancel);
+      await pumpEventQueue();
+      expect(scope.extras, hasLength(2), reason: 'a restarted scope asks again: the pan may be free by now');
+    });
+
+    test("a display's recentre moves its own sweep; an extension's speed reaches every sweep", () async {
+      final scope = driver.sessions.single
+        ..capabilities = spans
+        ..running = true
+        ..spare = 1;
+      final drawing = cat.spectrumFrames(uuid).listen((_) {});
+      addTearDown(drawing.cancel);
+      final panel = Object(), map = Object();
+      cat.wantSpectrumWidth(uuid, panel, 20000);
+      cat.wantSpectrumWidth(uuid, map, 160000);
+      await pumpEventQueue();
+      cat.setSpectrum(uuid, const SpectrumRequest(centerHz: 14070000), owner: panel);
+      expect(scope.extras.single.requests.last.centerHz, 14070000);
+      expect(scope.centers.whereType<int>(), isEmpty, reason: "the map's sweep stays where it is");
+      // What the radio says it took, not what was asked: a speed it refused is not the receiver's look.
+      scope.sink.reportSpectrumSettings(const SpectrumSettings(speed: SpectrumSpeed.fast, refLevelDb: 6));
+      expect((scope.extras.single.requests.last.speed, scope.extras.single.requests.last.refLevelDb), (SpectrumSpeed.fast, 6));
+    });
+
+    test('a sweep opened later starts at the speed and reference level the others run at', () async {
+      final scope = driver.sessions.single
+        ..capabilities = spans
+        ..running = true
+        ..spare = 1;
+      final drawing = cat.spectrumFrames(uuid).listen((_) {});
+      addTearDown(drawing.cancel);
+      scope.sink.reportSpectrumSettings(const SpectrumSettings(speed: SpectrumSpeed.slow, refLevelDb: -3));
+      cat.wantSpectrumWidth(uuid, Object(), 20000);
+      cat.wantSpectrumWidth(uuid, Object(), 160000);
+      await pumpEventQueue();
+      final asked = scope.extras.single.requests.where((r) => r.speed != null);
+      expect([for (final r in asked) (r.speed, r.refLevelDb)], [(SpectrumSpeed.slow, -3.0)]);
+    });
+
+    test('a sweep that says a problem while it is being opened is closed, not kept drawing nothing', () async {
+      final scope = driver.sessions.single
+        ..capabilities = spans
+        ..running = true
+        ..spare = 1
+        ..failOnOpen = 'no UDP';
+      final drawing = cat.spectrumFrames(uuid).listen((_) {});
+      addTearDown(drawing.cancel);
+      cat.wantSpectrumWidth(uuid, Object(), 20000);
+      cat.wantSpectrumWidth(uuid, Object(), 160000);
+      await pumpEventQueue();
+      expect(scope.extras.single.closed, isTrue);
+    });
   });
 }

@@ -453,18 +453,63 @@ void main() {
       await cat.disconnect('flex-a');
     });
 
+    // The radio keeps a GUI client's pans for its next connection: a sweep's
+    // pan a dropped connection left would otherwise come back at every one.
+    test("a sweep's pan a connection left on the radio is removed by the station's next, and forgotten", () async {
+      final radio = _FakeFlexRadio();
+      final cat = await load({
+        'version': 4,
+        'nodes': {
+          'flex-a': {
+            ...flex('0', host: '192.0.2.1'),
+            'typeKey': _fakeFlexTypeKey,
+            'config': {
+              ...flex('0', host: '192.0.2.1')['config'] as Map<String, dynamic>,
+              flexClientIdConfigKey: '1DF30D74',
+              flexSweepPansConfigKey: ['0x40000005'],
+            },
+          },
+          'flex-a/rx:own-A': {
+            'typeKey': _fakeFlexTypeKey,
+            'name': 'Shack Flex',
+            'config': {'host': '192.0.2.1', 'port': 4992, flexOwnSliceConfigKey: 'A'},
+          },
+        },
+      }, registry: radio.registry);
+      await cat.connect('flex-a');
+      await cat.connect('flex-a/rx:own-A');
+      radio.say('V1.4.0.0\nH5AC2F980\nS5AC2F980|display pan 0x40000005 client_handle=0x5AC2F980 center=14.100000\n');
+      await pumpEventQueue();
+      final register = radio.sent.lastWhere((line) => line.contains('client gui'));
+      radio.say('R${register.substring(1, register.indexOf('|'))}|0|1DF30D74\n');
+      await pumpEventQueue();
+      expect(radio.sent, contains(endsWith('display pan remove 0x40000005\n')));
+      expect(cat.nodeFor('flex-a')!.config.containsKey(flexSweepPansConfigKey), isFalse);
+      await cat.disconnect('flex-a/rx:own-A');
+      await cat.disconnect('flex-a');
+    });
+
     // The editor saves the settings it read as it opened: a station id the
     // radio gave meanwhile, lost, leaves HaLo's slices kept on the radio for
-    // a station that never comes back.
-    test("an editor's save keeps the station id the radio gave while it was open", () async {
+    // a station that never comes back, and the sweeps' pans unremoved.
+    test("an editor's save keeps what the radio gave HaLo's station while it was open", () async {
       final cat = await load({
         'version': 4,
         'nodes': {'flex-a': flex('0')},
       });
       final opened = cat.nodeFor('flex-a')!;
-      await cat.updateNode(opened.copyWith(config: {...opened.config, flexClientIdConfigKey: '1DF30D74'}));
+      await cat.updateNode(
+        opened.copyWith(
+          config: {
+            ...opened.config,
+            flexClientIdConfigKey: '1DF30D74',
+            flexSweepPansConfigKey: ['0x40000005'],
+          },
+        ),
+      );
       await cat.updateNode(opened.copyWith(config: {...opened.config, flexStationNameConfigKey: 'Shack-Mac'}));
       expect(cat.nodeFor('flex-a')!.config[flexClientIdConfigKey], '1DF30D74');
+      expect(cat.nodeFor('flex-a')!.config[flexSweepPansConfigKey], ['0x40000005'], reason: "the sweeps' pans it left would never be removed");
     });
 
     // The editor shows the buffering at its default: a save of anything else

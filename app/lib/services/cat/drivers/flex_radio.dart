@@ -43,6 +43,11 @@ class FlexRadio implements SharedConnectionOwner {
   final String? clientId;
   final void Function(String clientId)? onClientId;
 
+  /// The pans made for sweeps that the radio has not said are removed, from
+  /// an earlier connection and to [onSweepPans] as they change.
+  final List<String> sweepPans;
+  final void Function(List<String> pans)? onSweepPans;
+
   /// What other stations see HaLo's as: this computer's name, or the one
   /// the operator gave it.
   String? station;
@@ -56,6 +61,8 @@ class FlexRadio implements SharedConnectionOwner {
     this.bindTo,
     this.clientId,
     this.onClientId,
+    this.sweepPans = const [],
+    this.onSweepPans,
     this.station,
   }) : _sendBytes = send;
 
@@ -66,6 +73,8 @@ class FlexRadio implements SharedConnectionOwner {
     String? clientId,
     String? station,
     void Function(String clientId)? onClientId,
+    List<String> sweepPans = const [],
+    void Function(List<String> pans)? onSweepPans,
   }) => FlexRadio(
     send: send,
     meterHost: config['host'] as String?,
@@ -74,6 +83,8 @@ class FlexRadio implements SharedConnectionOwner {
     bindTo: config[flexBindConfigKey] as String?,
     clientId: clientId,
     onClientId: onClientId,
+    sweepPans: sweepPans,
+    onSweepPans: onSweepPans,
     station: station,
   );
 
@@ -135,8 +146,8 @@ class FlexRadio implements SharedConnectionOwner {
       _armSettleTimer();
       _startPeriodicTimers();
     } else {
-      if (_handshakeDone) session._spectrum.subscribe();
-      if (_meterSocket != null) session._spectrum.socketReady();
+      if (_handshakeDone) session._scopes.subscribe();
+      if (_meterSocket != null) session._scopes.socketReady();
       // A slice heard in HaLo, or talking through it, starting on a socket
       // the engine does not own: its audio has nowhere to arrive, so the
       // socket is opened again through the engine.
@@ -151,7 +162,7 @@ class FlexRadio implements SharedConnectionOwner {
           session._startAudioStreams(socket);
         }
       }
-      if (_metersUnavailable) session._spectrum.socketUnavailable();
+      if (_metersUnavailable) session._scopes.socketUnavailable();
       // Said before this slice was listening: its node's state is set
       // only from its start.
       for (final report in _remembered.values.toList()) {
@@ -340,12 +351,14 @@ class FlexRadio implements SharedConnectionOwner {
           // Said on each slice's row, where it would otherwise read as a
           // slice the radio is not running.
           _stationRefused = true;
+          _sweeps.refused(code);
           _broadcast((sink) => sink.reportDiagnostic('Flex refused HaLo as a station: 0x${code.toRadixString(16).toUpperCase()}'));
           for (final session in _sessions.toList()) {
             session._checkTrackedSlice();
           }
-        } else if (id.isNotEmpty && id != clientId) {
-          onClientId?.call(id);
+        } else {
+          _sweeps.registered();
+          if (id.isNotEmpty && id != clientId) onClientId?.call(id);
         }
       },
     );
@@ -391,11 +404,12 @@ class FlexRadio implements SharedConnectionOwner {
       // later one would put back what an earlier one wrote in reacting.
       if (rest == 'removed') {
         _pans.remove(id);
+        _sweeps.panRemoved(id);
       } else {
         (_pans[id] ??= {}).addAll(fields);
       }
       for (final session in _sessions) {
-        session._spectrum.panStatus(id, fields);
+        session._scopes.panStatus(id, fields);
       }
       return;
     }
@@ -403,7 +417,7 @@ class FlexRadio implements SharedConnectionOwner {
       final rest = stream[2]!;
       final fields = rest == 'removed' ? const {'removed': '1'} : _parseFields(rest);
       for (final session in _sessions) {
-        session._spectrum.streamStatus(stream[1]!.toLowerCase(), fields);
+        session._scopes.streamStatus(stream[1]!.toLowerCase(), fields);
       }
       return;
     }
@@ -473,7 +487,7 @@ class FlexRadio implements SharedConnectionOwner {
     // How many slices the radio has free: `radio slices=`, for "New Slice".
     _sendCommand('sub radio all');
     for (final session in _sessions) {
-      session._spectrum.subscribe();
+      session._scopes.subscribe();
     }
     _bindTrackedClient();
     _startMeters();
@@ -636,6 +650,7 @@ class FlexRadio implements SharedConnectionOwner {
     for (final session in _sessions.toList()) {
       session._updateAudioStreams();
     }
+    _sweeps.sliceHeard(index);
     _bindTrackedClient();
     for (final session in _sessions.toList()) {
       if (session.slice == index) {
@@ -656,7 +671,7 @@ class FlexRadio implements SharedConnectionOwner {
     final handle = _handle;
     if (!gui || handle == null) return null;
     for (final MapEntry(:key, :value) in _slices.entries) {
-      if (value.clientHandle?.toLowerCase() == handle && value.label == letter && value.inUse != false) return key;
+      if (value.clientHandle?.toLowerCase() == handle && value.label == letter && value.inUse != false && !_sweeps.holds(value)) return key;
     }
     return null;
   }
@@ -665,62 +680,8 @@ class FlexRadio implements SharedConnectionOwner {
   /// pan id: each brings a slice of its own.
   final _openingSlices = <String, Completer<String?>>{};
 
-  /// Opens a slice on HaLo's station, with the panadapter every slice comes
-  /// with, and answers its letter: null when the radio refused or never
-  /// said, or this is not HaLo's station.
-  ///
-  /// Asked right after the station's connection came up, it waits for the
-  /// radio's handshake first: sent before it, the radio refuses it.
-  Future<String?> openSlice() async {
-    if (!gui) return null;
-    if (!_handshakeDone) await _handshaken.future.timeout(_sliceOpenWait, onTimeout: () {});
-    if (!_handshakeDone || _stationRefused) return null;
-    final opened = Completer<String?>();
-    _sendCommand(
-      'display pan create x=$_panPixels y=$_panRows',
-      onReply: (code, body) {
-        final pan = body.split(',').first.trim().toLowerCase();
-        if (code != 0 || pan.isEmpty) {
-          _broadcast((sink) => sink.reportDiagnostic('Flex refused a new slice: 0x${code.toRadixString(16).toUpperCase()}'));
-          if (!opened.isCompleted) opened.complete(null);
-          return;
-        }
-        if (_sliceOnPan(pan) case final letter?) return opened.complete(letter);
-        _openingSlices[pan] = opened;
-      },
-    );
-    return opened.future.timeout(
-      _sliceOpenWait,
-      onTimeout: () {
-        // Not left waiting: a slice the radio opens later is one the picker
-        // offers to add, not one added here behind the operator's back.
-        _openingSlices.removeWhere((_, waiting) => identical(waiting, opened));
-        return null;
-      },
-    );
-  }
-
-  /// Closes HaLo's slice [letter] on the radio, and the panadapter it came
-  /// with; the radio removes the slice with its panadapter. Whether the
-  /// radio did: false, with nothing sent, for a slice it has not described.
-  Future<bool> closeSlice(String letter) {
-    final index = _ownedIndex(letter);
-    if (index == null) return Future.value(false);
-    final closed = Completer<bool>();
-    final command = switch (_slices[index]?.pan) {
-      final pan? => 'display pan remove $pan',
-      null => 'slice remove $index',
-    };
-    _sendCommand(command, onReply: (code, _) => closed.complete(code == 0));
-    return closed.future.timeout(_sliceOpenWait, onTimeout: () => false);
-  }
-
-  String? _sliceOnPan(String pan) {
-    for (final status in _slices.values) {
-      if (status.pan?.toLowerCase() == pan && status.clientHandle?.toLowerCase() == _handle) return status.label;
-    }
-    return null;
-  }
+  /// The pans HaLo made for sweeps of their own (flexradio_own_pans.dart).
+  late final _sweeps = _FlexSweepPans(this);
 
   /// e.g. "S5AC2F980|client 0x1C61D553 connected program=SmartSDR-Win
   /// station=SHACK-PC", and "…|client 0x1C61D553 disconnected …" on the way
@@ -758,7 +719,7 @@ class FlexRadio implements SharedConnectionOwner {
   void _publishChannels() {
     final channels = [
       for (var index = 0; index < FlexRadioDriver.sliceLabels.length; index++)
-        if (_slices[index] case final status?)
+        if (_slices[index] case final status? when !_sweeps.holds(status))
           EquipmentChannel(
             key: '$index',
             label: status.label,
@@ -839,7 +800,7 @@ class FlexRadio implements SharedConnectionOwner {
         // pan both draw its FFT.
         var spectrum = false;
         for (final session in _sessions.toList()) {
-          if (session._spectrum.packet(data)) spectrum = true;
+          if (session._scopes.packet(data)) spectrum = true;
         }
         if (spectrum) return;
         // The real clock: a rate limit on wire data must not travel.
@@ -865,9 +826,9 @@ class FlexRadio implements SharedConnectionOwner {
           _metersUnavailable = socket == null;
           for (final session in _sessions) {
             if (socket == null) {
-              session._spectrum.socketUnavailable();
+              session._scopes.socketUnavailable();
             } else {
-              session._spectrum.socketReady();
+              session._scopes.socketReady();
             }
           }
           if (socket != null) {
@@ -887,7 +848,7 @@ class FlexRadio implements SharedConnectionOwner {
             _openingMeters = false;
             _metersUnavailable = true;
             for (final session in _sessions) {
-              session._spectrum.socketUnavailable();
+              session._scopes.socketUnavailable();
             }
           }
           failed(error, stack);
@@ -954,7 +915,7 @@ class FlexRadio implements SharedConnectionOwner {
     if (_meterSocket != null && _handshakeDone) _sendCommand('unsub meter all');
     if (_meterSocket != null) {
       for (final session in _sessions) {
-        session._spectrum.socketLost();
+        session._scopes.socketLost();
       }
     }
     _meterSocket?.close();

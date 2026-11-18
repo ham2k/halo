@@ -519,7 +519,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
     }
     final (uuid, source, now) = (_uuid, widget.source, realNowMillis());
     if (_recenters != false && uuid != null && source != null && (last || now - _lastRecenterMillis >= 250)) {
-      final moved = _recenters = source.recenter(uuid, center.round());
+      final moved = _recenters = source.recenter(uuid, this, center.round());
       if (moved) {
         _lastRecenterMillis = _sweepAskedMillis = now;
         _sweepAskedHz = center;

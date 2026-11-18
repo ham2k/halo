@@ -170,7 +170,7 @@ extension _SpectrumFollow on _SceneSpectrumViewState {
   bool _askSweep(int now, double center) {
     final (uuid, source) = (_uuid, widget.source);
     if (uuid == null || source == null || now - _lastRecenterMillis < 250) return false;
-    final moved = _recenters = source.recenter(uuid, center.round());
+    final moved = _recenters = source.recenter(uuid, this, center.round());
     if (!moved) return false;
     _lastRecenterMillis = _sweepAskedMillis = now;
     _sweepAskedHz = center;

@@ -62,7 +62,8 @@ import 'drivers/flexradio_driver.dart'
         flexOwnSliceConfigKey,
         flexOwnSlicePrefix,
         flexProgramName,
-        flexStationNameConfigKey;
+        flexStationNameConfigKey,
+        flexSweepPansConfigKey;
 import 'drivers/k4_receiver_codec.dart' show K4Receiver;
 import 'drivers/k4_shared_session_config.dart' show k4ReceiverConfigKey;
 import 'discovery.dart';
@@ -269,15 +270,7 @@ class CatService extends ChangeNotifier
   /// A Flex's one connection, which each of its slices leases
   /// ([_flexAddressOf] names the radio).
   late final _flexConnections = SharedConnectionPool(
-    // The station's id is read as the connection opens, not from a lease's
-    // settings: it is kept on the device after the first lease asked.
-    createOwner: (connection, send, config) => FlexRadio.fromConfig(
-      config,
-      send: send,
-      clientId: _flexClientIdIn(config),
-      station: _flexStationIn(config),
-      onClientId: (id) => _flexClientIdAssigned(config, id),
-    ),
+    createOwner: (connection, send, config) => _flexStationOpened(config, send),
     onSend: _logFlexSent,
     onReceive: _logFlexReceived,
   );
@@ -1037,7 +1030,7 @@ class CatService extends ChangeNotifier
         await disconnect(node.uuid, byUser: _everywareServerOf(node.uuid) == null);
       }
       final stored = await _stashSecrets(node);
-      _nodes[node.uuid] = _flexKeepClientId(_nodes[node.uuid] ?? previous, _everywareKeepAnnounced(_nodes[node.uuid] ?? previous, stored));
+      _nodes[node.uuid] = _flexKeepStationRecord(_nodes[node.uuid] ?? previous, _everywareKeepAnnounced(_nodes[node.uuid] ?? previous, stored));
       await _flexSlicesFollow(node.uuid);
       await _save();
       await _everywareNodeSaved(node.uuid);

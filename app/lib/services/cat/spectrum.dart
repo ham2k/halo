@@ -204,6 +204,29 @@ abstract class SpectrumSession implements EquipmentSession {
   bool setSpectrum(SpectrumRequest request);
 }
 
+/// A session whose radio runs more than one sweep of the receiver at once,
+/// each at its own span: a display at another span then draws a sweep of its
+/// own rather than a crop of the widest (docs/design/cat.md § Several
+/// scopes). Asked only where the span is the app's
+/// ([SpectrumCapabilities.autoSpan]); the session's own scope is the widest.
+abstract class MultiScopeSession implements SpectrumSession {
+  /// Another sweep, reporting to [sink], running until [SpectrumScope.close];
+  /// null where none can be opened now. One the radio turns down later says
+  /// so through [SpectrumSink.reportSpectrumProblem], and is then closed by
+  /// the caller.
+  SpectrumScope? openScope(SpectrumSink sink);
+}
+
+/// A sweep beyond a [MultiScopeSession]'s own, with that session's
+/// capabilities. It runs from its opening until [close], never restarted:
+/// the session's scope stopping closes it.
+abstract class SpectrumScope {
+  /// Taken whenever the scope is open, and carried out once the radio has
+  /// the sweep to change: its caller asks a span once per change.
+  bool setSpectrum(SpectrumRequest request);
+  void close();
+}
+
 /// For a driver whose every session is a [SpectrumSession], whatever the
 /// node's configuration.
 mixin AlwaysOffersScope on EquipmentDriver {

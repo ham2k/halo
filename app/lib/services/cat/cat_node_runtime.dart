@@ -104,7 +104,24 @@ class _NodeRuntime {
   bool linesRefused = false;
 
   /// See [CatService.spectrumFrames]. Created by the first display to ask.
-  StreamController<SpectrumFrame>? spectrum;
+  /// Each sweep goes with the scope it is from: 0 for the session's own, and
+  /// a key of [spectrumScopes] for the others.
+  StreamController<(int, SpectrumFrame)>? spectrum;
+
+  /// The sweeps opened beyond the session's own ([MultiScopeSession]), by
+  /// key, with the span each was last asked for.
+  final spectrumScopes = <int, ({SpectrumScope scope, int? span})>{};
+  int spectrumScopeKeys = 0;
+
+  /// The scope whose sweeps each display draws; absent is the session's own.
+  final spectrumScopeOf = <Object, int>{};
+
+  /// How many sweeps beyond its own the session has run at most since the
+  /// scope started, once one was turned down: asked for no more until it restarts.
+  int? spectrumScopeLimit;
+
+  /// The speed and reference level the other sweeps were last given.
+  (SpectrumSpeed?, double?)? spectrumLook;
 
   /// Whether this connection's scope was started — what a demand changes.
   bool spectrumStarted = false;

@@ -125,8 +125,9 @@ class _ScopeSink extends _FakeSink implements SpectrumSink {
   void reportSpectrum(SpectrumFrame frame) => frames.add(frame);
   @override
   void reportSpectrumSettings(SpectrumSettings settings) {}
+  final spectrumProblems = <String?>[];
   @override
-  void reportSpectrumProblem(String? message) {}
+  void reportSpectrumProblem(String? message) => spectrumProblems.add(message);
 }
 
 /// One whole sweep of [rows] for [pan], shaped like RadioRoom's FFT
@@ -372,6 +373,300 @@ void main() {
         }
         radio.teardown();
         async.flushTimers();
+      });
+    });
+
+    group('a sweep beyond the slice\'s own', () {
+      late FlexRadio radio;
+      late FlexRadioSession ownA;
+      late _ScopeSink sinkA;
+      void Function(Uint8List)? deliver;
+
+      /// What the connection last said its sweeps' pans are.
+      List<String>? kept;
+
+      /// [registered]: the radio has answered `client gui`.
+      void startOn(FakeAsync async, {bool gui = true, List<String> sweepPans = const [], bool registered = true}) {
+        kept = null;
+        radio = FlexRadio(
+          send: sink.send,
+          gui: gui,
+          sweepPans: sweepPans,
+          onSweepPans: (pans) => kept = pans,
+          clientId: '1DF30D74',
+          station: 'Chirimena',
+          meterHost: '10.0.0.5',
+          openMeterSocket: (host, onData, onError) async {
+            deliver = onData;
+            return _FakeMeterSocket();
+          },
+        );
+        sinkA = _ScopeSink();
+        ownA = radio.attach(sinkA, receiver: gui ? 'own-A' : '2') as FlexRadioSession;
+        ownA
+          ..startUpdates()
+          ..startSpectrum();
+        say(radio, '${_handshakeLines.join('\n')}\n');
+        async.flushMicrotasks();
+        say(radio, 'S5AC2F980|slice 2 in_use=1 client_handle=0x5AC2F980 index_letter=A pan=0x40000002 RF_frequency=14.074000\n');
+        say(
+          radio,
+          'S5AC2F980|display pan 0x40000002 client_handle=0x5AC2F980 center=14.074000 bandwidth=0.400000 min_dbm=-150.00 max_dbm=-10.00 y_pixels=400\n',
+        );
+        if (registered && gui) {
+          final register = sink.sent.lastWhere((line) => line.contains('client gui'));
+          say(radio, 'R${register.substring(1, register.indexOf('|'))}|0|1DF30D74\n');
+        }
+      }
+
+      /// The radio's answer to every command sent so far that names [fragment].
+      void accept(String fragment, {int code = 0, String body = ''}) {
+        for (final line in sink.sent.where((line) => line.contains(fragment)).toList()) {
+          say(radio, 'R${line.substring(1, line.indexOf('|'))}|${code.toRadixString(16)}|$body\n');
+        }
+      }
+
+      void finish(FakeAsync async) {
+        ownA.teardown();
+        radio.teardown();
+        async.flushTimers();
+      }
+
+      // Cropped from the slice's 400 kHz pan, a 24 kHz panel would draw a sixteenth of its points.
+      test('is a pan of its own, made at the slice, at the span asked, drawn only where it is asked for', () {
+        fakeAsync((async) {
+          startOn(async);
+          final sweeps = _ScopeSink();
+          final extra = ownA.openScope(sweeps)!..setSpectrum(const SpectrumRequest(spanHz: 12000));
+          expect(commands(), contains('display pan create x=2048 y=400'));
+          accept('display pan create', body: '0x40000005');
+          expect(
+            commands(),
+            containsAll([
+              'display pan set 0x40000005 xpixels=2048',
+              'display pan set 0x40000005 center=14.074000',
+              'display pan set 0x40000005 bandwidth=0.024000',
+            ]),
+          );
+          accept('display pan set 0x40000005');
+          deliver!(_fftPacket(0x40000005, [for (var i = 0; i < 2048; i++) i == 1 ? 0 : 399]));
+          expect(sweeps.frames.map((f) => (f.lowHz, f.highHz)), [(14062000, 14086000)]);
+          expect(sinkA.frames, isEmpty, reason: "the slice's own displays draw the slice's own pan");
+          extra.close();
+          expect(commands().last, 'display pan remove 0x40000005', reason: "the radio keeps a GUI client's pans for its next connection");
+          finish(async);
+        });
+      });
+
+      // On HaLo's own station `display pan create` is how a new slice opens:
+      // kept, every sweep of its own would take one of the radio's few
+      // receivers, and offer it to the operator as one they opened.
+      group('drops the slice the radio opens with its pan', () {
+        String sliceOn(int index, String pan, {String handle = '0x5AC2F980'}) =>
+            'S5AC2F980|slice $index in_use=1 client_handle=$handle index_letter=B pan=$pan RF_frequency=14.074000\n';
+
+        test('described before the pan is answered, as RadioRoom does', () {
+          fakeAsync((async) {
+            startOn(async);
+            ownA.openScope(_ScopeSink());
+            say(radio, sliceOn(4, '0x40000005'));
+            accept('display pan create', body: '0x40000005,0x42000005');
+            expect(commands().where((c) => c.startsWith('slice remove')), ['slice remove 4']);
+            say(radio, sliceOn(4, '0x40000005'));
+            expect(commands().where((c) => c.startsWith('slice remove')), ['slice remove 4'], reason: 'once, however often the slice is described');
+            finish(async);
+          });
+        });
+
+        // A receiver of another station's is the one slice HaLo must never remove.
+        test("or after it, and only that slice, never another station's", () {
+          fakeAsync((async) {
+            startOn(async);
+            ownA.openScope(_ScopeSink());
+            accept('display pan create', body: '0x40000005,0x42000005');
+            say(radio, sliceOn(3, '0x40000005', handle: '0x41F1FBAB'));
+            say(radio, sliceOn(4, '0x40000006'));
+            say(radio, sliceOn(5, '0x40000005'));
+            expect(commands().where((c) => c.startsWith('slice remove')), ['slice remove 5']);
+            finish(async);
+          });
+        });
+
+        // The radio gives a removed pan's id to the next one, which may be a slice the operator opens.
+        test('and none on a later pan given its id', () {
+          fakeAsync((async) {
+            startOn(async);
+            final extra = ownA.openScope(_ScopeSink())!;
+            accept('display pan create', body: '0x40000005,0x42000005');
+            extra.close();
+            say(radio, 'S5AC2F980|display pan 0x40000005 removed\n');
+            say(radio, sliceOn(4, '0x40000005'));
+            expect(commands().where((c) => c.startsWith('slice remove')), isEmpty);
+            finish(async);
+          });
+        });
+      });
+
+      // The radio letters the slice it opens with a sweep's pan like any of
+      // the station's: B, while HaLo's slice B is closed. Taken for HaLo's
+      // own, the node waiting for B would tune the logging fields to it.
+      test("is never a node's missing slice, nor offered in the picker, while it lasts", () {
+        fakeAsync((async) {
+          startOn(async);
+          final sinkB = _ScopeSink();
+          final ownB = radio.attach(sinkB, receiver: 'own-B') as FlexRadioSession;
+          ownB.startUpdates();
+          ownA.openScope(_ScopeSink());
+          say(radio, 'S5AC2F980|display pan 0x40000005 client_handle=0x5AC2F980 center=14.100000 bandwidth=0.200000\n');
+          say(radio, 'S5AC2F980|slice 4 in_use=1 client_handle=0x5AC2F980 index_letter=B pan=0x40000005 RF_frequency=14.100000 mode=USB\n');
+          expect(sinkB.readings, isEmpty);
+          expect(sinkB.channel('4').inUse, isFalse);
+          accept('display pan create', body: '0x40000005,0x42000005');
+          say(radio, 'S5AC2F980|slice 4 in_use=1 client_handle=0x5AC2F980 index_letter=B pan=0x40000005 RF_frequency=14.100000 mode=USB\n');
+          expect(sinkB.readings, isEmpty);
+          expect(sinkB.channel('4').inUse, isFalse);
+          expect(commands(), contains('slice remove 4'));
+          ownB.teardown();
+          finish(async);
+        });
+      });
+
+      // A display already open when the radio connects asks for its sweep
+      // as the station registers. Asked for then, its pan would be made while
+      // the radio brings back the station's slices, and hold them all back.
+      test("is asked for once the station is registered, after the station's slices are back", () {
+        fakeAsync((async) {
+          radio = FlexRadio(
+            send: sink.send,
+            gui: true,
+            clientId: '1DF30D74',
+            station: 'Chirimena',
+            meterHost: '10.0.0.5',
+            openMeterSocket: (host, onData, onError) async => _FakeMeterSocket(),
+          );
+          sinkA = _ScopeSink();
+          ownA = radio.attach(sinkA, receiver: 'own-A') as FlexRadioSession;
+          ownA
+            ..startUpdates()
+            ..startSpectrum();
+          ownA.openScope(_ScopeSink());
+          say(radio, '${_handshakeLines.join('\n')}\n');
+          async.flushMicrotasks();
+          say(radio, 'S5AC2F980|display pan 0x40000002 client_handle=0x5AC2F980 center=14.074000 bandwidth=0.400000\n');
+          say(radio, 'S5AC2F980|slice 2 in_use=1 client_handle=0x5AC2F980 index_letter=A pan=0x40000002 RF_frequency=14.074000 mode=USB\n');
+          expect(commands(), isNot(contains('display pan create x=2048 y=400')));
+          accept('client gui', body: '1DF30D74');
+          expect(commands(), contains('display pan create x=2048 y=400'));
+          expect(sinkA.readings.map((r) => r.freqKHz), contains(14074.0));
+          accept('display pan create', body: '0x40000005,0x42000005');
+          finish(async);
+        });
+      });
+
+      // Held back while the radio had not said which pan was the sweep's,
+      // the slice's node heard nothing of it: the radio says nothing again
+      // of a slice that does not change.
+      test("a slice of HaLo's held back while a sweep's pan is made is its node's once the radio says which pan that is", () {
+        fakeAsync((async) {
+          startOn(async);
+          final sinkB = _ScopeSink();
+          final ownB = radio.attach(sinkB, receiver: 'own-B') as FlexRadioSession;
+          ownB.startUpdates();
+          ownA.openScope(_ScopeSink());
+          say(radio, 'S5AC2F980|slice 3 in_use=1 client_handle=0x5AC2F980 index_letter=B pan=0x40000009 RF_frequency=7.100000 mode=LSB\n');
+          expect(sinkB.readings, isEmpty);
+          accept('display pan create', body: '0x40000005,0x42000005');
+          expect(sinkB.readings.map((r) => r.freqKHz), [7100.0]);
+          expect(sinkB.channel('3').inUse, isTrue);
+          ownB.teardown();
+          finish(async);
+        });
+      });
+
+      // Waiting on a station the radio refused, the display would never draw
+      // nor crop the widest sweep.
+      test('on a station the radio refused, is said as a problem, which ends the sweep', () {
+        fakeAsync((async) {
+          startOn(async, registered: false);
+          final sweeps = _ScopeSink();
+          ownA.openScope(sweeps);
+          accept('client gui', code: 0x50000063);
+          expect(sweeps.spectrumProblems.whereType<String>(), isNotEmpty);
+          final later = _ScopeSink();
+          ownA.openScope(later);
+          expect(later.spectrumProblems.whereType<String>(), isNotEmpty, reason: 'nor one asked for after it');
+          expect(commands(), isNot(contains('display pan create x=2048 y=400')));
+          finish(async);
+        });
+      });
+
+      // The radio keeps a GUI client's pans for its next connection: one a
+      // dropped connection made would otherwise come back at every connect.
+      test("is kept with the radio's settings until the radio says it is removed", () {
+        fakeAsync((async) {
+          startOn(async);
+          final extra = ownA.openScope(_ScopeSink())!;
+          accept('display pan create', body: '0x40000005,0x42000005');
+          expect(kept, ['0x40000005']);
+          extra.close();
+          expect(kept, ['0x40000005'], reason: 'asked removed is not yet removed');
+          say(radio, 'S5AC2F980|display pan 0x40000005 removed\n');
+          expect(kept, isEmpty);
+          finish(async);
+        });
+      });
+
+      // A pan id the radio gives again may be another station's pan, or the
+      // pan of a slice HaLo's station got back: removed, either would take
+      // a receiver with it.
+      test('left by an earlier connection, is removed once the station is registered, if it is still a pan of its own', () {
+        fakeAsync((async) {
+          startOn(async, sweepPans: ['0x40000005', '0x40000006', '0x40000007', '0x40000008'], registered: false);
+          say(radio, 'S5AC2F980|display pan 0x40000005 client_handle=0x5AC2F980 center=14.100000\n');
+          say(radio, 'S5AC2F980|display pan 0x40000006 client_handle=0x5AC2F980 center=7.100000\n');
+          say(radio, 'S5AC2F980|slice 3 in_use=1 client_handle=0x5AC2F980 index_letter=B pan=0x40000006 RF_frequency=7.100000\n');
+          say(radio, 'S5AC2F980|display pan 0x40000007 client_handle=0x41F1FBAB center=18.100000\n');
+          say(radio, 'S5AC2F980|display pan 0x40000008 client_handle=0x5AC2F980 center=21.100000\n');
+          say(radio, 'S5AC2F980|slice 1 in_use=0 client_handle=0x5AC2F980 index_letter=C pan=0x40000008\n');
+          expect(commands().where((c) => c.startsWith('display pan remove')), isEmpty, reason: 'not before the radio has brought back what the station had');
+          accept('client gui', body: '1DF30D74');
+          expect(commands().where((c) => c.startsWith('display pan remove')), [
+            'display pan remove 0x40000005',
+            'display pan remove 0x40000008',
+          ], reason: 'a slice not in use holds no pan');
+          expect(kept, isEmpty);
+          finish(async);
+        });
+      });
+
+      test('a pan closed before the radio made it is removed once it is', () {
+        fakeAsync((async) {
+          startOn(async);
+          ownA.openScope(_ScopeSink())!.close();
+          accept('display pan create', body: '0x40000005');
+          expect(commands().last, 'display pan remove 0x40000005');
+          finish(async);
+        });
+      });
+
+      test('a pan the radio will not make is said as a problem, which ends the sweep', () {
+        fakeAsync((async) {
+          startOn(async);
+          final sweeps = _ScopeSink();
+          ownA.openScope(sweeps);
+          accept('display pan create', code: 0x50000015);
+          expect(sweeps.spectrumProblems.whereType<String>(), isNotEmpty);
+          finish(async);
+        });
+      });
+
+      // Bound to another station, the radio sends its pans' FFT to that station alone.
+      test('is not offered on a slice followed on another station', () {
+        fakeAsync((async) {
+          startOn(async, gui: false);
+          expect(ownA.openScope(_ScopeSink()), isNull);
+          finish(async);
+        });
       });
     });
 

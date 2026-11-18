@@ -44,8 +44,9 @@ abstract class SceneSpectrumSource {
   String? resolve(String? radio);
 
   /// Subscribing is what starts the radio's scope, so only a pane on screen
-  /// subscribes.
-  Stream<SpectrumFrame> frames(String uuid);
+  /// subscribes. [owner] is the display, as it names itself to [showWidth]:
+  /// its sweeps are those of the scope run for its width.
+  Stream<SpectrumFrame> frames(String uuid, Object owner);
 
   /// Why there is nothing to draw, in words for the operator, or null.
   String? problem(String uuid);
@@ -95,10 +96,10 @@ abstract class SceneSpectrumSource {
   /// Whether this panel can move [uuid]'s sweep independently of the dial.
   bool canRecenter(String uuid);
 
-  /// Moves [uuid]'s scope to centre on [centerHz], for a control that
-  /// `follow`s the VFO. False where the radio's window is not the app's to
-  /// move, or the panel may not command the radio.
-  bool recenter(String uuid, int centerHz);
+  /// Moves the scope of [uuid]'s that [owner] draws to centre on [centerHz],
+  /// for a control that `follow`s the VFO. False where the radio's window is
+  /// not the app's to move, or the panel may not command the radio.
+  bool recenter(String uuid, Object owner, int centerHz);
 
   /// [owner] shows [widthHz] of [uuid]'s sweeps — its `span`, or the
   /// operator's zoom; 0 where it names neither and draws the whole sweep —
@@ -581,7 +582,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     _staleTimer = null;
     _uuid = uuid;
     if (uuid == null) return;
-    _subscription = widget.source!.frames(uuid).listen((frame) {
+    _subscription = widget.source!.frames(uuid, this).listen((frame) {
       if (epoch == _subscriptionEpoch) _onFrame(frame);
     });
     _staleTimer?.cancel();

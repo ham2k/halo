@@ -43,7 +43,7 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   String? resolve(String? radio) => designated;
   @override
-  Stream<SpectrumFrame> frames(String uuid) => controller.stream;
+  Stream<SpectrumFrame> frames(String uuid, Object owner) => controller.stream;
   @override
   String? problem(String uuid) => null;
   @override
@@ -73,7 +73,7 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   bool canRecenter(String uuid) => recenters;
   @override
-  bool recenter(String uuid, int centerHz) {
+  bool recenter(String uuid, Object owner, int centerHz) {
     if (recenters) recentered.add(centerHz);
     return recenters;
   }

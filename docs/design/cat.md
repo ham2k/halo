@@ -4254,6 +4254,23 @@ cropping its few hundred points gets coarse — and a panel sets it with
 `setRadioSpectrum`, as before, or a native zoom fits it to the widest display
 (panel-scenes.md).
 
+**Several scopes: a sweep of its own per span.** Cropped from the widest, a
+narrow display shows few of its points: 24 kHz of a 384 kHz sweep is a
+sixteenth of them. Where the radio runs more than one sweep of a receiver at
+once (`MultiScopeSession`), each narrower span the displays show gets a sweep
+of its own (`openScope`), and each display draws the sweep run for its span
+(`spectrumFrames(uuid, owner:)`, read at every sweep); the session's own runs
+at the widest, as above. The sweeps beyond it follow the displays as they
+come and go, and are given a new span rather than closed and opened again: a
+zoom passes through several spans, and on some radios each sweep is a
+panadapter. A display's recentre moves its own sweep. An extension's
+`setRadioSpectrum` changes the session's own, and gives every sweep its
+speed and reference level, which are the receiver's look. A sweep the radio
+turns down, or that fails later, is closed, its displays crop the narrowest
+wider one, and no more are asked for until the scope starts again. HaLo's own
+Flex station runs one as a pan of its own (below); a radio with one scope
+(Icom, K4, TCI) crops as before.
+
 Receivers exposed as separate logical radios each have an ordinary
 `SpectrumSession`, addressed by their own radio UUID. Demand, settings and
 problems belong to that radio, even when its physical connection is shared.
@@ -4493,6 +4510,39 @@ budget on it. Captured on RadioRoom (FLEX-6600, 4.3.16):
   its pan, or for a pan the slice has left, still arrives. Spans run ±12 to
   ±384 kHz, and follow the displays (`SpectrumCapabilities.autoSpan`): no
   other window changes with them.
+- A display at another span than the slice's pan gets a pan of HaLo's own
+  (`display pan create x=2048 y=400`, answered with the pan's id), centred
+  on the slice until the display moves it, and removed (`display pan
+  remove`) when the display closes or the slice leaves: the radio keeps a
+  GUI client's pans for its next connection, so one left behind would come
+  back at every connect. One closed before the radio answers is removed
+  once it does. The radio tells the client that made it nothing, so the
+  record of it starts empty and holds what HaLo's accepted sets say. A pan
+  the radio will not make is a problem, which closes that sweep.
+  On HaLo's own station a new pan comes with a new slice (it is how "New
+  Slice" opens one: § HaLo's own station on a Flex), which HaLo removes
+  (`slice remove`) as soon as it knows the slice is on that pan, whether its
+  status comes before the answer to the pan (RadioRoom, 4.3.16) or after it.
+  The pan and its FFT outlive the slice, and a recentre still moves it.
+  Kept, the slice would take one of the radio's few receivers for every such
+  display. Until it is gone it is none of HaLo's lettered slices and the
+  picker does not offer it: the radio letters it like any of the station's,
+  and a node waiting for a slice it closed would otherwise take it for its
+  own. A slice of HaLo's on a pan the radio had not said of before the
+  answer is held back the same way until the answer says which pan is the
+  sweep's, and is then told to its node, which heard nothing of it
+  meanwhile. So a sweep's pan is asked for only once the radio has answered
+  `client gui`: asked for sooner, it would hold back the station's own
+  slices, which the radio brings back before that answer. On a station the
+  radio refused, a sweep is a problem, which closes it. The pans made are
+  kept on the radio's entry (`flexSweepPans`) until the radio says each is
+  removed, which it says to the client that removed it too. A connection
+  that drops leaves them on the radio, which brings them back to the
+  station's next connection and describes them before it answers `client
+  gui`; then each that is still the station's with no slice in use on it is
+  removed, and the list forgotten. A pan id the radio hands out again may by
+  then be another station's pan or one of HaLo's slices', and neither is
+  removed.
 
 Several slices share a connection, and both ways keep one record of the
 pans per connection, which every slice's scope on it reads:

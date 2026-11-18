@@ -44,6 +44,7 @@ part 'flex_radio.dart';
 part 'flexradio_receive_audio.dart';
 part 'flexradio_talk.dart';
 part 'flexradio_slice_status.dart';
+part 'flexradio_own_pans.dart';
 
 /// App mode names → SmartSDR's, where the spellings differ. SmartSDR calls
 /// its data sidebands `DIGU`/`DIGL`; the app names them the way every other
@@ -93,6 +94,10 @@ const flexOwnSlicePrefix = 'own-';
 /// id the radio keeps that station's slices by.
 const flexGuiConfigKey = 'flexGui';
 const flexClientIdConfigKey = 'flexClientId';
+
+/// On a Flex's device entry: the pans HaLo made on its station for sweeps of
+/// their own and has not seen removed ([FlexRadio.sweepPans]).
+const flexSweepPansConfigKey = 'flexSweepPans';
 
 /// The station a bound connection speaks for, by the radio's id for it:
 /// under multiFLEX a key, the power read back and a DAX channel are each
@@ -243,7 +248,7 @@ class FlexRadioSession
         CwKeyerSession,
         NetworkTransmitAudioSession,
         RadioNamedVoiceMemories,
-        SpectrumSession,
+        MultiScopeSession,
         AntennaTunerSession,
         PassbandSession,
         RadioAntennaSession,
@@ -335,6 +340,33 @@ class FlexRadioSession
       : FlexDaxSpectrum(send: _sendForSpectrum, sink: _spectrumSink, pans: _radio._pans);
 
   int _sendForSpectrum(String command, {void Function(int code, String body)? onReply}) => _radio._sendForSpectrum(command, onReply: onReply);
+
+  /// Sweeps beyond the slice's own, each a pan HaLo makes on its own
+  /// station, for a display at another span (docs/design/cat.md § Several
+  /// scopes). Bound to another station there is no pan to make: its slices'
+  /// scopes are DAX IQ, one stream a pan.
+  final _extraScopes = <FlexPanSpectrum>[];
+
+  /// What the connection says to this slice's scopes: its own and [_extraScopes].
+  late final _scopes = _FlexScopes(this);
+
+  @override
+  SpectrumScope? openScope(SpectrumSink sink) {
+    if (!_radio.gui || !_spectrum.wanted) return null;
+    final scope = FlexPanSpectrum(
+      send: _sendForSpectrum,
+      sink: sink,
+      pans: _radio._pans,
+      ownPanAt: () => _radio._slices[slice]?.freqKHz,
+      makePan: _radio._sweeps.make,
+    );
+    _extraScopes.add(scope);
+    scope.start();
+    if (_radio._handshakeDone) scope.subscribe();
+    if (_radio._meterSocket != null) scope.socketReady();
+    if (_radio._metersUnavailable) scope.socketUnavailable();
+    return _FlexExtraScope(scope, () => _extraScopes.remove(scope));
+  }
 
   SpectrumSink? get _spectrumSink => switch (_sink) {
     final SpectrumSink sink => sink,
@@ -745,6 +777,10 @@ class FlexRadioSession
     _stopAudioStreams();
     if (slice >= 0) _so2rAudio.teardown(_sliceAudio);
     _spectrum.teardown();
+    for (final scope in _extraScopes.toList()) {
+      scope.teardown();
+    }
+    _extraScopes.clear();
   }
 
   @override
@@ -753,5 +789,47 @@ class FlexRadioSession
     _leaveSlice();
     _radio._detach(this);
     if (_ownsWire) _radio.teardown();
+  }
+}
+
+/// Each of a slice's scopes, told what the connection hears: a copy of the
+/// list each time, since a scope that fails is closed and leaves it.
+class _FlexScopes {
+  final FlexRadioSession _session;
+  _FlexScopes(this._session);
+
+  List<FlexSliceSpectrum> get _all => [_session._spectrum, ..._session._extraScopes];
+
+  void _each(void Function(FlexSliceSpectrum scope) tell) {
+    for (final scope in _all) {
+      tell(scope);
+    }
+  }
+
+  void subscribe() => _each((s) => s.subscribe());
+  void socketReady() => _each((s) => s.socketReady());
+  void socketLost() => _each((s) => s.socketLost());
+  void socketUnavailable() => _each((s) => s.socketUnavailable());
+  void panStatus(String id, Map<String, String> fields) => _each((s) => s.panStatus(id, fields));
+  void streamStatus(String id, Map<String, String> fields) => _each((s) => s.streamStatus(id, fields));
+
+  /// Whether any of them took it, every one being offered it.
+  bool packet(Uint8List data) => _all.fold(false, (taken, s) => s.packet(data) || taken);
+}
+
+/// A slice's sweep beyond its own, as CatService holds it: closing it leaves
+/// the slice's list.
+class _FlexExtraScope implements SpectrumScope {
+  final FlexPanSpectrum _scope;
+  final void Function() _left;
+  _FlexExtraScope(this._scope, this._left);
+
+  @override
+  bool setSpectrum(SpectrumRequest request) => _scope.setSpectrum(request);
+
+  @override
+  void close() {
+    _left();
+    _scope.close();
   }
 }

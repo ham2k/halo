@@ -387,7 +387,7 @@ extension _Connection on CatService {
         if (runtime.connection != connection) return;
         // NOT _noteAlive: a Flex sweep is computed from a UDP stream that
         // outlives the command socket the silence watch is about.
-        runtime.spectrum?.add(frame);
+        runtime.spectrum?.add((0, frame));
         if (runtime.sdrDropReason != null) {
           runtime.sdrDropReason = null;
           _setState(uuid, stateFor(uuid));
@@ -544,6 +544,7 @@ extension _Connection on CatService {
     }
     runtime.spectrumStarted = false;
     runtime.spectrumSpanAsked = null;
+    _forgetSpectrumScopes(runtime);
     if (runtime.spectrum?.hasListener ?? false) _spectrumDemand(runtime, true);
     _settleSdr(runtime);
     return _ConnectOutcome.connected;

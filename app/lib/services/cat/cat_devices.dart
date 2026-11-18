@@ -236,7 +236,7 @@ extension _Devices on CatService {
   }
 
   /// The station name for a station connection opened with [config]: read
-  /// as it opens, as [_flexClientIdIn] is.
+  /// as it opens, as the station's id is ([_flexStationOpened]).
   String? _flexStationIn(Map<String, dynamic> config) {
     if (config[flexGuiConfigKey] != true) return null;
     final address = _flexAddressIn(config);
@@ -250,15 +250,18 @@ extension _Devices on CatService {
     _flexStationEdited(previous, node);
   }
 
-  /// The id the radio gave HaLo's station, kept through an edit: the
+  /// What the radio keeps for HaLo's station, kept through an edit: the
   /// editor saves the settings it read as it opened, and a station
-  /// registered since would otherwise lose the id its slices are kept by.
-  EquipmentNode _flexKeepClientId(EquipmentNode current, EquipmentNode edited) => switch (current.config[flexClientIdConfigKey]) {
-    final String id when _isFlex(edited) && edited.config[flexClientIdConfigKey] == null => edited.copyWith(
-      config: {...edited.config, flexClientIdConfigKey: id},
-    ),
-    _ => edited,
-  };
+  /// registered since would otherwise lose the id its slices are kept by,
+  /// and the sweeps' pans it left would never be removed.
+  EquipmentNode _flexKeepStationRecord(EquipmentNode current, EquipmentNode edited) {
+    if (!_isFlex(edited)) return edited;
+    final kept = {
+      for (final key in const [flexClientIdConfigKey, flexSweepPansConfigKey])
+        if (current.config[key] case final value? when edited.config[key] == null) key: value,
+    };
+    return kept.isEmpty ? edited : edited.copyWith(config: {...edited.config, ...kept});
+  }
 
   /// A Flex renamed for this computer is renamed on the radio at once, on
   /// HaLo's station's live connection.
@@ -270,27 +273,34 @@ extension _Devices on CatService {
     }
   }
 
-  /// The id the radio keeps HaLo's station's slices by, for a station
-  /// connection opened with [config]: the device's, as the radio last gave
-  /// it.
-  String? _flexClientIdIn(Map<String, dynamic> config) {
-    if (config[flexGuiConfigKey] != true) return null;
-    final address = _flexAddressIn(config);
-    final device = address == null ? null : _nodes[_flexDeviceOf(address)];
-    return switch (device?.config[flexClientIdConfigKey]) {
-      final String id when id.isNotEmpty => id,
-      _ => null,
-    };
+  /// A Flex's connection, with what its device keeps for HaLo's station:
+  /// read as the connection opens, not from a lease's settings, since the
+  /// radio gives it after the first lease asked.
+  FlexRadio _flexStationOpened(Map<String, dynamic> config, void Function(List<int>) send) {
+    final address = config[flexGuiConfigKey] == true ? _flexAddressIn(config) : null;
+    final kept = address == null ? null : _nodes[_flexDeviceOf(address)]?.config;
+    return FlexRadio.fromConfig(
+      config,
+      send: send,
+      clientId: switch (kept?[flexClientIdConfigKey]) {
+        final String id when id.isNotEmpty => id,
+        _ => null,
+      },
+      station: _flexStationIn(config),
+      onClientId: (id) => _flexDeviceKeeps(config, flexClientIdConfigKey, id),
+      sweepPans: [...?(kept?[flexSweepPansConfigKey] as List?)?.whereType<String>()],
+      onSweepPans: (pans) => _flexDeviceKeeps(config, flexSweepPansConfigKey, pans.isEmpty ? null : pans),
+    );
   }
 
-  /// The radio keeps HaLo's station's slices under the id it gave it: kept
-  /// on the device, so the next connection brings them back.
-  void _flexClientIdAssigned(Map<String, dynamic> config, String id) {
+  /// [value] kept on the device entry of the Flex a connection opened with
+  /// [config] is to, so the next connection reads it.
+  void _flexDeviceKeeps(Map<String, dynamic> config, String key, Object? value) {
     final address = _flexAddressIn(config);
     final device = address == null ? null : _flexDeviceOf(address);
     final node = device == null ? null : _nodes[device];
-    if (node == null || node.config[flexClientIdConfigKey] == id) return;
-    _nodes[node.uuid] = node.copyWith(config: {...node.config, flexClientIdConfigKey: id});
+    if (node == null || const DeepCollectionEquality().equals(node.config[key], value)) return;
+    _nodes[node.uuid] = node.copyWith(config: {...node.config, key: value}..removeWhere((k, v) => k == key && v == null));
     unawaited(_save());
   }
 

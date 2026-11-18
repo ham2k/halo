@@ -13,6 +13,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:halo_core/halo_core.dart' show nowMillis;
 import 'package:halo_i18n/halo_i18n.dart';
 
@@ -38,12 +39,27 @@ const _points = 2048, _rows = 400;
 
 const _framesPerSecond = {SpectrumSpeed.slow: 8, SpectrumSpeed.mid: 15, SpectrumSpeed.fast: 25};
 
-class FlexPanSpectrum implements FlexSliceSpectrum {
+class FlexPanSpectrum implements FlexSliceSpectrum, SpectrumScope {
   /// Sends a command; [onReply] gets the answer's code and body.
   final void Function(String command, {void Function(int code, String body)? onReply}) send;
   final SpectrumSink? sink;
 
-  FlexPanSpectrum({required this.send, required this.sink, Map<String, Map<String, String>>? pans}) : _pans = pans ?? {};
+  /// For a sweep beyond the slice's own ([MultiScopeSession.openScope]): the
+  /// slice's frequency in kHz. Such a scope makes a pan of its own, centred
+  /// there until a display moves it, and removes it at [close]. Null for the
+  /// slice's own pan, which is the radio's.
+  final double? Function()? ownPanAt;
+
+  /// Sends the command making [ownPanAt]'s pan, where not [send]: the
+  /// radio's connection, which keeps the pans made for sweeps
+  /// (flexradio_own_pans.dart).
+  final void Function(String command, {void Function(int code, String body)? onReply})? makePan;
+
+  FlexPanSpectrum({required this.send, required this.sink, Map<String, Map<String, String>>? pans, this.ownPanAt, this.makePan}) : _pans = pans ?? {};
+
+  /// The pan this scope made, from the radio's answer until it is removed.
+  String? _made;
+  bool _making = false;
 
   bool _wanted = false;
   @override
@@ -109,6 +125,7 @@ class FlexPanSpectrum implements FlexSliceSpectrum {
     if (_handshakeDone) send('sub pan all');
     sink?.reportSpectrumSettings(_settings);
     if (_socketFailed) sink?.reportSpectrumProblem(t.settings.station.spectrumNoUdp);
+    _makePan();
     _settle();
   }
 
@@ -116,6 +133,68 @@ class FlexPanSpectrum implements FlexSliceSpectrum {
   void subscribe() {
     _handshakeDone = true;
     if (_wanted) send('sub pan all');
+    _makePan();
+  }
+
+  /// A pan of this scope's own, made once the radio takes commands. One the
+  /// radio turns down (every pan it has in use) is said as a problem, which
+  /// closes the scope.
+  void _makePan() {
+    if (ownPanAt == null || !_wanted || !_handshakeDone || _made != null || _making) return;
+    _making = true;
+    (makePan ?? send)(
+      'display pan create x=$_points y=$_rows',
+      onReply: (code, body) {
+        _making = false;
+        // `0x40000003,0x42000003`: the pan, then its waterfall.
+        final pan = body.split(',').first.trim().toLowerCase();
+        if (code != 0 || !pan.startsWith('0x')) {
+          if (code == 0) debugPrint('[flex] a pan made with no id HaLo can read: "$body"');
+          if (_wanted) sink?.reportSpectrumProblem('${t.settings.station.spectrumNoPanadapter} (0x${code.toRadixString(16)})');
+          return;
+        }
+        _made = pan;
+        // Closed while it was being made: not left on the radio, which keeps
+        // a GUI client's pans for its next connection.
+        if (!_wanted) return _removePan();
+        // The radio sends no status to the client that made a change, so
+        // what it has is what HaLo's accepted sets say.
+        _pans[pan] ??= {};
+        slicePan(pan);
+      },
+    );
+  }
+
+  void _removePan() {
+    final pan = _made;
+    if (pan == null) return;
+    _made = null;
+    send(
+      'display pan remove $pan',
+      onReply: (code, _) {
+        if (code == 0) {
+          _pans.remove(pan);
+        } else {
+          debugPrint('[flex] pan $pan not removed: 0x${code.toRadixString(16)}');
+        }
+      },
+    );
+  }
+
+  @override
+  bool setSpectrum(SpectrumRequest request) {
+    if (request.centerHz case final hz?) _askedCenter = hz;
+    return set(request);
+  }
+
+  /// Where a display last asked this scope's own pan to be: where it is put
+  /// as it is shaped, before it was made or again after the socket came back.
+  int? _askedCenter;
+
+  @override
+  void close() {
+    stop();
+    _removePan();
   }
 
   @override
@@ -220,6 +299,7 @@ class FlexPanSpectrum implements FlexSliceSpectrum {
   void panStatus(String id, Map<String, String> fields) {
     if (fields.containsKey('removed')) {
       _pending.remove(id);
+      if (id == _made) _made = null;
       if (id == _pan && _wanted) {
         _release();
         sink?.reportSpectrumProblem(t.settings.station.spectrumNoPanadapter);
@@ -262,6 +342,15 @@ class FlexPanSpectrum implements FlexSliceSpectrum {
     _setPan(pan, 'max_dbm', '$_maxDbm');
     _askSpeed(pan);
     _askSpan(pan);
+    if (ownPanAt != null) {
+      final hz =
+          _askedCenter ??
+          switch (ownPanAt!()) {
+            final khz? => (khz * 1000).round(),
+            null => null,
+          };
+      if (hz != null) _setPan(pan, 'center', (hz / 1e6).toStringAsFixed(6));
+    }
     _heard = false;
     _watchdog?.cancel();
     _watchdog = Timer(_firstFrameDeadline, () {
@@ -391,5 +480,6 @@ class FlexPanSpectrum implements FlexSliceSpectrum {
   void teardown() {
     if (_wanted) _release();
     _wanted = false;
+    _removePan();
   }
 }
