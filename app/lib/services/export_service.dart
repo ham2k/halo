@@ -528,6 +528,69 @@ class ExportService {
     return options;
   }
 
+  /// Each of [contacts]' ADIF records as [stationCall]'s log writes them, by
+  /// contact uuid, for a push (docs/design/transfer.md §5): the core `adif`
+  /// exporter run once per contact, all in one crossing, with the header cut
+  /// off. A contact the exporter writes nothing for (another call's, under
+  /// several) or fails on is absent from the answer.
+  ///
+  /// Through the payload [generateExports] builds, so a pushed record holds
+  /// the fields the full ADIF export writes for that contact, segments and
+  /// station-call rewrites included, rewritten by [adifRecordsOf]. Without
+  /// the operation's `events`: a service takes contacts, not the log's
+  /// breaks. [mainHandler] and
+  /// [includeFieldsFrom] are `ExportRequest`'s, for a program's own records;
+  /// [omit] names fields left out ([adifRecordsOf]).
+  ///
+  /// [operation] may be one with no uuid, standing for contacts logged
+  /// outside any operation. [log] is the operation's contacts, segments and
+  /// whether it was on the air under several calls, when the caller already
+  /// worked them out: a push asks once per chunk, and working them out over
+  /// the whole operation each time makes a long log's push quadratic.
+  /// [errors] gathers, by contact, why the exporter wrote nothing for it.
+  Future<Map<String, List<String>>> adifRecordsByQso(
+    Operation operation,
+    List<Qso> contacts, {
+    required String stationCall,
+    ({List<Qso> qsos, SegmentedOperation segmented, bool perCall})? log,
+    String? mainHandler,
+    List<String> includeFieldsFrom = const [],
+    bool includePrivateData = false,
+    List<String> omit = const [],
+    Map<String, String>? errors,
+  }) async {
+    final host = extensions.host;
+    if (host == null) throw ExportException('Extension runtime is not ready yet — try again in a moment.');
+    if (contacts.isEmpty) return {};
+    final all = log?.qsos ?? (operation.uuid.isEmpty ? contacts : await qsos.forOperation(operation.uuid));
+    final segmented = log?.segmented ?? SegmentedOperation.from(operation: operation.data, qsos: all);
+    final perCall = log?.perCall ?? allStationCallsOf(segmented, all.where((q) => !q.isEvent)).length >= 2;
+    final entries = await host.invokeHookBatch([
+      for (final qso in contacts)
+        Hooks.exportGenerateExport.withArgs({
+          ..._payloadAs(stationCall, operation, [qso], segmented, perCall: perCall),
+          'exportType': 'adif',
+          'includeLookupData': true,
+          'includePrivateData': includePrivateData,
+          'mainHandler': ?mainHandler,
+          if (includeFieldsFrom.isNotEmpty) 'includeFieldsFrom': includeFieldsFrom,
+        }, key: 'adif'),
+    ], timeout: const Duration(seconds: 30));
+    final records = <String, List<String>>{};
+    for (final (index, entry) in entries.indexed) {
+      if (entry['ok'] != true) {
+        final error = entry['timedOut'] == true ? 'The ADIF exporter timed out' : entry['error']?.toString() ?? 'The ADIF exporter failed';
+        debugPrint('[export] no ADIF record for ${contacts[index].uuid}: $error');
+        // Its first line: the JavaScript stack under it stays in the console.
+        errors?[contacts[index].uuid] = error.split('\n').first.trim();
+        continue;
+      }
+      final lines = adifRecordsOf(asQsonString(asQsonMap(entry['value'])?['content']) ?? '', omit: omit);
+      if (lines.isNotEmpty) records[contacts[index].uuid] = lines;
+    }
+    return records;
+  }
+
   /// Generates file content for the given (previously listed) options.
   /// Returns one `{filename, mimeType, content}` map per option, in the same
   /// order.

@@ -2006,6 +2006,16 @@ class _Translations$operation$export$cw extends Translations$operation$export$en
 
 	// Translations
 	@override String get title => '——— ·——· · ·—· ·— — ·· ——— —· / · —··— ·——· ——— ·—· — ···';
+	@override String titleWithCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '——— ·——· · ·—· ·— — ·· ——— —· / · —··— ·——· ——— ·—· — ··· ———··· / ${count} / ——·— ··· ———',
+		other: '——— ·——· · ·—· ·— — ·· ——— —· / · —··— ·——· ——— ·—· — ··· ———··· / ${count} / ——·— ··· ——— ···',
+	);
+	@override String get filesTitle => '··—· ·· ·—·· · / · —··— ·——· ——— ·—· — ···';
+	@override String get cloudSync => '···· ·— —— ··——— —·— / —·—· ·—·· ——— ··— —·· / ··· —·—— —· —·—·';
+	@override String get syncNow => '··· —·—— —· —·—· / —· ——— ·——';
+	@override String get syncOff => '··· —·—— —· —·—· / ·· ··· / ——— ··—· ··—·';
+	@override String syncFailed({required Object error}) => '··· —·—— —· —·—· / ··—· ·— ·· ·—·· · —·· ———··· / ${error}';
+	@override String get syncNotRun => '··· —·—— —· —·—· / —·· ·· —·· —· ·————· — / ·—· ··— —· ·—·—·— / —·—· ···· · —·—· —·— / ···· ·— —— ··——— —·— / —·—· ·—·· ——— ··— —·· / ··· —·—— —· —·—· / ·· —· / ··· · — — ·· —· ——· ··· ·—·—·—';
 	@override String get syncedOperation => '——— ·——· · ·—· ·— — ·· ——— —· / ·· ··· / ··· —·—— —· —·—· · —··';
 	@override String get unsyncedOperation => '——— ·——· · ·—· ·— — ·· ——— —· / ···· ·— ··· / ··— —· ··· —·—— —· —·—· · —·· / —·—· ···· ·— —· ——· · ···';
 	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
@@ -2041,17 +2051,33 @@ class _Translations$operation$export$cw extends Translations$operation$export$en
 		one: '··· ·— ···— · / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· ·',
 		other: '··· ·— ···— · / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· · ···',
 	);
+	@override String saveAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '··· ·— ···— · / ${count} / ··—· ·· ·—·· ·',
+		other: '··· ·— ···— · / ·— ·—·· ·—·· / ${count} / ··—· ·· ·—·· · ···',
+	);
 	@override String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
 		one: '··· ···· ·— ·—· · / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· ·',
 		other: '··· ···· ·— ·—· · / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· · ···',
+	);
+	@override String shareAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '··· ···· ·— ·—· · / ${count} / ··—· ·· ·—·· ·',
+		other: '··· ···· ·— ·—· · / ·— ·—·· ·—·· / ${count} / ··—· ·· ·—·· · ···',
 	);
 	@override String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
 		one: '· —··— ·——· ——— ·—· — / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· ·',
 		other: '· —··— ·——· ——— ·—· — / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· · ···',
 	);
+	@override String exportAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '· —··— ·——· ——— ·—· — / ${count} / ··—· ·· ·—·· ·',
+		other: '· —··— ·——· ——— ·—· — / ·— ·—·· ·—·· / ${count} / ··—· ·· ·—·· · ···',
+	);
 	@override String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
 		one: '—·· ——— ·—— —· ·—·· ——— ·— —·· / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· ·',
 		other: '—·· ——— ·—— —· ·—·· ——— ·— —·· / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· · ···',
+	);
+	@override String downloadAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '—·· ——— ·—— —· ·—·· ——— ·— —·· / ${count} / ··—· ·· ·—·· ·',
+		other: '—·· ——— ·—— —· ·—·· ——— ·— —·· / ·— ·—·· ·—·· / ${count} / ··—· ·· ·—·· · ···',
 	);
 	@override String saveOne({required Object name}) => '··· ·— ···— · / ${name}';
 	@override String shareOne({required Object name}) => '··· ···· ·— ·—· · / ${name}';
@@ -2064,6 +2090,10 @@ class _Translations$operation$export$cw extends Translations$operation$export$en
 	@override String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
 		one: '··· — ·— ··· ···· / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· ·',
 		other: '··· — ·— ··· ···· / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· · ···',
+	);
+	@override String stashAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '··· — ·— ··· ···· / ${count} / ··—· ·· ·—·· ·',
+		other: '··· — ·— ··· ···· / ·— ·—·· ·—·· / ${count} / ··—· ·· ·—·· · ···',
 	);
 	@override String get settingsButton => '· —··— ·——· ——— ·—· — / ··· · — — ·· —· ——· ···';
 	@override String get settingsTitle => '· —··— ·——· ——— ·—· — / ··· · — — ·· —· ——· ···';
@@ -2089,6 +2119,7 @@ class _Translations$operation$export$cw extends Translations$operation$export$en
 	);
 	@override String exportFailed({required Object error}) => '· —··— ·——· ——— ·—· — / ··—· ·— ·· ·—·· · —·· ———··· / ${error}';
 	@override late final _Translations$operation$export$stash$cw stash = _Translations$operation$export$stash$cw._(_root);
+	@override late final _Translations$operation$export$push$cw push = _Translations$operation$export$push$cw._(_root);
 }
 
 // Path: operation.spots
@@ -4231,6 +4262,51 @@ class _Translations$operation$export$stash$cw extends Translations$operation$exp
 	);
 }
 
+// Path: operation.export.push
+class _Translations$operation$export$push$cw extends Translations$operation$export$push$en {
+	_Translations$operation$export$push$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '··· —·—— —· —·—· / ·—··· / ·——· ··— ··· ···· / — ——— / ··· · ·—· ···— ·· —·—· · ···';
+	@override String toSend({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '${count} / ——·— ··· ——— / — ——— / ··· · —· —··',
+		other: '${count} / ——·— ··· ——— ··· / — ——— / ··· · —· —··',
+	);
+	@override String toDelete({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '${count} / — ——— / ·—· · —— ——— ···— ·',
+		other: '${count} / — ——— / ·—· · —— ——— ···— ·',
+	);
+	@override String toSendTo({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '${count} / ——·— ··· ——— / — ——— / ··· · —· —·· / — ——— / ${destination}',
+		other: '${count} / ——·— ··· ——— ··· / — ——— / ··· · —· —·· / — ——— / ${destination}',
+	);
+	@override String allSent({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '${count} / ——·— ··· ——— / ··· · —· —',
+		other: '·— ·—·· ·—·· / ${count} / ——·— ··· ——— ··· / ··· · —· —',
+	);
+	@override String allSentTo({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '${count} / ——·— ··· ——— / ··· · —· — / — ——— / ${destination}',
+		other: '·— ·—·· ·—·· / ${count} / ——·— ··· ——— ··· / ··· · —· — / — ——— / ${destination}',
+	);
+	@override String get nothingToSend => '—· ——— — ···· ·· —· ——· / — ——— / ··· · —· —··';
+	@override String get done => '—·· ——— —· ·';
+	@override String pending({required Object count}) => '${count} / ·——· · —· —·· ·· —· ——·';
+	@override String completed({required Object count}) => '${count} / —·—· ——— —— ·——· ·—·· · — · —··';
+	@override String get button => '·——· ··— ··· ····';
+	@override String buttonFor({required Object name}) => '·——· ··— ··· ···· ———··· / ${name}';
+	@override String progress({required Object done, required Object total}) => '·——· ··— ··· ···· ·· —· ——· / ${done} / ——— ··—· / ${total} …';
+	@override String failed({required num count, required Object error}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '${count} / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
+		other: '${count} / ··—· ·— ·· ·—·· · —·· ——··—— / — ···· · / ··—· ·· ·—· ··· — ———··· / ${error}',
+	);
+	@override String pushFailed({required Object error}) => '·——· ··— ··· ···· / ··—· ·— ·· ·—·· · —·· ———··· / ${error}';
+	@override String get timedOut => '— ···· · / ··· · ·—· ···— ·· —·—· · / — ——— ——— —·— / — ——— ——— / ·—·· ——— —· ——· / — ——— / ·— —· ··· ·—— · ·—· ——··—— / ··· ——— / — ···· · / ·——· ··— ··· ···· / ··· — ——— ·——· ·——· · —·· ·—·—·— / ·——· ··— ··· ···· / ·— ——· ·— ·· —· / — ——— / ··—· ·· —· ·· ··· ···· ·—·—·—';
+	@override String loadFailed({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·—· ···· · —·—· —·— / — ···· · / ··· · ·—· ···— ·· —·—· · ··· ———··· / ${error}';
+	@override String get checkFailed => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·—· ···· · —·—· —·—';
+}
+
 // Path: operation.spots.continents
 class _Translations$operation$spots$continents$cw extends Translations$operation$spots$continents$en {
 	_Translations$operation$spots$continents$cw._(TranslationsCw root) : this._root = root, super.internal(root);
@@ -6004,6 +6080,13 @@ extension on TranslationsCw {
 			'operation.layout.htmlPanelUnsupported' => '— ···· ·· ··· / ·——· ·— —· · ·—·· / —· · · —·· ··· / ·— / ·—— · —··· / ···— ·· · ·—— ——··—— / ·—— ···· ·· —·—· ···· / — ···· ·· ··· / ·——· ·—·· ·— — ··—· ——— ·—· —— / —·· ——— · ··· / —· ——— — / ·——· ·—· ——— ···— ·· —·· ·',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => '— ···· ·· ··· / ·——· ·— —· · ·—·· / —· · · —·· ··· / ·— / ··· ·— —· —·· —··· ——— —··— / — ···· · / ·—— · —··· / ···— · ·—· ··· ·· ——— —· / —·—· ·— —· —· ——— — / ·——· ·—· ——— ···— ·· —·· ·',
 			'operation.export.title' => '——— ·——· · ·—· ·— — ·· ——— —· / · —··— ·——· ——— ·—· — ···',
+			'operation.export.titleWithCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '——— ·——· · ·—· ·— — ·· ——— —· / · —··— ·——· ——— ·—· — ··· ———··· / ${count} / ——·— ··· ———', other: '——— ·——· · ·—· ·— — ·· ——— —· / · —··— ·——· ——— ·—· — ··· ———··· / ${count} / ——·— ··· ——— ···', ), 
+			'operation.export.filesTitle' => '··—· ·· ·—·· · / · —··— ·——· ——— ·—· — ···',
+			'operation.export.cloudSync' => '···· ·— —— ··——— —·— / —·—· ·—·· ——— ··— —·· / ··· —·—— —· —·—·',
+			'operation.export.syncNow' => '··· —·—— —· —·—· / —· ——— ·——',
+			'operation.export.syncOff' => '··· —·—— —· —·—· / ·· ··· / ——— ··—· ··—·',
+			'operation.export.syncFailed' => ({required Object error}) => '··· —·—— —· —·—· / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
+			'operation.export.syncNotRun' => '··· —·—— —· —·—· / —·· ·· —·· —· ·————· — / ·—· ··— —· ·—·—·— / —·—· ···· · —·—· —·— / ···· ·— —— ··——— —·— / —·—· ·—·· ——— ··— —·· / ··· —·—— —· —·—· / ·· —· / ··· · — — ·· —· ——· ··· ·—·—·—',
 			'operation.export.syncedOperation' => '——— ·——· · ·—· ·— — ·· ——— —· / ·· ··· / ··· —·—— —· —·—· · —··',
 			'operation.export.unsyncedOperation' => '——— ·——· · ·—· ·— — ·· ——— —· / ···· ·— ··· / ··— —· ··· —·—— —· —·—· · —·· / —·—· ···· ·— —· ——· · ···',
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ——·— ··· ——— / ·· —· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·', other: '${count} / ——·— ··· ——— ··· / ·· —· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·', ), 
@@ -6021,15 +6104,20 @@ extension on TranslationsCw {
 			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '· —··— ·——· ——— ·—· — / ${count} / ··—· ·· ·—·· ·', other: '· —··— ·——· ——— ·—· — / ${count} / ··—· ·· ·—·· · ···', ), 
 			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '—·· ——— ·—— —· ·—·· ——— ·— —·· / ${count} / ··—· ·· ·—·· ·', other: '—·· ——— ·—— —· ·—·· ——— ·— —·· / ${count} / ··—· ·· ·—·· · ···', ), 
 			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '··· ·— ···— · / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· ·', other: '··· ·— ···— · / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· · ···', ), 
+			'operation.export.saveAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '··· ·— ···— · / ${count} / ··—· ·· ·—·· ·', other: '··· ·— ···— · / ·— ·—·· ·—·· / ${count} / ··—· ·· ·—·· · ···', ), 
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '··· ···· ·— ·—· · / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· ·', other: '··· ···· ·— ·—· · / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· · ···', ), 
+			'operation.export.shareAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '··· ···· ·— ·—· · / ${count} / ··—· ·· ·—·· ·', other: '··· ···· ·— ·—· · / ·— ·—·· ·—·· / ${count} / ··—· ·· ·—·· · ···', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '· —··— ·——· ——— ·—· — / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· ·', other: '· —··— ·——· ——— ·—· — / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· · ···', ), 
+			'operation.export.exportAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '· —··— ·——· ——— ·—· — / ${count} / ··—· ·· ·—·· ·', other: '· —··— ·——· ——— ·—· — / ·— ·—·· ·—·· / ${count} / ··—· ·· ·—·· · ···', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '—·· ——— ·—— —· ·—·· ——— ·— —·· / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· ·', other: '—·· ——— ·—— —· ·—·· ——— ·— —·· / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· · ···', ), 
+			'operation.export.downloadAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '—·· ——— ·—— —· ·—·· ——— ·— —·· / ${count} / ··—· ·· ·—·· ·', other: '—·· ——— ·—— —· ·—·· ——— ·— —·· / ·— ·—·· ·—·· / ${count} / ··—· ·· ·—·· · ···', ), 
 			'operation.export.saveOne' => ({required Object name}) => '··· ·— ···— · / ${name}',
 			'operation.export.shareOne' => ({required Object name}) => '··· ···· ·— ·—· · / ${name}',
 			'operation.export.exportOne' => ({required Object name}) => '· —··— ·——· ——— ·—· — / ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => '—·· ——— ·—— —· ·—·· ——— ·— —·· / ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '··· — ·— ··· ···· / ${count} / ··—· ·· ·—·· ·', other: '··· — ·— ··· ···· / ${count} / ··—· ·· ·—·· · ···', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '··· — ·— ··· ···· / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· ·', other: '··· — ·— ··· ···· / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· · ···', ), 
+			'operation.export.stashAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '··· — ·— ··· ···· / ${count} / ··—· ·· ·—·· ·', other: '··· — ·— ··· ···· / ·— ·—·· ·—·· / ${count} / ··—· ·· ·—·· · ···', ), 
 			'operation.export.settingsButton' => '· —··— ·——· ——— ·—· — / ··· · — — ·· —· ——· ···',
 			'operation.export.settingsTitle' => '· —··— ·——· ——— ·—· — / ··· · — — ·· —· ——· ···',
 			'operation.export.compactFileNames.title' => '··— ··· · / —·—· ——— —— ·——· ·— —·—· — / ··—· ·· ·—·· · / —· ·— —— · ···',
@@ -6064,6 +6152,24 @@ extension on TranslationsCw {
 			'operation.export.stash.emailFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ’ — / ··· · —· —·· / — ···· · / · —— ·— ·· ·—·· ———··· / ${error}',
 			'operation.export.stash.freeTier' => '··—· ·—· · · / ·— —·—· —·—· ——— ··— —· — ··· / —·—· ·— —· / ——— —· ·—·· —·—— / —·— · · ·——· / ——— —· · / ··· — ·— ··· ···· / ·— — / ·— / — ·· —— · ·—·—·— / ··· ··— —··· ··· —·—· ·—· ·· —··· · ·—· ··· / —·—· ·— —· / —·— · · ·——· / ·— ··· / —— ·— —· —·—— / ·— ··· / — ···· · —·—— / ·—— ·— —· — ·—·—·—',
 			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '··· · —· — / ${count} / ··—· ·· ·—·· · / — ——— / ···· ·— —— ··——— —·— ’ ··· / ··—· ·· ·—·· · / ··· — ·— ··· ···· / —·——· ··· — ·— ··· ···· ·—·—·— ···· ·— —— ··——— —·— ·—·—·— —· · — —·——·—', other: '··· · —· — / ${count} / ··—· ·· ·—·· · ··· / — ——— / ···· ·— —— ··——— —·— ’ ··· / ··—· ·· ·—·· · / ··· — ·— ··· ···· / —·——· ··· — ·— ··· ···· ·—·—·— ···· ·— —— ··——— —·— ·—·—·— —· · — —·——·—', ), 
+			'operation.export.push.title' => '··· —·—— —· —·—· / ·—··· / ·——· ··— ··· ···· / — ——— / ··· · ·—· ···— ·· —·—· · ···',
+			'operation.export.push.toSend' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ——·— ··· ——— / — ——— / ··· · —· —··', other: '${count} / ——·— ··· ——— ··· / — ——— / ··· · —· —··', ), 
+			'operation.export.push.toDelete' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / — ——— / ·—· · —— ——— ···— ·', other: '${count} / — ——— / ·—· · —— ——— ···— ·', ), 
+			'operation.export.push.toSendTo' => ({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ——·— ··· ——— / — ——— / ··· · —· —·· / — ——— / ${destination}', other: '${count} / ——·— ··· ——— ··· / — ——— / ··· · —· —·· / — ——— / ${destination}', ), 
+			'operation.export.push.allSent' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ——·— ··· ——— / ··· · —· —', other: '·— ·—·· ·—·· / ${count} / ——·— ··· ——— ··· / ··· · —· —', ), 
+			'operation.export.push.allSentTo' => ({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ——·— ··· ——— / ··· · —· — / — ——— / ${destination}', other: '·— ·—·· ·—·· / ${count} / ——·— ··· ——— ··· / ··· · —· — / — ——— / ${destination}', ), 
+			'operation.export.push.nothingToSend' => '—· ——— — ···· ·· —· ——· / — ——— / ··· · —· —··',
+			'operation.export.push.done' => '—·· ——— —· ·',
+			'operation.export.push.pending' => ({required Object count}) => '${count} / ·——· · —· —·· ·· —· ——·',
+			'operation.export.push.completed' => ({required Object count}) => '${count} / —·—· ——— —— ·——· ·—·· · — · —··',
+			'operation.export.push.button' => '·——· ··— ··· ····',
+			'operation.export.push.buttonFor' => ({required Object name}) => '·——· ··— ··· ···· ———··· / ${name}',
+			'operation.export.push.progress' => ({required Object done, required Object total}) => '·——· ··— ··· ···· ·· —· ——· / ${done} / ——— ··—· / ${total} …',
+			'operation.export.push.failed' => ({required num count, required Object error}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ··—· ·— ·· ·—·· · —·· ———··· / ${error}', other: '${count} / ··—· ·— ·· ·—·· · —·· ——··—— / — ···· · / ··—· ·· ·—· ··· — ———··· / ${error}', ), 
+			'operation.export.push.pushFailed' => ({required Object error}) => '·——· ··— ··· ···· / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
+			'operation.export.push.timedOut' => '— ···· · / ··· · ·—· ···— ·· —·—· · / — ——— ——— —·— / — ——— ——— / ·—·· ——— —· ——· / — ——— / ·— —· ··· ·—— · ·—· ——··—— / ··· ——— / — ···· · / ·——· ··— ··· ···· / ··· — ——— ·——· ·——· · —·· ·—·—·— / ·——· ··— ··· ···· / ·— ——· ·— ·· —· / — ——— / ··—· ·· —· ·· ··· ···· ·—·—·—',
+			'operation.export.push.loadFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·—· ···· · —·—· —·— / — ···· · / ··· · ·—· ···— ·· —·—· · ··· ———··· / ${error}',
+			'operation.export.push.checkFailed' => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·—· ···· · —·—· —·—',
 			'operation.spots.empty' => '—· ——— / ··· ·——· ——— — ··· / —— ·— — —·—· ···· / —·—— ——— ··— ·—· / ··—· ·· ·—·· — · ·—· ···',
 			'operation.spots.disabledNoLocal' => '··· ·——· ——— — ··· / —·· ·· ··· ·— —··· ·—·· · —·· / ··—· ——— ·—· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —· ——··—— / —· ——— / —— ·— —· ··— ·— ·—·· / · —· — ·—· ·· · ···',
 			'operation.spots.disabledLocalOff' => '··· ·——· ——— — ··· / —·· ·· ··· ·— —··· ·—·· · —·· / ··—· ——— ·—· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —· ——··—— / · —· ·— —··· ·—·· · / ·—·· ——— —·—· ·— ·—·· / ··· ·——· ——— — ··· / ·· —· / ··· · — — ·· —· ——· ··· / › / ··· ·——· ——— — — ·· —· ——·',
@@ -6286,6 +6392,8 @@ extension on TranslationsCw {
 			'activitiesView.exports' => '· —··— ·——· ——— ·—· — ···',
 			'activitiesView.exportLogs' => '· —··— ·——· ——— ·—· — / ·—·· ——— ——· ···',
 			'activitiesView.tools' => '— ——— ——— ·—·· ···',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.toolsTitle' => '——— ·——· · ·—· ·— — ·· ——— —· / — ——— ——— ·—·· ···',
 			'activitiesView.operationDetails' => '——— ·——· · ·—· ·— — ·· ——— —· / —·· · — ·— ·· ·—·· ···',
 			'activitiesView.share' => '··· ···· ·— ·—· ·',
@@ -6316,8 +6424,6 @@ extension on TranslationsCw {
 			'activitiesView.searchToggle' => '··· · ·— ·—· —·—· ····',
 			'activitiesView.addToOperation' => '·— —·· —·· / — ——— / ——— ·——· · ·—· ·— — ·· ——— —·',
 			'activitiesView.addToOperationShort' => '·— —·· —·· / — ——— / ——— ·——· ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.mapEmptyState' => '—· ——— / ·—· · ··· ··— ·—·· — ··· / — ——— / ··· ···· ——— ·—— / ——— —· / — ···· · / —— ·— ·——·',
 			'activitiesView.mapEmptyStateHint' => '··· ·—— ·· — —·—· ···· / —··· ·— —·—· —·— / — ——— / — ···· · / ·—·· ·· ··· — ——··—— / ——— ·—· / ··· · ·— ·—· —·—· ···· / ··—· ——— ·—· / ··· ——— —— · — ···· ·· —· ——· / · ·—·· ··· ·',
 			'activitiesView.imports' => '·· —— ·——· ——— ·—· — ···',
@@ -6800,6 +6906,8 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => '···— ——— ·· —·—· · / —— · —— ——— ·—· —·—— / ${n}',
 			'settings.radio.voiceMessages.labelField' => '·—·· ·— —··· · ·—··',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => '···— ——— ·· —·—· · / —— · —— ——— ·—· —·—— / ${n} / ·—·· ·— —··· · ·—··',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} / ···',
 			'settings.radio.voiceMessages.emptyOnRadio' => '· —— ·——· — —·——',
 			'settings.radio.voiceMessages.notMeasured' => '··— —· —·— —· ——— ·—— —· / ·—·· · —· ——· — ····',
@@ -6830,8 +6938,6 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.manageSets' => '—— ·— —· ·— ——· · / ···— ——— ·· —·—· · / ··· · — ··· …',
 			'settings.radio.voiceMessages.fileLabel' => '···· ·— —— ··——— —·— / ···— ——— ·· —·—· · / —— · ··· ··· ·— ——· · / ··· · —',
 			'settings.radio.voiceMessages.fileStem' => '···— ——— ·· —·—· · / —— · ··· ··· ·— ——· · ···',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.output' => '··· · —· —·· / ·— ··— —·· ·· ——— / — ———',
 			'settings.radio.voiceMessages.outputFor' => ({required Object radio}) => '··· · —· —·· / ·— ··— —·· ·· ——— / ··—· ——— ·—· / ·—· ·— —·· ·· ——— / ${radio} / — ———',
 			'settings.radio.voiceMessages.input' => '·—· · —·—· ——— ·—· —·· / ··—· ·—· ——— ——',
@@ -7314,6 +7420,8 @@ extension on TranslationsCw {
 			'settings.station.rtlDirectSampling' => '—·· ·· ·—· · —·—· — / ··· ·— —— ·——· ·—·· ·· —· ——·',
 			'settings.station.rtlDirectSamplingDescription' => '··—· ——— ·—· / ···· ··—· / ——— —· / ·— —· / ·—· — ·—·· —····— ··· —·· ·—· / ···— ···—— / ·—— ·· — ···· ——— ··— — / ·— —· / ··— ·——· —·—· ——— —· ···— · ·—· — · ·—· ·—·—·— / ·— —· / ·—· — ·—·· —····— ··· —·· ·—· / ···— ····— / ·—· · ·— —·—· ···· · ··· / ···· ··—· / ·—— ·· — ···· ——— ··— — / ·· — ·—·—·—',
 			'settings.station.rtlDirectSamplingOff' => '——— ··—· ··—·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rtlDirectSamplingI' => '·· / —··· ·—· ·— —· —·—· ····',
 			'settings.station.rtlDirectSamplingQ' => '——·— / —··· ·—· ·— —· —·—· ····',
 			'settings.station.rtlTcpNotAServer' => '— ···· ·· ··· / ·· ··· / —· ——— — / ·— —· / ·—· — ·—·· ··——·— — —·—· ·——· / ··· · ·—· ···— · ·—·',
@@ -7344,8 +7452,6 @@ extension on TranslationsCw {
 			'settings.station.winkeyerPtt' => '··— ··· · / — ···· · / —·— · —·—— · ·—· ·————· ··· / ·——· — —',
 			'settings.station.winkeyerPttDescription' => '—·— · —·—— / — ···· · / ·——· — — / ·—·· ·· —· · / ——— —· / — ···· · / ··· ·— —— · / ·——— ·— —·—· —·— ——··—— / ··—· ——— ·—· / ·— —· / ·— —— ·——· ·—·· ·· ··—· ·· · ·—· / ——— ·—· / ·— / ·—· ·— —·· ·· ——— / — ···· ·— — / —· · · —·· ··· / ·· — ·—·—·— / ·—·· · ·— ···— · / ——— ··—· ··—· / ··—· ——— ·—· / ·— / ·—· ·— —·· ·· ——— / —·— · —·—— · —·· / ——— —· / ·· — ··· / —·— · —·—— / ·——— ·— —·—· —·— ·—·—·—',
 			'settings.station.winkeyerNoAnswer' => '—· ——— / ·—— ·· —· —·— · —·—— · ·—· / ·—· · ··· ·——· ——— —· —·· · —·· / ——— —· / — ···· ·· ··· / ·——· ——— ·—· —',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.winkeyerStoppedAnswering' => '— ···· · / ·—— ·· —· —·— · —·—— · ·—· / ··· — ——— ·——· ·——· · —·· / ·—· · ··· ·——· ——— —· —·· ·· —· ——· / ·—— ···· ·· ·—·· · / ··· · —· —·· ·· —· ——· —·—·—· / — ···· · / —— · ··· ··· ·— ——· · / ·—— ·— ··· / —·· ·—· ——— ·——· ·——· · —··',
 			'settings.station.icomControlPort' => '—·—· ——— —· — ·—· ——— ·—·· / ·——· ——— ·—· — / —·——· ··— —·· ·——· —·——·—',
 			'settings.station.icomControlPortDescription' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / —·—· ——— —· — ·—· ——— ·—·· / ·——· ——— ·—· — / —·——· ··— —·· ·——· —·——·— / — / ····· ————— ————— ————— ·———— / ··— —· ·—·· · ··· ··· / —·—· ···· ·— —· ——· · —·· / ·· —· / ·· — ··· / —· · — ·—— ——— ·—· —·— / ··· · — — ·· —· ——· ··· ——··—— / ——— ·—· / ··—· ——— ·—· ·—— ·— ·—· —·· · —·· / — ——— / ·— —· ——— — ···· · ·—· ·—·—·—',
@@ -7828,6 +7934,8 @@ extension on TranslationsCw {
 			'settings.station.rotctldTroubleshooting' => '— ···· ·· ··· / —·—· ——— —· —· · —·—· — ··· / — ——— / ·— / ** ·—· ——— — —·—· — ·—·· —·· / —·· ·— · —— ——— —· / —·—— ——— ··— / ·—· ··— —· / —·—— ——— ··— ·—· ··· · ·—·· ··—· ** ——··—— / —· ——— — / — ——— / — ···· · / ·—· ——— — ·— — ——— ·—· / —·· ·· ·—· · —·—· — ·—·· —·—— / — / ···· ·— —— ·—·· ·· —··· ·————· ··· / —··· ·— —·—· —·— · —· —·· / — ·— ·—·· —·— ··· / — ——— / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·— —· —·· / ··· ··— ·——· ·——· ——— ·—· — ··· / —— ——— ··· — / ——— ··—· / — ···· · —— ·—·—·—\n\n—····— / ** — ···· · / —·· ·— · —— ——— —· / —— ··— ··· — / ·— ·—·· ·—· · ·— —·· —·—— / —··· · / ·—· ··— —· —· ·· —· ——· ** ——··—— / · ·—·—·— ——· ·—·—·— / `rotctld -m 601 -r /dev/ttyUSB0` / ··—· ——— ·—· / ·— / ——· ··· —····— ··——— ···—— ··——— ·— ·—·—·— / ··—· ·· —· —·· / —·—— ——— ··— ·—· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· ·————· ··· / —— ——— —·· · ·—·· / —· ··— —— —··· · ·—· / ·—— ·· — ···· / `rotctl -l` ·—·—·—\n—····— / ** ··—· ·—· ——— —— / ·— —· ——— — ···· · ·—· / —— ·— —·—· ···· ·· —· · ** ——··—— / ·— ·—·· ·—·· ——— ·—— / ·——· ——— ·—· — / ····— ····· ···—— ···—— / — ···· ·—· ——— ··— ——· ···· / — ···· ·— — / —— ·— —·—· ···· ·· —· · ·————· ··· / ··—· ·· ·—· · ·—— ·— ·—·· ·—·· ·—·—·— / ·—· ——— — —·—· — ·—·· —·· / ·—·· ·· ··· — · —· ··· / ——— —· / · ···— · ·—· —·—— / ·— —·· —·· ·—· · ··· ··· / ··— —· ·—·· · ··· ··· / ··· — ·— ·—· — · —·· / ·—— ·· — ···· / `-T` ·—·—·—\n—····— / ** ·——· ——— ·—· — ** / ·· ··· / ····— ····· ···—— ···—— / ··— —· ·—·· · ··· ··· / —·—— ——— ··— / ··· — ·— ·—· — · —·· / — ···· · / —·· ·— · —— ——— —· / ·—— ·· — ···· / `-t` ·—·—·—\n—····— / ** ·——· ··· — ·—· ——— — ·— — ——— ·—· ** / ·— —· ··· ·—— · ·—· ··· / — ——— ——— ——··—— / ·—— ·· — ···· / ** ——· ·——· ·—· · —·· ·· —·—· — ** / ··· · ·—·· · —·—· — · —·· / ·— ··· / ·· — ··· / — ·—· ·— —·—· —·— · ·—· / ·— —· —·· / — ·—· ·— —·—· —·— ·· —· ——· / ——— —· ·—·—·—\n—····— / — ··— ·—· —· ··· / ——· ——— / ——— —· ·—·· —·—— / ·— ··· / ··—· ·— ·—· / ·— ··· / — ···· · / ·—·· ·· —— ·· — ··· / ·—· ——— — —·—· — ·—·· —·· / · —· ··—· ——— ·—· —·—· · ··· ——··—— / ·—— ···· ·· —·—· ···· / ·· — / ·—· · ·——· ——— ·—· — ··· / ·· — ··· · ·—·· ··—· / — / ··· · — / — ···· · —— / ·—— ·· — ···· / `-C min_az=…,max_az=…` / ·—— ···· · —· / ··· — ·— ·—· — ·· —· ——· / ·· — ·—·—·— / — ···· · / ——— ··—· ··—· ··· · — ··· / ···· · ·—· · / ·— ·—· · / ··—· ——— ·—· / ·— / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·—— ···· ——— ··· · / ——·· · ·—· ——— / ·· ··· / —· ——— — / — ·—· ··— · / —· ——— ·—· — ···· ·—·—·—',
 			'settings.station.connectionRouted' => ({required Object port, required Object antenna}) => '${port} ———··· / ${antenna}',
 			'settings.station.connectionDevices' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / —·· · ···— ·· —·—· ·', other: '${count} / —·· · ···— ·· —·—· · ···', ), 
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.gpsFix' => ({required Object grid, required Object satellites}) => '${grid} / · / ${satellites}',
 			'settings.station.gpsSearching' => '··· · ·— ·—· —·—· ···· ·· —· ——· / ··—· ——— ·—· / ··· ·— — · ·—·· ·—·· ·· — · ···',
 			'settings.station.gpsSearchingWith' => ({required Object satellites}) => '··· · ·— ·—· —·—· ···· ·· —· ——· / · / ${satellites}',
@@ -7858,8 +7966,6 @@ extension on TranslationsCw {
 			'settings.station.everywareFollowRadioB' => '·—· ·— —·· ·· ——— / —··· / —·——· ··· ——— ··——— ·—· —·——·—',
 			'settings.station.everywareFollowBand' => '··—· ——— ·—·· ·—·· ——— ·—— / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / —··· ·— —· —··',
 			'settings.station.everywareFollowBandDescription' => '·——· ·· —·—· —·— ··· / — ···· · / ·——· ——— ··· ·· — ·· ——— —· / —·—· ——— ···— · ·—· ·· —· ——· / — ···· · / —— ·— ·· —· / ·—· ·— —·· ·· ——— ·————· ··· / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·—— ···· · —· · ···— · ·—· / ·· — / —·—· ···· ·— —· ——· · ··· ·—·—·— / ——— — ···· · ·—· ··· / ··· ···· ·— ·—· ·· —· ——· / — ···· · / ··· — ·— — ·· ——— —· / ··· · · / ·· — / ··· ·—— ·· — —·—· ···· / — ——— ——— ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.everywareFollowBearing' => '·——· ——— ·· —· — / — ——— ·—— ·— ·—· —·· / — ···· · / ··· — ·— — ·· ——— —· / —··· · ·· —· ——· / ·—— ——— ·—· —·— · —··',
 			'settings.station.everywareFollowBearingDescription' => '·——· ·· —·—· —·— ··· / — ···· · / —·· ·· ·—· · —·—· — ·· ——— —· / —· · ·— ·—· · ··· — / — ···· · / ··· — ·— — ·· ——— —· / ·· —· / — ···· · / —·—· ·— ·—·· ·—·· / ··—· ·· · ·—·· —·· / ·—— ···· · —· · ···— · ·—· / ·· — / —·—· ···· ·— —· ——· · ··· ·—·—·— / ——— — ···· · ·—· ··· / ··· ···· ·— ·—· ·· —· ——· / — ···· · / ··· — ·— — ·· ——— —· / ··· · · / ·· — / ··· ·—— ·· — —·—· ···· / — ——— ——— ·—·—·—',
 			'settings.station.everywareTroubleshooting' => '— ···· ·· ··· / —·—· ——— —· —· · —·—· — ··· / — ——— / ·— / ** ——· ···· / · ···— · ·—· —·—— ·—— ·— ·—· · / ··· · ·—· ···— · ·—· ** ——··—— / — ···· · / ·——· ·—· ——— ——· ·—· ·— —— / — ···· ·— — / ··· ···· ·— ·—· · ··· / ·— / ··· — ·— — ·· ——— —· ·————· ··· / ——· ·—· · · —· / ···· · ·—· ——— —· / ·—· ——— — ·— — ——— ·—· ··· / ·— —· —·· / ··· ·—— ·· — —·—· ···· · ··· / ——— ···— · ·—· / — ···· · / —· · — ·—— ——— ·—· —·— ·—·—·—\n\n—····— / ** ·——· ——— ·—· — ** / ·· ··· / ·———— ——··· ··——— ··——— ————— / ··— —· ·—·· · ··· ··· / — ···· · / ··· · ·—· ···— · ·—· / ·—— ·— ··· / ··· · — / ··— ·——· / ——— —· / ·— —· ——— — ···· · ·—· / ——— —· · ·—·—·— / ··—· ·—· ——— —— / ——— ··— — ··· ·· —·· · / — ···· · / ··· — ·— — ·· ——— —· ·————· ··· / —· · — ·—— ——— ·—· —·— ——··—— / — ···· · / ·—· ——— ··— — · ·—· / —— ··— ··· — / ··—· ——— ·—· ·—— ·— ·—· —·· / — ···· ·— — / ·——· ——— ·—· — / — ——— / — ···· · / ··· · ·—· ···— · ·—· ·————· ··· / —·—· ——— —— ·——· ··— — · ·—· ·—·—·—\n—····— / ** ··— ··· · ·—· / ·— —· —·· / ·——· ·— ··· ··· ·—— ——— ·—· —·· ** / ——— —· ·—·· —·—— / ·—— ···· · —· / — ···· · / ··· · ·—· ···— · ·—· / ···· ·— ··· / ··— ··· · ·—· / ·— ··— — ···· · —· — ·· —·—· ·— — ·· ——— —· / — ··— ·—· —· · —·· / ——— —· ·—·—·— / ·—·· · ·— ···— · / —··· ——— — ···· / —··· ·—·· ·— —· —·— / ——— — ···· · ·—· ·—— ·· ··· · ·—·—·—\n—····— / ** — ···· · / ··· · ·—· ···— · ·—· / — ·— —·— · ··· / ·— / ·—·· ·· —— ·· — · —·· / —· ··— —— —··· · ·—· / ——— ··—· / —·—· ·—·· ·· · —· — ··· ** ——··—— / ··—· ——— ··— ·—· / ··— —· ·—·· · ··· ··· / ··· · — / ——— — ···· · ·—· ·—— ·· ··· · ·—·—·— / ·—— ···· · —· / ·· — / ·· ··· / ··—· ··— ·—·· ·—·· ——··—— / —·—· ·—·· ——— ··· · / ·— —· ——— — ···· · ·—· / —·—· ·—·· ·· · —· — / ·— —· —·· / —·—· ——— —· —· · —·—· — / ·— ——· ·— ·· —· ·—·—·—\n—····— / ——— —· —·—· · / —·—· ——— —· —· · —·—· — · —·· ——··—— / — ·· —·—· —·— / — ···· · / ·—· ——— — ·— — ——— ·—· ··· / ·— —· —·· / ··· ·—— ·· — —·—· ···· · ··· / —·—— ——— ··— / ·—— ·— —· — / ··— —· —·· · ·—· / ** —·· · ···— ·· —·—· · ··· ** ·—·—·— / · ·— —·—· ···· / —··· · —·—· ——— —— · ··· / · ——·— ··— ·· ·——· —— · —· — / ——— ··—· / ·· — ··· / ——— ·—— —· ——··—— / ·· —· / — ···· ·· ··· / ·—·· ·· ··· — / ·— —· —·· / ·· —· / · ···— · ·—· —·—— / ·——· ·— —· · ·—·· ·—·—·—\n—····— / ** ——— — ···· · ·—· / ——— ·——· · ·—· ·— — ——— ·—· ··· / —— ·— —·—— / ··· ···· ·— ·—· · / — ···· · / ··· — ·— — ·· ——— —· ·—·—·— ** / — ··— ·—· —· ·· —· ——· / ·— / ·—· ——— — ·— — ——— ·—· / ——— ·—· / ··· ·—— ·· — —·—· ···· ·· —· ——· / ·— —· / ·— —· — · —· —· ·— / ···· · ·—· · / —— ——— ···— · ··· / ·· — / ··—· ——— ·—· / · ···— · ·—· —·—— ——— —· · ·—·—·—',
@@ -8342,6 +8448,8 @@ extension on TranslationsCw {
 			'notices.logFromNewerBuildTitle' => '— ···· ·· ··· / ·—·· ——— ——· / —· · · —·· ··· / ·— / —· · ·—— · ·—· / ···— · ·—· ··· ·· ——— —·',
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => '—·—— ——— ··— ·—· / ·—·· ——— ——· / ·—— ·— ··· / ·—— ·—· ·· — — · —· / —··· —·—— / ·— / —· · ·—— · ·—· / ···— · ·—· ··· ·· ——— —· / ——— ··—· / ···· ·— ·—·· ——— / —·——· ··· — ——— ·—· ·— ——· · / ···— · ·—· ··· ·· ——— —· / ${storage} —·—·—· / — ···· ·· ··· / ——— —· · / ··— —· —·· · ·—· ··· — ·— —· —·· ··· / ${understood} —·——·— ——··—— / ··· ——— / ·· — / —·—· ·— —· —· ——— — / —··· · / ——— ·——· · —· · —·· ——··—— / ·— —· —·· / —· · ·—— / —·—· ——— —· — ·— —·—· — ··· / ·—— ·· ·—·· ·—·· / —· ——— — / —··· · / ··· ·— ···— · —·· ·—·—·— / ·· —· ··· — ·— ·—·· ·—·· / — ···· · / —· · ·—— · ·—· / ···— · ·—· ··· ·· ——— —· / ·— ——· ·— ·· —· / — / ——— ·—· ——··—— / ·· ··—· / —·—— ——— ··— / —— · ·— —· — / — ——— / ·—· ··— —· / — ···· ·· ··· / —··· ··— ·· ·—·· —·· ——··—— / ·——· ——— ·· —· — / ·· — / ·— — / ·— / —·· ·· ··—· ··—· · ·—· · —· — / —·· ·— — ·— / ··—· ——— ·—·· —·· · ·—· ·—·—·— / — ···· · / ·—·· ——— ——· / ·· ··· / ·· —· / ${location}',
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => '—·—— ——— ··— ·—· / ·—·· ——— ——· / ·—— ·— ··· / ·—— ·—· ·· — — · —· / —··· —·—— / ·— / —· · ·—— · ·—· / ···— · ·—· ··· ·· ——— —· / ——— ··—· / ···· ·— ·—·· ——— / —·——· ··· — ——— ·—· ·— ——· · / ···— · ·—· ··· ·· ——— —· / ${storage} —·—·—· / — ···· ·· ··· / ——— —· · / ··— —· —·· · ·—· ··· — ·— —· —·· ··· / ${understood} —·——·— ——··—— / ··· ——— / ·· — / —·—· ·— —· —· ——— — / —··· · / ——— ·——· · —· · —·· ——··—— / ·— —· —·· / —· · ·—— / —·—· ——— —· — ·— —·—· — ··· / ·—— ·· ·—·· ·—·· / —· ——— — / —··· · / ··· ·— ···— · —·· ·—·—·— / ——— ·——· · —· / — ···· ·· ··· / ·—·· ——— ——· / ·—— ·· — ···· / — ···· ·— — / —· · ·—— · ·—· / ···— · ·—· ··· ·· ——— —· / ·· —· ··· — · ·— —·· ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'notices.preferencesRestoredTitle' => '··· · — — ·· —· ——· ··· / ·—· · ··· — ——— ·—· · —·· / ··—· ·—· ——— —— / ·— / —··· ·— —·—· —·— ··— ·——·',
 			'notices.preferencesRestored' => '— ···· · / ··· · — — ·· —· ——· ··· / ··—· ·· ·—·· · / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·· ——··—— / ··· ——— / ···· ·— ·—·· ——— / ·—· · ··· — ——— ·—· · —·· / — ···· · / ·—·· ·— ··· — / ——· ——— ——— —·· / —·—· ——— ·——· —·—— / ——— ··—· / ·· — ·—·—·— / ·— —· —·—— — ···· ·· —· ——· / —·—— ——— ··— / —·—· ···· ·— —· ——· · —·· / ·· —· / —·—— ——— ··— ·—· / ·——· ·—· · ···— ·· ——— ··— ··· / ··· · ··· ··· ·· ——— —· / —— ·— —·—— / —· · · —·· / ··· · — — ·· —· ——· / ·— ——· ·— ·· —· ·—·—·— / — ···· · / ··— —· ·—· · ·— —·· ·— —··· ·—·· · / ··—· ·· ·—·· · / ·· ··· / —·— · ·——· — / ·— ·—·· ——— —· ——· ··· ·· —·· · / ·· — ——··—— / —· ·— —— · —·· / ··· ···· ·— ·—· · —·· ··——·— ·——· ·—· · ··—· · ·—· · —· —·—· · ··· ·—·—·— —·—· ——— ·—· ·—· ··— ·——· — —····— … ·—·—·— ·——— ··· ——— —· ·—·—·—',
 			'notices.preferencesResetTitle' => '··· · — — ·· —· ——· ··· / ·—· · ··· · —',
@@ -8372,8 +8480,6 @@ extension on TranslationsCw {
 			'deepLink.allow' => '·— ·—·· ·—·· ——— ·——',
 			'deepLink.deny' => '—·· · —· —·——',
 			'confirmDevice.title' => '—·—· ——— —· ··—· ·· ·—· —— / ·— / —·· · ···— ·· —·—· ·',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.codePrompt' => '· —· — · ·—· / — ···· · / —·—· ——— —·· · / ··· ···· ——— ·—— —· / ——— —· / — ···· · / —·· · ···— ·· —·—· · / — ···· ·— — / ·—— ·— —· — ··· / — ——— / ·——— ——— ·· —· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· — ·—·—·—',
 			'confirmDevice.code' => '—·—· ——— —·· ·',
 			'confirmDevice.lookUp' => '·—·· ——— ——— —·— / ··— ·——·',

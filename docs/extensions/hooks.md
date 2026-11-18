@@ -131,6 +131,7 @@ log, and a write throws. Copy what you mean to change.
 | `export` | [Import & export](import-export.md) | A file the operator can save or share | every hook, then the chosen one |
 | `adifFields` | [Import & export](import-export.md) | Your program's fields on each ADIF record | inside the runtime, by exporters: the hooks that answer for the contact's references, or the ones an export names |
 | `adifImport` | [Import & export](import-export.md) | Your references recovered from imported ADIF | every hook, in batches of 500 records |
+| `transfer` | [Import & export](import-export.md#transfer) | Sending contacts to a service, and remembering what was sent | every hook for suggestions, then the chosen one |
 | `scoring` | [Scoring & chasing](scoring.md) | A score for an operation | the scorers whose scope matches |
 | `chasing` | [Scoring & chasing](scoring.md) | What a contact counts toward in an award | every program |
 | `command` | [Commands & templates](commands.md) | Text typed in the call field | every hook, first non-null answer wins |

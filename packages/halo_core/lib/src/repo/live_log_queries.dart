@@ -38,6 +38,17 @@ mixin LiveLogQueries {
     return qsosFromRows(rows);
   }
 
+  /// The contacts among [uuids], deleted or not and whatever their
+  /// operation, in no set order: [liveAmong] without its filter.
+  Future<List<Qso>> getMany(List<String> uuids) async {
+    final rows = <QsoRow>[];
+    for (var start = 0; start < uuids.length; start += inClauseChunkSize) {
+      final chunk = uuids.sublist(start, math.min(start + inClauseChunkSize, uuids.length));
+      rows.addAll(await (db.select(db.qsos)..where((q) => q.uuid.isIn(chunk))).get());
+    }
+    return qsosFromRows(rows);
+  }
+
   /// Every contact [operationUuid] holds, deleted or not.
   Future<List<String>> uuidsInOperation(String operationUuid) async {
     final query = db.selectOnly(db.qsos)

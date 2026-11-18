@@ -1,9 +1,10 @@
 # Import & export
 
-Three categories move a log in and out of the app. `export` writes a file;
+Four categories move a log in and out of the app. `export` writes a file;
 `adifFields` lets a program add its own fields to every ADIF record a
 contact produces, whoever is writing the file; `adifImport` recovers a
-program's references from an ADIF file someone else wrote. [How hooks
+program's references from an ADIF file someone else wrote; `transfer` sends
+contacts to a service and remembers what it sent. [How hooks
 work](hooks.md) covers registration, keys, priority and `ctx`. Which files
 operators expect, and what goes in them, is in Guidelines,
 [for an activity](guidelines.md#exports) and
@@ -290,3 +291,131 @@ the bare bird otherwise; and a free-form "custom" program registers none,
 because a hook claiming every `SIG` would add a spurious reference to every
 other program's records, and "claim the `SIG`s nobody else claimed" is not
 expressible by hooks that run independently.
+
+## `transfer`
+
+**For:** sending the operator's contacts to a service that keeps a copy of
+the log: a logbook site, a program's archive (extension API 28).
+
+**Called:** every hook's `suggestPushes` and `suggestDestinations` build
+the list the operator picks from; then the chosen hook's `push`, once per
+chunk of up to 25 contacts. The app builds every record,
+decides which contacts go, and writes the results back on each contact; your
+hook only talks to the service.
+
+```ts
+interface TransferHook {
+  label: Localizable<string>
+  description?: Localizable<string>
+  services: TransferService[]               // { key, label }
+  suggestDestinations(args: DestinationsRequest, ctx): Promise<TransferDestination[]>
+  suggestPushes?(args: PushSuggestionsRequest, ctx): Promise<PushSuggestion[]>
+  push?(args: PushRequest, ctx): Promise<PushRecordResult[]>
+}
+// DestinationsRequest:    { service, scope: PushScope, stationCalls: string[] }
+// TransferDestination:    { id, label?, stationCall? }
+// PushSuggestionsRequest: { scope: PushScope, sent? }
+// PushScope:              { kind: "operation", operation }
+// TransferSummary:        { key?, sentAtMillis?, sentCount? }   (each of `sent`'s entries, by record key; sentCount: the operation's contacts the destination holds)
+// PushSuggestion:         { key, service, label, description?, payload?, select, emphasis?, selectedByDefault? }
+// PushPayload:            { mainHandler, includeFieldsFrom? } | { full: true, includePrivateData?, omit? }
+// QsoSelector:            { hunted?, activated?, notSentTo?, changedSince? }
+// PushRequest:            { service, stationCall, destination, records: PushRecord[] }
+// PushRecord:             { uuid, adif: string[], deleted?, id? }
+// PushRecordResult:       { uuid, id?, error? }
+```
+
+**Services and records.** A service is where your hook sends contacts:
+`qrz`, `wavelog`, `sota`. Where on it a contact goes is a destination (see
+below), with an id you choose. The app keeps one record on each contact per
+service and destination, under `<service>:<destination id>` in lower case:
+`qrz:ki2d`, `qrz:n0club`, `sota:chase`. A service with one place names a
+default destination of its own, such as `wavelog:main`. A service key is
+lower case without `:`, and belongs to one extension: a second hook
+declaring it is ignored for it, and a suggestion naming a service your hook
+did not declare is dropped. A service's `label`, or your hook's when it
+gives none, names its push rows, and your hook's `description` stands in
+for a suggestion that gives none.
+
+**Suggestions.** `suggestPushes` is asked about a scope, which is one
+operation (`kind: "operation"`). Check `kind` and offer nothing for one you
+do not know: later API levels add other scopes. `sent` holds the
+operation's summary of earlier pushes, by record key, and
+`scope.operation.status` says whether the operator finished it.
+You name the contacts with `select` and the app finds them, so you never
+receive the log:
+
+- `hunted`: the contact carries a reference of that type;
+- `activated`: the contact's operation carries one;
+- `notSentTo`: the contact was never sent there;
+- `changedSince`: the contact, or its operation, changed after it was last
+  sent there.
+
+`notSentTo` and `changedSince` take a service or a whole record key. A
+service (`"qrz"`) is read against the destination being counted, so a
+contact sent to one QRZ logbook is still `notSentTo: "qrz"` for another. A
+record key (`"sota:chase"`) names that record whatever the destination.
+Every condition you give must hold, and each suggestion names `notSentTo`
+or `changedSince` of its own service (or a record key under it), so what
+it sends stops being selected: one naming neither, or another service's,
+is dropped. The app counts what each suggestion selects and leaves
+out one that selects nothing, so offer a suggestion whenever it could
+apply:
+
+```ts
+async suggestPushes({ scope, sent }) {
+  if (scope.kind !== "operation") return []
+  const push = { key: "qrz", service: "qrz", label: "Push to QRZ", select: { notSentTo: "qrz" } }
+  if (!Object.keys(sent ?? {}).some((key) => key.startsWith("qrz:"))) return [{ ...push, emphasis: "due" }]
+  return [push, { key: "qrz-updates", service: "qrz", label: "Push updates to QRZ", select: { changedSince: "qrz" }, emphasis: "updates" }]
+}
+```
+
+A deleted contact the destination still holds goes with a suggestion of its
+service as a delete, unless the suggestion selects `notSentTo` that service.
+
+**What is sent.** `payload` says how each record is built, as the exports
+build them: `{ mainHandler }` for your program's own records, its
+`adifFields` hook composed as its export composes it; `{ full: true }` for
+the operator's full copy. A full copy leaves the private fields out unless
+`includePrivateData`, and leaves out every field `omit` names, a trailing
+`*` matching a prefix (`"app_*"`). Left out, `payload` is the full copy.
+
+**Destinations.** A destination is a place on the service the contacts can
+go: a logbook, a folder, a station location. The app asks
+`suggestDestinations` for each service with the scope (the operation itself,
+in the Exports panel) and `stationCalls`, every station callsign the
+scope's contacts were made under, segments included. Offer as many as fit:
+none hides the push, and each one you offer is a push of its own, which the
+operator sends separately. Name a `stationCall` when only that call's
+contacts belong there, which is the usual case for a logbook; leave it out
+to take every contact in the scope. Throw to say why you cannot offer any,
+and the operator sees your message. The app asks each time and saves
+nothing, so answer from what the scope says. A destination is a name, never
+a secret: look up the key it needs from your account.
+
+**Pushing.** A hook without `push` only pulls, and the operator is offered
+no push rows for it. `push` gets one station callsign's records, at most 25 at a
+time. A contact split into several records by its program carries them all
+in `adif`. Return one result per record, by `uuid`:
+
+- `id`, the service's own id for the contact. The app sends it back with
+  every later update and with the delete, in `PushRecord.id`.
+- `error`, when the service refused it. The contact stays unsent and is
+  offered again.
+
+A record with `deleted` asks you to remove the contact from the service by
+its `id`; return it without an `error` once removed.
+
+**Rules:**
+
+- The app skips a contact whose record is unchanged since it was last sent
+  to the same destination, so a push of updates may send fewer than it
+  counted.
+- Throwing from `push`, or taking over a minute, stops the push there.
+  Nothing from that chunk is saved, since you may have sent part of it, so
+  the next push sends those records again without an `id`: make sending a
+  record twice harmless, as QRZ's `OPTION=REPLACE` does. Refuse one record
+  with its `error` instead, and the rest of the push goes on.
+- A push that ends with every record accepted marks its operation
+  processed, as an export does.

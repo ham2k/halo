@@ -14,6 +14,7 @@
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 
 import 'covered_route_hold.dart';
@@ -117,6 +118,9 @@ Widget haloPickerFrame(BuildContext context, Widget? child) {
 /// line length. The window still bounds it, and the full-screen presentation
 /// ignores it.
 ///
+/// [liveTitle] stands in for [title] in a pane whose title follows what it
+/// shows, such as a count the operator changes with the pane open.
+///
 /// A pane opened from inside another pane is drawn [nestedModalPaneStep]
 /// narrower than the one it came from, in the dialog presentation, so the
 /// edges of the pane behind show either side and the stack reads as one
@@ -126,6 +130,7 @@ Future<T?> showModalPane<T>(
   BuildContext context, {
   required WidgetBuilder builder,
   String? title,
+  ValueListenable<String>? liveTitle,
   bool barrierDismissible = true,
   bool scrollable = true,
   Widget? leading,
@@ -143,6 +148,7 @@ Future<T?> showModalPane<T>(
     },
     builder: builder,
     title: title,
+    liveTitle: liveTitle,
     barrierDismissible: barrierDismissible,
     scrollable: scrollable,
     leading: leading,
@@ -162,7 +168,17 @@ const double nestedModalPaneStep = 2 * Space.xxl;
 class ModalPaneRoute<T> extends PopupRoute<T> implements TapDismissibleRoute {
   final WidgetBuilder builder;
   final String? title;
+
+  /// See [showModalPane]; when set, [title] is not shown.
+  final ValueListenable<String>? liveTitle;
   final bool scrollable;
+
+  /// The header's title, [wrap]ped, following [liveTitle] when there is one.
+  Widget? _titleWidget(Widget Function(String title) wrap) => switch ((liveTitle, title)) {
+    (final live?, _) => ValueListenableBuilder<String>(valueListenable: live, builder: (_, value, _) => wrap(value)),
+    (null, final title?) => wrap(title),
+    (null, null) => null,
+  };
 
   /// The constructor's `barrierDismissible` — despite the name, this only
   /// gates OUR OWN tap-outside `GestureDetector` in [_ModalPaneScaffold]
@@ -230,6 +246,7 @@ class ModalPaneRoute<T> extends PopupRoute<T> implements TapDismissibleRoute {
   ModalPaneRoute({
     required this.builder,
     this.title,
+    this.liveTitle,
     bool barrierDismissible = true,
     this.scrollable = true,
     this.leading,
@@ -337,7 +354,7 @@ class _ModalPaneScaffold extends StatelessWidget {
             // dialog presentation's close button.
             leadingWidth: route.leading != null ? null : macOSAwareLeadingWidth(context),
             leading: route.leading ?? macOSAwareBackButton(context),
-            title: route.title == null ? null : shrinkToFitText(Text(route.title!)),
+            title: route._titleWidget((title) => shrinkToFitText(Text(title))),
             actions: [
               // In the AppBar's colour: a text button's own is the primary the
               // AppBar is filled with, which leaves it there and invisible.
@@ -436,7 +453,7 @@ class _ModalPaneScaffold extends StatelessWidget {
                           // widget, so the two families can't drift apart.
                           HaloDialogHeader(
                             leading: route.leading,
-                            title: route.title == null ? null : Text(route.title!),
+                            title: route._titleWidget(Text.new),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [

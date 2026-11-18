@@ -2006,6 +2006,16 @@ class _Translations$operation$export$qro extends Translations$operation$export$e
 
 	// Translations
 	@override String get title => 'OPERATION EXPORTS';
+	@override String titleWithCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: 'OPERATION EXPORTS: ${count} QSO',
+		other: 'OPERATION EXPORTS: ${count} QSOS',
+	);
+	@override String get filesTitle => 'FILE EXPORTS';
+	@override String get cloudSync => 'HAM2K CLOUD SYNC';
+	@override String get syncNow => 'SYNC NOW';
+	@override String get syncOff => 'SYNC IS OFF';
+	@override String syncFailed({required Object error}) => 'SYNC FAILED: ${error}';
+	@override String get syncNotRun => 'SYNC DIDN\'T RUN. CHECK HAM2K CLOUD SYNC IN SETTINGS.';
 	@override String get syncedOperation => 'OPERATION IS SYNCED';
 	@override String get unsyncedOperation => 'OPERATION HAS UNSYNCED CHANGES';
 	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
@@ -2041,17 +2051,33 @@ class _Translations$operation$export$qro extends Translations$operation$export$e
 		one: 'SAVE COMBINED ${count} FILE',
 		other: 'SAVE COMBINED ${count} FILES',
 	);
+	@override String saveAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: 'SAVE ${count} FILE',
+		other: 'SAVE ALL ${count} FILES',
+	);
 	@override String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
 		one: 'SHARE COMBINED ${count} FILE',
 		other: 'SHARE COMBINED ${count} FILES',
+	);
+	@override String shareAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: 'SHARE ${count} FILE',
+		other: 'SHARE ALL ${count} FILES',
 	);
 	@override String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
 		one: 'EXPORT COMBINED ${count} FILE',
 		other: 'EXPORT COMBINED ${count} FILES',
 	);
+	@override String exportAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: 'EXPORT ${count} FILE',
+		other: 'EXPORT ALL ${count} FILES',
+	);
 	@override String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
 		one: 'DOWNLOAD COMBINED ${count} FILE',
 		other: 'DOWNLOAD COMBINED ${count} FILES',
+	);
+	@override String downloadAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: 'DOWNLOAD ${count} FILE',
+		other: 'DOWNLOAD ALL ${count} FILES',
 	);
 	@override String saveOne({required Object name}) => 'SAVE ${name}';
 	@override String shareOne({required Object name}) => 'SHARE ${name}';
@@ -2064,6 +2090,10 @@ class _Translations$operation$export$qro extends Translations$operation$export$e
 	@override String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
 		one: 'STASH COMBINED ${count} FILE',
 		other: 'STASH COMBINED ${count} FILES',
+	);
+	@override String stashAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: 'STASH ${count} FILE',
+		other: 'STASH ALL ${count} FILES',
 	);
 	@override String get settingsButton => 'EXPORT SETTINGS';
 	@override String get settingsTitle => 'EXPORT SETTINGS';
@@ -2089,6 +2119,7 @@ class _Translations$operation$export$qro extends Translations$operation$export$e
 	);
 	@override String exportFailed({required Object error}) => 'EXPORT FAILED: ${error}';
 	@override late final _Translations$operation$export$stash$qro stash = _Translations$operation$export$stash$qro._(_root);
+	@override late final _Translations$operation$export$push$qro push = _Translations$operation$export$push$qro._(_root);
 }
 
 // Path: operation.spots
@@ -4231,6 +4262,51 @@ class _Translations$operation$export$stash$qro extends Translations$operation$ex
 	);
 }
 
+// Path: operation.export.push
+class _Translations$operation$export$push$qro extends Translations$operation$export$push$en {
+	_Translations$operation$export$push$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'SYNC & PUSH TO SERVICES';
+	@override String toSend({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} QSO TO SEND',
+		other: '${count} QSOS TO SEND',
+	);
+	@override String toDelete({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} TO REMOVE',
+		other: '${count} TO REMOVE',
+	);
+	@override String toSendTo({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} QSO TO SEND TO ${destination}',
+		other: '${count} QSOS TO SEND TO ${destination}',
+	);
+	@override String allSent({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} QSO SENT',
+		other: 'ALL ${count} QSOS SENT',
+	);
+	@override String allSentTo({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} QSO SENT TO ${destination}',
+		other: 'ALL ${count} QSOS SENT TO ${destination}',
+	);
+	@override String get nothingToSend => 'NOTHING TO SEND';
+	@override String get done => 'DONE';
+	@override String pending({required Object count}) => '${count} PENDING';
+	@override String completed({required Object count}) => '${count} COMPLETED';
+	@override String get button => 'PUSH';
+	@override String buttonFor({required Object name}) => 'PUSH: ${name}';
+	@override String progress({required Object done, required Object total}) => 'PUSHING ${done} OF ${total}…';
+	@override String failed({required num count, required Object error}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} FAILED: ${error}',
+		other: '${count} FAILED, THE FIRST: ${error}',
+	);
+	@override String pushFailed({required Object error}) => 'PUSH FAILED: ${error}';
+	@override String get timedOut => 'THE SERVICE TOOK TOO LONG TO ANSWER, SO THE PUSH STOPPED. PUSH AGAIN TO FINISH.';
+	@override String loadFailed({required Object error}) => 'COULDN\'T CHECK THE SERVICES: ${error}';
+	@override String get checkFailed => 'COULDN\'T CHECK';
+}
+
 // Path: operation.spots.continents
 class _Translations$operation$spots$continents$qro extends Translations$operation$spots$continents$en {
 	_Translations$operation$spots$continents$qro._(TranslationsQro root) : this._root = root, super.internal(root);
@@ -6004,6 +6080,13 @@ extension on TranslationsQro {
 			'operation.layout.htmlPanelUnsupported' => 'THIS PANEL NEEDS A WEB VIEW, WHICH THIS PLATFORM DOES NOT PROVIDE',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'THIS PANEL NEEDS A SANDBOX THE WEB VERSION CANNOT PROVIDE',
 			'operation.export.title' => 'OPERATION EXPORTS',
+			'operation.export.titleWithCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'OPERATION EXPORTS: ${count} QSO', other: 'OPERATION EXPORTS: ${count} QSOS', ), 
+			'operation.export.filesTitle' => 'FILE EXPORTS',
+			'operation.export.cloudSync' => 'HAM2K CLOUD SYNC',
+			'operation.export.syncNow' => 'SYNC NOW',
+			'operation.export.syncOff' => 'SYNC IS OFF',
+			'operation.export.syncFailed' => ({required Object error}) => 'SYNC FAILED: ${error}',
+			'operation.export.syncNotRun' => 'SYNC DIDN\'T RUN. CHECK HAM2K CLOUD SYNC IN SETTINGS.',
 			'operation.export.syncedOperation' => 'OPERATION IS SYNCED',
 			'operation.export.unsyncedOperation' => 'OPERATION HAS UNSYNCED CHANGES',
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} QSO IN THIS OPERATION', other: '${count} QSOS IN THIS OPERATION', ), 
@@ -6021,15 +6104,20 @@ extension on TranslationsQro {
 			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'EXPORT ${count} FILE', other: 'EXPORT ${count} FILES', ), 
 			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'DOWNLOAD ${count} FILE', other: 'DOWNLOAD ${count} FILES', ), 
 			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'SAVE COMBINED ${count} FILE', other: 'SAVE COMBINED ${count} FILES', ), 
+			'operation.export.saveAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'SAVE ${count} FILE', other: 'SAVE ALL ${count} FILES', ), 
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'SHARE COMBINED ${count} FILE', other: 'SHARE COMBINED ${count} FILES', ), 
+			'operation.export.shareAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'SHARE ${count} FILE', other: 'SHARE ALL ${count} FILES', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'EXPORT COMBINED ${count} FILE', other: 'EXPORT COMBINED ${count} FILES', ), 
+			'operation.export.exportAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'EXPORT ${count} FILE', other: 'EXPORT ALL ${count} FILES', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'DOWNLOAD COMBINED ${count} FILE', other: 'DOWNLOAD COMBINED ${count} FILES', ), 
+			'operation.export.downloadAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'DOWNLOAD ${count} FILE', other: 'DOWNLOAD ALL ${count} FILES', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'SAVE ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'SHARE ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'EXPORT ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'DOWNLOAD ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'STASH ${count} FILE', other: 'STASH ${count} FILES', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'STASH COMBINED ${count} FILE', other: 'STASH COMBINED ${count} FILES', ), 
+			'operation.export.stashAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'STASH ${count} FILE', other: 'STASH ALL ${count} FILES', ), 
 			'operation.export.settingsButton' => 'EXPORT SETTINGS',
 			'operation.export.settingsTitle' => 'EXPORT SETTINGS',
 			'operation.export.compactFileNames.title' => 'USE COMPACT FILE NAMES',
@@ -6064,6 +6152,24 @@ extension on TranslationsQro {
 			'operation.export.stash.emailFailed' => ({required Object error}) => 'COULDN’T SEND THE EMAIL: ${error}',
 			'operation.export.stash.freeTier' => 'FREE ACCOUNTS CAN ONLY KEEP ONE STASH AT A TIME. SUBSCRIBERS CAN KEEP AS MANY AS THEY WANT.',
 			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'SENT ${count} FILE TO HAM2K’S FILE STASH (STASH.HAM2K.NET)', other: 'SENT ${count} FILES TO HAM2K’S FILE STASH (STASH.HAM2K.NET)', ), 
+			'operation.export.push.title' => 'SYNC & PUSH TO SERVICES',
+			'operation.export.push.toSend' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} QSO TO SEND', other: '${count} QSOS TO SEND', ), 
+			'operation.export.push.toDelete' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} TO REMOVE', other: '${count} TO REMOVE', ), 
+			'operation.export.push.toSendTo' => ({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} QSO TO SEND TO ${destination}', other: '${count} QSOS TO SEND TO ${destination}', ), 
+			'operation.export.push.allSent' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} QSO SENT', other: 'ALL ${count} QSOS SENT', ), 
+			'operation.export.push.allSentTo' => ({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} QSO SENT TO ${destination}', other: 'ALL ${count} QSOS SENT TO ${destination}', ), 
+			'operation.export.push.nothingToSend' => 'NOTHING TO SEND',
+			'operation.export.push.done' => 'DONE',
+			'operation.export.push.pending' => ({required Object count}) => '${count} PENDING',
+			'operation.export.push.completed' => ({required Object count}) => '${count} COMPLETED',
+			'operation.export.push.button' => 'PUSH',
+			'operation.export.push.buttonFor' => ({required Object name}) => 'PUSH: ${name}',
+			'operation.export.push.progress' => ({required Object done, required Object total}) => 'PUSHING ${done} OF ${total}…',
+			'operation.export.push.failed' => ({required num count, required Object error}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} FAILED: ${error}', other: '${count} FAILED, THE FIRST: ${error}', ), 
+			'operation.export.push.pushFailed' => ({required Object error}) => 'PUSH FAILED: ${error}',
+			'operation.export.push.timedOut' => 'THE SERVICE TOOK TOO LONG TO ANSWER, SO THE PUSH STOPPED. PUSH AGAIN TO FINISH.',
+			'operation.export.push.loadFailed' => ({required Object error}) => 'COULDN\'T CHECK THE SERVICES: ${error}',
+			'operation.export.push.checkFailed' => 'COULDN\'T CHECK',
 			'operation.spots.empty' => 'NO SPOTS MATCH YOUR FILTERS',
 			'operation.spots.disabledNoLocal' => 'SPOTS DISABLED FOR THIS OPERATION, NO MANUAL ENTRIES',
 			'operation.spots.disabledLocalOff' => 'SPOTS DISABLED FOR THIS OPERATION, ENABLE LOCAL SPOTS IN SETTINGS › SPOTTING',
@@ -6286,6 +6392,8 @@ extension on TranslationsQro {
 			'activitiesView.exports' => 'EXPORTS',
 			'activitiesView.exportLogs' => 'EXPORT LOGS',
 			'activitiesView.tools' => 'TOOLS',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.toolsTitle' => 'OPERATION TOOLS',
 			'activitiesView.operationDetails' => 'OPERATION DETAILS',
 			'activitiesView.share' => 'SHARE',
@@ -6316,8 +6424,6 @@ extension on TranslationsQro {
 			'activitiesView.searchToggle' => 'SEARCH',
 			'activitiesView.addToOperation' => 'ADD TO OPERATION',
 			'activitiesView.addToOperationShort' => 'ADD TO OP.',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.mapEmptyState' => 'NO RESULTS TO SHOW ON THE MAP',
 			'activitiesView.mapEmptyStateHint' => 'SWITCH BACK TO THE LIST, OR SEARCH FOR SOMETHING ELSE',
 			'activitiesView.imports' => 'IMPORTS',
@@ -6800,6 +6906,8 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'VOICE MEMORY ${n}',
 			'settings.radio.voiceMessages.labelField' => 'LABEL',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'VOICE MEMORY ${n} LABEL',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} S',
 			'settings.radio.voiceMessages.emptyOnRadio' => 'EMPTY',
 			'settings.radio.voiceMessages.notMeasured' => 'UNKNOWN LENGTH',
@@ -6830,8 +6938,6 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.manageSets' => 'MANAGE VOICE SETS…',
 			'settings.radio.voiceMessages.fileLabel' => 'HAM2K VOICE MESSAGE SET',
 			'settings.radio.voiceMessages.fileStem' => 'VOICE MESSAGES',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.output' => 'SEND AUDIO TO',
 			'settings.radio.voiceMessages.outputFor' => ({required Object radio}) => 'SEND AUDIO FOR RADIO ${radio} TO',
 			'settings.radio.voiceMessages.input' => 'RECORD FROM',
@@ -7314,6 +7420,8 @@ extension on TranslationsQro {
 			'settings.station.rtlDirectSampling' => 'DIRECT SAMPLING',
 			'settings.station.rtlDirectSamplingDescription' => 'FOR HF ON AN RTL-SDR V3 WITHOUT AN UPCONVERTER. AN RTL-SDR V4 REACHES HF WITHOUT IT.',
 			'settings.station.rtlDirectSamplingOff' => 'OFF',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rtlDirectSamplingI' => 'I BRANCH',
 			'settings.station.rtlDirectSamplingQ' => 'Q BRANCH',
 			'settings.station.rtlTcpNotAServer' => 'THIS IS NOT AN RTL_TCP SERVER',
@@ -7344,8 +7452,6 @@ extension on TranslationsQro {
 			'settings.station.winkeyerPtt' => 'USE THE KEYER\'S PTT',
 			'settings.station.winkeyerPttDescription' => 'KEY THE PTT LINE ON THE SAME JACK, FOR AN AMPLIFIER OR A RADIO THAT NEEDS IT. LEAVE OFF FOR A RADIO KEYED ON ITS KEY JACK.',
 			'settings.station.winkeyerNoAnswer' => 'NO WINKEYER RESPONDED ON THIS PORT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.winkeyerStoppedAnswering' => 'THE WINKEYER STOPPED RESPONDING WHILE SENDING; THE MESSAGE WAS DROPPED',
 			'settings.station.icomControlPort' => 'CONTROL PORT (UDP)',
 			'settings.station.icomControlPortDescription' => 'THE RADIO\'S CONTROL PORT (UDP) — 50001 UNLESS CHANGED IN ITS NETWORK SETTINGS, OR FORWARDED TO ANOTHER.',
@@ -7828,6 +7934,8 @@ extension on TranslationsQro {
 			'settings.station.rotctldTroubleshooting' => 'THIS CONNECTS TO A **ROTCTLD DAEMON YOU RUN YOURSELF**, NOT TO THE ROTATOR DIRECTLY — HAMLIB\'S BACKEND TALKS TO THE CONTROLLER AND SUPPORTS MOST OF THEM.\n\n- **THE DAEMON MUST ALREADY BE RUNNING**, E.G. `rotctld -m 601 -r /dev/ttyUSB0` FOR A GS-232A. FIND YOUR CONTROLLER\'S MODEL NUMBER WITH `rotctl -l`.\n- **FROM ANOTHER MACHINE**, ALLOW PORT 4533 THROUGH THAT MACHINE\'S FIREWALL. ROTCTLD LISTENS ON EVERY ADDRESS UNLESS STARTED WITH `-T`.\n- **PORT** IS 4533 UNLESS YOU STARTED THE DAEMON WITH `-t`.\n- **PSTROTATOR** ANSWERS TOO, WITH **GPREDICT** SELECTED AS ITS TRACKER AND TRACKING ON.\n- TURNS GO ONLY AS FAR AS THE LIMITS ROTCTLD ENFORCES, WHICH IT REPORTS ITSELF — SET THEM WITH `-C min_az=…,max_az=…` WHEN STARTING IT. THE OFFSETS HERE ARE FOR A CONTROLLER WHOSE ZERO IS NOT TRUE NORTH.',
 			'settings.station.connectionRouted' => ({required Object port, required Object antenna}) => '${port}: ${antenna}',
 			'settings.station.connectionDevices' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} DEVICE', other: '${count} DEVICES', ), 
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.gpsFix' => ({required Object grid, required Object satellites}) => '${grid} · ${satellites}',
 			'settings.station.gpsSearching' => 'SEARCHING FOR SATELLITES',
 			'settings.station.gpsSearchingWith' => ({required Object satellites}) => 'SEARCHING · ${satellites}',
@@ -7858,8 +7966,6 @@ extension on TranslationsQro {
 			'settings.station.everywareFollowRadioB' => 'RADIO B (SO2R)',
 			'settings.station.everywareFollowBand' => 'FOLLOW THE RADIO\'S BAND',
 			'settings.station.everywareFollowBandDescription' => 'PICKS THE POSITION COVERING THE MAIN RADIO\'S FREQUENCY WHENEVER IT CHANGES. OTHERS SHARING THE STATION SEE IT SWITCH TOO.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.everywareFollowBearing' => 'POINT TOWARD THE STATION BEING WORKED',
 			'settings.station.everywareFollowBearingDescription' => 'PICKS THE DIRECTION NEAREST THE STATION IN THE CALL FIELD WHENEVER IT CHANGES. OTHERS SHARING THE STATION SEE IT SWITCH TOO.',
 			'settings.station.everywareTroubleshooting' => 'THIS CONNECTS TO A **GH EVERYWARE SERVER**, THE PROGRAM THAT SHARES A STATION\'S GREEN HERON ROTATORS AND SWITCHES OVER THE NETWORK.\n\n- **PORT** IS 17220 UNLESS THE SERVER WAS SET UP ON ANOTHER ONE. FROM OUTSIDE THE STATION\'S NETWORK, THE ROUTER MUST FORWARD THAT PORT TO THE SERVER\'S COMPUTER.\n- **USER AND PASSWORD** ONLY WHEN THE SERVER HAS USER AUTHENTICATION TURNED ON. LEAVE BOTH BLANK OTHERWISE.\n- **THE SERVER TAKES A LIMITED NUMBER OF CLIENTS**, FOUR UNLESS SET OTHERWISE. WHEN IT IS FULL, CLOSE ANOTHER CLIENT AND CONNECT AGAIN.\n- ONCE CONNECTED, TICK THE ROTATORS AND SWITCHES YOU WANT UNDER **DEVICES**. EACH BECOMES EQUIPMENT OF ITS OWN, IN THIS LIST AND IN EVERY PANEL.\n- **OTHER OPERATORS MAY SHARE THE STATION.** TURNING A ROTATOR OR SWITCHING AN ANTENNA HERE MOVES IT FOR EVERYONE.',
@@ -8342,6 +8448,8 @@ extension on TranslationsQro {
 			'notices.logFromNewerBuildTitle' => 'THIS LOG NEEDS A NEWER VERSION',
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'YOUR LOG WAS WRITTEN BY A NEWER VERSION OF HALO (STORAGE VERSION ${storage}; THIS ONE UNDERSTANDS ${understood}), SO IT CANNOT BE OPENED, AND NEW CONTACTS WILL NOT BE SAVED. INSTALL THE NEWER VERSION AGAIN — OR, IF YOU MEANT TO RUN THIS BUILD, POINT IT AT A DIFFERENT DATA FOLDER. THE LOG IS IN ${location}',
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'YOUR LOG WAS WRITTEN BY A NEWER VERSION OF HALO (STORAGE VERSION ${storage}; THIS ONE UNDERSTANDS ${understood}), SO IT CANNOT BE OPENED, AND NEW CONTACTS WILL NOT BE SAVED. OPEN THIS LOG WITH THAT NEWER VERSION INSTEAD.',
+			_ => null,
+		} ?? switch (path) {
 			'notices.preferencesRestoredTitle' => 'SETTINGS RESTORED FROM A BACKUP',
 			'notices.preferencesRestored' => 'THE SETTINGS FILE COULD NOT BE READ, SO HALO RESTORED THE LAST GOOD COPY OF IT. ANYTHING YOU CHANGED IN YOUR PREVIOUS SESSION MAY NEED SETTING AGAIN. THE UNREADABLE FILE IS KEPT ALONGSIDE IT, NAMED SHARED_PREFERENCES.CORRUPT-….JSON.',
 			'notices.preferencesResetTitle' => 'SETTINGS RESET',
@@ -8372,8 +8480,6 @@ extension on TranslationsQro {
 			'deepLink.allow' => 'ALLOW',
 			'deepLink.deny' => 'DENY',
 			'confirmDevice.title' => 'CONFIRM A DEVICE',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.codePrompt' => 'ENTER THE CODE SHOWN ON THE DEVICE THAT WANTS TO JOIN THIS ACCOUNT.',
 			'confirmDevice.code' => 'CODE',
 			'confirmDevice.lookUp' => 'LOOK UP',

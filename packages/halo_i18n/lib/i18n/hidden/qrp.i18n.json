@@ -813,6 +813,16 @@
     },
     "export": {
       "title": "operation exports",
+      "titleWithCount": {
+        "one": "operation exports: ${count} qso",
+        "other": "operation exports: ${count} qsos"
+      },
+      "filesTitle": "file exports",
+      "cloudSync": "ham2k cloud sync",
+      "syncNow": "sync now",
+      "syncOff": "sync is off",
+      "syncFailed": "sync failed: ${error}",
+      "syncNotRun": "sync didn't run. check ham2k cloud sync in settings.",
       "syncedOperation": "operation is synced",
       "unsyncedOperation": "operation has unsynced changes",
       "qsosInOperation": {
@@ -848,17 +858,33 @@
         "one": "save combined ${count} file",
         "other": "save combined ${count} files"
       },
+      "saveAll": {
+        "one": "save ${count} file",
+        "other": "save all ${count} files"
+      },
       "shareCombined": {
         "one": "share combined ${count} file",
         "other": "share combined ${count} files"
+      },
+      "shareAll": {
+        "one": "share ${count} file",
+        "other": "share all ${count} files"
       },
       "exportCombined": {
         "one": "export combined ${count} file",
         "other": "export combined ${count} files"
       },
+      "exportAll": {
+        "one": "export ${count} file",
+        "other": "export all ${count} files"
+      },
       "downloadCombined": {
         "one": "download combined ${count} file",
         "other": "download combined ${count} files"
+      },
+      "downloadAll": {
+        "one": "download ${count} file",
+        "other": "download all ${count} files"
       },
       "saveOne": "save ${name}",
       "shareOne": "share ${name}",
@@ -871,6 +897,10 @@
       "stashCombined": {
         "one": "stash combined ${count} file",
         "other": "stash combined ${count} files"
+      },
+      "stashAll": {
+        "one": "stash ${count} file",
+        "other": "stash all ${count} files"
       },
       "settingsButton": "export settings",
       "settingsTitle": "export settings",
@@ -932,6 +962,44 @@
           "one": "sent ${count} file to ham2k’s file stash (stash.ham2k.net)",
           "other": "sent ${count} files to ham2k’s file stash (stash.ham2k.net)"
         }
+      },
+      "push": {
+        "title": "sync & push to services",
+        "toSend": {
+          "one": "${count} qso to send",
+          "other": "${count} qsos to send"
+        },
+        "toDelete": {
+          "one": "${count} to remove",
+          "other": "${count} to remove"
+        },
+        "toSendTo": {
+          "one": "${count} qso to send to ${destination}",
+          "other": "${count} qsos to send to ${destination}"
+        },
+        "allSent": {
+          "one": "${count} qso sent",
+          "other": "all ${count} qsos sent"
+        },
+        "allSentTo": {
+          "one": "${count} qso sent to ${destination}",
+          "other": "all ${count} qsos sent to ${destination}"
+        },
+        "nothingToSend": "nothing to send",
+        "done": "done",
+        "pending": "${count} pending",
+        "completed": "${count} completed",
+        "button": "push",
+        "buttonFor": "push: ${name}",
+        "progress": "pushing ${done} of ${total}…",
+        "failed": {
+          "one": "${count} failed: ${error}",
+          "other": "${count} failed, the first: ${error}"
+        },
+        "pushFailed": "push failed: ${error}",
+        "timedOut": "the service took too long to answer, so the push stopped. push again to finish.",
+        "loadFailed": "couldn't check the services: ${error}",
+        "checkFailed": "couldn't check"
       }
     },
     "spots": {

@@ -19,6 +19,7 @@ import '../models/models.dart';
 import '../models/operation_station_calls.dart';
 import '../models/qso_merge.dart';
 import '../models/segments.dart';
+import '../models/transfer.dart';
 import '../models/qson_values.dart';
 import '../uuid.dart';
 import 'write_policy.dart';
@@ -1158,6 +1159,41 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
     return db.select(db.qsos)
       ..where((q) => includeDeleted ? q.operation.equals(operationUuid) : q.operation.equals(operationUuid) & q.deleted.equals(false))
       ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis)]);
+  }
+
+  /// Writes the transfer record under [key] on each contact in [records] (null
+  /// clears it) as bookkeeping, not an edit (docs/design/transfer.md §7): one
+  /// transaction and one [onChange]; `updatedAtMillis` bumped, as the sync
+  /// revision, or the next stale copy sync brings in undoes it; the lifecycle
+  /// not followed, or every push would mark its own operation stale; [changes]
+  /// quiet, as no contact's content changed. A tombstone is written like any
+  /// row. [sentFrom] holds the revision each record was built from
+  /// ([withTransferRecord]). Returns how many contacts were written.
+  Future<int> writeTransfers(String key, Map<String, Map<String, dynamic>?> records, {Map<String, int?> sentFrom = const {}}) async {
+    if (records.isEmpty) return 0;
+    await Future.forEach(records.keys, _refuseStoredQso);
+    final revision = realNowMillis();
+    final footprint = <String, Set<String>>{};
+    await db.transaction(() async {
+      final written = [
+        for (final qso in await getMany(records.keys.toList()))
+          Qso(
+            uuid: qso.uuid,
+            operationUuid: qso.operationUuid,
+            data: withTransferRecord(qso.data, key, records[qso.uuid], revision: revision, sentFrom: sentFrom[qso.uuid]),
+          ),
+      ];
+      if (written.isEmpty) return;
+      await db.batch((batch) {
+        for (final qso in written) {
+          batch.update(db.qsos, _companionFor(qso, 'qsos:writeTransfers'), where: (q) => q.uuid.equals(qso.uuid));
+          footprint.putIfAbsent(qso.operationUuid, () => {}).add(qso.uuid);
+        }
+      });
+      _ledger.record(footprint);
+    });
+    if (footprint.isNotEmpty) onChange?.call();
+    return footprint.values.fold<int>(0, (sum, uuids) => sum + uuids.length);
   }
 
   /// See `OperationsRepository.markSynced` — only rows whose revision stamp

@@ -44,6 +44,7 @@ export const HOOK_CATEGORIES = [
   "spots",
   "syncTransport",
   "template",
+  "transfer",
 ] as const
 
 export type HookCategory = (typeof HOOK_CATEGORIES)[number]

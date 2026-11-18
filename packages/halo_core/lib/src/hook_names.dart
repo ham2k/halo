@@ -38,6 +38,7 @@ abstract final class HookCategories {
   static const spots = 'spots';
   static const syncTransport = 'syncTransport';
   static const template = 'template';
+  static const transfer = 'transfer';
 }
 
 /// One hook, as the host calls it: a category and one of its methods.
@@ -103,6 +104,13 @@ abstract final class Hooks {
   static const exportSuggestExportOptions = HookRef(HookCategories.export, 'suggestExportOptions');
   static const exportGetExportTypes = HookRef(HookCategories.export, 'getExportTypes');
   static const exportGenerateExport = HookRef(HookCategories.export, 'generateExport');
+
+  static const transferLabel = HookRef(HookCategories.transfer, 'label');
+  static const transferDescription = HookRef(HookCategories.transfer, 'description');
+  static const transferServices = HookRef(HookCategories.transfer, 'services');
+  static const transferSuggestDestinations = HookRef(HookCategories.transfer, 'suggestDestinations');
+  static const transferSuggestPushes = HookRef(HookCategories.transfer, 'suggestPushes');
+  static const transferPush = HookRef(HookCategories.transfer, 'push');
 
   static const formValidateField = HookRef(HookCategories.form, 'validateField');
   static const formTransformField = HookRef(HookCategories.form, 'transformField');

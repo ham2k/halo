@@ -144,7 +144,7 @@ anything.
 | [Lookups](lookups.md) | `lookup`, `recentContextLookup`, and how answers merge |
 | [Spots](spots.md) | `spots`, `cluster`, `bandAnnotations` |
 | [Activities](activities.md) | `activity`, `ref:<type>`, `dataFile`, the `referenceActivity` factory |
-| [Import & export](import-export.md) | `export`, `adifFields`, `adifImport` |
+| [Import & export](import-export.md) | `export`, `adifFields`, `adifImport`, `transfer` |
 | [Scoring & chasing](scoring.md) | `scoring`, `chasing` |
 | [Commands & templates](commands.md) | `command`, `template` |
 | [Panels](panels.md) | `panel`: documents, triggers, config, previews, budgets |

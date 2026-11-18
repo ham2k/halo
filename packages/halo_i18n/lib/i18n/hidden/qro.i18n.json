@@ -813,6 +813,16 @@
     },
     "export": {
       "title": "OPERATION EXPORTS",
+      "titleWithCount": {
+        "one": "OPERATION EXPORTS: ${count} QSO",
+        "other": "OPERATION EXPORTS: ${count} QSOS"
+      },
+      "filesTitle": "FILE EXPORTS",
+      "cloudSync": "HAM2K CLOUD SYNC",
+      "syncNow": "SYNC NOW",
+      "syncOff": "SYNC IS OFF",
+      "syncFailed": "SYNC FAILED: ${error}",
+      "syncNotRun": "SYNC DIDN'T RUN. CHECK HAM2K CLOUD SYNC IN SETTINGS.",
       "syncedOperation": "OPERATION IS SYNCED",
       "unsyncedOperation": "OPERATION HAS UNSYNCED CHANGES",
       "qsosInOperation": {
@@ -848,17 +858,33 @@
         "one": "SAVE COMBINED ${count} FILE",
         "other": "SAVE COMBINED ${count} FILES"
       },
+      "saveAll": {
+        "one": "SAVE ${count} FILE",
+        "other": "SAVE ALL ${count} FILES"
+      },
       "shareCombined": {
         "one": "SHARE COMBINED ${count} FILE",
         "other": "SHARE COMBINED ${count} FILES"
+      },
+      "shareAll": {
+        "one": "SHARE ${count} FILE",
+        "other": "SHARE ALL ${count} FILES"
       },
       "exportCombined": {
         "one": "EXPORT COMBINED ${count} FILE",
         "other": "EXPORT COMBINED ${count} FILES"
       },
+      "exportAll": {
+        "one": "EXPORT ${count} FILE",
+        "other": "EXPORT ALL ${count} FILES"
+      },
       "downloadCombined": {
         "one": "DOWNLOAD COMBINED ${count} FILE",
         "other": "DOWNLOAD COMBINED ${count} FILES"
+      },
+      "downloadAll": {
+        "one": "DOWNLOAD ${count} FILE",
+        "other": "DOWNLOAD ALL ${count} FILES"
       },
       "saveOne": "SAVE ${name}",
       "shareOne": "SHARE ${name}",
@@ -871,6 +897,10 @@
       "stashCombined": {
         "one": "STASH COMBINED ${count} FILE",
         "other": "STASH COMBINED ${count} FILES"
+      },
+      "stashAll": {
+        "one": "STASH ${count} FILE",
+        "other": "STASH ALL ${count} FILES"
       },
       "settingsButton": "EXPORT SETTINGS",
       "settingsTitle": "EXPORT SETTINGS",
@@ -932,6 +962,44 @@
           "one": "SENT ${count} FILE TO HAM2K’S FILE STASH (STASH.HAM2K.NET)",
           "other": "SENT ${count} FILES TO HAM2K’S FILE STASH (STASH.HAM2K.NET)"
         }
+      },
+      "push": {
+        "title": "SYNC & PUSH TO SERVICES",
+        "toSend": {
+          "one": "${count} QSO TO SEND",
+          "other": "${count} QSOS TO SEND"
+        },
+        "toDelete": {
+          "one": "${count} TO REMOVE",
+          "other": "${count} TO REMOVE"
+        },
+        "toSendTo": {
+          "one": "${count} QSO TO SEND TO ${destination}",
+          "other": "${count} QSOS TO SEND TO ${destination}"
+        },
+        "allSent": {
+          "one": "${count} QSO SENT",
+          "other": "ALL ${count} QSOS SENT"
+        },
+        "allSentTo": {
+          "one": "${count} QSO SENT TO ${destination}",
+          "other": "ALL ${count} QSOS SENT TO ${destination}"
+        },
+        "nothingToSend": "NOTHING TO SEND",
+        "done": "DONE",
+        "pending": "${count} PENDING",
+        "completed": "${count} COMPLETED",
+        "button": "PUSH",
+        "buttonFor": "PUSH: ${name}",
+        "progress": "PUSHING ${done} OF ${total}…",
+        "failed": {
+          "one": "${count} FAILED: ${error}",
+          "other": "${count} FAILED, THE FIRST: ${error}"
+        },
+        "pushFailed": "PUSH FAILED: ${error}",
+        "timedOut": "THE SERVICE TOOK TOO LONG TO ANSWER, SO THE PUSH STOPPED. PUSH AGAIN TO FINISH.",
+        "loadFailed": "COULDN'T CHECK THE SERVICES: ${error}",
+        "checkFailed": "COULDN'T CHECK"
       }
     },
     "spots": {

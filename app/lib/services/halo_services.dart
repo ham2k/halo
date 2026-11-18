@@ -46,6 +46,7 @@ import 'midi/midi_station.dart';
 import 'deep_link_service.dart';
 import 'edition_keychain.dart';
 import 'export_service.dart';
+import 'transfer_service.dart';
 import 'connectivity_service.dart';
 import 'error_policy.dart';
 
@@ -357,6 +358,7 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
   late final InboundCaptureRepository inboundCaptures = InboundCaptureRepository(db);
   final ExportService? _exportsOverride;
   late final ExportService exports = _exportsOverride ?? ExportService(extensions: extensions, qsos: qsos, settings: settings);
+  late final TransferService transfers = TransferService(extensions: extensions, qsos: qsos, operations: operations, exports: exports, settings: settings);
   late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
 
   /// The claims each chasing program makes on the log (docs/design/claims.md).

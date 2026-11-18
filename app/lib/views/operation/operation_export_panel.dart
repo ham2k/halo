@@ -38,6 +38,7 @@ import '../../services/export_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/status_bar_service.dart';
 import '../../tools/operation_title.dart';
+import 'operation_push_section.dart';
 import 'stash_sent_dialog.dart';
 
 /// The ground every band in this pane paints on — the callsign headers, the
@@ -140,11 +141,19 @@ IconData exportActionIcon(ExportAction action) => switch (action) {
 };
 
 /// Opens the Exports pane for [operation].
-Future<void> showOperationExportPanel(BuildContext context, {required HaLoServices services, required Operation operation}) {
+Future<void> showOperationExportPanel(BuildContext context, {required HaLoServices services, required Operation operation}) async {
   final t = context.t;
-  return showModalPane<void>(
+  // With EXP PUSH the count leads the pane, in its title: the files and the
+  // pushes below are two sections of one operation, and neither owns it.
+  // The panel counts, so the title follows the same count its rows show.
+  final title = ValueNotifier(t.operation.export.title);
+  final counted = services.transfers.enabled;
+  // The route stays mounted while it animates away, and a count landing then
+  // must not reach the title disposed under it.
+  var open = true;
+  await showModalPane<void>(
     context,
-    title: t.operation.export.title,
+    liveTitle: title,
     closeLabel: t.common.close,
     // The option list scrolls; the action row stays pinned under it.
     scrollable: false,
@@ -167,8 +176,18 @@ Future<void> showOperationExportPanel(BuildContext context, {required HaLoServic
         ),
       ),
     ],
-    builder: (_) => OperationExportPanel(services: services, operation: operation),
+    builder: (_) => OperationExportPanel(
+      services: services,
+      operation: operation,
+      onContactCount: counted
+          ? (count) {
+              if (open) title.value = t.operation.export.titleWithCount(count: count);
+            }
+          : null,
+    ),
   );
+  open = false;
+  title.dispose();
 }
 
 /// The gear's dialog. Also declared as a settings group
@@ -181,7 +200,10 @@ class OperationExportPanel extends StatefulWidget {
   final HaLoServices services;
   final Operation operation;
 
-  const OperationExportPanel({super.key, required this.services, required this.operation});
+  /// The operation's contacts, each time the panel counts them.
+  final ValueChanged<int>? onContactCount;
+
+  const OperationExportPanel({super.key, required this.services, required this.operation, this.onContactCount});
 
   @override
   State<OperationExportPanel> createState() => _OperationExportPanelState();
@@ -224,9 +246,25 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   /// `activities_view._controlsRequest`.
   int _loadRequest = 0;
 
+  /// The sync and push section's services, with EXP PUSH on.
+  PushServicesModel? _pushes;
+
+  /// The operation's synced flag as last read: the panel's copy predates a
+  /// Sync Now.
+  bool? _synced;
+
+  /// A Sync Now running, and what the last one has to say beyond the counts.
+  bool _syncing = false;
+  String? _syncMessage;
+
   @override
   void initState() {
     super.initState();
+    if (widget.services.transfers.enabled) {
+      _pushes = PushServicesModel(widget.services, widget.operation.uuid, onPushed: _refreshSyncState, shown: () => mounted && _openSection == 'push')
+        ..addListener(_onPushesChanged)
+        ..load();
+    }
     _exportSettingsSnapshot = _settingsSnapshot();
     widget.services.settings.addListener(_onSettingsChanged);
     _load();
@@ -235,8 +273,11 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   @override
   void dispose() {
     widget.services.settings.removeListener(_onSettingsChanged);
+    _pushes?.dispose();
     super.dispose();
   }
+
+  void _onPushesChanged() => setState(() {});
 
   void _onSettingsChanged() {
     final snapshot = _settingsSnapshot();
@@ -247,10 +288,13 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
 
   Future<void> _load() async {
     final request = ++_loadRequest;
+    // Kept apart from the options: the Cloud Sync row reads the counts, and
+    // with none it says sync is pending whatever the operation holds.
+    final countsFuture = widget.services.qsos.syncCountsForOperation(widget.operation.uuid);
     try {
       final results = await Future.wait([
         widget.services.exports.getExportOptions(widget.operation),
-        widget.services.qsos.syncCountsForOperation(widget.operation.uuid),
+        countsFuture,
         // Presentation only — the accent AND the icon a row inherits from
         // its activity (`_optionIcon`). A runtime that can't answer must not
         // cost the panel its export list, so this one degrades to the theme
@@ -282,12 +326,21 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         _loading = false;
         _error = null;
       });
+      widget.onContactCount?.call(_syncCounts!.total);
     } catch (e) {
+      ({int total, int pending, int eventTotal, int eventPending})? counts;
+      try {
+        counts = await countsFuture;
+      } catch (_) {
+        // The options' failure is the one the panel shows.
+      }
       if (!mounted || request != _loadRequest) return;
       setState(() {
         _error = e.toString();
         _loading = false;
+        _syncCounts = counts ?? _syncCounts;
       });
+      if (counts != null) widget.onContactCount?.call(counts.total);
     }
   }
 
@@ -329,6 +382,16 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   /// a group that offers 4 would read as that group's.
   String _bulkLabel(ExportAction action, int count, {bool combined = false}) {
     final s = context.t.operation.export;
+    // The sync and push panel's files header: that batch is the section's.
+    if (combined && _pushes != null) {
+      return switch (action) {
+        ExportAction.save => s.saveAll(count: count),
+        ExportAction.share => s.shareAll(count: count),
+        ExportAction.export => s.exportAll(count: count),
+        ExportAction.download => s.downloadAll(count: count),
+        ExportAction.stash => s.stashAll(count: count),
+      };
+    }
     if (combined) {
       return switch (action) {
         ExportAction.save => s.saveCombined(count: count),
@@ -583,7 +646,9 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : _error != null
+              // With EXP PUSH on the error stays inside the files section:
+              // the formats failing to load says nothing about the services.
+              : _error != null && _pushes == null
               ? Padding(
                   padding: const EdgeInsets.all(Space.xxl),
                   child: Center(child: Text(t.operation.export.exportFailed(error: _error!))),
@@ -593,7 +658,8 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         // The sync report is pinned under the list rather than riding at the
         // end of it: it is a standing fact about the operation, not one more
         // thing to scroll to, and a long list of formats would bury it.
-        if (!_loading && _error == null) ...[const Divider(height: 1), _buildSyncSummary(context, _syncCounts)],
+        // With EXP PUSH on it is the first row of the sync and push section.
+        if (!_loading && _error == null && _pushes == null) ...[const Divider(height: 1), _buildSyncSummary(context, _syncCounts)],
         _buildFooter(context),
       ],
     );
@@ -607,59 +673,247 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     // length below.
     final groups = _groups;
 
-    return CustomScrollView(
-      slivers: [
-        // The batch OPENS the list, whether it spans one callsign or six: a
-        // button saying "Save 3 files" belongs with the ticks it counted, and
-        // the operator who came to export everything should not have to reach
-        // the end of the formats to find the button that does it.
-        if (_options.isNotEmpty) SliverToBoxAdapter(child: _buildActionBand(context, combined: groups.length > 1)),
-        if (_options.isEmpty)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(Space.xl),
-              child: Text(
-                // Two different empties, and saying the wrong one sends the
-                // operator looking for a fault: a log with no contacts yet has
-                // nothing to offer, where a log WITH contacts and no options
-                // means the formats themselves never arrived.
-                _syncCounts != null && _syncCounts!.total == 0 ? t.operation.export.nothingLogged : t.operation.export.noOptions,
-                style: theme.textTheme.bodyMedium,
-              ),
+    final files = <Widget>[
+      // The batch OPENS the files, whether it spans one callsign or six: a
+      // button saying "Save 3 files" belongs with the ticks it counted, and
+      // the operator who came to export everything should not have to reach
+      // the end of the formats to find the button that does it.
+      if (_options.isNotEmpty && _pushes == null) SliverToBoxAdapter(child: _buildActionBand(context, combined: groups.length > 1)),
+      if (_error case final error?)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(Space.xl),
+            child: Text(t.operation.export.exportFailed(error: error), style: theme.textTheme.bodyMedium),
+          ),
+        )
+      else if (_options.isEmpty)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(Space.xl),
+            child: Text(
+              // Two different empties, and saying the wrong one sends the
+              // operator looking for a fault: a log with no contacts yet has
+              // nothing to offer, where a log WITH contacts and no options
+              // means the formats themselves never arrived.
+              _syncCounts != null && _syncCounts!.total == 0 ? t.operation.export.nothingLogged : t.operation.export.noOptions,
+              style: theme.textTheme.bodyMedium,
             ),
-          )
-        else
-          for (final group in groups)
-            // A single-station operation is the common case and gets no
-            // header at all — grouping chrome around one group is just noise,
-            // and with nothing to tell apart there is nothing to pin.
-            if (groups.length > 1)
-              SliverMainAxisGroup(
-                slivers: [
-                  // Pinned: the callsign a row belongs to is the one thing a
-                  // multi-operator list cannot afford to scroll away, since
-                  // every group offers the same formats under a different call.
-                  // Only inside this group — pinned to the whole scroll view,
-                  // every callsign's band would stack up at the top.
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _PinnedGroupHeader(
-                      // Never BELOW the unscaled height: 40 of those pixels are
-                      // a Material button's own floor, which an OS text scale
-                      // under 1 does not shrink — scaled down, the band clamps
-                      // the button instead of fitting it.
-                      height: math.max(_groupHeaderHeight, MediaQuery.textScalerOf(context).scale(_groupHeaderHeight)),
-                      child: _buildGroupHeader(context, group),
-                    ),
+          ),
+        )
+      else
+        for (final group in groups)
+          // A single-station operation is the common case and gets no
+          // header at all — grouping chrome around one group is just noise,
+          // and with nothing to tell apart there is nothing to pin.
+          if (groups.length > 1)
+            SliverMainAxisGroup(
+              slivers: [
+                // Pinned: the callsign a row belongs to is the one thing a
+                // multi-operator list cannot afford to scroll away, since
+                // every group offers the same formats under a different call.
+                // Only inside this group — pinned to the whole scroll view,
+                // every callsign's band would stack up at the top.
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _PinnedGroupHeader(
+                    // Never BELOW the unscaled height: 40 of those pixels are
+                    // a Material button's own floor, which an OS text scale
+                    // under 1 does not shrink — scaled down, the band clamps
+                    // the button instead of fitting it.
+                    height: math.max(_groupHeaderHeight, MediaQuery.textScalerOf(context).scale(_groupHeaderHeight)),
+                    child: _buildGroupHeader(context, group),
                   ),
-                  _optionRows(context, group.options, rowAction),
-                ],
-              )
-            else
-              _optionRows(context, group.options, rowAction),
-        const SliverToBoxAdapter(child: SizedBox(height: Space.md)),
+                ),
+                _optionRows(context, group.options, rowAction),
+              ],
+            )
+          else
+            _optionRows(context, group.options, rowAction),
+    ];
+
+    // With EXP PUSH off the files are the whole panel, and accordion chrome
+    // around one section is noise.
+    if (_pushes == null) {
+      return CustomScrollView(
+        slivers: [
+          ...files,
+          const SliverToBoxAdapter(child: SizedBox(height: Space.md)),
+        ],
+      );
+    }
+    // An accordion whose headers never scroll: each open section scrolls on
+    // its own between them, so the sync and push header holds the bottom of
+    // the pane however long the list of files runs.
+    const spacer = SliverToBoxAdapter(child: SizedBox(height: Space.md));
+    return Column(
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) => _sectionHeader(
+            context,
+            'files',
+            t.operation.export.filesTitle,
+            trailing: _options.isEmpty || _error != null
+                ? null
+                : _buildBulkActions(
+                    context,
+                    _selectedOptions,
+                    combined: true,
+                    wrap: false,
+                    // The callsign bands' rule: labels where they fit, counts
+                    // where they don't.
+                    compact:
+                        ShirtSize.fromWidth(constraints.maxWidth).index <= ShirtSize.s.index ||
+                        !_groupLabelsFit(context, t.operation.export.filesTitle, _selectedOptions.length, constraints.maxWidth - kMinInteractiveDimension),
+                  ),
+          ),
+        ),
+        if (_openSection == 'files') Expanded(child: CustomScrollView(slivers: [...files, spacer])),
+        _sectionHeader(context, 'push', t.operation.export.push.title, trailing: _syncAndPushTally(context)),
+        if (_openSection == 'push')
+          Expanded(
+            child: CustomScrollView(
+              slivers: [
+                OperationPushSection(model: _pushes!, leading: _buildCloudSyncRow(context, _syncCounts)),
+                spacer,
+              ],
+            ),
+          ),
       ],
     );
+  }
+
+  /// Which accordion section is open: always one, files first. Collapsing
+  /// one opens the other, so the other's header never sits stranded
+  /// mid-pane with nothing under it.
+  String _openSection = 'files';
+
+  Widget _sectionHeader(BuildContext context, String key, String title, {Widget? trailing}) {
+    final titleStyle = SectionHeader.titleStyle(context);
+    return CollapsibleBand(
+      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: titleStyle),
+      expanded: _openSection == key,
+      onToggle: () => setState(() => _openSection = _openSection == key ? (key == 'files' ? 'push' : 'files') : key),
+      onHeaderColor: titleStyle.color,
+      trailing: trailing,
+    );
+  }
+
+  /// Whether Ham2K Cloud Sync has everything of this operation; null with
+  /// sync off, when there is nothing for it to have done.
+  bool? get _cloudSyncDone {
+    if (!widget.services.settings.syncEnabled) return null;
+    final counts = _syncCounts;
+    return (_synced ?? widget.operation.synced) && counts != null && counts.pending == 0 && counts.eventPending == 0;
+  }
+
+  /// The sync and push section's rows still owing something, or, when none
+  /// is, the ones done: what the operator checks before closing the pane.
+  Widget? _syncAndPushTally(BuildContext context) {
+    final pushes = _pushes;
+    if (pushes == null) return null;
+    final t = context.t.operation.export.push;
+    final sync = _cloudSyncDone;
+    final pending = pushes.pending + (sync == false ? 1 : 0);
+    final completed = pushes.completed + (sync == true ? 1 : 0);
+    return Text(
+      // Said here, where it shows with the section folded: a tally without
+      // the services would read as nothing to push.
+      pushes.loadError != null
+          ? t.checkFailed
+          : pending > 0
+          ? t.pending(count: pending)
+          : t.completed(count: completed),
+      style: Theme.of(context).textTheme.labelLarge,
+    );
+  }
+
+  Future<void> _syncNow() async {
+    final t = context.t;
+    setState(() {
+      _syncing = true;
+      _syncMessage = null;
+    });
+    String? message;
+    try {
+      var outcome = await widget.services.syncEngine.retryNow();
+      // A round already running answers at once: the counts read now would
+      // be the ones the operator tapped to change. Wait it out, then ask for
+      // what it left.
+      for (var waited = 0; outcome == SyncRetryOutcome.inFlight && waited < 30 && mounted; waited++) {
+        await Future<void>.delayed(const Duration(seconds: 1));
+        outcome = await widget.services.syncEngine.retryNow();
+      }
+      message = switch (outcome) {
+        SyncRetryOutcome.unreachable => t.offline.retryUnreachable,
+        SyncRetryOutcome.throttled => t.offline.retryThrottled,
+        SyncRetryOutcome.inFlight => t.offline.retryInFlight,
+        // An account change waiting on the operator, most often.
+        SyncRetryOutcome.notAttempted => t.operation.export.syncNotRun,
+        SyncRetryOutcome.reached || SyncRetryOutcome.disabled => null,
+      };
+      await _refreshSyncState();
+    } catch (e, stack) {
+      message = t.operation.export.syncFailed(error: ErrorReportingService.messageOf(e));
+      // Said under the row the operator tapped, while the pane is open.
+      ErrorReportingService.report(
+        e,
+        stack,
+        context: 'sync now',
+        told: mounted,
+        notice: mounted ? null : ErrorNotice(widget.services.statusBar, key: 'exports:syncNow', text: message),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _syncing = false;
+          _syncMessage = message;
+        });
+      }
+    }
+  }
+
+  /// Re-reads what Ham2K Cloud Sync owes for the operation.
+  Future<void> _refreshSyncState() async {
+    final counts = await widget.services.qsos.syncCountsForOperation(widget.operation.uuid);
+    final operation = await widget.services.operations.get(widget.operation.uuid);
+    if (!mounted) return;
+    setState(() {
+      _syncCounts = counts;
+      _synced = operation?.synced;
+    });
+    widget.onContactCount?.call(counts.total);
+  }
+
+  /// Ham2K Cloud Sync as a service row: its name, then its status, and a
+  /// check once it has everything, or the button that asks it to sync now.
+  Widget _buildCloudSyncRow(BuildContext context, ({int total, int pending, int eventTotal, int eventPending})? counts) {
+    final t = context.t.operation.export;
+    final done = _cloudSyncDone;
+    final status = done == null
+        ? t.syncOff
+        : [(_synced ?? widget.operation.synced) ? t.syncedOperation : t.unsyncedOperation, ?_syncCountsLine(context, counts)].join(' · ');
+    return ListTile(
+      leading: Icon(done == false ? MdiIcons.cloudAlert : MdiIcons.cloudCheck),
+      title: Text(t.cloudSync, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text([status, ?_syncMessage].join('\n')),
+      trailing: switch (done) {
+        true => Icon(MdiIcons.checkCircle, color: connectedGreen(Theme.of(context)), semanticLabel: t.push.done),
+        false => FilledButton.tonal(onPressed: _syncing ? null : _syncNow, child: Text(t.syncNow)),
+        null => null,
+      },
+    );
+  }
+
+  /// The operation's contacts and event markers, synced or pending, as one
+  /// line; null before they are counted.
+  String? _syncCountsLine(BuildContext context, ({int total, int pending, int eventTotal, int eventPending})? counts) {
+    if (counts == null) return null;
+    final t = context.t.operation.export;
+    return [
+      counts.pending == 0 ? t.qsosSynced(total: counts.total) : t.qsosPending(pending: counts.pending, total: counts.total),
+      if (counts.eventTotal > 0)
+        counts.eventPending == 0 ? t.eventsSynced(total: counts.eventTotal) : t.eventsPending(pending: counts.eventPending, total: counts.eventTotal),
+    ].join(' · ');
   }
 
   Widget _optionRows(BuildContext context, List<Map<String, dynamic>> options, ExportAction rowAction) =>
@@ -671,16 +925,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   /// appear only when the operation has markers, moving everything under it.
   Widget _buildSyncSummary(BuildContext context, ({int total, int pending, int eventTotal, int eventPending})? counts) {
     final t = context.t.operation.export;
-    final qsos = counts == null
-        ? null
-        : counts.pending == 0
-        ? t.qsosSynced(total: counts.total)
-        : t.qsosPending(pending: counts.pending, total: counts.total);
-    final events = counts == null || counts.eventTotal == 0
-        ? null
-        : counts.eventPending == 0
-        ? t.eventsSynced(total: counts.eventTotal)
-        : t.eventsPending(pending: counts.eventPending, total: counts.eventTotal);
+    final line = _syncCountsLine(context, counts);
     return Container(
       // The same band the batch at the top of the list takes: the two are the
       // ends of one list, not a control at one end and a stray row at the
@@ -689,7 +934,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       child: ListTile(
         leading: Icon(widget.operation.synced ? MdiIcons.cloudCheck : MdiIcons.cloudAlert),
         title: Text(widget.operation.synced ? t.syncedOperation : t.unsyncedOperation),
-        subtitle: qsos == null ? null : Text([qsos, ?events].join(' · ')),
+        subtitle: line == null ? null : Text(line),
       ),
     );
   }

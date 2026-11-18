@@ -4393,6 +4393,30 @@ class Translations$operation$export$en {
 	/// en: 'Operation Exports'
 	String get title => 'Operation Exports';
 
+	/// en: '(one) {Operation Exports: ${count} QSO} (other) {Operation Exports: ${count} QSOs}'
+	String titleWithCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Operation Exports: ${count} QSO',
+		other: 'Operation Exports: ${count} QSOs',
+	);
+
+	/// en: 'File Exports'
+	String get filesTitle => 'File Exports';
+
+	/// en: 'Ham2K Cloud Sync'
+	String get cloudSync => 'Ham2K Cloud Sync';
+
+	/// en: 'Sync Now'
+	String get syncNow => 'Sync Now';
+
+	/// en: 'Sync is off'
+	String get syncOff => 'Sync is off';
+
+	/// en: 'Sync failed: ${error}'
+	String syncFailed({required Object error}) => 'Sync failed: ${error}';
+
+	/// en: 'Sync didn't run. Check Ham2K Cloud Sync in Settings.'
+	String get syncNotRun => 'Sync didn\'t run. Check Ham2K Cloud Sync in Settings.';
+
 	/// en: 'Operation is synced'
 	String get syncedOperation => 'Operation is synced';
 
@@ -4462,10 +4486,22 @@ class Translations$operation$export$en {
 		other: 'Save combined ${count} files',
 	);
 
+	/// en: '(one) {Save ${count} file} (other) {Save all ${count} files}'
+	String saveAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Save ${count} file',
+		other: 'Save all ${count} files',
+	);
+
 	/// en: '(one) {Share combined ${count} file} (other) {Share combined ${count} files}'
 	String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: 'Share combined ${count} file',
 		other: 'Share combined ${count} files',
+	);
+
+	/// en: '(one) {Share ${count} file} (other) {Share all ${count} files}'
+	String shareAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Share ${count} file',
+		other: 'Share all ${count} files',
 	);
 
 	/// en: '(one) {Export combined ${count} file} (other) {Export combined ${count} files}'
@@ -4474,10 +4510,22 @@ class Translations$operation$export$en {
 		other: 'Export combined ${count} files',
 	);
 
+	/// en: '(one) {Export ${count} file} (other) {Export all ${count} files}'
+	String exportAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Export ${count} file',
+		other: 'Export all ${count} files',
+	);
+
 	/// en: '(one) {Download combined ${count} file} (other) {Download combined ${count} files}'
 	String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: 'Download combined ${count} file',
 		other: 'Download combined ${count} files',
+	);
+
+	/// en: '(one) {Download ${count} file} (other) {Download all ${count} files}'
+	String downloadAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Download ${count} file',
+		other: 'Download all ${count} files',
 	);
 
 	/// en: 'Save ${name}'
@@ -4502,6 +4550,12 @@ class Translations$operation$export$en {
 	String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
 		one: 'Stash combined ${count} file',
 		other: 'Stash combined ${count} files',
+	);
+
+	/// en: '(one) {Stash ${count} file} (other) {Stash all ${count} files}'
+	String stashAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Stash ${count} file',
+		other: 'Stash all ${count} files',
 	);
 
 	/// en: 'Export settings'
@@ -4547,6 +4601,7 @@ class Translations$operation$export$en {
 	String exportFailed({required Object error}) => 'Export failed: ${error}';
 
 	late final Translations$operation$export$stash$en stash = Translations$operation$export$stash$en.internal(_root);
+	late final Translations$operation$export$push$en push = Translations$operation$export$push$en.internal(_root);
 }
 
 // Path: operation.spots
@@ -9651,6 +9706,87 @@ class Translations$operation$export$stash$en {
 	);
 }
 
+// Path: operation.export.push
+class Translations$operation$export$push$en {
+	Translations$operation$export$push$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Sync & Push to Services'
+	String get title => 'Sync & Push to Services';
+
+	/// en: '(one) {${count} QSO to send} (other) {${count} QSOs to send}'
+	String toSend({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} QSO to send',
+		other: '${count} QSOs to send',
+	);
+
+	/// en: '(one) {${count} to remove} (other) {${count} to remove}'
+	String toDelete({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} to remove',
+		other: '${count} to remove',
+	);
+
+	/// en: '(one) {${count} QSO to send to ${destination}} (other) {${count} QSOs to send to ${destination}}'
+	String toSendTo({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} QSO to send to ${destination}',
+		other: '${count} QSOs to send to ${destination}',
+	);
+
+	/// en: '(one) {${count} QSO sent} (other) {All ${count} QSOs sent}'
+	String allSent({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} QSO sent',
+		other: 'All ${count} QSOs sent',
+	);
+
+	/// en: '(one) {${count} QSO sent to ${destination}} (other) {All ${count} QSOs sent to ${destination}}'
+	String allSentTo({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} QSO sent to ${destination}',
+		other: 'All ${count} QSOs sent to ${destination}',
+	);
+
+	/// en: 'Nothing to send'
+	String get nothingToSend => 'Nothing to send';
+
+	/// en: 'Done'
+	String get done => 'Done';
+
+	/// en: '${count} pending'
+	String pending({required Object count}) => '${count} pending';
+
+	/// en: '${count} completed'
+	String completed({required Object count}) => '${count} completed';
+
+	/// en: 'Push'
+	String get button => 'Push';
+
+	/// en: 'Push: ${name}'
+	String buttonFor({required Object name}) => 'Push: ${name}';
+
+	/// en: 'Pushing ${done} of ${total}…'
+	String progress({required Object done, required Object total}) => 'Pushing ${done} of ${total}…';
+
+	/// en: '(one) {${count} failed: ${error}} (other) {${count} failed, the first: ${error}}'
+	String failed({required num count, required Object error}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} failed: ${error}',
+		other: '${count} failed, the first: ${error}',
+	);
+
+	/// en: 'Push failed: ${error}'
+	String pushFailed({required Object error}) => 'Push failed: ${error}';
+
+	/// en: 'The service took too long to answer, so the push stopped. Push again to finish.'
+	String get timedOut => 'The service took too long to answer, so the push stopped. Push again to finish.';
+
+	/// en: 'Couldn't check the services: ${error}'
+	String loadFailed({required Object error}) => 'Couldn\'t check the services: ${error}';
+
+	/// en: 'Couldn't check'
+	String get checkFailed => 'Couldn\'t check';
+}
+
 // Path: operation.spots.continents
 class Translations$operation$spots$continents$en {
 	Translations$operation$spots$continents$en.internal(this._root);
@@ -12509,6 +12645,13 @@ extension on Translations {
 			'operation.layout.htmlPanelUnsupported' => 'This panel needs a web view, which this platform does not provide',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'This panel needs a sandbox the web version cannot provide',
 			'operation.export.title' => 'Operation Exports',
+			'operation.export.titleWithCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Operation Exports: ${count} QSO', other: 'Operation Exports: ${count} QSOs', ), 
+			'operation.export.filesTitle' => 'File Exports',
+			'operation.export.cloudSync' => 'Ham2K Cloud Sync',
+			'operation.export.syncNow' => 'Sync Now',
+			'operation.export.syncOff' => 'Sync is off',
+			'operation.export.syncFailed' => ({required Object error}) => 'Sync failed: ${error}',
+			'operation.export.syncNotRun' => 'Sync didn\'t run. Check Ham2K Cloud Sync in Settings.',
 			'operation.export.syncedOperation' => 'Operation is synced',
 			'operation.export.unsyncedOperation' => 'Operation has unsynced changes',
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO in this operation', other: '${count} QSOs in this operation', ), 
@@ -12526,15 +12669,20 @@ extension on Translations {
 			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Export ${count} file', other: 'Export ${count} files', ), 
 			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Download ${count} file', other: 'Download ${count} files', ), 
 			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Save combined ${count} file', other: 'Save combined ${count} files', ), 
+			'operation.export.saveAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Save ${count} file', other: 'Save all ${count} files', ), 
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Share combined ${count} file', other: 'Share combined ${count} files', ), 
+			'operation.export.shareAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Share ${count} file', other: 'Share all ${count} files', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Export combined ${count} file', other: 'Export combined ${count} files', ), 
+			'operation.export.exportAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Export ${count} file', other: 'Export all ${count} files', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Download combined ${count} file', other: 'Download combined ${count} files', ), 
+			'operation.export.downloadAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Download ${count} file', other: 'Download all ${count} files', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Save ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Share ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Export ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Download ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Stash ${count} file', other: 'Stash ${count} files', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Stash combined ${count} file', other: 'Stash combined ${count} files', ), 
+			'operation.export.stashAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Stash ${count} file', other: 'Stash all ${count} files', ), 
 			'operation.export.settingsButton' => 'Export settings',
 			'operation.export.settingsTitle' => 'Export Settings',
 			'operation.export.compactFileNames.title' => 'Use compact file names',
@@ -12569,6 +12717,24 @@ extension on Translations {
 			'operation.export.stash.emailFailed' => ({required Object error}) => 'Couldn’t send the email: ${error}',
 			'operation.export.stash.freeTier' => 'Free accounts can only keep one stash at a time. Subscribers can keep as many as they want.',
 			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Sent ${count} file to Ham2K’s File Stash (stash.ham2k.net)', other: 'Sent ${count} files to Ham2K’s File Stash (stash.ham2k.net)', ), 
+			'operation.export.push.title' => 'Sync & Push to Services',
+			'operation.export.push.toSend' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO to send', other: '${count} QSOs to send', ), 
+			'operation.export.push.toDelete' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} to remove', other: '${count} to remove', ), 
+			'operation.export.push.toSendTo' => ({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO to send to ${destination}', other: '${count} QSOs to send to ${destination}', ), 
+			'operation.export.push.allSent' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO sent', other: 'All ${count} QSOs sent', ), 
+			'operation.export.push.allSentTo' => ({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO sent to ${destination}', other: 'All ${count} QSOs sent to ${destination}', ), 
+			'operation.export.push.nothingToSend' => 'Nothing to send',
+			'operation.export.push.done' => 'Done',
+			'operation.export.push.pending' => ({required Object count}) => '${count} pending',
+			'operation.export.push.completed' => ({required Object count}) => '${count} completed',
+			'operation.export.push.button' => 'Push',
+			'operation.export.push.buttonFor' => ({required Object name}) => 'Push: ${name}',
+			'operation.export.push.progress' => ({required Object done, required Object total}) => 'Pushing ${done} of ${total}…',
+			'operation.export.push.failed' => ({required num count, required Object error}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} failed: ${error}', other: '${count} failed, the first: ${error}', ), 
+			'operation.export.push.pushFailed' => ({required Object error}) => 'Push failed: ${error}',
+			'operation.export.push.timedOut' => 'The service took too long to answer, so the push stopped. Push again to finish.',
+			'operation.export.push.loadFailed' => ({required Object error}) => 'Couldn\'t check the services: ${error}',
+			'operation.export.push.checkFailed' => 'Couldn\'t check',
 			'operation.spots.empty' => 'No spots match your filters',
 			'operation.spots.disabledNoLocal' => 'Spots disabled for this operation, no manual entries',
 			'operation.spots.disabledLocalOff' => 'Spots disabled for this operation, enable Local Spots in Settings › Spotting',
@@ -12791,6 +12957,8 @@ extension on Translations {
 			'activitiesView.exports' => 'Exports',
 			'activitiesView.exportLogs' => 'Export Logs',
 			'activitiesView.tools' => 'Tools',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.toolsTitle' => 'Operation Tools',
 			'activitiesView.operationDetails' => 'Operation Details',
 			'activitiesView.share' => 'Share',
@@ -12821,8 +12989,6 @@ extension on Translations {
 			'activitiesView.searchToggle' => 'Search',
 			'activitiesView.addToOperation' => 'Add to Operation',
 			'activitiesView.addToOperationShort' => 'Add to Op.',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.mapEmptyState' => 'No results to show on the map',
 			'activitiesView.mapEmptyStateHint' => 'Switch back to the list, or search for something else',
 			'activitiesView.imports' => 'Imports',
@@ -13305,6 +13471,8 @@ extension on Translations {
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Voice memory ${n}',
 			'settings.radio.voiceMessages.labelField' => 'Label',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Voice memory ${n} label',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
 			'settings.radio.voiceMessages.emptyOnRadio' => 'Empty',
 			'settings.radio.voiceMessages.notMeasured' => 'Unknown length',
@@ -13335,8 +13503,6 @@ extension on Translations {
 			'settings.radio.voiceMessages.manageSets' => 'Manage Voice Sets…',
 			'settings.radio.voiceMessages.fileLabel' => 'Ham2K voice message set',
 			'settings.radio.voiceMessages.fileStem' => 'Voice Messages',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.output' => 'Send audio to',
 			'settings.radio.voiceMessages.outputFor' => ({required Object radio}) => 'Send audio for Radio ${radio} to',
 			'settings.radio.voiceMessages.input' => 'Record from',
@@ -13819,6 +13985,8 @@ extension on Translations {
 			'settings.station.rtlDirectSampling' => 'Direct sampling',
 			'settings.station.rtlDirectSamplingDescription' => 'For HF on an RTL-SDR V3 without an upconverter. An RTL-SDR V4 reaches HF without it.',
 			'settings.station.rtlDirectSamplingOff' => 'Off',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rtlDirectSamplingI' => 'I branch',
 			'settings.station.rtlDirectSamplingQ' => 'Q branch',
 			'settings.station.rtlTcpNotAServer' => 'This is not an rtl_tcp server',
@@ -13849,8 +14017,6 @@ extension on Translations {
 			'settings.station.winkeyerPtt' => 'Use the keyer\'s PTT',
 			'settings.station.winkeyerPttDescription' => 'Key the PTT line on the same jack, for an amplifier or a radio that needs it. Leave off for a radio keyed on its key jack.',
 			'settings.station.winkeyerNoAnswer' => 'No WinKeyer responded on this port',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.winkeyerStoppedAnswering' => 'The WinKeyer stopped responding while sending; the message was dropped',
 			'settings.station.icomControlPort' => 'Control port (UDP)',
 			'settings.station.icomControlPortDescription' => 'The radio\'s Control Port (UDP) — 50001 unless changed in its network settings, or forwarded to another.',
@@ -14333,6 +14499,8 @@ extension on Translations {
 			'settings.station.rotctldTroubleshooting' => 'This connects to a **rotctld daemon you run yourself**, not to the rotator directly — Hamlib\'s backend talks to the controller and supports most of them.\n\n- **The daemon must already be running**, e.g. `rotctld -m 601 -r /dev/ttyUSB0` for a GS-232A. Find your controller\'s model number with `rotctl -l`.\n- **From another machine**, allow port 4533 through that machine\'s firewall. rotctld listens on every address unless started with `-T`.\n- **Port** is 4533 unless you started the daemon with `-t`.\n- **PstRotator** answers too, with **Gpredict** selected as its tracker and Tracking on.\n- Turns go only as far as the limits rotctld enforces, which it reports itself — set them with `-C min_az=…,max_az=…` when starting it. The offsets here are for a controller whose zero is not true north.',
 			'settings.station.connectionRouted' => ({required Object port, required Object antenna}) => '${port}: ${antenna}',
 			'settings.station.connectionDevices' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} device', other: '${count} devices', ), 
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.gpsFix' => ({required Object grid, required Object satellites}) => '${grid} · ${satellites}',
 			'settings.station.gpsSearching' => 'Searching for satellites',
 			'settings.station.gpsSearchingWith' => ({required Object satellites}) => 'Searching · ${satellites}',
@@ -14363,8 +14531,6 @@ extension on Translations {
 			'settings.station.everywareFollowRadioB' => 'Radio B (SO2R)',
 			'settings.station.everywareFollowBand' => 'Follow the radio\'s band',
 			'settings.station.everywareFollowBandDescription' => 'Picks the position covering the main radio\'s frequency whenever it changes. Others sharing the station see it switch too.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.everywareFollowBearing' => 'Point toward the station being worked',
 			'settings.station.everywareFollowBearingDescription' => 'Picks the direction nearest the station in the call field whenever it changes. Others sharing the station see it switch too.',
 			'settings.station.everywareTroubleshooting' => 'This connects to a **GH Everyware server**, the program that shares a station\'s Green Heron rotators and switches over the network.\n\n- **Port** is 17220 unless the server was set up on another one. From outside the station\'s network, the router must forward that port to the server\'s computer.\n- **User and password** only when the server has user authentication turned on. Leave both blank otherwise.\n- **The server takes a limited number of clients**, four unless set otherwise. When it is full, close another client and connect again.\n- Once connected, tick the rotators and switches you want under **Devices**. Each becomes equipment of its own, in this list and in every panel.\n- **Other operators may share the station.** Turning a rotator or switching an antenna here moves it for everyone.',
@@ -14847,6 +15013,8 @@ extension on Translations {
 			'notices.logFromNewerBuildTitle' => 'This log needs a newer version',
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}',
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Open this log with that newer version instead.',
+			_ => null,
+		} ?? switch (path) {
 			'notices.preferencesRestoredTitle' => 'Settings restored from a backup',
 			'notices.preferencesRestored' => 'The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'Settings reset',
@@ -14877,8 +15045,6 @@ extension on Translations {
 			'deepLink.allow' => 'Allow',
 			'deepLink.deny' => 'Deny',
 			'confirmDevice.title' => 'Confirm a Device',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.codePrompt' => 'Enter the code shown on the device that wants to join this account.',
 			'confirmDevice.code' => 'Code',
 			'confirmDevice.lookUp' => 'Look Up',

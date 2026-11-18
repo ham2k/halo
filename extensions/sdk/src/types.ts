@@ -2832,6 +2832,139 @@ export interface OAuth2Config {
 /// `createTranslator`. Same convention as [AccountHook.oauth2].
 export type Localizable<T> = T | ((args: Record<string, never>, ctx: HookContext) => T | Promise<T>)
 
+/// A service a `transfer` hook sends contacts to (docs/extensions/import-export.md).
+/// Its key, lower case and without `:`, begins each record the app keeps on
+/// a contact, `qso.transfer["<service>:<destination>"]`, so it is claimed by
+/// one extension only.
+export interface TransferService {
+  key: string
+  /// The hook's own label when left out.
+  label?: string
+}
+
+/// Sends contacts to a service, and remembers what it sent (registered under
+/// 'transfer'). The app builds every record, decides which contacts go, and
+/// writes the results back; the hook only talks to the service.
+export interface TransferHook {
+  /// Names a service that gives no label of its own.
+  label: Localizable<string>
+  /// Describes a suggestion that gives no description of its own.
+  description?: Localizable<string>
+  services: TransferService[]
+  /// Where on the service a scope's contacts can go: a logbook, a folder, a
+  /// station location. None, one or several; each is a push of its own.
+  /// Asked every time and never saved. Throw to say why there are none.
+  suggestDestinations(args: DestinationsRequest, ctx: HookContext): Promise<TransferDestination[]>
+  /// What this hook would push for a scope. The app counts the contacts each
+  /// suggestion selects, and drops one that selects none.
+  suggestPushes?(args: PushSuggestionsRequest, ctx: HookContext): Promise<PushSuggestion[]>
+  /// Sends one chunk of one station callsign's records, answering one result
+  /// per record. A record with `deleted` is removed from the service by `id`.
+  /// Left out, the hook only pulls, and is offered no push rows. A call that
+  /// throws, or takes over a minute, stops the push and saves nothing from
+  /// its chunk, so the next push sends those records again without an `id`:
+  /// sending one twice must not make a copy.
+  push?(args: PushRequest, ctx: HookContext): Promise<PushRecordResult[]>
+}
+
+export interface DestinationsRequest {
+  service: string
+  scope: PushScope
+  /// Every station callsign the scope's contacts were made under, segments
+  /// included.
+  stationCalls: string[]
+}
+
+/// A destination is a name, never a secret: the hook looks up whatever key
+/// it needs from its account. Its id, unique within the service, names the
+/// contact's record there (`qrz:ki2d`); a service with one place names a
+/// default of its own (`main`).
+export interface TransferDestination {
+  id: string
+  label?: string
+  /// Only this station callsign's contacts go there, each written as its
+  /// log writes it. Left out, every contact in the scope does.
+  stationCall?: string
+}
+
+/// What a push is asked about: one operation. Check `kind`, and offer
+/// nothing for one you do not know: later API levels add other scopes.
+export type PushScope = { kind: "operation"; operation: Record<string, JSONValue> }
+
+export interface PushSuggestionsRequest {
+  scope: PushScope
+  /// The operation's summary of earlier pushes, by record key (`qrz:ki2d`),
+  /// in an operation scope.
+  sent?: Record<string, TransferSummary>
+}
+
+export interface TransferSummary {
+  key?: string
+  sentAtMillis?: number
+  /// The operation's contacts the destination holds, after the push.
+  sentCount?: number
+}
+
+export interface PushSuggestion {
+  /// Unique within the hook.
+  key: string
+  service: string
+  label: string
+  description?: string
+  /// How each record is built; the full log's record when left out.
+  payload?: PushPayload
+  /// Which contacts it covers. Names `notSentTo` or `changedSince` of its own
+  /// `service` (or a record key under it), so the contacts it sends stop
+  /// being selected; a suggestion naming neither, or another service's, is
+  /// dropped.
+  select: QsoSelector
+  emphasis?: "due" | "updates"
+  selectedByDefault?: boolean
+}
+
+/// A program's own records, with `adifFields` composed as its export composes
+/// them; or the operator's full copy, private fields only when asked, and
+/// without the fields `omit` names (`"notes"`, `"app_*"`).
+export type PushPayload = { mainHandler: string; includeFieldsFrom?: string[] } | { full: true; includePrivateData?: boolean; omit?: string[] }
+
+/// Every condition given must hold. `notSentTo` and `changedSince` name a
+/// service (`"qrz"`), read against the destination being counted, or a whole
+/// record key (`"sota:chase"`), whatever the destination.
+export interface QsoSelector {
+  /// A reference type the contact carries: one it hunted.
+  hunted?: string
+  /// A reference type the contact's operation carries: one it activated.
+  activated?: string
+  /// A record the contact does not have.
+  notSentTo?: string
+  /// A record the contact, or its operation, has changed since.
+  changedSince?: string
+}
+
+export interface PushRequest {
+  service: string
+  stationCall: string
+  destination: TransferDestination
+  records: PushRecord[]
+}
+
+/// One contact: its ADIF records (several when a program splits it), or a
+/// delete, carrying the id the service gave it.
+export interface PushRecord {
+  uuid: string
+  adif: string[]
+  deleted?: boolean
+  id?: string
+}
+
+/// `id` is the service's own for the contact, kept for later updates and
+/// deletes. `error` leaves the contact unsent, to go again next time.
+export interface PushRecordResult {
+  uuid: string
+  id?: string
+  error?: string
+}
+
 export interface AccountHook {
   label: Localizable<string>
   /// Short one-liner shown under the label in the Accounts list (e.g.

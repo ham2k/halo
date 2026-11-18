@@ -103,6 +103,7 @@ part 'extension_installs.dart';
 part 'extension_host_calls.dart';
 part 'extension_command_gate.dart';
 part 'extension_resolve_calls.dart';
+part 'extension_transfer_calls.dart';
 
 /// An extension's timers, suspended for breaking their budget
 /// (extensions/sdk/src/timerQueue.ts). Its own type so the crash backend can
@@ -147,6 +148,7 @@ class ExtensionService
         _ExtensionAgentLink,
         _ExtensionAccounts,
         _ExtensionInstalls,
+        _ExtensionTransferCalls,
         WidgetsBindingObserver {
   @override
   ExtensionHost? _host;

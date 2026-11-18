@@ -26,6 +26,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:ham2k_logger/config/experiments.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/export_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
@@ -997,6 +998,17 @@ void main() {
       expect(combinedY, lessThan(tester.getCenter(find.text('N0CALL')).dy));
       expect(combinedY, lessThan(tester.getCenter(find.text('W1AW')).dy));
       expect(combinedY, lessThan(tester.getCenter(find.text('Full ADIF Export').first).dy), reason: 'above the first export row, not merely the first header');
+    });
+
+    // "all" is the sync and push panel's word, where the files header holds
+    // the one batch. Without EXP PUSH the batch sits beside each callsign's
+    // own, and "Save 1 file" there would read as one more callsign's button.
+    testWidgets('the files header of the sync and push panel names its batch "all"', (tester) async {
+      await settings.setExperimentEnabled(kPushExperiment, true);
+      await pump(tester);
+
+      expect(find.text('Save all 2 files'), findsOneWidget);
+      expect(find.textContaining('combined'), findsNothing);
     });
 
     // Three bands a shade apart read as three unrelated things rather than as

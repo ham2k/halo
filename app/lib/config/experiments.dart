@@ -19,6 +19,9 @@ const kCatServerExperiment = 'server';
 /// The agent link and its `mcp` endpoint (docs/design/agent-link.md).
 const kAgentLinkExperiment = 'mcp';
 
+/// Data Transfer & Interchange (docs/design/transfer.md).
+const kPushExperiment = 'push';
+
 class ExperimentDefinition {
   final String key;
   final String name;

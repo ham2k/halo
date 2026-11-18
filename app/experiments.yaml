@@ -197,3 +197,12 @@ experiments:
     name: Radio Audio
     description: Hear a radio's receive audio in HaLo itself, with no virtual sound device.
     private: true
+  # Data Transfer & Interchange (docs/design/transfer.md): pushing contacts to
+  # other services through extensions' `transfer` hooks. With this off the
+  # app never asks a `transfer` hook anything. Private while push, pull and
+  # their screens are built out stage by stage.
+  - key: push
+    name: Data Transfer
+    description: Push your contacts to services such as QRZ.com through extensions, and keep track of what was sent.
+    aliases: [transfer]
+    private: true

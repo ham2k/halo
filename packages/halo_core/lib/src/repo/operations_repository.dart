@@ -19,6 +19,7 @@ import '../models/models.dart';
 import '../models/operation_lifecycle.dart';
 import '../models/operation_operator.dart';
 import '../models/qson_values.dart';
+import '../models/transfer.dart';
 import '../uuid.dart';
 import 'write_policy.dart';
 
@@ -227,7 +228,8 @@ class OperationsRepository {
   /// between those edits — a location they cleared would come back.
   ///
   /// [lifecycleOnly] is for a save that moves nothing but the status and its
-  /// stamps ([setStatus]): it skips [onLocalSave], whose segment pass reads
+  /// stamps ([setStatus]), or bookkeeping read in the same transaction
+  /// ([recordTransfer]): it skips [onLocalSave], whose segment pass reads
   /// none of them. That save is the one the operator waits on to log again,
   /// and on a segmented log the pass costs an extension round trip per row.
   ///
@@ -554,6 +556,21 @@ class OperationsRepository {
     final status = (await get(uuid))?.status;
     if (status != OperationStatus.active && !_closedStatuses.contains(status)) return null;
     return setStatus(uuid, OperationStatus.processed, evenIfUnchanged: true);
+  });
+
+  /// [uuid]'s contacts pushed to the destination whose record key is [key]:
+  /// [summary] saved as `operation.data.transfer[key]` (docs/design/transfer.md
+  /// §7). Nothing when the operation is gone.
+  ///
+  /// One transaction: read outside it, an edit landing before the write
+  /// would be overwritten by the copy read. Saved as bookkeeping
+  /// ([saveData]'s `lifecycleOnly`): no segment reads the summary, and the
+  /// segment pass would rewrite and re-sync every event row per push.
+  Future<void> recordTransfer(String uuid, String key, Map<String, dynamic> summary) => db.transaction(() async {
+    final operation = await get(uuid);
+    if (operation == null) return;
+    final transfers = {...?asQsonMap(operation.data[qsoTransferKey]), key: summary};
+    await saveData(Operation(uuid: uuid, data: {...operation.data, qsoTransferKey: transfers}), followRefs: false, lifecycleOnly: true);
   });
 
   Future<void> softDelete(String uuid) => _writeDeleted(uuid, purged: false);

@@ -4,6 +4,7 @@
 library;
 
 export 'src/adif/adif_parser.dart';
+export 'src/adif/adif_records.dart';
 export 'src/adif/adif_to_qson.dart';
 export 'src/app_clock.dart';
 export 'src/data_file_parsing.dart';
@@ -36,6 +37,7 @@ export 'src/models/operation_title.dart';
 export 'src/models/qso_merge.dart';
 export 'src/models/qson_values.dart';
 export 'src/models/segments.dart';
+export 'src/models/transfer.dart';
 export 'src/n1mm/n1mm_call_history.dart';
 export 'src/n1mm/n1mm_contact_info.dart';
 export 'src/net/ham2k_sso_proxy.dart';
