@@ -870,6 +870,16 @@ console (Account → API Keys; `shorebird login:ci` is gone). Prefer the
 "Release & Patch only" scope, and note that key expiry will silently start failing
 CI.
 
+**A release spends its version.** `shorebird release` marks the version active,
+and Shorebird never creates it again — so a build that fails after that step (a
+store upload, a hand-off to testers) cannot be re-run: the retry stops before it
+builds, on "Please bump your version number". The Android and iOS build scripts
+ask first (`shorebird_release_status`) and stop at once on a version already
+taken. A run that failed later is finished by hand from its artifacts — the
+Android AAB, the iOS IPA — never from a rebuild, which is not the build Shorebird
+registered. The iOS upload waits out App Store Connect's 5xx answers for about
+half an hour before it gives up.
+
 **All three editions have a Shorebird app** — `shorebird init` created one per
 flavor, and CD registers a release for each, so Dev takes code pushes too. **Web gets
 none**: it reloads the latest bundle on load.
