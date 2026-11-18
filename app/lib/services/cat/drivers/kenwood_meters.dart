@@ -5,7 +5,7 @@
 // them a scale: `SM0;`, the S-meter while receiving and power out while
 // keyed, and while keyed a bare `RM;` for SWR, COMP and ALC. Neither selects
 // anything on the radio's panel. See docs/design/cat.md § Transmit
-// telemetry.
+// telemetry. A K3's are its own commands, in kenwood_k3.dart.
 
 part of 'kenwood_driver.dart';
 
@@ -21,13 +21,15 @@ const _rmTables = {
 };
 
 /// The meters [calibration] gives a Kenwood a scale for, plus the TX-500
-/// line's supply, which `VL;` reads in volts outright.
-Set<RadioMeter> kenwoodMetersFor(MeterCalibration? calibration, {required bool lab599}) => {
+/// line's supply, which `VL;` reads in volts outright, and the K3's transmit
+/// meters, which its own commands read on their own scales.
+Set<RadioMeter> kenwoodMetersFor(MeterCalibration? calibration, {required bool lab599, required bool k3}) => {
   if (calibration?.has(MeterTable.strength) ?? false) RadioMeter.signalDbm,
   if (_hasPower(calibration)) RadioMeter.powerOut,
   for (final (table, meter) in _rmTables.values)
     if (calibration?.has(table) ?? false) meter,
   if (lab599) RadioMeter.supplyVolts,
+  if (k3) ...{RadioMeter.powerOut, RadioMeter.swr, RadioMeter.alc},
 };
 
 bool _hasPower(MeterCalibration? calibration) => (calibration?.has(MeterTable.power) ?? false) || (calibration?.has(MeterTable.powerFraction) ?? false);
@@ -40,10 +42,11 @@ bool _readsSMeter(MeterCalibration? calibration, {required bool transmitting, re
 bool _readsRm(MeterCalibration? calibration, {required bool capturing}) => capturing || _rmTables.values.any((entry) => calibration?.has(entry.$1) ?? false);
 
 /// What one meter cycle adds to the `IF` watch, keyed or not.
-int kenwoodMeterCycleBytes(MeterCalibration? calibration, {required bool transmitting, required bool capturing, required bool lab599}) =>
+int kenwoodMeterCycleBytes(MeterCalibration? calibration, {required bool transmitting, required bool capturing, required bool lab599, required bool k3}) =>
     (_readsSMeter(calibration, transmitting: transmitting, capturing: capturing) ? kenwoodSMeterBytes : 0) +
     (transmitting && _readsRm(calibration, capturing: capturing) ? kenwoodMeterReadBytes : 0) +
-    (lab599 ? lab599PttBytes + (transmitting ? lab599VoltsBytes : 0) : 0);
+    (lab599 ? lab599PttBytes + (transmitting ? lab599VoltsBytes : 0) : 0) +
+    (k3 && transmitting ? k3MeterCycleBytes : 0);
 
 mixin _KenwoodMeters {
   EquipmentSink get _sink;

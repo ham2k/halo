@@ -3389,6 +3389,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get voiceDialectPb => 'KENWOOD (PB, TS-590 STYLE)';
 	@override String get voiceDialectK4 => 'ELECRAFT K4 (PB AND DA)';
 	@override String get voiceDialectKx => 'ELECRAFT KX2/KX3 (SWITCH TAPS)';
+	@override String get voiceDialectK3 => 'ELECRAFT K3/K3S WITH KDVR3 (SWITCH TAPS)';
 	@override String get placeholderDiagnostic => 'SIMULATED';
 	@override String get placeholderWholeNumberInvalid => 'MUST BE A WHOLE NUMBER, 0 OR MORE';
 	@override String get placeholderFreqInvalid => 'MUST BE A FREQUENCY IN KHZ, GREATER THAN ZERO';
@@ -4932,6 +4933,8 @@ class _Translations$settings$station$models$qro extends Translations$settings$st
 	@override String get tx500mp => 'LAB599 TX-500MP';
 	@override String get qcx => 'QRP LABS QCX';
 	@override String get elecraftGeneric => 'ELECRAFT - GENERIC';
+	@override String get k3 => 'ELECRAFT K3';
+	@override String get k3s => 'ELECRAFT K3S';
 	@override String get kx2 => 'ELECRAFT KX2';
 	@override String get kx3 => 'ELECRAFT KX3';
 	@override String get k4 => 'ELECRAFT K4';
@@ -7355,6 +7358,8 @@ extension on TranslationsQro {
 			'settings.station.models.tx500mp' => 'LAB599 TX-500MP',
 			'settings.station.models.qcx' => 'QRP LABS QCX',
 			'settings.station.models.elecraftGeneric' => 'ELECRAFT - GENERIC',
+			'settings.station.models.k3' => 'ELECRAFT K3',
+			'settings.station.models.k3s' => 'ELECRAFT K3S',
 			'settings.station.models.kx2' => 'ELECRAFT KX2',
 			'settings.station.models.kx3' => 'ELECRAFT KX3',
 			'settings.station.models.k4' => 'ELECRAFT K4',
@@ -7710,6 +7715,7 @@ extension on TranslationsQro {
 			'settings.station.voiceDialectPb' => 'KENWOOD (PB, TS-590 STYLE)',
 			'settings.station.voiceDialectK4' => 'ELECRAFT K4 (PB AND DA)',
 			'settings.station.voiceDialectKx' => 'ELECRAFT KX2/KX3 (SWITCH TAPS)',
+			'settings.station.voiceDialectK3' => 'ELECRAFT K3/K3S WITH KDVR3 (SWITCH TAPS)',
 			'settings.station.placeholderDiagnostic' => 'SIMULATED',
 			'settings.station.placeholderWholeNumberInvalid' => 'MUST BE A WHOLE NUMBER, 0 OR MORE',
 			'settings.station.placeholderFreqInvalid' => 'MUST BE A FREQUENCY IN KHZ, GREATER THAN ZERO',
@@ -7811,11 +7817,11 @@ extension on TranslationsQro {
 			'settings.station.rotatorDisconnected' => 'DISCONNECTED',
 			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° AZIMUTH',
 			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '${degrees}° AZ',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° ELEVATION',
 			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° EL',
 			'settings.station.rotatorNoReading' => 'WAITING FOR THE CONTROLLER TO REPORT ITS POSITION…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorNotResponding' => 'NOT RESPONDING',
 			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'TURNING TO ${heading}, AS FAR AS THIS ROTATOR\'S LIMITS ALLOW',
 			'settings.station.rotatorTargetAzimuth' => 'TURN TO AZIMUTH',
@@ -8325,11 +8331,11 @@ extension on TranslationsQro {
 			'confirmDevice.needsSyncTitle' => 'THIS DEVICE DOES NOT SYNC YET',
 			'confirmDevice.needsSyncText' => 'TURN ON HAM2K LOG FILER SYNC AND LINK THIS DEVICE TO AN ACCOUNT BEFORE IT CAN ADMIT ANOTHER ONE.',
 			'confirmDevice.malformedRequest' => 'THE SYNC SERVER SENT A REQUEST THIS APP COULD NOT READ. ASK THE OTHER DEVICE TO TRY AGAIN.',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.linkIt' => 'LINK DEVICE',
 			'switchAccounts.noAccountDetails' => 'NO ACCOUNT DETAILS YET',
 			'switchAccounts.currentAccount' => 'CURRENT ACCOUNT',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.otherAccounts' => 'OTHER ACCOUNTS',
 			'switchAccounts.linkToAnother' => 'LINK TO ANOTHER ACCOUNT',
 			'switchAccounts.linkWithSibling' => 'LINK WITH OTHER HAM2K APP',

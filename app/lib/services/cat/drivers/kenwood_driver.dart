@@ -37,6 +37,7 @@ import '../equipment.dart';
 import '../spectrum.dart';
 import 'cat_ascii_codec.dart';
 import 'cw_send_queue.dart';
+import 'k3_codec.dart';
 import 'kenwood_cat_codec.dart';
 import 'k4_codec.dart';
 import 'k4_setting_switch.dart';
@@ -52,6 +53,7 @@ import 'voice_activity_tracker.dart';
 
 part 'k4_spectrum_session.dart';
 part 'kenwood_equipment.dart';
+part 'kenwood_k3.dart';
 part 'kenwood_lab599.dart';
 part 'kenwood_meters.dart';
 
@@ -76,7 +78,7 @@ const kenwoodPassbandReadEvery = 5;
 const kenwoodAntennaReadEvery = 5;
 
 class KenwoodSession
-    with _Lab599, _KenwoodMeters
+    with _Lab599, _KenwoodMeters, _ElecraftK3
     implements
         ReadBackSession,
         CwKeyerSession,
@@ -118,7 +120,7 @@ class KenwoodSession
 
   /// GPS sentences dropped for the TX-500 line: the LiNK500MP made for it
   /// can interleave its receiver's NMEA with the radio's CAT on one channel.
-  late final _framer = KenwoodFramer(dropsNmea: modeDialect == KenwoodModeDialect.lab599);
+  late final _framer = KenwoodFramer(dropsNmea: modeDialect == KenwoodModeDialect.lab599, digitCommands: {if (k3) 'K3'});
 
   /// Auto-Information is the primary path; this covers what it can't — the
   /// radio's AI menu switched off, or a frame lost to line noise.
@@ -132,6 +134,7 @@ class KenwoodSession
   late final TelemetryPoller _telemetry = TelemetryPoller(
     onPoll: (transmitting) {
       _readMeters(transmitting);
+      _readK3Meters(transmitting);
       if (transmitting && _lab599) _readLab599Volts();
       if (_lab599) _watchLab599Ptt();
       _send(buildKenwoodReadInfoCommand());
@@ -142,7 +145,7 @@ class KenwoodSession
 
   Duration _telemetryInterval({required bool transmitting}) => telemetryIntervalFor(
     _config,
-    cycleBytes: _txWatchBytes + kenwoodMeterCycleBytes(_meterCalibration, transmitting: transmitting, capturing: _capturingMeters, lab599: _lab599),
+    cycleBytes: _txWatchBytes + kenwoodMeterCycleBytes(_meterCalibration, transmitting: transmitting, capturing: _capturingMeters, lab599: _lab599, k3: k3),
     baudRate: serialBaudRateOrNull(_config),
   );
 
@@ -244,7 +247,7 @@ class KenwoodSession
       final command = switch (voiceDialect) {
         KenwoodVoiceDialect.pb => buildKenwoodReadVoicePlaybackCommand(),
         KenwoodVoiceDialect.k4 => buildK4ReadDigitalAudioCommand(),
-        KenwoodVoiceDialect.kx => buildElecraftReadTransmitQueryCommand(),
+        KenwoodVoiceDialect.kx || KenwoodVoiceDialect.k3 => buildElecraftReadTransmitQueryCommand(),
         null => null,
       };
       if (command != null) _send(command);
@@ -266,6 +269,7 @@ class KenwoodSession
     this.antennaDialect,
     this.modeDialect,
     this.setsReceiveLevels = false,
+    this.k3 = false,
     Map<String, dynamic> config = const {},
   }) : _modeOffset = declaredModeOffset,
        // ignore: prefer_initializing_formals
@@ -274,6 +278,12 @@ class KenwoodSession
   /// The node's merged config, kept for [_telemetry]'s cadence.
   @override
   final Map<String, dynamic> _config;
+
+  /// See [KenwoodDriver.k3Key].
+  final bool k3;
+
+  @override
+  bool get _k3 => k3;
 
   /// See [KenwoodDriver.dataModeKey].
   final bool dataMode;
@@ -345,6 +355,7 @@ class KenwoodSession
     // while connected, but an `ID;` sent before the operator hands CAT to a
     // LiNK500MP goes unanswered — and without it `PT`, `VL` and DIG stay off.
     if (_lab599 && _lab599Protocol == null) _send(buildKenwoodReadIdCommand());
+    _requestK3State();
     // DATA first: `MD` and `IF` are reported against the flag as it stands,
     // and a flag read after them would report the base mode alone in between.
     if (dataMode) _send(buildKenwoodReadDataModeCommand());
@@ -381,14 +392,20 @@ class KenwoodSession
   /// Every [kenwoodTunerReadEvery]th poll, first thing on a connection. The
   /// previous read is judged when the next falls due — by then its answer
   /// has long arrived if it was ever coming.
+  ///
+  /// The K3 has no `AC`; it reads its ATU from `DS` instead.
   void _requestTuner() {
-    if (!_tunerRead.available) return;
+    if (k3 ? !_k3CanReadTuner : !_tunerRead.available) return;
     if (_tunerPollsToSkip > 0) {
       _tunerPollsToSkip--;
       return;
     }
     _tunerPollsToSkip = kenwoodTunerReadEvery - 1;
-    if (_tunerRead.judge()) _readTuner();
+    if (k3) {
+      _readK3Tuner();
+    } else if (_tunerRead.judge()) {
+      _readTuner();
+    }
   }
 
   void _readTuner() {
@@ -396,6 +413,7 @@ class KenwoodSession
     _send(buildKenwoodReadTunerCommand());
   }
 
+  @override
   void _reportTuner(TunerStatus? status) {
     if (_sink case final TunerSink sink) sink.reportTuner(status);
   }
@@ -584,6 +602,7 @@ class KenwoodSession
   /// passband's reason: a K3-line `?;` on the air would count as a refusal.
   void _requestAntennas() {
     if (antennaDialect == null || !_antennaRead.available || _transmitting) return;
+    if (antennaDialect == KenwoodAntennaDialect.k3 && !_k3HasAntennaChoice) return;
     if (_antennaPollsToSkip > 0) {
       _antennaPollsToSkip--;
       return;
@@ -594,6 +613,7 @@ class KenwoodSession
 
   void _readAntennas() {
     _antennaRead.sent();
+    if (antennaDialect == KenwoodAntennaDialect.k3 && _k3Modules?.rxAntenna == true) _send(buildK3ReadRxAntennaCommand());
     _send(buildKenwoodReadAntennaCommand());
   }
 
@@ -626,6 +646,8 @@ class KenwoodSession
           tx: tx,
           separate: true,
         );
+      case KenwoodAntennaDialect.k3:
+        return _parseK3Antennas(params);
       case null:
         return null;
     }
@@ -656,7 +678,9 @@ class KenwoodSession
     // ASCII, and `allowInvalid` because a line-noise byte on a serial link
     // must not throw out of a stream callback; the framer simply will not
     // match it as a command.
-    final text = ascii.decode(chunk, allowInvalid: true);
+    // Latin-1 for the K3, whose `DS` answer carries its icons as bytes with
+    // the top bit set.
+    final text = k3 ? latin1.decode(chunk) : ascii.decode(chunk, allowInvalid: true);
     // Before the framer, which drops `?;` — it has no letters to frame.
     // Not on the air: the K3 line answers `?;` to commands it will not handle
     // while transmitting, which says nothing about whether it has them.
@@ -686,6 +710,11 @@ class KenwoodSession
           // MD has no DATA submode. Ask for the complete snapshot instead
           // of publishing a mode guessed from an old DT answer.
           if (RegExp(r'^[1-79]$').hasMatch(command.params)) _send('IF;');
+          return;
+        }
+        if (_k3DataModeCode(command.params)) {
+          _pendingModeCode = command.params;
+          if (_k3Extended) _send(buildKenwoodReadInfoCommand());
           return;
         }
         final mode = parseKenwoodModeParams(command.params, dialect: modeDialect);
@@ -735,6 +764,7 @@ class KenwoodSession
           return;
         }
         final level = parseKenwoodPowerParams(command.params);
+        if (level != null && k3) _k3SetWatts = level;
         if (level != null) _sink.reportPower(_lab599 ? lab599WattsForLevel(level, ratedWatts: _lab599RatedWatts) : level);
 
       case 'SM':
@@ -746,6 +776,21 @@ class KenwoodSession
 
       case 'PT' when _lab599:
         _handleLab599Ptt(command.params);
+
+      case 'OM' when k3:
+        _handleK3Modules(command.params);
+      case 'K3' when k3:
+        _handleK3CommandMode(command.params);
+      case 'DS' when k3:
+        _handleK3Display(command.params);
+      case 'TM' when k3:
+        _handleK3MeterMode(command.params);
+      case 'BG' when k3:
+        _handleK3Bargraph(command.params);
+      case 'SW' when k3:
+        _handleK3Swr(command.params);
+      case 'AR' when antennaDialect == KenwoodAntennaDialect.k3:
+        _handleK3RxAntenna(command.params);
 
       case 'KS':
         if (cwDialect == null) return;
@@ -861,7 +906,7 @@ class KenwoodSession
         final transmitting = command.command == 'TX';
         if (_noteTransmitting(transmitting)) _sink.reportTransmitting(transmitting);
       case 'TQ':
-        if (voiceDialect != KenwoodVoiceDialect.kx && !remote) return;
+        if (voiceDialect != KenwoodVoiceDialect.kx && voiceDialect != KenwoodVoiceDialect.k3 && !remote) return;
         final transmitting = parseElecraftTransmitQueryParams(command.params);
         if (transmitting == null) return;
         if (remote) {
@@ -893,7 +938,11 @@ class KenwoodSession
     // generation of the line.
     final freqHz = parseKenwoodInfoFrequency(params);
     final learned = _modeOffset;
-    final mode = learned == null ? null : _withData(parseKenwoodInfoModeAt(params, learned, dialect: modeDialect));
+    final mode = learned == null
+        ? null
+        : _k3InfoIsData(params, learned)
+        ? _k3InfoDataMode(params, learned)
+        : _withData(parseKenwoodInfoModeAt(params, learned, dialect: modeDialect));
 
     if (freqHz != null || mode != null) {
       _report(VfoReading(freqKHz: freqHz == null ? null : freqHz / 1000, mode: mode));
@@ -1001,7 +1050,8 @@ class KenwoodSession
 
   @override
   void setMode(String mode) {
-    if (isK4) {
+    // The K3 takes the K4's `MD`+`DT` pairs: the same documented codes.
+    if (isK4 || k3) {
       final command = buildK4SetModeCommand(mode);
       if (command != null) {
         _send(command);
@@ -1066,9 +1116,11 @@ class KenwoodSession
   /// Writes nothing until the radio has answered `AC` in Kenwood's shape: the
   /// write must carry the receive-side AT as the radio has it, and on a
   /// radio that never answered, `AC` is not known to be a tuner at all.
-  /// Then reads back, so what is shown is what the radio took.
+  /// Then reads back, so what is shown is what the radio took. A K3 holds
+  /// its ATU key instead.
   @override
   void setTuner({required bool inline}) {
+    if (k3) return _setK3Tuner(inline);
     final flags = _tunerFlags;
     if (flags == null) return;
     _send(buildKenwoodSetTunerCommand(rxInline: flags.rxInline, inline: inline));
@@ -1089,8 +1141,13 @@ class KenwoodSession
 
   /// P3 `0` with the transmit-side AT in line ends a tune. From the CAT
   /// manuals, not a capture.
+  ///
+  /// A K3 starts no tune, and its in line is a toggle of the ATU key: there
+  /// it does nothing.
   @override
-  void stopTune() => setTuner(inline: true);
+  void stopTune() {
+    if (!k3) setTuner(inline: true);
+  }
 
   /// Writes nothing until the radio has answered `AN` in [antennaDialect]'s
   /// shape, nothing while it is transmitting — no antenna relay moves under
@@ -1121,6 +1178,8 @@ class KenwoodSession
         };
         if (txIndex < 0 && rxAntenna == null) return;
         _send(buildTs590SetAntennaCommand(port: txIndex < 0 ? null : txIndex + 1, rxAntenna: rxAntenna));
+      case KenwoodAntennaDialect.k3:
+        if (!_setK3Antenna(antennas, rx: rx, tx: tx)) return;
       case null:
         return;
     }
@@ -1215,7 +1274,13 @@ class KenwoodSession
   }
 
   @override
-  int get voiceMemoryCount => voiceDialect == null ? 0 : _voiceMemories;
+  int get voiceMemoryCount => switch (voiceDialect) {
+    null => 0,
+    // Until `OM` answers, the entry's count: a K3 with no KDVR3 then plays
+    // nothing, which the `TQ` watch reads as a memory that did not go out.
+    KenwoodVoiceDialect.k3 when _k3Modules?.voiceRecorder == false => 0,
+    _ => _voiceMemories,
+  };
 
   /// Only the K4 documents recording over CAT.
   @override
@@ -1237,6 +1302,8 @@ class KenwoodSession
         _send(buildKenwoodPlayVoiceCommand(n));
       case KenwoodVoiceDialect.kx:
         buildKxPlayVoiceCommands(n).forEach(_send);
+      case KenwoodVoiceDialect.k3:
+        _send(buildK3PlayVoiceCommand(n));
       case null:
         return;
     }
@@ -1264,7 +1331,7 @@ class KenwoodSession
       case KenwoodVoiceDialect.k4:
         _send(buildK4StopDigitalAudioCommand());
         if (activity.recording) _send(buildK4SaveVoiceCommand(activity.memory));
-      case KenwoodVoiceDialect.kx:
+      case KenwoodVoiceDialect.kx || KenwoodVoiceDialect.k3:
         _send(buildKxStopVoiceCommand());
       case null:
         break;
@@ -1370,6 +1437,7 @@ class KenwoodSession
     _antennaPollsToSkip = 0;
     _antennaRead.reset();
     _lab599Protocol = null;
+    _resetK3();
     _heldMeters.clear();
     _rawMeters.clear();
     _started = true;
@@ -1405,6 +1473,7 @@ class KenwoodSession
     // session that was superseded before it ever spoke.
     if (!_started) return;
     _started = false;
+    _restoreK3CommandMode();
     if (!remote) _send(buildKenwoodAutoInformationCommand(false));
   }
 

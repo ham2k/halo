@@ -238,6 +238,13 @@ enum KenwoodAntennaDialect {
   /// jack in use for receive (`1`) or not (`0`), c the DRV jack's output,
   /// and `9` in a set for "no change".
   ts590,
+
+  /// The Elecraft K3 and K3S, per the K3S/K3/KX3/KX2 Programmer's Reference
+  /// (rev. G5): `ANn;` the ANT1/ANT2 port for receive and transmit both, and
+  /// `ARn;` the RX ANT jack switched in for receive (`1`) or not (`0`). ANT2
+  /// comes with the KAT3 ATU and RX ANT with the KXV3, so which ports exist
+  /// is read from `OM;` (k3_codec.dart).
+  k3,
 }
 
 /// The radio's own names for its ports, as its references print them.
@@ -562,6 +569,11 @@ enum KenwoodVoiceDialect {
   /// emulation — a tap of MSG (`SWT11;`) then of the message's number key.
   /// `RX;` ends message play per the programmer's reference. No recording.
   kx,
+
+  /// The Elecraft K3 and K3S with a KDVR3: a tap of M1-M4 plays that message
+  /// and keys the radio, `RX;` ends it, as on a KX. Four memories, in
+  /// whichever of the radio's two banks is selected. No recording.
+  k3,
 }
 
 /// `PBn;` — the same across the pb and k4 dialects.
@@ -611,7 +623,8 @@ const _kxDigitSwitches = {1: 19, 2: 27};
 /// A tap of MSG then of the digit: two commands, in this order.
 List<String> buildKxPlayVoiceCommands(int n) => ['SWT$_kxMsgSwitch;', 'SWT${_kxDigitSwitches[n.clamp(1, kxVoiceMemoryCount)]};'];
 
-/// `RX;` — "terminates transmit in all modes, including message play".
+/// `RX;` — "terminates transmit in all modes, including message play": the
+/// stop of the kx and k3 dialects both.
 String buildKxStopVoiceCommand() => 'RX;';
 
 /// `TQ;` — `TQ1;` transmitting, `TQ0;` not; the cheapest way the

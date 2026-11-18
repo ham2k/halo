@@ -685,6 +685,8 @@ void main() {
         'ft891-serial',
         'ftx1-serial',
         'kx3-serial',
+        'k3-serial',
+        'k3s-serial',
         'ic706mkiig-serial',
         'fx4cr-serial',
         'qcx-serial',

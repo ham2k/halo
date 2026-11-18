@@ -637,6 +637,8 @@ const _defaultModels = [
   qmxModel,
   fx4crModel,
   qcxModel,
+  k3Model,
+  k3sModel,
   kx2Model,
   kx3Model,
   k4Model,

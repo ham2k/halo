@@ -301,6 +301,8 @@ void main() {
       'tentec-599-serial',
       'tentec-565-serial',
       'tentec-566-serial',
+      'k3-serial',
+      'k3s-serial',
       'kx2-serial',
       'kx3-serial',
       'k4-serial',
@@ -410,6 +412,8 @@ void main() {
       'qmx-placeholder',
       'fx4cr-placeholder',
       'qcx-placeholder',
+      'k3-placeholder',
+      'k3s-placeholder',
       'kx2-placeholder',
       'kx3-placeholder',
       'k4-placeholder',
@@ -460,6 +464,8 @@ void main() {
       'qmx-ble',
       'fx4cr-ble',
       'qcx-ble',
+      'k3-ble',
+      'k3s-ble',
       'kx2-ble',
       'kx3-ble',
       'k4-ble',
@@ -509,6 +515,8 @@ void main() {
       'qmx-serial-tcp',
       'fx4cr-serial-tcp',
       'qcx-serial-tcp',
+      'k3-serial-tcp',
+      'k3s-serial-tcp',
       'kx2-serial-tcp',
       'kx3-serial-tcp',
       'k4-serial-tcp',
@@ -571,6 +579,8 @@ void main() {
       'ts2000-serial': ('kenwood', {'baudRate': 9600, 'rtsHigh': true}),
       // 38400, not the Kenwood family's 9600: the whole Elecraft line ships
       // on it, and a speed mismatch is answered with silence, not an error.
+      'k3-serial': ('kenwood', {'baudRate': 38400}),
+      'k3s-serial': ('kenwood', {'baudRate': 38400}),
       'kx2-serial': ('kenwood', {'baudRate': 38400}),
       'kx3-serial': ('kenwood', {'baudRate': 38400}),
       // The rate Lab599's guide gives for both CAT protocols.
@@ -642,7 +652,7 @@ void main() {
   // fallback derives one from the driver's name — so every Elecraft entry
   // would file itself as a Kenwood without this.
   test('every Elecraft entry states its own brand rather than its protocol family', () {
-    for (final key in ['elecraft-serial', 'kx2-serial', 'kx3-serial']) {
+    for (final key in ['elecraft-serial', 'k3-serial', 'k3s-serial', 'kx2-serial', 'kx3-serial']) {
       expect(registry.typeFor(key)!.manufacturer, 'Elecraft', reason: '$key would otherwise report as Kenwood');
     }
   });

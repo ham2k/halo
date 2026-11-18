@@ -3389,6 +3389,7 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get voiceDialectPb => '—·— · —· ·—— ——— ——— —·· / —·——· ·——· —··· ——··—— / — ··· —····— ····· ————· ————— / ··· — —·—— ·—·· · —·——·—';
 	@override String get voiceDialectK4 => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ····— / —·——· ·——· —··· / ·— —· —·· / —·· ·— —·——·—';
 	@override String get voiceDialectKx => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ··——— —··—· —·— —··— ···—— / —·——· ··· ·—— ·· — —·—· ···· / — ·— ·——· ··· —·——·—';
+	@override String get voiceDialectK3 => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ···—— —··—· —·— ···—— ··· / ·—— ·· — ···· / —·— —·· ···— ·—· ···—— / —·——· ··· ·—— ·· — —·—· ···· / — ·— ·——· ··· —·——·—';
 	@override String get placeholderDiagnostic => '··· ·· —— ··— ·—·· ·— — · —··';
 	@override String get placeholderWholeNumberInvalid => '—— ··— ··· — / —··· · / ·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· ——··—— / ————— / ——— ·—· / —— ——— ·—· ·';
 	@override String get placeholderFreqInvalid => '—— ··— ··· — / —··· · / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·· —· / —·— ···· ——·· ——··—— / ——· ·—· · ·— — · ·—· / — ···· ·— —· / ——·· · ·—· ———';
@@ -4932,6 +4933,8 @@ class _Translations$settings$station$models$cw extends Translations$settings$sta
 	@override String get tx500mp => '·—·· ·— —··· ····· ————· ————· / — —··— —····— ····· ————— ————— —— ·——·';
 	@override String get qcx => '——·— ·—· ·——· / ·—·· ·— —··· ··· / ——·— —·—· —··—';
 	@override String get elecraftGeneric => '· ·—·· · —·—· ·—· ·— ··—· — / —····— / ——· · —· · ·—· ·· —·—·';
+	@override String get k3 => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ···——';
+	@override String get k3s => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ···—— ···';
 	@override String get kx2 => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ··———';
 	@override String get kx3 => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ···——';
 	@override String get k4 => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ····—';
@@ -7355,6 +7358,8 @@ extension on TranslationsCw {
 			'settings.station.models.tx500mp' => '·—·· ·— —··· ····· ————· ————· / — —··— —····— ····· ————— ————— —— ·——·',
 			'settings.station.models.qcx' => '——·— ·—· ·——· / ·—·· ·— —··· ··· / ——·— —·—· —··—',
 			'settings.station.models.elecraftGeneric' => '· ·—·· · —·—· ·—· ·— ··—· — / —····— / ——· · —· · ·—· ·· —·—·',
+			'settings.station.models.k3' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ···——',
+			'settings.station.models.k3s' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ···—— ···',
 			'settings.station.models.kx2' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ··———',
 			'settings.station.models.kx3' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ···——',
 			'settings.station.models.k4' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ····—',
@@ -7710,6 +7715,7 @@ extension on TranslationsCw {
 			'settings.station.voiceDialectPb' => '—·— · —· ·—— ——— ——— —·· / —·——· ·——· —··· ——··—— / — ··· —····— ····· ————· ————— / ··· — —·—— ·—·· · —·——·—',
 			'settings.station.voiceDialectK4' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ····— / —·——· ·——· —··· / ·— —· —·· / —·· ·— —·——·—',
 			'settings.station.voiceDialectKx' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ··——— —··—· —·— —··— ···—— / —·——· ··· ·—— ·· — —·—· ···· / — ·— ·——· ··· —·——·—',
+			'settings.station.voiceDialectK3' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ···—— —··—· —·— ···—— ··· / ·—— ·· — ···· / —·— —·· ···— ·—· ···—— / —·——· ··· ·—— ·· — —·—· ···· / — ·— ·——· ··· —·——·—',
 			'settings.station.placeholderDiagnostic' => '··· ·· —— ··— ·—·· ·— — · —··',
 			'settings.station.placeholderWholeNumberInvalid' => '—— ··— ··· — / —··· · / ·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· ——··—— / ————— / ——— ·—· / —— ——— ·—· ·',
 			'settings.station.placeholderFreqInvalid' => '—— ··— ··· — / —··· · / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·· —· / —·— ···· ——·· ——··—— / ——· ·—· · ·— — · ·—· / — ···· ·— —· / ——·· · ·—· ———',
@@ -7811,11 +7817,11 @@ extension on TranslationsCw {
 			'settings.station.rotatorDisconnected' => '—·· ·· ··· —·—· ——— —· —· · —·—· — · —··',
 			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees} ° / ·— ——·· ·· —— ··— — ····',
 			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '${degrees} ° / ·— ——··',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees} ° / · ·—·· · ···— ·— — ·· ——— —·',
 			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees} ° / · ·—··',
 			'settings.station.rotatorNoReading' => '·—— ·— ·· — ·· —· ——· / ··—· ——— ·—· / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / — ——— / ·—· · ·——· ——— ·—· — / ·· — ··· / ·——· ——— ··· ·· — ·· ——— —· …',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorNotResponding' => '—· ——— — / ·—· · ··· ·——· ——— —· —·· ·· —· ——·',
 			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => '— ··— ·—· —· ·· —· ——· / — ——— / ${heading} ——··—— / ·— ··· / ··—· ·— ·—· / ·— ··· / — ···· ·· ··· / ·—· ——— — ·— — ——— ·—· ·————· ··· / ·—·· ·· —— ·· — ··· / ·— ·—·· ·—·· ——— ·——',
 			'settings.station.rotatorTargetAzimuth' => '— ··— ·—· —· / — ——— / ·— ——·· ·· —— ··— — ····',
@@ -8325,11 +8331,11 @@ extension on TranslationsCw {
 			'confirmDevice.needsSyncTitle' => '— ···· ·· ··· / —·· · ···— ·· —·—· · / —·· ——— · ··· / —· ——— — / ··· —·—— —· —·—· / —·—— · —',
 			'confirmDevice.needsSyncText' => '— ··— ·—· —· / ——— —· / ···· ·— —— ··——— —·— / ·—·· ——— ——· / ··—· ·· ·—·· · ·—· / ··· —·—— —· —·—· / ·— —· —·· / ·—·· ·· —· —·— / — ···· ·· ··· / —·· · ···— ·· —·—· · / — ——— / ·— —· / ·— —·—· —·—· ——— ··— —· — / —··· · ··—· ——— ·—· · / ·· — / —·—· ·— —· / ·— —·· —— ·· — / ·— —· ——— — ···· · ·—· / ——— —· · ·—·—·—',
 			'confirmDevice.malformedRequest' => '— ···· · / ··· —·—— —· —·—· / ··· · ·—· ···— · ·—· / ··· · —· — / ·— / ·—· · ——·— ··— · ··· — / — ···· ·· ··· / ·— ·——· ·——· / —·—· ——— ··— ·—·· —·· / —· ——— — / ·—· · ·— —·· ·—·—·— / ·— ··· —·— / — ···· · / ——— — ···· · ·—· / —·· · ···— ·· —·—· · / — ——— / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.linkIt' => '·—·· ·· —· —·— / —·· · ···— ·· —·—· ·',
 			'switchAccounts.noAccountDetails' => '—· ——— / ·— —·—· —·—· ——— ··— —· — / —·· · — ·— ·· ·—·· ··· / —·—— · —',
 			'switchAccounts.currentAccount' => '—·—· ··— ·—· ·—· · —· — / ·— —·—· —·—· ——— ··— —· —',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.otherAccounts' => '——— — ···· · ·—· / ·— —·—· —·—· ——— ··— —· — ···',
 			'switchAccounts.linkToAnother' => '·—·· ·· —· —·— / — ——— / ·— —· ——— — ···· · ·—· / ·— —·—· —·—· ——— ··— —· —',
 			'switchAccounts.linkWithSibling' => '·—·· ·· —· —·— / ·—— ·· — ···· / ——— — ···· · ·—· / ···· ·— —— ··——— —·— / ·— ·——· ·——·',

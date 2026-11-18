@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatf
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'driver.dart';
+import 'drivers/k3_codec.dart' show k3VoiceMemoryCount;
 import 'drivers/kenwood_cat_codec.dart' show kxVoiceMemoryCount;
 import 'drivers/kenwood_driver.dart';
 import 'drivers/meter_calibration.dart' show meterInfoConfigKey;
@@ -28,6 +29,8 @@ const _ts2000SerialKey = 'ts2000-serial';
 const _elecraftSerialKey = 'elecraft-serial';
 const _kx2SerialKey = 'kx2-serial';
 const _kx3SerialKey = 'kx3-serial';
+const _k3SerialKey = 'k3-serial';
+const _k3sSerialKey = 'k3s-serial';
 const _tx500SerialKey = 'tx500-serial';
 const _tx500mpSerialKey = 'tx500mp-serial';
 const _tx500mpBluetoothKey = 'tx500mp-bluetooth';
@@ -291,8 +294,8 @@ const qcxModel = EquipmentModel(
 
 String _qcxName() => t.settings.station.models.qcx;
 
-/// Any Elecraft transceiver over its serial port, such as the K3. The KX2,
-/// KX3 and K4 have entries of their own.
+/// Any Elecraft transceiver over its serial port, such as a K2. The K3, K3S,
+/// KX2, KX3 and K4 have entries of their own.
 ///
 /// Elecraft speaks Kenwood CAT, so this shares [KenwoodDriver] with
 /// [kenwoodGenericModel]. It exists as its own entry because an operator
@@ -378,12 +381,71 @@ const kx3Model = EquipmentModel(
   ],
 );
 
+/// Elecraft K3, over its RS-232 port or a USB adapter, or a bridge to either.
+///
+/// Written from Elecraft's K3S/K3/KX3/KX2 Programmer's Reference (rev. G5)
+/// and the K3S Owner's Manual (rev. A1), not from a capture. The `IF` layout
+/// is the KX3's, so the mode offset is pinned at 27, and checked against the
+/// radio like every pinned offset. CW through Elecraft's `KY`; the voice
+/// keyer is the KDVR3's M1-M4, which the session drops when `OM;` says no
+/// KDVR3 is fitted, as it drops the antenna ports the radio's modules do not
+/// provide (kenwood_k3.dart).
+const k3Model = EquipmentModel(
+  key: 'k3',
+  manufacturer: elecraftBrand,
+  category: kCategoryTransceiver,
+  name: _k3Name,
+  variants: [
+    EquipmentVariant(
+      key: _k3SerialKey,
+      driver: KenwoodDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': _elecraftBaudRate},
+      overrides: _k3Overrides,
+      notes: _elecraftSerialNotes,
+    ),
+  ],
+);
+
+/// The K3S: the K3's command set, with a USB port of its own. An entry of
+/// its own so an operator finds the name on the front of the radio.
+const k3sModel = EquipmentModel(
+  key: 'k3s',
+  manufacturer: elecraftBrand,
+  category: kCategoryTransceiver,
+  name: _k3sName,
+  variants: [
+    EquipmentVariant(
+      key: _k3sSerialKey,
+      driver: KenwoodDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': _elecraftBaudRate},
+      overrides: _k3Overrides,
+      notes: _elecraftSerialNotes,
+    ),
+  ],
+);
+
+const _k3Overrides = {
+  KenwoodDriver.ifModeOffsetKey: 27,
+  KenwoodDriver.k3Key: true,
+  KenwoodDriver.cwDialectKey: 'elecraft',
+  KenwoodDriver.voiceDialectKey: 'k3',
+  KenwoodDriver.voiceMemoriesKey: k3VoiceMemoryCount,
+  KenwoodDriver.passbandDialectKey: 'elecraft',
+  KenwoodDriver.antennaDialectKey: 'k3',
+};
+
 /// The rate every Elecraft CAT menu ships on, and the one all three field
 /// reports connected at. Not [KenwoodDriver.defaultBaudRate], which is the
 /// Kenwood line's 9600.
 const _elecraftBaudRate = 38400;
 
 String _elecraftGenericName() => t.settings.station.models.elecraftGeneric;
+
+String _k3Name() => t.settings.station.models.k3;
+
+String _k3sName() => t.settings.station.models.k3s;
 
 String _kx2Name() => t.settings.station.models.kx2;
 

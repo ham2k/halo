@@ -361,7 +361,7 @@ what the user configured; everything about a connection is rebuilt at runtime.
   (DATA-USB for FT8), VFO A keeps FT8. That holds for a local radio1 and for a peer's radio alike,
   through one rule, `appModeForRadioReport`. Any other report, plain USB included, is the operator
   changing the rig, and the app follows. Each driver puts DATA-USB on its own name for it: `MD0C;` on a Yaesu, `PKTUSB` for
-  rigctld, `USB-D` for flrig, `DIGU` on a Flex, DATA A (`MD6;DT0;`) on a K4. Where the protocol has
+  rigctld, `USB-D` for flrig, `DIGU` on a Flex, DATA A (`MD6;DT0;`) on a K4 or K3. Where the protocol has
   only a DATA *submode* beside the base mode (Icom `0x1A 0x06`, the TS-590's `DA`), the driver sets
   the base mode, then switches the submode on. For plain USB/LSB/FM it switches the submode off.
   The Station dialog's **Radio Mode** picker speaks the radio's modes directly. Each driver's
@@ -2193,7 +2193,7 @@ generic Yaesu entry names none.
 | FlexRadio | `interlock state=`, PUSHED — costs nothing; it speaks for the whole radio, so a slice whose transmit flag (`tx=1`) is on another of the app's radios' slices — or a slice the radio does not have — reads it as receiving, and one keying takes the flag from there first; a flag on a slice no session reads is a split, left where it is | power out and SWR: the transmitter's `FWDPWR` (dBm, turned to watts) and `SWR` meters, from the VITA-49 meter stream that carries the slice's LEVEL; tenths, at most four a second |
 | Yaesu (FT-891) | `TX;`, polled | power out, SWR, ALC, volts, and COMP (`RM3`) on the first keyed poll of an over and one in four after it, closer together at a slow interval — for a radio whose entry names a table |
 | Yaesu (FT-817/857/897) | bit 7 of `F7`, polled | none: the PO meter is a 0-15 nibble and HI SWR is one bit, neither with a published scale |
-| Kenwood | the flag in `IF`, one place ahead of the mode; on a TX-500 in LAB599, `PT;` too, which still answers in DIG, where `IF` does not | for an entry whose calibration file scales them: the S-meter and power out from `SM0;`, SWR, COMP and ALC from a bare `RM;`; on the TX-500 line, volts from `VL;` — see below |
+| Kenwood | the flag in `IF`, one place ahead of the mode; on a TX-500 in LAB599, `PT;` too, which still answers in DIG, where `IF` does not | for an entry whose calibration file scales them: the S-meter and power out from `SM0;`, SWR, COMP and ALC from a bare `RM;`; on the TX-500 line, volts from `VL;`; on a K3 or K3S, power out or ALC from `BG;` and SWR from `SW;` — see below |
 
 **Kenwood's meters** come from two reads, neither of which selects anything on the radio's panel:
 
@@ -2224,6 +2224,17 @@ quoted, when it is not in the shape the driver reads. Like the transmit flag, th
 `IF` mode offset: until it is learned no reading is confirmed, the S-meter's included. The TX-500
 side of the session is the `_Lab599` mixin in `kenwood_lab599.dart`; the meters are
 `kenwood_meters.dart`.
+
+**The K3 and K3S** read their transmit meters with their own commands, from Elecraft's K3S/K3/KX3/KX2
+Programmer's Reference (rev. G5) and the K3S Owner's Manual (rev. A1), and need no calibration file.
+While keyed, `TM;` then `BG;` then `SW;`. `BG` is the panel's bargraph: power out under `TM0`, ALC
+under `TM1`, the S-meter while receiving — its answer ends in `T` or `R`, and only a `T` on a known
+`TM` is read. `TM` is the panel's METER switch, so it is read and never set. Power is 0–12 bars, a
+watt each while the set power (`PC`) is 12 W or less and ten watts each above it, where the manual
+says the scale changes; ALC is 0–7, reported as a share of 7. `SW` is SWR in tenths, outright, and
+holds the last over's figure after the unkey, so only a keyed reading counts. The bar scales are
+the manual's, not a capture's. The K3 side of the session is the `_ElecraftK3` mixin in
+`kenwood_k3.dart`.
 
 Two things are still deliberately missing:
 
@@ -2400,8 +2411,11 @@ most of what it says; every other dialect is still from the manuals and hamlib:
   stops anything (its reference's one stop for playback and recording alike), and recording is
   `DARM;` then, on stop, `DA0;` and `DAMSn;` to save it as message n; eight. The KX2
   and KX3 are `kx` — no message command at all, only switch emulation: `SWT11;` (MSG) then `SWT19;`
-  or `SWT27;` (the 1 and 2 keys), `RX;` to stop, two memories. A K3 with a KDVR3 plays through
-  different switches and is not covered.
+  or `SWT27;` (the 1 and 2 keys), `RX;` to stop, two memories. The K3 and K3S are `k3`: a tap of
+  M1–M4 (`SWT21;`, `SWT31;`, `SWT35;`, `SWT39;`) plays that message and keys the radio, `RX;` stops
+  it, `TQ;` follows it; four memories, in whichever of the radio's two banks is selected. Voice
+  messages need the KDVR3 option, so the K3 entries ask `OM;` at connect and report no memories
+  once it answers without its `D`; until then, the entry's four.
 - **FlexRadio** (SmartSDR+ only — its DVK is a licensed feature), from FlexRadio's own API reference,
   [TCPIP-dvk](https://github.com/flexradio/smartsdr-api-docs/wiki/TCPIP-dvk), with the status and
   licence lines captured from a FLEX-6600 on 4.2.20 and play, stop, record and rename verified on it.
@@ -3909,7 +3923,7 @@ and `.antennas`.
 |---|---|---|---|
 | Icom CI-V | `0x1C 0x01` | `0x1A` filter-width index, SSB/CW/RTTY and AM tables | `0x12`, for an entry that pins its port count |
 | Yaesu (FT-891 driver) | `AC` | `SH` with `IS` and `NA`, tables chosen by the radio's `ID` answer | `AN`, ports by `ID` |
-| Kenwood | `AC` (TS-480/590/890/990) | per a dialect the entry pins: the TS-590SG's `SL`/`SH`, `FW` and `IS`; Elecraft's (the K4 included) `BW` and `IS` | `AN`, per a dialect the entry pins (one port of two, or the TS-590's with its RX ANT jack); never the K4's |
+| Kenwood | `AC` (TS-480/590/890/990); the K3's `DS` icon byte under `K31`, set by holding its ATU key | per a dialect the entry pins: the TS-590SG's `SL`/`SH`, `FW` and `IS`; Elecraft's (the K4 included) `BW` and `IS` | `AN`, per a dialect the entry pins (one port of two, or the TS-590's with its RX ANT jack); never the K4's |
 | FlexRadio | `atu` | the slice's `filter_lo`/`filter_hi` | the slice's `rxant`/`txant`, chosen separately |
 
 - **Switching a tuner never transmits; a tune is its own act, and only ever the operator's.** On
@@ -3928,6 +3942,21 @@ and `.antennas`.
   the frequency when it has one, and `canStartTune` is false — a separate tune would be the same
   carrier again. Kenwood's set touches only the transmit-side AT and hands the receive-side one back
   as the radio last reported it, since that one is the operator's choice.
+- **The K3's ATU and DATA submode need its extended command mode, and the radio is left as it was found.** Only
+  `DS` reports whether the KAT3 is in line, in an icon byte that is clear unless `K31` is in effect
+  — and `K31` is a radio setting, still in effect for the next program to connect. So the session
+  asks `K3;` on connecting, switches `K31` on only if the answer was `K30`, and in that case sends
+  `K30` when it stops. A connection that drops has no chance to, and leaves `K31` on, as most K3
+  software runs anyway. `K31` also puts the DATA submode in `IF`, where the K4 has it, so the K3
+  reads it the K4's way: DATA A as DATA-USB (DATA-LSB reversed), AFSK A and FSK D as RTTY, PSK D as
+  PSK. Before `K31` is confirmed — the session asks `K3;` until it answers `K31` — that position is
+  a fixed `0`, and a K3 in DATA reports no mode at all: RTTY reported meanwhile would replace an
+  FT8 the operator set, and the DATA-USB after it would not bring FT8 back. An `MD6` or `MD9`
+  reports nothing either, since `MD` has no submode; under `K31` it asks for the `IF` instead. `K31` changes `FW`'s format and `SM`'s scale
+  too; the K3 entries read neither. There is no command to put the ATU in line or bypass it, only a hold of the ATU key
+  (`SWH19`), which toggles: the set holds it only when the last `DS` read differs, and takes the
+  change as made until the read-back says otherwise, so a second request does not toggle it back.
+  No tune: `canStartTune` is false, and `stopTune` does nothing rather than hold the key.
 - **A passband is edges, not a width.** Hz from the tuned frequency as the radio draws them — `100`
   to `2800` in USB, negative in LSB — so one shape describes a Flex's free edges and a table radio's
   width plus shift. A radio that sets only a width from a table takes the nearest one and keeps its
@@ -3938,7 +3967,10 @@ and `.antennas`.
   many ports the radio has, and a one-port radio may still answer — the KX3 accepts every K3 command.
   So the entry pins it (Icom's `civAntennaPortsConfigKey`, Kenwood's `antennaDialectKey`, Yaesu's
   table by `ID`), and an unpinned radio is never asked: a choice offered that the radio does not have
-  is worse than none.
+  is worse than none. The K3 is the one radio that says: its ANT2 jack comes with the KAT3 ATU and
+  its RX ANT with the KXV3, so its entry reads neither until `OM;` names its modules, and offers
+  only the jacks they bring — none with neither. Its receive choice is the TS-590's (the transmit
+  port or RX ANT), in two commands: `AN` for the port, `AR` for RX ANT.
 - **A read the radio may lack is asked slowly, and given up on.** The tuner, the filter and the
   ports move when someone presses a button, so the Yaesu and Kenwood drivers read them every fifth
   state poll (about every fifteen seconds at the default idle rate) and the filter again at once on a

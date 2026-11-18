@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/cat/drivers/k4_codec.dart';
 import 'package:ham2k_logger/services/cat/drivers/kenwood_cat_codec.dart';
+import 'package:ham2k_logger/services/cat/drivers/kenwood_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/rigctld_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/yaesu_binary_codec.dart' as binary;
 import 'package:ham2k_logger/services/cat/drivers/yaesu_cat_codec.dart' as yaesu;
@@ -94,6 +95,8 @@ void main() {
       'ft891' => yaesu.buildSetModeCommand(mode) != null,
       'yaesu-binary' => binary.buildSetModeCommand(mode) != null,
       'elecraft-k4' => buildK4SetModeCommand(mode) != null,
+      // The K3 entries set DATA as the K4 does, with MD and DT.
+      'kenwood' when type.driverConfig(type.defaultConfig)[KenwoodDriver.k3Key] == true => buildK4SetModeCommand(mode) != null,
       'kenwood' => buildKenwoodSetModeCommand(mode) != null || dataModeBases.containsKey(mode),
       'icom-civ' => civModeCodes.containsKey(mode) || dataModeBases.containsKey(mode),
       'rigctld' => hamlibModeForAppMode(mode) != null,

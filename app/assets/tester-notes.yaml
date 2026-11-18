@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "Added Elecraft K3 and K3S to the radio list, with CW and voice keying (tell us how it behaves)"
+
 "195":
   changes:
     - "New GPS receivers over USB, serial, network or gpsd, under Station Configuration → Add"

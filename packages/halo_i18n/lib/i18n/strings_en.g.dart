@@ -7701,6 +7701,9 @@ class Translations$settings$station$en {
 	/// en: 'Elecraft KX2/KX3 (switch taps)'
 	String get voiceDialectKx => 'Elecraft KX2/KX3 (switch taps)';
 
+	/// en: 'Elecraft K3/K3S with KDVR3 (switch taps)'
+	String get voiceDialectK3 => 'Elecraft K3/K3S with KDVR3 (switch taps)';
+
 	/// en: 'Simulated'
 	String get placeholderDiagnostic => 'Simulated';
 
@@ -11024,6 +11027,12 @@ class Translations$settings$station$models$en {
 	/// en: 'Elecraft - Generic'
 	String get elecraftGeneric => 'Elecraft - Generic';
 
+	/// en: 'Elecraft K3'
+	String get k3 => 'Elecraft K3';
+
+	/// en: 'Elecraft K3S'
+	String get k3s => 'Elecraft K3S';
+
 	/// en: 'Elecraft KX2'
 	String get kx2 => 'Elecraft KX2';
 
@@ -13832,6 +13841,8 @@ extension on Translations {
 			'settings.station.models.tx500mp' => 'Lab599 TX-500MP',
 			'settings.station.models.qcx' => 'QRP Labs QCX',
 			'settings.station.models.elecraftGeneric' => 'Elecraft - Generic',
+			'settings.station.models.k3' => 'Elecraft K3',
+			'settings.station.models.k3s' => 'Elecraft K3S',
 			'settings.station.models.kx2' => 'Elecraft KX2',
 			'settings.station.models.kx3' => 'Elecraft KX3',
 			'settings.station.models.k4' => 'Elecraft K4',
@@ -14187,6 +14198,7 @@ extension on Translations {
 			'settings.station.voiceDialectPb' => 'Kenwood (PB, TS-590 style)',
 			'settings.station.voiceDialectK4' => 'Elecraft K4 (PB and DA)',
 			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (switch taps)',
+			'settings.station.voiceDialectK3' => 'Elecraft K3/K3S with KDVR3 (switch taps)',
 			'settings.station.placeholderDiagnostic' => 'Simulated',
 			'settings.station.placeholderWholeNumberInvalid' => 'Must be a whole number, 0 or more',
 			'settings.station.placeholderFreqInvalid' => 'Must be a frequency in kHz, greater than zero',
@@ -14288,11 +14300,11 @@ extension on Translations {
 			'settings.station.rotatorDisconnected' => 'disconnected',
 			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° azimuth',
 			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '${degrees}° az',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° elevation',
 			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° el',
 			'settings.station.rotatorNoReading' => 'Waiting for the controller to report its position…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorNotResponding' => 'not responding',
 			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'Turning to ${heading}, as far as this rotator\'s limits allow',
 			'settings.station.rotatorTargetAzimuth' => 'Turn to azimuth',
@@ -14802,11 +14814,11 @@ extension on Translations {
 			'confirmDevice.needsSyncTitle' => 'This device does not sync yet',
 			'confirmDevice.needsSyncText' => 'Turn on Ham2K Log Filer sync and link this device to an account before it can admit another one.',
 			'confirmDevice.malformedRequest' => 'The sync server sent a request this app could not read. Ask the other device to try again.',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.linkIt' => 'Link Device',
 			'switchAccounts.noAccountDetails' => 'No account details yet',
 			'switchAccounts.currentAccount' => 'Current account',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.otherAccounts' => 'Other accounts',
 			'switchAccounts.linkToAnother' => 'Link to another account',
 			'switchAccounts.linkWithSibling' => 'Link with other Ham2K App',

@@ -47,7 +47,13 @@ class AsciiCatCommand {
 /// Serial delivers arbitrary chunks — a command can and does arrive split
 /// across two reads — so the residual is not an edge case.
 class AsciiCatFramer {
-  AsciiCatFramer({this.dropsNmea = false});
+  AsciiCatFramer({this.dropsNmea = false, this.digitCommands = const {}});
+
+  /// Commands named by a letter and a digit, which the two-letter envelope
+  /// does not frame: the Elecraft line's `K3`. Only at the start of a part,
+  /// with no leading junk skipped — a letter-digit pair is too common inside
+  /// payloads to search for.
+  final Set<String> digitCommands;
 
   /// Whether the stream interleaves GPS NMEA-0183 sentences with the CAT —
   /// a `$`, then everything up to its line end — and they are dropped
@@ -80,7 +86,13 @@ class AsciiCatFramer {
     // Whatever follows the last ';' is incomplete (or empty), as is a
     // sentence whose line end has not arrived.
     _residual = parts.removeLast() + sentence;
-    return [for (final part in parts) ?parseAsciiCatCommand('$part;')];
+    return [for (final part in parts) ?_digitCommand(part) ?? parseAsciiCatCommand('$part;')];
+  }
+
+  AsciiCatCommand? _digitCommand(String part) {
+    if (part.length < 2) return null;
+    final name = part.substring(0, 2);
+    return digitCommands.contains(name) ? AsciiCatCommand(name, part.substring(2)) : null;
   }
 
   /// [text] with every complete sentence cut out, and the incomplete one at

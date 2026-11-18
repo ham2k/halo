@@ -44,7 +44,7 @@ class KenwoodDriver extends EquipmentDriver {
   @override
   List<String> settableModes(Map<String, dynamic> config) => radioModeOrder([
     ...kenwoodModeTable(modeDialectFrom(config)).keys,
-    if (isK4) ...['DATA-USB', 'DATA-LSB', 'PSK'] else ...dataModeBases.keys,
+    if (isK4 || config[k3Key] == true) ...['DATA-USB', 'DATA-LSB', 'PSK'] else ...dataModeBases.keys,
   ]);
 
   /// A radio whose `IF` layout we DO know — a specific model built on this
@@ -104,6 +104,11 @@ class KenwoodDriver extends EquipmentDriver {
   /// per entry like the dialects above. Absent is Kenwood's own.
   static const modeDialectKey = 'modeDialect';
 
+  /// Whether the radio is an Elecraft K3 or K3S, pinned by their entries: it
+  /// answers `OM;` with its option modules, and reads its transmit meters
+  /// with its own `BG`, `TM` and `SW` (kenwood_k3.dart).
+  static const k3Key = 'elecraftK3';
+
   /// The developer-mode bench capture: raw `SM` and `RM` readings to the
   /// diagnostic line and the console, whether or not a table converts them.
   static const meterCaptureKey = 'kenwoodMeterCapture';
@@ -132,9 +137,14 @@ class KenwoodDriver extends EquipmentDriver {
       KenwoodVoiceDialect.pb => 4,
       KenwoodVoiceDialect.k4 => maxVoiceMemories,
       KenwoodVoiceDialect.kx => kxVoiceMemoryCount,
+      KenwoodVoiceDialect.k3 => k3VoiceMemoryCount,
     };
     final count = voiceMemoriesFromConfig(config, fallback: 0);
-    return (count > 0 ? count : own).clamp(0, dialect == KenwoodVoiceDialect.kx ? kxVoiceMemoryCount : maxVoiceMemories);
+    final most = switch (dialect) {
+      KenwoodVoiceDialect.kx || KenwoodVoiceDialect.k3 => own,
+      _ => maxVoiceMemories,
+    };
+    return (count > 0 ? count : own).clamp(0, most);
   }
 
   /// A whole line on one driver, so the keyer is a fact about the entry —
@@ -161,6 +171,7 @@ class KenwoodDriver extends EquipmentDriver {
     receiveLevelsKey,
     meterInfoConfigKey,
     meterCaptureKey,
+    k3Key,
     'maxWatts',
   };
 
@@ -179,6 +190,7 @@ class KenwoodDriver extends EquipmentDriver {
           transmitting: true,
           capturing: config[meterCaptureKey] == true,
           lab599: modeDialectFrom(config) == KenwoodModeDialect.lab599,
+          k3: !isK4 && config[k3Key] == true,
         ),
     baudRate: serialBaudRateOrNull(config),
   );
@@ -188,7 +200,7 @@ class KenwoodDriver extends EquipmentDriver {
   /// applies, and so reads none.
   @override
   Set<RadioMeter> telemetryMetersWith(Map<String, dynamic> config) =>
-      isK4 ? const {} : kenwoodMetersFor(calibrationFor(config), lab599: modeDialectFrom(config) == KenwoodModeDialect.lab599);
+      isK4 ? const {} : kenwoodMetersFor(calibrationFor(config), lab599: modeDialectFrom(config) == KenwoodModeDialect.lab599, k3: config[k3Key] == true);
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
@@ -230,6 +242,7 @@ class KenwoodDriver extends EquipmentDriver {
       antennaDialect: isK4 ? null : antennaDialectFrom(config),
       modeDialect: isK4 ? null : modeDialectFrom(config),
       setsReceiveLevels: !isK4 && config[receiveLevelsKey] == true,
+      k3: !isK4 && config[k3Key] == true,
       config: config,
     );
   }
@@ -268,6 +281,7 @@ class KenwoodDriver extends EquipmentDriver {
           {'value': KenwoodVoiceDialect.pb.name, 'label': t.settings.station.voiceDialectPb},
           {'value': KenwoodVoiceDialect.k4.name, 'label': t.settings.station.voiceDialectK4},
           {'value': KenwoodVoiceDialect.kx.name, 'label': t.settings.station.voiceDialectKx},
+          {'value': KenwoodVoiceDialect.k3.name, 'label': t.settings.station.voiceDialectK3},
         ],
       },
     if (!overrides.containsKey(voiceMemoriesKey)) voiceMemoriesConfigElement(),
