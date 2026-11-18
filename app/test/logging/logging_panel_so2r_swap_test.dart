@@ -28,7 +28,6 @@ void main() {
   setUp(() async {
     final harness = await makeHaLoServices();
     services = harness.services;
-    await harness.settings.setExperimentEnabled('keyer', true);
     await harness.settings.setExperimentEnabled('so2r', true);
     await harness.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
     await harness.settings.recordOnboardingShown(OnboardingFlows.operationSheet);

@@ -154,12 +154,12 @@ export async function loadKnownExperiments() {
   // somebody added a gate — and then fail in whichever direction it broke.
   // An over-matching regex is the dangerous one, because it validates a typo'd
   // key, which hides the extension from every user with no runtime signal.
-  // `keyer` stands in for the catalog here: it is an entry the catalog is
+  // `server` stands in for the catalog here: it is an entry the catalog is
   // expected to keep, and when it ships ungated this names another.
-  if (!knownExperiments.has("keyer")) {
+  if (!knownExperiments.has("server")) {
     throw new Error(
-      `app/experiments.yaml parsed to ${knownExperiments.size} key(s), none of them 'keyer' — ` +
-        "either the extraction regex no longer matches the catalog, or the 'keyer' entry was renamed or removed",
+      `app/experiments.yaml parsed to ${knownExperiments.size} key(s), none of them 'server' — ` +
+        "either the extraction regex no longer matches the catalog, or the 'server' entry was renamed or removed",
     )
   }
   return knownExperiments

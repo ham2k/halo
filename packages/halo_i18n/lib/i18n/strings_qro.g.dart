@@ -942,7 +942,6 @@ class _Translations$commands$qro extends Translations$commands$en {
 	@override String get noCwKeyer => 'NO CONNECTED RADIO CAN KEY CW';
 	@override String get noKeyer => 'NO CONNECTED RADIO CAN KEY CW OR PLAY VOICE MEMORIES';
 	@override String get keyerNeedsOperation => 'OPEN AN OPERATION TO USE THE CW KEYER';
-	@override String get keyerExperimentOff => 'CW KEYING IS OFF — TURN IT ON WITH EXP KEYER';
 	@override String get esmExperimentOff => 'ENTER SENDS MESSAGES IS OFF — TURN IT ON WITH EXP ESM';
 	@override String cwSending({required Object text}) => 'SENDING CW: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CW MESSAGE F${n}: ${error}';
@@ -951,6 +950,8 @@ class _Translations$commands$qro extends Translations$commands$en {
 	@override String get voiceMessageNotRendered => 'THE EXTENSIONS ARE NOT READY';
 	@override String so2rRadioCannotKey({required Object radio}) => 'NOTHING SENT: RADIO ${radio} CAN\'T KEY THAT';
 	@override String opStyleUnknown({required Object opStyle}) => 'NOT AN OPERATING STYLE: ${opStyle}';
+	@override String get opStyleTrackingOff => 'RUN/S&P TRACKING IS OFF — TURN IT ON IN SETTINGS › LOGGING';
+	@override String get opStyleNeedsOperation => 'OPEN AN OPERATION TO SET RUN OR S&P';
 	@override String get so2rNoRadioB => 'NOTHING SENT: PICK A RADIO B IN STATION CONFIGURATION TO KEY FROM THIS SET';
 	@override String get swapExperimentOff => 'SO2R IS OFF — TURN IT ON WITH EXP SO2R';
 	@override String get swapNeedsOperation => 'OPEN AN OPERATION TO SWAP RADIOS';
@@ -2454,6 +2455,8 @@ class _Translations$settings$logging$qro extends Translations$settings$logging$e
 	@override late final _Translations$settings$logging$showBearing$qro showBearing = _Translations$settings$logging$showBearing$qro._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$qro showReverseBearing = _Translations$settings$logging$showReverseBearing$qro._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$qro switchSentRcvd = _Translations$settings$logging$switchSentRcvd$qro._(_root);
+	@override late final _Translations$settings$logging$trackOpStyle$qro trackOpStyle = _Translations$settings$logging$trackOpStyle$qro._(_root);
+	@override late final _Translations$settings$logging$trackOpStyleDescription$qro trackOpStyleDescription = _Translations$settings$logging$trackOpStyleDescription$qro._(_root);
 	@override late final _Translations$settings$logging$alwaysShowStyle$qro alwaysShowStyle = _Translations$settings$logging$alwaysShowStyle$qro._(_root);
 	@override late final _Translations$settings$logging$autoAdvanceFields$qro autoAdvanceFields = _Translations$settings$logging$autoAdvanceFields$qro._(_root);
 	@override late final _Translations$settings$logging$defaultReport$qro defaultReport = _Translations$settings$logging$defaultReport$qro._(_root);
@@ -3256,6 +3259,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} IS ON ANOTHER DEVICE';
 	@override String peerRadioElsewhereMessage({required Object device}) => 'THIS RADIO IS CONNECTED TO ${device}. ITS CONNECTION AND SETTINGS ARE CONFIGURED ON THAT DEVICE.';
 	@override String get antennaInUse => 'ANTENNA IN USE';
+	@override String get loggedKey => 'KEY IN USE';
 	@override String get chooseLocationSource => 'CHOOSE WHERE THE LOCATION COMES FROM';
 	@override String locationFromThis({required Object name}) => 'TAKE THE LOCATION FROM ${name}';
 	@override late final _Translations$settings$station$systemLocation$qro systemLocation = _Translations$settings$station$systemLocation$qro._(_root);
@@ -4353,6 +4357,31 @@ class _Translations$settings$logging$switchSentRcvd$qro extends Translations$set
 	@override String get rcvdFirst => 'RCVD FIRST, SENT SECOND';
 }
 
+// Path: settings.logging.trackOpStyle
+class _Translations$settings$logging$trackOpStyle$qro extends Translations$settings$logging$trackOpStyle$en {
+	_Translations$settings$logging$trackOpStyle$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'TRACK RUN / S&P OPERATING STYLES';
+	@override String get never => 'NEVER';
+	@override String get keyer => 'WHEN USING A KEYER';
+	@override String get always => 'ALWAYS';
+}
+
+// Path: settings.logging.trackOpStyleDescription
+class _Translations$settings$logging$trackOpStyleDescription$qro extends Translations$settings$logging$trackOpStyleDescription$en {
+	_Translations$settings$logging$trackOpStyleDescription$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get never => 'NOT TRACKING WHETHER YOU RUN OR SEARCH AND POUNCE';
+	@override String get keyer => 'TRACKING ONCE YOU KEY A MESSAGE, OR PICK RUN OR S&P YOURSELF, IN AN OPERATION';
+	@override String get always => 'TRACKING WHETHER YOU RUN OR SEARCH AND POUNCE, AND RECORDING IT ON EACH CONTACT';
+}
+
 // Path: settings.logging.alwaysShowStyle
 class _Translations$settings$logging$alwaysShowStyle$qro extends Translations$settings$logging$alwaysShowStyle$en {
 	_Translations$settings$logging$alwaysShowStyle$qro._(TranslationsQro root) : this._root = root, super.internal(root);
@@ -5087,7 +5116,6 @@ class _Translations$settings$station$midi$qro extends Translations$settings$stat
 	@override String get sectionRadioB => 'RADIO B';
 	@override String get radioBNeedsSo2r => 'RADIO B’S CONTROLS ACT ONLY WHILE SO2R IS ON.';
 	@override String get sectionKeying => 'MESSAGES';
-	@override String get keyingNeedsExperiment => 'KEYER SPEED, PTT AND MESSAGES ACT ONLY WHILE THE KEYING EXPERIMENT IS ON.';
 	@override String get learn => 'LEARN';
 	@override String get learning => 'MOVE A CONTROL…';
 	@override String get clear => 'CLEAR';
@@ -5232,7 +5260,6 @@ class _Translations$settings$station$midi$ignored$qro extends Translations$setti
 	@override String get noRadio => 'NO RADIO';
 	@override String get so2rOff => 'SO2R IS OFF';
 	@override String get dataMode => 'NOT TUNED IN A DIGITAL MODE';
-	@override String get keyingOff => 'THE KEYING EXPERIMENT IS OFF';
 	@override String get noPtt => 'THIS RADIO HAS NO PTT THE APP CAN KEY';
 	@override String get notPhone => 'PTT KEYS ONLY IN PHONE MODES';
 	@override String get keyedElsewhere => 'ALREADY KEYED FROM ELSEWHERE — LEFT ALONE';
@@ -6546,6 +6573,13 @@ extension on TranslationsQro {
 			'settings.logging.switchSentRcvd.title' => 'SWITCH SIGNAL REPORT ORDER',
 			'settings.logging.switchSentRcvd.sentFirst' => 'SENT FIRST, RCVD SECOND',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'RCVD FIRST, SENT SECOND',
+			'settings.logging.trackOpStyle.title' => 'TRACK RUN / S&P OPERATING STYLES',
+			'settings.logging.trackOpStyle.never' => 'NEVER',
+			'settings.logging.trackOpStyle.keyer' => 'WHEN USING A KEYER',
+			'settings.logging.trackOpStyle.always' => 'ALWAYS',
+			'settings.logging.trackOpStyleDescription.never' => 'NOT TRACKING WHETHER YOU RUN OR SEARCH AND POUNCE',
+			'settings.logging.trackOpStyleDescription.keyer' => 'TRACKING ONCE YOU KEY A MESSAGE, OR PICK RUN OR S&P YOURSELF, IN AN OPERATION',
+			'settings.logging.trackOpStyleDescription.always' => 'TRACKING WHETHER YOU RUN OR SEARCH AND POUNCE, AND RECORDING IT ON EACH CONTACT',
 			'settings.logging.alwaysShowStyle.title' => 'ALWAYS SHOW RUN/S&P INDICATOR',
 			'settings.logging.alwaysShowStyle.descriptionOn' => 'SHOW WHEN RUNNING OR S&P',
 			'settings.logging.alwaysShowStyle.descriptionOff' => 'ONLY SHOW WHEN RUNNING',
@@ -6782,6 +6816,8 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.fileLabel' => 'HAM2K VOICE MESSAGE SET',
 			'settings.radio.voiceMessages.fileStem' => 'VOICE MESSAGES',
 			'settings.radio.voiceMessages.output' => 'SEND AUDIO TO',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.outputFor' => ({required Object radio}) => 'SEND AUDIO FOR RADIO ${radio} TO',
 			'settings.radio.voiceMessages.input' => 'RECORD FROM',
 			'settings.radio.voiceMessages.outputRadio' => 'SEND TO RADIO OVER NETWORK',
@@ -6789,8 +6825,6 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.pickDevice' => 'CHOOSE A SOUND DEVICE',
 			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (NOT CONNECTED)',
 			'settings.radio.voiceMessages.lead' => 'KEY-UP DELAY',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.tail' => 'UNKEY DELAY',
 			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} MS',
 			'settings.radio.voiceMessages.listenButton' => 'LISTEN',
@@ -7296,6 +7330,8 @@ extension on TranslationsQro {
 			'settings.station.winkeyerPttDescription' => 'KEY THE PTT LINE ON THE SAME JACK, FOR AN AMPLIFIER OR A RADIO THAT NEEDS IT. LEAVE OFF FOR A RADIO KEYED ON ITS KEY JACK.',
 			'settings.station.winkeyerNoAnswer' => 'NO WINKEYER RESPONDED ON THIS PORT',
 			'settings.station.winkeyerStoppedAnswering' => 'THE WINKEYER STOPPED RESPONDING WHILE SENDING; THE MESSAGE WAS DROPPED',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.icomControlPort' => 'CONTROL PORT (UDP)',
 			'settings.station.icomControlPortDescription' => 'THE RADIO\'S CONTROL PORT (UDP) — 50001 UNLESS CHANGED IN ITS NETWORK SETTINGS, OR FORWARDED TO ANOTHER.',
 			'settings.station.icomSerialPort' => 'SERIAL PORT (UDP)',
@@ -7303,8 +7339,6 @@ extension on TranslationsQro {
 			'settings.station.icomPortsDiffer' => 'THE CONTROL AND SERIAL PORTS MUST DIFFER',
 			'settings.station.radioUser' => 'RADIO USERNAME',
 			'settings.station.radioPass' => 'RADIO PASSWORD',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.radioLoginDescription' => 'THE RADIO\'S NETWORK → REMOTE LOGIN, NOT YOUR WIFI PASSWORD.',
 			'settings.station.radioUserRequired' => 'THE RADIO\'S REMOTE-CONTROL USERNAME IS REQUIRED',
 			'settings.station.connectFailedBridgeClosed' => 'THE BRIDGE HUNG UP AT ONCE. ANOTHER PROGRAM AT THE STATION MAY HAVE THE RADIO\'S PORT: A LOGGER, WSJT-X OR RIGCTLD.',
@@ -7500,6 +7534,7 @@ extension on TranslationsQro {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} IS ON ANOTHER DEVICE',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'THIS RADIO IS CONNECTED TO ${device}. ITS CONNECTION AND SETTINGS ARE CONFIGURED ON THAT DEVICE.',
 			'settings.station.antennaInUse' => 'ANTENNA IN USE',
+			'settings.station.loggedKey' => 'KEY IN USE',
 			'settings.station.chooseLocationSource' => 'CHOOSE WHERE THE LOCATION COMES FROM',
 			'settings.station.locationFromThis' => ({required Object name}) => 'TAKE THE LOCATION FROM ${name}',
 			'settings.station.systemLocation.windows' => 'WINDOWS LOCATION SERVICES',
@@ -7601,7 +7636,6 @@ extension on TranslationsQro {
 			'settings.station.midi.sectionRadioB' => 'RADIO B',
 			'settings.station.midi.radioBNeedsSo2r' => 'RADIO B’S CONTROLS ACT ONLY WHILE SO2R IS ON.',
 			'settings.station.midi.sectionKeying' => 'MESSAGES',
-			'settings.station.midi.keyingNeedsExperiment' => 'KEYER SPEED, PTT AND MESSAGES ACT ONLY WHILE THE KEYING EXPERIMENT IS ON.',
 			'settings.station.midi.learn' => 'LEARN',
 			'settings.station.midi.learning' => 'MOVE A CONTROL…',
 			'settings.station.midi.clear' => 'CLEAR',
@@ -7642,7 +7676,6 @@ extension on TranslationsQro {
 			'settings.station.midi.ignored.noRadio' => 'NO RADIO',
 			'settings.station.midi.ignored.so2rOff' => 'SO2R IS OFF',
 			'settings.station.midi.ignored.dataMode' => 'NOT TUNED IN A DIGITAL MODE',
-			'settings.station.midi.ignored.keyingOff' => 'THE KEYING EXPERIMENT IS OFF',
 			'settings.station.midi.ignored.noPtt' => 'THIS RADIO HAS NO PTT THE APP CAN KEY',
 			'settings.station.midi.ignored.notPhone' => 'PTT KEYS ONLY IN PHONE MODES',
 			'settings.station.midi.ignored.keyedElsewhere' => 'ALREADY KEYED FROM ELSEWHERE — LEFT ALONE',
@@ -7811,14 +7844,14 @@ extension on TranslationsQro {
 			'settings.station.everywareFollowBandDescription' => 'PICKS THE POSITION COVERING THE MAIN RADIO\'S FREQUENCY WHENEVER IT CHANGES. OTHERS SHARING THE STATION SEE IT SWITCH TOO.',
 			'settings.station.everywareFollowBearing' => 'POINT TOWARD THE STATION BEING WORKED',
 			'settings.station.everywareFollowBearingDescription' => 'PICKS THE DIRECTION NEAREST THE STATION IN THE CALL FIELD WHENEVER IT CHANGES. OTHERS SHARING THE STATION SEE IT SWITCH TOO.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.everywareTroubleshooting' => 'THIS CONNECTS TO A **GH EVERYWARE SERVER**, THE PROGRAM THAT SHARES A STATION\'S GREEN HERON ROTATORS AND SWITCHES OVER THE NETWORK.\n\n- **PORT** IS 17220 UNLESS THE SERVER WAS SET UP ON ANOTHER ONE. FROM OUTSIDE THE STATION\'S NETWORK, THE ROUTER MUST FORWARD THAT PORT TO THE SERVER\'S COMPUTER.\n- **USER AND PASSWORD** ONLY WHEN THE SERVER HAS USER AUTHENTICATION TURNED ON. LEAVE BOTH BLANK OTHERWISE.\n- **THE SERVER TAKES A LIMITED NUMBER OF CLIENTS**, FOUR UNLESS SET OTHERWISE. WHEN IT IS FULL, CLOSE ANOTHER CLIENT AND CONNECT AGAIN.\n- ONCE CONNECTED, TICK THE ROTATORS AND SWITCHES YOU WANT UNDER **DEVICES**. EACH BECOMES EQUIPMENT OF ITS OWN, IN THIS LIST AND IN EVERY PANEL.\n- **OTHER OPERATORS MAY SHARE THE STATION.** TURNING A ROTATOR OR SWITCHING AN ANTENNA HERE MOVES IT FOR EVERYONE.',
 			'settings.station.pstRotatorTroubleshooting' => 'PSTROTATOR ANSWERS ONLY ONCE IT IS SET UP FOR IT, AND SAYS NOTHING AT ALL OTHERWISE:\n\n- **TURN ON UDP CONTROL** IN PSTROTATOR\'S SETUP MENU.\n- **MATCH THE PORT**: COMMUNICATION → UDP CONTROL PORT, 12000 UNLESS CHANGED. PSTROTATOR ANSWERS ON THE NEXT PORT UP (12001), WHICH HAS TO BE FREE ON THIS DEVICE.\n- **CONNECT PSTROTATOR TO ITS CONTROLLER.** UNTIL IT IS, IT ANSWERS NOTHING OVER UDP.\n- **ALLOW IT THROUGH THE FIREWALL** ON THE PC RUNNING PSTROTATOR, AND ON THIS DEVICE, WHICH LISTENS FOR THE ANSWERS.\n- **ON A MAC, IPHONE OR IPAD**, HAM2K LOGGER NEEDS LOCAL NETWORK ACCESS (SETTINGS → PRIVACY & SECURITY → LOCAL NETWORK).',
 			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'CURRENT STATE: ${position}',
 			'settings.station.rotatorDisconnected' => 'DISCONNECTED',
 			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° AZIMUTH',
 			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '${degrees}° AZ',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° ELEVATION',
 			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° EL',
 			'settings.station.rotatorNoReading' => 'WAITING FOR THE CONTROLLER TO REPORT ITS POSITION…',
@@ -7999,7 +8032,6 @@ extension on TranslationsQro {
 			'commands.noCwKeyer' => 'NO CONNECTED RADIO CAN KEY CW',
 			'commands.noKeyer' => 'NO CONNECTED RADIO CAN KEY CW OR PLAY VOICE MEMORIES',
 			'commands.keyerNeedsOperation' => 'OPEN AN OPERATION TO USE THE CW KEYER',
-			'commands.keyerExperimentOff' => 'CW KEYING IS OFF — TURN IT ON WITH EXP KEYER',
 			'commands.esmExperimentOff' => 'ENTER SENDS MESSAGES IS OFF — TURN IT ON WITH EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'SENDING CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW MESSAGE F${n}: ${error}',
@@ -8008,6 +8040,8 @@ extension on TranslationsQro {
 			'commands.voiceMessageNotRendered' => 'THE EXTENSIONS ARE NOT READY',
 			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'NOTHING SENT: RADIO ${radio} CAN\'T KEY THAT',
 			'commands.opStyleUnknown' => ({required Object opStyle}) => 'NOT AN OPERATING STYLE: ${opStyle}',
+			'commands.opStyleTrackingOff' => 'RUN/S&P TRACKING IS OFF — TURN IT ON IN SETTINGS › LOGGING',
+			'commands.opStyleNeedsOperation' => 'OPEN AN OPERATION TO SET RUN OR S&P',
 			'commands.so2rNoRadioB' => 'NOTHING SENT: PICK A RADIO B IN STATION CONFIGURATION TO KEY FROM THIS SET',
 			'commands.swapExperimentOff' => 'SO2R IS OFF — TURN IT ON WITH EXP SO2R',
 			'commands.swapNeedsOperation' => 'OPEN AN OPERATION TO SWAP RADIOS',
@@ -8324,6 +8358,8 @@ extension on TranslationsQro {
 			'confirmDevice.code' => 'CODE',
 			'confirmDevice.lookUp' => 'LOOK UP',
 			'confirmDevice.codeNotFound' => 'NO REQUEST MATCHES THAT CODE. CODES EXPIRE AFTER 10 MINUTES — ASK THE OTHER DEVICE FOR A FRESH ONE.',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.linkExpired' => 'THAT LINK HAS EXPIRED. ASK THE OTHER DEVICE TO SHOW A NEW QR CODE.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'LINK ${device} TO THIS ACCOUNT?',
 			'confirmDevice.unnamedDevice' => 'AN UNNAMED DEVICE',
@@ -8331,8 +8367,6 @@ extension on TranslationsQro {
 			'confirmDevice.needsSyncTitle' => 'THIS DEVICE DOES NOT SYNC YET',
 			'confirmDevice.needsSyncText' => 'TURN ON HAM2K LOG FILER SYNC AND LINK THIS DEVICE TO AN ACCOUNT BEFORE IT CAN ADMIT ANOTHER ONE.',
 			'confirmDevice.malformedRequest' => 'THE SYNC SERVER SENT A REQUEST THIS APP COULD NOT READ. ASK THE OTHER DEVICE TO TRY AGAIN.',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.linkIt' => 'LINK DEVICE',
 			'switchAccounts.noAccountDetails' => 'NO ACCOUNT DETAILS YET',
 			'switchAccounts.currentAccount' => 'CURRENT ACCOUNT',

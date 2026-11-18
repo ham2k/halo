@@ -2661,7 +2661,6 @@
     "noCwKeyer": "CWをキーイングできる無線機が接続されていません",
     "noKeyer": "CWのキーイングやボイスメモリーの再生ができる無線機が接続されていません",
     "keyerNeedsOperation": "CWキーヤーを使うにはオペレーションを開いてください",
-    "keyerExperimentOff": "CWキーイングはオフです。EXP KEYERでオンにしてください",
     "esmExperimentOff": "Enterでメッセージ送信はオフです。EXP ESMでオンにしてください",
     "cwSending": "CW送信中：${text}",
     "cwMessageError": "CWメッセージF${n}：${error}",

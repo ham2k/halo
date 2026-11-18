@@ -1765,7 +1765,7 @@ line picks the key and the speed and opens the editor, and `20WPM` typed into th
 speed the way `5W` sets power. The editor is the **CW Keyer** dialog — the key, the message sets, message 1's repeat and Enter
 Sends Messages, all applied as they change —
 reached from that line, the keyer control and a row of its own in Settings → Radio; the settings it edits stay declared for SET/SHOW but are not Settings rows
-(`listed: false`). Everything here is behind the `keyer` experiment (`EXP KEYER`, aliases `CW`/`MACROS`).
+(`listed: false`).
 
 It is a **capability, not a transceiver method**: `CwKeyerSession` (driver.dart) sits beside
 `AntennaSwitchSession` rather than adding three methods to `TransceiverSession`, because most
@@ -1775,13 +1775,19 @@ must never look like "the text was empty" — and a keyer of its own (a K1EL Win
 
 **What keys is the key in use** — and it can be on another device, once a peer's radio fills radio1
 (§ Keying a peer's radio); everything below is about a key of this station's own. The Station
-dialog's "CW Keying" pick offers the plain keys, the
-keyers, — as "via ‹radio›" — every radio whose driver says `canKeyCw`, and, while a peer's radio
-fills radio1 and its station keys, that peer as "Key on ‹device›"; `CatService.canKeyCw` is
-that designated node's session being a `CwKeyerSession`, and connected. A station with a WinKeyer
-and a keying radio therefore says which one the messages go through in the place a key is already
-chosen, and a radio whose CAT keys is its OWN key until something else is picked (§ The picks belong
-to the radio). The function keys and
+dialog's "CW Keying" pick offers the keyers, — as "via ‹radio›" — every radio whose driver says
+`canKeyCw`, and, while a peer's radio fills radio1 and its station keys, that peer as "Key on
+‹device›"; `CatService.canKeyCw` is that designated node's session being a `CwKeyerSession`, and
+connected. A station with a WinKeyer and a keying radio therefore says which one the messages go
+through, and a radio whose CAT keys is its OWN keyer until something else is picked (§ The picks
+belong to the radio).
+
+**The paddle a contact logs is a pick of its own** (`kDesignationLoggedKey`, "Key in Use"), per
+radio like the antenna, and shown beside it only while the operator tracks the key in station info.
+A plain key keys nothing here, so it is never in the CW Keying pick: one pick for both would make
+recording a Bencher stop the radio keying, or keying through the radio record no key. A newly added
+paddle becomes the logged key; a store from before the two were apart moves a paddle picked as the
+key in use there (`_moveLoggedKeys`). The function keys and
 the WPM command exist only while `canKeyCw` holds; `setKeyerSpeed` returns whether anything could
 take the value, so the WPM command fails out loud ("No connected radio can key CW") instead of
 confirming a change nothing heard.
@@ -2295,8 +2301,7 @@ The same eight keys, in a Phone mode: while the DRAFT contact's mode is Phone (`
 — SSB, FM, AM and the digital-voice modes), F1-F8 and the keyer control's buttons play the radio's own
 voice memories, Escape stops one, and the **Phone Keyer** dialog names each memory and — on a radio
 whose CAT can — records into it, beside memory 1's repeat and Enter Sends Messages, which apply as
-they change. Under the same `keyer` experiment (renamed "Keying"; `VOICE` is an
-alias). The draft's mode and not the radio's, the same reasoning as the messages being templates
+they change. The draft's mode and not the radio's, the same reasoning as the messages being templates
 against the draft: the message is for the contact being logged, and a rig left in USB while the
 operator logs CW keys CW.
 
@@ -2451,7 +2456,7 @@ most of what it says; every other dialect is still from the manuals and hamlib:
 ## The computer's voice keyer
 
 **The messages can be recordings on this computer instead** (computer_voice_keyer.dart, desktop
-only, under the same `keyer` experiment). Where phone messages come from is **Phone Keying**
+only). Where phone messages come from is **Phone Keying**
 (`VoiceKeyingSource`, `voiceKeying` in the Radio settings group): None, the radio's own memories
 (offered where the radio has some), audio on this computer (offered where this device can play
 it), or audio and words on this computer (the same, under `EXP WORDS` — see § Voiced words),
@@ -2758,7 +2763,7 @@ needs nothing.
 
 **A phone message played from the computer can be a template, said from the operator's own
 recordings of each letter, digit and phrase** (voice_words.dart, voiced_words.dart; under the
-private `words` experiment, `EXP WORDS`, on top of `keyer`). It is how a phone message says the
+private `words` experiment, `EXP WORDS`). It is how a phone message says the
 other station's call and the report — what no recording made in advance can hold. A message's
 template is kept in its set beside its label (`VoiceMessageSet.templates`), and a message with one
 is said from it; empty, the message is its recording, as before. **Words are their own Phone Keying
@@ -2902,8 +2907,7 @@ everywhere a label shows, the label editor excepted. A peer gets the length, not
 
 ## PTT
 
-**Control PTT with Keyboard** (Radio settings, just before Smart VFO Snap; under the `keyer`
-experiment): No (the default), Toggle or Hold. In a Phone mode — the DRAFT's, as for the voice
+**Control PTT with Keyboard** (Radio settings, just before Smart VFO Snap): No (the default), Toggle or Hold. In a Phone mode — the DRAFT's, as for the voice
 memories — Toggle keys radio1 over CAT on `'` and unkeys it on `'` again; Hold keys it while `'` is
 down and unkeys it as the key comes up. `'` is the PTT key unless rebound (`radio.ptt`); a PTT Key row
 under the setting names it, and opens its key editor while Keyboard Shortcuts is on. Stored as
@@ -3016,6 +3020,12 @@ from the phone at the picnic table. That also means a device offering a radio ad
 when it keys with something of its OWN (`CatKeying.keysCwLocally`): a station whose radio1 is itself
 a third device's rig offers its radios as unkeyable, and a request is never relayed onward — two
 hops would put a transmitter on the air for an operator who picked neither end of them.
+
+**A station offers keying only while an operation is on screen on it** (`CatService.operationOnScreen`:
+the front operation, and its view the current route). Its operation view is what stops a message —
+Escape, the keyer line — and on Home, or in Settings over the operation, nothing there could stop one
+a peer started. Each request asks again rather than trusting the offer, which goes out only as the
+station changes.
 
 **Voice is the radio's, not the station's.** The memories are audio inside the transceiver, so a
 request plays the memory of the radio it names — the per-node path, the voice counterpart of

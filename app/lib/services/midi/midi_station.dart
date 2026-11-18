@@ -37,9 +37,6 @@ abstract interface class MidiStation {
   num maxWatts(String radio);
   void setPower(String radio, num watts);
 
-  /// The Keying experiment: WPM, PTT and the messages key nothing without it,
-  /// as the app's own keying surfaces don't.
-  bool get keyingEnabled;
   int? keyerSpeed(String radio);
   ({int min, int max})? keyerSpeedRange(String radio);
   bool setKeyerSpeed(String radio, int wpm);
@@ -139,9 +136,6 @@ class CatMidiStation implements MidiStation {
       cat.setNodePower(uuid, watts);
     }
   }
-
-  @override
-  bool get keyingEnabled => settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
 
   @override
   int? keyerSpeed(String r) => cat.keyer(r).keyerSpeed;

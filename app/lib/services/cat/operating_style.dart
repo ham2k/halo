@@ -23,14 +23,18 @@ enum OperatingStyle {
 /// spot, is S&P; coming back to the run
 /// frequency within [returnWindow] is Run again. The style itself is kept by
 /// the caller — [isRunning] and [setRunning] — and every change to it, the
-/// tracker's own and the operator's, reaches [styleChanged].
+/// tracker's own and the operator's, reaches [styleChanged]. While
+/// [tracking] says no, nothing the operator does moves it.
 ///
 /// "Leaving" is [Vfo.movedOffOf], the same QSY the logging panel's wipe
 /// reads, measured from the run frequency rather than the last reading, so
 /// a run frequency nudged in steps adds up to the QSY one turn of the knob
 /// would.
 class OperatingStyleTracker {
-  OperatingStyleTracker({required this.isRunning, required this.setRunning, required this.vfoOf, required this.transmitting});
+  OperatingStyleTracker({required this.tracking, required this.isRunning, required this.setRunning, required this.vfoOf, required this.transmitting});
+
+  /// Whether the styles are tracked at all (SettingsService.opStyleTracking).
+  final bool Function() tracking;
 
   final bool Function(String radio) isRunning;
   final void Function(String radio, bool running) setRunning;
@@ -81,7 +85,11 @@ class OperatingStyleTracker {
   void vfoMoved(String radio) {
     if (transmitting(radio)) return;
     final vfo = vfoOf(radio);
+    // Kept untracked too: the message that starts the tracking may be keyed
+    // working split, and without it would take where the rig sends as the
+    // run frequency.
     _heard[radio] = vfo;
+    if (!tracking()) return;
     final runOn = _runOn[radio];
     if (isRunning(radio)) {
       if (runOn == null) {
@@ -116,6 +124,7 @@ class OperatingStyleTracker {
 
   /// [radio] keyed message 1: Run, on the frequency it was keyed on.
   void messageOne(String radio) {
+    if (!tracking()) return;
     if (isRunning(radio)) {
       _runHere(radio, _receiving(radio));
     } else {
@@ -133,6 +142,7 @@ class OperatingStyleTracker {
   /// A spot that says QRT ends the run, and forgets its frequency: tuning
   /// back across it is no return to a run the operator closed.
   void selfSpotted(String radio, {String? comment, double? freq}) {
+    if (!tracking()) return;
     if (comment != null && _qrt.hasMatch(comment.trim())) {
       if (isRunning(radio)) setRunning(radio, false);
       forget(radio);
@@ -149,14 +159,17 @@ class OperatingStyleTracker {
   /// return to the run frequency, even onto it: only a move away after it
   /// makes the way back one.
   void pickedSpot(String radio) {
+    if (!tracking()) return;
     if (isRunning(radio)) setRunning(radio, false);
     _away[radio] = false;
   }
 
   /// [radio] stopped or started being a set of its own (SO2R's Radio B):
-  /// what it ran before is no run of the set it is now.
-  void forget(String radio) {
-    for (final map in [_runOn, _leftAt, _away, _heard]) {
+  /// what it ran before is no run of the set it is now. [keepHeard] keeps
+  /// where the rig receives, for tracking that starts afresh on the same set:
+  /// the message that runs next may be keyed working split.
+  void forget(String radio, {bool keepHeard = false}) {
+    for (final map in [_runOn, _leftAt, _away, if (!keepHeard) _heard]) {
       map.remove(radio);
     }
   }

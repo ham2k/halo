@@ -864,7 +864,6 @@ class _Translations$commands$ja extends Translations$commands$en {
 	@override String get noCwKeyer => 'CWをキーイングできる無線機が接続されていません';
 	@override String get noKeyer => 'CWのキーイングやボイスメモリーの再生ができる無線機が接続されていません';
 	@override String get keyerNeedsOperation => 'CWキーヤーを使うにはオペレーションを開いてください';
-	@override String get keyerExperimentOff => 'CWキーイングはオフです。EXP KEYERでオンにしてください';
 	@override String get esmExperimentOff => 'Enterでメッセージ送信はオフです。EXP ESMでオンにしてください';
 	@override String cwSending({required Object text}) => 'CW送信中：${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CWメッセージF${n}：${error}';
@@ -6720,7 +6719,6 @@ extension on TranslationsJa {
 			'commands.noCwKeyer' => 'CWをキーイングできる無線機が接続されていません',
 			'commands.noKeyer' => 'CWのキーイングやボイスメモリーの再生ができる無線機が接続されていません',
 			'commands.keyerNeedsOperation' => 'CWキーヤーを使うにはオペレーションを開いてください',
-			'commands.keyerExperimentOff' => 'CWキーイングはオフです。EXP KEYERでオンにしてください',
 			'commands.esmExperimentOff' => 'Enterでメッセージ送信はオフです。EXP ESMでオンにしてください',
 			'commands.cwSending' => ({required Object text}) => 'CW送信中：${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CWメッセージF${n}：${error}',
@@ -7009,9 +7007,9 @@ extension on TranslationsJa {
 			'adifImport.stationCallJoin' => 'と',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件は日付がないためインポートできません', other: '${formatted}件は日付がないためインポートできません', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'このファイルには${refs}のアクティベーションが記録されています。',
+			'adifImport.addActivation' => 'このオペレーションに追加',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.addActivation' => 'このオペレーションに追加',
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned}件中${written}件しか適用できませんでした。判断している間にログが変更されました。',
 			'adifImport.busy' => 'すでにインポートを実行中です。完了してから次のインポートを開始してください。',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename}のQSOは${limit}件を超えています。これは1つのオペレーションで一度にインポートできる上限です。',

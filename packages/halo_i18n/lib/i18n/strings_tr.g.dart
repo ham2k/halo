@@ -864,7 +864,6 @@ class _Translations$commands$tr extends Translations$commands$en {
 	@override String get noCwKeyer => 'Bağlı hiçbir radyo CW gönderemiyor';
 	@override String get noKeyer => 'Bağlı hiçbir radyo CW gönderemiyor veya ses hafızası oynatamıyor';
 	@override String get keyerNeedsOperation => 'CW keyer\'ı kullanmak için bir operasyon açın';
-	@override String get keyerExperimentOff => 'CW manipülasyonu kapalı — EXP KEYER ile açın';
 	@override String get esmExperimentOff => 'Enter Mesaj Gönderir kapalı — EXP ESM ile açın';
 	@override String cwSending({required Object text}) => 'CW gönderiliyor: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CW mesajı F${n}: ${error}';
@@ -6720,7 +6719,6 @@ extension on TranslationsTr {
 			'commands.noCwKeyer' => 'Bağlı hiçbir radyo CW gönderemiyor',
 			'commands.noKeyer' => 'Bağlı hiçbir radyo CW gönderemiyor veya ses hafızası oynatamıyor',
 			'commands.keyerNeedsOperation' => 'CW keyer\'ı kullanmak için bir operasyon açın',
-			'commands.keyerExperimentOff' => 'CW manipülasyonu kapalı — EXP KEYER ile açın',
 			'commands.esmExperimentOff' => 'Enter Mesaj Gönderir kapalı — EXP ESM ile açın',
 			'commands.cwSending' => ({required Object text}) => 'CW gönderiliyor: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW mesajı F${n}: ${error}',
@@ -7009,9 +7007,9 @@ extension on TranslationsTr {
 			'adifImport.stationCallJoin' => ' ve ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} tanesinin tarihi yok ve içe aktarılamaz', other: '${formatted} tanesinin tarihi yok ve içe aktarılamaz', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Bu dosya ${refs} aktivasyonunu kaydediyor.',
+			'adifImport.addActivation' => 'Bu operasyona ekle',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.addActivation' => 'Bu operasyona ekle',
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned} kayıttan yalnızca ${written} tanesi uygulanabildi — siz karar verirken günlük değişti.',
 			'adifImport.busy' => 'Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} dosyasında ${limit} QSO\'dan fazla var; bir operasyon tek seferde en fazla bu kadarını içe aktarabilir.',

@@ -112,6 +112,10 @@ class TestCat extends Fake implements CatService {
   final styles = {'A': OperatingStyle.run, 'B': OperatingStyle.normal};
   @override
   OperatingStyle styleOf(String radio) => styles[radio]!;
+  @override
+  bool tracksStyle = true;
+  @override
+  OperatingStyle? trackedStyleOf(String radio) => tracksStyle ? styles[radio] : null;
   final deviceIds = <String, String>{};
   final channels = <String, Map<String, String>>{};
   @override
@@ -347,6 +351,11 @@ void main() {
     expect([for (final radio in bridge.list()) (radio['id'], radio['set'], radio['opStyle'])], [('a', 'A', 'run'), ('b', 'B', 'normal')]);
     cat.styles['A'] = OperatingStyle.normal;
     expect(bridge.read()['opStyle'], 'normal');
+    // Untracked (logging-fields.md § Operating style), the set's radio keeps
+    // its set but carries no style: nothing records one.
+    cat.tracksStyle = false;
+    expect((bridge.read()['set'], bridge.read()['opStyle']), ('A', null));
+    expect(bridge.opStyles(), isNull);
   });
 
   // A letter picks a set's radio, for an extension that wants "Radio B"
@@ -682,15 +691,14 @@ void main() {
 
   group('keying', () {
     late TestCat cat;
-    var enabled = true, ptt = true;
+    var ptt = true;
     setUp(() {
-      enabled = true;
       ptt = true;
       cat = TestCat();
     });
-    PanelRadioService bridge() => PanelRadioService(cat, TestRadio(), keyingEnabled: () => enabled, pttEnabled: () => ptt);
+    PanelRadioService bridge() => PanelRadioService(cat, TestRadio(), pttEnabled: () => ptt);
 
-    test('is reported for the logging radio only, and only with the app\'s keying on', () {
+    test('is reported for the logging radio only', () {
       final keying = bridge().read()['keying'] as Map;
       expect((keying['canKeyCw'], keying['keyerSpeedWpm']), (true, 22));
       expect(keying['keyerSpeedRange'], {'min': 5, 'max': 50});
@@ -699,8 +707,6 @@ void main() {
         {'number': 2, 'label': 'Message 2'},
       ]);
       expect(bridge().read('b')['keying'], isNull);
-      enabled = false;
-      expect(bridge().read()['keying'], isNull);
     });
 
     test('keys the logging radio, and never one a panel is pinned to', () {
@@ -785,17 +791,9 @@ void main() {
 
     test('a keyer that refuses the speed leaves the rest of the call unsent', () async {
       cat.speedRefused = true;
-      final radio = TestRadio(), bridge = PanelRadioService(cat, radio, keyingEnabled: () => enabled, pttEnabled: () => ptt);
+      final radio = TestRadio(), bridge = PanelRadioService(cat, radio, pttEnabled: () => ptt);
       expect((await bridge.set({'id': 'a', 'frequencyHz': 7030000, 'keyerSpeedWpm': 25}))['reason'], 'unsupported');
       expect(radio.calls, isEmpty, reason: 'a refused call must not have moved the radio');
-    });
-
-    test('with the app\'s keying off nothing keys — but a stop still stops', () {
-      enabled = false;
-      expect(bridge().sendCw({'id': 'a', 'text': 'CQ'})['reason'], 'unsupported');
-      expect(bridge().setPtt({'id': 'a', 'on': true})['reason'], 'unsupported');
-      expect(bridge().stopTransmit({'id': 'a'})['accepted'], true);
-      expect(cat.keyed, ['stop']);
     });
 
     test('malformed requests and missing hardware are refused before the radio hears them', () async {

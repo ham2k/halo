@@ -530,7 +530,7 @@ older than the feature; call the optional reads as `ctx.getSpots?.()`.
 | `gridPrecision?` | 6 or 8, how many characters the operator shows a locator with |
 | `enabledExperiments?` | Keys of the experiments on for this user |
 | `experiments?` | The experiment catalog: `{ key, name, aliases }[]` |
-| `opStyle?` | Each logging set's operating style, `{ A, B? }` (`B` under SO2R): `run`, or `normal` for search and pounce, the default. What each new contact records; needs no radio. API 19 |
+| `opStyle?` | Each logging set's operating style, `{ A, B? }` (`B` under SO2R): `run`, or `normal` for search and pounce, the default. What each new contact records; needs no radio. Absent while the operator does not track styles (Track run / S&P operating styles, in Settings › Logging). API 19 |
 | `account?` | `{ credentials?, session? }` for an extension with an `account` hook |
 | `getOperation?(uuid)` | One operation's data with `uuid` folded in, a contest's refs marked `contest: true` (API 25), or `null` |
 | `listOperations?({ limit?, open? })` | The operator's operations, the most recent first, as the list of operations shows them: `{ uuid, stationCall, title, refs, grid, qsoCount, startAtMillisMin, startAtMillisMax, open, front }`, a contest's refs marked `contest: true`, where `open` is one a view shows now and `front` the one in front. With `open: true`, only the open ones, the front one first, which reads none of the rest. Deleted ones are left out. `limit` is 50 when omitted, never more than 500; a malformed or unknown option rejects; `[]` where the host keeps no log. Extension API 25 |

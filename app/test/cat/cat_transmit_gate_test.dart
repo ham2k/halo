@@ -160,6 +160,9 @@ void main() {
 
   testWidgets('a radio that would key somewhere else keys nothing, and the keypress says why', (tester) async {
     final cat = services.cat;
+    // Open, so the peer refusals below are this radio's, not the closed
+    // operation's.
+    services.openOperationContext('op');
     final node = await cat.addNode(typeKey: 'gated-type', config: const {});
     await tester.runAsync(() => cat.connect(node.uuid));
     await cat.setRadio1(LocalRadio(node.uuid));
@@ -193,7 +196,6 @@ void main() {
     expect(session.commands, isEmpty);
     expect(cat.pttKeys.held.value, isFalse, reason: 'a key refused is not a key held');
     // A peer's request reaches the radio by its own way, past the keypress.
-    await services.settings.setExperimentEnabled('keyer', true);
     expect(cat.offeredRadios.single.keysCw, isFalse, reason: 'nor offered to a peer as a keyer');
     expect(cat.offeredRadios.single.voiceMemories, 0);
     expect(cat.keyStatusForOfferedRadio(node.uuid)?.voiceLabels, isEmpty, reason: 'nor labels for buttons it does not offer');

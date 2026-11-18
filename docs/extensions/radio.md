@@ -66,7 +66,7 @@ Extension API 7 adds to the answer:
   them; `separate` means it picks receive and transmit independently,
   otherwise one port serves both.
 - `keying`: what the app keys with, while this is the logging radio,
-  connected, on a host with keying enabled: `canKeyCw`, `cwSending`,
+  connected: `canKeyCw`, `cwSending`,
   `keyerSpeedWpm` (the key's own report, `null` before it has given one),
   `keyerSpeedRange`, `canPtt`, `ptt` (whether the app's own latch holds the
   transmitter) and `voiceMemories` (`[{ number, label }]`, empty for a radio
@@ -88,7 +88,9 @@ Extension API 19 adds:
   keyed is `run`, and so is a self-spot, unless its comment starts with QRT,
   which is `normal`; leaving the run frequency, or picking a spot, is
   `normal`; coming back to it within three minutes is `run` again. The `RUN` and
-  `SNP` commands set it outright.
+  `SNP` commands set it outright. It is `null` too while the operator does
+  not track styles: the setting is Never, or When using a Keyer in an
+  operation where they have neither keyed a message nor picked a style.
 - `reportedFrequencyHz`: the frequency the radio itself last reported.
   It trails `frequencyHz` after a tune until the radio reports it there.
   If the radio reports something else and keeps to it past a hold, about
@@ -125,7 +127,7 @@ the app's own radio service. API 7.
   alone: in the same call as any other setting it is `invalid`, and it is
   `unsupported` where `canStartTune` is false. It is the radio's own tune,
   not one of the keying calls below, so it reaches whichever radio the panel
-  shows, with keying on or off. A start while one is running is ignored, and
+  shows. A start while one is running is ignored, and
   `stopRadioTransmit` (or Escape) ends a tune the app started.
 - `passband`: `{ lowHz, highHz }`, as `passband` reports it. A radio that
   sets only a width from a table takes the nearest, keeping its own shift;
@@ -161,8 +163,7 @@ being made answers `expired` and sends nothing.
 
 ## Keying
 
-The keying calls transmit, and act only on the logging radio on a host with
-keying enabled; a panel pinned to another radio is answered `unsupported`
+The keying calls transmit, and act only on the logging radio; a panel pinned to another radio is answered `unsupported`
 rather than keying the logging radio behind the operator's back. API 7.
 
 - `host.sendRadioCw({ id, selection?, text })` keys `text` (up to 1,000
@@ -199,8 +200,7 @@ transmit.
 one of `text`, sent as UTF-8, or `bytes` (each 0 to 255), up to 4,096 bytes.
 **Nothing about them is checked.** They may transmit, change any setting or
 put the radio somewhere the app's own controls never would; that is what the
-operator agreed to at install. It reaches any local radio, with keying on or
-off, is neither paced nor refused for a transmission in progress, and goes
+operator agreed to at install. It reaches any local radio, is neither paced nor refused for a transmission in progress, and goes
 one call at a time per radio; past eight waiting the next is `busy`.
 
 - `replyMs`, up to 2,000: how long to wait for the reply. Omitted or 0, the

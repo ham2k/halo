@@ -23,10 +23,7 @@ void main() {
   late HaLoServices services;
 
   setUp(() async {
-    final harness = await makeHaLoServices();
-    final settings = harness.settings;
-    services = harness.services;
-    await settings.setExperimentEnabled('keyer', true);
+    services = (await makeHaLoServices()).services;
   });
 
   Future<EquipmentNode> connectPlaceholder(String name) async {

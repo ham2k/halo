@@ -41,10 +41,6 @@ class AddEquipmentDialog extends StatefulWidget {
   /// Equipment" section would only ever grow a list nothing reads.
   final bool showAntennaAndKey;
 
-  /// Whether "Other Equipment" offers a CW keyer — behind the keyer
-  /// experiment, with everything that keys.
-  final bool showKeyer;
-
   /// Whether "Other Equipment" offers the SDR receivers — behind `EXP SDR`.
   final bool showSdr;
 
@@ -65,7 +61,6 @@ class AddEquipmentDialog extends StatefulWidget {
     required this.cat,
     required this.showDiscovery,
     required this.showAntennaAndKey,
-    required this.showKeyer,
     this.showSdr = false,
     this.showSo2rSwitch = false,
     this.showMidi = false,
@@ -305,16 +300,15 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
       ],
       // Beside the plain key rather than in the catalogue: a keyer is where
       // an operator looks for their key, whatever its make.
-      if (widget.showKeyer)
-        _AddRow(
-          title: st.newKeyer,
-          icon: MdiIcons.keyboardVariant,
-          choice: AddChoice.model(winkeyerModel),
-          // A named make with a cable, unlike the two inert rows above it:
-          // the glyph says how it plugs in, the same way it does in the
-          // catalogue.
-          variants: widget.supportedVariants(winkeyerModel),
-        ),
+      _AddRow(
+        title: st.newKeyer,
+        icon: MdiIcons.keyboardVariant,
+        choice: AddChoice.model(winkeyerModel),
+        // A named make with a cable, unlike the two inert rows above it:
+        // the glyph says how it plugs in, the same way it does in the
+        // catalogue.
+        variants: widget.supportedVariants(winkeyerModel),
+      ),
       // Beside the keyer, for the same reason: a make-less thing, which an
       // operator looks for by what it is. Only where this device has a way
       // to reach one — a serial port or a socket; the web build has neither

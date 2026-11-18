@@ -2661,7 +2661,6 @@
     "noCwKeyer": "Geen verbonden radio kan CW keyen",
     "noKeyer": "Geen verbonden radio kan CW keyen of spraakgeheugens afspelen",
     "keyerNeedsOperation": "Open een activatie om de CW-keyer te gebruiken",
-    "keyerExperimentOff": "CW-keying staat uit — zet het aan met EXP KEYER",
     "esmExperimentOff": "Enter verstuurt berichten staat uit — zet het aan met EXP ESM",
     "cwSending": "CW verzenden: $text",
     "cwMessageError": "CW-bericht F$n: $error",

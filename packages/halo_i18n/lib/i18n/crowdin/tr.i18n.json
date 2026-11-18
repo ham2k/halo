@@ -2661,7 +2661,6 @@
     "noCwKeyer": "Bağlı hiçbir radyo CW gönderemiyor",
     "noKeyer": "Bağlı hiçbir radyo CW gönderemiyor veya ses hafızası oynatamıyor",
     "keyerNeedsOperation": "CW keyer'ı kullanmak için bir operasyon açın",
-    "keyerExperimentOff": "CW manipülasyonu kapalı — EXP KEYER ile açın",
     "esmExperimentOff": "Enter Mesaj Gönderir kapalı — EXP ESM ile açın",
     "cwSending": "CW gönderiliyor: $text",
     "cwMessageError": "CW mesajı F$n: $error",

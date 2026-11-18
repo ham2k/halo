@@ -98,8 +98,6 @@ void main() {
   setUp(() async {
     final harness = await makeHaLoServices(extensions: _TemplateExtensions());
     services = harness.services;
-    // A keying radio becomes the key in use only with the experiment on.
-    await harness.settings.setExperimentEnabled('keyer', true);
   });
 
   Future<void> connectPlaceholder(WidgetTester tester) async {
@@ -852,6 +850,7 @@ void main() {
     // and a label reading the style keeps the set they left's.
     testWidgets("under SO2R a label reads the operator's set's style", (tester) async {
       await services.settings.setExperimentEnabled('so2r', true);
+      await services.settings.setSettingValue(SettingsService.loggingGroup, 'trackOpStyle', 'always');
       final cat = services.cat;
       Future<String> rig(String name) async {
         final node = await cat.addNode(typeKey: 'placeholder-radio', name: name, config: placeholderRadioModel.variants.single.defaultConfig);

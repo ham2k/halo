@@ -13,8 +13,10 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/operating_style.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/logging_panel.dart';
 
 import '../support/halo_test_support.dart';
@@ -69,6 +71,20 @@ void main() {
     expect(result['our']['call'], 'N0CALL', reason: 'existing our fields must survive the merge');
     expect(result['our'].containsKey('key'), isFalse, reason: 'key was not in stationInfoTrackedFields');
     expect(result['their']['call'], 'W1AW');
+  });
+
+  // The trap: one pick for what keys and what is logged — a radio keying
+  // over CAT, the default keyer, left the key field empty.
+  testWidgets('a tracked key is the paddle on the desk, while the radio keys the messages', (tester) async {
+    final radio = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    await services.cat.addNode(typeKey: keyModel.variants.first.key, name: 'Bencher');
+    expect(services.cat.designatedFor(kCategoryKey), radio.uuid, reason: 'sanity: the radio keys');
+    await services.settings.setTrackStationInfo(true);
+    await services.settings.setStationInfoTrackedFields({'key'});
+    await tester.pumpWidget(wrap(panel()));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect((await decorate(tester, {'our': {}}))['our']['key'], 'Bencher');
   });
 
   testWidgets('never captures over a power the QSO already states', (tester) async {
@@ -135,6 +151,7 @@ void main() {
   // today's style over it — nor give one to a contact logged before styles
   // existed — and a timeline marker is no contact at all.
   testWidgets("a new contact records its set's style; an edit and an event row do not", (tester) async {
+    services.openOperationContext('op');
     services.cat.setStyle('A', OperatingStyle.normal);
     await tester.pumpWidget(wrap(panel()));
     await tester.pump(const Duration(milliseconds: 100));
@@ -145,5 +162,22 @@ void main() {
     expect((await decorate(tester, {'uuid': 'logged-before', 'our': {}})).containsKey('opStyle'), isFalse);
     expect((await decorate(tester, {'uuid': 'logged-sp', 'opStyle': 'normal', 'our': {}}))['opStyle'], 'normal');
     expect((await decorate(tester, {'band': 'event', 'our': {}})).containsKey('opStyle'), isFalse);
+  });
+
+  // An untracked style is a guess: a phone CQ called by mouth reads `normal`,
+  // a forgotten Run stays `run`. Recorded, it would sit in the log as fact.
+  testWidgets('an untracked style is recorded as none: not yet keyed in this operation, or never tracked', (tester) async {
+    services.openOperationContext('op');
+    await tester.pumpWidget(wrap(panel()));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect((await decorate(tester, {'our': {}})).containsKey('opStyle'), isFalse, reason: 'the default, before any keying');
+
+    await services.settings.setSettingValue(SettingsService.loggingGroup, 'trackOpStyle', 'never');
+    services.cat.pickRunning('A', true);
+    expect((await decorate(tester, {'our': {}})).containsKey('opStyle'), isFalse);
+
+    await services.settings.setSettingValue(SettingsService.loggingGroup, 'trackOpStyle', 'always');
+    services.cat.setStyle('A', OperatingStyle.run);
+    expect((await decorate(tester, {'our': {}}))['opStyle'], 'run');
   });
 }

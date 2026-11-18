@@ -18,24 +18,21 @@ import '../services/settings_service.dart';
 import 'station_rows.dart';
 import 'voice_messages_dialog.dart' show peerDeviceLabel, showComputerVoiceSettingsDialog;
 
-/// The keys a station can pick between: a paddle on the desk, or what keys
-/// for the app — a keyer, or a radio whose CAT can.
-List<EquipmentNode> keyNodes(HaLoServices services) {
-  final cat = services.cat;
-  return [
-    for (final node in cat.nodes)
-      if (cat.typeFor(node)?.category == kCategoryKey) node,
-    if (services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) ...cat.keyerCandidates,
-  ];
-}
+/// What can key the app's messages: a keyer, or a radio whose CAT can. A
+/// paddle on the desk keys nothing here; it is the logged key's
+/// ([loggedKeyNodes]).
+List<EquipmentNode> keyNodes(HaLoServices services) => services.cat.keyerCandidates;
 
-/// The key in use. NOT behind the keyer experiment: choosing which key a
-/// contact is logged with is ordinary station info. Only the peer's key
-/// among its choices is. [filled] for a picker on a dialog's band.
+/// The keys a contact can log as its `key`: the paddles on the desk.
+List<EquipmentNode> loggedKeyNodes(HaLoServices services) => [
+  for (final node in services.cat.nodes)
+    if (services.cat.typeFor(node)?.category == kCategoryKey) node,
+];
+
+/// The key in use. [filled] for a picker on a dialog's band.
 Widget cwKeyPicker(BuildContext context, HaLoServices services, {required List<EquipmentNode> keys, required String label, bool filled = false}) {
   final st = context.t.settings.station;
   final cat = services.cat;
-  final keyerExperiment = services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
   // The peer whose radio drives the VFO, when one does: its own key is
   // what keys for this operator unless they pick otherwise (HALO-585).
   final peer = cat.followedPeerRadio;
@@ -55,7 +52,7 @@ Widget cwKeyPicker(BuildContext context, HaLoServices services, {required List<E
     // they say otherwise — offered here so saying otherwise can be undone.
     // Only while it OFFERS keying: a device that keys nothing is not a key.
     extras: [
-      if (keyerExperiment && peer != null && cat.peerOffersCwKeying)
+      if (peer != null && cat.peerOffersCwKeying)
         (value: peerRadioValue(peer), label: st.keyOnDevice(device: peer.deviceName.isEmpty ? peer.deviceId : peer.deviceName)),
     ],
     onChanged: (uuid) => unawaited(cat.setDesignated(kCategoryKey, uuid)),

@@ -71,7 +71,6 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     settings = SettingsService(await SharedPreferences.getInstance());
-    await settings.setExperimentEnabled('keyer', true);
     final radio = RadioService(await SharedPreferences.getInstance(), writeDelay: Duration.zero);
     addTearDown(radio.dispose);
     transport = _LinkTransport();
@@ -131,6 +130,8 @@ void main() {
   });
 
   test("a peer keying this radio hears the radio's names, not this station's settings", () {
+    // A peer keys this station only while an operation is open on it.
+    cat.frontOperation = 'op';
     final status = cat.keyStatusForOfferedRadio(flex)!;
     expect(status.voiceLabels[2], '59-NY-TU');
     expect(status.voiceDurationsMs[2], 2165);

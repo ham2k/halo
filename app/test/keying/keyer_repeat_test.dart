@@ -32,11 +32,8 @@ void main() {
   late CatService cat;
 
   setUp(() async {
-    final harness = await makeHaLoServices();
-    final settings = harness.settings;
-    services = harness.services;
+    services = (await makeHaLoServices()).services;
     cat = services.cat;
-    await settings.setExperimentEnabled('keyer', true);
   });
 
   Future<void> connectPlaceholder() async {

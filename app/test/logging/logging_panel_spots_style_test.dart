@@ -13,11 +13,14 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/operating_style.dart';
 import 'package:ham2k_logger/services/local_spots.dart';
 import 'package:ham2k_logger/services/spots_service.dart' show callOfSpot;
 import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/spotting_settings.dart';
+import 'package:ham2k_logger/views/keyer_area.dart' show keyerControlKey;
 import 'package:ham2k_logger/views/operation/logging_panel.dart';
 
 import '../support/halo_test_support.dart';
@@ -129,6 +132,7 @@ void main() {
   });
 
   testWidgets('a self-spot runs the set, any comment but QRT; spotting another station does not', (tester) async {
+    await services.settings.setSettingValue(SettingsService.loggingGroup, 'trackOpStyle', 'always');
     final controls = await mount(tester);
     final sendSpot = controls().spotting.sendSpot!;
     expect(services.cat.styleOf('A'), OperatingStyle.normal, reason: 'sanity');
@@ -141,5 +145,38 @@ void main() {
 
     await sendSpot(sources: const [], operation: operation.data, comment: 'QRT, 73');
     expect(services.cat.styleOf('A'), OperatingStyle.normal);
+  });
+
+  // The trap: an activator who only spots, under the default "When using a
+  // Keyer", would be stamped Run on every contact after the first self-spot,
+  // by a style nothing shows them.
+  testWidgets('under the default, spotting alone tracks nothing; once the operator picks a style by hand, a self-spot runs', (tester) async {
+    expect(services.settings.opStyleTracking, OpStyleTracking.keyer, reason: 'the default');
+    services.openOperationContext(operation.uuid);
+    final controls = await mount(tester);
+    final sendSpot = controls().spotting.sendSpot!;
+
+    await sendSpot(sources: const [], operation: operation.data, comment: 'QRV');
+    expect((services.cat.tracksStyle, services.cat.styleOf('A')), (false, OperatingStyle.normal));
+
+    services.cat.setStyle('A', OperatingStyle.normal);
+    expect(services.cat.tracksStyle, isTrue, reason: 'a style picked by hand is the keyer side of the setting');
+    await sendSpot(sources: const [], operation: operation.data, comment: 'QRV');
+    expect(services.cat.styleOf('A'), OperatingStyle.run);
+  });
+
+  // With keying for everyone, a phone or web build with no radio would
+  // otherwise carry a Keyer control that keys nothing.
+  testWidgets('the keyer control is there only on a station with something to key with', (tester) async {
+    final controls = await mount(tester);
+    bool keyerShown() => controls().strip.hostControls.any((control) => control.key == keyerControlKey);
+    expect(services.cat.hasKeyer, isFalse, reason: 'sanity');
+    expect(keyerShown(), isFalse);
+
+    final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    await tester.runAsync(() => services.cat.connect(node.uuid));
+    addTearDown(() => services.cat.disconnect(node.uuid));
+    await tester.pump();
+    expect(keyerShown(), isTrue);
   });
 }

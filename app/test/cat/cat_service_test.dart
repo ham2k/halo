@@ -1937,17 +1937,38 @@ void main() {
       await addAntenna();
 
       expect(cat.radio1, LocalRadio(radio.uuid));
-      expect(cat.designatedFor(kCategoryKey), key.uuid);
+      expect(cat.designatedFor(kDesignationLoggedKey), key.uuid);
+    });
+
+    // The trap: one pick for what keys and what is logged — recording a
+    // Bencher stopped the radio keying, or keying through the radio logged
+    // no key.
+    test('a paddle added after a keying radio is the logged key, and the radio still keys', () async {
+      final radio = await addRadio();
+      expect(cat.designatedFor(kCategoryKey), radio.uuid, reason: 'sanity: a radio that keys is its own keyer');
+      final paddle = await addKey(name: 'Bencher');
+      expect((cat.designatedFor(kCategoryKey), cat.designatedFor(kDesignationLoggedKey)), (radio.uuid, paddle.uuid));
+    });
+
+    test('a paddle an older build stored as the key in use is the logged key after a relaunch', () async {
+      final radio = await addRadio();
+      final paddle = await addKey(name: 'Bencher');
+      await cat.setDesignated(kDesignationLoggedKey, null);
+      await cat.setDesignated(kCategoryKey, paddle.uuid);
+
+      final reloaded = await makeService();
+      addTearDown(reloaded.dispose);
+      expect((reloaded.designatedFor(kCategoryKey), reloaded.designatedFor(kDesignationLoggedKey)), (radio.uuid, paddle.uuid));
     });
 
     test('removing the designated key clears it rather than promoting another', () async {
       final a = await addKey(name: 'a');
       final b = await addKey(name: 'b');
-      await cat.setDesignated(kCategoryKey, a.uuid);
+      await cat.setDesignated(kDesignationLoggedKey, a.uuid);
 
       await cat.removeNode(a.uuid);
 
-      expect(cat.designatedFor(kCategoryKey), isNull, reason: '${b.uuid} was silently promoted');
+      expect(cat.designatedFor(kDesignationLoggedKey), isNull, reason: '${b.uuid} was silently promoted');
     });
 
     test('the operator can designate any antenna directly, None included', () async {
@@ -1966,15 +1987,11 @@ void main() {
 
       final reloaded = await makeService();
       addTearDown(reloaded.dispose);
-      expect(reloaded.designatedFor(kCategoryKey), key.uuid);
+      expect(reloaded.designatedFor(kDesignationLoggedKey), key.uuid);
     });
   });
 
   group('CW keying', () {
-    // The keying rules only apply with the experiment on — a keying radio
-    // becomes the key in use, the pick offers radios.
-    setUp(() => settings.setExperimentEnabled('keyer', true));
-
     test('Key in Use = None survives a relaunch instead of jumping back to the rig', () async {
       // The trap: None is stored as a null entry, and a load that only kept
       // strings would read it as "never decided" and hand keying back to
@@ -1986,17 +2003,6 @@ void main() {
       final reloaded = await makeService();
       addTearDown(reloaded.dispose);
       expect(reloaded.designatedFor(kCategoryKey), isNull);
-    });
-
-    test('a station that never decided its key gets its keying radio on load', () async {
-      await settings.setExperimentEnabled('keyer', false);
-      final node = await addRadio();
-      expect(cat.designatedFor(kCategoryKey), isNull, reason: 'off, the experiment designates nothing');
-      await settings.setExperimentEnabled('keyer', true);
-
-      final reloaded = await makeService();
-      addTearDown(reloaded.dispose);
-      expect(reloaded.designatedFor(kCategoryKey), node.uuid);
     });
 
     test(
@@ -2286,7 +2292,6 @@ void main() {
   // station on the other.
   group('SO2R keying', () {
     setUp(() async {
-      await settings.setExperimentEnabled('keyer', true);
       await settings.setExperimentEnabled('so2r', true);
     });
 
@@ -2564,6 +2569,9 @@ void main() {
     test("message 1 runs the radio that keys it, once the send is taken", () async {
       final (a, b) = await twoRadios();
       await settings.setSo2rQueueMessages(true);
+      // Tracked as the app's default has it: an operation in front, where
+      // keying is what starts the tracking.
+      cat.frontOperation = 'op';
       cat.setStyle('A', OperatingStyle.normal);
       cat.setStyle('B', OperatingStyle.normal);
       cat.keyer('A').sendCw('5NN');
@@ -2824,7 +2832,7 @@ void main() {
     // S&P while the operator is in set B, which files it under B.
     test("the ESM switch shows the operator's radio's Run or S&P, and hands it back unchanged", () async {
       await twoRadios();
-      cat.setStyle('A', OperatingStyle.run);
+      cat.pickRunning('A', true);
       cat.noteOperatorRadio('B');
       expect(cat.operatorEnterSends.running, isFalse, reason: "radio B's S&P, not radio A's Run");
       final shown = cat.operatorEnterSends;

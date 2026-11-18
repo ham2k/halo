@@ -853,7 +853,6 @@ void main() {
   for (final useSo2r in [false, true]) {
     test('logical siblings preserve one CW queue and voice playback (SO2R: $useSo2r)', () async {
       final f = await _connectedRemote();
-      await f.settings.setExperimentEnabled('keyer', true);
       final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
       await f.cat.connect(sub.uuid);
       await f.cat.setDesignated(kCategoryKey, f.uuid);
@@ -903,7 +902,6 @@ void main() {
       test('external and CAT keyers arbitrate separate queues (external Main: $externalOnMain, queued: $queued)', () async {
         final external = _ExternalKeyerDriver();
         final f = await _connectedRemote(externalKeyer: external);
-        await f.settings.setExperimentEnabled('keyer', true);
         await f.settings.setExperimentEnabled('so2r', true);
         await f.settings.setSo2rQueueMessages(queued);
         final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
@@ -949,7 +947,6 @@ void main() {
 
   test('a shared CAT repeat waits for the active queue instead of appending itself', () async {
     final f = await _connectedRemote();
-    await f.settings.setExperimentEnabled('keyer', true);
     await f.settings.setExperimentEnabled('so2r', true);
     final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
     await f.cat.connect(sub.uuid);
@@ -968,7 +965,6 @@ void main() {
   for (final sequenceOnMain in [false, true]) {
     test('shared voice sequence finishes before a queued sibling (owner Main: $sequenceOnMain)', () async {
       final f = await _connectedRemote();
-      await f.settings.setExperimentEnabled('keyer', true);
       await f.settings.setExperimentEnabled('so2r', true);
       await f.settings.setSo2rQueueMessages(true);
       final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
@@ -1002,7 +998,6 @@ void main() {
 
   test('disconnecting the CW initiator cancels queued chunks while its sibling stays connected', () async {
     final f = await _connectedRemote();
-    await f.settings.setExperimentEnabled('keyer', true);
     final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
     await f.cat.connect(sub.uuid);
     await f.cat.setDesignated(kCategoryKey, f.uuid);
@@ -1021,7 +1016,8 @@ void main() {
 
   test('a peer stopping voice through Sub does not measure truncated Main playback', () async {
     final f = await _connectedRemote();
-    await f.settings.setExperimentEnabled('keyer', true);
+    // A peer keys this station only while an operation is open on it.
+    f.cat.frontOperation = 'op';
     await f.settings.setVoiceMessageDuration(1, 9000);
     final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;
     await f.cat.connect(sub.uuid);

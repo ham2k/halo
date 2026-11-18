@@ -1205,7 +1205,7 @@ reserved: a scene may not declare them, and nothing may set them.
 | `radio.reportedFrequencyHz` | The frequency, in Hz, the radio itself last reported, as `readRadio()` gives it. API 19 |
 | `radio.passbandLowHz`, `radio.passbandHighHz`, `radio.passbandWidthHz` | The receive passband's edges relative to the carrier, and its width. API 13 |
 | `radio.powerWatts` | The power the radio is **set** to; `powerOut` is what it measures. API 13 |
-| `radio.ptt` | 1 while the app holds the radio's PTT, given where `readRadio()` gives `keying`: the logging radio, connected, on a host with keying enabled. `radio.transmitting` is the radio's own report, and the two differ: a radio keyed from its own microphone is transmitting with no PTT held. API 13 |
+| `radio.ptt` | 1 while the app holds the radio's PTT, given where `readRadio()` gives `keying`: the logging radio, connected. `radio.transmitting` is the radio's own report, and the two differ: a radio keyed from its own microphone is transmitting with no PTT held. API 13 |
 | `radio.connected` | 1 while connected and answering. API 13 |
 
 And reserved `strings` (API 13), which a text layer shows and a `when`

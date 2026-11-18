@@ -8,6 +8,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/operating_style.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
 
 import '../support/halo_test_support.dart';
 
@@ -32,6 +33,7 @@ void main() {
     final extensions = ExtensionService();
     prepareExtensionServiceForTest(extensions);
     final services = (await makeHaLoServices(extensions: extensions)).services;
+    await services.settings.setSettingValue(SettingsService.loggingGroup, 'trackOpStyle', 'always');
     await extensions.setDevBundles({
       'probe': (source: _probe, info: const ExtensionInfo(key: 'probe', file: 'probe.js', source: ExtensionSource.dev, core: true, name: 'probe')),
     });
@@ -44,5 +46,10 @@ void main() {
     await services.settings.setExperimentEnabled('so2r', true);
     services.cat.setStyle('B', OperatingStyle.run);
     expect(await read(), {'A': 'run', 'B': 'run'});
+
+    // Untracked, a style is none: a hook branching on `run` must not be
+    // handed a stored Run the operator neither sees nor records.
+    await services.settings.setSettingValue(SettingsService.loggingGroup, 'trackOpStyle', 'never');
+    expect(await read(), isNull);
   }, timeout: const Timeout(Duration(seconds: 60)));
 }

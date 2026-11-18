@@ -15,7 +15,7 @@ mixin _PeerOffers on ChangeNotifier implements PeerStationRadios {
   String? get radio2;
   set _radio1(MainVfo? value);
   CatKeying get _keying;
-  bool get _keyingEnabled;
+  bool Function() get operationOnScreen;
   EquipmentState stateFor(String uuid);
   void tuneNode(String uuid, VfoReading requested);
   Future<void> _save();
@@ -37,15 +37,19 @@ mixin _PeerOffers on ChangeNotifier implements PeerStationRadios {
           // nothing here, and offering that as keyable would advertise a
           // relay nothing implements.
           //
-          // All of it behind this device's own keying experiment: a
-          // station whose operator has no keyer area and no Escape
-          // handler must not be keyed from elsewhere, because nothing
-          // here could stop it.
-          keysCw: _keyingEnabled && _keying.keysCwLocally,
-          voiceMemories: _keyingEnabled && _keying.cannotTransmitFor(node.uuid) == null ? (_keying.voiceKeyerFor(node.uuid)?.voiceMemoryCount ?? 0) : 0,
-          recordsVoice: _keyingEnabled && (_keying.voiceKeyerFor(node.uuid)?.canRecordVoice ?? false),
+          // All of it only while an operation is open here ([_peerKeyable]).
+          keysCw: _peerKeyable && _keying.keysCwLocally,
+          voiceMemories: _peerKeyable && _keying.cannotTransmitFor(node.uuid) == null ? (_keying.voiceKeyerFor(node.uuid)?.voiceMemoryCount ?? 0) : 0,
+          recordsVoice: _peerKeyable && (_keying.voiceKeyerFor(node.uuid)?.canRecordVoice ?? false),
         ),
   ];
+
+  /// Whether a peer may key this station: only while an operation is on
+  /// screen here. Its view is what stops a message — Escape, the keyer line —
+  /// and on Home or in Settings nothing here could stop one a peer started.
+  /// Asked again at each request, since the offer goes out only as the
+  /// station changes.
+  bool get _peerKeyable => operationOnScreen();
 
   @override
   void noteOffer(String deviceId, String deviceName, List<PeerRadioOffer> radios) {
@@ -128,9 +132,9 @@ mixin _PeerOffers on ChangeNotifier implements PeerStationRadios {
   /// named and timed here.
   @override
   PeerKeyStatusPayload? keyStatusForOfferedRadio(String radioId) {
-    // Behind the same experiment the offer is: with keying off there is
-    // nothing to report, and the memory labels are this operator's own words.
-    if (!_keyingEnabled) return null;
+    // Keying is offered only while it may happen: with none, the memory
+    // labels are this operator's own words.
+    if (!_peerKeyable) return null;
     if (!offeredRadios.any((radio) => radio.id == radioId)) return null;
     return _keying.statusForOfferedRadio(radioId);
   }
@@ -146,10 +150,10 @@ mixin _PeerOffers on ChangeNotifier implements PeerStationRadios {
   /// picked neither.
   @override
   void handleKeyRequest(PeerKeyRequestPayload request) {
-    // Checked again rather than trusted to the offer: the experiment can go
-    // off under an established session, and a controller holding a stale
-    // offer would go on keying a station that can no longer see it.
-    if (!_keyingEnabled) return;
+    // Checked again rather than trusted to the offer: the operation can close
+    // under an established session, and a controller holding the older offer
+    // would go on keying a station that can no longer stop it.
+    if (!_peerKeyable) return;
     if (!offeredRadios.any((radio) => radio.id == request.radioId)) return;
     _keying.handleRequest(request);
   }

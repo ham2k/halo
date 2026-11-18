@@ -105,7 +105,7 @@ abstract class KeyingStation {
 }
 
 class CatKeying {
-  CatKeying({required this.station, required this.settings, required this.chain, required this.peer, this.radio = 'A', this.onMessageOne}) {
+  CatKeying({required this.station, required this.settings, required this.chain, required this.peer, this.radio = 'A', this.onMessageOne, this.onKeyed}) {
     voiceActivity.addListener(_onVoiceActivityForSequence);
     // A message-1 mark lasts while its message does. Left standing, the
     // next message on a shared transmitter — a peer's, or a third
@@ -141,6 +141,11 @@ class CatKeying {
   /// Called whenever this operator's message 1 is marked as going out — a
   /// CQ, the operating style's cue to run. Never for a peer's played here.
   final void Function()? onMessageOne;
+
+  /// Called whenever any CW message or voice memory of this operator's is
+  /// taken to go out, ahead of [onMessageOne]: the keyer in use
+  /// (logging-fields.md § Operating style). Never for an audition.
+  final void Function()? onKeyed;
 
   void _markMessageOne(bool marked) {
     if (marked) onMessageOne?.call();
@@ -338,6 +343,7 @@ class CatKeying {
     // only thing a far station could act on. Sanitizing it is still the
     // receiving queue's job, exactly as it is for a message typed here.
     final taken = keysOverPeer ? requestPeerKey(PeerKeyOp.cw, text: text) : sendCwLocally(text);
+    if (taken) onKeyed?.call();
     _lastCwHasMessageOne = taken && hasMessageOne;
     return taken;
   }
@@ -924,6 +930,7 @@ class CatKeying {
         chain.cancel();
         return;
       }
+      if (repeat) onKeyed?.call();
       _voiceMessageOne = n == 1;
       if (chaining) {
         chain.arm(delay: settings.voiceRepeatDelay, text: '', memory: n, send: () => _playVoiceMemory(n, repeat: true, fromChain: true));
@@ -945,6 +952,7 @@ class CatKeying {
       if (session is! ComputerVoiceKeyer) _startMeasurement(n);
       _awaitVoiceStart();
       session.playVoiceMemory(n);
+      if (repeat) onKeyed?.call();
       _voiceMessageOne = n == 1;
       // Armed only once the session has taken it: a throw above would
       // otherwise leave a chain armed with nothing playing, and nothing

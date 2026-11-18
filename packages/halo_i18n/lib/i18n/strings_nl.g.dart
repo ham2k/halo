@@ -864,7 +864,6 @@ class _Translations$commands$nl extends Translations$commands$en {
 	@override String get noCwKeyer => 'Geen verbonden radio kan CW keyen';
 	@override String get noKeyer => 'Geen verbonden radio kan CW keyen of spraakgeheugens afspelen';
 	@override String get keyerNeedsOperation => 'Open een activatie om de CW-keyer te gebruiken';
-	@override String get keyerExperimentOff => 'CW-keying staat uit — zet het aan met EXP KEYER';
 	@override String get esmExperimentOff => 'Enter verstuurt berichten staat uit — zet het aan met EXP ESM';
 	@override String cwSending({required Object text}) => 'CW verzenden: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CW-bericht F${n}: ${error}';
@@ -6720,7 +6719,6 @@ extension on TranslationsNl {
 			'commands.noCwKeyer' => 'Geen verbonden radio kan CW keyen',
 			'commands.noKeyer' => 'Geen verbonden radio kan CW keyen of spraakgeheugens afspelen',
 			'commands.keyerNeedsOperation' => 'Open een activatie om de CW-keyer te gebruiken',
-			'commands.keyerExperimentOff' => 'CW-keying staat uit — zet het aan met EXP KEYER',
 			'commands.esmExperimentOff' => 'Enter verstuurt berichten staat uit — zet het aan met EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'CW verzenden: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW-bericht F${n}: ${error}',
@@ -7009,9 +7007,9 @@ extension on TranslationsNl {
 			'adifImport.stationCallJoin' => ' en ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} heeft geen datum en kan niet worden geïmporteerd', other: '${formatted} hebben geen datum en kunnen niet worden geïmporteerd', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Dit bestand bevat een activatie van ${refs}.',
+			'adifImport.addActivation' => 'Toevoegen aan deze activatie',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.addActivation' => 'Toevoegen aan deze activatie',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Slechts ${written} van ${planned} konden worden toegepast — het logboek veranderde terwijl je besliste.',
 			'adifImport.busy' => 'Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} heeft meer dan ${limit} QSO\'s, het maximum dat een activatie in één keer kan importeren.',

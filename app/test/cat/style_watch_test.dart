@@ -20,6 +20,7 @@ void main() {
 
   setUp(() async {
     services = (await makeHaLoServices()).services;
+    await services.settings.setSettingValue(SettingsService.loggingGroup, 'trackOpStyle', 'always');
     services.styleWatch.start();
     addTearDown(services.styleWatch.dispose);
   });

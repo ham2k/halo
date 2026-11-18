@@ -72,7 +72,6 @@ void main() {
     extensions = _TemplateExtensions();
     final harness = await makeHaLoServices(extensions: extensions);
     services = harness.services;
-    await harness.settings.setExperimentEnabled('keyer', true);
     await harness.settings.setExperimentEnabled('esm', true);
     await harness.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
     await harness.settings.recordOnboardingShown(OnboardingFlows.operationSheet);

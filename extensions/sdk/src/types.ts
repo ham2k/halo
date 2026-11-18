@@ -66,7 +66,7 @@ export interface HookContext {
   /// Keys of every experiment (app/experiments.yaml) currently ON for this
   /// user — for a hook whose own effect must stay invisible until an
   /// experiment gating the surface it belongs to has shipped ungated (e.g.
-  /// a `command` hook for a feature still behind `keyer`, checked per-call
+  /// a `command` hook for a feature still behind `esm`, checked per-call
   /// rather than at the whole-extension `manifest.experiments` grain, which
   /// would also hide unrelated hooks the same extension registers).
   enabledExperiments?: string[]
@@ -78,7 +78,8 @@ export interface HookContext {
   /// Each logging set's operating style: `A`, and `B` under SO2R — `run`, or
   /// `normal` (search and pounce, which the app labels S&P, and the default).
   /// The style each new contact records as `opStyle`; it needs no radio, and
-  /// moves with the operator (docs/extensions/radio.md). Extension API 19.
+  /// moves with the operator (docs/extensions/radio.md). Absent while the
+  /// operator does not track styles. Extension API 19.
   opStyle?: { A: "run" | "normal"; B?: "run" | "normal" }
   /// Fetches one operation's QSON by uuid, with `uuid` folded in — the same
   /// shape hooks receive as an `operation` argument (see `qsonPayloadFor`
@@ -2211,7 +2212,7 @@ export interface CommandAction {
   setEnterSends?: { on?: boolean; running?: boolean }
   /// RUN / SNP: the operating style of the set the operator is in, the one
   /// `readRadio`'s `opStyle` reports and each new contact records. Needs no
-  /// radio connected.
+  /// radio connected; refused while the operator never tracks styles.
   setOpStyle?: { opStyle: "run" | "normal" }
   /// SWAP, under SO2R: Radio A and Radio B trade frequency, band, mode, the
   /// rigs' own antenna ports, and Run or S&P, and each set of the logging
@@ -4046,7 +4047,8 @@ export interface PanelRadioState {
   set?: "A" | "B" | null
   /**
    * How the set is working it: running a frequency of its own, or `normal`, anything else (search
-   * and pounce, which the app labels S&P); null where `set` is (extension API 19).
+   * and pounce, which the app labels S&P); null where `set` is, and while the operator does not
+   * track styles (extension API 19).
    */
   opStyle?: "run" | "normal" | null
   status: "disconnected" | "connecting" | "connected" | "disconnecting" | "error"
@@ -4191,7 +4193,7 @@ export interface PanelRadioSet extends PanelRadioTarget {
    * Starts a tune — a carrier on the air until the tuner settles. Only for an operator's explicit
    * press. Goes alone: with any other setting in the same call it is `invalid`; `unsupported` where
    * `canStartTune` is false (extension API 9). Not a keying call: it reaches the radio the panel
-   * shows, with keying on or off. `host.stopRadioTransmit()` ends a tune the app started.
+   * shows. `host.stopRadioTransmit()` ends a tune the app started.
    */
   startTune?: true
   /**
@@ -4374,7 +4376,7 @@ export interface PanelRadioResult {
    * `expired`: the call could not go out within two seconds of being made, behind other
    * callers' commands, and nothing was sent.
    * `unsupported`: this radio, or the app's keying, cannot do it — keying calls on a radio that
-   * is not the logging radio, or with the app's keying off.
+   * is not the logging radio.
    */
   reason?: "changed" | "disconnected" | "transmitting" | "invalid" | "stopped" | "unsupported" | "busy" | "expired"
   state: PanelRadioState | null

@@ -24,14 +24,21 @@ const kCategoryTransceiver = 'transceiver';
 const kCategoryAntenna = 'antenna';
 
 /// A physical CW key — no live connection, only a type worth recording
-/// against a QSO.
+/// against a QSO. Also the designation of what keys the app's messages, the
+/// CW Keying pick: a [kCategoryKeyer], or a radio whose CAT can key — never
+/// one of these, which is [kDesignationLoggedKey]'s.
 const kCategoryKey = 'key';
+
+/// The designation of the [kCategoryKey] a contact logs as its `key`, per
+/// radio like the antenna: the paddle on the desk, picked apart from what
+/// keys the messages, so recording a Bencher never stops the radio keying.
+const kDesignationLoggedKey = 'loggedKey';
 
 /// A keyer the app can drive — a K1EL Winkeyer — as opposed to a
 /// [kCategoryKey], which is a thing on the desk with nothing to connect to.
-/// Both are offered in the same "key in use" pick, alongside a radio whose
-/// CAT can key; whichever is picked is what keys the app's messages
-/// (docs/design/cat.md § CW keying).
+/// Offered in the CW Keying pick alongside a radio whose CAT can key;
+/// whichever is picked is what keys the app's messages (docs/design/cat.md
+/// § CW keying).
 const kCategoryKeyer = 'keyer';
 
 /// A switch routing a set of antennas to a set of devices — a 4O3A Antenna

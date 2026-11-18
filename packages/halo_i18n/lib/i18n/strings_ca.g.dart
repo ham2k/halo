@@ -864,7 +864,6 @@ class _Translations$commands$ca extends Translations$commands$en {
 	@override String get noCwKeyer => 'Cap ràdio connectada pot manipular CW';
 	@override String get noKeyer => 'Cap ràdio connectada pot manipular CW ni reproduir memòries de veu';
 	@override String get keyerNeedsOperation => 'Obre una operació per utilitzar el manipulador CW';
-	@override String get keyerExperimentOff => 'La manipulació CW està desactivada — activa-la amb EXP KEYER';
 	@override String get esmExperimentOff => 'Enter envia missatges està desactivat — activa-ho amb EXP ESM';
 	@override String cwSending({required Object text}) => 'Enviant CW: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'Missatge CW F${n}: ${error}';
@@ -6720,7 +6719,6 @@ extension on TranslationsCa {
 			'commands.noCwKeyer' => 'Cap ràdio connectada pot manipular CW',
 			'commands.noKeyer' => 'Cap ràdio connectada pot manipular CW ni reproduir memòries de veu',
 			'commands.keyerNeedsOperation' => 'Obre una operació per utilitzar el manipulador CW',
-			'commands.keyerExperimentOff' => 'La manipulació CW està desactivada — activa-la amb EXP KEYER',
 			'commands.esmExperimentOff' => 'Enter envia missatges està desactivat — activa-ho amb EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'Enviant CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'Missatge CW F${n}: ${error}',
@@ -7009,9 +7007,9 @@ extension on TranslationsCa {
 			'adifImport.stationCallJoin' => ' i ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} no té data i no es pot importar', other: '${formatted} no tenen data i no es poden importar', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Aquest fitxer registra una activació de ${refs}.',
+			'adifImport.addActivation' => 'Afegeix-la a aquesta operació',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.addActivation' => 'Afegeix-la a aquesta operació',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Només s\'han pogut aplicar ${written} de ${planned} — el registre ha canviat mentre decidies.',
 			'adifImport.busy' => 'Ja hi ha una importació en curs. Espera que acabi abans de començar-ne una altra.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} té més de ${limit} QSOs, el màxim que una operació pot importar alhora.',

@@ -2661,7 +2661,6 @@
     "noCwKeyer": "Nicio stație radio conectată nu poate manipula CW",
     "noKeyer": "Nicio stație radio conectată nu poate manipula CW sau reda memorii vocale",
     "keyerNeedsOperation": "Deschideți o operațiune pentru a folosi keyer-ul CW",
-    "keyerExperimentOff": "Manipularea CW este oprită — activați-o cu EXP KEYER",
     "esmExperimentOff": "„Enter trimite mesaje” este oprit — activați-l cu EXP ESM",
     "cwSending": "Se transmite CW: $text",
     "cwMessageError": "Mesaj CW F$n: $error",

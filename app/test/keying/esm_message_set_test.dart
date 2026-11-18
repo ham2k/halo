@@ -71,7 +71,6 @@ void main() {
   });
 
   test('turning on any other experiment adds nothing', () async {
-    await settings.setExperimentEnabled('keyer', true);
     expect(names(), ['Default', 'POTA']);
   });
 }

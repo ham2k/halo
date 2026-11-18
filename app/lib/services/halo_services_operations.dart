@@ -9,6 +9,7 @@ part of 'halo_services.dart';
 
 mixin _OperationStack {
   StatusBarService get statusBar;
+  CatService get cat;
   void updatePeerSharing();
 
   /// One open Operation View's command context, for the ⌘K dialog: the
@@ -101,6 +102,7 @@ mixin _OperationStack {
   OperationCommandContext openOperationContext(String uuid) {
     final entry = OperationCommandContext(uuid);
     _operationStack.add(entry);
+    cat.frontOperation = uuid;
     updatePeerSharing();
     return entry;
   }
@@ -109,6 +111,7 @@ mixin _OperationStack {
   /// still-live one's place with it.
   void closeOperationContext(OperationCommandContext entry) {
     _operationStack.remove(entry);
+    cat.frontOperation = _operationStack.lastOrNull?.uuid;
     updatePeerSharing();
   }
 }

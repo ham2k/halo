@@ -693,12 +693,6 @@ class CatService extends ChangeNotifier
   @override
   String? get peerRadioId => followedPeerRadio?.radioId;
 
-  /// Whether this device's own keying surfaces exist at all — the `keyer`
-  /// experiment, which gates what it offers a peer as much as what it shows
-  /// its own operator.
-  @override
-  bool get _keyingEnabled => _settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
-
   /// Whether the picked peer radio's station says it will key CW for this
   /// operator. What puts it in the Key in Use list — a device that keys
   /// nothing is not a key.
@@ -953,14 +947,12 @@ class CatService extends ChangeNotifier
       // radio — another radio's antenna is not decided by what was plugged
       // into this one.
       if (category == kCategoryAntenna) _designateNow(kCategoryAntenna, stored.uuid);
-      // The key in use is also what keys, so what a new node does to it
-      // depends on what it displaces: a keyer takes over (the newest keyer
-      // keys), and a plain paddle takes over only from a paddle or nothing —
-      // recording a Bencher for the log must not silently stop the radio's
-      // keying. Nothing to do for a transceiver that keys: a radio is its own
-      // default key ([_defaultDesignation]), computed rather than written.
+      // The newest keyer keys, and the newest paddle is the one logged — two
+      // picks, so recording a Bencher never stops the radio's keying.
+      // Nothing to do for a transceiver that keys: a radio is its own
+      // default keyer ([_defaultDesignation]), computed rather than written.
       if (category == kCategoryKeyer) _designateNow(kCategoryKey, stored.uuid);
-      if (category == kCategoryKey && !designatedKeyIsKeyer) _designateNow(kCategoryKey, stored.uuid);
+      if (category == kCategoryKey) _designateNow(kDesignationLoggedKey, stored.uuid);
       // And the newest SDR is the scope of the radio in use, for the
       // antenna's reason: only a radio of this station's, since neither a
       // peer's nor "no radio" has a spectrum here for it to stand in for.

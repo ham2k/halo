@@ -2661,7 +2661,6 @@
     "noCwKeyer": "Cap ràdio connectada pot manipular CW",
     "noKeyer": "Cap ràdio connectada pot manipular CW ni reproduir memòries de veu",
     "keyerNeedsOperation": "Obre una operació per utilitzar el manipulador CW",
-    "keyerExperimentOff": "La manipulació CW està desactivada — activa-la amb EXP KEYER",
     "esmExperimentOff": "Enter envia missatges està desactivat — activa-ho amb EXP ESM",
     "cwSending": "Enviant CW: $text",
     "cwMessageError": "Missatge CW F$n: $error",

@@ -115,7 +115,6 @@ void main() {
       cat: (settings) => CatService(settings, voiceAudio: audio, voiceMessagesDirectory: () async => '/v'),
     );
     services = harness.services;
-    await harness.settings.setExperimentEnabled('keyer', true);
     await harness.settings.setVoiceMessageSets([cq], active: VoiceMessageSet.defaultId);
   });
 
@@ -358,7 +357,6 @@ void main() {
     final harness = await makeHaLoServices(
       cat: (settings) => CatService(settings, voiceAudio: audio, voiceMessagesDirectory: () => pending.future),
     );
-    await harness.settings.setExperimentEnabled('keyer', true);
     final cat = harness.services.cat;
     final node = await cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
     await cat.connect(node.uuid);
@@ -417,6 +415,7 @@ void main() {
   // CQ queued and then dropped leaves the set running with no CQ sent.
   test('memory 1 runs once it plays, not while it waits behind another', () async {
     final cat = services.cat;
+    services.openOperationContext('op');
     audio.lengths['/v/s1/4.wav'] = const Duration(seconds: 1);
     await connectRig();
     final keyer = cat.keyer('A');
@@ -750,7 +749,6 @@ void main() {
     final harness = await makeHaLoServices(
       cat: (settings) => CatService(settings, registry: registry, voiceAudio: audio, voiceMessagesDirectory: () async => '/v'),
     );
-    await harness.settings.setExperimentEnabled('keyer', true);
     await harness.settings.setVoiceMessageSets([cq], active: cq.id);
     final cat = harness.services.cat;
     final node = await cat.addNode(typeKey: 'unkeyable-type', config: {'host': 'radio.local', voiceOutputConfigKey: voiceDeviceToConfig(codec)});

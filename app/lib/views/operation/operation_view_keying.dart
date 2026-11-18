@@ -13,16 +13,18 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   /// notifications, so a radio connecting takes effect on the next one.
   bool get _phoneKeyingPossible {
     final settings = widget.services.settings;
-    if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
     return widget.services.cat.canPlayVoice || (settings.pttKey && widget.services.cat.canPtt);
   }
 
   /// Whether a function key would key anything — the draft is worth
-  /// tracking for the messages only once one exists. Read at build, so a
-  /// message typed mid-operation takes effect on the next rebuild.
+  /// tracking for the messages only with a keyer ([CatService.hasKeyer]) and
+  /// a message to key. Not a radio that can key right now: one dropping for a
+  /// moment would leave the draft unpublished, and the next message keyed
+  /// against the contact before it. Read at build, so a message typed
+  /// mid-operation takes effect on the next rebuild.
   bool get _cwMessagesConfigured {
+    if (!widget.services.cat.hasKeyer) return false;
     final settings = widget.services.settings;
-    if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
     for (var n = 1; n <= SettingsService.cwMessageCount; n++) {
       if (settings.cwMessage(n).trim().isNotEmpty) return true;
     }
@@ -60,7 +62,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   String? _pttTarget() {
     final services = widget.services;
     if (!mounted || testerOverlayCovering.value || !(ModalRoute.of(context)?.isCurrent ?? false)) return null;
-    if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ || !services.settings.pttKey) return null;
+    if (!services.settings.pttKey) return null;
     if (!_keyingPhone) return null;
     final cat = services.cat;
     if (!keyerOrSay(context, services, cat.operatorKeyer, () => cat.operatorKeyer.canPtt)) return null;
@@ -83,8 +85,8 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     // Not the keyer's: what the operator hears is the SO2R switcher's, and
     // the key stays free while no switcher is switching.
     if (keyBindings.value.claim(so2rStereoCommandId, event) != null && services.cat.toggleSo2rStereo()) return true;
-    // Ahead of the keyer's gate: the style is what the next contact records,
-    // with or without a keyer (logging-fields.md § Operating style).
+    // The style is what the next contact records, with or without a keyer
+    // (logging-fields.md § Operating style).
     if (keyBindings.value.claim(styleToggleCommandId, event) != null) {
       _toggleStyle();
       return true;
@@ -92,7 +94,6 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     // A keypress by itself stops nothing: what a call typed over a CQ stops
     // is decided by the callsign field (LoggingSession.onCallTyped), which
     // hears every way a call is entered and not only a hardware key.
-    if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
     final cat = services.cat;
     // Under SO2R, the radio of the set the operator is in.
     final keyer = cat.operatorKeyer;
@@ -151,13 +152,19 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   bool _onSystemBack() {
     if (testerOverlayCovering.value) return false;
     if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
-    if (!widget.services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
     return widget.services.cat.stopKeying();
   }
 
   /// Run ↔ S&P for the set the operator is in. Silent: a key pressed
-  /// mid-pileup puts nothing on the status bar.
-  void _toggleStyle() => widget.services.cat.toggleStyle(widget.services.cat.operatorRadio);
+  /// mid-pileup puts nothing on the status bar — unless the styles are never
+  /// tracked, where a change nothing shows or records would leave the key
+  /// looking dead.
+  void _toggleStyle() {
+    final services = widget.services;
+    if (!services.cat.toggleStyle(services.cat.operatorRadio)) {
+      services.statusBar.showNotice(key: 'opStyle', icon: 'run', text: t.commands.opStyleTrackingOff, persist: false);
+    }
+  }
 
   /// Message [n] from a function key that is not the keyboard's — a MIDI
   /// controller's (CatKeying.messageKeyRequests). Only while this view is in
@@ -167,7 +174,6 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     final request = widget.services.cat.messageKeyRequests.value;
     if (request == null || testerOverlayCovering.value) return;
     if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
-    if (!widget.services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return;
     _keyMessage(request.message);
   }
 
@@ -347,7 +353,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
           qso: qso ?? _latestDraftQso ?? ctx.qso,
           next: next,
           qsoCount: ctx.qsoCount,
-          keyer: {'messages': services.settings.activeCwMessageSet.messages, 'current': n, 'opStyle': services.cat.styleOf(radio).value},
+          keyer: {'messages': services.settings.activeCwMessageSet.messages, 'current': n, 'opStyle': ?services.cat.trackedStyleOf(radio)?.value},
         );
       } on TemplateError catch (e) {
         failure = e.message;
@@ -458,7 +464,11 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
         qso: _latestDraftQso ?? ctx.qso,
         qsoCount: ctx.qsoCount,
         // The operator's set: the one whose voice keyer plays it.
-        keyer: {'messages': services.settings.activeCwMessageSet.messages, 'current': n, 'opStyle': services.cat.styleOf(services.cat.operatorRadio).value},
+        keyer: {
+          'messages': services.settings.activeCwMessageSet.messages,
+          'current': n,
+          'opStyle': ?services.cat.trackedStyleOf(services.cat.operatorRadio)?.value,
+        },
       );
     } on TemplateError catch (e) {
       throw VoicedMessageRefused(ComputerVoiceProblem.templateFailed, e.message);

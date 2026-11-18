@@ -17,8 +17,6 @@ class _Station implements MidiStation {
   bool hasRadioB = true;
   @override
   bool so2rOn = true;
-  @override
-  bool keyingEnabled = true;
   final held = <String>{};
   final tunes = <(String, double)>[];
   final powers = <(String, num)>[];
@@ -283,12 +281,6 @@ void main() {
     test('keys only in a Phone mode', () {
       station.mode['A'] = 'CW';
       expect(controller.handle(_note(_pttA, on: true))!.ignored, MidiIgnored.notPhone);
-      expect(station.held, isEmpty);
-    });
-
-    test('keys nothing with the Keying experiment off', () {
-      station.keyingEnabled = false;
-      expect(controller.handle(_note(_pttA, on: true))!.ignored, MidiIgnored.keyingOff);
       expect(station.held, isEmpty);
     });
 

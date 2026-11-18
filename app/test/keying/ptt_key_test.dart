@@ -70,7 +70,6 @@ void main() {
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     if (showState || radioMode != null) await settings.setShowStateField(true);
     if (radioMode != null) {
-      await settings.setExperimentEnabled('keyer', true);
       await settings.setSettingValue(SettingsService.radioGroup, 'pttKey', pttOn);
       for (var n = 1; n <= SettingsService.cwMessageCount; n++) {
         await settings.setCwMessage(n, '');

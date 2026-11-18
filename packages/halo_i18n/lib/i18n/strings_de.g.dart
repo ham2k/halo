@@ -864,7 +864,6 @@ class _Translations$commands$de extends Translations$commands$en {
 	@override String get noCwKeyer => 'Kein verbundenes Funkgerät kann CW tasten';
 	@override String get noKeyer => 'Kein verbundenes Funkgerät kann CW tasten oder Sprachspeicher abspielen';
 	@override String get keyerNeedsOperation => 'Öffne einen Betrieb, um den CW-Keyer zu verwenden';
-	@override String get keyerExperimentOff => 'CW-Tastung ist aus — schalte sie mit EXP KEYER ein';
 	@override String get esmExperimentOff => 'Enter sendet Nachrichten ist aus — schalte es mit EXP ESM ein';
 	@override String cwSending({required Object text}) => 'Sende CW: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CW-Nachricht F${n}: ${error}';
@@ -6720,7 +6719,6 @@ extension on TranslationsDe {
 			'commands.noCwKeyer' => 'Kein verbundenes Funkgerät kann CW tasten',
 			'commands.noKeyer' => 'Kein verbundenes Funkgerät kann CW tasten oder Sprachspeicher abspielen',
 			'commands.keyerNeedsOperation' => 'Öffne einen Betrieb, um den CW-Keyer zu verwenden',
-			'commands.keyerExperimentOff' => 'CW-Tastung ist aus — schalte sie mit EXP KEYER ein',
 			'commands.esmExperimentOff' => 'Enter sendet Nachrichten ist aus — schalte es mit EXP ESM ein',
 			'commands.cwSending' => ({required Object text}) => 'Sende CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW-Nachricht F${n}: ${error}',
@@ -7009,9 +7007,9 @@ extension on TranslationsDe {
 			'adifImport.stationCallJoin' => ' und ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} hat kein Datum und kann nicht importiert werden', other: '${formatted} haben kein Datum und können nicht importiert werden', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Diese Datei enthält eine Aktivierung von ${refs}.',
+			'adifImport.addActivation' => 'Zu diesem Betrieb hinzufügen',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.addActivation' => 'Zu diesem Betrieb hinzufügen',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Nur ${written} von ${planned} konnten übernommen werden — das Log hat sich geändert, während du entschieden hast.',
 			'adifImport.busy' => 'Ein Import läuft bereits. Warte, bis er fertig ist, bevor du einen weiteren startest.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} hat mehr als ${limit} QSOs, das Maximum, das ein Betrieb auf einmal importieren kann.',

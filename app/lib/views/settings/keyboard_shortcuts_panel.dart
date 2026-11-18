@@ -256,7 +256,6 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
         final theme = Theme.of(context);
         final overrides = _service.overrides;
         final bindings = overrides.resolve();
-        final keying = widget.services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
         final so2r = widget.services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */;
         // The search bar isn't a row, so it takes the rows' own content inset
         // explicitly, as Application Preferences' does.
@@ -397,7 +396,7 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
                 slivers: [
                   category('app', t.groupApp, specRows(KeyCommandContext.app)),
                   category('logging', t.groupLogging, [...specRows(KeyCommandContext.logView), ...specRows(KeyCommandContext.logging)]),
-                  if (keying) category('keying', t.groupKeying, specRows(KeyCommandContext.operation)),
+                  category('keying', t.groupKeying, specRows(KeyCommandContext.operation)),
                   category('station', t.groupStation, specRows(KeyCommandContext.station)),
                   category(
                     'commands',

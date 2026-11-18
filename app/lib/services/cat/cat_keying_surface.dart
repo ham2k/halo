@@ -20,6 +20,7 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   String get operatorRadio;
   void setRunning(String radio, bool running);
   void _messageOneKeyed(String radio);
+  void _engageStyle();
   bool get _disposed;
 
   /// Each radio's keying (cat_keying.dart) — which session keys, what it is
@@ -33,6 +34,7 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
       chain: KeyerRepeat(vfo: () => _radio?.vfoA),
       peer: _peerKeying,
       onMessageOne: () => _messageOneKeyed('A'),
+      onKeyed: _engageStyle,
     ),
     'B': CatKeying(
       station: _RadioBKeyingStation(this as CatService),
@@ -41,6 +43,7 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
       peer: PeerKeying(),
       radio: 'B',
       onMessageOne: () => _messageOneKeyed('B'),
+      onKeyed: _engageStyle,
     ),
   };
 
@@ -108,6 +111,26 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   int? get keyerRepeatDeadlineMillis => _keyerOf(operatorRadio).chain.deadlineMillis;
 
   bool get canKeyCw => operatorKeyer.canKeyCw;
+
+  /// Whether either set has something to key with, by what the station is
+  /// set up with rather than what answers right now, so a radio dropping for
+  /// a moment takes nothing away: a keyer in use, connected or not; a peer
+  /// keying for it; or phone messages from the radio's memories or this
+  /// computer. What puts the keyer control in the logging panel, and the
+  /// draft on the typing path.
+  bool get hasKeyer =>
+      [
+        for (final radio in const ['A', 'B']) keyer(radio),
+      ].any(
+        (k) =>
+            k.designatedKeyerNode != null ||
+            k.canKeyCw ||
+            switch (k.voiceKeyingSource) {
+              VoiceKeyingSource.none => false,
+              VoiceKeyingSource.radio => k.offersVoiceMemories,
+              VoiceKeyingSource.computer || VoiceKeyingSource.words => true,
+            },
+      );
   bool get designatedKeyIsKeyer => operatorKeyer.designatedKeyIsKeyer;
   EquipmentNode? get designatedKeyerNode => operatorKeyer.designatedKeyerNode;
   List<EquipmentNode> get keyerCandidates => _keying.keyerCandidates;
@@ -133,6 +156,7 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
 
   /// [running] is the operator's radio's under SO2R — see [setRunning].
   void setEnterSends({bool? on, bool? running}) {
+    if (running != null) _engageStyle();
     if (running != null && operatorRadio == 'B') {
       setRunning('B', running);
       running = null;

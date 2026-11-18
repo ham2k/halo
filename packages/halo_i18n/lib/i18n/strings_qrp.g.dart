@@ -942,7 +942,6 @@ class _Translations$commands$qrp extends Translations$commands$en {
 	@override String get noCwKeyer => 'no connected radio can key cw';
 	@override String get noKeyer => 'no connected radio can key cw or play voice memories';
 	@override String get keyerNeedsOperation => 'open an operation to use the cw keyer';
-	@override String get keyerExperimentOff => 'cw keying is off — turn it on with exp keyer';
 	@override String get esmExperimentOff => 'enter sends messages is off — turn it on with exp esm';
 	@override String cwSending({required Object text}) => 'sending cw: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'cw message f${n}: ${error}';
@@ -951,6 +950,8 @@ class _Translations$commands$qrp extends Translations$commands$en {
 	@override String get voiceMessageNotRendered => 'the extensions are not ready';
 	@override String so2rRadioCannotKey({required Object radio}) => 'nothing sent: radio ${radio} can\'t key that';
 	@override String opStyleUnknown({required Object opStyle}) => 'not an operating style: ${opStyle}';
+	@override String get opStyleTrackingOff => 'run/s&p tracking is off — turn it on in settings › logging';
+	@override String get opStyleNeedsOperation => 'open an operation to set run or s&p';
 	@override String get so2rNoRadioB => 'nothing sent: pick a radio b in station configuration to key from this set';
 	@override String get swapExperimentOff => 'so2r is off — turn it on with exp so2r';
 	@override String get swapNeedsOperation => 'open an operation to swap radios';
@@ -2454,6 +2455,8 @@ class _Translations$settings$logging$qrp extends Translations$settings$logging$e
 	@override late final _Translations$settings$logging$showBearing$qrp showBearing = _Translations$settings$logging$showBearing$qrp._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$qrp showReverseBearing = _Translations$settings$logging$showReverseBearing$qrp._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$qrp switchSentRcvd = _Translations$settings$logging$switchSentRcvd$qrp._(_root);
+	@override late final _Translations$settings$logging$trackOpStyle$qrp trackOpStyle = _Translations$settings$logging$trackOpStyle$qrp._(_root);
+	@override late final _Translations$settings$logging$trackOpStyleDescription$qrp trackOpStyleDescription = _Translations$settings$logging$trackOpStyleDescription$qrp._(_root);
 	@override late final _Translations$settings$logging$alwaysShowStyle$qrp alwaysShowStyle = _Translations$settings$logging$alwaysShowStyle$qrp._(_root);
 	@override late final _Translations$settings$logging$autoAdvanceFields$qrp autoAdvanceFields = _Translations$settings$logging$autoAdvanceFields$qrp._(_root);
 	@override late final _Translations$settings$logging$defaultReport$qrp defaultReport = _Translations$settings$logging$defaultReport$qrp._(_root);
@@ -3256,6 +3259,7 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} is on another device';
 	@override String peerRadioElsewhereMessage({required Object device}) => 'this radio is connected to ${device}. its connection and settings are configured on that device.';
 	@override String get antennaInUse => 'antenna in use';
+	@override String get loggedKey => 'key in use';
 	@override String get chooseLocationSource => 'choose where the location comes from';
 	@override String locationFromThis({required Object name}) => 'take the location from ${name}';
 	@override late final _Translations$settings$station$systemLocation$qrp systemLocation = _Translations$settings$station$systemLocation$qrp._(_root);
@@ -4353,6 +4357,31 @@ class _Translations$settings$logging$switchSentRcvd$qrp extends Translations$set
 	@override String get rcvdFirst => 'rcvd first, sent second';
 }
 
+// Path: settings.logging.trackOpStyle
+class _Translations$settings$logging$trackOpStyle$qrp extends Translations$settings$logging$trackOpStyle$en {
+	_Translations$settings$logging$trackOpStyle$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'track run / s&p operating styles';
+	@override String get never => 'never';
+	@override String get keyer => 'when using a keyer';
+	@override String get always => 'always';
+}
+
+// Path: settings.logging.trackOpStyleDescription
+class _Translations$settings$logging$trackOpStyleDescription$qrp extends Translations$settings$logging$trackOpStyleDescription$en {
+	_Translations$settings$logging$trackOpStyleDescription$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get never => 'not tracking whether you run or search and pounce';
+	@override String get keyer => 'tracking once you key a message, or pick run or s&p yourself, in an operation';
+	@override String get always => 'tracking whether you run or search and pounce, and recording it on each contact';
+}
+
 // Path: settings.logging.alwaysShowStyle
 class _Translations$settings$logging$alwaysShowStyle$qrp extends Translations$settings$logging$alwaysShowStyle$en {
 	_Translations$settings$logging$alwaysShowStyle$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
@@ -5087,7 +5116,6 @@ class _Translations$settings$station$midi$qrp extends Translations$settings$stat
 	@override String get sectionRadioB => 'radio b';
 	@override String get radioBNeedsSo2r => 'radio b’s controls act only while so2r is on.';
 	@override String get sectionKeying => 'messages';
-	@override String get keyingNeedsExperiment => 'keyer speed, ptt and messages act only while the keying experiment is on.';
 	@override String get learn => 'learn';
 	@override String get learning => 'move a control…';
 	@override String get clear => 'clear';
@@ -5232,7 +5260,6 @@ class _Translations$settings$station$midi$ignored$qrp extends Translations$setti
 	@override String get noRadio => 'no radio';
 	@override String get so2rOff => 'so2r is off';
 	@override String get dataMode => 'not tuned in a digital mode';
-	@override String get keyingOff => 'the keying experiment is off';
 	@override String get noPtt => 'this radio has no ptt the app can key';
 	@override String get notPhone => 'ptt keys only in phone modes';
 	@override String get keyedElsewhere => 'already keyed from elsewhere — left alone';
@@ -6546,6 +6573,13 @@ extension on TranslationsQrp {
 			'settings.logging.switchSentRcvd.title' => 'switch signal report order',
 			'settings.logging.switchSentRcvd.sentFirst' => 'sent first, rcvd second',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'rcvd first, sent second',
+			'settings.logging.trackOpStyle.title' => 'track run / s&p operating styles',
+			'settings.logging.trackOpStyle.never' => 'never',
+			'settings.logging.trackOpStyle.keyer' => 'when using a keyer',
+			'settings.logging.trackOpStyle.always' => 'always',
+			'settings.logging.trackOpStyleDescription.never' => 'not tracking whether you run or search and pounce',
+			'settings.logging.trackOpStyleDescription.keyer' => 'tracking once you key a message, or pick run or s&p yourself, in an operation',
+			'settings.logging.trackOpStyleDescription.always' => 'tracking whether you run or search and pounce, and recording it on each contact',
 			'settings.logging.alwaysShowStyle.title' => 'always show run/s&p indicator',
 			'settings.logging.alwaysShowStyle.descriptionOn' => 'show when running or s&p',
 			'settings.logging.alwaysShowStyle.descriptionOff' => 'only show when running',
@@ -6782,6 +6816,8 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.fileLabel' => 'ham2k voice message set',
 			'settings.radio.voiceMessages.fileStem' => 'voice messages',
 			'settings.radio.voiceMessages.output' => 'send audio to',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.outputFor' => ({required Object radio}) => 'send audio for radio ${radio} to',
 			'settings.radio.voiceMessages.input' => 'record from',
 			'settings.radio.voiceMessages.outputRadio' => 'send to radio over network',
@@ -6789,8 +6825,6 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.pickDevice' => 'choose a sound device',
 			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (not connected)',
 			'settings.radio.voiceMessages.lead' => 'key-up delay',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.tail' => 'unkey delay',
 			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
 			'settings.radio.voiceMessages.listenButton' => 'listen',
@@ -7296,6 +7330,8 @@ extension on TranslationsQrp {
 			'settings.station.winkeyerPttDescription' => 'key the ptt line on the same jack, for an amplifier or a radio that needs it. leave off for a radio keyed on its key jack.',
 			'settings.station.winkeyerNoAnswer' => 'no winkeyer responded on this port',
 			'settings.station.winkeyerStoppedAnswering' => 'the winkeyer stopped responding while sending; the message was dropped',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.icomControlPort' => 'control port (udp)',
 			'settings.station.icomControlPortDescription' => 'the radio\'s control port (udp) — 50001 unless changed in its network settings, or forwarded to another.',
 			'settings.station.icomSerialPort' => 'serial port (udp)',
@@ -7303,8 +7339,6 @@ extension on TranslationsQrp {
 			'settings.station.icomPortsDiffer' => 'the control and serial ports must differ',
 			'settings.station.radioUser' => 'radio username',
 			'settings.station.radioPass' => 'radio password',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.radioLoginDescription' => 'the radio\'s network → remote login, not your wifi password.',
 			'settings.station.radioUserRequired' => 'the radio\'s remote-control username is required',
 			'settings.station.connectFailedBridgeClosed' => 'the bridge hung up at once. another program at the station may have the radio\'s port: a logger, wsjt-x or rigctld.',
@@ -7500,6 +7534,7 @@ extension on TranslationsQrp {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'this radio is connected to ${device}. its connection and settings are configured on that device.',
 			'settings.station.antennaInUse' => 'antenna in use',
+			'settings.station.loggedKey' => 'key in use',
 			'settings.station.chooseLocationSource' => 'choose where the location comes from',
 			'settings.station.locationFromThis' => ({required Object name}) => 'take the location from ${name}',
 			'settings.station.systemLocation.windows' => 'windows location services',
@@ -7601,7 +7636,6 @@ extension on TranslationsQrp {
 			'settings.station.midi.sectionRadioB' => 'radio b',
 			'settings.station.midi.radioBNeedsSo2r' => 'radio b’s controls act only while so2r is on.',
 			'settings.station.midi.sectionKeying' => 'messages',
-			'settings.station.midi.keyingNeedsExperiment' => 'keyer speed, ptt and messages act only while the keying experiment is on.',
 			'settings.station.midi.learn' => 'learn',
 			'settings.station.midi.learning' => 'move a control…',
 			'settings.station.midi.clear' => 'clear',
@@ -7642,7 +7676,6 @@ extension on TranslationsQrp {
 			'settings.station.midi.ignored.noRadio' => 'no radio',
 			'settings.station.midi.ignored.so2rOff' => 'so2r is off',
 			'settings.station.midi.ignored.dataMode' => 'not tuned in a digital mode',
-			'settings.station.midi.ignored.keyingOff' => 'the keying experiment is off',
 			'settings.station.midi.ignored.noPtt' => 'this radio has no ptt the app can key',
 			'settings.station.midi.ignored.notPhone' => 'ptt keys only in phone modes',
 			'settings.station.midi.ignored.keyedElsewhere' => 'already keyed from elsewhere — left alone',
@@ -7811,14 +7844,14 @@ extension on TranslationsQrp {
 			'settings.station.everywareFollowBandDescription' => 'picks the position covering the main radio\'s frequency whenever it changes. others sharing the station see it switch too.',
 			'settings.station.everywareFollowBearing' => 'point toward the station being worked',
 			'settings.station.everywareFollowBearingDescription' => 'picks the direction nearest the station in the call field whenever it changes. others sharing the station see it switch too.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.everywareTroubleshooting' => 'this connects to a **gh everyware server**, the program that shares a station\'s green heron rotators and switches over the network.\n\n- **port** is 17220 unless the server was set up on another one. from outside the station\'s network, the router must forward that port to the server\'s computer.\n- **user and password** only when the server has user authentication turned on. leave both blank otherwise.\n- **the server takes a limited number of clients**, four unless set otherwise. when it is full, close another client and connect again.\n- once connected, tick the rotators and switches you want under **devices**. each becomes equipment of its own, in this list and in every panel.\n- **other operators may share the station.** turning a rotator or switching an antenna here moves it for everyone.',
 			'settings.station.pstRotatorTroubleshooting' => 'pstrotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **turn on udp control** in pstrotator\'s setup menu.\n- **match the port**: communication → udp control port, 12000 unless changed. pstrotator answers on the next port up (12001), which has to be free on this device.\n- **connect pstrotator to its controller.** until it is, it answers nothing over udp.\n- **allow it through the firewall** on the pc running pstrotator, and on this device, which listens for the answers.\n- **on a mac, iphone or ipad**, ham2k logger needs local network access (settings → privacy & security → local network).',
 			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'current state: ${position}',
 			'settings.station.rotatorDisconnected' => 'disconnected',
 			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° azimuth',
 			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '${degrees}° az',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° elevation',
 			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° el',
 			'settings.station.rotatorNoReading' => 'waiting for the controller to report its position…',
@@ -7999,7 +8032,6 @@ extension on TranslationsQrp {
 			'commands.noCwKeyer' => 'no connected radio can key cw',
 			'commands.noKeyer' => 'no connected radio can key cw or play voice memories',
 			'commands.keyerNeedsOperation' => 'open an operation to use the cw keyer',
-			'commands.keyerExperimentOff' => 'cw keying is off — turn it on with exp keyer',
 			'commands.esmExperimentOff' => 'enter sends messages is off — turn it on with exp esm',
 			'commands.cwSending' => ({required Object text}) => 'sending cw: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'cw message f${n}: ${error}',
@@ -8008,6 +8040,8 @@ extension on TranslationsQrp {
 			'commands.voiceMessageNotRendered' => 'the extensions are not ready',
 			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'nothing sent: radio ${radio} can\'t key that',
 			'commands.opStyleUnknown' => ({required Object opStyle}) => 'not an operating style: ${opStyle}',
+			'commands.opStyleTrackingOff' => 'run/s&p tracking is off — turn it on in settings › logging',
+			'commands.opStyleNeedsOperation' => 'open an operation to set run or s&p',
 			'commands.so2rNoRadioB' => 'nothing sent: pick a radio b in station configuration to key from this set',
 			'commands.swapExperimentOff' => 'so2r is off — turn it on with exp so2r',
 			'commands.swapNeedsOperation' => 'open an operation to swap radios',
@@ -8324,6 +8358,8 @@ extension on TranslationsQrp {
 			'confirmDevice.code' => 'code',
 			'confirmDevice.lookUp' => 'look up',
 			'confirmDevice.codeNotFound' => 'no request matches that code. codes expire after 10 minutes — ask the other device for a fresh one.',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.linkExpired' => 'that link has expired. ask the other device to show a new qr code.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'link ${device} to this account?',
 			'confirmDevice.unnamedDevice' => 'an unnamed device',
@@ -8331,8 +8367,6 @@ extension on TranslationsQrp {
 			'confirmDevice.needsSyncTitle' => 'this device does not sync yet',
 			'confirmDevice.needsSyncText' => 'turn on ham2k log filer sync and link this device to an account before it can admit another one.',
 			'confirmDevice.malformedRequest' => 'the sync server sent a request this app could not read. ask the other device to try again.',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.linkIt' => 'link device',
 			'switchAccounts.noAccountDetails' => 'no account details yet',
 			'switchAccounts.currentAccount' => 'current account',

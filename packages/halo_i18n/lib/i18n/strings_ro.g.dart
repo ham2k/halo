@@ -864,7 +864,6 @@ class _Translations$commands$ro extends Translations$commands$en {
 	@override String get noCwKeyer => 'Nicio stație radio conectată nu poate manipula CW';
 	@override String get noKeyer => 'Nicio stație radio conectată nu poate manipula CW sau reda memorii vocale';
 	@override String get keyerNeedsOperation => 'Deschideți o operațiune pentru a folosi keyer-ul CW';
-	@override String get keyerExperimentOff => 'Manipularea CW este oprită — activați-o cu EXP KEYER';
 	@override String get esmExperimentOff => '„Enter trimite mesaje” este oprit — activați-l cu EXP ESM';
 	@override String cwSending({required Object text}) => 'Se transmite CW: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'Mesaj CW F${n}: ${error}';
@@ -6720,7 +6719,6 @@ extension on TranslationsRo {
 			'commands.noCwKeyer' => 'Nicio stație radio conectată nu poate manipula CW',
 			'commands.noKeyer' => 'Nicio stație radio conectată nu poate manipula CW sau reda memorii vocale',
 			'commands.keyerNeedsOperation' => 'Deschideți o operațiune pentru a folosi keyer-ul CW',
-			'commands.keyerExperimentOff' => 'Manipularea CW este oprită — activați-o cu EXP KEYER',
 			'commands.esmExperimentOff' => '„Enter trimite mesaje” este oprit — activați-l cu EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'Se transmite CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'Mesaj CW F${n}: ${error}',
@@ -7009,9 +7007,9 @@ extension on TranslationsRo {
 			'adifImport.stationCallJoin' => ' și ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} nu are dată și nu poate fi importat', other: '${formatted} nu au dată și nu pot fi importate', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Acest fișier înregistrează o activare a ${refs}.',
+			'adifImport.addActivation' => 'Adaugă la această operațiune',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.addActivation' => 'Adaugă la această operațiune',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Doar ${written} din ${planned} au putut fi aplicate — jurnalul s-a schimbat cât timp decideați.',
 			'adifImport.busy' => 'Un import rulează deja. Așteptați să se termine înainte de a porni altul.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} are mai mult de ${limit} QSO-uri, maximul pe care o operațiune îl poate importa deodată.',

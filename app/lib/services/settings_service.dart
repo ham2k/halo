@@ -47,6 +47,11 @@ ThemeMode toggledThemeMode(ThemeMode current, Brightness platformBrightness) {
 /// all, a press to key and another to unkey, or keyed while it is held down.
 enum PttKeyMode { off, toggle, hold }
 
+/// When a set's Run / S&P is tracked ([SettingsService.opStyleTracking]):
+/// never, once the operator keys a message or picks a style by hand in the
+/// operation in front, or always (logging-fields.md § Operating style).
+enum OpStyleTracking { never, keyer, always }
+
 class SettingsService extends ChangeNotifier with ExtensionStoreSettings, EngineLoadSettings, NetworkSettings implements SyncSettings {
   static const _themeModeKey = 'themeMode';
   static const _profilesKey = 'profiles';
@@ -1326,6 +1331,14 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   /// Stored under its own key; an operator who never set it gets what they
   /// chose for `jumpAfterRST`, the reports-only setting it stands in for.
   bool get autoAdvanceFields => _loggingBool('autoAdvanceFields', _loggingBool('jumpAfterRST', false));
+
+  /// When the sets' Run / S&P is tracked at all — logging-fields.md
+  /// § Operating style. Untracked, nothing moves it, no contact records it,
+  /// and no pill or extension sees it.
+  OpStyleTracking get opStyleTracking {
+    final value = settingValue(loggingGroup, 'trackOpStyle');
+    return OpStyleTracking.values.firstWhere((e) => e.name == value, orElse: () => OpStyleTracking.keyer);
+  }
 
   /// The FYI area's style pill for S&P as well as Run — logging-fields.md
   /// § Operating style. Off, only Run shows.

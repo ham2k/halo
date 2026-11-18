@@ -13,7 +13,6 @@ import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/operating_style.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/panel_scene/cat_spectrum_source.dart';
 
 class _Transceiver extends Fake implements EquipmentType {
@@ -99,16 +98,9 @@ class _Station extends Fake implements CatService {
   EquipmentState stateFor(String uuid) => states[uuid] ?? const EquipmentState();
 }
 
-class _Settings extends Fake implements SettingsService {
-  final bool keyer;
-  _Settings({this.keyer = true});
-  @override
-  bool experimentEnabled(String key) => key == 'keyer' && keyer;
-}
-
 void main() {
   test('a live radio gives its whole dial', () {
-    final source = CatSpectrumSource(_Cat()..ptt = true, settings: _Settings());
+    final source = CatSpectrumSource(_Cat()..ptt = true);
     expect(source.readings('a'), {
       'secondsSinceTransmit': 1e9,
       'frequencyHz': 14074500,
@@ -126,7 +118,7 @@ void main() {
   // The trap: a scene's readout drawn from the report alone, jumping back to the old frequency for
   // the round trip of every tune its own knob makes.
   test("the dial is where the app has the radio, the radio's own report beside it", () {
-    final cat = _Cat()..shownKHz = 14080, source = CatSpectrumSource(cat, settings: _Settings());
+    final cat = _Cat()..shownKHz = 14080, source = CatSpectrumSource(cat);
     expect(source.readings('a'), containsPair('frequencyHz', 14080000));
     expect(source.readings('a'), containsPair('reportedFrequencyHz', 14074500));
     expect(source.vfoHz('a'), 14080000);
@@ -137,20 +129,16 @@ void main() {
 
   test('PTT is given only where `readRadio` gives keying', () {
     // A scene that showed `radio.ptt` where the render beside it reads no `keying` would tell the
-    // operator about a latch the app does not offer them: on a host without keying, or on a radio
-    // it does not key with.
-    expect(CatSpectrumSource(_Cat()..ptt = true, settings: _Settings(keyer: false)).readings('a'), isNot(contains('ptt')));
-    expect(CatSpectrumSource(_Cat()..ptt = true).readings('a'), isNot(contains('ptt')), reason: 'no settings reads as off');
+    // operator about a latch the app does not offer them: on a radio it does not key with.
     expect(
       CatSpectrumSource(
         _Cat()
           ..ptt = true
           ..logging = false,
-        settings: _Settings(),
       ).readings('a'),
       isNot(contains('ptt')),
     );
-    expect(CatSpectrumSource(_Cat()..ptt = true, settings: _Settings()).readings('a')['ptt'], 1);
+    expect(CatSpectrumSource(_Cat()..ptt = true).readings('a')['ptt'], 1);
   });
 
   test('a radio that drops keeps its frequency and mode, and nothing it would have to be asked now', () {

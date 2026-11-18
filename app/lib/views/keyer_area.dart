@@ -541,7 +541,7 @@ class _MessageButtonsState extends State<_MessageButtons> {
     final settings = widget.services.settings;
     return [
       for (var n = 1; n <= SettingsService.cwMessageCount; n++) ...[settings.cwMessage(n), settings.cwMessageLabel(n)],
-      widget.services.cat.styleOf(widget.keyer.radio).value,
+      widget.services.cat.trackedStyleOf(widget.keyer.radio)?.value ?? '',
     ].join('\u0000');
   }
 
@@ -630,7 +630,7 @@ class _MessageButtonsState extends State<_MessageButtons> {
         operation: ctx.operation == null ? null : operationHookArgs(ctx.operation!),
         qso: ctx.qso,
         qsoCount: ctx.qsoCount,
-        keyer: {'messages': settings.activeCwMessageSet.messages, 'opStyle': widget.services.cat.styleOf(widget.keyer.radio).value},
+        keyer: {'messages': settings.activeCwMessageSet.messages, 'opStyle': ?widget.services.cat.trackedStyleOf(widget.keyer.radio)?.value},
       );
     } catch (e, st) {
       // A hook timeout or a dead runtime: the labels show as written until
@@ -971,10 +971,10 @@ class _EnterSendsPill extends StatelessWidget {
   void _step() {
     final esm = cat.enterSends.value;
     if (!esm.on) {
-      cat.setRunning(radio, true);
+      cat.pickRunning(radio, true);
       cat.setEnterSends(on: true);
     } else if (cat.isRunning(radio)) {
-      cat.setRunning(radio, false);
+      cat.pickRunning(radio, false);
     } else {
       cat.setEnterSends(on: false);
     }

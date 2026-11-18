@@ -16,13 +16,34 @@ import '../support/halo_test_support.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  // The trap: Run stored from an earlier session, tracking then started by
+  // the first message keyed in a new operation — an answer to a CQ — would
+  // record every contact after it as Run.
+  test('keying a message starts tracking in S&P, and message 1 makes it Run', () async {
+    final services = (await makeHaLoServices()).services;
+    final cat = services.cat;
+    final node = await cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    await cat.connect(node.uuid);
+    addTearDown(() => cat.disconnect(node.uuid));
+    cat.setRunning('A', true);
+    services.openOperationContext('op');
+    expect(cat.tracksStyle, isFalse, reason: 'sanity: nothing keyed here yet');
+
+    expect(cat.keyer('A').sendCw('5NN TU'), isTrue);
+    expect((cat.tracksStyle, cat.styleOf('A')), (true, OperatingStyle.normal));
+    cat.stopCw();
+    expect(cat.keyer('A').sendCw('CQ TEST', hasMessageOne: true), isTrue);
+    expect(cat.styleOf('A'), OperatingStyle.run);
+    cat.stopCw();
+  });
+
   // The trap: message 1 queued behind another while the rig is on the air
   // takes the transmit frequency as the run frequency, and the receive
   // reading after unkey reads as leaving it — the CQ just sent is S&P.
   for (final from in OperatingStyle.values) {
     test('working split, message 1 on the air runs where the rig receives, and the over flips nothing — from ${from.value}', () async {
       final services = (await makeHaLoServices()).services;
-      await services.settings.setExperimentEnabled('keyer', true);
+      services.openOperationContext('op');
       final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
       await services.cat.connect(node.uuid);
       addTearDown(() => services.cat.disconnect(node.uuid));

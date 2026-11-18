@@ -85,8 +85,7 @@ const _warningDark = Color(0xFFFFC107);
 
 /// One set's FYI area. See the file comment and [FyiService].
 ///
-/// [keyer] hosts the radio's keyer line as its operational item (the Keying
-/// experiment); [phone], [digital] and [suppressed] are the keyer line's —
+/// [keyer] hosts the radio's keyer line as its operational item; [phone], [digital] and [suppressed] are the keyer line's —
 /// see [KeyerLineModel]. [suggestions] are the set's draft suggestions,
 /// another operational item, hidden by [suppressed] too.
 class FyiArea extends StatefulWidget {

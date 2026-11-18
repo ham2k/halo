@@ -23,7 +23,6 @@ void main() {
   setUp(() async {
     final harness = await makeHaLoServices();
     services = harness.services;
-    await harness.settings.setExperimentEnabled('keyer', true);
     services.swrWatch.start();
     addTearDown(services.swrWatch.dispose);
   });

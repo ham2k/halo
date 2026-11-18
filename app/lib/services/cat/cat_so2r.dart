@@ -61,10 +61,14 @@ mixin _So2r on _KeyingSurface {
     }
     _styles.addListener(_noteStyles);
     _radio?.addListener(_onStyleVfo);
+    _tracked = tracksStyle;
+    _trackingSetting = _settings.opStyleTracking;
+    _settings.addListener(_onTrackingSetting);
   }
 
   void _stopSo2r() {
     _settings.removeListener(_onSo2rSetting);
+    _settings.removeListener(_onTrackingSetting);
     _onAirChanges.removeListener(_pump);
     removeListener(_pumpSoon);
     _setPttWaiting(null);
@@ -192,14 +196,134 @@ mixin _So2r on _KeyingSurface {
   /// (docs/design/logging-fields.md § Operating style).
   OperatingStyle styleOf(String radio) => isRunning(radio) ? OperatingStyle.run : OperatingStyle.normal;
 
-  void setStyle(String radio, OperatingStyle style) => setRunning(radio, style == OperatingStyle.run);
+  /// The operator picking [radio]'s style by hand: RUN / SNP, ⌥U, the FYI
+  /// area's pill. False, with nothing changed, while the styles are never
+  /// tracked: a style nothing shows or records is no answer to the operator.
+  ///
+  /// Under [OpStyleTracking.keyer] with no operation in front it is refused
+  /// too: nothing would track it, and the operation that starts tracking
+  /// next starts in S&P.
+  bool setStyle(String radio, OperatingStyle style) {
+    final tracking = _settings.opStyleTracking;
+    if (tracking == OpStyleTracking.never || (tracking == OpStyleTracking.keyer && _frontOperation == null)) return false;
+    pickRunning(radio, style == OperatingStyle.run);
+    return true;
+  }
 
-  /// Run ↔ S&P: ⌥U, and a tap on the FYI area's pill.
-  void toggleStyle(String radio) => setStyle(radio, styleOf(radio) == OperatingStyle.run ? OperatingStyle.normal : OperatingStyle.run);
+  /// Run ↔ S&P: ⌥U, and a tap on the FYI area's pill. As [setStyle].
+  bool toggleStyle(String radio) => setStyle(radio, styleOf(radio) == OperatingStyle.run ? OperatingStyle.normal : OperatingStyle.run);
+
+  /// The side of the pileup picked by hand — the ESM pill, SO2R's Run / S&P
+  /// line — which starts the tracking under [OpStyleTracking.keyer].
+  /// [setRunning] alone does not: SWAP and the tracker move styles too, and
+  /// neither is the operator choosing one. Never refused: under
+  /// [OpStyleTracking.never] it is still the side ESM plays.
+  void pickRunning(String radio, bool running) {
+    _engageStyle();
+    setRunning(radio, running);
+  }
+
+  /// [radio]'s operating style where it is tracked ([tracksStyle]), or null:
+  /// what a new contact records and an extension reads.
+  OperatingStyle? trackedStyleOf(String radio) => tracksStyle ? styleOf(radio) : null;
+
+  /// The operation in front, null on Home and in Settings: whose use of the
+  /// keyer [OpStyleTracking.keyer] asks after, and whether a peer may key
+  /// this station (cat_peer_offers.dart). Set by the services' operation
+  /// stack.
+  String? _frontOperation;
+
+  /// Whether the operation in front is on screen, not merely open under
+  /// Settings or a dialog: what a peer keying this station needs, since only
+  /// the operation's own view stops a message (cat_peer_offers.dart). The
+  /// services answer it from the route; on its own, an operation in front
+  /// counts.
+  late bool Function() operationOnScreen = () => _frontOperation != null;
+
+  set frontOperation(String? uuid) {
+    if (uuid == _frontOperation) return;
+    _frontOperation = uuid;
+    // Set from an OperationView's initState and dispose: told at once, the
+    // listeners would rebuild widgets during a build, or while the tree is
+    // locked.
+    scheduleMicrotask(() {
+      if (_disposed) return;
+      _noteTracking();
+      // What this station offers a peer to key follows it: told through the
+      // keying's own notifier, not the service's, which every equipment row
+      // and logging panel rebuilds on.
+      _keying.onKeyingChanged();
+    });
+  }
+
+  /// The operations, this session, where the operator keyed a message or
+  /// picked a style by hand. A self-spot is neither: an activator who only
+  /// spots is not tracked under [OpStyleTracking.keyer].
+  final _styleEngaged = <String>{};
+
+  /// Whether the sets' styles are tracked now, per
+  /// [SettingsService.opStyleTracking] — logging-fields.md § Operating
+  /// style. Untracked, [operatingStyle] moves nothing, a new contact records
+  /// no `opStyle`, and no pill or extension sees one.
+  bool get tracksStyle => switch (_settings.opStyleTracking) {
+    OpStyleTracking.never => false,
+    OpStyleTracking.always => true,
+    OpStyleTracking.keyer => _styleEngaged.contains(_frontOperation),
+  };
+
+  /// The operator keyed, or set a style by hand: under
+  /// [OpStyleTracking.keyer], the operation in front is tracked from here on.
+  @override
+  void _engageStyle() {
+    final operation = _frontOperation;
+    if (operation == null || _settings.opStyleTracking != OpStyleTracking.keyer) return;
+    if (_styleEngaged.add(operation)) _noteTracking(fresh: true);
+  }
+
+  /// The tracking setting as last seen: only its own change starts the
+  /// tracking afresh. Any other setting saved while an operation comes back
+  /// to the front would otherwise reset that operation's Run.
+  OpStyleTracking? _trackingSetting;
+
+  void _onTrackingSetting() {
+    final setting = _settings.opStyleTracking;
+    final changed = setting != _trackingSetting;
+    _trackingSetting = setting;
+    _noteTracking(fresh: changed);
+  }
+
+  bool _tracked = false;
+
+  /// [tracksStyle] changing reaches [styleChanges]: what a contact records
+  /// and an extension reads changed with it. [fresh] is tracking started by
+  /// the operator — keying in an operation, or the setting — rather than an
+  /// operation already tracked coming back to the front, which keeps its
+  /// style.
+  void _noteTracking({bool fresh = false}) {
+    final tracked = tracksStyle;
+    if (tracked == _tracked) return;
+    _tracked = tracked;
+    if (tracked && fresh) _startTracking();
+    _styleChanges.notify();
+  }
+
+  /// Tracking starting afresh starts in S&P, with no run behind it: the Run
+  /// stored from an earlier session or operation is no run of this one, and
+  /// would be recorded on every contact until a QSY. Message 1 keyed right
+  /// after makes it Run again. ESM on keeps its side: its pill shows the
+  /// operator that style.
+  void _startTracking() {
+    final esmShown = enterSends.value.on && _settings.experimentEnabled('esm') /* stored key, see experiments.yaml */;
+    for (final radio in styledRadios) {
+      operatingStyle.forget(radio, keepHeard: true);
+      if (!esmShown) setRunning(radio, false);
+    }
+  }
 
   /// Moves each set's style with what the operator does — message 1, a
   /// self-spot, a QSY, a spot picked, a return to the run frequency.
   late final operatingStyle = OperatingStyleTracker(
+    tracking: () => tracksStyle,
     isRunning: isRunning,
     setRunning: setRunning,
     vfoOf: (radio) => _radio?.vfo(radio == 'B' ? 'vfoB' : 'vfoA') ?? const Vfo(),

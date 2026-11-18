@@ -44,7 +44,6 @@ void main() {
     settings = harness.settings;
     services = harness.services;
     cat = services.cat;
-    await settings.setExperimentEnabled('keyer', true);
     requests = [];
     cat.sendPeerKeyRequest = requests.add;
   });
@@ -555,6 +554,10 @@ void main() {
   });
 
   group('as the offerer', () {
+    // A peer keys this station only while an operation is on screen on it.
+    late OperationCommandContext operation;
+    setUp(() => operation = services.openOperationContext('op'));
+
     test('what it offers says whether it will key, and what memories it has', () async {
       final node = await connectPlaceholder();
 
@@ -562,6 +565,36 @@ void main() {
       expect(offer.id, node.uuid);
       expect(offer.keysCw, isTrue, reason: 'the placeholder radio is its own key by default');
       expect(offer.voiceMemories, greaterThan(0));
+    });
+
+    test('a station with no operation open offers nothing keyable, and keys nothing', () async {
+      // On Home no operation view is up: no Escape, no keyer line, nothing
+      // here that could stop a message a peer started.
+      final node = await connectPlaceholder();
+      services.closeOperationContext(operation);
+      await pumpEventQueue();
+
+      final offer = cat.offeredRadios.single;
+      expect((offer.keysCw, offer.voiceMemories, offer.recordsVoice), (false, 0, false));
+      expect(cat.keyStatusForOfferedRadio(node.uuid), isNull);
+
+      // And a controller holding the older offer is refused: the operation
+      // can close under an established session.
+      cat.handleKeyRequest(PeerKeyRequestPayload(radioId: node.uuid, op: PeerKeyOp.cw, text: 'CQ'));
+      expect(cat.cwProgress.value, isNull);
+    });
+
+    test('with Settings over the operation, a request keys nothing', () async {
+      // The trap: the operation is still open under Settings, but Escape
+      // there stops nothing — only the operation's own view could.
+      final node = await connectPlaceholder();
+      operation.isVisible = () => false;
+      cat.handleKeyRequest(PeerKeyRequestPayload(radioId: node.uuid, op: PeerKeyOp.cw, text: 'CQ'));
+      expect(cat.cwProgress.value, isNull);
+      operation.isVisible = () => true;
+      cat.handleKeyRequest(PeerKeyRequestPayload(radioId: node.uuid, op: PeerKeyOp.cw, text: 'CQ'));
+      expect(cat.cwProgress.value, isNotNull, reason: 'sanity: on screen, it keys');
+      cat.stopCw();
     });
 
     test('a station keying through a PEER offers its own radios as unkeyable', () async {
@@ -659,23 +692,6 @@ void main() {
 
       expect(cat.voiceActivity.value?.memory, 1, reason: 'the peer\'s CQ is theirs to stop');
       cat.stopVoice();
-    });
-
-    test('a station with keying switched off offers nothing keyable, and keys nothing', () async {
-      // Its operator has no keyer area and no Escape handler, so nothing here
-      // could stop a message a peer started.
-      final node = await connectPlaceholder();
-      await settings.setExperimentEnabled('keyer', false);
-
-      final offer = cat.offeredRadios.single;
-      expect(offer.keysCw, isFalse);
-      expect(offer.voiceMemories, 0);
-      expect(offer.recordsVoice, isFalse);
-
-      // And a controller holding the older offer is refused: the experiment
-      // can go off under an established session.
-      cat.handleKeyRequest(PeerKeyRequestPayload(radioId: node.uuid, op: PeerKeyOp.cw, text: 'CQ'));
-      expect(cat.cwProgress.value, isNull);
     });
 
     test('what it publishes is its OWN keying, never what it is following', () async {

@@ -133,6 +133,8 @@ message; only a message being sent is part of the chain.
 `normal` (search and pounce, labeled S&P), in CW and phone messages and
 the labels alike, so one message can serve both:
 `{% if keyer.opStyle == 'run' %}CQ{% else %}{{ op.call }}{% endif %}`.
+It is absent while the operator does not track styles, so a message that
+tests for `run` falls to its `else`.
 
 ## Timestamps
 

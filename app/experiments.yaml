@@ -18,27 +18,18 @@
 # experiment and a setting is worth more confusion than it saves typing.
 
 experiments:
-  # Keying through a CAT radio: F1-F8 messages — CW text, or the radio's
-  # own voice memories in a Phone mode — the keyer area, WPM and KEYER
-  # (docs/design/cat.md § CW keying, § Voice keying). Gated on its own so
-  # the keying surfaces can be tried — or left off — separately from the rest
-  # of CAT.
-  - key: keyer
-    name: Keying
-    description: Key CW messages, or play the radio's voice memories, on F1-F8 through a CAT-controlled radio.
-    aliases: [cw, macros, voice]
   # Enter Sends Messages (docs/design/logging-fields.md § Enter Sends
   # Messages): Enter keys the exchange as well as logging it, N1MM-style,
-  # with the keyer area's ESM pill and ESM/RUN/SP. On top of Keying, and
-  # gated on its own because it changes what Enter does — the one key every
+  # with the keyer area's ESM pill and ESM/RUN/SP. Gated because it changes
+  # what Enter does — the one key every
   # operator relies on to log.
   - key: esm
     name: Enter Sends Messages
     description: Enter keys the exchange's CW messages or voice memories as it moves through a contact.
   # Voiced words (docs/design/cat.md § Voiced words): a phone message played
   # from this computer can be a template, said from the operator's own
-  # recordings of each letter, digit and phrase. On top of Keying, with the
-  # computer as Phone Keying's source; private while the recordings and the
+  # recordings of each letter, digit and phrase. With the computer as Phone
+  # Keying's source; private while the recordings and the
   # way they are joined are tried out.
   - key: words
     name: Voiced Words

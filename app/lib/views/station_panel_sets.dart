@@ -232,9 +232,9 @@ extension _SetRows on StationPanel {
     );
   }
 
-  /// Set B's own antenna or key, from [nodes]: the picks are per radio, and
-  /// a contact logged on Radio B, or a message keyed from its set, uses
-  /// these.
+  /// Set B's own antenna, logged key or CW keying, from [nodes]: the picks
+  /// are per radio, and a contact logged on Radio B, or a message keyed from
+  /// its set, uses these.
   Widget _radio2PickRow(BuildContext context, String category, List<EquipmentNode> nodes, {required EdgeInsets inset}) {
     final st = context.t.settings.station;
     final radio2 = _cat.radio2!;
@@ -243,7 +243,11 @@ extension _SetRows on StationPanel {
       padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
       child: DesignationDropdown(
         key: ValueKey('radio2:$category:${_cat.designatedFor(category, radio: radio2)}'),
-        label: isKey ? st.keyInUse : st.antennaInUse,
+        label: switch (category) {
+          kCategoryKey => st.keyInUse,
+          kDesignationLoggedKey => st.loggedKey,
+          _ => st.antennaInUse,
+        },
         nodes: isKey
             // Never set A's key: one key keys one radio's messages.
             ? [

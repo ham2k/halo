@@ -2661,7 +2661,6 @@
     "noCwKeyer": "Ingen tilkoblet radio kan sende CW",
     "noKeyer": "Ingen tilkoblet radio kan sende CW eller spille av taleminner",
     "keyerNeedsOperation": "Åpne en operasjon for å bruke CW-keyeren",
-    "keyerExperimentOff": "CW-nøkling er av — slå det på med EXP KEYER",
     "esmExperimentOff": "Enter sender meldinger er av — slå det på med EXP ESM",
     "cwSending": "Sender CW: $text",
     "cwMessageError": "CW-melding F$n: $error",

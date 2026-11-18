@@ -240,7 +240,8 @@ held. Each running set says `Run` (`StyleWatch`, § Operating style): a
 high-priority operational message, ahead of the keyer line, with a run
 icon, on a greyish-green pill rather than the alert colour — a state, not a problem — under one key per set. The
 normal style says nothing, or `S&P` on a grey pill with **Always show
-Run/S&P indicator** (Logging settings, off by default). A tap switches the
+Run/S&P indicator** (Logging settings, off by default, and hidden while
+styles are never tracked); an untracked style says nothing. A tap switches the
 style rather than dismissing the pill, so with the setting off a tap on
 `Run` takes it down. Extensions post through `host.fyi`
 (extension API 14, docs/extensions/host.md), bounded on the bridge beside
@@ -1016,8 +1017,8 @@ reaching for a function key. It is an operator's switch (the keyer control's
 `ESM` pill, the `ESM`/`ESM OFF` commands, the Enter Sends Messages switch in
 the CW Keyer and Phone Keyer dialogs) and a side of the pileup, which is the
 set's operating style (§ Operating style), device-wide like the keyer control, and exists only
-behind its own `esm` experiment (`EXP ESM`), on top of `keyer` — gated
-apart from keying because it changes what Enter does. The panel asks for it at every Enter
+behind its own `esm` experiment (`EXP ESM`) — gated apart from keying
+because it changes what Enter does. The panel asks for it at every Enter
 (`LoggingSession.enterSends`) and gets nothing back while no key could send
 for the draft's mode — an unplugged rig makes Enter log again, rather than
 swallow calls it neither keys nor logs.
@@ -1123,8 +1124,33 @@ kept whether or not ESM is on — one Run/S&P per set, Radio A's and under
 SO2R Radio B's (`CatService.styleOf`), remembered across launches in the
 settings ESM always kept it in. Switching ESM off leaves it where it is.
 
+**Whether it is tracked at all is the operator's setting**, Track run /
+S&P operating styles in Logging (`SettingsService.opStyleTracking`):
+
+- **When using a Keyer**, the default: tracked in an operation once, this
+  session, the operator has keyed a CW message or a voice memory there (an
+  audition in the memory editor is not keying), or picked a style by hand —
+  ⌥U, `RUN`/`SNP`, the ESM pill, SO2R's Run / S&P line. A self-spot alone
+  is neither: an activator who only spots and never keys would otherwise
+  record Run on every contact after the first spot, by a style nothing on
+  their screen shows. A radio dropping later leaves it tracked; SWAP and an
+  operation already tracked coming back to the front start nothing.
+  Tracking that starts — here, or by the setting — starts in S&P with no
+  run frequency, so a Run kept from an earlier session or operation is not
+  recorded on the next contacts; message 1 keyed makes it Run at once. ESM
+  on keeps its side, which its pill shows.
+- **Always**: tracked from the start, a self-spot included.
+- **Never**: not tracked. ⌥U and `RUN`/`SNP` say so rather than change a
+  style nothing shows; the ESM pill still picks the side of the pileup ESM
+  plays. Under When using a Keyer, `RUN`/`SNP` with no operation open say
+  to open one, for the same reason.
+
+Untracked (`CatService.tracksStyle`), nothing below moves the style, a new
+contact records no `opStyle`, no pill shows it, and extensions read none.
+A change of the tracking is a change of style to whatever listens for one.
+
 - **A new contact records it as `opStyle`**, `run` or `normal`, from the set it
-  is logged from. An edit never stamps it: today's style is not how an older
+  is logged from, while it is tracked. An edit never stamps it: today's style is not how an older
   contact was made, and a contact logged before styles existed stays
   without one.
 - **The operator sets it** with the ESM pill, which steps Off → Run → S&P →

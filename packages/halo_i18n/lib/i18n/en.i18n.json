@@ -1551,6 +1551,17 @@
         "sentFirst": "Sent first, Rcvd second",
         "rcvdFirst": "Rcvd first, Sent second"
       },
+      "trackOpStyle": {
+        "title": "Track run / S&P operating styles",
+        "never": "Never",
+        "keyer": "When using a Keyer",
+        "always": "Always"
+      },
+      "trackOpStyleDescription": {
+        "never": "Not tracking whether you run or search and pounce",
+        "keyer": "Tracking once you key a message, or pick Run or S&P yourself, in an operation",
+        "always": "Tracking whether you run or search and pounce, and recording it on each contact"
+      },
       "alwaysShowStyle": {
         "title": "Always show Run/S&P indicator",
         "descriptionOn": "Show when running or S&P",
@@ -2628,6 +2639,7 @@
       "peerRadioElsewhereTitle": "${radio} is on another device",
       "peerRadioElsewhereMessage": "This radio is connected to ${device}. Its connection and settings are configured on that device.",
       "antennaInUse": "Antenna in Use",
+      "loggedKey": "Key in Use",
       "chooseLocationSource": "Choose where the location comes from",
       "locationFromThis": "Take the location from ${name}",
       "systemLocation": {
@@ -2736,7 +2748,6 @@
         "sectionRadioB": "Radio B",
         "radioBNeedsSo2r": "Radio B’s controls act only while SO2R is on.",
         "sectionKeying": "Messages",
-        "keyingNeedsExperiment": "Keyer speed, PTT and messages act only while the Keying experiment is on.",
         "learn": "Learn",
         "learning": "Move a control…",
         "clear": "Clear",
@@ -2784,7 +2795,6 @@
           "noRadio": "no radio",
           "so2rOff": "SO2R is off",
           "dataMode": "not tuned in a Digital mode",
-          "keyingOff": "the Keying experiment is off",
           "noPtt": "this radio has no PTT the app can key",
           "notPhone": "PTT keys only in Phone modes",
           "keyedElsewhere": "already keyed from elsewhere — left alone",
@@ -3190,7 +3200,6 @@
     "noCwKeyer": "No connected radio can key CW",
     "noKeyer": "No connected radio can key CW or play voice memories",
     "keyerNeedsOperation": "Open an operation to use the CW keyer",
-    "keyerExperimentOff": "CW keying is off — turn it on with EXP KEYER",
     "esmExperimentOff": "Enter Sends Messages is off — turn it on with EXP ESM",
     "cwSending": "Sending CW: $text",
     "cwMessageError": "CW message F$n: $error",
@@ -3199,6 +3208,8 @@
     "voiceMessageNotRendered": "the extensions are not ready",
     "so2rRadioCannotKey": "Nothing sent: Radio $radio can't key that",
     "opStyleUnknown": "Not an operating style: $opStyle",
+    "opStyleTrackingOff": "Run/S&P tracking is off — turn it on in Settings › Logging",
+    "opStyleNeedsOperation": "Open an operation to set Run or S&P",
     "so2rNoRadioB": "Nothing sent: pick a Radio B in Station Configuration to key from this set",
     "swapExperimentOff": "SO2R is off — turn it on with EXP SO2R",
     "swapNeedsOperation": "Open an operation to swap radios",

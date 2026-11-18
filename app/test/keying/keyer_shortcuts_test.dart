@@ -51,7 +51,6 @@ void main() {
   setUp(() async {
     final harness = await makeHaLoServices(extensions: _TemplateExtensions());
     services = harness.services;
-    await harness.settings.setExperimentEnabled('keyer', true);
     await harness.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
     await harness.settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     await harness.settings.setCwMessage(1, 'CQ TEST');

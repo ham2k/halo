@@ -19,20 +19,11 @@ CommandActionOutcome? keyerCommandAction(HaLoServices services, String action, M
       // fails out loud rather than confirming a change nothing heard.
       final wpm = params?['wpm'];
       if (wpm is! num) return null;
-      // The hooks decline while the experiment is off, but an action can
-      // still arrive — an interpretation computed before the flip, or an
-      // extension of its own — and must not reach the radio quietly.
-      if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) {
-        return (text: t.commands.keyerExperimentOff, failed: true);
-      }
       return services.cat.setKeyerSpeed(wpm.round()) ? null : (text: t.commands.noCwKeyer, failed: true);
     case 'showKeyer':
-      // KEYER / MACROS: the logging panel opens its keyer control. With the
-      // experiment off there is no control to open; with nothing that can
-      // key there is nothing for it to do — say so rather than confirm.
-      if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) {
-        return (text: t.commands.keyerExperimentOff, failed: true);
-      }
+      // KEYER / MACROS: the logging panel opens its keyer control. With
+      // nothing that can key there is nothing for it to do — say so rather
+      // than confirm.
       if (!services.cat.canKeyCw && !services.cat.canPlayVoice) return (text: t.commands.noKeyer, failed: true);
       // The control lives in an operation's logging panel; from Home there
       // is nothing to open, and confirming would be a lie.
@@ -43,9 +34,6 @@ CommandActionOutcome? keyerCommandAction(HaLoServices services, String action, M
       // ESM. Written whether or not anything can key right now —
       // it is how the operator wants Enter to behave once one does — but
       // said to be doing nothing when it would, rather than confirmed.
-      if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) {
-        return (text: t.commands.keyerExperimentOff, failed: true);
-      }
       if (!services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) {
         return (text: t.commands.esmExperimentOff, failed: true);
       }

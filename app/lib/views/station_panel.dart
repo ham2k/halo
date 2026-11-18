@@ -204,7 +204,6 @@ class StationPanel extends StatelessWidget {
         cat: _cat,
         showDiscovery: showDiscovery,
         showAntennaAndKey: services.settings.trackStationInfo && services.settings.stationInfoTrackedFields.any((f) => f == 'antenna' || f == 'key'),
-        showKeyer: services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */,
         showSdr: services.settings.experimentEnabled('fall') /* stored key, see experiments.yaml */,
         showSo2rSwitch: services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */,
         showMidi: services.settings.experimentEnabled('midi') /* stored key, see experiments.yaml */,
@@ -928,19 +927,18 @@ class StationPanel extends StatelessWidget {
           for (final node in nodes)
             if (_cat.typeFor(node)?.category == kCategoryAntenna) node,
         ];
-        // The key in use: a paddle on the desk, or what keys for the app —
-        // a keyer, or a radio whose CAT can. One pick, because a station
-        // with more than one has to say which one the messages go through.
-        final keyerExperiment = services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
+        // What keys the messages — a keyer, or a radio whose CAT can — and,
+        // apart from it, the paddle a contact logs.
         final keys = keyNodes(services);
-        final offersKey = keys.isNotEmpty || (keyerExperiment && _cat.peerOffersCwKeying);
+        final loggedKeys = loggedKeyNodes(services);
+        final offersKey = keys.isNotEmpty || _cat.peerOffersCwKeying;
         // A peer's radio plays what its own station picked, so its line is
         // there for the messages, not the pick. Recordings on this computer
         // need no radio: they are recorded before the rig is on the desk.
-        final offersPhone = keyerExperiment && (!_cat.voiceMessagesAreLocal || _cat.radio1OffersVoiceMemories || _cat.computerVoiceAudio != null);
+        final offersPhone = !_cat.voiceMessagesAreLocal || _cat.radio1OffersVoiceMemories || _cat.computerVoiceAudio != null;
         // Radio B's own line, under its antenna and key: its rig's memories,
         // or the computer's recordings through its rig's sound device.
-        final offersPhoneB = keyerExperiment && (_cat.keyer('B').offersVoiceMemories || _cat.computerVoiceAudio != null);
+        final offersPhoneB = _cat.keyer('B').offersVoiceMemories || _cat.computerVoiceAudio != null;
         // A peer's radio is picked from the same list as this device's own:
         // it drives the same one `vfoA`, so offering a second control for it
         // would be offering two answers to one question (HALO-416).
@@ -981,25 +979,24 @@ class StationPanel extends StatelessWidget {
         final keyOutside = services.settings.trackStationInfo && services.settings.stationInfoTrackedFields.contains('key');
         final keyLine = _keyingLine(
           picker: cwKeyPicker(context, services, keys: keys, label: st.keyInUse),
-          controls: [if (keyerExperiment) cwKeyingOptionsButton(context)],
+          controls: [cwKeyingOptionsButton(context)],
         );
         final radio2 = so2r ? _cat.radio2 : null;
         // Set A's folded details: whether HaLo adjusts its bandscope (only
         // where the scope it draws is the radio's own screen, an Icom's, so
         // what HaLo does to it shows on the front panel too), where its
-        // spectrum comes from, the key when it is not tracked, and what keys
-        // phone.
+        // spectrum comes from, what keys CW, and what keys phone.
         final details = [
           ?_scopeAdjustRow(context, localRadio1, inset: detailsInset),
           ?_scopeRow(context, localRadio1, radio: null, inset: detailsInset),
           ?_radioAudioRow(context, localRadio1, inset: detailsInset),
-          if ((!keyOutside && offersKey) || offersPhone)
+          if (offersKey || offersPhone)
             Padding(
               padding: EdgeInsets.fromLTRB(detailsInset.left, 0, detailsInset.right, Space.md),
               child: Column(
                 spacing: Space.md,
                 children: [
-                  if (!keyOutside && offersKey) keyLine,
+                  if (offersKey) keyLine,
                   if (offersPhone) _phoneKeyingLine(context, radio: 'A'),
                 ],
               ),
@@ -1011,7 +1008,7 @@ class StationPanel extends StatelessWidget {
             ?_scopeAdjustRow(context, radio2, inset: detailsInset),
             ?_scopeRow(context, radio2, radio: radio2, inset: detailsInset),
             ?_radioAudioRow(context, radio2, inset: detailsInset),
-            if (!keyOutside && keys.isNotEmpty) _radio2PickRow(context, kCategoryKey, keys, inset: detailsInset),
+            if (keys.isNotEmpty) _radio2PickRow(context, kCategoryKey, keys, inset: detailsInset),
             if (offersPhoneB)
               Padding(
                 padding: EdgeInsets.fromLTRB(detailsInset.left, 0, detailsInset.right, Space.md),
@@ -1053,12 +1050,9 @@ class StationPanel extends StatelessWidget {
               ),
               // Which antenna and key a QSO's captured station info should
               // credit, on the rig's ground under it, out of the fold: the
-              // antenna always, the key when the operator tracks it, since
-              // then it changes as often as the antenna does. The key row also
-              // offers a peer's key, though it is no node of this station: the
-              // phone this is for has no key inventory of its own, and without
-              // it its operator could not step off the peer's key.
-              if (antennas.isNotEmpty || (keyOutside && offersKey))
+              // antenna always, the logged key when the operator tracks it,
+              // since then it changes as often as the antenna does.
+              if (antennas.isNotEmpty || (keyOutside && loggedKeys.isNotEmpty))
                 ColoredBox(
                   color: rigGround,
                   child: Padding(
@@ -1076,7 +1070,16 @@ class StationPanel extends StatelessWidget {
                             noneLabel: st.noneSelected,
                             onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryAntenna, uuid)),
                           ),
-                        if (keyOutside && offersKey) keyLine,
+                        if (keyOutside && loggedKeys.isNotEmpty)
+                          DesignationDropdown(
+                            key: ValueKey('loggedKey:${_cat.designatedFor(kDesignationLoggedKey)}'),
+                            label: st.loggedKey,
+                            nodes: loggedKeys,
+                            selected: _cat.designatedFor(kDesignationLoggedKey),
+                            displayName: _displayName,
+                            noneLabel: st.noneSelected,
+                            onChanged: (uuid) => unawaited(_cat.setDesignated(kDesignationLoggedKey, uuid)),
+                          ),
                       ],
                     ),
                   ),
@@ -1108,14 +1111,14 @@ class StationPanel extends StatelessWidget {
                           children: [
                             const SizedBox(height: Space.lg),
                             _radio2Row(context),
-                            if (radio2 != null && (antennas.isNotEmpty || (keyOutside && keys.isNotEmpty)))
+                            if (radio2 != null && (antennas.isNotEmpty || (keyOutside && loggedKeys.isNotEmpty)))
                               Padding(
                                 padding: const EdgeInsets.only(top: Space.md),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
                                     if (antennas.isNotEmpty) _radio2PickRow(context, kCategoryAntenna, antennas, inset: detailsInset),
-                                    if (keyOutside && keys.isNotEmpty) _radio2PickRow(context, kCategoryKey, keys, inset: detailsInset),
+                                    if (keyOutside && loggedKeys.isNotEmpty) _radio2PickRow(context, kDesignationLoggedKey, loggedKeys, inset: detailsInset),
                                   ],
                                 ),
                               ),
@@ -1222,21 +1225,20 @@ class StationPanel extends StatelessWidget {
                 // And the keyer in use, when it is a device of its own: the
                 // row above is where it gets connected, so a radio keying
                 // through its own CAT session must not draw a second row.
-                if (keyerExperiment)
-                  if (_cat.designatedKeyerNode case final keyer?)
-                    if (!_cat.isRadio1(keyer.uuid))
-                      EquipmentTile(
-                        node: keyer,
-                        type: _cat.typeFor(keyer),
-                        state: _cat.stateFor(keyer.uuid),
-                        developerMode: services.settings.developerMode,
-                        displayName: _displayName(keyer),
-                        isMainVfo: false,
-                        onEdit: () => _editEquipment(context, keyer),
-                        onRemoveUnknown: () => _removeEquipment(context, keyer),
-                        onConnect: () => _cat.connect(keyer.uuid),
-                        onDisconnect: () => _cat.disconnect(keyer.uuid),
-                      ),
+                if (_cat.designatedKeyerNode case final keyer?)
+                  if (!_cat.isRadio1(keyer.uuid))
+                    EquipmentTile(
+                      node: keyer,
+                      type: _cat.typeFor(keyer),
+                      state: _cat.stateFor(keyer.uuid),
+                      developerMode: services.settings.developerMode,
+                      displayName: _displayName(keyer),
+                      isMainVfo: false,
+                      onEdit: () => _editEquipment(context, keyer),
+                      onRemoveUnknown: () => _removeEquipment(context, keyer),
+                      onConnect: () => _cat.connect(keyer.uuid),
+                      onDisconnect: () => _cat.disconnect(keyer.uuid),
+                    ),
               ] else ...[
                 if (nodes.isEmpty) ListTile(title: Text(st.none)),
                 // Under the category, one section per kind — a shack's radios

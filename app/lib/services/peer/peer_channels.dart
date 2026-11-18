@@ -380,7 +380,13 @@ class PeerChannels {
   /// it is doing rather than be deduped against a value no controller heard.
   final Map<String, String> _lastSentKeying = {};
 
-  void _onKeyingChanged() => _reportKeying();
+  /// Keying changed, or whether this station may be keyed at all — an
+  /// operation opening or closing here, which moves no equipment. Deduped
+  /// like every offer, so a message advancing sends no new one.
+  void _onKeyingChanged() {
+    _announceOffers();
+    _reportKeying();
+  }
 
   /// This device's operator asked for something to be keyed on the radio
   /// they picked. Addressed to that peer alone, never broadcast: a keying

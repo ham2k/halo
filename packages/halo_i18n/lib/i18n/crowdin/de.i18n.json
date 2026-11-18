@@ -2661,7 +2661,6 @@
     "noCwKeyer": "Kein verbundenes Funkgerät kann CW tasten",
     "noKeyer": "Kein verbundenes Funkgerät kann CW tasten oder Sprachspeicher abspielen",
     "keyerNeedsOperation": "Öffne einen Betrieb, um den CW-Keyer zu verwenden",
-    "keyerExperimentOff": "CW-Tastung ist aus — schalte sie mit EXP KEYER ein",
     "esmExperimentOff": "Enter sendet Nachrichten ist aus — schalte es mit EXP ESM ein",
     "cwSending": "Sende CW: $text",
     "cwMessageError": "CW-Nachricht F$n: $error",

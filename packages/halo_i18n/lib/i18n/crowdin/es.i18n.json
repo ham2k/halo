@@ -2661,7 +2661,6 @@
     "noCwKeyer": "Ninguna radio conectada puede manipular CW",
     "noKeyer": "Ninguna radio conectada puede manipular CW ni reproducir memorias de voz",
     "keyerNeedsOperation": "Abre una operación para usar el manipulador de CW",
-    "keyerExperimentOff": "La manipulación de CW está apagada — enciéndela con EXP KEYER",
     "esmExperimentOff": "Enter envía mensajes está apagado — enciéndelo con EXP ESM",
     "cwSending": "Enviando CW: $text",
     "cwMessageError": "Mensaje de CW F$n: $error",

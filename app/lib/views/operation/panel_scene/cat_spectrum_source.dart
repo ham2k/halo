@@ -23,9 +23,8 @@ class CatSpectrumSource implements SceneSpectrumSource {
   /// a radio's linked SDR draws in place of its own scope. Read at each
   /// [resolve], with [changes] carrying its toggle, as [PanelRadioService]
   /// reads it at each call — a value captured when the dock builds would have
-  /// a panel set one device's scope while its control draws another's. Holds
-  /// the `keyer` experiment too, which `radio.ptt` waits on as `readRadio`'s
-  /// `keying` does. Null reads as off.
+  /// a panel set one device's scope while its control draws another's. Null
+  /// reads as off.
   final SettingsService? settings;
 
   /// Whether the panel may command the radio — `requiresRadioWrite` — and so
@@ -151,9 +150,8 @@ class CatSpectrumSource implements SceneSpectrumSource {
   }
 
   /// Whether the app keys [uuid] where a panel may see it: `readRadio` gives `keying` only for a
-  /// live radio 1 or 2 while the `keyer` experiment is on, and `radio.ptt` keeps to the same.
-  bool _keyed(String uuid, bool live) =>
-      live && (cat.isRadio1(uuid) || cat.isRadio2(uuid)) && (settings?.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ?? false);
+  /// live radio 1 or 2, and `radio.ptt` keeps to the same.
+  bool _keyed(String uuid, bool live) => live && (cat.isRadio1(uuid) || cat.isRadio2(uuid));
 
   @override
   Listenable get readingChanges => Listenable.merge([cat.dialChanges, cat.vfoChanges]);

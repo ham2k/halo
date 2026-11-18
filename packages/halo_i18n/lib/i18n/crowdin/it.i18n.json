@@ -2661,7 +2661,6 @@
     "noCwKeyer": "Nessuna radio connessa può trasmettere in CW",
     "noKeyer": "Nessuna radio connessa può trasmettere in CW o riprodurre memorie vocali",
     "keyerNeedsOperation": "Apri un'operazione per usare il keyer CW",
-    "keyerExperimentOff": "La manipolazione CW è disattivata — attivala con EXP KEYER",
     "esmExperimentOff": "Invio trasmette i messaggi è disattivato — attivalo con EXP ESM",
     "cwSending": "Trasmissione CW: $text",
     "cwMessageError": "Messaggio CW F$n: $error",

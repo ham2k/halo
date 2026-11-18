@@ -864,7 +864,6 @@ class _Translations$commands$ko extends Translations$commands$en {
 	@override String get noCwKeyer => 'CW를 키잉할 수 있는 연결된 무전기가 없습니다';
 	@override String get noKeyer => 'CW를 키잉하거나 보이스 메모리를 재생할 수 있는 연결된 무전기가 없습니다';
 	@override String get keyerNeedsOperation => 'CW 키어를 사용하려면 운용을 여세요';
-	@override String get keyerExperimentOff => 'CW 키잉이 꺼져 있습니다. EXP KEYER로 켜세요';
 	@override String get esmExperimentOff => 'Enter로 메시지 전송이 꺼져 있습니다. EXP ESM으로 켜세요';
 	@override String cwSending({required Object text}) => 'CW 전송 중: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CW 메시지 F${n}: ${error}';
@@ -6720,7 +6719,6 @@ extension on TranslationsKo {
 			'commands.noCwKeyer' => 'CW를 키잉할 수 있는 연결된 무전기가 없습니다',
 			'commands.noKeyer' => 'CW를 키잉하거나 보이스 메모리를 재생할 수 있는 연결된 무전기가 없습니다',
 			'commands.keyerNeedsOperation' => 'CW 키어를 사용하려면 운용을 여세요',
-			'commands.keyerExperimentOff' => 'CW 키잉이 꺼져 있습니다. EXP KEYER로 켜세요',
 			'commands.esmExperimentOff' => 'Enter로 메시지 전송이 꺼져 있습니다. EXP ESM으로 켜세요',
 			'commands.cwSending' => ({required Object text}) => 'CW 전송 중: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW 메시지 F${n}: ${error}',
@@ -7009,9 +7007,9 @@ extension on TranslationsKo {
 			'adifImport.stationCallJoin' => ' 및 ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count}개는 날짜가 없어 가져올 수 없습니다', other: '${formatted}개는 날짜가 없어 가져올 수 없습니다', ), 
 			'adifImport.activationFound' => ({required Object refs}) => '이 파일에는 ${refs}의 활성화 기록이 있습니다.',
+			'adifImport.addActivation' => '이 운용에 추가',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.addActivation' => '이 운용에 추가',
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned}개 중 ${written}개만 적용할 수 있었습니다. 결정하는 동안 로그가 변경되었습니다.',
 			'adifImport.busy' => '이미 가져오기가 진행 중입니다. 완료될 때까지 기다린 후 시작하세요.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename}에 QSO가 ${limit}개를 넘게 있습니다. 운용 하나에 한 번에 가져올 수 있는 최대치입니다.',

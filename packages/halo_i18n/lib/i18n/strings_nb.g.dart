@@ -864,7 +864,6 @@ class _Translations$commands$nb extends Translations$commands$en {
 	@override String get noCwKeyer => 'Ingen tilkoblet radio kan sende CW';
 	@override String get noKeyer => 'Ingen tilkoblet radio kan sende CW eller spille av taleminner';
 	@override String get keyerNeedsOperation => 'Åpne en operasjon for å bruke CW-keyeren';
-	@override String get keyerExperimentOff => 'CW-nøkling er av — slå det på med EXP KEYER';
 	@override String get esmExperimentOff => 'Enter sender meldinger er av — slå det på med EXP ESM';
 	@override String cwSending({required Object text}) => 'Sender CW: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CW-melding F${n}: ${error}';
@@ -6720,7 +6719,6 @@ extension on TranslationsNb {
 			'commands.noCwKeyer' => 'Ingen tilkoblet radio kan sende CW',
 			'commands.noKeyer' => 'Ingen tilkoblet radio kan sende CW eller spille av taleminner',
 			'commands.keyerNeedsOperation' => 'Åpne en operasjon for å bruke CW-keyeren',
-			'commands.keyerExperimentOff' => 'CW-nøkling er av — slå det på med EXP KEYER',
 			'commands.esmExperimentOff' => 'Enter sender meldinger er av — slå det på med EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'Sender CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW-melding F${n}: ${error}',
@@ -7009,9 +7007,9 @@ extension on TranslationsNb {
 			'adifImport.stationCallJoin' => ' og ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} mangler dato og kan ikke importeres', other: '${formatted} mangler dato og kan ikke importeres', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Denne filen registrerer en aktivering av ${refs}.',
+			'adifImport.addActivation' => 'Legg den til i denne operasjonen',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.addActivation' => 'Legg den til i denne operasjonen',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Bare ${written} av ${planned} kunne tas i bruk — loggen ble endret mens du bestemte deg.',
 			'adifImport.busy' => 'En import pågår allerede. Vent til den er ferdig før du starter en ny.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} har mer enn ${limit} QSOer, som er det meste en operasjon kan importere om gangen.',

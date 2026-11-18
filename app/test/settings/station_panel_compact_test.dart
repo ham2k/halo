@@ -135,8 +135,8 @@ void main() {
 
       // Anchored on the peer's own row — its frame, which holds the buttons
       // in the margins beside the tile, not the tile itself: with no local
-      // radio and the keyer experiment off, a bare findsNothing for the plug
-      // passes just as well when the row is not built at all.
+      // radio, a bare findsNothing for the plug passes just as well when the
+      // row is not built at all.
       final row = find.ancestor(of: find.text('FTDX10'), matching: find.byType(CurrentRowFrame));
       expect(row, findsOneWidget);
 
@@ -154,7 +154,6 @@ void main() {
       // operator can neither set the speed nor step off the peer's key. And
       // the pick shows the PEER: nothing is stored for a default, so a picker
       // reading the stored value alone says None while F1 keys over the link.
-      await services.settings.setExperimentEnabled('keyer', true);
       await services.cat.setRadio1(const PeerRadio(pick));
       services.cat.noteOffer(pick.deviceId, pick.deviceName, const [PeerRadioOffer(id: 'rig-1', name: 'FTDX10', keysCw: true)]);
 
@@ -166,17 +165,6 @@ void main() {
       expect(find.text("Key on VE1SK's iPad"), findsOneWidget);
       expect(find.text('None selected'), findsNothing);
     });
-
-    testWidgets('a keying peer adds no key row while the keyer experiment is off', (tester) async {
-      await services.cat.setRadio1(const PeerRadio(pick));
-      services.cat.noteOffer(pick.deviceId, pick.deviceName, const [PeerRadioOffer(id: 'rig-1', name: 'FTDX10', keysCw: true)]);
-
-      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
-      await tester.pumpAndSettle();
-
-      expect(find.text('More details'), findsNothing, reason: 'with no key row there is nothing to fold');
-      expect(find.text('CW Keying'), findsNothing, reason: 'a bare row with nothing selectable in it');
-    });
   });
 
   // Recordings on this computer are recorded before the rig is on the desk:
@@ -186,7 +174,6 @@ void main() {
     services = (await makeHaLoServices(
       cat: (settings) => CatService(settings, voiceAudio: audio, voiceMessagesDirectory: () async => '/v'),
     )).services;
-    await services.settings.setExperimentEnabled('keyer', true);
     await services.cat.selectVoiceKeyingSource(VoiceKeyingSource.computer);
     await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
     await tester.pumpAndSettle();
@@ -202,7 +189,6 @@ void main() {
     services = (await makeHaLoServices(
       cat: (settings) => CatService(settings, voiceAudio: audio, voiceMessagesDirectory: () async => '/v'),
     )).services;
-    await services.settings.setExperimentEnabled('keyer', true);
     await services.cat.selectVoiceKeyingSource(VoiceKeyingSource.words);
     await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
     await tester.pumpAndSettle();
@@ -229,7 +215,6 @@ void main() {
     services = (await makeHaLoServices(
       cat: (settings) => CatService(settings, voiceAudio: audio, voiceMessagesDirectory: () async => '/v'),
     )).services;
-    await services.settings.setExperimentEnabled('keyer', true);
     await services.settings.setExperimentEnabled('so2r', true);
     final cat = services.cat;
     final left = await cat.addNode(typeKey: 'placeholder-radio', name: 'Left Rig', config: placeholderRadioModel.variants.single.defaultConfig);
@@ -300,9 +285,9 @@ void main() {
     await cat.setRadio1(LocalRadio(left.uuid));
     await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
     await tester.pumpAndSettle();
-    // No More details at all, so the switcher is absent rather than folded.
-    expect(find.text('More details'), findsNothing, reason: 'two radios to switch between, or none');
-    expect(find.text('SO2R Switcher'), findsNothing);
+    // Offstage too: More details holds the radio's key, and a folded
+    // section stays mounted, so the switcher must be absent, not folded.
+    expect(find.text('SO2R Switcher', skipOffstage: false), findsNothing, reason: 'two radios to switch between, or none');
 
     await cat.setRadio2(right.uuid);
     await tester.pumpAndSettle();
@@ -331,7 +316,6 @@ void main() {
 
   group('CW keyer row', () {
     testWidgets('a capable radio, never connected, drives the whole row from what it CAN do', (tester) async {
-      await services.settings.setExperimentEnabled('keyer', true);
       // Added, never connected — auto-designated as the key in use because
       // it can key and nothing else was. The trap this catches is laying the
       // row out from the LINK: everything below is a fact about the rig, and
@@ -346,7 +330,6 @@ void main() {
     });
 
     testWidgets('a radio keying through its own CAT session draws ONE equipment row', (tester) async {
-      await services.settings.setExperimentEnabled('keyer', true);
       // One rig, auto-designated both as radio1 and as the key in use — the
       // trap is drawing it a second time as "the keyer in use", which reads
       // as a shack with two identical radios on one address.
@@ -362,7 +345,6 @@ void main() {
     });
 
     testWidgets('a keyer that is NOT the current rig keeps its own row', (tester) async {
-      await services.settings.setExperimentEnabled('keyer', true);
       // The keyer added first, the rig second so the rig is radio1. The row
       // is this keyer's only reachable connect button in compact, so the
       // one-row rule above must narrow to the shared node and no further.
@@ -439,34 +421,40 @@ void main() {
       expect(tester.getTopLeft(find.text('Automatically adjust bandscope')).dy, greaterThan(tester.getTopLeft(find.text('B: Shack 7300')).dy));
     });
 
-    testWidgets('a radio with a scope of its own has no bandscope adjustment, nor an empty More details', (tester) async {
+    testWidgets('a radio with a scope of its own has no bandscope adjustment', (tester) async {
       // A Flex streams a panadapter apart from its front panel: nothing HaLo
-      // does to it shows on the radio, so there is no choice to offer. With
-      // no key either, More details would open onto nothing.
+      // does to it shows on the radio, so there is no choice to offer. More
+      // details holds only its key, the radio's own keyer.
       final node = await services.cat.addNode(typeKey: 'flexradio-tcp', name: 'Shack Flex', config: {'host': 'flex.invalid', 'port': 4992});
       await tester.runAsync(() => services.cat.disconnect(node.uuid));
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
 
-      expect(find.text('More details'), findsNothing);
+      await openMoreDetails(tester);
+      expect(find.text('CW Keying'), findsOneWidget);
       expect(find.text('Automatically adjust bandscope', skipOffstage: false), findsNothing);
     });
 
-    testWidgets('the CW key sits beside the antenna when it is tracked, and under More details when it is not', (tester) async {
-      // A key logged with every QSO changes as often as the antenna does; one
-      // that is not is set once, and folded away with the rest.
-      await services.cat.addNode(typeKey: 'key-none', name: 'Paddle');
+    testWidgets('the logged key sits beside the antenna while it is tracked; CW Keying stays under More details', (tester) async {
+      // The trap: one pick for both, where recording the Bencher stops the
+      // radio keying, or keying through the radio logs no key. A paddle keys
+      // nothing: it is the key a contact logs, and shows only while logged.
+      await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+      await services.cat.addNode(typeKey: 'key-none', name: 'Bencher');
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
-      expect(find.text('CW Keying'), findsNothing, reason: 'folded until More details opens');
+      expect(find.text('Key in Use'), findsNothing, reason: 'not logged, so not asked');
       await openMoreDetails(tester);
       expect(find.text('CW Keying'), findsOneWidget);
+      expect(find.text('Bencher'), findsNothing, reason: 'a paddle is no keyer');
 
       await services.settings.setTrackStationInfo(true);
       await services.settings.setStationInfoTrackedFields({'rig', 'key'});
       await tester.pumpWidget(wrap(StationPanel(key: UniqueKey(), services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
-      expect(find.text('CW Keying'), findsOneWidget, reason: 'out of the fold, with nothing opened');
+      expect(find.text('Key in Use'), findsOneWidget, reason: 'out of the fold, with nothing opened');
+      expect(find.text('Bencher'), findsOneWidget, reason: 'the newest paddle is the one logged');
+      expect(find.text('CW Keying'), findsNothing, reason: 'still folded: what keys is no station info');
     });
   });
 

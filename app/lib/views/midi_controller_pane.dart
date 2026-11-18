@@ -66,7 +66,6 @@ String midiIgnoredText(BuildContext context, MidiIgnored reason) {
     MidiIgnored.noRadio => l.noRadio,
     MidiIgnored.so2rOff => l.so2rOff,
     MidiIgnored.dataMode => l.dataMode,
-    MidiIgnored.keyingOff => l.keyingOff,
     MidiIgnored.noPtt => l.noPtt,
     MidiIgnored.notPhone => l.notPhone,
     MidiIgnored.keyedElsewhere => l.keyedElsewhere,
@@ -157,7 +156,6 @@ class _MidiControllerPaneState extends State<_MidiControllerPane> {
         final theme = Theme.of(context);
         final note = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.8));
         final so2r = services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */;
-        final keying = services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
         List<Widget> rows(bool Function(MidiTarget) which) => [
           for (final target in midiTargets)
             if (which(target)) _TargetRow(services: services, watch: _watch, target: target, nodeUuid: node.uuid, mapping: mapping, write: _write),
@@ -200,7 +198,6 @@ class _MidiControllerPaneState extends State<_MidiControllerPane> {
                     valueListenable: _midi.monitorFor(node.uuid),
                     builder: (context, line, _) => Text('${m.lastMessage}: ${line == null ? m.lastNone : _monitorText(context, line)}', style: note),
                   ),
-                  if (!keying) ...[const SizedBox(height: Space.sm), Text(m.keyingNeedsExperiment, style: note)],
                 ],
               ),
             ),

@@ -66,7 +66,7 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
       radio: radio,
       link: _so2rLink,
       running: cat.isRunning(radio),
-      onToggleRunning: () => cat.setRunning(radio, !cat.isRunning(radio)),
+      onToggleRunning: () => cat.pickRunning(radio, !cat.isRunning(radio)),
       transmitting: radio == 'B' ? _so2rTransmitting.value.b : _so2rTransmitting.value.a,
       heard: cat.so2rAudio.value?.hears(radio),
     );
@@ -302,10 +302,13 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
   /// Stamps a new contact with the operating style of the set it is logged
   /// from — Run or S&P, docs/design/logging-fields.md § Operating style. An
   /// edit keeps the style it was worked in, or none: today's style is not
-  /// how an older contact was made. Event rows are not contacts.
+  /// how an older contact was made. Event rows are not contacts, and an
+  /// untracked style (CatService.tracksStyle) is no style at all.
   Map<String, dynamic> _withStyle(Map<String, dynamic> qso, String radio) {
     if (qso['band'] == 'event' || (asQsonString(qso['uuid']) ?? '').isNotEmpty || qso['opStyle'] != null) return qso;
-    return {...qso, 'opStyle': widget.services.cat.styleOf(radio).value};
+    final style = widget.services.cat.trackedStyleOf(radio);
+    if (style == null) return qso;
+    return {...qso, 'opStyle': style.value};
   }
 
   /// Merges the operator's tracked station-info fields (Station
@@ -350,13 +353,10 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
       if (name != null) our['antenna'] = name;
     }
     if (tracked.contains('key')) {
-      // The key in use may be a radio keying over CAT; that is a keying
-      // source, not a key on the desk worth a QSO's key field. A keyer
-      // device is one.
-      final uuid = cat.designatedFor(kCategoryKey, radio: radioB);
-      final node = uuid == null ? null : cat.nodeFor(uuid);
-      final name = nameFor(uuid);
-      if (name != null && node != null && cat.typeFor(node)?.category != kCategoryTransceiver) our['key'] = name;
+      // The logged key, the paddle on the desk — not what keys the messages,
+      // which is a keyer or a radio's CAT.
+      final name = nameFor(cat.designatedFor(kDesignationLoggedKey, radio: radioB));
+      if (name != null) our['key'] = name;
     }
     return {...qso, 'our': our, 'power': ?power};
   }

@@ -7,6 +7,8 @@
 upcoming:
   changes:
     - "Added Elecraft K3 and K3S to the radio list, with CW and voice keying (tell us how it behaves)"
+    - "New CW and phone messages on F1–F8 through a CAT-controlled radio"
+    - "New Track run / S&P operating styles setting (Settings → Logging)"
 
 "195":
   changes:

@@ -16,7 +16,8 @@ import 'operating_style.dart';
 
 /// Says "Run" in each running set's FYI area — the style that is not the
 /// default, and otherwise shown nowhere with ESM off — and, with
-/// [SettingsService.alwaysShowStyle], "S&P" in the others. A high
+/// [SettingsService.alwaysShowStyle], "S&P" in the others — and nothing
+/// while the styles are not tracked ([CatService.tracksStyle]). A high
 /// operational message, ahead of the keyer line, on a pill of its own
 /// colour: a state, not a problem.
 /// A tap switches the style, so it is never dismissed: the pill that stays
@@ -46,7 +47,7 @@ class StyleWatch {
   void _check() {
     for (final radio in ['A', 'B']) {
       final run = cat.styleOf(radio) == OperatingStyle.run;
-      if (!cat.styledRadios.contains(radio) || !(run || settings.alwaysShowStyle)) {
+      if (!cat.tracksStyle || !cat.styledRadios.contains(radio) || !(run || settings.alwaysShowStyle)) {
         fyi.clear(keyFor(radio));
         continue;
       }

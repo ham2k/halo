@@ -2661,7 +2661,6 @@
     "noCwKeyer": "Žádné připojené rádio neumí klíčovat CW",
     "noKeyer": "Žádné připojené rádio neumí klíčovat CW ani přehrávat hlasové paměti",
     "keyerNeedsOperation": "Pro použití CW klíčovače otevřete aktivitu",
-    "keyerExperimentOff": "Klíčování CW je vypnuté — zapněte ho pomocí EXP KEYER",
     "esmExperimentOff": "Funkce Enter odesílá zprávy je vypnutá — zapněte ji pomocí EXP ESM",
     "cwSending": "Vysílání CW: $text",
     "cwMessageError": "Zpráva CW F$n: $error",

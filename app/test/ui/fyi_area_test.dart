@@ -379,7 +379,6 @@ void main() {
     });
 
     testWidgets('the keyer line comes before every message but a high alert', (tester) async {
-      await services.settings.setExperimentEnabled('keyer', true);
       final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
       await tester.runAsync(() => services.cat.connect(node.uuid));
       addTearDown(() => services.cat.disconnect(node.uuid));
@@ -401,7 +400,6 @@ void main() {
     // read before the keying it explains — and the keyer line still before
     // what is under way at the ordinary priority.
     testWidgets('a high operational message comes before the keyer line, the others after it', (tester) async {
-      await services.settings.setExperimentEnabled('keyer', true);
       final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
       await tester.runAsync(() => services.cat.connect(node.uuid));
       addTearDown(() => services.cat.disconnect(node.uuid));
@@ -418,7 +416,6 @@ void main() {
     });
 
     testWidgets('editing a logged QSO hides the keyer line alone; the other messages stay', (tester) async {
-      await services.settings.setExperimentEnabled('keyer', true);
       final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
       await tester.runAsync(() => services.cat.connect(node.uuid));
       addTearDown(() => services.cat.disconnect(node.uuid));

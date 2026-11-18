@@ -457,6 +457,7 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
   /// built over a fake transport — the real one can only reach `connected`
   /// through hardware.
   final CatService? _catOverride;
+  @override
   late final CatService cat =
       (_catOverride ??
             (CatService(
@@ -466,7 +467,13 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
               voiceAudio: HaloVoiceAudio(),
               voiceMessagesDirectory: () async => '${(await appDataDirectory()).path}/voice-messages',
             )..onRadioProven = reportWorkingRadio))
-        ..trafficLog = catTrafficLog;
+        ..trafficLog = catTrafficLog
+        // Before its view has said whether it is the current route, an
+        // operation just opened is.
+        ..operationOnScreen = () {
+          final front = frontOperationContext;
+          return front != null && (front.isVisible?.call() ?? true);
+        };
 
   /// DEVLOGCAT's recorder. Injectable so a test can record into memory
   /// instead of the data folder.
@@ -486,7 +493,6 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
     cat,
     radio,
     sdrEnabled: () => settings.experimentEnabled('fall') /* stored key, see experiments.yaml */,
-    keyingEnabled: () => settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */,
     pttEnabled: () => settings.pttKey,
   );
 
@@ -1699,7 +1705,10 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
         final value = params?['opStyle'];
         final style = OperatingStyle.values.where((s) => s.value == value).firstOrNull;
         if (style == null) return (text: t.commands.opStyleUnknown(opStyle: '$value'), failed: true);
-        cat.setStyle(cat.operatorRadio, style);
+        if (!cat.setStyle(cat.operatorRadio, style)) {
+          final off = settings.opStyleTracking == OpStyleTracking.never;
+          return (text: off ? t.commands.opStyleTrackingOff : t.commands.opStyleNeedsOperation, failed: true);
+        }
         return null;
       case 'swapRadios':
         // SWAP moves the logging panel's two sets, and reaches here only

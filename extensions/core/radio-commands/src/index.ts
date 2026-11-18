@@ -30,19 +30,16 @@ import { parseSwapCommand } from "./parseSwapCommand.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-// CW keying sits behind its own experiment (app/experiments.yaml), checked
-// per-call via ctx.enabledExperiments rather than manifest.experiments, which
-// would gate the whole file.
-const KEYER_EXPERIMENT = "keyer"
-const keyerEnabled = (ctx: HookContext) => !!ctx.enabledExperiments?.includes(KEYER_EXPERIMENT)
+// Experiments are checked per-call via ctx.enabledExperiments rather than
+// manifest.experiments, which would gate the whole file.
 
 // SO2R's second radio (app/experiments.yaml): SWAP has nothing to swap without it.
 const SO2R_EXPERIMENT = "so2r"
 const so2rEnabled = (ctx: HookContext) => !!ctx.enabledExperiments?.includes(SO2R_EXPERIMENT)
 
-// Enter Sends Messages, on top of keying (app/experiments.yaml).
+// Enter Sends Messages (app/experiments.yaml).
 const ESM_EXPERIMENT = "esm"
-const esmEnabled = (ctx: HookContext) => keyerEnabled(ctx) && !!ctx.enabledExperiments?.includes(ESM_EXPERIMENT)
+const esmEnabled = (ctx: HookContext) => !!ctx.enabledExperiments?.includes(ESM_EXPERIMENT)
 
 const MODE_MATCH = /^(CW|SSB|USB|LSB|FM|AM|FT8|FT4|FT2|RTTY)$/i
 const FREQUENCY_MATCH = /^[\d.,]+$/
@@ -219,12 +216,10 @@ const PowerCommand = {
   },
 }
 
-// Behind the keyer experiment (and CAT): the app reports "no CW-capable
-// radio connected" on dispatch rather than this hook guessing at the
-// radio's state.
+// The app reports "no CW-capable radio connected" on dispatch rather than
+// this hook guessing at the radio's state.
 const WpmCommand = {
   async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
-    if (!keyerEnabled(ctx)) return null
     const wpm = parseWpmCommand(input)
     if (wpm == null) return null
     const t = tFor(ctx)
@@ -236,7 +231,6 @@ const WpmCommand = {
   },
 
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
-    if (!keyerEnabled(ctx)) return []
     const t = tFor(ctx)
     return [
       {
@@ -252,11 +246,10 @@ const WpmCommand = {
   },
 }
 
-// KEYER / MACROS: brings up the keyer area with its message buttons. Same
-// gate as WPM; the app says when nothing connected can key.
+// KEYER / MACROS: brings up the keyer area with its message buttons. The
+// app says when nothing connected can key.
 const KeyerCommand = {
   async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
-    if (!keyerEnabled(ctx)) return null
     if (!parseKeyerCommand(input)) return null
     const t = tFor(ctx)
     return {
@@ -267,7 +260,6 @@ const KeyerCommand = {
   },
 
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
-    if (!keyerEnabled(ctx)) return []
     const t = tFor(ctx)
     return [
       {
@@ -282,8 +274,8 @@ const KeyerCommand = {
   },
 }
 
-// ESM / ESM OFF: Enter Sends Messages. Gated on its own experiment on top of
-// KEYER's; the app says when nothing can key.
+// ESM / ESM OFF: Enter Sends Messages. Gated on its own experiment; the app
+// says when nothing can key.
 const EnterSendsCommand = {
   async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
     if (!esmEnabled(ctx)) return null

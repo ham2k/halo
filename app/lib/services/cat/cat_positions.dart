@@ -57,7 +57,6 @@ mixin _Positions on _So2r {
   /// here, because what keys there is not a node of this station to name.
   String? _defaultDesignation(String category, String? uuid) {
     if (category != kCategoryKey) return null;
-    if (!_settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return null;
     if (uuid == null) return null;
     final node = _nodes[uuid];
     if (node == null) return null;

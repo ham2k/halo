@@ -30,9 +30,6 @@ enum MidiIgnored {
   /// knob must not move it.
   dataMode,
 
-  /// The Keying experiment is off.
-  keyingOff,
-
   /// The radio has no PTT the app can key.
   noPtt,
 
@@ -173,7 +170,6 @@ class MidiController {
       case MidiAction.vfoCoarse || MidiAction.vfoFine:
         if (_superMode(radio) == 'Digital') return MidiOutcome(target, ignored: MidiIgnored.dataMode);
       case MidiAction.wpm:
-        if (!station.keyingEnabled) return MidiOutcome(target, ignored: MidiIgnored.keyingOff);
         if (station.keyerSpeed(radio) == null && _heldWpm[radio] == null) return MidiOutcome(target, ignored: MidiIgnored.unsupported);
       case MidiAction.passbandLow || MidiAction.passbandHigh:
         if (station.passband(radio) == null) return MidiOutcome(target, ignored: MidiIgnored.unsupported);
@@ -218,7 +214,6 @@ class MidiController {
         station.stop();
         return MidiOutcome(target);
       case MidiAction.message:
-        if (!station.keyingEnabled) return MidiOutcome(target, ignored: MidiIgnored.keyingOff);
         station.keyMessage(target.message!);
         return MidiOutcome(target, value: 'F${target.message}');
       default:
@@ -301,7 +296,6 @@ class MidiController {
       }
       return MidiOutcome(target, ignored: MidiIgnored.keyedElsewhere);
     }
-    if (!station.keyingEnabled) return MidiOutcome(target, ignored: MidiIgnored.keyingOff);
     if (!station.canPtt(radio)) return MidiOutcome(target, ignored: MidiIgnored.noPtt);
     if (_superMode(radio) != 'Phone') return MidiOutcome(target, ignored: MidiIgnored.notPhone);
     // One key at a time: a second radio's press takes the key from the first,
@@ -396,7 +390,7 @@ class MidiController {
   }
 
   void _flushWpm(String radio, Iterable<MidiTarget> rows, Map<String, int> ticks, int now) {
-    if (rows.isEmpty || !station.keyingEnabled) return;
+    if (rows.isEmpty) return;
     final base = _base(_heldWpm, radio, station.keyerSpeed(radio), now);
     if (base == null) return;
     final range = station.keyerSpeedRange(radio);

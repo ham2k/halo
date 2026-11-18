@@ -864,7 +864,6 @@ class _Translations$commands$cs extends Translations$commands$en {
 	@override String get noCwKeyer => 'Žádné připojené rádio neumí klíčovat CW';
 	@override String get noKeyer => 'Žádné připojené rádio neumí klíčovat CW ani přehrávat hlasové paměti';
 	@override String get keyerNeedsOperation => 'Pro použití CW klíčovače otevřete aktivitu';
-	@override String get keyerExperimentOff => 'Klíčování CW je vypnuté — zapněte ho pomocí EXP KEYER';
 	@override String get esmExperimentOff => 'Funkce Enter odesílá zprávy je vypnutá — zapněte ji pomocí EXP ESM';
 	@override String cwSending({required Object text}) => 'Vysílání CW: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'Zpráva CW F${n}: ${error}';
@@ -6720,7 +6719,6 @@ extension on TranslationsCs {
 			'commands.noCwKeyer' => 'Žádné připojené rádio neumí klíčovat CW',
 			'commands.noKeyer' => 'Žádné připojené rádio neumí klíčovat CW ani přehrávat hlasové paměti',
 			'commands.keyerNeedsOperation' => 'Pro použití CW klíčovače otevřete aktivitu',
-			'commands.keyerExperimentOff' => 'Klíčování CW je vypnuté — zapněte ho pomocí EXP KEYER',
 			'commands.esmExperimentOff' => 'Funkce Enter odesílá zprávy je vypnutá — zapněte ji pomocí EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'Vysílání CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'Zpráva CW F${n}: ${error}',
@@ -7009,9 +7007,9 @@ extension on TranslationsCs {
 			'adifImport.stationCallJoin' => ' a ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} nemá datum a nelze ho importovat', other: '${formatted} nemá datum a nelze je importovat', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Tento soubor zaznamenává aktivaci ${refs}.',
+			'adifImport.addActivation' => 'Přidat ji do této aktivity',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.addActivation' => 'Přidat ji do této aktivity',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Použít se podařilo jen ${written} z ${planned} — log se změnil, zatímco jste se rozhodovali.',
 			'adifImport.busy' => 'Import už probíhá. Než spustíte další, počkejte, až skončí.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} má více než ${limit} QSO, což je maximum, které aktivita může importovat najednou.',

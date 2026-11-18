@@ -2661,7 +2661,6 @@
     "noCwKeyer": "CW를 키잉할 수 있는 연결된 무전기가 없습니다",
     "noKeyer": "CW를 키잉하거나 보이스 메모리를 재생할 수 있는 연결된 무전기가 없습니다",
     "keyerNeedsOperation": "CW 키어를 사용하려면 운용을 여세요",
-    "keyerExperimentOff": "CW 키잉이 꺼져 있습니다. EXP KEYER로 켜세요",
     "esmExperimentOff": "Enter로 메시지 전송이 꺼져 있습니다. EXP ESM으로 켜세요",
     "cwSending": "CW 전송 중: $text",
     "cwMessageError": "CW 메시지 F$n: $error",

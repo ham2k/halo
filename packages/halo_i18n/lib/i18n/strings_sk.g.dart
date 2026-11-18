@@ -864,7 +864,6 @@ class _Translations$commands$sk extends Translations$commands$en {
 	@override String get noCwKeyer => 'Žiadna pripojená rádiostanica nedokáže kľúčovať CW';
 	@override String get noKeyer => 'Žiadna pripojená rádiostanica nedokáže kľúčovať CW ani prehrávať hlasové pamäte';
 	@override String get keyerNeedsOperation => 'Na použitie CW kľúčovača otvorte prevádzku';
-	@override String get keyerExperimentOff => 'Kľúčovanie CW je vypnuté — zapnite ho pomocou EXP KEYER';
 	@override String get esmExperimentOff => 'Enter odosiela správy je vypnuté — zapnite ho pomocou EXP ESM';
 	@override String cwSending({required Object text}) => 'Odosiela sa CW: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CW správa F${n}: ${error}';
@@ -6720,7 +6719,6 @@ extension on TranslationsSk {
 			'commands.noCwKeyer' => 'Žiadna pripojená rádiostanica nedokáže kľúčovať CW',
 			'commands.noKeyer' => 'Žiadna pripojená rádiostanica nedokáže kľúčovať CW ani prehrávať hlasové pamäte',
 			'commands.keyerNeedsOperation' => 'Na použitie CW kľúčovača otvorte prevádzku',
-			'commands.keyerExperimentOff' => 'Kľúčovanie CW je vypnuté — zapnite ho pomocou EXP KEYER',
 			'commands.esmExperimentOff' => 'Enter odosiela správy je vypnuté — zapnite ho pomocou EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'Odosiela sa CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW správa F${n}: ${error}',
@@ -7009,9 +7007,9 @@ extension on TranslationsSk {
 			'adifImport.stationCallJoin' => ' a ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} nemá dátum a nedá sa importovať', other: '${formatted} nemá dátum a nedá sa importovať', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Tento súbor zaznamenáva aktiváciu ${refs}.',
+			'adifImport.addActivation' => 'Pridať ju do tejto prevádzky',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.addActivation' => 'Pridať ju do tejto prevádzky',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Uplatniť sa dalo iba ${written} z ${planned} — denník sa zmenil, kým ste sa rozhodovali.',
 			'adifImport.busy' => 'Import už prebieha. Pred spustením ďalšieho počkajte, kým sa dokončí.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} má viac ako ${limit} QSO, čo je maximum, ktoré prevádzka dokáže naraz importovať.',

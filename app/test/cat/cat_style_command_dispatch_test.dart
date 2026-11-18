@@ -17,6 +17,7 @@ void main() {
   // can key stands in its way, and naming it never switches ESM on.
   test('sets the style with no radio and no experiment, and leaves ESM as it was', () async {
     final services = (await makeHaLoServices()).services;
+    services.openOperationContext('op');
     expect(await services.handleCommandAction('setOpStyle', {'opStyle': 'normal'}), isNull);
     expect(services.cat.styleOf('A'), OperatingStyle.normal);
     expect(await services.handleCommandAction('setOpStyle', {'opStyle': 'run'}), isNull);
@@ -26,6 +27,7 @@ void main() {
 
   test("under SO2R it is the style of the set the operator is in", () async {
     final services = (await makeHaLoServices()).services;
+    services.openOperationContext('op');
     await services.settings.setExperimentEnabled('so2r', true);
     services.cat.setStyle('A', OperatingStyle.run);
     services.cat.setStyle('B', OperatingStyle.run);
@@ -38,10 +40,20 @@ void main() {
   // style was set while every new contact goes on recording the old one.
   test('a style it does not know changes nothing, and fails aloud', () async {
     final services = (await makeHaLoServices()).services;
+    services.openOperationContext('op');
     services.cat.setStyle('A', OperatingStyle.run);
     final outcome = await services.handleCommandAction('setOpStyle', {'opStyle': 'S&P'});
     expect(outcome?.failed, isTrue);
     expect(outcome?.text, contains('S&P'));
     expect(services.cat.styleOf('A'), OperatingStyle.run);
+  });
+
+  // The trap: confirming a style from Home that nothing tracks, and that the
+  // operation which next starts tracking resets to S&P anyway.
+  test('by default, with no operation open, it fails aloud and changes nothing', () async {
+    final services = (await makeHaLoServices()).services;
+    final outcome = await services.handleCommandAction('setOpStyle', {'opStyle': 'run'});
+    expect((outcome?.failed, outcome?.text), (true, 'Open an operation to set Run or S&P'));
+    expect(services.cat.styleOf('A'), OperatingStyle.normal);
   });
 }

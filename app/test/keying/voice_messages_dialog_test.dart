@@ -30,10 +30,7 @@ void main() {
   late HaLoServices services;
 
   setUp(() async {
-    final harness = await makeHaLoServices();
-    final settings = harness.settings;
-    services = harness.services;
-    await settings.setExperimentEnabled('keyer', true);
+    services = (await makeHaLoServices()).services;
   });
 
   Future<void> connectPlaceholder(WidgetTester tester, {bool records = true}) async {
@@ -276,7 +273,6 @@ void main() {
         cat: (settings) => CatService(settings, voiceAudio: audio, voiceMessagesDirectory: () async => '/v'),
       );
       services = harness.services;
-      await harness.settings.setExperimentEnabled('keyer', true);
       await harness.settings.setVoiceMessageSets([cq], active: VoiceMessageSet.defaultId);
     });
 

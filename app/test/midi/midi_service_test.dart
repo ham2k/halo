@@ -75,8 +75,6 @@ class _Station implements MidiStation {
   @override
   void tune(String radio, double freqKHz) => tunes.add(freqKHz);
   @override
-  bool get keyingEnabled => true;
-  @override
   bool canPtt(String radio) => true;
   @override
   bool pttHeld(String radio) => held.contains(radio);

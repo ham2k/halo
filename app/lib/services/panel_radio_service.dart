@@ -37,14 +37,10 @@ class PanelRadioService {
   /// receivers experiment, `fall` in experiments.yaml.
   final bool Function() sdrEnabled;
 
-  /// Whether `keying` is reported and the keying calls act at all — the
-  /// `keyer` experiment, which gates the app's own keying surfaces too.
-  final bool Function() keyingEnabled;
-
   /// The operator's opt-in to the app keying PTT at all, off by default: a
   /// panel keys PTT only where the app's own PTT key would.
   final bool Function() pttEnabled;
-  PanelRadioService(this.cat, this.radio, {this.sdrEnabled = _never, this.keyingEnabled = _never, this.pttEnabled = _never});
+  PanelRadioService(this.cat, this.radio, {this.sdrEnabled = _never, this.pttEnabled = _never});
 
   static bool _never() => false;
 
@@ -69,7 +65,8 @@ class PanelRadioService {
   /// Each logging set's operating style, `{A: 'run' | 'normal', B?: …}` —
   /// Radio B's only under SO2R. The hook context's `opStyle`: unlike [read],
   /// it needs no radio, since the style is how the operator is working.
-  Map<String, String> opStyles() => {for (final set in cat.styledRadios) set: cat.styleOf(set).value};
+  /// Null while the styles are not tracked (CatService.tracksStyle).
+  Map<String, String>? opStyles() => cat.tracksStyle ? {for (final set in cat.styledRadios) set: cat.styleOf(set).value} : null;
 
   Map<String, dynamic> read([String? selection]) {
     final id =
@@ -93,7 +90,7 @@ class PanelRadioService {
       'id': node?.uuid,
       'name': node == null ? null : cat.displayNameFor(node),
       'set': set,
-      'opStyle': set == null ? null : cat.styleOf(set).value,
+      'opStyle': set == null ? null : cat.trackedStyleOf(set)?.value,
       'deviceId': ?(node == null ? null : cat.logicalDeviceIdFor(node.uuid)),
       'channel': ?(node == null ? null : cat.logicalChannelFor(node.uuid)),
       'status': state.status.name,
@@ -128,7 +125,7 @@ class PanelRadioService {
       // range to the extension rather than inventing one.
       'maxWatts': config?['maxWatts'] as num?,
       'modes': type == null ? const <String>[] : _settableModes(type, config!),
-      'keying': live && keyingEnabled() ? _keying(node.uuid) : null,
+      'keying': live ? _keying(node.uuid) : null,
       'spectrum': node == null || !live ? null : _spectrum(_spectrumNodeFor(node.uuid)),
     };
   }
@@ -492,7 +489,7 @@ class PanelRadioService {
     final state = read(args['selection'] as String?);
     if (args['id'] == null || args['id'] != state['id']) return (state: state, reason: 'changed');
     final id = state['id'] as String;
-    if (_keyedRadio(id) == null || !keyingEnabled()) return (state: state, reason: 'unsupported');
+    if (_keyedRadio(id) == null) return (state: state, reason: 'unsupported');
     if (state['keying'] == null) return (state: state, reason: 'disconnected');
     return (state: state, reason: null);
   }

@@ -22,6 +22,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class _Station {
   _Station({this.running = true}) {
     tracker = OperatingStyleTracker(
+      tracking: () => tracked,
       isRunning: (_) => running,
       setRunning: (_, value) {
         if (running == value) return;
@@ -34,6 +35,7 @@ class _Station {
   }
 
   late final OperatingStyleTracker tracker;
+  bool tracked = true;
   bool running;
   bool transmitting = false;
   Vfo vfo = const Vfo(freq: 14025.0, mode: 'CW');
@@ -209,6 +211,7 @@ void main() {
       settings = SettingsService(await SharedPreferences.getInstance());
       radio = RadioService(await SharedPreferences.getInstance(), writeDelay: Duration.zero);
       addTearDown(radio.dispose);
+      await settings.setSettingValue(SettingsService.loggingGroup, 'trackOpStyle', 'always');
       cat = CatService(settings, radio: radio);
       addTearDown(cat.dispose);
     });
@@ -283,6 +286,117 @@ void main() {
       radio.setVfo('vfoA', freq: 14025.0, mode: 'CW');
       cat.operatingStyle.pickedSpot(cat.operatorRadio);
       expect(cat.styleOf('A'), OperatingStyle.normal);
+    });
+  });
+
+  // SettingsService.opStyleTracking: an operator who never keys has a style
+  // nothing shows and only a self-spot or a stray key moves, so the default
+  // tracks it only once the keyer, or the style itself, is used.
+  group('tracking', () {
+    late SettingsService settings;
+    late RadioService radio;
+    late CatService cat;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      settings = SettingsService(await SharedPreferences.getInstance());
+      radio = RadioService(await SharedPreferences.getInstance(), writeDelay: Duration.zero);
+      addTearDown(radio.dispose);
+      cat = CatService(settings, radio: radio);
+      addTearDown(cat.dispose);
+    });
+
+    test('by default, an operation is untracked until the operator picks a style there, and each operation starts over', () {
+      expect(settings.opStyleTracking, OpStyleTracking.keyer);
+      cat.frontOperation = 'one';
+      expect((cat.tracksStyle, cat.trackedStyleOf('A')), (false, null));
+      cat.operatingStyle.selfSpotted('A');
+      expect(cat.styleOf('A'), OperatingStyle.normal, reason: 'a self-spot alone is no use of the keyer');
+
+      cat.setStyle('A', OperatingStyle.run);
+      expect(cat.trackedStyleOf('A'), OperatingStyle.run);
+      radio.setVfo('vfoA', freq: 14025.0, mode: 'CW');
+      radio.setVfo('vfoA', freq: 14040.0);
+      expect(cat.styleOf('A'), OperatingStyle.normal, reason: 'tracked: a QSY is S&P');
+
+      cat.frontOperation = 'two';
+      expect(cat.tracksStyle, isFalse, reason: 'another operation has not used the keyer');
+      cat.frontOperation = 'one';
+      expect(cat.tracksStyle, isTrue, reason: 'for the session');
+    });
+
+    test('never tracked, RUN and Alt-U are refused, nothing moves the style, and none is reported', () async {
+      await settings.setSettingValue(SettingsService.loggingGroup, 'trackOpStyle', 'never');
+      cat.frontOperation = 'one';
+      expect((cat.setStyle('A', OperatingStyle.run), cat.toggleStyle('A')), (false, false));
+      expect(cat.styleOf('A'), OperatingStyle.normal);
+      // ESM's side is still the operator's to pick.
+      cat.pickRunning('A', true);
+      radio.setVfo('vfoA', freq: 14025.0, mode: 'CW');
+      radio.setVfo('vfoA', freq: 14040.0);
+      cat.operatingStyle.pickedSpot('A');
+      expect((cat.tracksStyle, cat.trackedStyleOf('A'), cat.styleOf('A')), (false, null, OperatingStyle.run));
+    });
+
+    // SWAP and the tracker move styles through setRunning; neither is the
+    // operator choosing one, so neither may start what the operator did not.
+    test('a style moved by SWAP or the tracker starts nothing; one picked by hand does', () {
+      cat.frontOperation = 'one';
+      cat.setRunning('A', true);
+      expect(cat.tracksStyle, isFalse);
+      cat.pickRunning('A', true);
+      expect(cat.tracksStyle, isTrue);
+    });
+
+    // The trap: Run kept in settings from an earlier session, tracking then
+    // started by the first F2 of a new operation — every S&P contact after
+    // it would be recorded as Run.
+    test('tracking that starts begins in S&P, with the run frequency forgotten — unless ESM shows its side', () async {
+      cat.setRunning('A', true);
+      radio.setVfo('vfoA', freq: 14025.0, mode: 'CW');
+      await settings.setSettingValue(SettingsService.loggingGroup, 'trackOpStyle', 'always');
+      expect(cat.styleOf('A'), OperatingStyle.normal);
+      radio.setVfo('vfoA', freq: 14040.0);
+      radio.setVfo('vfoA', freq: 14025.0);
+      expect(cat.styleOf('A'), OperatingStyle.normal, reason: 'no run to come back to');
+
+      await settings.setSettingValue(SettingsService.loggingGroup, 'trackOpStyle', 'never');
+      await settings.setExperimentEnabled('esm', true);
+      cat.pickRunning('A', true);
+      cat.setEnterSends(on: true);
+      await settings.setSettingValue(SettingsService.loggingGroup, 'trackOpStyle', 'always');
+      expect(cat.styleOf('A'), OperatingStyle.run, reason: "ESM's pill says Run: the operator sees it");
+    });
+
+    test('an operation coming back to the front keeps its style', () {
+      cat.frontOperation = 'one';
+      cat.setStyle('A', OperatingStyle.run);
+      cat.frontOperation = 'two';
+      cat.frontOperation = 'one';
+      expect((cat.tracksStyle, cat.styleOf('A')), (true, OperatingStyle.run));
+    });
+
+    // Set from an OperationView's initState and dispose: a notification there
+    // reaches widgets that would rebuild during a build.
+    test('the operation in front changing tells the listeners after, not during, the change', () async {
+      cat.frontOperation = 'one';
+      cat.setStyle('A', OperatingStyle.run);
+      await pumpEventQueue();
+      var changes = 0;
+      cat.styleChanges.addListener(() => changes++);
+      cat.frontOperation = 'two';
+      expect(changes, 0);
+      await pumpEventQueue();
+      expect(changes, 1);
+    });
+
+    test('the tracking changing is a style change: what a contact records and an extension reads moved', () async {
+      var changes = 0;
+      cat.styleChanges.addListener(() => changes++);
+      await settings.setSettingValue(SettingsService.loggingGroup, 'trackOpStyle', 'always');
+      expect(changes, 1);
+      await settings.setSettingValue(SettingsService.loggingGroup, 'alwaysShowStyle', true);
+      expect(changes, 1, reason: 'another setting is no change of the tracking');
     });
   });
 }

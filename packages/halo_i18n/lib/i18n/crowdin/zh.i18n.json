@@ -2661,7 +2661,6 @@
     "noCwKeyer": "没有已连接的电台能键控 CW",
     "noKeyer": "没有已连接的电台能键控 CW 或播放语音存储",
     "keyerNeedsOperation": "请打开一个操作以使用 CW 键控器",
-    "keyerExperimentOff": "CW 键控已关闭——使用 EXP KEYER 开启",
     "esmExperimentOff": "回车发送消息已关闭——使用 EXP ESM 开启",
     "cwSending": "正在发送 CW：$text",
     "cwMessageError": "CW 消息 F$n：$error",

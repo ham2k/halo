@@ -152,10 +152,9 @@ void main() {
   });
 
   group('RadioSettingsGroup', () {
-    Future<SettingsService> settingsWith({bool keyer = true, bool snapExperiment = true, bool snap = true, bool zeroBeat = true, bool developer = true}) async {
+    Future<SettingsService> settingsWith({bool snapExperiment = true, bool snap = true, bool zeroBeat = true, bool developer = true}) async {
       SharedPreferences.setMockInitialValues({
         'experiments': jsonEncode({
-          if (keyer) 'keyer': {'enabled': true},
           if (snapExperiment) 'snap': {'enabled': true},
         }),
         // Both features written explicitly, never left to their defaults: a
@@ -242,12 +241,10 @@ void main() {
       expect(await keysFor(await settingsWith(zeroBeat: false)), isNot(contains('zeroBeatRangeHz')));
     });
 
-    test('keyboard PTT is offered only under the keyer experiment, off, and ahead of Smart VFO Snap', () async {
-      // Off by default because it puts the transmitter on the air; gated with
-      // the voice keyer whose Phone-mode keys it shares.
+    test('keyboard PTT is off by default, and ahead of Smart VFO Snap', () async {
+      // Off by default because it puts the transmitter on the air.
       SharedPreferences.setMockInitialValues({});
       expect(SettingsService(await SharedPreferences.getInstance()).pttKeyMode, PttKeyMode.off);
-      expect(await keysFor(await settingsWith(keyer: false)), isNot(contains('pttKeyMode')));
       final keys = [for (final el in await RadioSettingsGroup(await settingsWith()).buildElements()) el['key']];
       expect(keys.indexOf('pttKeyMode'), keys.indexOf('smartVfoSnap') - 1);
     });
@@ -451,10 +448,6 @@ void main() {
       await group.commit('voiceRepeat', true);
       await group.commit('voiceRepeatDelay', '3');
       expect(settings.voiceRepeatDelay, const Duration(seconds: 3));
-      // Keyer off: the radio's own toggles, none of the messages.
-      final withoutKeyer = await RadioSettingsGroup(await settingsWith(keyer: false, snap: false, zeroBeat: false)).buildElements();
-      expect(withoutKeyer.where(isMessageElement), isEmpty, reason: 'the messages follow the keyer experiment');
-      expect(withoutKeyer, isNotEmpty);
     });
 
     test('a stored value this build no longer offers falls back in the ENGINE, not just the picker', () async {

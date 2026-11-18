@@ -864,7 +864,6 @@ class _Translations$commands$zh extends Translations$commands$en {
 	@override String get noCwKeyer => '没有已连接的电台能键控 CW';
 	@override String get noKeyer => '没有已连接的电台能键控 CW 或播放语音存储';
 	@override String get keyerNeedsOperation => '请打开一个操作以使用 CW 键控器';
-	@override String get keyerExperimentOff => 'CW 键控已关闭——使用 EXP KEYER 开启';
 	@override String get esmExperimentOff => '回车发送消息已关闭——使用 EXP ESM 开启';
 	@override String cwSending({required Object text}) => '正在发送 CW：${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CW 消息 F${n}：${error}';
@@ -6720,7 +6719,6 @@ extension on TranslationsZh {
 			'commands.noCwKeyer' => '没有已连接的电台能键控 CW',
 			'commands.noKeyer' => '没有已连接的电台能键控 CW 或播放语音存储',
 			'commands.keyerNeedsOperation' => '请打开一个操作以使用 CW 键控器',
-			'commands.keyerExperimentOff' => 'CW 键控已关闭——使用 EXP KEYER 开启',
 			'commands.esmExperimentOff' => '回车发送消息已关闭——使用 EXP ESM 开启',
 			'commands.cwSending' => ({required Object text}) => '正在发送 CW：${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW 消息 F${n}：${error}',
@@ -7009,9 +7007,9 @@ extension on TranslationsZh {
 			'adifImport.stationCallJoin' => ' 和 ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个没有日期，无法导入', other: '${formatted} 个没有日期，无法导入', ), 
 			'adifImport.activationFound' => ({required Object refs}) => '此文件记录了 ${refs} 的一次激活。',
+			'adifImport.addActivation' => '将其添加到此操作',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.addActivation' => '将其添加到此操作',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => '只有 ${written} / ${planned} 个得以应用——在您决定期间日志发生了变化。',
 			'adifImport.busy' => '已有导入正在进行。请等待其完成后再开始新的导入。',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} 中的 QSO 超过 ${limit} 个，这是一个操作一次能导入的上限。',

@@ -441,14 +441,24 @@ class LoggingSettingsGroup extends SettingsGroup {
         // labels send the operator looking for it there.
         target: 'logging',
       ),
-      _toggle(
-        key: 'alwaysShowStyle',
-        label: s.alwaysShowStyle.title,
+      _select(
+        key: 'trackOpStyle',
+        label: s.trackOpStyle.title,
         icon: 'run',
-        description: settings.alwaysShowStyle ? s.alwaysShowStyle.descriptionOn : s.alwaysShowStyle.descriptionOff,
-        value: settings.alwaysShowStyle,
+        description: t['settings.logging.trackOpStyleDescription.${settings.opStyleTracking.name}'] as String,
+        value: settings.opStyleTracking.name,
+        options: [for (final option in OpStyleTracking.values) (label: t['settings.logging.trackOpStyle.${option.name}'] as String, value: option.name)],
         target: 'logging-extended',
       ),
+      if (settings.opStyleTracking != OpStyleTracking.never)
+        _toggle(
+          key: 'alwaysShowStyle',
+          label: s.alwaysShowStyle.title,
+          icon: 'run',
+          description: settings.alwaysShowStyle ? s.alwaysShowStyle.descriptionOn : s.alwaysShowStyle.descriptionOff,
+          value: settings.alwaysShowStyle,
+          target: 'logging-extended',
+        ),
       // The report an empty Sent/Rcvd stands for, one field per mode band.
       // Shown with the standard report as the PLACEHOLDER rather than the
       // value, the same rule the logging fields themselves follow: an empty
@@ -715,35 +725,31 @@ class RadioSettingsGroup extends SettingsGroup {
       // on (the same `listed: false` the keyer's message fields use).
       for (final el in <Map<String, dynamic>>[
         {'type': 'header', 'style': 'section', 'key': 'tuning', 'title': s.tuningSection},
-        // Behind the keyer experiment, beside the voice keyer it shares the
-        // Phone-mode keys with.
-        if (settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) ...[
-          _select(
-            key: 'pttKeyMode',
-            aliases: const ['pttKey', 'ptt'],
-            label: s.pttKey.title,
-            icon: 'microphone',
-            description: t['settings.radio.pttKey.descriptions.${settings.pttKeyMode.name}'] as String,
-            value: settings.pttKeyMode.name,
-            options: [for (final mode in PttKeyMode.values) (label: t['settings.radio.pttKey.modes.${mode.name}'] as String, value: mode.name)],
-            target: 'current-radio',
-          ),
-          // Which key, as the Keyboard Shortcuts panel binds it — and opening
-          // that panel's editor for it, while that experiment is on.
-          if (settings.pttKey)
-            {
-              'type': 'action',
-              'style': 'row',
-              'key': pttKeyActionKey,
-              'label': s.pttKey.key,
-              'description': switch (keyBindings.value.chordsFor(pttCommandId)) {
-                final chords when chords.isEmpty => t.keyboardShortcuts.noKey,
-                final chords => chords.map((chord) => '[${chord.label()}]').join(' '),
-              },
-              'icon': 'keyboard-outline',
-              'target': 'current-radio',
+        _select(
+          key: 'pttKeyMode',
+          aliases: const ['pttKey', 'ptt'],
+          label: s.pttKey.title,
+          icon: 'microphone',
+          description: t['settings.radio.pttKey.descriptions.${settings.pttKeyMode.name}'] as String,
+          value: settings.pttKeyMode.name,
+          options: [for (final mode in PttKeyMode.values) (label: t['settings.radio.pttKey.modes.${mode.name}'] as String, value: mode.name)],
+          target: 'current-radio',
+        ),
+        // Which key, as the Keyboard Shortcuts panel binds it — and opening
+        // that panel's editor for it, while the `kb` experiment is on.
+        if (settings.pttKey)
+          {
+            'type': 'action',
+            'style': 'row',
+            'key': pttKeyActionKey,
+            'label': s.pttKey.key,
+            'description': switch (keyBindings.value.chordsFor(pttCommandId)) {
+              final chords when chords.isEmpty => t.keyboardShortcuts.noKey,
+              final chords => chords.map((chord) => '[${chord.label()}]').join(' '),
             },
-        ],
+            'icon': 'keyboard-outline',
+            'target': 'current-radio',
+          },
         if (settings.experimentEnabled('snap') /* stored key, see experiments.yaml */ )
           _toggle(
             key: 'smartVfoSnap',
@@ -832,61 +838,57 @@ class RadioSettingsGroup extends SettingsGroup {
         // `listed: false` keeps them off these rows: two dozen message fields
         // would bury the radio's own toggles. The rows' aliases are how the
         // Settings search still reaches them.
-        // Behind the keyer experiment as well as CAT — the surfaces that key
-        // them are.
-        if (settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) ...[
-          {'type': 'header', 'style': 'section', 'key': 'keyer', 'title': s.keyerSection},
-          {
-            'type': 'action',
-            'style': 'row',
-            'key': cwKeyerActionKey,
-            'label': s.cwMessages.title,
-            'icon': 'message-bulleted',
-            'aliases': const [
-              'cwMessages',
-              'cwMessageLabel',
-              'cwRepeat',
-              'cwRepeatDelay',
-              'cooldown',
-              'messages',
-              'macros',
-              'repeat',
-              'enterSendsMessages',
-              'esm',
-            ],
-          },
-          {
-            'type': 'action',
-            'style': 'row',
-            'key': phoneKeyerActionKey,
-            'label': s.voiceMessages.title,
-            'icon': 'account-voice',
-            'aliases': const [
-              'voiceMessages',
-              'voiceMessageLabel',
-              'voiceRepeat',
-              'voiceRepeatDelay',
-              'cooldown',
-              'voice memories',
-              'messages',
-              'repeat',
-              'enterSendsMessages',
-              'esm',
-            ],
-          },
-          // How SO2R's two radios take the air (docs/design/cat.md § Radio B,
-          // for SO2R): a message keyed for one while the other is sending
-          // waits for it, or stops it.
-          if (settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */ )
-            _toggle(
-              key: 'so2rQueueMessages',
-              label: t.settings.station.so2rQueueMessages,
-              description: t.settings.station.so2rQueueMessagesDescription,
-              icon: 'timer-sand',
-              value: settings.so2rQueueMessages,
-            ),
-          for (final el in _keyerElements()) {...el, 'listed': false},
-        ],
+        {'type': 'header', 'style': 'section', 'key': 'keyer', 'title': s.keyerSection},
+        {
+          'type': 'action',
+          'style': 'row',
+          'key': cwKeyerActionKey,
+          'label': s.cwMessages.title,
+          'icon': 'message-bulleted',
+          'aliases': const [
+            'cwMessages',
+            'cwMessageLabel',
+            'cwRepeat',
+            'cwRepeatDelay',
+            'cooldown',
+            'messages',
+            'macros',
+            'repeat',
+            'enterSendsMessages',
+            'esm',
+          ],
+        },
+        {
+          'type': 'action',
+          'style': 'row',
+          'key': phoneKeyerActionKey,
+          'label': s.voiceMessages.title,
+          'icon': 'account-voice',
+          'aliases': const [
+            'voiceMessages',
+            'voiceMessageLabel',
+            'voiceRepeat',
+            'voiceRepeatDelay',
+            'cooldown',
+            'voice memories',
+            'messages',
+            'repeat',
+            'enterSendsMessages',
+            'esm',
+          ],
+        },
+        // How SO2R's two radios take the air (docs/design/cat.md § Radio B,
+        // for SO2R): a message keyed for one while the other is sending
+        // waits for it, or stops it.
+        if (settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */ )
+          _toggle(
+            key: 'so2rQueueMessages',
+            label: t.settings.station.so2rQueueMessages,
+            description: t.settings.station.so2rQueueMessagesDescription,
+            icon: 'timer-sand',
+            value: settings.so2rQueueMessages,
+          ),
+        for (final el in _keyerElements()) {...el, 'listed': false},
         if (_catServer case final server?) ...[
           {'type': 'header', 'style': 'section', 'key': 'services', 'title': s.servicesSection},
           {

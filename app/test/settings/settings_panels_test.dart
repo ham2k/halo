@@ -14,8 +14,6 @@
 // `find.text`: a collapsed category stays MOUNTED (see _settingsCategory),
 // so its rows are findable while being no part of what the operator sees.
 
-import 'dart:convert';
-
 import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride, TargetPlatform;
 import 'package:flutter/material.dart';
@@ -240,13 +238,7 @@ void main() {
   // declarations as well is lost to SET/SHOW. And the search has only the
   // keyer rows' aliases to reach them by.
   testWidgets('CAT Control shows one row per keyer, opening its dialog, and none of the message fields', (tester) async {
-    final services = await makeServices(
-      prefs: {
-        'experiments': jsonEncode({
-          'keyer': {'enabled': true},
-        }),
-      },
-    );
+    final services = await makeServices();
     // The keyer rows are for a station with a radio (RadioSettingsGroup's
     // hasTransceivers); without one they are unlisted.
     await tester.runAsync(

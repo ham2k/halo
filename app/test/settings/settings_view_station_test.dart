@@ -936,8 +936,7 @@ void main() {
     // operator searches for by make has to come back from the same box that
     // finds their radio — nobody hunting "winkey" knows it lives under a
     // heading rather than in the catalogue.
-    final services = await pumpSettings(tester);
-    await services.settings.setExperimentEnabled('keyer', true);
+    await pumpSettings(tester);
     await tester.pumpAndSettle();
     await openAddDialog(tester);
 

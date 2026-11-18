@@ -43,8 +43,22 @@ extension _EquipmentStore on CatService {
       _positions = _legacyPositions(stored, storedVersion);
       _moveSdrLinks();
     }
+    _moveLoggedKeys();
     if (stored['so2rSwitch'] case final String pick when pick == so2rSwitchRadios || _nodes.containsKey(pick)) _so2rSwitch = pick;
     if (stored['gpsSource'] case final String pick when pick == gpsSourceSystem || _nodes.containsKey(pick)) _gpsSource = pick;
+  }
+
+  /// A paddle stored as a radio's CW Keying pick, as builds before the
+  /// logged key had its own did: it is that radio's logged key
+  /// ([kDesignationLoggedKey]), and its CW Keying goes back to its default.
+  void _moveLoggedKeys() {
+    for (final position in _positions.all) {
+      final pick = position.slots[kCategoryKey];
+      final node = pick == null ? null : _nodes[pick];
+      if (node == null || typeFor(node)?.category != kCategoryKey) continue;
+      position.slots.remove(kCategoryKey);
+      position.slots[kDesignationLoggedKey] ??= pick;
+    }
   }
 
   /// A blob written before positions existed: which radio drove `vfoA`, SO2R's
