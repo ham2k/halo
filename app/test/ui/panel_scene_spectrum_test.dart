@@ -75,7 +75,10 @@ class _Source extends ChangeNotifier implements SceneSpectrumSource {
   final recentered = <int>[];
   final widths = <(String, Object), int>{};
   @override
-  void showWidth(String uuid, Object owner, int? widthHz) => widthHz == null ? widths.remove((uuid, owner)) : widths[(uuid, owner)] = widthHz;
+  void showWidth(String uuid, Object owner, int? widthHz, {bool secondary = false}) =>
+      widthHz == null ? widths.remove((uuid, owner)) : widths[(uuid, owner)] = widthHz;
+  @override
+  bool ledElsewhere(String uuid, Object owner) => false;
   final recenteredRadios = <String>[];
   @override
   bool canRecenter(String uuid) => true;

@@ -69,7 +69,18 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   Listenable get equipmentChanges => this;
   @override
-  void showWidth(String uuid, Object owner, int? widthHz) => widths.add(widthHz);
+  void showWidth(String uuid, Object owner, int? widthHz, {bool secondary = false}) {
+    widths.add(widthHz);
+    asSecondary.add(secondary);
+  }
+
+  /// Whether each width came from a secondary control, which leads no other one.
+  final asSecondary = <bool>[];
+
+  /// Whether another display shows the radio at a width of its own, which a secondary scope leaves the scope to.
+  bool others = true;
+  @override
+  bool ledElsewhere(String uuid, Object owner) => others;
   @override
   bool canRecenter(String uuid) => recenters;
   @override
@@ -568,6 +579,62 @@ void main() {
     expect(radio.widths.whereType<int>(), isEmpty);
     expect(radio.recentered, isEmpty);
     expect(radio.fitted, isEmpty);
+  });
+
+  // Alone on its radio, a band map that asked nothing would leave the sweep where it started while the
+  // dial walked out of it: most of the map drawn as no reading, with no other display to blame.
+  testWidgets('a secondary scope alone on its radio asks of it as any scope does, and leaves it once another display shows it', (tester) async {
+    final radio = _Radio(recenters: true, maxWidth: 400000)..others = false;
+    await _show(tester, radio, spectrum: const {'secondary': true, 'maxWidthHz': 400000, 'follow': .15});
+    await _zoomTo(tester, 400000);
+    expect(radio.widths.last, closeTo(400000, 2000), reason: 'widened to show the window');
+    expect(radio.asSecondary.last, isTrue, reason: 'asked as a secondary control, so another band map shares the scope rather than leaving it');
+    // The dial run to the sweep's edge: a scope alone moves it, as any following scope does.
+    radio.vfo = 14099500;
+    radio.notifyListeners();
+    await tester.pump(const Duration(seconds: 1));
+    expect(radio.recentered, isNotEmpty);
+    radio.others = true;
+    radio.notifyListeners();
+    await tester.pump();
+    expect(radio.widths.last, isNull, reason: 'the width given back to the display that now shows the radio');
+    // The other display gone, the map takes the scope up again.
+    radio.others = false;
+    radio.notifyListeners();
+    await tester.pump();
+    expect(radio.widths.last, closeTo(400000, 2000));
+  });
+
+  // Kept to what it last told at the same width, a control turned secondary would go on leading,
+  // and another band map would leave the scope to it rather than share it.
+  testWidgets('a control turned secondary at the same width tells the scope so', (tester) async {
+    final radio = _Radio(maxWidth: 400000)..others = false;
+    await _show(tester, radio, spectrum: const {'span': 60000});
+    expect(radio.asSecondary.last, isFalse);
+    await _show(tester, radio, spectrum: const {'span': 60000, 'secondary': true});
+    expect((radio.widths.last, radio.asSecondary.last), (60000, true));
+  });
+
+  // Over a scope it can neither move nor size, a band map asking would gain nothing, and its pan
+  // would be held to the sweep: open another display and it pans freely, close it and it would not.
+  testWidgets('a secondary scope over a scope it cannot move or size pans past the sweep, alone or not', (tester) async {
+    final radio = _Radio()..others = false;
+    await _show(tester, radio, spectrum: const {'secondary': true, 'maxWidthHz': 400000});
+    await _zoomTo(tester, 400000);
+    await tester.dragFrom(_onPan(tester, .3), const Offset(-1000, 0));
+    await tester.pump();
+    expect(_shownMiddle(tester), greaterThan(14400000));
+    expect(radio.widths.whereType<int>(), isEmpty);
+  });
+
+  // Given back and named again for each step, a zoom would tell every listener of the station that
+  // a display left and one arrived, several times a second.
+  testWidgets('a zoom tells the scope each new width without giving it back between them', (tester) async {
+    final radio = _Radio();
+    await _show(tester, radio);
+    await _zoomIn(tester);
+    expect(radio.widths, isNotEmpty);
+    expect(radio.widths, everyElement(isNotNull));
   });
 
   // Held to the sweep, a band map would zoom and pan no further than whatever else shows the radio

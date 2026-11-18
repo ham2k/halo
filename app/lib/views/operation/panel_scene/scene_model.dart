@@ -1359,7 +1359,8 @@ class SceneSpectrumSpec {
   /// its own, within [minWidthHz]–[maxWidthHz] whatever the sweep covers,
   /// and past the sweep it shows no reading. For a display beside the
   /// radio's own, such as a band map, that would otherwise widen the scope
-  /// every other display draws.
+  /// every other display draws; with no display on its radio that may move
+  /// the scope, it asks as any does, beside any other secondary one.
   final bool secondary;
 
   /// The window shown until the operator pans, as `(low, high)` in Hz: over

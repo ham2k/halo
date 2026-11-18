@@ -648,7 +648,13 @@ a scope, the control says why instead. Placed like a native control, it takes:
   displays draw, and no move or span. Its zoom and pan are its own, within
   `minWidthHz` and `maxWidthHz` (a hundred Hz and the sweep's width when
   omitted), and go past the sweep as freely as within it, the part with no
-  reading drawn as above. Clicks still tune the radio.
+  reading drawn as above. Clicks still tune the radio. All this holds while
+  another display that may move the scope shows the radio: a band scope
+  that is not `secondary`, on a panel that may command the radio. Without
+  one, the control asks of the scope as any band scope does: its width
+  where the app sizes the scope (`autoSpan`), a span as a zoom ends, and a
+  move to keep the dial in view with `follow`. Two secondary controls on
+  one radio then both ask, and the scope is sized for the wider.
 - `window` (API 22): `{lowHz, highHz}`, the window shown until the operator
   pans. Over a sweep it is where the window centers, `span` its width, the
   picture over the part the sweep covers. While no sweep comes — no radio, a

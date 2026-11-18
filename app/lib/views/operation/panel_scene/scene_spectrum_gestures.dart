@@ -460,7 +460,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
     final (sweep, uuid) = (_sweep, _uuid);
     if (sweep == null) return width;
     final sweepWidth = (sweep.highHz - sweep.lowHz).toDouble();
-    if (_sweepless || _spec.secondary) {
+    if (_sweepless || _secondary) {
       final widest = _spec.maxWidthHz ?? sweepWidth;
       return width.clamp(math.min(widest, _spec.minWidthHz ?? 100.0), widest);
     }
@@ -476,7 +476,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
   /// The widest window [sweep]'s scope can be made to show: past the sweep where the app may widen it.
   double _scopeWidest(SpectrumFrame sweep) {
     final uuid = _uuid;
-    if (_sweepless || _spec.secondary) return (sweep.highHz - sweep.lowHz).toDouble();
+    if (_sweepless || _secondary) return (sweep.highHz - sweep.lowHz).toDouble();
     return math.max((sweep.highHz - sweep.lowHz).toDouble(), (uuid == null ? null : widget.source?.maxWidthHz(uuid))?.toDouble() ?? 0);
   }
 
@@ -508,7 +508,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
       return;
     }
     // Panned past the sweep as freely as within it: what lies there shows as no reading.
-    if (_spec.secondary) {
+    if (_secondary) {
       _viewCenter = center;
       return;
     }
@@ -541,7 +541,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
   /// with more than its width.
   void _fitSpan(double width, {bool last = false, bool narrow = false}) {
     final (sweep, uuid, source, now) = (_sweep, _uuid, widget.source, realNowMillis());
-    if (sweep == null || uuid == null || source == null || _sweepless || _spec.secondary) return;
+    if (sweep == null || uuid == null || source == null || _sweepless || _secondary) return;
     if (!narrow && width <= sweep.highHz - sweep.lowHz) return;
     if (!last && now - _lastFitMillis < 250) return;
     final (middle, swept) = ((sweep.lowHz + sweep.highHz) / 2, (sweep.highHz - sweep.lowHz).toDouble());

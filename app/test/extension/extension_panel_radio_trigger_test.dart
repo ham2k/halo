@@ -198,7 +198,9 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   bool recenter(String uuid, Object owner, int centerHz) => false;
   @override
-  void showWidth(String uuid, Object owner, int? widthHz) {}
+  void showWidth(String uuid, Object owner, int? widthHz, {bool secondary = false}) {}
+  @override
+  bool ledElsewhere(String uuid, Object owner) => false;
   @override
   Stream<SpectrumFrame> frames(String uuid, Object owner) => const Stream.empty();
   @override

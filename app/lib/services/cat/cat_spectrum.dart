@@ -32,17 +32,43 @@ extension CatServiceSpectrum on CatService {
   /// names no width asks for none, so with no display naming one the span
   /// stays where it was until the scope stops. Elsewhere the span stays the
   /// radio's, and a zoom fits it ([spectrumWidthsFor]).
-  void wantSpectrumWidth(String uuid, Object owner, int? widthHz) {
+  ///
+  /// [leads]: the display may move the scope, being neither secondary nor on
+  /// a panel that may not command the radio ([spectrumLedElsewhere]).
+  void wantSpectrumWidth(String uuid, Object owner, int? widthHz, {bool leads = true}) {
     // A display closing after its radio was removed has nothing to take back.
     final runtime = widthHz == null ? _runtimes[uuid] : _runtimeFor(uuid);
-    if (runtime == null || runtime.spectrumWidths[owner] == widthHz) return;
+    if (runtime == null) return;
+    final (led, leading) = (runtime.spectrumLeaders.contains(owner), widthHz != null && leads);
+    if (runtime.spectrumWidths[owner] == widthHz && led == leading) return;
     if (widthHz == null) {
       runtime.spectrumWidths.remove(owner);
     } else {
       runtime.spectrumWidths[owner] = widthHz;
     }
+    leading ? runtime.spectrumLeaders.add(owner) : runtime.spectrumLeaders.remove(owner);
+    // A leader arriving or leaving is what a secondary display reads: told after the frame, as one
+    // display's build can be what asks, once however many came at once, and ahead of the demand, so
+    // a secondary display giving way to the new one has given its width back before the scope is
+    // sized. Sized first, the scope would run the secondary's width, and on a Flex of HaLo's own
+    // open a pan for the new display, both undone at once.
+    if (led != leading && !runtime.spectrumLeadersTelling) {
+      runtime.spectrumLeadersTelling = true;
+      scheduleMicrotask(() {
+        runtime.spectrumLeadersTelling = false;
+        if (!_disposed) _changed();
+      });
+    }
     _scheduleSpectrumDemand(runtime);
   }
+
+  /// Whether a display other than [owner] that may move [uuid]'s scope shows
+  /// its sweeps ([wantSpectrumWidth]'s `leads`). A secondary display leaves
+  /// the scope to such a one. With none it asks of the scope itself, beside
+  /// any other secondary display, the scope run for the widest of them: one
+  /// left to a display that cannot move it would stay where it started while
+  /// the dial walked out of it.
+  bool spectrumLedElsewhere(String uuid, Object owner) => _runtimes[uuid]?.spectrumLeaders.any((other) => !identical(other, owner)) ?? false;
 
   /// What each display drawing [uuid]'s scope shows of it, as [wantSpectrumWidth] was told.
   Iterable<int> spectrumWidthsFor(String uuid) => _runtimes[uuid]?.spectrumWidths.values ?? const [];
@@ -172,8 +198,14 @@ extension CatServiceSpectrum on CatService {
   /// the station hears — which Flutter refuses mid-build. So the demand is
   /// settled once the frame is done, against whoever is listening by then: a
   /// pane hidden and shown within one frame costs the radio nothing.
+  ///
+  /// While a change of the leading displays is on its way, a demand queued
+  /// before it is dropped: run first, it would size the scope for a secondary
+  /// display's width before that display hears it is to give way. The call
+  /// that sent the change queued a demand of its own after it
+  /// ([wantSpectrumWidth]).
   void _scheduleSpectrumDemand(_NodeRuntime runtime) => scheduleMicrotask(() {
-    if (_disposed) return;
+    if (_disposed || runtime.spectrumLeadersTelling) return;
     _settleSdr(runtime);
     _spectrumDemand(runtime, runtime.spectrum?.hasListener ?? false);
   });

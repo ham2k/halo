@@ -4297,9 +4297,17 @@ A display beside the radio's own, such as a band map, is a **secondary** one
 widest, and asks no width of it, no move and no span. Counted among the
 widths, a band map showing a whole band would run the scope that wide for
 every display, and on a Flex mirrored through DAX IQ spend the radio's DAX
-budget on it. It still counts as a display wanting the scope, so the radio
-sweeps for a band map open alone. Its zoom and pan are its own, and what it
-shows past the sweep is drawn as no reading.
+budget on it. Its zoom and pan are its own, and what it shows past the sweep
+is drawn as no reading. That holds while another display that may move the
+scope shows the radio: one neither secondary nor on a panel that may not
+command the radio (`wantSpectrumWidth`'s `leads`, `spectrumLedElsewhere`).
+Without one, it names its width and moves the scope as any display does,
+since asking nothing, or leaving the scope to a display that cannot move it,
+it would leave the sweep where it started while the dial walked out of it.
+Two secondary displays then both ask, and the scope runs for the wider. A
+leader arriving or leaving is told to CatService's listeners after the
+frame, once however many came, and ahead of sizing the scope, so a secondary
+display giving way has given its width back first.
 
 Receivers exposed as separate logical radios each have an ordinary
 `SpectrumSession`, addressed by their own radio UUID. Demand, settings and

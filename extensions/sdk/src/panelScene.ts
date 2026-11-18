@@ -399,6 +399,8 @@ export interface PanelSceneSpectrum {
    * no span. The zoom and pan are the control's own, within `minWidthHz`–`maxWidthHz` (a hundred Hz
    * and the sweep's width when omitted), past the sweep as within it. For a display beside the
    * radio's own, such as a band map, that would otherwise widen the scope every other one draws.
+   * While no band scope that may move the scope shows the radio (one not `secondary`, on a panel that
+   * may command it), it asks of the scope as any band scope does, beside any other secondary one.
    * Extension API 28.
    */
   secondary?: boolean

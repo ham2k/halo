@@ -104,8 +104,14 @@ abstract class SceneSpectrumSource {
   /// [owner] shows [widthHz] of [uuid]'s sweeps — its `span`, or the
   /// operator's zoom; 0 where it names neither and draws the whole sweep —
   /// or null once it shows none: where the span is the app's to choose, the
-  /// scope is run wide enough for the widest.
-  void showWidth(String uuid, Object owner, int? widthHz);
+  /// scope is run wide enough for the widest. A [secondary] control's width
+  /// sizes the scope as any does, and moves no other secondary one.
+  void showWidth(String uuid, Object owner, int? widthHz, {bool secondary = false});
+
+  /// Whether a display other than [owner] that may move [uuid]'s scope shows
+  /// its sweeps: one a secondary control leaves the scope to. [changes]
+  /// notifies when it may have changed.
+  bool ledElsewhere(String uuid, Object owner);
 
   /// Whether a spectrum's gestures are the host's where its scene names
   /// none: for a bundle declaring extension API 17 or later. Before it a
@@ -239,9 +245,9 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   int _subscriptionEpoch = 0;
   int _rowEpoch = 0;
 
-  /// The width last told to a source, and which source and node it was told
-  /// for: see [SceneSpectrumSource.showWidth].
-  (SceneSpectrumSource, String, int)? _shown;
+  /// The width last told to a source, which source and node it was told for,
+  /// and whether as a secondary control: see [SceneSpectrumSource.showWidth].
+  (SceneSpectrumSource, String, int, bool)? _shown;
 
   /// The last sweep in full, its levels averaged.
   SpectrumFrame? _sweep;
@@ -547,6 +553,19 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     setState(() {});
   }
 
+  /// A [SceneSpectrumSpec.secondary] control while a display that may move the
+  /// scope shows its radio: without one, it asks of the scope as any control
+  /// does, beside any other secondary one.
+  /// With no radio to ask, or a scope it could neither move nor size, it stays
+  /// secondary: asking would gain nothing, and its pan would be held to the sweep.
+  bool get _secondary {
+    final (source, uuid) = (widget.source, _uuid);
+    if (!_spec.secondary) return false;
+    if (source == null || uuid == null) return true;
+    if (!source.canRecenter(uuid) && source.maxWidthHz(uuid) == null) return true;
+    return source.ledElsewhere(uuid, this);
+  }
+
   /// Subscribes to the radio this control names, while it is seen.
   void _follow() {
     _subscribe();
@@ -559,11 +578,15 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   /// control none, so its width widens no scope.
   void _showWidth() {
     final (source, uuid, width) = (widget.source, _uuid, (_viewWidth ?? _number(_spec.span))?.round());
-    final now = source == null || uuid == null || _spec.secondary ? null : (source, uuid, width == null || width <= 0 ? 0 : width);
+    // Whether it is secondary is part of what it tells: the same width asked as the other kind
+    // leads, or stops leading, another band map.
+    final now = source == null || uuid == null || _secondary ? null : (source, uuid, width == null || width <= 0 ? 0 : width, _spec.secondary);
     if (now == _shown) return;
-    if (_shown case (final source, final uuid, _)) source.showWidth(uuid, this, null);
+    // A zoom only changes the width: given back first, every display would hear of one leaving and
+    // one arriving, several times a second.
+    if (_shown case (final source, final uuid, _, _) when now?.$1 != source || now?.$2 != uuid) source.showWidth(uuid, this, null);
     _shown = now;
-    if (now case (final source, final uuid, final width)) source.showWidth(uuid, this, width);
+    if (now case (final source, final uuid, final width, final secondary)) source.showWidth(uuid, this, width, secondary: secondary);
   }
 
   void _subscribe() {
@@ -854,7 +877,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     _subscriptionEpoch++;
     widget.source?.changes.removeListener(_onSourceChanged);
     _subscription?.cancel();
-    if (_shown case (final source, final uuid, _)) source.showWidth(uuid, this, null);
+    if (_shown case (final source, final uuid, _, _)) source.showWidth(uuid, this, null);
     _staleTimer?.cancel();
     _settleTimer?.cancel();
     _tuneTimer?.cancel();

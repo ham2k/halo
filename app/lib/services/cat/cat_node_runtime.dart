@@ -130,6 +130,14 @@ class _NodeRuntime {
   /// [CatService.wantSpectrumWidth].
   final spectrumWidths = <Object, int>{};
 
+  /// The displays in [spectrumWidths] that may move the scope: neither
+  /// secondary nor on a panel that may not command the radio
+  /// ([CatService.spectrumLedElsewhere]).
+  final spectrumLeaders = <Object>{};
+
+  /// A change of [spectrumLeaders] is on its way to CatService's listeners.
+  bool spectrumLeadersTelling = false;
+
   /// The span last asked of this scope since it started, for those widths:
   /// what the radio reports lags the ask, and a start re-reports the last
   /// session's, so neither says whether this one was asked.

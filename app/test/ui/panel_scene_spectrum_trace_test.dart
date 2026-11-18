@@ -50,7 +50,9 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   Listenable get equipmentChanges => this;
   @override
-  void showWidth(String uuid, Object owner, int? widthHz) {}
+  void showWidth(String uuid, Object owner, int? widthHz, {bool secondary = false}) {}
+  @override
+  bool ledElsewhere(String uuid, Object owner) => false;
   @override
   bool canRecenter(String uuid) => false;
   @override

@@ -77,7 +77,7 @@ extension _SpectrumWindow on _SceneSpectrumViewState {
       _viewWidth ?? span,
       centerHz: _viewCenter ?? _spec.centerHz,
       // A secondary scope's window is its own, past the sweep as within it.
-      held: _recenters != true && !_spec.secondary,
+      held: _recenters != true && !_secondary,
       widestHz: _spec.maxWidthHz,
     );
     return SpectrumFrame(

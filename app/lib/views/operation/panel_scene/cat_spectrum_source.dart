@@ -208,7 +208,11 @@ class CatSpectrumSource implements SceneSpectrumSource {
   /// Any panel that draws the scope, commanding the radio or not: the span
   /// it sizes is only ever one that changes nothing on the radio.
   @override
-  void showWidth(String uuid, Object owner, int? widthHz) => cat.wantSpectrumWidth(uuid, owner, widthHz);
+  void showWidth(String uuid, Object owner, int? widthHz, {bool secondary = false}) =>
+      cat.wantSpectrumWidth(uuid, owner, widthHz, leads: canCommand && !secondary);
+
+  @override
+  bool ledElsewhere(String uuid, Object owner) => cat.spectrumLedElsewhere(uuid, owner);
 
   @override
   int? maxWidthHz(String uuid) {

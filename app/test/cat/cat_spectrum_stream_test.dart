@@ -277,6 +277,51 @@ void main() {
     expect(scope.spans.last, 40000);
   });
 
+  // A band map is a secondary display: it leaves the scope to the displays that name a width, and
+  // drives it itself while there is none. Unchanged in what it reads, or told nothing when one
+  // arrives, it would go on widening the scope under the other display, or never take it up.
+  test('a display is shown elsewhere while another names a width, and its listeners hear when one comes or goes', () async {
+    final panel = Object(), map = Object();
+    var notified = 0;
+    cat.addListener(() => notified++);
+    expect(cat.spectrumLedElsewhere(uuid, map), isFalse);
+    cat.wantSpectrumWidth(uuid, map, 450000);
+    expect(cat.spectrumLedElsewhere(uuid, map), isFalse, reason: 'its own width is not another display');
+    cat.wantSpectrumWidth(uuid, panel, 50000);
+    expect(cat.spectrumLedElsewhere(uuid, map), isTrue);
+    await pumpEventQueue();
+    final arrivals = notified;
+    expect(arrivals, 1, reason: 'two displays arriving at once, as a dock rebuild brings them, told once');
+    cat.wantSpectrumWidth(uuid, panel, 40000);
+    await pumpEventQueue();
+    expect(notified, arrivals, reason: 'a zoom changes no display there is, and comes several times a second');
+    cat.wantSpectrumWidth(uuid, panel, null);
+    expect(cat.spectrumLedElsewhere(uuid, map), isFalse);
+    await pumpEventQueue();
+    expect(notified, greaterThan(arrivals));
+  });
+
+  // Left to a display that cannot move the scope, a band map would see the sweep stay where it
+  // started; left to another band map, the second to open would draw only what the first asks.
+  test('only a display that may move the scope leads it: band maps share it, at the widest of them', () async {
+    final scope = driver.sessions.single
+      ..capabilities = const SpectrumCapabilities(spansHz: [10000, 20000, 40000, 80000], refMinDb: 0, refMaxDb: 1, refStepDb: 1, autoSpan: true)
+      ..running = true;
+    final drawing = cat.spectrumFrames(uuid).listen((_) {});
+    addTearDown(drawing.cancel);
+    final viewer = Object(), mapA = Object(), mapB = Object();
+    CatSpectrumSource(cat).showWidth(uuid, viewer, 20000);
+    expect(cat.spectrumLedElsewhere(uuid, mapA), isFalse, reason: 'a panel that may not command the radio moves nothing');
+    final commanding = CatSpectrumSource(cat, canCommand: true);
+    commanding.showWidth(uuid, mapA, 30000, secondary: true);
+    commanding.showWidth(uuid, mapB, 150000, secondary: true);
+    expect([cat.spectrumLedElsewhere(uuid, mapA), cat.spectrumLedElsewhere(uuid, mapB)], [false, false]);
+    await pumpEventQueue();
+    expect(scope.spans.last, 80000, reason: 'the scope run for the wider map');
+    commanding.showWidth(uuid, Object(), 20000);
+    expect([cat.spectrumLedElsewhere(uuid, mapA), cat.spectrumLedElsewhere(uuid, mapB)], [true, true]);
+  });
+
   // Nothing says what a display that names no width wants, so it gets what is there.
   test('with no display naming a width, the span stays where it was', () async {
     final scope = driver.sessions.single
@@ -452,6 +497,51 @@ void main() {
         ],
         reason: 'each display draws only its own sweep',
       );
+    });
+
+    // A band map alone holds the scope at its width, and gives it way when a display arrives: told
+    // after the scope is sized, the radio would run the map's width a moment longer, and open a
+    // sweep for the new display beside it, both undone at once.
+    test('a secondary display gives the scope back before it is sized for the display that arrives', () async {
+      final scope = driver.sessions.single
+        ..capabilities = spans
+        ..running = true
+        ..spare = 1;
+      final panel = Object(), map = Object();
+      final drawing = cat.spectrumFrames(uuid, owner: map).listen((_) {});
+      addTearDown(drawing.cancel);
+      cat.addListener(() {
+        if (cat.spectrumLedElsewhere(uuid, map)) cat.wantSpectrumWidth(uuid, map, null);
+      });
+      cat.wantSpectrumWidth(uuid, map, 160000, leads: false);
+      await pumpEventQueue();
+      expect(scope.spans.last, 80000);
+      cat.wantSpectrumWidth(uuid, panel, 20000);
+      await pumpEventQueue();
+      expect(scope.extras, isEmpty, reason: 'no sweep opened for a width the map had already given back');
+      expect(scope.spans.last, 10000);
+    });
+
+    // A band map and a radio panel mounted in one frame, the map first: the map's own demand is
+    // already queued when the panel arrives, and run before the map hears to give way, it would size
+    // the scope for the map and open a sweep for the panel beside it.
+    test('a demand already queued waits for a secondary display to give way to the display arriving with it', () async {
+      final scope = driver.sessions.single
+        ..capabilities = spans
+        ..running = true
+        ..spare = 1;
+      final panel = Object(), map = Object();
+      cat.addListener(() {
+        if (cat.spectrumLedElsewhere(uuid, map)) cat.wantSpectrumWidth(uuid, map, null);
+      });
+      final drawing = cat.spectrumFrames(uuid, owner: map).listen((_) {});
+      addTearDown(drawing.cancel);
+      cat.wantSpectrumWidth(uuid, map, 160000, leads: false);
+      cat.wantSpectrumWidth(uuid, panel, 20000);
+      await pumpEventQueue();
+      expect(scope.extras, isEmpty);
+      expect(scope.spans, isNot(contains(80000)), reason: "never sized for the map's width");
+      expect(scope.spans.last, 10000);
     });
 
     test('with no sweep to spare, a narrower display crops the widest', () async {
