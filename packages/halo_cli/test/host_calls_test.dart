@@ -109,6 +109,15 @@ void main() {
       expect(await withLog.call('getQsos', {'operationUuid': 'op-1'}), isEmpty);
     });
 
+    test('getScores answers null where getQsos does, and no score yet otherwise: halo-ext holds none', () async {
+      expect(await host().call('getScores', {'operationUuid': 'op-1'}), isNull);
+      final withLog = host(
+        log: const LogContext(operation: {'uuid': 'op-1'}, qsos: []),
+      );
+      expect(await withLog.call('getScores', {'operationUuid': 'op-2'}), isNull);
+      expect(await withLog.call('getScores', {'operationUuid': 'op-1'}), isEmpty);
+    });
+
     test('getQsoChanges hands the kernel the whole log once, and nothing after: the log never changes in a run', () async {
       // The kernel's copy of the log (logCopy.ts) asks this, not getQsos. An
       // answer that kept resetting would cost the whole log every read; one

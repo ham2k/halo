@@ -49,6 +49,7 @@ import '../agent_link/agent_link_model.dart';
 import '../agent_link/agent_link_service.dart';
 import '../panel_service.dart';
 import 'cluster_host_calls.dart';
+import '../../tools/scoring_summaries.dart' show operationSummaryFor, orderedScorerKeys;
 import 'radio_host_calls.dart';
 import 'app_control_host_calls.dart';
 import 'settings_placement.dart';

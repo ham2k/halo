@@ -51,6 +51,7 @@ import type {
   CandidateVerdict,
   GetSpotsOptions,
   ListOperationsOptions,
+  OperationScores,
   OperationSummary,
   BoardSpot,
   HeldBandAnnotation,
@@ -1079,6 +1080,9 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
         frozen: record.unattributed === true || apiOf(record.extensionKey) >= FROZEN_QSOS_API,
         extensionKey: record.extensionKey,
       }),
+    // The score the app holds, never a rescore — see HookContext.getScores.
+    getScores: async (operationUuid: string) =>
+      ((await dispatchHostCall("getScores", { operationUuid }, record.extensionKey)) as OperationScores | null) ?? null,
     // Reads the host's already-fetched spot cache; never triggers a fetch,
     // so it is cheap enough for the per-keystroke lookup pipeline (see
     // HookContext.getSpotsForCall).

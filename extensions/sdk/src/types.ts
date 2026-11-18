@@ -108,6 +108,18 @@ export interface HookContext {
   /// ones, frozen: writing to one throws, so copy what you mean to change.
   /// Under an older `api` each call gets QSOs of its own, as it always did.
   getQsos?(operationUuid: string): Promise<Record<string, JSONValue>[] | null>
+  /// The operation's score as the app holds it: each scorer's tallies for
+  /// the whole operation, the `operationSummary` its `scoring` hook last
+  /// answered, by scorer key (a contest's or an activity's is its
+  /// extension's key, the app's own DXCC, states and bands `core`), contests
+  /// first, then activities, and `core` last.
+  ///
+  /// It reads what is held and never scores, so a contact logged a moment
+  /// ago may not be counted yet. Resolves null where [getQsos] does, since
+  /// a score is read under the same rule as the log, and `{}` for an
+  /// operation not scored yet. Extension API 28; absent on hosts older
+  /// than it.
+  getScores?(operationUuid: string): Promise<OperationScores | null>
   /// Every spot the host has already fetched for [call] (case-insensitive)
   /// that is no older than `maxAgeMinutes` (default 30), newest first.
   ///
@@ -1745,6 +1757,10 @@ export interface QsoScoreVerdict {
 /// `qsos.score_cache` holds one of these per active scorer, keyed by scorer:
 /// `{core: {...}, cqww: {...}}`.
 export type QsoScoreEntry = Record<string, QsoScoreVerdict>
+
+/// What `ctx.getScores` answers: each scorer's operation tallies, by scorer
+/// key, then by the scorer's own tally keys.
+export type OperationScores = Record<string, Record<string, ScoreTally>>
 
 /// One rule's running tally, either for a calendar day or the whole
 /// operation. Shape is rule-specific beyond the common summary fields.

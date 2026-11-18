@@ -273,6 +273,14 @@ class CliHostCalls {
             if (!asQsonBool(qso['deleted'])) qso,
         ];
 
+      case 'getScores':
+        // Null by getQsos's rule; otherwise no score yet, since halo-ext
+        // scores a log only when asked to and holds none between calls.
+        if (log.qsos == null) return null;
+        final ours = log.operation?['uuid'];
+        if (ours != null && ours != params['operationUuid']) return null;
+        return const <String, Object?>{};
+
       case 'getQsoChanges':
         // The kernel's copy of the log (extensions/sdk/src/logCopy.ts). The
         // log here is fixed for the whole run, so the first ask gets all of

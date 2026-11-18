@@ -34,6 +34,7 @@ class _ExtensionHostCalls {
       'listOperations' => _listOperations(params),
       'getQsos' => _getQsos(params),
       'getQsoChanges' => _getQsoChanges(params),
+      'getScores' => _getScores(params),
       'getSpotsForCall' => _getSpotsForCall(params),
       'getSpots' => _getSpots(params),
       'getBandAnnotations' => _getBandAnnotations(params),
@@ -312,7 +313,8 @@ class _ExtensionHostCalls {
   }
 
   Future<dynamic> _getQsos(Map<String, dynamic> params) async {
-    final operationUuid = params['operationUuid'] as String;
+    final operationUuid = params['operationUuid'];
+    if (operationUuid is! String) throw ExtensionHostException('getQsos: `operationUuid` must be a string');
     // Null — not an empty list — when the operation is unknown or this
     // host has no log access, so callers can tell "no such operation"
     // from "operation with no QSOs yet" (see HookContext.getQsos).
@@ -321,6 +323,23 @@ class _ExtensionHostCalls {
     // Excludes soft-deleted records, keeps event markers; oldest first.
     final list = await _service.qsos!.forOperation(operationUuid);
     return [for (final qso in list) qso.data];
+  }
+
+  /// Backs `ctx.getScores`: each scorer's `operationSummary` as the app last
+  /// scored the operation, by scorer key, contests first and `core` last. It
+  /// reads what is held and never scores, so a contact logged a moment ago
+  /// may not be in it yet. Null exactly where [_getQsos] is null, since the
+  /// score is read under the same rule as the log; `{}` for an operation not
+  /// scored yet.
+  Future<dynamic> _getScores(Map<String, dynamic> params) async {
+    final operationUuid = params['operationUuid'];
+    if (operationUuid is! String) throw ExtensionHostException('getScores: `operationUuid` must be a string');
+    if (_service.operations == null || _service.qsos == null) return null;
+    final operation = await _service.operations!.get(operationUuid);
+    if (operation == null) return null;
+    final held = operation.localData['scoring'];
+    final scoring = held is Map ? held.cast<String, dynamic>() : null;
+    return {for (final scorerKey in orderedScorerKeys(scoring)) scorerKey: ?operationSummaryFor(scoring, scorerKey)};
   }
 
   /// The kernel's copy of a log, kept in step (`extensions/sdk/src/logCopy.ts`):

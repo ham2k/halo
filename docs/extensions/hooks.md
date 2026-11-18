@@ -85,7 +85,7 @@ Every method has the shape `async method(args, ctx)`:
 - **`ctx`** is the hook context, the same for every category: `online`,
   `locale`, `developerMode`, the operator's number and date conventions,
   the build's edition, and reads into the log (`getOperation`, `getQsos`,
-  `getHistoryForCall`) and the spots board (`getSpots`, `getSpotsForCall`).
+  `getScores`, `getHistoryForCall`) and the spots board (`getSpots`, `getSpotsForCall`).
   [The host API](host.md#the-hook-context) lists every field.
 
 From extension API 9 the QSOs a hook reads through `ctx.getQsos`, and a
