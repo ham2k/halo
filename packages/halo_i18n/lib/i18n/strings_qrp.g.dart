@@ -3246,6 +3246,18 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get icomPortsDiffer => 'the control and serial ports must differ';
 	@override String get radioUser => 'radio username';
 	@override String get radioPass => 'radio password';
+	@override String get echocatPairingLink => 'echocat pairing link';
+	@override String get echocatPairingHelp => 'on the shack computer, open potacat settings → echocat → pair my device and copy the link. paste it here while the shack is reachable over your network or tailscale.';
+	@override String get echocatPairingRequired => 'paste a pairing link from potacat';
+	@override String get echocatInvalidLink => 'use a potacat pairing link for a local or tailscale connection';
+	@override String get echocatUnreachable => 'cannot reach potacat. check that echocat is running and the shack is reachable over your network or tailscale.';
+	@override String get echocatPairingRefused => 'potacat refused the pairing link. copy a new link from the shack.';
+	@override String get echocatAuthorizationRefused => 'potacat refused this device. edit the radio and paste a new pairing link.';
+	@override String get echocatCertificateMismatch => 'the shack\'s certificate could not be verified. check the address and copy a new pairing link.';
+	@override String get echocatDisplaced => 'another device took over the potacat radio';
+	@override String get echocatRadioDisconnected => 'potacat is connected, but its radio is unavailable';
+	@override String get echocatScopeUnavailable => 'potacat has no scope available for this radio';
+	@override String get echocatScopeAxisUnknown => 'potacat does not know the scope\'s frequency range. try center mode on the radio.';
 	@override String get radioLoginDescription => 'the radio\'s network → remote login, not your wifi password.';
 	@override String get radioUserRequired => 'the radio\'s remote-control username is required';
 	@override String get connectFailedBridgeClosed => 'the bridge hung up at once. another program at the station may have the radio\'s port: a logger, wsjt-x or rigctld.';
@@ -5216,6 +5228,8 @@ class _Translations$settings$station$models$qrp extends Translations$settings$st
 	@override String get rigctldNodeName => 'my radio (via rigctld)';
 	@override String get flrig => 'radio controlled via flrig';
 	@override String get flrigNodeName => 'my radio (via flrig)';
+	@override String get potacat => 'potacat (echocat)';
+	@override String get potacatNodeName => 'my radio (via potacat)';
 	@override String get hrd => 'radio controlled via ham radio deluxe®';
 	@override String get hrdNodeName => 'my radio (via hrd)';
 	@override String get n3fjp => 'radio controlled via n3fjp';
@@ -7683,6 +7697,18 @@ extension on TranslationsQrp {
 			'settings.station.icomPortsDiffer' => 'the control and serial ports must differ',
 			'settings.station.radioUser' => 'radio username',
 			'settings.station.radioPass' => 'radio password',
+			'settings.station.echocatPairingLink' => 'echocat pairing link',
+			'settings.station.echocatPairingHelp' => 'on the shack computer, open potacat settings → echocat → pair my device and copy the link. paste it here while the shack is reachable over your network or tailscale.',
+			'settings.station.echocatPairingRequired' => 'paste a pairing link from potacat',
+			'settings.station.echocatInvalidLink' => 'use a potacat pairing link for a local or tailscale connection',
+			'settings.station.echocatUnreachable' => 'cannot reach potacat. check that echocat is running and the shack is reachable over your network or tailscale.',
+			'settings.station.echocatPairingRefused' => 'potacat refused the pairing link. copy a new link from the shack.',
+			'settings.station.echocatAuthorizationRefused' => 'potacat refused this device. edit the radio and paste a new pairing link.',
+			'settings.station.echocatCertificateMismatch' => 'the shack\'s certificate could not be verified. check the address and copy a new pairing link.',
+			'settings.station.echocatDisplaced' => 'another device took over the potacat radio',
+			'settings.station.echocatRadioDisconnected' => 'potacat is connected, but its radio is unavailable',
+			'settings.station.echocatScopeUnavailable' => 'potacat has no scope available for this radio',
+			'settings.station.echocatScopeAxisUnknown' => 'potacat does not know the scope\'s frequency range. try center mode on the radio.',
 			'settings.station.radioLoginDescription' => 'the radio\'s network → remote login, not your wifi password.',
 			'settings.station.radioUserRequired' => 'the radio\'s remote-control username is required',
 			'settings.station.connectFailedBridgeClosed' => 'the bridge hung up at once. another program at the station may have the radio\'s port: a logger, wsjt-x or rigctld.',
@@ -7759,6 +7785,8 @@ extension on TranslationsQrp {
 			'settings.station.models.rigctldNodeName' => 'my radio (via rigctld)',
 			'settings.station.models.flrig' => 'radio controlled via flrig',
 			'settings.station.models.flrigNodeName' => 'my radio (via flrig)',
+			'settings.station.models.potacat' => 'potacat (echocat)',
+			'settings.station.models.potacatNodeName' => 'my radio (via potacat)',
 			'settings.station.models.hrd' => 'radio controlled via ham radio deluxe®',
 			'settings.station.models.hrdNodeName' => 'my radio (via hrd)',
 			'settings.station.models.n3fjp' => 'radio controlled via n3fjp',
@@ -8061,6 +8089,8 @@ extension on TranslationsQrp {
 			'settings.station.providesScope' => 'band scope',
 			'settings.station.providesKeyer' => 'cw keyer',
 			'settings.station.providesVoice' => 'voice keyer',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.providesSwitch' => 'antenna switch',
 			'settings.station.providesRotator' => 'rotator',
 			'settings.station.providesAudioMixer' => 'audio mixer',
@@ -8075,8 +8105,6 @@ extension on TranslationsQrp {
 			'settings.station.telemetryIntervalDescription' => 'how often to read the radio\'s meters while it is transmitting. leave blank for the fastest this connection can handle, up to 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'a whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'idle polling interval (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'how often to ask the radio for its frequency and mode while neither is changing. leave blank for ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'a whole number of milliseconds, ${min} to ${max}',
 			'settings.station.ratedPower' => 'rated power (w)',
@@ -8575,6 +8603,8 @@ extension on TranslationsQrp {
 			'staleness.codePushFloorTitle' => 'an important update is waiting',
 			'staleness.codePushFloorBody' => 'this version has a fix you don\'t have yet.',
 			'staleness.restartToApply' => 'restart the app to apply it.',
+			_ => null,
+		} ?? switch (path) {
 			'staleness.quitAndReopen' => 'quit the app and open it again to apply it.',
 			'staleness.reopenToApply' => 'close the app and open it again to apply it.',
 			'staleness.ignoreForNow' => 'ignore for now',
@@ -8589,8 +8619,6 @@ extension on TranslationsQrp {
 			'spotting.selfSpottingToComment' => ({required Object sources, required Object comment}) => 'self-spotting to ${sources}: ${comment}',
 			'spotting.spotLastTo' => ({required Object sources}) => 'spot the last logged qso to ${sources}?',
 			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => 'spot the last logged qso to ${sources} with "${comment}"?',
-			_ => null,
-		} ?? switch (path) {
 			'spotting.spottingLastTo' => ({required Object sources}) => 'spotting last qso to ${sources}…',
 			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => 'spotting last qso to ${sources}: ${comment}',
 			'spotting.incompleteCall' => 'can\'t spot an incomplete call — finish the callsign first.',

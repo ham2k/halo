@@ -8,6 +8,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/echocat_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/placeholder_radio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
@@ -18,12 +19,13 @@ class _Sink implements EquipmentSink {
 }
 
 void main() {
-  test('every transceiver model that reaches a radio takes raw commands', () {
+  test('every transceiver with a direct CAT command channel takes raw commands', () {
     final missing = <String>[];
     for (final model in EquipmentRegistry().models.where((m) => m.category == kCategoryTransceiver)) {
       for (final variant in model.variants) {
-        // A placeholder has no wire to send anything down.
-        if (variant.driver is PlaceholderRadioDriver) continue;
+        // ECHOCAT controls whichever rig POTACAT has selected through
+        // named operations. HaLo has no CAT protocol for that underlying rig.
+        if (variant.driver is PlaceholderRadioDriver || variant.driver is EchocatDriver) continue;
         final session = variant.driver.createSession(_Sink(), variant.defaultConfig);
         if (session is! RawCommandSession) missing.add('${variant.key} (${variant.driver.key})');
       }

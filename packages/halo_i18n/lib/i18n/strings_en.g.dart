@@ -7238,6 +7238,42 @@ class Translations$settings$station$en {
 	/// en: 'Radio password'
 	String get radioPass => 'Radio password';
 
+	/// en: 'ECHOCAT pairing link'
+	String get echocatPairingLink => 'ECHOCAT pairing link';
+
+	/// en: 'On the shack computer, open POTACAT Settings → ECHOCAT → Pair my device and copy the link. Paste it here while the shack is reachable over your network or Tailscale.'
+	String get echocatPairingHelp => 'On the shack computer, open POTACAT Settings → ECHOCAT → Pair my device and copy the link. Paste it here while the shack is reachable over your network or Tailscale.';
+
+	/// en: 'Paste a pairing link from POTACAT'
+	String get echocatPairingRequired => 'Paste a pairing link from POTACAT';
+
+	/// en: 'Use a POTACAT pairing link for a local or Tailscale connection'
+	String get echocatInvalidLink => 'Use a POTACAT pairing link for a local or Tailscale connection';
+
+	/// en: 'Cannot reach POTACAT. Check that ECHOCAT is running and the shack is reachable over your network or Tailscale.'
+	String get echocatUnreachable => 'Cannot reach POTACAT. Check that ECHOCAT is running and the shack is reachable over your network or Tailscale.';
+
+	/// en: 'POTACAT refused the pairing link. Copy a new link from the shack.'
+	String get echocatPairingRefused => 'POTACAT refused the pairing link. Copy a new link from the shack.';
+
+	/// en: 'POTACAT refused this device. Edit the radio and paste a new pairing link.'
+	String get echocatAuthorizationRefused => 'POTACAT refused this device. Edit the radio and paste a new pairing link.';
+
+	/// en: 'The shack's certificate could not be verified. Check the address and copy a new pairing link.'
+	String get echocatCertificateMismatch => 'The shack\'s certificate could not be verified. Check the address and copy a new pairing link.';
+
+	/// en: 'Another device took over the POTACAT radio'
+	String get echocatDisplaced => 'Another device took over the POTACAT radio';
+
+	/// en: 'POTACAT is connected, but its radio is unavailable'
+	String get echocatRadioDisconnected => 'POTACAT is connected, but its radio is unavailable';
+
+	/// en: 'POTACAT has no scope available for this radio'
+	String get echocatScopeUnavailable => 'POTACAT has no scope available for this radio';
+
+	/// en: 'POTACAT does not know the scope's frequency range. Try Center mode on the radio.'
+	String get echocatScopeAxisUnknown => 'POTACAT does not know the scope\'s frequency range. Try Center mode on the radio.';
+
 	/// en: 'The radio's Network → Remote login, not your WiFi password.'
 	String get radioLoginDescription => 'The radio\'s Network → Remote login, not your WiFi password.';
 
@@ -11641,6 +11677,12 @@ class Translations$settings$station$models$en {
 	/// en: 'My Radio (via flrig)'
 	String get flrigNodeName => 'My Radio (via flrig)';
 
+	/// en: 'POTACAT (ECHOCAT)'
+	String get potacat => 'POTACAT (ECHOCAT)';
+
+	/// en: 'My Radio (via POTACAT)'
+	String get potacatNodeName => 'My Radio (via POTACAT)';
+
 	/// en: 'Radio controlled via Ham Radio Deluxe®'
 	String get hrd => 'Radio controlled via Ham Radio Deluxe®';
 
@@ -14447,6 +14489,18 @@ extension on Translations {
 			'settings.station.icomPortsDiffer' => 'The control and serial ports must differ',
 			'settings.station.radioUser' => 'Radio username',
 			'settings.station.radioPass' => 'Radio password',
+			'settings.station.echocatPairingLink' => 'ECHOCAT pairing link',
+			'settings.station.echocatPairingHelp' => 'On the shack computer, open POTACAT Settings → ECHOCAT → Pair my device and copy the link. Paste it here while the shack is reachable over your network or Tailscale.',
+			'settings.station.echocatPairingRequired' => 'Paste a pairing link from POTACAT',
+			'settings.station.echocatInvalidLink' => 'Use a POTACAT pairing link for a local or Tailscale connection',
+			'settings.station.echocatUnreachable' => 'Cannot reach POTACAT. Check that ECHOCAT is running and the shack is reachable over your network or Tailscale.',
+			'settings.station.echocatPairingRefused' => 'POTACAT refused the pairing link. Copy a new link from the shack.',
+			'settings.station.echocatAuthorizationRefused' => 'POTACAT refused this device. Edit the radio and paste a new pairing link.',
+			'settings.station.echocatCertificateMismatch' => 'The shack\'s certificate could not be verified. Check the address and copy a new pairing link.',
+			'settings.station.echocatDisplaced' => 'Another device took over the POTACAT radio',
+			'settings.station.echocatRadioDisconnected' => 'POTACAT is connected, but its radio is unavailable',
+			'settings.station.echocatScopeUnavailable' => 'POTACAT has no scope available for this radio',
+			'settings.station.echocatScopeAxisUnknown' => 'POTACAT does not know the scope\'s frequency range. Try Center mode on the radio.',
 			'settings.station.radioLoginDescription' => 'The radio\'s Network → Remote login, not your WiFi password.',
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
 			'settings.station.connectFailedBridgeClosed' => 'The bridge hung up at once. Another program at the station may have the radio\'s port: a logger, WSJT-X or rigctld.',
@@ -14523,6 +14577,8 @@ extension on Translations {
 			'settings.station.models.rigctldNodeName' => 'My Radio (via rigctld)',
 			'settings.station.models.flrig' => 'Radio controlled via flrig',
 			'settings.station.models.flrigNodeName' => 'My Radio (via flrig)',
+			'settings.station.models.potacat' => 'POTACAT (ECHOCAT)',
+			'settings.station.models.potacatNodeName' => 'My Radio (via POTACAT)',
 			'settings.station.models.hrd' => 'Radio controlled via Ham Radio Deluxe®',
 			'settings.station.models.hrdNodeName' => 'My Radio (via HRD)',
 			'settings.station.models.n3fjp' => 'Radio controlled via N3FJP',
@@ -14825,6 +14881,8 @@ extension on Translations {
 			'settings.station.providesScope' => 'Band Scope',
 			'settings.station.providesKeyer' => 'CW Keyer',
 			'settings.station.providesVoice' => 'Voice Keyer',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.providesSwitch' => 'Antenna Switch',
 			'settings.station.providesRotator' => 'Rotator',
 			'settings.station.providesAudioMixer' => 'Audio Mixer',
@@ -14839,8 +14897,6 @@ extension on Translations {
 			'settings.station.telemetryIntervalDescription' => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can handle, up to 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'Idle polling interval (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'How often to ask the radio for its frequency and mode while neither is changing. Leave blank for ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.ratedPower' => 'Rated power (W)',
@@ -15339,6 +15395,8 @@ extension on Translations {
 			'staleness.codePushFloorTitle' => 'An important update is waiting',
 			'staleness.codePushFloorBody' => 'This version has a fix you don\'t have yet.',
 			'staleness.restartToApply' => 'Restart the app to apply it.',
+			_ => null,
+		} ?? switch (path) {
 			'staleness.quitAndReopen' => 'Quit the app and open it again to apply it.',
 			'staleness.reopenToApply' => 'Close the app and open it again to apply it.',
 			'staleness.ignoreForNow' => 'Ignore for now',
@@ -15353,8 +15411,6 @@ extension on Translations {
 			'spotting.selfSpottingToComment' => ({required Object sources, required Object comment}) => 'Self-spotting to ${sources}: ${comment}',
 			'spotting.spotLastTo' => ({required Object sources}) => 'Spot the last logged QSO to ${sources}?',
 			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => 'Spot the last logged QSO to ${sources} with "${comment}"?',
-			_ => null,
-		} ?? switch (path) {
 			'spotting.spottingLastTo' => ({required Object sources}) => 'Spotting last QSO to ${sources}…',
 			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => 'Spotting last QSO to ${sources}: ${comment}',
 			'spotting.incompleteCall' => 'Can\'t spot an incomplete call — finish the callsign first.',

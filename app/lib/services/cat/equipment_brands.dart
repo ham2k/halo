@@ -51,7 +51,7 @@ const expertElectronicsBrand = 'Expert Electronics';
 /// reaching for flrig already knows their radio is not directly reachable.
 /// A bridge added later belongs here — nothing derives this list, and one
 /// left out lands under "Other Brands" with the radios.
-const softwareIntermediaryModelKeys = ['flrig', 'rigctld', 'hrd', 'n3fjp', 'dxlab-commander'];
+const softwareIntermediaryModelKeys = ['flrig', 'rigctld', 'hrd', 'n3fjp', 'dxlab-commander', 'potacat'];
 
 /// The models that are not equipment but a stand-in for it, for working on
 /// the app without any: a radio, a rotator and a switch that connect to

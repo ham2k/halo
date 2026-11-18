@@ -95,6 +95,9 @@ class WebSocketTransport extends EquipmentTransport with TcpTransportConfig {
   }
 }
 
+/// How a protocol routes its WebSocket text messages.
+enum WebSocketTextRoute { data, samples, ignore }
+
 /// Text frames up [data] as UTF-8, binary frames up [binaryFrames].
 class WebSocketConnection implements EquipmentConnection, BinaryFramesConnection, ExplainsClose {
   final WebSocket _socket;
@@ -106,11 +109,19 @@ class WebSocketConnection implements EquipmentConnection, BinaryFramesConnection
   @override
   String? closeReason;
 
-  WebSocketConnection(this._socket) {
+  WebSocketConnection(this._socket, {WebSocketTextRoute Function(String frame)? routeText}) {
     _socket.listen(
       (frame) {
+        if (!_open) return;
         if (frame is String) {
-          _dataController.add(utf8.encode(frame));
+          switch (routeText?.call(frame) ?? WebSocketTextRoute.data) {
+            case WebSocketTextRoute.data:
+              _dataController.add(utf8.encode(frame));
+            case WebSocketTextRoute.samples:
+              if (_binaryController.hasListener) _binaryController.add(utf8.encode(frame));
+            case WebSocketTextRoute.ignore:
+              break;
+          }
         } else if (frame is List<int>) {
           _binaryController.add(frame is Uint8List ? frame : Uint8List.fromList(frame));
         }

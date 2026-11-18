@@ -233,6 +233,12 @@ abstract interface class ExplainsClose {
   String? get closeReason;
 }
 
+/// A server may explicitly end a session and require the operator to
+/// reconnect. A transport drops and retries ordinary network failures.
+abstract interface class RequiresManualReconnect {
+  String? get manualReconnectReason;
+}
+
 /// A connect failure that keeps the OS error behind it, for `osErrorDetail`
 /// to quote: the exception's own text names a port or an address, which the
 /// CAT traffic log may not carry off the device.

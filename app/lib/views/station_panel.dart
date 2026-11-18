@@ -26,6 +26,7 @@ import 'package:halo_audio/halo_audio.dart' show AudioDevice;
 import '../services/cat/capability.dart';
 import '../services/cat/equipment.dart';
 import '../services/cat/telemetry_poller.dart';
+import '../services/cat/transports/echocat_transport.dart';
 import '../services/cat/transports/everyware_transport.dart' show EverywareDeviceTransport;
 import '../services/cat/transports/none_transport.dart' show NoneTransport;
 import '../services/cat/transports/placeholder_transport.dart' show PlaceholderTransport;
@@ -179,7 +180,10 @@ class StationPanel extends StatelessWidget {
     );
     if (values == null) return;
 
-    await _cat.addNode(typeKey: values.typeKey, name: values.name, config: values.config);
+    final node = await _cat.addNode(typeKey: values.typeKey, name: values.name, config: values.config);
+    if (values.config[echocatPairingKey] case final String pairing when pairing.isNotEmpty) {
+      await _cat.connect(node.uuid);
+    }
   }
 
   /// A Modal Pane, not a dialog card: the catalogue is a long list under
@@ -261,6 +265,9 @@ class StationPanel extends StatelessWidget {
     if (values == null) return;
 
     await _cat.updateNode(node.copyWith(typeKey: values.typeKey, name: values.name, config: values.config));
+    if (values.config[echocatPairingKey] case final String pairing when pairing.isNotEmpty) {
+      await _cat.connect(node.uuid);
+    }
   }
 
   /// The name field, how the radio is connected, and whatever that choice
@@ -482,6 +489,10 @@ class StationPanel extends StatelessWidget {
       ];
     }
 
+    // The link is single-use. Keep a redemption in this form while the
+    // operator corrects another field and submits again.
+    String? redeemedLink;
+    EchocatCredentials? pairing;
     final result = await showFormPane(
       context,
       // The radio, not the pairing: how it is connected is a field inside the
@@ -527,8 +538,27 @@ class StationPanel extends StatelessWidget {
       // so on the address field rather than failing later at connect time.
       // Asks the pairing the form is currently on: a field belonging to a
       // transport the operator switched away from is not theirs to get right.
-      validator: (key, value, values) async =>
-          isSwitchPortRoutingFormKey(key) || isRotatorFormKey(key) ? null : _cat.validateEquipmentEditorField(typeForState(values), node, key, value, values),
+      validator: (key, value, values) async {
+        final selected = typeForState(values);
+        if (key == echocatPairingKey && selected.transport is EchocatTransportConfig) {
+          final link = (value as String? ?? '').trim();
+          if (link.isEmpty) return storedSecrets.contains(echocatPairingKey) ? null : st.echocatPairingRequired;
+          return parseEchocatPairingLink(link) == null ? st.echocatInvalidLink : null;
+        }
+        return isSwitchPortRoutingFormKey(key) || isRotatorFormKey(key) ? null : _cat.validateEquipmentEditorField(selected, node, key, value, values);
+      },
+      transformer: (key, value, values) async {
+        if (key != echocatPairingKey) return value;
+        final transport = typeForState(values).transport;
+        if (transport is! EchocatTransportConfig) return value;
+        final link = (value as String? ?? '').trim();
+        if (link.isEmpty) return '';
+        if (link != redeemedLink) {
+          pairing = await transport.pair(link);
+          redeemedLink = link;
+        }
+        return pairing!.encode();
+      },
       // A pairing's own field gets the companions its transport sets beside
       // it (a Bluetooth LE device's name). Routing a port is the one field
       // kind that acts as it is touched rather than on save: it is a command
@@ -651,6 +681,7 @@ class StationPanel extends StatelessWidget {
               !isRotatorFormKey(entry.key) &&
               !isEverywareDeviceFormKey(entry.key))
             entry.key: entry.value,
+        if (result[echocatPairingKey] case final String value when value.isNotEmpty && pairing != null) echocatAddressKey: pairing!.address,
         ...everywareDevicesFromForm(result),
       },
     );
