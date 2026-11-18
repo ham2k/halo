@@ -26,11 +26,14 @@ class WebsitePanelError implements Exception {
   final String message;
   final bool offline;
 
-  WebsitePanelError({required this.panelId, required this.message}) : offline = ConnectivityService.isOffline;
+  /// Whether the page that failed is one a link led to, not the pane's own.
+  final bool away;
+
+  WebsitePanelError({required this.panelId, required this.message, this.away = false}) : offline = ConnectivityService.isOffline;
 
   @visibleForTesting
-  const WebsitePanelError.raw({required this.panelId, required this.message, required this.offline});
+  const WebsitePanelError.raw({required this.panelId, required this.message, required this.offline, this.away = false});
 
   @override
-  String toString() => 'WebsitePanelError($panelId${offline ? ', offline' : ''}): $message';
+  String toString() => 'WebsitePanelError($panelId${offline ? ', offline' : ''}${away ? ', away' : ''}): $message';
 }

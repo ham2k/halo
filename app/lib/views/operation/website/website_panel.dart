@@ -14,10 +14,11 @@
 // What this pane does NOT relax:
 //   - https only (website_url.dart) — scripts are on, so `javascript:` and
 //     `data:` are script execution;
-//   - a link the OPERATOR clicks leaves for the OS browser, rather than
-//     turning the pane into a browser nobody can see the address bar of;
-//     one nobody clicked is dropped instead, because raising a browser
-//     without an interaction is a hijack;
+//   - links, and a page's own navigations, stay in the pane and https only.
+//     Nothing a page does opens the OS browser: a page can fake a click, and
+//     on macOS the app never sees the real one. Away from its page, the pane
+//     names the site it is on, since it has no address bar, and offers the
+//     way back;
 //   - permission requests are denied outright, so a page cannot raise a
 //     location prompt wearing HaLo's name.
 //
@@ -121,9 +122,15 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
   InAppWebViewController? _controller;
   Timer? _timer;
 
-  /// Whether a load THIS pane started is still settling, so the redirects it
-  /// goes through are recognizable as ours rather than as a hijack.
+  /// Whether a load THIS pane started is still settling, so where its
+  /// redirects end up — `qrz.com` to `www.qrz.com/` — counts as its page.
   bool _loadInFlight = true;
+
+  /// Where the pane's own last load settled.
+  Uri? _landedAt;
+
+  /// The page shown when it is not the pane's own, or null.
+  Uri? _awayAt;
 
   /// When the page last finished loading. The refresh deadline is measured
   /// from this rather than from when the timer was armed — see [_syncRefresh].
@@ -268,6 +275,8 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
       final uri = _validUri;
       if (uri != null) {
         _loadInFlight = true;
+        _landedAt = null;
+        setState(() => _awayAt = null);
         unawaited(_controller?.loadUrl(urlRequest: URLRequest(url: WebUri.uri(uri))));
       }
     }
@@ -346,10 +355,30 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
     _syncRefresh();
     final controller = _controller;
     if (controller == null) return;
+    // Away from its page, the pane goes back to it: the refresh keeps THAT
+    // page current, and reloading wherever a link led would keep the pane
+    // there for good.
+    final home = _validUri;
+    if (_awayAt != null && home != null) {
+      setState(() => _awayAt = null);
+      unawaited(controller.loadUrl(urlRequest: URLRequest(url: WebUri.uri(home))));
+      return;
+    }
     // reload(), never a new Key: re-keying tears down the platform view for a
     // cold load and a visible blank, and the controller is null until the new
     // one reports itself created.
     unawaited(controller.reload());
+  }
+
+  /// Notes the page now showing, and whether it is the pane's own.
+  void _showing(WebUri? url) {
+    // Still settling: [_landedAt] is not known until the load stops.
+    if (_loadInFlight || url == null || !mounted) return;
+    final page = url.uriValue;
+    final landed = _landedAt;
+    final home = _isConfiguredPage(page) || (landed != null && sameWebsitePage(page, landed));
+    final away = home ? null : page;
+    if (away?.toString() != _awayAt?.toString()) setState(() => _awayAt = away);
   }
 
   @override
@@ -394,130 +423,152 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
 
     return Padding(
       padding: EdgeInsets.zero.add(PaneSafeArea.paddingOf(context)),
-      child: Stack(
+      child: Column(
         children: [
-          // Covered while a route sits over the pane's: a dropdown's menu has
-          // nothing of its own to put between its clicks and the page, which
-          // is an iframe on the web.
-          PlatformViewCover(
-            child: InAppWebView(
-              // Null off Windows; on Windows the app's own environment, without
-              // which the plugin builds a second one whose options do not match
-              // ours — see WindowsWebView.
-              webViewEnvironment: WindowsWebView.environment,
-              initialUrlRequest: URLRequest(url: WebUri.uri(uri)),
-              initialSettings: websitePanelSettings(),
-              onWebViewCreated: (controller) {
-                ErrorReportingService.breadcrumb('website panel webview created', category: 'webview');
-                _controller = controller;
-              },
-              shouldOverrideUrlLoading: (controller, action) async {
-                final target = action.request.url?.toString();
-                if (target == null) return NavigationActionPolicy.CANCEL;
-
-                // A subframe is part of the page, not a navigation away from
-                // it. Judging one against the configured URL cancels an ad slot
-                // rotating its creative — and, before this guard, threw it at
-                // the OS browser once per rotation.
-                if (action.isForMainFrame == false) return NavigationActionPolicy.ALLOW;
-
-                // The configured page, its canonical form, and its reloads.
-                if (_isConfiguredPage(target)) return NavigationActionPolicy.ALLOW;
-
-                // A load THIS pane asked for, still settling. A server redirect
-                // — `qrz.com` to `www.qrz.com` — is a different origin and can
-                // only be told from a hijack by who started it.
-                if (_loadInFlight) return NavigationActionPolicy.ALLOW;
-
-                // The operator clicked something. Off it goes, and the pane
-                // stays on the page they configured.
-                final byHand = action.hasGesture == true || action.navigationType == NavigationType.LINK_ACTIVATED;
-                if (byHand) {
-                  openExternalUrl(target);
-                  return NavigationActionPolicy.CANCEL;
-                }
-
-                // Nobody asked for this — a `<meta refresh>`, a script
-                // replacing the document. Dropped SILENTLY: raising the
-                // operator's browser without an interaction is a hijack, which
-                // is the same reasoning `panel_content_view` states for
-                // refusing to open one.
-                debugPrint('[panels] ${widget.panelId}: blocked an unrequested navigation to $target');
-                return NavigationActionPolicy.CANCEL;
-              },
-              // Denied outright. The app holds a location entitlement, so an
-              // unwired handler defaults to PROMPT and a page could raise a
-              // system prompt that looks like HaLo asking.
-              onPermissionRequest: (controller, request) async => PermissionResponse(resources: request.resources, action: PermissionResponseAction.DENY),
-              onLoadStop: (controller, url) async {
-                _loadInFlight = false;
-                _loadedAt = widget.now();
-                if (!mounted) return;
-                if (_loadError != null) setState(() => _loadError = null);
-                _syncRefresh();
-              },
-              onReceivedError: (controller, request, error) {
-                _loadInFlight = false;
-                // Only the MAIN frame. A page whose analytics script 404s is not
-                // a broken pane, and reporting subresources would raise a notice
-                // on most of the web.
-                if (request.isForMainFrame != true) return;
-                // A navigation THIS pane cancelled reports back as a failed
-                // load. Without this, handing a clicked link to the browser —
-                // the designed behaviour — paints an error over a working page
-                // and files a report for it.
-                if (error.type == WebResourceErrorType.CANCELLED) return;
-                _reportLoadFailure('${error.description} (${error.type})');
-              },
-              onReceivedHttpError: (controller, request, response) {
-                _loadInFlight = false;
-                if (request.isForMainFrame != true) return;
-                _reportLoadFailure('HTTP ${response.statusCode}');
-              },
-            ),
-          ),
-          if (_loadError != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Material(
-                color: Theme.of(context).colorScheme.errorContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(Space.md),
-                  child: Text(
-                    t.websiteLoadFailed(reason: _loadError!),
-                    style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+          if (_awayAt case final away?) _awayStrip(away),
+          Expanded(
+            child: Stack(
+              children: [
+                // Covered while a route sits over the pane's: a dropdown's menu has
+                // nothing of its own to put between its clicks and the page, which
+                // is an iframe on the web.
+                PlatformViewCover(
+                  child: InAppWebView(
+                    // Null off Windows; on Windows the app's own environment, without
+                    // which the plugin builds a second one whose options do not match
+                    // ours — see WindowsWebView.
+                    webViewEnvironment: WindowsWebView.environment,
+                    initialUrlRequest: URLRequest(url: WebUri.uri(uri)),
+                    initialSettings: websitePanelSettings(),
+                    onWebViewCreated: (controller) {
+                      ErrorReportingService.breadcrumb('website panel webview created', category: 'webview');
+                      _controller = controller;
+                    },
+                    shouldOverrideUrlLoading: (controller, action) async {
+                      // A subframe is part of the page, and loads what the page asks.
+                      if (action.isForMainFrame == false) return NavigationActionPolicy.ALLOW;
+                      // A click while the pane's own load is settling ends that
+                      // load: where the click leads is not the pane's page.
+                      if (_loadInFlight && (action.hasGesture == true || action.navigationType == NavigationType.LINK_ACTIVATED)) {
+                        _loadInFlight = false;
+                      }
+                      final target = action.request.url;
+                      if (target != null && websitePaneMayShow(target)) return NavigationActionPolicy.ALLOW;
+                      debugPrint('[panels] ${widget.panelId}: refused a navigation to $target');
+                      // The pane's own page redirected somewhere it cannot follow,
+                      // which leaves it blank: said in the pane, like any failed load.
+                      if (_loadInFlight) {
+                        _loadInFlight = false;
+                        _reportLoadFailure('redirected to ${target?.scheme ?? 'nowhere'}:');
+                      }
+                      return NavigationActionPolicy.CANCEL;
+                    },
+                    onUpdateVisitedHistory: (controller, url, isReload) => _showing(url),
+                    // Denied outright. The app holds a location entitlement, so an
+                    // unwired handler defaults to PROMPT and a page could raise a
+                    // system prompt that looks like HaLo asking.
+                    onPermissionRequest: (controller, request) async => PermissionResponse(resources: request.resources, action: PermissionResponseAction.DENY),
+                    onLoadStop: (controller, url) async {
+                      if (_loadInFlight && url != null) _landedAt = url.uriValue;
+                      _loadInFlight = false;
+                      _showing(url);
+                      _loadedAt = widget.now();
+                      if (!mounted) return;
+                      if (_loadError != null) setState(() => _loadError = null);
+                      _syncRefresh();
+                    },
+                    onReceivedError: (controller, request, error) {
+                      // Only the MAIN frame. A page whose analytics script 404s is not
+                      // a broken pane, and reporting subresources would raise a notice
+                      // on most of the web. Nor does one end the pane's own load: its
+                      // page would never be recorded as where the load landed.
+                      if (request.isForMainFrame != true) return;
+                      // A navigation THIS pane cancelled reports back as a failed
+                      // load. Without this, refusing a page's `mailto:` or
+                      // `javascript:` link paints an error over a working page and
+                      // files a report for it. Nor does a load the page itself
+                      // replaced end the pane's own: where it settles is the page.
+                      if (error.type == WebResourceErrorType.CANCELLED) return;
+                      _loadInFlight = false;
+                      _reportLoadFailure('${error.description} (${error.type})');
+                    },
+                    onReceivedHttpError: (controller, request, response) {
+                      if (request.isForMainFrame != true) return;
+                      _loadInFlight = false;
+                      _reportLoadFailure('HTTP ${response.statusCode}');
+                    },
                   ),
                 ),
-              ),
+                if (_loadError != null)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Material(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      child: Padding(
+                        padding: const EdgeInsets.all(Space.md),
+                        child: Text(
+                          t.websiteLoadFailed(reason: _loadError!),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
+          ),
         ],
       ),
     );
   }
 
-  /// Whether [target] is the page this pane is configured to show.
+  /// The way back, above the page and never over it: on macOS the web view
+  /// takes every click over it before Flutter sees one. Names the site the
+  /// pane is on, which a page could otherwise pass off as the operator's own.
+  Widget _awayStrip(Uri away) {
+    final theme = Theme.of(context);
+    final site = _tabTitle ?? '';
+    return Material(
+      color: theme.colorScheme.surfaceContainerHigh,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Space.xs),
+        child: Row(
+          children: [
+            Flexible(
+              child: TextButton.icon(
+                onPressed: _reload,
+                icon: Icon(MdiIcons.arrowLeft),
+                label: Text(context.t.operation.layout.panels.websiteBack(site: site), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+            ),
+            const SizedBox(width: Space.md),
+            Expanded(
+              child: Text(
+                away.host,
+                textAlign: TextAlign.end,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ),
+            const SizedBox(width: Space.md),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Whether [target] is the page this pane is configured to show, by
+  /// [sameWebsitePage].
   ///
   /// Reads the CURRENT config rather than taking the URL as an argument: the
   /// plugin freezes a web view's callbacks when the platform view is created,
   /// so a closed-over local keeps naming whatever the pane was pointed at on
-  /// its first build, and editing the address would hand the new site to the
-  /// browser forever.
-  ///
-  /// Compared by origin and path, not by whole-Uri equality. A web view
-  /// canonicalizes what it is given — `https://qrz.com` becomes
-  /// `https://qrz.com/` — so an exact match rejects the very page it was
-  /// asked to show. Query and fragment are out for the same reason plus one
-  /// more: an in-page anchor is the same document, and bouncing it to the OS
-  /// browser would make a table of contents unusable.
-  bool _isConfiguredPage(String target) {
+  /// its first build, and editing the address would leave the pane counting
+  /// the old site as its own.
+  bool _isConfiguredPage(Uri target) {
     final configured = _validUri;
-    if (configured == null) return false;
-    final t = Uri.tryParse(target);
-    if (t == null) return false;
-    String path(Uri u) => u.path.isEmpty ? '/' : u.path;
-    return t.origin == configured.origin && path(t) == path(configured);
+    return configured != null && sameWebsitePage(target, configured);
   }
 
   /// Failures already reported this session, keyed with the offline stamp.
@@ -532,8 +583,8 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
   void _reportLoadFailure(String reason) {
     if (!mounted) return;
     setState(() => _loadError = reason);
-    final error = WebsitePanelError(panelId: widget.panelId, message: reason);
-    if (!_reported.add('${widget.panelId}/${error.offline}/$reason')) {
+    final error = WebsitePanelError(panelId: widget.panelId, message: reason, away: _awayAt != null);
+    if (!_reported.add('${widget.panelId}/${error.offline}/${error.away}/$reason')) {
       // Still printed: a developer watching the console sees the failure
       // live, not only its first occurrence.
       debugPrint('[panels] repeat: $error');
@@ -541,8 +592,8 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
     }
     // Through ErrorPolicy like everything else: a pane that fails for every
     // operator is what has to be visible in aggregate. The operator already
-    // has the banner, so this is the diagnostic half.
-    ErrorReportingService.report(error, StackTrace.current, context: 'panel:website:${widget.panelId}');
+    // has the banner, so this is the diagnostic half, and `told`.
+    ErrorReportingService.report(error, StackTrace.current, context: 'panel:website:${widget.panelId}', told: true);
   }
 
   Widget _message(String text, {required String? url}) {

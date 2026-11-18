@@ -734,6 +734,7 @@
         "websiteUnsupported": "Web pages can’t be shown in a panel on this system.",
         "websiteOpenExternally": "Open in Browser",
         "websiteLoadFailed": "Couldn’t load the page: ${reason}",
+        "websiteBack": "Back to ${site}",
         "remoteScreenDescription": "A screen, app or window shared by another of your devices.",
         "remoteScreenTarget": "Screen",
         "remoteScreenChoose": "Choose a screen…",

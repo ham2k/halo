@@ -643,12 +643,17 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
     final firstQso = widget.operation.startAtMillisMin;
     final day = (firstQso == null ? nowUtc() : DateTime.fromMillisecondsSinceEpoch(firstQso, isUtc: true)).toIso8601String().substring(0, 10);
     // The first call, as the exports name theirs: a multi-operator
-    // operation's station call holds every call, comma-separated.
-    final call = (widget.operation.stationCalls.firstOrNull ?? '').replaceAll('/', '-');
+    // operation's station call holds every call, comma-separated. The call is
+    // whatever was typed or imported, and Windows splits a path on either
+    // slash: each is a dash here, and the whole name goes through the
+    // exports' own cleaner before it is joined to a folder.
+    final call = (widget.operation.stationCalls.firstOrNull ?? '').replaceAll(RegExp(r'[/\\]'), '-');
     final word = context.t.map.postcard.fileName;
-    String name(int? page) => widget.settings.useCompactFileNames
-        ? '${[if (call.isNotEmpty) call, day.replaceAll('-', ''), word, if (page != null) '$page'].join('-')}.png'
-        : '${[day, if (call.isNotEmpty) call, word, if (page != null) '$page'].join(' ')}.png';
+    String name(int? page) => safeExportFilename(
+      widget.settings.useCompactFileNames
+          ? '${[if (call.isNotEmpty) call, day.replaceAll('-', ''), word, if (page != null) '$page'].join('-')}.png'
+          : '${[day, if (call.isNotEmpty) call, word, if (page != null) '$page'].join(' ')}.png',
+    );
     return count == 1 ? [name(null)] : [for (var page = 1; page <= count; page++) name(page)];
   }
 

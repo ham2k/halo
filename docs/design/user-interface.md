@@ -478,7 +478,9 @@ that omission as well as for an explicit `LaunchMode.platformDefault`.
 
 An embedded web view is for a **pane that shows a site** (the Web Site pane,
 HTML extension panels, the MapLibre map backend), never for handing the
-operator off to somebody else's page.
+operator off to somebody else's page. The Web Site pane follows its own page's
+links in place, https only, with a strip above the page naming the site it
+reached and the way back; nothing a page does there opens the OS browser.
 
 ### Markdown
 

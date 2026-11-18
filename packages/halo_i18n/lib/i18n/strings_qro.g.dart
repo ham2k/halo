@@ -4083,6 +4083,7 @@ class _Translations$operation$layout$panels$qro extends Translations$operation$l
 	@override String get websiteUnsupported => 'WEB PAGES CAN’T BE SHOWN IN A PANEL ON THIS SYSTEM.';
 	@override String get websiteOpenExternally => 'OPEN IN BROWSER';
 	@override String websiteLoadFailed({required Object reason}) => 'COULDN’T LOAD THE PAGE: ${reason}';
+	@override String websiteBack({required Object site}) => 'BACK TO ${site}';
 	@override String get remoteScreenDescription => 'A SCREEN, APP OR WINDOW SHARED BY ANOTHER OF YOUR DEVICES.';
 	@override String get remoteScreenTarget => 'SCREEN';
 	@override String get remoteScreenChoose => 'CHOOSE A SCREEN…';
@@ -5915,6 +5916,7 @@ extension on TranslationsQro {
 			'operation.layout.panels.websiteUnsupported' => 'WEB PAGES CAN’T BE SHOWN IN A PANEL ON THIS SYSTEM.',
 			'operation.layout.panels.websiteOpenExternally' => 'OPEN IN BROWSER',
 			'operation.layout.panels.websiteLoadFailed' => ({required Object reason}) => 'COULDN’T LOAD THE PAGE: ${reason}',
+			'operation.layout.panels.websiteBack' => ({required Object site}) => 'BACK TO ${site}',
 			'operation.layout.panels.remoteScreenDescription' => 'A SCREEN, APP OR WINDOW SHARED BY ANOTHER OF YOUR DEVICES.',
 			'operation.layout.panels.remoteScreenTarget' => 'SCREEN',
 			'operation.layout.panels.remoteScreenChoose' => 'CHOOSE A SCREEN…',
@@ -6302,9 +6304,9 @@ extension on TranslationsQro {
 			'activitiesView.searchToggle' => 'SEARCH',
 			'activitiesView.addToOperation' => 'ADD TO OPERATION',
 			'activitiesView.addToOperationShort' => 'ADD TO OP.',
-			'activitiesView.mapEmptyState' => 'NO RESULTS TO SHOW ON THE MAP',
 			_ => null,
 		} ?? switch (path) {
+			'activitiesView.mapEmptyState' => 'NO RESULTS TO SHOW ON THE MAP',
 			'activitiesView.mapEmptyStateHint' => 'SWITCH BACK TO THE LIST, OR SEARCH FOR SOMETHING ELSE',
 			'activitiesView.imports' => 'IMPORTS',
 			'loggingControls.timeUtc' => 'TIME (UTC)',
@@ -6816,9 +6818,9 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.manageSets' => 'MANAGE VOICE SETS…',
 			'settings.radio.voiceMessages.fileLabel' => 'HAM2K VOICE MESSAGE SET',
 			'settings.radio.voiceMessages.fileStem' => 'VOICE MESSAGES',
-			'settings.radio.voiceMessages.output' => 'SEND AUDIO TO',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.output' => 'SEND AUDIO TO',
 			'settings.radio.voiceMessages.outputFor' => ({required Object radio}) => 'SEND AUDIO FOR RADIO ${radio} TO',
 			'settings.radio.voiceMessages.input' => 'RECORD FROM',
 			'settings.radio.voiceMessages.outputRadio' => 'SEND TO RADIO OVER NETWORK',
@@ -7330,9 +7332,9 @@ extension on TranslationsQro {
 			'settings.station.winkeyerPtt' => 'USE THE KEYER\'S PTT',
 			'settings.station.winkeyerPttDescription' => 'KEY THE PTT LINE ON THE SAME JACK, FOR AN AMPLIFIER OR A RADIO THAT NEEDS IT. LEAVE OFF FOR A RADIO KEYED ON ITS KEY JACK.',
 			'settings.station.winkeyerNoAnswer' => 'NO WINKEYER RESPONDED ON THIS PORT',
-			'settings.station.winkeyerStoppedAnswering' => 'THE WINKEYER STOPPED RESPONDING WHILE SENDING; THE MESSAGE WAS DROPPED',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.winkeyerStoppedAnswering' => 'THE WINKEYER STOPPED RESPONDING WHILE SENDING; THE MESSAGE WAS DROPPED',
 			'settings.station.icomControlPort' => 'CONTROL PORT (UDP)',
 			'settings.station.icomControlPortDescription' => 'THE RADIO\'S CONTROL PORT (UDP) — 50001 UNLESS CHANGED IN ITS NETWORK SETTINGS, OR FORWARDED TO ANOTHER.',
 			'settings.station.icomSerialPort' => 'SERIAL PORT (UDP)',
@@ -7844,9 +7846,9 @@ extension on TranslationsQro {
 			'settings.station.everywareFollowRadioB' => 'RADIO B (SO2R)',
 			'settings.station.everywareFollowBand' => 'FOLLOW THE RADIO\'S BAND',
 			'settings.station.everywareFollowBandDescription' => 'PICKS THE POSITION COVERING THE MAIN RADIO\'S FREQUENCY WHENEVER IT CHANGES. OTHERS SHARING THE STATION SEE IT SWITCH TOO.',
-			'settings.station.everywareFollowBearing' => 'POINT TOWARD THE STATION BEING WORKED',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.everywareFollowBearing' => 'POINT TOWARD THE STATION BEING WORKED',
 			'settings.station.everywareFollowBearingDescription' => 'PICKS THE DIRECTION NEAREST THE STATION IN THE CALL FIELD WHENEVER IT CHANGES. OTHERS SHARING THE STATION SEE IT SWITCH TOO.',
 			'settings.station.everywareTroubleshooting' => 'THIS CONNECTS TO A **GH EVERYWARE SERVER**, THE PROGRAM THAT SHARES A STATION\'S GREEN HERON ROTATORS AND SWITCHES OVER THE NETWORK.\n\n- **PORT** IS 17220 UNLESS THE SERVER WAS SET UP ON ANOTHER ONE. FROM OUTSIDE THE STATION\'S NETWORK, THE ROUTER MUST FORWARD THAT PORT TO THE SERVER\'S COMPUTER.\n- **USER AND PASSWORD** ONLY WHEN THE SERVER HAS USER AUTHENTICATION TURNED ON. LEAVE BOTH BLANK OTHERWISE.\n- **THE SERVER TAKES A LIMITED NUMBER OF CLIENTS**, FOUR UNLESS SET OTHERWISE. WHEN IT IS FULL, CLOSE ANOTHER CLIENT AND CONNECT AGAIN.\n- ONCE CONNECTED, TICK THE ROTATORS AND SWITCHES YOU WANT UNDER **DEVICES**. EACH BECOMES EQUIPMENT OF ITS OWN, IN THIS LIST AND IN EVERY PANEL.\n- **OTHER OPERATORS MAY SHARE THE STATION.** TURNING A ROTATOR OR SWITCHING AN ANTENNA HERE MOVES IT FOR EVERYONE.',
 			'settings.station.pstRotatorTroubleshooting' => 'PSTROTATOR ANSWERS ONLY ONCE IT IS SET UP FOR IT, AND SAYS NOTHING AT ALL OTHERWISE:\n\n- **TURN ON UDP CONTROL** IN PSTROTATOR\'S SETUP MENU.\n- **MATCH THE PORT**: COMMUNICATION → UDP CONTROL PORT, 12000 UNLESS CHANGED. PSTROTATOR ANSWERS ON THE NEXT PORT UP (12001), WHICH HAS TO BE FREE ON THIS DEVICE.\n- **CONNECT PSTROTATOR TO ITS CONTROLLER.** UNTIL IT IS, IT ANSWERS NOTHING OVER UDP.\n- **ALLOW IT THROUGH THE FIREWALL** ON THE PC RUNNING PSTROTATOR, AND ON THIS DEVICE, WHICH LISTENS FOR THE ANSWERS.\n- **ON A MAC, IPHONE OR IPAD**, HAM2K LOGGER NEEDS LOCAL NETWORK ACCESS (SETTINGS → PRIVACY & SECURITY → LOCAL NETWORK).',
@@ -8358,9 +8360,9 @@ extension on TranslationsQro {
 			'confirmDevice.title' => 'CONFIRM A DEVICE',
 			'confirmDevice.codePrompt' => 'ENTER THE CODE SHOWN ON THE DEVICE THAT WANTS TO JOIN THIS ACCOUNT.',
 			'confirmDevice.code' => 'CODE',
-			'confirmDevice.lookUp' => 'LOOK UP',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.lookUp' => 'LOOK UP',
 			'confirmDevice.codeNotFound' => 'NO REQUEST MATCHES THAT CODE. CODES EXPIRE AFTER 10 MINUTES — ASK THE OTHER DEVICE FOR A FRESH ONE.',
 			'confirmDevice.linkExpired' => 'THAT LINK HAS EXPIRED. ASK THE OTHER DEVICE TO SHOW A NEW QR CODE.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'LINK ${device} TO THIS ACCOUNT?',

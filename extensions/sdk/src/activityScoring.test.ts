@@ -791,3 +791,34 @@ test("the live paths carry the ruling, not just the batch", async () => {
   const known = await hook.scoreQso!({ ...args, resumeFrom: priorSheet, qso: qso("W1AW", { uuid: "bare" }) }, ctx)
   assert.equal(known.dupe, false, "a live verdict says the dupe test ran, as the batch one does")
 })
+
+// --- Keys are whatever was logged --------------------------------------------
+// Calls and references key plain objects, and an imported log can hold any
+// spelling. Read as a plain property, `constructor` is the Object function and
+// `__proto__` the prototype: the pass throws, or a write lands on the
+// prototype every extension shares.
+
+const inheritedNames = ["__proto__", "constructor", "toString", "hasOwnProperty", "valueOf"]
+
+test("a call or reference spelled like an inherited name is scored like any other", async () => {
+  const before = Object.getOwnPropertyNames(Object.prototype).sort()
+  for (const rules of [POTA, PPOTA]) {
+    const activation = rules.activationType
+    const hunting = rules.huntingType
+    const qsos = inheritedNames.flatMap((name, i) => [
+      qso(name, { uuid: `${name}-1`, at: DAY_1 + i * 60_000, huntingType: hunting, hunting: [name] }),
+      qso(name, { uuid: `${name}-2`, at: DAY_1 + i * 60_000 + 1000, huntingType: hunting, hunting: [name], operator: "W1AW" }),
+    ])
+    const result = await score(rules, operationActivating(activation, ...inheritedNames), qsos)
+    for (const name of inheritedNames) {
+      assert.equal(result.qsoScores[`${name}-1`].dupe, undefined, `${rules.label}: ${name} worked once`)
+      assert.deepEqual(result.qsoScores[`${name}-2`].alerts, ["duplicate"], `${rules.label}: ${name} worked twice`)
+    }
+    const sheet = result.scoresheet as { workedByCall: object; huntedRefs: Record<string, number>; activatedRefs: object }
+    assert.deepEqual(Object.keys(sheet.workedByCall).sort(), [...inheritedNames].sort())
+    assert.deepEqual(Object.keys(sheet.activatedRefs).sort(), [...inheritedNames].sort())
+    assert.equal(sheet.huntedRefs["constructor"], 1)
+    assert.equal(Object.getPrototypeOf(sheet.workedByCall), Object.prototype)
+  }
+  assert.deepEqual(Object.getOwnPropertyNames(Object.prototype).sort(), before)
+})

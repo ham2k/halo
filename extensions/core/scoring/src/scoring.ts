@@ -29,6 +29,7 @@ import { baseCallOf } from "../../../sdk/src/callsigns.ts"
 import { entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
 import { createCachedTranslator, createTranslator } from "../../../sdk/src/i18n.ts"
 import { canonicalMode, modesMatchForDupe } from "../../../sdk/src/modes.ts"
+import { entry, setEntry } from "../../../sdk/src/ownEntries.ts"
 import { contestScorer } from "../../../sdk/src/scoring.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { DXCC_BY_PREFIX } from "@ham2k/lib-dxcc-data"
@@ -279,7 +280,7 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     // than this does.
     const tallyMode = canonicalMode(mode)
     const bandMode = `${band}|${mode}`
-    const prior = base.workedByCall[call] ?? []
+    const prior = entry(base.workedByCall, call) ?? []
 
     // --- Rule 1: duplicate contacts ---------------------------------------
     // Not a string comparison against `bandMode`: the two sides spell the mode
@@ -313,8 +314,8 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     // nothing. `newBand`/`newMode` come from rule 1 alone — a station already
     // in this log, now on a band or mode we hadn't worked THEM on.
     // Read BEFORE recording below, or the QSO would mask itself.
-    const isNewBand = Boolean(band) && base.bands[band] === undefined
-    const isNewMode = Boolean(tallyMode) && base.modes[tallyMode] === undefined
+    const isNewBand = Boolean(band) && entry(base.bands, band) === undefined
+    const isNewMode = Boolean(tallyMode) && entry(base.modes, tallyMode) === undefined
     // Credits once for a QSO that is new on either axis — a first 15m contact
     // counts even when its mode was already worked. Never a duplicate, which
     // by rule 1 brought nothing: that rule folds modes FURTHER than the tally
@@ -344,7 +345,7 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     const points = score.value
     if (!isDupe) {
       if (prior.length > 0) prior.push(bandMode)
-      else base.workedByCall[call] = [bandMode]
+      else setEntry(base.workedByCall, call, [bandMode])
     }
     if (entityPrefix) base.entities[entityPrefix] = (base.entities[entityPrefix] ?? 0) + 1
     tallyBandMode(base, band, tallyMode)
@@ -352,7 +353,7 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     // mode of whitespace alone is truthy and canonicalizes to nothing, and a
     // nameless key is a phantom mode in the count and a blank entry in the
     // breakdown.
-    if (tallyMode) base.modes[tallyMode] = (base.modes[tallyMode] ?? 0) + 1
+    if (tallyMode) setEntry(base.modes, tallyMode, (entry(base.modes, tallyMode) ?? 0) + 1)
     if (stateWorked?.kind === "state") base.states[stateWorked.code] = (base.states[stateWorked.code] ?? 0) + 1
     if (stateWorked?.kind === "province") {
       base.provinces[stateWorked.code] = (base.provinces[stateWorked.code] ?? 0) + 1
@@ -415,10 +416,11 @@ function qsosLabel(count: number, t: Translator): string {
 /// Counts one contact into a band total and its band → mode split — the
 /// operation's own tally and each operator's alike, so the two cannot drift.
 function tallyBandMode(target: Pick<CoreScoresheet, "bands" | "bandModes">, band: string, tallyMode: string): void {
-  if (band) target.bands[band] = (target.bands[band] ?? 0) + 1
+  if (band) setEntry(target.bands, band, (entry(target.bands, band) ?? 0) + 1)
   if (band && tallyMode) {
-    const byMode = (target.bandModes[band] ??= {})
-    byMode[tallyMode] = (byMode[tallyMode] ?? 0) + 1
+    let byMode = entry(target.bandModes, band)
+    if (byMode === undefined) setEntry(target.bandModes, band, (byMode = {}))
+    setEntry(byMode, tallyMode, (entry(byMode, tallyMode) ?? 0) + 1)
   }
 }
 
@@ -487,7 +489,7 @@ function foldedModeTally(modes: Record<string, number> | undefined): Record<stri
     // Dropped rather than carried: it counts as a mode worked and renders as
     // a blank entry in the breakdown.
     if (!key) continue
-    folded[key] = (folded[key] ?? 0) + count
+    setEntry(folded, key, (entry(folded, key) ?? 0) + count)
   }
   return folded
 }
@@ -516,7 +518,7 @@ function foldTallyKeys(base: CoreScoresheet): void {
   for (const band of Object.keys(base.bandModes)) {
     const byMode = base.bandModes[band]
     if (Object.keys(byMode).some((mode) => canonicalMode(mode) !== mode)) {
-      base.bandModes[band] = foldedModeTally(byMode)
+      setEntry(base.bandModes, band, foldedModeTally(byMode))
     }
   }
 }

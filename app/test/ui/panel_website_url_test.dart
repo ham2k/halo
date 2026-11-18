@@ -122,4 +122,48 @@ void main() {
       expect(websiteRefreshInterval('5'), isNull);
     });
   });
+
+  group('where the page may take the pane', () {
+    // Links and a page's own navigations stay in the pane, so this is all that
+    // stands between a page and running script in what the pane holds, or
+    // reading the operator's disk.
+    test('another https site', () {
+      expect(websitePaneMayShow(Uri.parse('https://github.com/ham2k/app-polo')), isTrue);
+    });
+
+    test('nothing but https', () {
+      for (final target in [
+        'javascript:alert(1)',
+        'data:text/html,<script>1</script>',
+        'file:///etc/passwd',
+        'http://example.com/',
+        'mailto:n0call@example.com',
+        'about:blank',
+        'https:///nohost',
+      ]) {
+        expect(websitePaneMayShow(Uri.parse(target)), isFalse, reason: target);
+      }
+    });
+  });
+
+  group('what counts as the pane\'s own page', () {
+    // The pane offers the way back whenever it is NOT on its page, so a false
+    // "different" puts the strip over the very page the operator configured.
+    test('the web view\'s canonical form, a query and an anchor are the same page', () {
+      final page = Uri.parse('https://qrz.com');
+      expect(sameWebsitePage(Uri.parse('https://qrz.com/'), page), isTrue);
+      expect(sameWebsitePage(Uri.parse('https://qrz.com/?band=20#top'), page), isTrue);
+    });
+
+    test('another path or another host is not', () {
+      final page = Uri.parse('https://ham2k.com/');
+      expect(sameWebsitePage(Uri.parse('https://ham2k.com/downloads/'), page), isFalse);
+      expect(sameWebsitePage(Uri.parse('https://evil.example/'), page), isFalse);
+    });
+
+    test('a page the pane may not show is never its own, and never throws', () {
+      // `Uri.origin` throws for these; a web view reports `about:blank`.
+      expect(sameWebsitePage(Uri.parse('about:blank'), Uri.parse('https://ham2k.com/')), isFalse);
+    });
+  });
 }

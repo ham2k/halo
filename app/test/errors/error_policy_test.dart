@@ -46,6 +46,7 @@ import 'package:ham2k_logger/services/extensions/extension_service.dart'
     show ExtensionTimersSuspended, MalformedLookupDataException, MalformedSpotDataException;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
+import 'package:ham2k_logger/services/website_panel_error.dart' show WebsitePanelError;
 import 'package:ham2k_logger/services/data_file_manager.dart' show DataFileNotADatabase, DataFileRemoveHookFailed, DataFileUnavailable, DataFileWait;
 import 'package:ham2k_logger/services/extensions/extension_requests.dart' show ExtensionUrlRefused;
 import 'package:ham2k_logger/services/extensions/extension_catalog_migration.dart' show CatalogNotWired, UpgradeLeftNoRuntime;
@@ -959,6 +960,24 @@ void main() {
       // all arrive online, and quieting them would make a blank map
       // evidence-free again.
       const error = MapError.raw(backend: 'web', kind: 'gl-error', message: 'Failed to fetch', offline: false);
+      expect(ErrorPolicy.decide(error).rule, isNull);
+      expect(dispositionFor(error), ErrorDisposition.notify);
+    });
+  });
+
+  group('Web Site pane load failures', () {
+    // Links stay in the pane, so a failure there is as likely some other
+    // site's dead link as the configured page breaking. Only the latter is
+    // evidence; the former, uploaded, buries it.
+    test('a page a link led to is console-only', () {
+      const error = WebsitePanelError.raw(panelId: 'website#1', message: 'HTTP 404', offline: false, away: true);
+      final decision = ErrorPolicy.decide(error);
+      expect(decision.rule?.id, 'website-panel-away');
+      expect(decision.disposition, ErrorDisposition.logOnly);
+    });
+
+    test('the pane\'s own page failing online stays loud', () {
+      const error = WebsitePanelError.raw(panelId: 'website#1', message: 'HTTP 404', offline: false);
       expect(ErrorPolicy.decide(error).rule, isNull);
       expect(dispositionFor(error), ErrorDisposition.notify);
     });

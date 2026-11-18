@@ -274,6 +274,7 @@ void main() {
       void Function(MapZoomController controller)? attach,
       List<PostcardSummarySection> sections = const [],
       PostcardText text = text,
+      Operation? of,
     }) async {
       await tester.pumpWidget(
         TranslationProvider(
@@ -287,7 +288,7 @@ void main() {
                     // A fresh State per pump: what it starts in must come from
                     // the settings, not from a State that survived.
                     key: UniqueKey(),
-                    operation: operation,
+                    operation: of ?? operation,
                     text: text,
                     sections: sections,
                     view: view,
@@ -997,6 +998,27 @@ void main() {
       expect(counter, findsOneWidget);
       expect(int.parse(tester.widget<Text>(counter).data!.split(' / ').last), greaterThan(9), reason: 'the case being tested');
       expect(tester.takeException(), isNull, reason: 'no row of dots running off a phone');
+    });
+
+    testWidgets('names its files inside the folder they are saved to, whatever the station call holds', (tester) async {
+      final asked = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('ham2k/file_save'), (call) async {
+        asked.add((call.arguments as Map<Object?, Object?>)['filename'] as String);
+        return 'saved.png';
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('ham2k/file_save'), null));
+      // Windows splits a path on a backslash as on a slash: a call kept with
+      // one would put the picture in another folder than the one chosen.
+      await pumpPanel(
+        tester,
+        await freshSettings(),
+        mapIsFlutter: true,
+        of: const Operation(uuid: 'op', data: {'stationCall': r'..\..\N0CALL/P'}),
+      );
+      await saveTo(tester, 'Save to Files…');
+      expect(asked, hasLength(1));
+      expect(asked.single, isNot(matches(RegExp(r'[/\\]'))));
+      expect(asked.single, contains('..-..-N0CALL-P'), reason: 'the call still names the file');
     });
 
     testWidgets('makes the summary pages over the veil alone when the map will not load, and leaves the map out of Save', (tester) async {

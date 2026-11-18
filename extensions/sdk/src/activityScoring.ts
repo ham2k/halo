@@ -32,6 +32,7 @@
 import { createCachedTranslator, createTranslator } from "./i18n.ts"
 import { baseCallOf } from "./callsigns.ts"
 import { modesMatchForDupe } from "./modes.ts"
+import { entry, setEntry } from "./ownEntries.ts"
 import type { ContestScorer, HookContext, JSONValue, QsoScoreVerdict, ScoreTally } from "./types.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 
@@ -377,7 +378,7 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
       const mode = str(qso.mode) ?? ""
       const now: Contact = { day, band, mode, refs: huntedRefs }
 
-      const priors = sheet.workedByCall[call] ?? []
+      const priors = entry(sheet.workedByCall, call) ?? []
       const verdict = judge(priors, now)
       let isDupe = verdict === "duplicate"
 
@@ -392,8 +393,8 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
       // many references it stood at or contacts it took.
       if (distinctCallsPerDay && activationCredit > 0 && !isDupe) {
         const days = (sheet.activationCallDays ??= {})
-        activationCredit = days[call] === day ? 0 : 1
-        days[call] = day
+        activationCredit = entry(days, call) === day ? 0 : 1
+        setEntry(days, call, day)
         // A station already counted today, on a new band or mode, is a good
         // contact worth nothing toward the activation. With nothing new at
         // all — the `ref` axis alone kept it, because one of the two contacts
@@ -446,7 +447,7 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
 
       const packed = packContact(day, band, mode, huntedRefs)
       if (priors.length > 0) priors.push(packed)
-      else sheet.workedByCall[call] = [packed]
+      else setEntry(sheet.workedByCall, call, [packed])
 
       if (isDupe) {
         sheet.duplicates += 1
@@ -467,20 +468,22 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
         sheet.dayGuestOperators = true
       }
       for (const ref of activationRefs) {
-        sheet.activatedRefs[ref] = (sheet.activatedRefs[ref] ?? 0) + activationCredit
-        sheet.dayActivatedRefs[ref] = (sheet.dayActivatedRefs[ref] ?? 0) + activationCredit
+        setEntry(sheet.activatedRefs, ref, (entry(sheet.activatedRefs, ref) ?? 0) + activationCredit)
+        setEntry(sheet.dayActivatedRefs, ref, (entry(sheet.dayActivatedRefs, ref) ?? 0) + activationCredit)
         if (operator) {
-          const shares = (sheet.operatorRefs[ref] ??= {})
+          const shares = entry(sheet.operatorRefs, ref) ?? {}
+          setEntry(sheet.operatorRefs, ref, shares)
           shares[operator] = (shares[operator] ?? 0) + activationCredit
-          const dayShares = (sheet.dayOperatorRefs[ref] ??= {})
+          const dayShares = entry(sheet.dayOperatorRefs, ref) ?? {}
+          setEntry(sheet.dayOperatorRefs, ref, dayShares)
           dayShares[operator] = (dayShares[operator] ?? 0) + activationCredit
         }
       }
       sheet.activatedQsos += activationCredit
       sheet.dayActivatedQsos += activationCredit
       for (const ref of huntedRefs) {
-        sheet.huntedRefs[ref] = (sheet.huntedRefs[ref] ?? 0) + 1
-        sheet.dayHuntedRefs[ref] = (sheet.dayHuntedRefs[ref] ?? 0) + 1
+        setEntry(sheet.huntedRefs, ref, (entry(sheet.huntedRefs, ref) ?? 0) + 1)
+        setEntry(sheet.dayHuntedRefs, ref, (entry(sheet.dayHuntedRefs, ref) ?? 0) + 1)
       }
       sheet.huntedQsos += huntingValue
       sheet.dayHuntedQsos += huntingValue

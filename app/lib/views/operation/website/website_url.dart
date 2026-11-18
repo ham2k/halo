@@ -75,6 +75,24 @@ Uri? parseWebsiteUrl(String raw, {required void Function(WebsiteUrlProblem) prob
   return uri;
 }
 
+/// Whether the pane may follow a link, or a page's own navigation, to [target].
+/// The configured address's rule, for the same reasons: a `javascript:` or
+/// `data:` navigation runs script in the page the pane holds, and a `file:`
+/// one reads the operator's disk.
+bool websitePaneMayShow(Uri target) => target.scheme == websiteScheme && target.host.isNotEmpty;
+
+/// Whether [a] and [b] are the same page: origin and path. A web view
+/// canonicalizes what it is given — `https://qrz.com` becomes
+/// `https://qrz.com/` — and query and fragment are left out because an
+/// in-page anchor, or a page keeping its state in the query, is still the page.
+/// Never the same as a page the pane may not show: `Uri.origin` throws for
+/// anything but http and https, and a web view reports `about:blank` too.
+bool sameWebsitePage(Uri a, Uri b) {
+  if (!websitePaneMayShow(a) || !websitePaneMayShow(b)) return false;
+  String path(Uri u) => u.path.isEmpty ? '/' : u.path;
+  return a.origin == b.origin && path(a) == path(b);
+}
+
 /// What the tab calls this pane when the operator has not named it: the host,
 /// less a leading `www.`. Two panes pointed at different sites have to be
 /// tellable apart, and the full URL does not fit on a tab.

@@ -685,3 +685,45 @@ test("scoreQsos: a duplicate still counts toward its band's row", async () => {
   assert.equal(result.qsoScores.q2.dupe, true)
   assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 2 CW")
 })
+
+// --- Keys are whatever was logged -------------------------------------------
+
+// The tallies are keyed on calls, bands and modes as logged or imported. Read
+// as an ordinary property, `__proto__` or `constructor` is the prototype's own
+// machinery rather than an entry: the pass throws, a duplicate goes unseen,
+// or a counter lands on `Object.prototype`, which the kernel and every other
+// bundle share.
+const inheritedNames = ["__proto__", "constructor", "toString", "hasOwnProperty", "valueOf"]
+
+test("scoreQsos: a call, band or mode spelled like an inherited name is tallied like any other", async () => {
+  const before = Object.getOwnPropertyNames(Object.prototype).sort()
+  const log = inheritedNames.flatMap((name, i) => [
+    qso(name, name, name, { uuid: `a${i}`, our: { operatorCall: "W1AW" } }),
+    qso(name, name, name, { uuid: `b${i}`, our: { operatorCall: "W1AW" } }),
+  ])
+  const result = await scoreQsos({ operation: usOp, qsos: log }, ctxWithLog([]))
+
+  inheritedNames.forEach((name, i) => {
+    assert.equal(result.qsoScores[`a${i}`].dupe, undefined, `${name}: the first contact counts`)
+    assert.equal(result.qsoScores[`b${i}`].dupe, true, `${name}: the second is its duplicate`)
+  })
+  const sheet = result.scoresheet as {
+    bands: Record<string, number>
+    bandModes: Record<string, Record<string, number>>
+    workedByCall: Record<string, string[]>
+    operators: Record<string, { bands: Record<string, number> }>
+  }
+  assert.deepEqual(Object.keys(sheet.bands).sort(), [...inheritedNames].sort())
+  assert.deepEqual(Object.keys(sheet.workedByCall).sort(), [...inheritedNames].sort())
+  assert.deepEqual(Object.keys(sheet.bandModes).sort(), [...inheritedNames].sort())
+  assert.deepEqual(Object.keys(sheet.operators.W1AW.bands).sort(), [...inheritedNames].sort())
+  assert.equal(Object.getPrototypeOf(sheet.bandModes), Object.prototype, "no tally became another's prototype")
+  assert.deepEqual(Object.getOwnPropertyNames(Object.prototype).sort(), before, "nothing written on the shared prototype")
+})
+
+test("scoreQso: a live check of a contact spelled like an inherited name finds its duplicate", async () => {
+  for (const name of inheritedNames) {
+    const verdict = await scoreQso({ operation: usOp, qso: qso(name, name, name) }, ctxWithLog([qso(name, name, name, { uuid: "q1" })]))
+    assert.deepEqual(verdict.alerts, ["duplicate"], name)
+  }
+})

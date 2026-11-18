@@ -86,7 +86,10 @@ const CQWWScorer: ContestScorer<Scoresheet> = {
   /// scored nothing. A scorer that silently returns 0 leaves them wondering.
   scoreQso({ scoresheet, qso }) {
     const their = (qso.their as Record<string, JSONValue>) ?? {}
-    const call = str(their.call)
+    // Uppercased because it keys `workedByCall`: a call is the same call in
+    // any case, and a lowercase key can be a name every object inherits —
+    // `constructor`, `__proto__` — which a plain lookup reads as an entry.
+    const call = str(their.call).toUpperCase()
     if (!call) return { scoresheet, score: { value: 0 } }
 
     const band = str(qso.band)

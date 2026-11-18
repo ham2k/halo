@@ -654,6 +654,15 @@ class ErrorPolicy {
       matches: _isWebsitePanelErrorWhileOffline,
     ),
     ErrorRule(
+      id: 'website-panel-away',
+      reason:
+          'a page the operator reached by following a link in a Web Site pane failed to load; '
+          'it is some other site\'s dead link, not the page the pane was set up to show, and '
+          'the pane already says so',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isWebsitePanelErrorAway,
+    ),
+    ErrorRule(
       id: 'database-closed-on-exit',
       reason:
           'a write landed after the database was closed on the way out — usually a sync '
@@ -1169,6 +1178,8 @@ class ErrorPolicy {
   static bool _isMapErrorWhileOffline(Object error, FlutterErrorDetails? details) => error is MapError && error.offline;
 
   static bool _isWebsitePanelErrorWhileOffline(Object error, FlutterErrorDetails? details) => error is WebsitePanelError && error.offline;
+
+  static bool _isWebsitePanelErrorAway(Object error, FlutterErrorDetails? details) => error is WebsitePanelError && error.away;
 
   static final _oncePerSessionLogged = <String>{};
 

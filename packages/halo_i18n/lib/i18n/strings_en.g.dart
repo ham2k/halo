@@ -9304,6 +9304,9 @@ class Translations$operation$layout$panels$en {
 	/// en: 'Couldn’t load the page: ${reason}'
 	String websiteLoadFailed({required Object reason}) => 'Couldn’t load the page: ${reason}';
 
+	/// en: 'Back to ${site}'
+	String websiteBack({required Object site}) => 'Back to ${site}';
+
 	/// en: 'A screen, app or window shared by another of your devices.'
 	String get remoteScreenDescription => 'A screen, app or window shared by another of your devices.';
 
@@ -12414,6 +12417,7 @@ extension on Translations {
 			'operation.layout.panels.websiteUnsupported' => 'Web pages can’t be shown in a panel on this system.',
 			'operation.layout.panels.websiteOpenExternally' => 'Open in Browser',
 			'operation.layout.panels.websiteLoadFailed' => ({required Object reason}) => 'Couldn’t load the page: ${reason}',
+			'operation.layout.panels.websiteBack' => ({required Object site}) => 'Back to ${site}',
 			'operation.layout.panels.remoteScreenDescription' => 'A screen, app or window shared by another of your devices.',
 			'operation.layout.panels.remoteScreenTarget' => 'Screen',
 			'operation.layout.panels.remoteScreenChoose' => 'Choose a screen…',
@@ -12801,9 +12805,9 @@ extension on Translations {
 			'activitiesView.searchToggle' => 'Search',
 			'activitiesView.addToOperation' => 'Add to Operation',
 			'activitiesView.addToOperationShort' => 'Add to Op.',
-			'activitiesView.mapEmptyState' => 'No results to show on the map',
 			_ => null,
 		} ?? switch (path) {
+			'activitiesView.mapEmptyState' => 'No results to show on the map',
 			'activitiesView.mapEmptyStateHint' => 'Switch back to the list, or search for something else',
 			'activitiesView.imports' => 'Imports',
 			'loggingControls.timeUtc' => 'Time (UTC)',
@@ -13315,9 +13319,9 @@ extension on Translations {
 			'settings.radio.voiceMessages.manageSets' => 'Manage Voice Sets…',
 			'settings.radio.voiceMessages.fileLabel' => 'Ham2K voice message set',
 			'settings.radio.voiceMessages.fileStem' => 'Voice Messages',
-			'settings.radio.voiceMessages.output' => 'Send audio to',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.output' => 'Send audio to',
 			'settings.radio.voiceMessages.outputFor' => ({required Object radio}) => 'Send audio for Radio ${radio} to',
 			'settings.radio.voiceMessages.input' => 'Record from',
 			'settings.radio.voiceMessages.outputRadio' => 'Send to radio over network',
@@ -13829,9 +13833,9 @@ extension on Translations {
 			'settings.station.winkeyerPtt' => 'Use the keyer\'s PTT',
 			'settings.station.winkeyerPttDescription' => 'Key the PTT line on the same jack, for an amplifier or a radio that needs it. Leave off for a radio keyed on its key jack.',
 			'settings.station.winkeyerNoAnswer' => 'No WinKeyer responded on this port',
-			'settings.station.winkeyerStoppedAnswering' => 'The WinKeyer stopped responding while sending; the message was dropped',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.winkeyerStoppedAnswering' => 'The WinKeyer stopped responding while sending; the message was dropped',
 			'settings.station.icomControlPort' => 'Control port (UDP)',
 			'settings.station.icomControlPortDescription' => 'The radio\'s Control Port (UDP) — 50001 unless changed in its network settings, or forwarded to another.',
 			'settings.station.icomSerialPort' => 'Serial port (UDP)',
@@ -14343,9 +14347,9 @@ extension on Translations {
 			'settings.station.everywareFollowRadioB' => 'Radio B (SO2R)',
 			'settings.station.everywareFollowBand' => 'Follow the radio\'s band',
 			'settings.station.everywareFollowBandDescription' => 'Picks the position covering the main radio\'s frequency whenever it changes. Others sharing the station see it switch too.',
-			'settings.station.everywareFollowBearing' => 'Point toward the station being worked',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.everywareFollowBearing' => 'Point toward the station being worked',
 			'settings.station.everywareFollowBearingDescription' => 'Picks the direction nearest the station in the call field whenever it changes. Others sharing the station see it switch too.',
 			'settings.station.everywareTroubleshooting' => 'This connects to a **GH Everyware server**, the program that shares a station\'s Green Heron rotators and switches over the network.\n\n- **Port** is 17220 unless the server was set up on another one. From outside the station\'s network, the router must forward that port to the server\'s computer.\n- **User and password** only when the server has user authentication turned on. Leave both blank otherwise.\n- **The server takes a limited number of clients**, four unless set otherwise. When it is full, close another client and connect again.\n- Once connected, tick the rotators and switches you want under **Devices**. Each becomes equipment of its own, in this list and in every panel.\n- **Other operators may share the station.** Turning a rotator or switching an antenna here moves it for everyone.',
 			'settings.station.pstRotatorTroubleshooting' => 'PstRotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **Turn on UDP Control** in PstRotator\'s Setup menu.\n- **Match the port**: Communication → UDP Control Port, 12000 unless changed. PstRotator answers on the next port up (12001), which has to be free on this device.\n- **Connect PstRotator to its controller.** Until it is, it answers nothing over UDP.\n- **Allow it through the firewall** on the PC running PstRotator, and on this device, which listens for the answers.\n- **On a Mac, iPhone or iPad**, Ham2K Logger needs Local Network access (Settings → Privacy & Security → Local Network).',
@@ -14857,9 +14861,9 @@ extension on Translations {
 			'confirmDevice.title' => 'Confirm a Device',
 			'confirmDevice.codePrompt' => 'Enter the code shown on the device that wants to join this account.',
 			'confirmDevice.code' => 'Code',
-			'confirmDevice.lookUp' => 'Look Up',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.lookUp' => 'Look Up',
 			'confirmDevice.codeNotFound' => 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.',
 			'confirmDevice.linkExpired' => 'That link has expired. Ask the other device to show a new QR code.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'Link ${device} to this account?',

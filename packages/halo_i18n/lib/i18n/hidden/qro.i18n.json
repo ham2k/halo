@@ -734,6 +734,7 @@
         "websiteUnsupported": "WEB PAGES CAN’T BE SHOWN IN A PANEL ON THIS SYSTEM.",
         "websiteOpenExternally": "OPEN IN BROWSER",
         "websiteLoadFailed": "COULDN’T LOAD THE PAGE: ${reason}",
+        "websiteBack": "BACK TO ${site}",
         "remoteScreenDescription": "A SCREEN, APP OR WINDOW SHARED BY ANOTHER OF YOUR DEVICES.",
         "remoteScreenTarget": "SCREEN",
         "remoteScreenChoose": "CHOOSE A SCREEN…",

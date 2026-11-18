@@ -35,6 +35,10 @@ function tag(xml: string, name: string): string | undefined {
   return xml.match(new RegExp(`<${name}[^>]*>([^<]*)</${name}>`, "i"))?.[1]?.trim() || undefined
 }
 
+/// An error this extension words itself, safe to log. A failed fetch's own
+/// error names its URL, and the login URL carries the password.
+class HamQTHError extends Error {}
+
 /// Trades the operator's credentials for a session id, and hands it to the
 /// host to hold.
 ///
@@ -44,11 +48,11 @@ function tag(xml: string, name: string): string | undefined {
 async function login(ctx: HookContext): Promise<string> {
   const username = ctx.account?.credentials?.username
   const password = ctx.account?.credentials?.password
-  if (!username || !password) throw new Error("No HamQTH account configured")
+  if (!username || !password) throw new HamQTHError("No HamQTH account configured")
 
   const response = await host.fetch(`${API}?u=${encodeURIComponent(username)}&p=${encodeURIComponent(password)}`)
   const sessionId = tag(response.body, "session_id")
-  if (!sessionId) throw new Error(tag(response.body, "error") ?? `HTTP ${response.status}`)
+  if (!sessionId) throw new HamQTHError(tag(response.body, "error") ?? `HTTP ${response.status}`)
 
   await host.setAccountSession({ sessionId })
   return sessionId
@@ -61,7 +65,7 @@ async function login(ctx: HookContext): Promise<string> {
 /// Note that it re-logs-in only ONCE — a second failure is a real one, and
 /// looping on it would hammer the API behind the operator's back.
 async function fetchCall(call: string, ctx: HookContext): Promise<string> {
-  const search = (id: string) => host.fetch(`${API}?id=${id}&callsign=${encodeURIComponent(call)}&prg=${PROGRAM}`)
+  const search = (id: string) => host.fetch(`${API}?id=${encodeURIComponent(id)}&callsign=${encodeURIComponent(call)}&prg=${PROGRAM}`)
 
   const sessionId = ctx.account?.session?.sessionId ?? (await login(ctx))
   const response = await search(sessionId)
@@ -137,7 +141,7 @@ async function lookupCall(
   } catch (e) {
     // A lookup that throws takes down the call-info panel for every source,
     // not just this one.
-    host.log(`HamQTH lookup failed for ${call}: ${(e as Error).message ?? e}`)
+    host.log(`HamQTH lookup failed for ${call}${e instanceof HamQTHError ? `: ${e.message}` : ""}`)
     return []
   }
 }
@@ -169,11 +173,13 @@ const HamQTHAccount = {
       const sessionId = tag(response.body, "session_id")
       if (!sessionId) return tag(response.body, "error") ?? `HamQTH returned HTTP ${response.status}`
 
-      const check = await host.fetch(`${API}?id=${sessionId}&callsign=${encodeURIComponent(username)}&prg=${PROGRAM}`)
+      const check = await host.fetch(`${API}?id=${encodeURIComponent(sessionId)}&callsign=${encodeURIComponent(username)}&prg=${PROGRAM}`)
       const name = tag(check.body, "adr_name")
       return `✅ ${username.toUpperCase()}${name ? `: ${name}` : ""}`
-    } catch (e) {
-      return `Could not reach HamQTH: ${(e as Error).message ?? e}`
+    } catch {
+      // Not the error's text: a failed fetch names its URL, and this one
+      // carries the password.
+      return "Could not reach HamQTH"
     }
   },
 }
