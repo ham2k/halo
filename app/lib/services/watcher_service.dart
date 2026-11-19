@@ -120,6 +120,7 @@ class WatcherFeed {
     if (_closed) return;
     final previous = _context;
     _context = next;
+    _service.contextMoved(this, previous);
     if (next.operation == null) return;
     if (!_opened || previous.operation?.uuid != next.operation?.uuid) {
       _opened = true;
@@ -223,6 +224,20 @@ abstract class WatcherService extends ChangeNotifier {
   /// [feed]'s view closed.
   @protected
   void feedClosed(WatcherFeed feed) {}
+
+  /// [feed] was handed a context, [previous] the one it held before. Before
+  /// anything is fired for it.
+  @protected
+  void contextMoved(WatcherFeed feed, PanelRenderContext previous) {}
+
+  /// [reason] was just queued for [watcher]'s call about [feed]: the moment
+  /// it fired, which may be a pacing gap before the call it folds into.
+  @protected
+  void fired(WatcherDefinition watcher, WatcherFeed feed, String reason) {}
+
+  /// The views open on an operation, oldest first.
+  @protected
+  Iterable<WatcherFeed> get openedFeeds => _feeds.where((feed) => feed._opened && !feed._closed);
 
   bool _disposed = false;
 
@@ -373,6 +388,7 @@ abstract class WatcherService extends ChangeNotifier {
     if (_disposed || feed._closed || !feed._opened) return;
     final slot = _slots.putIfAbsent((watcher.id, feed), () => _Slot(watcher, feed));
     slot.pending.add(reason);
+    fired(watcher, feed, reason);
     _schedule(slot);
   }
 
@@ -396,6 +412,9 @@ abstract class WatcherService extends ChangeNotifier {
     slot.running = true;
     final watcher = slot.watcher;
     final failureKey = '$kind:${watcher.id}';
+    // Only a call that went out paces the next: one that stopped short
+    // would hold an `open` a whole gap for nothing.
+    var called = false;
     try {
       final config = await readConfig(watcher);
       // Owed from before its operation stopped having it on (which only a
@@ -406,7 +425,8 @@ abstract class WatcherService extends ChangeNotifier {
       final context = slot.feed.context;
       final operation = context.operation;
       if (operation == null) return;
-      final called = await observe(watcher, slot.feed, {
+      called = true;
+      final answered = await observe(watcher, slot.feed, {
         'operation': operationHookArgs(operation),
         'qsoCount': context.qsoCount,
         'config': config,
@@ -414,7 +434,7 @@ abstract class WatcherService extends ChangeNotifier {
         'clock': {'nowMillis': nowMillis(), 'realNowMillis': realNowMillis()},
       });
       // No runtime is no call: it says nothing about whether the watcher works.
-      if (called) ErrorReportingService.recordSuccess(failureKey);
+      if (answered) ErrorReportingService.recordSuccess(failureKey);
     } catch (e, stack) {
       // A watcher has no pane to show its failure in. The console line is
       // the author's; a streak is the operator's, through the policy.
@@ -422,7 +442,7 @@ abstract class WatcherService extends ChangeNotifier {
       ErrorReportingService.reportIfRepeated(failureKey, e, stack, context: failureKey);
     } finally {
       slot.running = false;
-      slot.lastEndedAt = realNowUtc();
+      if (called) slot.lastEndedAt = realNowUtc();
       final key = (slot.watcher.id, slot.feed);
       if (!_disposed && identical(_slots[key], slot)) {
         if (slot.retired) {

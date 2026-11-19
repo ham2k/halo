@@ -83,15 +83,30 @@ class IntegrationService extends WatcherService {
   @override
   Set<String> get refusedTriggers => const {'qso', 'lookup'};
 
-  static List<String> _idsIn(Map<String, dynamic>? localData) => [...?(localData?[localDataKey] as List?)?.whereType<String>()];
+  /// Anything but a list reads as none on, as a descriptor's mistyped field
+  /// does: the switches are read from build and from timers.
+  static List<String> _idsIn(Map<String, dynamic>? localData) => switch (localData?[localDataKey]) {
+    final List<dynamic> ids => [...ids.whereType<String>()],
+    _ => [],
+  };
 
   static List<String> _onIn(Operation? operation) => _idsIn(operation?.localData);
 
   /// Whether [integration] is on for [operation].
   static bool isOnIn(WatcherDefinition integration, Operation? operation) => _onIn(operation).contains(integration.id);
 
+  /// On for [feed] only when it is the oldest view open on its operation: a
+  /// second view of the same operation (the command bar's, or the Logs
+  /// edit panel's, pushed over the first) would otherwise hand every
+  /// contact to the integration twice. Closing the first hands the
+  /// operation to the next, which hears `open` ([feedClosed]).
   @override
-  bool isOnFor(WatcherDefinition watcher, WatcherFeed feed) => isOnIn(watcher, feed.context.operation);
+  bool isOnFor(WatcherDefinition watcher, WatcherFeed feed) => isOnIn(watcher, feed.context.operation) && _leads(feed);
+
+  bool _leads(WatcherFeed feed) {
+    final uuid = feed.context.operation?.uuid;
+    return identical(openedFeeds.firstWhereOrNull((open) => open.context.operation?.uuid == uuid), feed);
+  }
 
   @override
   bool switchesMoved(PanelRenderContext previous, PanelRenderContext next) =>
@@ -120,44 +135,103 @@ class IntegrationService extends WatcherService {
   /// with their stamps: what the next call's `changes` are told against.
   final Map<(String, WatcherFeed), Map<String, int?>> _seen = {};
 
+  /// The integrations whose `open` fired before their feed's log was read:
+  /// the first log the view reads is where their `changes` start.
+  final Set<(String, WatcherFeed)> _awaitingLog = {};
+
+  /// `open` starts from the log as it stands when it fires, not when its
+  /// call runs: a contact logged in the pacing gap between the two is a
+  /// change, not part of what was there.
   @override
-  Future<bool> observe(WatcherDefinition watcher, WatcherFeed feed, Map<String, dynamic> args) {
+  void fired(WatcherDefinition watcher, WatcherFeed feed, String reason) {
+    if (reason != 'open') return;
     final key = (watcher.id, feed);
-    // Nothing from before it was on, or before the operation opened, is
-    // replayed: `open` starts from the log as it stands.
-    if ((args['reasons'] as List).contains('open')) _seen.remove(key);
-    return extensions.observeIntegration(hookKey: watcher.hookKey, integrationKey: watcher.key, args: {...args, 'changes': _changes(key, feed.context.log)});
+    final log = feed.context.log;
+    if (log == null) {
+      _seen.remove(key);
+      _awaitingLog.add(key);
+    } else {
+      _awaitingLog.remove(key);
+      _seen[key] = _stampsOf(log);
+    }
   }
 
+  @override
+  void contextMoved(WatcherFeed feed, PanelRenderContext previous) {
+    final log = feed.context.log;
+    if (log == null || _awaitingLog.isEmpty) return;
+    _awaitingLog.removeWhere((key) {
+      if (key.$2 != feed) return false;
+      _seen[key] = _stampsOf(log);
+      return true;
+    });
+  }
+
+  @override
+  Future<bool> observe(WatcherDefinition watcher, WatcherFeed feed, Map<String, dynamic> args) async {
+    final key = (watcher.id, feed);
+    final seen = _seen[key];
+    final (changes, now) = _changes(key, feed.context.log);
+    // Used up by a call the extension was handed, even one that threw or
+    // ran out of time, as the docs promise; not by one that never went out
+    // for want of a runtime. Nor over an `open` that fired meanwhile, which
+    // set a newer start.
+    void commit() {
+      if (now != null && identical(_seen[key], seen)) _seen[key] = now;
+    }
+
+    try {
+      final called = await extensions.observeIntegration(hookKey: watcher.hookKey, integrationKey: watcher.key, args: {...args, 'changes': changes});
+      if (called) commit();
+      return called;
+    } catch (_) {
+      commit();
+      rethrow;
+    }
+  }
+
+  static Map<String, int?> _stampsOf(List<Qso> log) => {
+    for (final qso in log)
+      if (!qso.deleted && !qso.isEvent) qso.uuid: qso.updatedAtMillis,
+  };
+
   /// What moved in [log] since [key]'s previous call, as the hook is handed
-  /// it. Best effort, by stamp: an edit that leaves `updatedAtMillis` alone
-  /// goes unseen, and a contact edited and edited back between two calls
-  /// reads as edited once. Event markers are no contact, and a deleted row
-  /// the view shows is one that left the log.
+  /// it, and the stamps a call that goes out leaves for the next. Best
+  /// effort, by stamp: an edit that leaves `updatedAtMillis` alone goes
+  /// unseen, and a contact edited and edited back between two calls reads
+  /// as edited once. Event markers are no contact, and a deleted row the
+  /// view shows is one that left the log.
   ///
-  /// A log the view has not read yet sets nothing: the first one it does is
-  /// where this starts, rather than every contact in it reading as new.
-  Map<String, dynamic> _changes((String, WatcherFeed) key, List<Qso>? log) {
+  /// A log the view has not read yet moves nothing. With no start yet — no
+  /// `open` seen — this log is where it starts, rather than every contact in
+  /// it reading as new.
+  (Map<String, dynamic>, Map<String, int?>?) _changes((String, WatcherFeed) key, List<Qso>? log) {
     final logged = <Map<String, dynamic>>[], updated = <Map<String, dynamic>>[], deleted = <String>[];
     final changes = {'logged': logged, 'updated': updated, 'deleted': deleted};
-    if (log == null) return changes;
+    if (log == null) return (changes, null);
     final seen = _seen[key];
-    final now = <String, int?>{};
+    final now = _stampsOf(log);
+    if (seen == null) {
+      _seen[key] = now;
+      return (changes, null);
+    }
     for (final qso in log) {
-      if (qso.deleted || qso.isEvent) continue;
-      now[qso.uuid] = qso.updatedAtMillis;
-      if (seen == null) continue;
+      if (!now.containsKey(qso.uuid)) continue;
       if (!seen.containsKey(qso.uuid)) {
         logged.add({...qso.data, 'uuid': qso.uuid});
       } else if (seen[qso.uuid] != qso.updatedAtMillis) {
         updated.add({...qso.data, 'uuid': qso.uuid});
       }
     }
-    _seen[key] = now;
-    if (seen != null) deleted.addAll(seen.keys.where((uuid) => !now.containsKey(uuid)));
-    return changes;
+    deleted.addAll(seen.keys.where((uuid) => !now.containsKey(uuid)));
+    return (changes, now);
   }
 
   @override
-  void feedClosed(WatcherFeed feed) => _seen.removeWhere((key, _) => key.$2 == feed);
+  void feedClosed(WatcherFeed feed) {
+    _seen.removeWhere((key, _) => key.$2 == feed);
+    _awaitingLog.removeWhere((key) => key.$2 == feed);
+    // A view still open on the same operation takes it over, and hears `open`.
+    reconcile();
+  }
 }

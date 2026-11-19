@@ -56,7 +56,10 @@ Future<List<Map<String, dynamic>>> watcherFormRows(WatcherDefinition watcher, Ex
   try {
     config = await extensions.readPanelConfig(panelKey: watcher.id, fields: watcher.formFields);
   } catch (error, stack) {
-    ErrorReportingService.report(error, stack, context: '${watcher.id}:settings');
+    // Once, not on every rebuild: Settings › Integrations reads this again on
+    // each change it listens to, and so does every settings search and SET.
+    debugPrint('[settings] ${watcher.id}: its settings could not be read: $error');
+    ErrorReportingService.reportIfRepeated('${watcher.id}:settings', error, stack, context: '${watcher.id}:settings', threshold: 1);
     return const [];
   }
   return [

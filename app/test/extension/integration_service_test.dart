@@ -36,6 +36,9 @@ class _FakeIntegrationExtensions implements IntegrationExtensionSource {
   final calls = <_Call>[];
   Object? failWith;
 
+  /// False is no runtime to call: nothing reaches the extension.
+  bool answering = true;
+
   _FakeIntegrationExtensions(this.entries);
 
   @override
@@ -46,6 +49,7 @@ class _FakeIntegrationExtensions implements IntegrationExtensionSource {
 
   @override
   Future<bool> observeIntegration({required String hookKey, required String integrationKey, required Map<String, dynamic> args}) async {
+    if (!answering) return false;
     calls.add(_Call(hookKey, integrationKey, args));
     if (failWith != null) throw failWith!;
     return true;
@@ -298,6 +302,82 @@ void main() {
         ],
         reason: 'a cast that throws empties the catalog: every integration switched on anywhere stops',
       );
+      service.dispose();
+    });
+  });
+
+  // The view's first build comes before its log does, so `open` usually
+  // fires with no log. Taken at the next call instead, the start would fold
+  // in every contact logged until then: a whole tick, for one woken only by
+  // ticks.
+  test('the first log the view reads is where changes start, not the next call', () {
+    fakeAsync((async) {
+      final service = start(async, [
+        _integration('stream', const ['tick:60']),
+      ]);
+      final op = _op('op-1', on: [_id]);
+      final feed = service.openFeed()..update(PanelRenderContext(operation: op));
+      async.flushMicrotasks();
+      expect(extensions.calls.single.reasons, {'open'});
+
+      feed.update(PanelRenderContext(operation: op, qsoCount: 1, log: [_qso('a')]));
+      feed.update(PanelRenderContext(operation: op, qsoCount: 2, log: [_qso('a'), _qso('b')]));
+      async.elapse(const Duration(minutes: 1));
+      expect(extensions.calls.last.reasons, {'tick'});
+      expect(extensions.calls.last.uuids('logged'), ['b'], reason: 'a was in the log when it opened; b was logged after');
+      service.dispose();
+    });
+  });
+
+  test('a call that never went out, for want of a runtime, leaves its changes for the next', () {
+    fakeAsync((async) {
+      final service = start(async, [
+        _integration('stream', const ['qsoLogged']),
+      ]);
+      final op = _op('op-1', on: [_id]);
+      final feed = service.openFeed()..update(PanelRenderContext(operation: op, qsoCount: 1, log: [_qso('a')]));
+      async.elapse(_pastGap);
+
+      extensions.answering = false;
+      feed.update(PanelRenderContext(operation: op, qsoCount: 2, log: [_qso('a'), _qso('b')]));
+      async.elapse(_pastGap);
+      extensions.answering = true;
+      feed.update(PanelRenderContext(operation: op, qsoCount: 3, log: [_qso('a'), _qso('b'), _qso('c')]));
+      async.elapse(_pastGap);
+      expect(extensions.calls.last.uuids('logged'), ['b', 'c'], reason: 'no extension was handed b, so nothing took it');
+      service.dispose();
+    });
+  });
+
+  test('an operation open in two views is one integration call, and the second view takes over when the first closes', () {
+    fakeAsync((async) {
+      final service = start(async, [
+        _integration('stream', const ['qsoLogged']),
+      ]);
+      final op = _op('op-1', on: [_id]);
+      final first = service.openFeed()..update(PanelRenderContext(operation: op, qsoCount: 1, log: [_qso('a')]));
+      // The command bar or the Logs edit panel pushing the same operation over it.
+      final second = service.openFeed()..update(PanelRenderContext(operation: op, qsoCount: 1, log: [_qso('a')]));
+      async.elapse(_pastGap);
+      expect(extensions.calls, hasLength(1));
+
+      first.update(PanelRenderContext(operation: op, qsoCount: 2, log: [_qso('a'), _qso('b')]));
+      second.update(PanelRenderContext(operation: op, qsoCount: 2, log: [_qso('a'), _qso('b')]));
+      async.elapse(_pastGap);
+      expect(
+        [for (final call in extensions.calls.skip(1)) call.uuids('logged')],
+        [
+          ['b'],
+        ],
+        reason: 'handed to it once per view, b would be posted twice',
+      );
+
+      first.close();
+      async.elapse(_pastGap);
+      expect(extensions.calls.last.reasons, {'open'}, reason: 'the view left open carries on');
+      second.update(PanelRenderContext(operation: op, qsoCount: 3, log: [_qso('a'), _qso('b'), _qso('c')]));
+      async.elapse(_pastGap);
+      expect(extensions.calls.last.uuids('logged'), ['c']);
       service.dispose();
     });
   });
