@@ -249,7 +249,7 @@ class ScoringService {
   /// longer agree, and resuming from it would carry its verdicts forward with
   /// no error anywhere (docs/design/contests.md §5.1.2). Added only once a
   /// full pass has WRITTEN, by the host it started under — a pass that found
-  /// no scorer, an empty log or a failing runtime spends nothing — and
+  /// no scorer to run or a failing runtime spends nothing — and
   /// cleared whenever the runtime generation ticks.
   ///
   /// The host is what closes the gap the generation alone leaves: a new
@@ -489,10 +489,10 @@ class ScoringService {
       await operations.updateLocalData(operation.uuid, {'huntedRefTypes': huntedRefTypes.toList()..sort()});
     }
 
-    // Not on `qsoList`: a log of nothing but incomplete calls still runs, so
-    // its summary drops to nothing instead of keeping what those contacts
-    // scored before an edit put a `?` in them.
-    if (!all.any((q) => q.isRealContact)) return;
+    // Not on `qsoList`: a log of nothing but incomplete calls is not empty
+    // here, so its summary drops to zeros instead of keeping what those
+    // contacts scored before an edit put a `?` in them.
+    final hasContacts = all.any((q) => q.isRealContact);
 
     // Resolved from the FULL list — the event rows carrying the segment
     // overrides are exactly what `qsoList` just filtered out
@@ -505,10 +505,25 @@ class ScoringService {
       // operation. A user with dozens of extensions enabled never pays for the
       // ones this operation doesn't reference (docs/design/contests.md §5.1).
       final scopes = await extensions.getScoringScopes();
-      final scorers = ExtensionService.scorersFor(operation.data, scopes, segments: segmented, alsoRefTypes: huntedRefTypes);
-      if (scorers.isEmpty) return;
-
+      // An empty log is still scored, so whatever a scorer summarizes for no
+      // contacts (a contest's "0 points") is on screen from the start. Not by an
+      // `always` scorer: its tallies are bookkeeping of what was logged (QSOs,
+      // DXCC, bands), and a column of zeros says nothing.
+      final scorers = [
+        for (final scorer in ExtensionService.scorersFor(operation.data, scopes, segments: segmented, alsoRefTypes: huntedRefTypes))
+          if (hasContacts || !scorer.fallback) scorer,
+      ];
       final cachedScoring = operation.localData['scoring'] as Map<String, dynamic>?;
+      if (scorers.isEmpty) {
+        // Without this, deleting the last contact leaves its scores on screen.
+        // Not on empty scopes: a running runtime always has core's, so none
+        // means the read failed, and clearing then would erase a good score.
+        if (!hasContacts && scopes.isNotEmpty && (cachedScoring?.isNotEmpty ?? false)) {
+          await operations.updateLocalData(operation.uuid, {'scoring': <String, dynamic>{}});
+        }
+        return;
+      }
+
       final resume = full || !_foldedByCurrentHost(uuid)
           ? null
           : resolveScoringResume(scoring: cachedScoring, operationUpdatedAtMillis: operation.updatedAtMillis, qsos: all);

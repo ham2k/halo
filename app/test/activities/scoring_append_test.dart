@@ -415,6 +415,69 @@ void main() {
     });
   });
 
+  group('an empty log', () {
+    const potaScopes = {
+      ..._core,
+      'pota': {
+        'refTypes': ['potaActivation', 'pota'],
+        'huntingRefTypes': ['pota'],
+      },
+    };
+    Map<String, dynamic>? scoringOf(Operation operation) => operation.localData['scoring'] as Map<String, dynamic>?;
+
+    // The Summaries pane reads only what a pass wrote: a skipped pass leaves
+    // an activation with no "0/10" until its first contact.
+    test('is scored by the operation\'s own scorers, never by an always one', () async {
+      final operation = await operations.createFromData({
+        'stationCall': 'N0DEV',
+        'refs': [
+          {'type': 'potaActivation', 'ref': 'US-0001'},
+        ],
+      });
+      final extensions = _FakeExtensions(scopes: potaScopes, answer: _fold);
+      await ScoringService(extensions: extensions, qsos: qsos, operations: operations).rescoreOperation(operation);
+
+      expect(extensions.calls.map((c) => c.key), ['pota']);
+      expect(sentUuids(extensions.calls.single.args), isEmpty);
+      expect(scoringOf(await current(operation))?.keys, ['pota'], reason: 'core\'s zero tallies stay off the summaries');
+    });
+
+    // Without the empty pass, an emptied log keeps the deleted contacts'
+    // score on screen.
+    test('replaces what the deleted contacts scored', () async {
+      var operation = await operationWith(1);
+      final extensions = _FakeExtensions(scopes: _core, answer: _fold);
+      final scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
+      await scoring.rescoreOperation(operation);
+      expect(scoringOf(await current(operation))?.keys, ['core']);
+
+      await qsos.softDelete((await qsos.forOperation(operation.uuid)).single);
+      operation = await current(operation);
+      extensions.calls.clear();
+      await scoring.rescoreOperation(operation);
+
+      expect(extensions.calls, isEmpty);
+      expect(scoringOf(await current(operation)), isEmpty);
+    });
+
+    // A scopes read that fails or times out answers `{}`, the same as one
+    // that found no scorer — clearing on that would erase a contest's score
+    // until the next edit, with nothing on screen to say why.
+    test('keeps what it has when no scopes could be read', () async {
+      var operation = await operationWith(1);
+      final extensions = _FakeExtensions(scopes: _core, answer: _fold);
+      final scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
+      await scoring.rescoreOperation(operation);
+
+      await qsos.softDelete((await qsos.forOperation(operation.uuid)).single);
+      operation = await current(operation);
+      extensions.scopes = const {};
+      await scoring.rescoreOperation(operation);
+
+      expect(scoringOf(await current(operation))?.keys, ['core']);
+    });
+  });
+
   group('passes on one operation', () {
     // Two passes reading the same stale checkpoint and racing to write would
     // let the slower one persist a sheet the other had superseded.

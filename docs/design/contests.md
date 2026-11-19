@@ -194,7 +194,11 @@ The core then:
 1. Collects the ref types present in the operation — **the union across the base
    operation and every segment** (see below), not just `operation.refs`.
 2. Invokes `scope: 'always'` scorers plus those whose `refTypes` intersect that
-   set. Nothing else is called at all.
+   set. Nothing else is called at all. A log with no contacts is still scored,
+   so a contest's summary is on screen before the first contact, but not by an
+   `always` scorer: its tallies count what was logged, and zeros say nothing.
+   With no scorer left to run, the cached scores are cleared, so deleting the
+   last contact takes its score with it.
 3. **Merges per QSO by priority.** An `always` scorer is a `fallback`: on a QSO
    another scorer has judged on the worked-before axis, its own judgement of
    that QSO yields — the `dupe` flag, the alerts in `{duplicate}` and the
