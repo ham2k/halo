@@ -51,6 +51,12 @@ abstract class SceneSpectrumSource {
   /// Why there is nothing to draw, in words for the operator, or null.
   String? problem(String uuid);
 
+  /// Why [owner], drawing [uuid]'s sweeps narrower than the widest display,
+  /// crops a coarser sweep rather than drawing one of its own, in words for
+  /// the operator; null when it has its own or needs none. [changes] fires
+  /// when it may have changed.
+  String? cropped(String uuid, Object owner);
+
   /// Where the radio is tuned, for the marker.
   double? vfoHz(String uuid);
 
@@ -1226,6 +1232,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
                           ),
                       ];
                     }(),
+                    if (message == null && !_sweepless) ?_cropCaption(context, uuid),
                     if (message != null)
                       Center(
                         child: Padding(

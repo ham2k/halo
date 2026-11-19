@@ -6925,6 +6925,15 @@ class Translations$settings$station$en {
 	/// en: 'The radio's scope cannot be shown on this band'
 	String get spectrumBandUnsupported => 'The radio\'s scope cannot be shown on this band';
 
+	/// en: 'Cropped from a wider sweep. ${why}'
+	String spectrumCropped({required Object why}) => 'Cropped from a wider sweep. ${why}';
+
+	/// en: '${max} narrower sweeps of this radio are already running'
+	String spectrumCroppedCap({required Object max}) => '${max} narrower sweeps of this radio are already running';
+
+	/// en: 'The radio has no other sweep to spare'
+	String get spectrumNoSweepToSpare => 'The radio has no other sweep to spare';
+
 	/// en: 'Automatically adjust bandscope'
 	String get civScopeAdjust => 'Automatically adjust bandscope';
 
@@ -13990,6 +13999,9 @@ extension on Translations {
 			'settings.station.spectrumScopeRefused' => 'The radio refused its scope commands',
 			'settings.station.spectrumOutOfRange' => 'The radio\'s scope is set outside the range it can show',
 			'settings.station.spectrumBandUnsupported' => 'The radio\'s scope cannot be shown on this band',
+			'settings.station.spectrumCropped' => ({required Object why}) => 'Cropped from a wider sweep. ${why}',
+			'settings.station.spectrumCroppedCap' => ({required Object max}) => '${max} narrower sweeps of this radio are already running',
+			'settings.station.spectrumNoSweepToSpare' => 'The radio has no other sweep to spare',
 			'settings.station.civScopeAdjust' => 'Automatically adjust bandscope',
 			'settings.station.civScopeAdjustApp' => 'Let this app adjust the bandscope',
 			'settings.station.civScopeAdjustRadio' => 'Use the radio\'s bandscope settings as-is',
@@ -14003,11 +14015,11 @@ extension on Translations {
 			'settings.station.sdrTuningIndependent' => 'Its own antenna',
 			'settings.station.sdrTuningIfTap' => 'The radio\'s IF output',
 			'settings.station.sdrIfHz' => 'IF frequency (Hz)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.sdrIfHzDescription' => 'For an IF output only: the frequency the radio\'s dial sits at on its IF, such as 68330000 on an FT-817.',
 			'settings.station.sdrIfInverted' => 'IF is inverted',
 			'settings.station.sdrGainDb' => 'Gain (dB)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.sdrGainDbDescription' => 'Leave blank for the receiver\'s automatic gain.',
 			'settings.station.sdrOffsetHz' => 'Frequency offset (Hz)',
 			'settings.station.sdrOffsetHzDescription' => 'Added to every frequency sent to the receiver, for an upconverter: 125000000 for a Ham It Up.',
@@ -14517,11 +14529,11 @@ extension on Translations {
 			'settings.station.buddihexCompassMissing' => 'The rotator\'s controller cannot find its compass. Check the compass\'s wiring to the controller board.',
 			'settings.station.buddihexCompassNotReady' => 'The rotator\'s compass is not ready yet. Power the controller off and on if this does not clear.',
 			'settings.station.buddihexCompassCalibration' => 'The rotator\'s compass failed its calibration check when the controller started. Power the controller off and on to check it again.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.buddihexFault' => 'The rotator\'s controller reports a fault with its compass.',
 			'settings.station.buddihexTroubleshooting' => 'The BuddiHex rotator\'s controller answers over WiFi, on UDP port 4210:\n\n- **On its own WiFi network**, the one it makes until it is set up (named ESP- and six letters and digits), its address is 192.168.4.1. Join that network on this device first.\n- **On your WiFi**, once you have entered it on the controller\'s web page, use the address your router gave it: its list of devices names the controller ESP- and the same six letters and digits.\n- **Calibrate its heading after every power-up**: point the antenna at true north, then press Calibrate North on the controller\'s web page. It forgets the calibration when it is switched off, and reports the compass\'s magnetic heading until then.\n- **On a Mac, iPhone or iPad**, Ham2K Logger needs Local Network access (Settings → Privacy & Security → Local Network).',
 			'settings.station.rotctldRefused' => ({required Object code}) => 'rotctld refused the command (Hamlib error ${code}).',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotctldReadFailed' => ({required Object code}) => 'rotctld could not read where the rotator points (Hamlib error ${code}).',
 			'settings.station.rotctldPastLimits' => ({required Object code}) => 'rotctld refused that heading as past the rotator\'s limits (Hamlib error ${code}). Check the limits rotctld was started with.',
 			'settings.station.rotctldTimedOut' => ({required Object code}) => 'rotctld got no answer from the rotator (Hamlib error ${code}). Check the rotator\'s connection to the computer running rotctld.',
@@ -15031,11 +15043,11 @@ extension on Translations {
 			'operationLocationScreen.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'operationLocationScreen.controlsUnavailableReason' => 'These references are still usable; their activities just could not be reached.',
 			'operationLocationScreen.controlsUnavailableRetry' => 'Retry',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.county' => 'County (optional)',
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'Patch ${patch}',
-			_ => null,
-		} ?? switch (path) {
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'No notices yet',
 			'notices.webStorageInMemory' => 'This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.',

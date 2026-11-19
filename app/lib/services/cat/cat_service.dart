@@ -29,6 +29,7 @@ import '../hang_watchdog.dart';
 import '../peer/peer_station_radios.dart';
 import '../radio_service.dart';
 import '../settings_service.dart';
+import '../../tools/backoff.dart';
 import 'auto_connect_guard.dart';
 import 'capability.dart';
 import 'capability_offers.dart';
@@ -1082,6 +1083,7 @@ class CatService extends ChangeNotifier
       _nodes.remove(uuid);
       final removed = _runtimes.remove(uuid);
       removed?.cancelSdrTimers();
+      removed?.spectrumScopeRetry?.cancel();
       unawaited(removed?.spectrum?.close());
       // Removing the designated radio clears the choice rather than quietly
       // moving the logging panel onto a different rig immediately after a
@@ -1449,6 +1451,7 @@ class CatService extends ChangeNotifier
     for (final runtime in _runtimes.values) {
       runtime.cancel?.cancel();
       runtime.cancelSdrTimers();
+      runtime.spectrumScopeRetry?.cancel();
       unawaited(_teardown(runtime));
       unawaited(runtime.spectrum?.close());
     }

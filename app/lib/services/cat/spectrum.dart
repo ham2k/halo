@@ -231,6 +231,12 @@ abstract class SpectrumScope {
   /// the sweep to change: its caller asks a span once per change.
   bool setSpectrum(SpectrumRequest request);
   void close();
+
+  /// Whether the problem it said was the radio turning it down for want of
+  /// one free, every panadapter in use, which another program closing one
+  /// may clear: unlike a sweep that failed, it is asked for again after a
+  /// wait.
+  bool get turnedDown;
 }
 
 /// For a driver whose every session is a [SpectrumSession], whatever the

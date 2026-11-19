@@ -8,6 +8,13 @@ part of 'cat_service.dart';
 /// crops the narrowest sweep that covers it.
 const spectrumExtraScopesMax = 3;
 
+/// The wait before a sweep the radio turned down is asked for again, doubling
+/// each time up to [spectrumScopeRetryLongest]: a radio with no panadapter or
+/// channel free is not asked every few seconds for as long as a display wants
+/// a sweep of its own.
+const spectrumScopeRetryFirst = Duration(seconds: 10);
+const spectrumScopeRetryLongest = Duration(minutes: 2);
+
 extension CatServiceSpectrum on CatService {
   /// Sweeps from [uuid]'s scope, for a display to draw.
   ///
@@ -46,6 +53,8 @@ extension CatServiceSpectrum on CatService {
     if (runtime == null) return;
     final (led, leading) = (runtime.spectrumLeaders.contains(owner), widthHz != null && leads);
     if (runtime.spectrumWidths[owner] == widthHz && led == leading) return;
+    // A display arriving or leaving is a new arrangement, worth asking for again soon; a zoom is not.
+    if (runtime.spectrumWidths.containsKey(owner) != (widthHz != null)) _spectrumScopesAfresh(runtime);
     if (widthHz == null) {
       runtime.spectrumWidths.remove(owner);
     } else {
@@ -74,6 +83,13 @@ extension CatServiceSpectrum on CatService {
   /// left to a display that cannot move it would stay where it started while
   /// the dial walked out of it.
   bool spectrumLedElsewhere(String uuid, Object owner) => _runtimes[uuid]?.spectrumLeaders.any((other) => !identical(other, owner)) ?? false;
+
+  /// Why [owner], a display of [uuid]'s sweeps narrower than the widest,
+  /// draws a crop of a wider sweep rather than one of its own: the radio
+  /// turned its own down, or more displays want one than the radio runs
+  /// ([spectrumExtraScopesMax]). Null when it has its own, or needs none.
+  /// [CatService] notifies when it changes.
+  String? spectrumCroppedWhy(String uuid, Object owner) => _runtimes[uuid]?.spectrumCrops[owner];
 
   /// What each display drawing [uuid]'s scope shows of it, as [wantSpectrumWidth] was told.
   Iterable<int> spectrumWidthsFor(String uuid) => _runtimes[uuid]?.spectrumWidths.values ?? const [];
@@ -319,7 +335,7 @@ extension CatServiceSpectrum on CatService {
     runtime.spectrumStarted = wanted;
     runtime.spectrumSpanAsked = null;
     _closeSpectrumScopes(runtime);
-    runtime.spectrumScopeLimit = null;
+    _allowSpectrumScopes(runtime);
     try {
       wanted ? session.startSpectrum() : session.stopSpectrum();
     } catch (e, st) {
@@ -377,10 +393,33 @@ extension CatServiceSpectrum on CatService {
     // The narrowest scope at least as wide as each display's span: its own where one runs.
     final running = [(0, span), for (final MapEntry(:key, :value) in runtime.spectrumScopes.entries) (key, value.span ?? span)]
       ..sort((a, b) => a.$2.compareTo(b.$2));
+    final drawn = {for (final MapEntry(key: owner, value: wants) in named.entries) owner: running.firstWhere((s) => s.$2 >= wants, orElse: () => running.last)};
     runtime.spectrumScopeOf
       ..clear()
-      ..addAll({for (final MapEntry(key: owner, value: wants) in named.entries) owner: running.firstWhere((s) => s.$2 >= wants, orElse: () => running.last).$1})
+      ..addAll({for (final MapEntry(key: owner, value: (key, _)) in drawn.entries) owner: key})
       ..removeWhere((_, key) => key == 0);
+    // A display drawing a coarser sweep than its own says why, where it is one the radio turned
+    // down or the cap held back; one still opening has no reason to give yet.
+    // A radio with one scope crops as it always has: there is no sweep of its own to explain.
+    // Asked for again, the refusal stands until the sweep comes, rather than blinking off meanwhile.
+    final why = switch (runtime.spectrumScopeLimit) {
+      _ when session is! MultiScopeSession => null,
+      null when spans.length - 1 > spectrumExtraScopesMax => t.settings.station.spectrumCroppedCap(max: spectrumExtraScopesMax),
+      _ => runtime.spectrumScopeRefusal,
+    };
+    _setSpectrumCrops(runtime, {
+      if (why != null)
+        for (final MapEntry(key: owner, value: (_, has)) in drawn.entries)
+          if (has > named[owner]!) owner: t.settings.station.spectrumCropped(why: why),
+    });
+  }
+
+  void _setSpectrumCrops(_NodeRuntime runtime, Map<Object, String> crops) {
+    if (mapEquals(runtime.spectrumCrops, crops)) return;
+    runtime.spectrumCrops
+      ..clear()
+      ..addAll(crops);
+    _changed();
   }
 
   /// One sweep beyond the session's own for each of [spans], widest first:
@@ -404,13 +443,9 @@ extension CatServiceSpectrum on CatService {
           scope = session.openScope(sink);
         } catch (e, st) {
           ErrorReportingService.report(e, st, context: 'cat:spectrum-scope');
-          runtime.spectrumScopeLimit = runtime.spectrumScopes.length;
-          return;
+          return _refuseSpectrumScopes(runtime, null, retry: false);
         }
-        if (scope == null) {
-          runtime.spectrumScopeLimit = runtime.spectrumScopes.length;
-          return;
-        }
+        if (scope == null) return _refuseSpectrumScopes(runtime, t.settings.station.spectrumNoSweepToSpare, retry: true);
         runtime.spectrumScopes[key] = (scope: scope, span: null);
         // Said while it was being opened, before it was one of the sweeps.
         if (sink.opening case final message?) return _dropSpectrumScope(runtime, key, message);
@@ -429,22 +464,68 @@ extension CatServiceSpectrum on CatService {
   }
 
   /// A sweep beyond the session's own the radio turned down, or that failed
-  /// after it ran: closed, and no more asked for until the scope restarts.
-  /// Its displays go back to cropping a wider one.
+  /// after it ran: closed, its displays back to cropping a wider one.
   void _dropSpectrumScope(_NodeRuntime runtime, int key, String message) {
     final dropped = runtime.spectrumScopes.remove(key);
     if (dropped == null) return;
-    // Its displays crop a wider sweep, which is not an error to the operator.
+    // Its displays crop a wider sweep and say why, which is not an error to the operator.
     debugPrint('[cat] ${runtime.uuid}: a sweep at ±${dropped.span} Hz closed: $message');
     _closeSpectrumScope(dropped.scope);
-    runtime.spectrumScopeLimit = runtime.spectrumScopes.length;
+    _refuseSpectrumScopes(runtime, message, retry: dropped.scope.turnedDown);
     _scheduleSpectrumDemand(runtime);
+  }
+
+  /// No more sweeps than run now, the displays told [message]. One the radio
+  /// turned down is asked for again ([retry]), as what was in the way, another
+  /// program's panadapter or a DAX channel, may since have gone; one that
+  /// failed, or a driver that threw, waits for the scope to restart, as asking
+  /// again would only fail again.
+  void _refuseSpectrumScopes(_NodeRuntime runtime, String? message, {required bool retry}) {
+    runtime.spectrumScopeLimit = runtime.spectrumScopes.length;
+    runtime.spectrumScopeRefusal = message;
+    if (!retry) {
+      runtime.spectrumScopeRetry?.cancel();
+      runtime.spectrumScopeRetry = null;
+    } else if (runtime.spectrumScopeRetry == null) {
+      _armSpectrumScopeRetry(runtime, _spectrumScopeRetryWait(runtime.spectrumScopeRefusals++));
+    }
+  }
+
+  /// [spectrumScopeRetryFirst] after the first refusal in a row, doubling to [spectrumScopeRetryLongest].
+  Duration _spectrumScopeRetryWait(int refusals) =>
+      spectrumScopeRetryFirst *
+      exponentialBackoff(refusals, cap: Duration(seconds: spectrumScopeRetryLongest.inSeconds ~/ spectrumScopeRetryFirst.inSeconds)).inSeconds;
+
+  void _armSpectrumScopeRetry(_NodeRuntime runtime, Duration wait) {
+    runtime.spectrumScopeRetry?.cancel();
+    runtime.spectrumScopeRetry = Timer(wait, () {
+      runtime.spectrumScopeRetry = null;
+      runtime.spectrumScopeLimit = null;
+      if (!_disposed) _scheduleSpectrumDemand(runtime);
+    });
+  }
+
+  /// The waits start over, a sweep already waiting to be asked for again
+  /// asked for after the first of them.
+  void _spectrumScopesAfresh(_NodeRuntime runtime) {
+    runtime.spectrumScopeRefusals = 0;
+    if (runtime.spectrumScopeRetry != null) _armSpectrumScopeRetry(runtime, _spectrumScopeRetryWait(runtime.spectrumScopeRefusals++));
+  }
+
+  /// As many sweeps as the displays want, from the first wait: for a scope starting afresh.
+  void _allowSpectrumScopes(_NodeRuntime runtime) {
+    runtime.spectrumScopeRetry?.cancel();
+    runtime.spectrumScopeRetry = null;
+    runtime.spectrumScopeLimit = null;
+    runtime.spectrumScopeRefusal = null;
+    runtime.spectrumScopeRefusals = 0;
   }
 
   void _closeSpectrumScopes(_NodeRuntime runtime) {
     final open = runtime.spectrumScopes.values.toList();
     runtime.spectrumScopes.clear();
     runtime.spectrumScopeOf.clear();
+    _setSpectrumCrops(runtime, const {});
     for (final (:scope, span: _) in open) {
       _closeSpectrumScope(scope);
     }
@@ -454,7 +535,8 @@ extension CatServiceSpectrum on CatService {
   void _forgetSpectrumScopes(_NodeRuntime runtime) {
     runtime.spectrumScopes.clear();
     runtime.spectrumScopeOf.clear();
-    runtime.spectrumScopeLimit = null;
+    _setSpectrumCrops(runtime, const {});
+    _allowSpectrumScopes(runtime);
     runtime.spectrumLook = null;
   }
 
@@ -484,9 +566,12 @@ class _SpectrumScopeSink implements SpectrumSink {
   String? opening;
   bool opened = false;
 
+  /// A sweep drawn ends a run of refusals: one after it starts the waits over.
   @override
   void reportSpectrum(SpectrumFrame frame) {
-    if (_current) runtime.spectrum?.add((key, frame));
+    if (!_current) return;
+    runtime.spectrumScopeRefusals = 0;
+    runtime.spectrum?.add((key, frame));
   }
 
   @override

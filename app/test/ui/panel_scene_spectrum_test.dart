@@ -50,6 +50,9 @@ class _Source extends ChangeNotifier implements SceneSpectrumSource {
   Stream<SpectrumFrame> frames(String uuid, Object owner) => uuid == _subRadio ? subController.stream : controller.stream;
   @override
   String? problem(String uuid) => problemText;
+  String? croppedText;
+  @override
+  String? cropped(String uuid, Object owner) => croppedText;
   @override
   double? vfoHz(String uuid) => uuid == _subRadio ? 7074000 : 14074000;
   @override
@@ -1253,6 +1256,35 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.text('waiting'), findsNothing);
+  });
+
+  // A pane cropping a coarser sweep draws it as if it were its own: only the caption tells them apart.
+  testWidgets('a display cropping a coarser sweep says why over its picture, and nothing over a problem', (tester) async {
+    final source = _Source()..croppedText = 'Cropped from a wider sweep. No pan free';
+    await _show(tester, source: source);
+    source.controller.add(_frame());
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Cropped from a wider sweep. No pan free'), findsOneWidget);
+    source
+      ..problemText = 'Every DAX IQ channel on this radio is in use'
+      ..notifyListeners();
+    await tester.pump();
+    expect(find.text('Cropped from a wider sweep. No pan free'), findsNothing, reason: 'the problem is why nothing is drawn');
+  });
+
+  // A scene's window stands in for a sweep that stopped coming, the radio gone with it: a caption
+  // over that picture would explain a crop of nothing.
+  testWidgets('a display standing in for a sweep says nothing of a crop', (tester) async {
+    final source = _Source()..croppedText = 'Cropped from a wider sweep. No pan free';
+    await _show(
+      tester,
+      source: source,
+      spectrum: {
+        'window': {'lowHz': 14000000, 'highHz': 14200000},
+      },
+    );
+    expect(find.text('Cropped from a wider sweep. No pan free'), findsNothing);
   });
 
   testWidgets('a display goes quiet on real seconds of silence, not on a travelled clock', (tester) async {

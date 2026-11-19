@@ -90,4 +90,35 @@ extension _SpectrumWindow on _SceneSpectrumViewState {
       atMillis: sweep.atMillis,
     );
   }
+
+  /// Why this display crops a coarser sweep than its own, in a corner of the
+  /// picture: small, as what it draws is still the receiver, and letting
+  /// clicks and drags through to the sweep beneath.
+  Widget? _cropCaption(BuildContext context, String? uuid) {
+    final why = uuid == null ? null : widget.source?.cropped(uuid, this);
+    if (why == null) return null;
+    final theme = Theme.of(context);
+    return Positioned(
+      left: Space.xs,
+      right: Space.xs,
+      bottom: Space.xs,
+      child: IgnorePointer(
+        child: Align(
+          alignment: Alignment.bottomLeft,
+          child: DecoratedBox(
+            decoration: BoxDecoration(color: theme.colorScheme.surface.withValues(alpha: .75), borderRadius: BorderRadius.circular(Space.xs)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Space.xs, vertical: Space.xxs),
+              child: Text(
+                why,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

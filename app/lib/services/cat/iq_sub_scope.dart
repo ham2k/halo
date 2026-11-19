@@ -81,6 +81,11 @@ class IqSubScope implements SpectrumScope {
     _noise.reset();
   }
 
+  /// It takes nothing of the radio's: it fails only with the IQ it is fed,
+  /// which the session's own scope says.
+  @override
+  bool get turnedDown => false;
+
   @override
   void close() {
     if (_closed) return;

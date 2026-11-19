@@ -843,6 +843,9 @@ class _FlexExtraScope implements SpectrumScope {
   bool setSpectrum(SpectrumRequest request) => _scope.setSpectrum(request);
 
   @override
+  bool get turnedDown => _scope.turnedDown;
+
+  @override
   void close() {
     _left();
     _scope.close();

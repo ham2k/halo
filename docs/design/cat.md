@@ -4287,8 +4287,16 @@ zoom passes through several spans, and on some radios each sweep is a
 panadapter. A display's recentre moves its own sweep. An extension's
 `setRadioSpectrum` changes the session's own, and gives every sweep its
 speed and reference level, which are the receiver's look. A sweep the radio
-turns down, or that fails later, is closed, its displays crop the narrowest
-wider one, and no more are asked for until the scope starts again. HaLo's own
+turns down, or that fails later, is closed and its displays crop the narrowest
+wider one. One turned down for want of one free (every panadapter in use, no
+sweep to spare: `SpectrumScope.turnedDown`) is asked for again after 10 s,
+then after waits doubling to 2 minutes (`spectrumScopeRetryFirst`,
+`spectrumScopeRetryLongest`): what was in the way, another program's
+panadapter or a DAX channel, may since have gone, and a radio with none free
+is not asked every few seconds. A display arriving or leaving, or a sweep
+drawn, starts the waits over. One that failed, a pan the radio made and sends
+nothing for, or a driver that threw, is not asked for again until the scope
+starts again: it would only fail the same way. HaLo's own
 Flex station runs one as a pan of its own (below). A Flex followed on
 another station through DAX IQ, and a TCI server, transform the same IQ
 again for each narrower display (`iq_sub_scope.dart`,
@@ -4303,7 +4311,10 @@ moved past that moves the session's IQ there, as a recentre of its own scope
 does, and a middle a display put is let go for the receiver's once the IQ
 has moved away from it. No more than three sweeps run beyond the widest
 (`spectrumExtraScopesMax`), each a pan of the radio's or a transform of
-every sample; a display past them crops the narrowest that covers it. An
+every sample; a display past them crops the narrowest that covers it. A
+display cropping a coarser sweep than its own says why in a small caption
+over its picture (`CatService.spectrumCroppedWhy`): the radio's reason, or
+the cap. Otherwise it would look like a radio that resolves nothing finer. An
 SDR's IQ, at up to 2.4 MS/s and not sized by the app, gets none yet, and a
 radio with one scope (Icom, K4) crops as before.
 

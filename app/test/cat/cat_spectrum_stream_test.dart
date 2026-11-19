@@ -7,7 +7,9 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
@@ -53,6 +55,8 @@ class _Extra implements SpectrumScope {
   final SpectrumSink sink;
   final requests = <SpectrumRequest>[];
   bool closed = false;
+  @override
+  bool turnedDown = false;
   _Extra(this.sink);
   @override
   bool setSpectrum(SpectrumRequest request) {
@@ -68,22 +72,36 @@ class _Extra implements SpectrumScope {
   void sweep(int lowHz) => sink.reportSpectrum(SpectrumFrame(lowHz: lowHz, highHz: lowHz + 1, levels: Float32List(4), floorDb: 0, ceilingDb: 1, atMillis: 0));
 }
 
-class _Scope implements TransceiverSession, MultiScopeSession {
+/// A radio running more than one sweep of the receiver, as a Flex or a TCI server does.
+class _MultiScope extends _Scope implements MultiScopeSession {
+  _MultiScope(super.sink);
+  @override
+  bool get scopesTakeAnySpan => anySpan;
+  @override
+  SpectrumScope? openScope(SpectrumSink sink) => open(sink);
+}
+
+class _Scope implements TransceiverSession, SpectrumSession {
   /// How many sweeps beyond its own the radio runs: none unless a test gives it some.
   int spare = 0;
 
   /// Whether those sweeps take any span, as one transformed from IQ does.
   bool anySpan = false;
-  @override
-  bool get scopesTakeAnySpan => anySpan;
 
-  /// A problem each sweep says as it is opened, as a Flex pan does with no UDP socket.
+  /// A problem each sweep says as it is opened, as a Flex pan does with no UDP socket, and
+  /// whether it is the radio turning the sweep down, as one with every pan in use does.
   String? failOnOpen;
+  bool turnDownOnOpen = false;
+
+  /// Whether opening a sweep throws, as a driver's bug would.
+  bool throwOnOpen = false;
   final extras = <_Extra>[];
-  @override
-  SpectrumScope? openScope(SpectrumSink sink) {
+  int opens = 0;
+  SpectrumScope? open(SpectrumSink sink) {
+    opens++;
+    if (throwOnOpen) throw StateError('driver bug');
     if (extras.where((e) => !e.closed).length >= spare) return null;
-    final extra = _Extra(sink);
+    final extra = _Extra(sink)..turnedDown = turnDownOnOpen;
     extras.add(extra);
     if (failOnOpen case final message?) sink.reportSpectrumProblem(message);
     return extra;
@@ -136,13 +154,16 @@ class _Scope implements TransceiverSession, MultiScopeSession {
 
 class _Driver extends EquipmentDriver {
   final sessions = <_Scope>[];
+
+  /// Whether the radio runs more than one sweep ([_MultiScope]).
+  bool multi = true;
   @override
   String get key => 'scope';
   @override
   String get name => 'Scope';
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
-    final session = _Scope(sink as SpectrumSink);
+    final session = multi ? _MultiScope(sink as SpectrumSink) : _Scope(sink as SpectrumSink);
     sessions.add(session);
     return session;
   }
@@ -629,7 +650,7 @@ void main() {
       expect(scope.extras.single.closed, isTrue);
     });
 
-    test('a sweep the radio turns down is closed, its display crops the widest, and none is asked again until the scope restarts', () async {
+    test('a sweep that fails is closed, its display crops the widest, and none is asked again until the scope restarts', () async {
       final scope = driver.sessions.single
         ..capabilities = spans
         ..running = true
@@ -656,6 +677,151 @@ void main() {
       addTearDown(a.cancel);
       await pumpEventQueue();
       expect(scope.extras, hasLength(2), reason: 'a restarted scope asks again: the pan may be free by now');
+    });
+
+    // Cropping silently, a narrow pane looks like a radio that resolves nothing finer, and the
+    // operator has no way to tell it from one that has its own sweep.
+    test('a display cropping a wider sweep says why: the radio turned its own down, or the cap held it back', () async {
+      final scope = driver.sessions.single
+        ..capabilities = const SpectrumCapabilities(spansHz: [5000, 10000, 20000, 40000, 80000], refMinDb: 0, refMaxDb: 1, refStepDb: 1, autoSpan: true)
+        ..running = true
+        ..spare = 5;
+      final drawing = cat.spectrumFrames(uuid).listen((_) {});
+      addTearDown(drawing.cancel);
+      final widest = Object(), own = Object(), narrowest = Object();
+      cat.wantSpectrumWidth(uuid, widest, 160000);
+      for (final width in [80000, 40000]) {
+        cat.wantSpectrumWidth(uuid, Object(), width);
+      }
+      cat.wantSpectrumWidth(uuid, own, 20000);
+      cat.wantSpectrumWidth(uuid, narrowest, 10000);
+      await pumpEventQueue();
+      final capped = t.settings.station.spectrumCropped(why: t.settings.station.spectrumCroppedCap(max: spectrumExtraScopesMax));
+      expect(
+        [
+          for (final display in [widest, own, narrowest]) cat.spectrumCroppedWhy(uuid, display),
+        ],
+        [null, null, capped],
+      );
+
+      scope.extras.last.sink.reportSpectrumProblem('no pan free');
+      await pumpEventQueue();
+      expect(cat.spectrumCroppedWhy(uuid, own), t.settings.station.spectrumCropped(why: 'no pan free'));
+      expect(cat.spectrumCroppedWhy(uuid, narrowest), t.settings.station.spectrumCropped(why: 'no pan free'), reason: "the radio's reason, not the cap");
+    });
+
+    // Asked once and never again, a pan the operator frees in SmartSDR a minute later stays unused
+    // until the scope restarts; asked every few seconds, a full radio is asked for ever.
+    test('a sweep turned down is asked for again after 10 s, then waits doubling to 2 minutes', () {
+      fakeAsync((async) {
+        final scope = driver.sessions.single
+          ..capabilities = spans
+          ..running = true
+          ..spare = 1
+          ..failOnOpen = 'no pan free'
+          ..turnDownOnOpen = true;
+        final drawing = cat.spectrumFrames(uuid).listen((_) {});
+        final panel = Object();
+        cat.wantSpectrumWidth(uuid, panel, 20000);
+        cat.wantSpectrumWidth(uuid, Object(), 160000);
+        async.flushMicrotasks();
+        final asks = <int>[];
+        for (var second = 1; second <= 600; second++) {
+          async.elapse(const Duration(seconds: 1));
+          if (scope.opens > asks.length + 1) asks.add(second);
+        }
+        expect(asks, [10, 30, 70, 150, 270, 390, 510]);
+        expect(cat.spectrumCroppedWhy(uuid, panel), t.settings.station.spectrumCropped(why: 'no pan free'));
+        drawing.cancel();
+        async.flushMicrotasks();
+      });
+    });
+
+    // Waiting out a 2-minute wait, a pane the operator just opened beside a radio that has since
+    // freed a pan crops for minutes; carried past a sweep that ran for an hour, a fresh refusal waits
+    // as long as a radio that never had one free.
+    test('the waits start over when a display arrives and once a sweep is drawn', () {
+      fakeAsync((async) {
+        final scope = driver.sessions.single
+          ..capabilities = spans
+          ..running = true
+          ..spare = 1
+          ..failOnOpen = 'no pan free'
+          ..turnDownOnOpen = true;
+        final drawing = cat.spectrumFrames(uuid).listen((_) {});
+        cat.wantSpectrumWidth(uuid, Object(), 20000);
+        cat.wantSpectrumWidth(uuid, Object(), 160000);
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 400));
+        final before = scope.opens;
+        cat.wantSpectrumWidth(uuid, Object(), 160000);
+        async.elapse(const Duration(seconds: 10));
+        expect(scope.opens, before + 1, reason: 'asked 10 s after the display arrived, not at the end of the wait it was in');
+
+        scope.failOnOpen = null;
+        async.elapse(const Duration(seconds: 20));
+        expect(scope.extras.last.closed, isFalse);
+        scope.extras.last
+          ..sweep(1)
+          ..turnedDown = true
+          ..sink.reportSpectrumProblem('no pan free');
+        final dropped = scope.opens;
+        async.elapse(const Duration(seconds: 10));
+        expect(scope.opens, dropped + 1);
+        drawing.cancel();
+        async.flushMicrotasks();
+      });
+    });
+
+    // A sweep that ran and failed, or a pan the radio made and sends nothing for, fails the same way
+    // each time: asked again, it would take a pan of the radio's every two minutes for nothing, and a
+    // driver's bug would be reported each time.
+    test('a sweep that fails, or a driver that throws opening one, is not asked for again until the scope restarts', () {
+      fakeAsync((async) {
+        final scope = driver.sessions.single
+          ..capabilities = spans
+          ..running = true
+          ..spare = 1
+          ..failOnOpen = 'no UDP';
+        final drawing = cat.spectrumFrames(uuid).listen((_) {});
+        final panel = Object();
+        cat.wantSpectrumWidth(uuid, panel, 20000);
+        cat.wantSpectrumWidth(uuid, Object(), 160000);
+        async.flushMicrotasks();
+        async.elapse(const Duration(minutes: 10));
+        expect(scope.opens, 1);
+        expect(cat.spectrumCroppedWhy(uuid, panel), t.settings.station.spectrumCropped(why: 'no UDP'));
+
+        drawing.cancel();
+        async.flushMicrotasks();
+        scope
+          ..failOnOpen = null
+          ..throwOnOpen = true;
+        final again = cat.spectrumFrames(uuid).listen((_) {});
+        async.flushMicrotasks();
+        async.elapse(const Duration(minutes: 10));
+        expect(scope.opens, 2);
+        expect(cat.spectrumCroppedWhy(uuid, panel), isNull, reason: "a bug of the app's, not the radio turning it down");
+        again.cancel();
+        async.flushMicrotasks();
+      });
+    });
+
+    test('a radio with one scope crops with nothing to explain, however many displays want a sweep of their own', () async {
+      driver.multi = false;
+      final uuid = (await cat.addNode(typeKey: 'scope-type', name: 'One scope', config: const {})).uuid;
+      await cat.connect(uuid);
+      driver.sessions.last
+        ..capabilities = const SpectrumCapabilities(spansHz: [5000, 10000, 20000, 40000, 80000], refMinDb: 0, refMaxDb: 1, refStepDb: 1, autoSpan: true)
+        ..running = true;
+      final drawing = cat.spectrumFrames(uuid).listen((_) {});
+      addTearDown(drawing.cancel);
+      final displays = [for (var i = 0; i < 5; i++) Object()];
+      for (final (i, display) in displays.indexed) {
+        cat.wantSpectrumWidth(uuid, display, 160000 >> i);
+      }
+      await pumpEventQueue();
+      expect([for (final display in displays) cat.spectrumCroppedWhy(uuid, display)], everyElement(isNull));
     });
 
     test("a display's recentre moves its own sweep; an extension's speed reaches every sweep", () async {

@@ -116,9 +116,26 @@ class _NodeRuntime {
   /// The scope whose sweeps each display draws; absent is the session's own.
   final spectrumScopeOf = <Object, int>{};
 
-  /// How many sweeps beyond its own the session has run at most since the
-  /// scope started, once one was turned down: asked for no more until it restarts.
+  /// How many sweeps beyond its own the session has run at most since one
+  /// was turned down or failed: asked for no more until [spectrumScopeRetry]
+  /// fires, for one turned down, or the scope restarts.
   int? spectrumScopeLimit;
+
+  /// Why the last sweep beyond the session's own was turned down or ended, in
+  /// the operator's words: what a display cropping for want of one says,
+  /// kept while it is asked for again. Null where there is nothing to tell
+  /// the operator, as for a driver that threw.
+  String? spectrumScopeRefusal;
+
+  /// The next ask for a sweep turned down, and how many were turned down in a
+  /// row since one last drew a sweep: the wait doubles with each
+  /// ([CatServiceSpectrum._spectrumScopeRetryWait]).
+  Timer? spectrumScopeRetry;
+  int spectrumScopeRefusals = 0;
+
+  /// Why each display drawing a wider sweep than its own width has no sweep
+  /// of its own, in the operator's words: see [CatService.spectrumCroppedWhy].
+  final spectrumCrops = <Object, String>{};
 
   /// The speed and reference level the other sweeps were last given.
   (SpectrumSpeed?, double?)? spectrumLook;

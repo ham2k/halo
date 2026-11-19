@@ -145,6 +145,9 @@ class FlexPanSpectrum implements FlexSliceSpectrum, SpectrumScope {
   /// A pan of this scope's own, made once the radio takes commands. One the
   /// radio turns down (every pan it has in use) is said as a problem, which
   /// closes the scope.
+  @override
+  bool turnedDown = false;
+
   void _makePan() {
     if (ownPanAt == null || !_wanted || !_handshakeDone || _made != null || _making) return;
     _making = true;
@@ -156,6 +159,7 @@ class FlexPanSpectrum implements FlexSliceSpectrum, SpectrumScope {
         final pan = body.split(',').first.trim().toLowerCase();
         if (code != 0 || !pan.startsWith('0x')) {
           if (code == 0) debugPrint('[flex] a pan made with no id HaLo can read: "$body"');
+          turnedDown = code != 0;
           if (_wanted) sink?.reportSpectrumProblem('${t.settings.station.spectrumNoPanadapter} (0x${code.toRadixString(16)})');
           return;
         }

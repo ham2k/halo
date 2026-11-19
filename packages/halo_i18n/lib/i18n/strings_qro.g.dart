@@ -3136,6 +3136,9 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get spectrumScopeRefused => 'THE RADIO REFUSED ITS SCOPE COMMANDS';
 	@override String get spectrumOutOfRange => 'THE RADIO\'S SCOPE IS SET OUTSIDE THE RANGE IT CAN SHOW';
 	@override String get spectrumBandUnsupported => 'THE RADIO\'S SCOPE CANNOT BE SHOWN ON THIS BAND';
+	@override String spectrumCropped({required Object why}) => 'CROPPED FROM A WIDER SWEEP. ${why}';
+	@override String spectrumCroppedCap({required Object max}) => '${max} NARROWER SWEEPS OF THIS RADIO ARE ALREADY RUNNING';
+	@override String get spectrumNoSweepToSpare => 'THE RADIO HAS NO OTHER SWEEP TO SPARE';
 	@override String get civScopeAdjust => 'AUTOMATICALLY ADJUST BANDSCOPE';
 	@override String get civScopeAdjustApp => 'LET THIS APP ADJUST THE BANDSCOPE';
 	@override String get civScopeAdjustRadio => 'USE THE RADIO\'S BANDSCOPE SETTINGS AS-IS';
@@ -7411,6 +7414,9 @@ extension on TranslationsQro {
 			'settings.station.spectrumScopeRefused' => 'THE RADIO REFUSED ITS SCOPE COMMANDS',
 			'settings.station.spectrumOutOfRange' => 'THE RADIO\'S SCOPE IS SET OUTSIDE THE RANGE IT CAN SHOW',
 			'settings.station.spectrumBandUnsupported' => 'THE RADIO\'S SCOPE CANNOT BE SHOWN ON THIS BAND',
+			'settings.station.spectrumCropped' => ({required Object why}) => 'CROPPED FROM A WIDER SWEEP. ${why}',
+			'settings.station.spectrumCroppedCap' => ({required Object max}) => '${max} NARROWER SWEEPS OF THIS RADIO ARE ALREADY RUNNING',
+			'settings.station.spectrumNoSweepToSpare' => 'THE RADIO HAS NO OTHER SWEEP TO SPARE',
 			'settings.station.civScopeAdjust' => 'AUTOMATICALLY ADJUST BANDSCOPE',
 			'settings.station.civScopeAdjustApp' => 'LET THIS APP ADJUST THE BANDSCOPE',
 			'settings.station.civScopeAdjustRadio' => 'USE THE RADIO\'S BANDSCOPE SETTINGS AS-IS',
@@ -7424,11 +7430,11 @@ extension on TranslationsQro {
 			'settings.station.sdrTuningIndependent' => 'ITS OWN ANTENNA',
 			'settings.station.sdrTuningIfTap' => 'THE RADIO\'S IF OUTPUT',
 			'settings.station.sdrIfHz' => 'IF FREQUENCY (HZ)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.sdrIfHzDescription' => 'FOR AN IF OUTPUT ONLY: THE FREQUENCY THE RADIO\'S DIAL SITS AT ON ITS IF, SUCH AS 68330000 ON AN FT-817.',
 			'settings.station.sdrIfInverted' => 'IF IS INVERTED',
 			'settings.station.sdrGainDb' => 'GAIN (DB)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.sdrGainDbDescription' => 'LEAVE BLANK FOR THE RECEIVER\'S AUTOMATIC GAIN.',
 			'settings.station.sdrOffsetHz' => 'FREQUENCY OFFSET (HZ)',
 			'settings.station.sdrOffsetHzDescription' => 'ADDED TO EVERY FREQUENCY SENT TO THE RECEIVER, FOR AN UPCONVERTER: 125000000 FOR A HAM IT UP.',
@@ -7938,11 +7944,11 @@ extension on TranslationsQro {
 			'settings.station.buddihexCompassMissing' => 'THE ROTATOR\'S CONTROLLER CANNOT FIND ITS COMPASS. CHECK THE COMPASS\'S WIRING TO THE CONTROLLER BOARD.',
 			'settings.station.buddihexCompassNotReady' => 'THE ROTATOR\'S COMPASS IS NOT READY YET. POWER THE CONTROLLER OFF AND ON IF THIS DOES NOT CLEAR.',
 			'settings.station.buddihexCompassCalibration' => 'THE ROTATOR\'S COMPASS FAILED ITS CALIBRATION CHECK WHEN THE CONTROLLER STARTED. POWER THE CONTROLLER OFF AND ON TO CHECK IT AGAIN.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.buddihexFault' => 'THE ROTATOR\'S CONTROLLER REPORTS A FAULT WITH ITS COMPASS.',
 			'settings.station.buddihexTroubleshooting' => 'THE BUDDIHEX ROTATOR\'S CONTROLLER ANSWERS OVER WIFI, ON UDP PORT 4210:\n\n- **ON ITS OWN WIFI NETWORK**, THE ONE IT MAKES UNTIL IT IS SET UP (NAMED ESP- AND SIX LETTERS AND DIGITS), ITS ADDRESS IS 192.168.4.1. JOIN THAT NETWORK ON THIS DEVICE FIRST.\n- **ON YOUR WIFI**, ONCE YOU HAVE ENTERED IT ON THE CONTROLLER\'S WEB PAGE, USE THE ADDRESS YOUR ROUTER GAVE IT: ITS LIST OF DEVICES NAMES THE CONTROLLER ESP- AND THE SAME SIX LETTERS AND DIGITS.\n- **CALIBRATE ITS HEADING AFTER EVERY POWER-UP**: POINT THE ANTENNA AT TRUE NORTH, THEN PRESS CALIBRATE NORTH ON THE CONTROLLER\'S WEB PAGE. IT FORGETS THE CALIBRATION WHEN IT IS SWITCHED OFF, AND REPORTS THE COMPASS\'S MAGNETIC HEADING UNTIL THEN.\n- **ON A MAC, IPHONE OR IPAD**, HAM2K LOGGER NEEDS LOCAL NETWORK ACCESS (SETTINGS → PRIVACY & SECURITY → LOCAL NETWORK).',
 			'settings.station.rotctldRefused' => ({required Object code}) => 'ROTCTLD REFUSED THE COMMAND (HAMLIB ERROR ${code}).',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotctldReadFailed' => ({required Object code}) => 'ROTCTLD COULD NOT READ WHERE THE ROTATOR POINTS (HAMLIB ERROR ${code}).',
 			'settings.station.rotctldPastLimits' => ({required Object code}) => 'ROTCTLD REFUSED THAT HEADING AS PAST THE ROTATOR\'S LIMITS (HAMLIB ERROR ${code}). CHECK THE LIMITS ROTCTLD WAS STARTED WITH.',
 			'settings.station.rotctldTimedOut' => ({required Object code}) => 'ROTCTLD GOT NO ANSWER FROM THE ROTATOR (HAMLIB ERROR ${code}). CHECK THE ROTATOR\'S CONNECTION TO THE COMPUTER RUNNING ROTCTLD.',
@@ -8452,11 +8458,11 @@ extension on TranslationsQro {
 			'operationLocationScreen.controlsUnavailableTitle' => 'ACTIVITY CONTROLS UNAVAILABLE',
 			'operationLocationScreen.controlsUnavailableReason' => 'THESE REFERENCES ARE STILL USABLE; THEIR ACTIVITIES JUST COULD NOT BE REACHED.',
 			'operationLocationScreen.controlsUnavailableRetry' => 'RETRY',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.county' => 'COUNTY (OPTIONAL)',
 			'versionLabel.version' => ({required Object version}) => 'VERSION ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'PATCH ${patch}',
-			_ => null,
-		} ?? switch (path) {
 			'versionLabel.build' => ({required Object build}) => 'BUILD ${build}',
 			'notices.emptyHistory' => 'NO NOTICES YET',
 			'notices.webStorageInMemory' => 'THIS BROWSER COULD NOT PROVIDE PERSISTENT STORAGE — THE LOG LIVES IN MEMORY ONLY AND WILL BE LOST WHEN THIS TAB CLOSES. USE A CURRENT CHROME, FIREFOX, SAFARI OR EDGE.',

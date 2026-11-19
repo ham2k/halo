@@ -206,6 +206,8 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   String? problem(String uuid) => null;
   @override
+  String? cropped(String uuid, Object owner) => null;
+  @override
   double? vfoHz(String uuid) => _hz.toDouble();
   @override
   Listenable get changes => this;

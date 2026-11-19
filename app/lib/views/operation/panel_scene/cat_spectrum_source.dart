@@ -77,6 +77,9 @@ class CatSpectrumSource implements SceneSpectrumSource {
   }
 
   @override
+  String? cropped(String uuid, Object owner) => cat.spectrumCroppedWhy(uuid, owner);
+
+  @override
   double? vfoHz(String uuid) => switch (_radioOf(uuid)) {
     final radio? => switch (cat.vfoFreqKHzFor(radio)) {
       final khz? => khz * 1000,
