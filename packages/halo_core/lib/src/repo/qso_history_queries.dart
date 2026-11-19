@@ -279,6 +279,26 @@ mixin QsoHistoryQueries {
   /// simply in the next emission.
   Stream<List<Qso>> watchForAnyOurCall() => _watchOurContacts(db.qsos.ourCall.isNotNull() & db.qsos.ourCall.equals('').not());
 
+  /// Every QSO logged under [call] (own station callsign), or under any
+  /// call when it is null, across every operation still on the account,
+  /// oldest first: a push from the Logs view (docs/design/transfer.md §4).
+  /// [includeDeleted] keeps the tombstones, purged ones too, as
+  /// `forOperation` does: a service still holds their records, and the push
+  /// owes them a delete.
+  Future<List<Qso>> forOurCall(String? call, {bool includeDeleted = false}) async {
+    final normalized = call?.trim().toUpperCase();
+    final ourCall = normalized == null || normalized.isEmpty
+        ? db.qsos.ourCall.isNotNull() & db.qsos.ourCall.equals('').not()
+        : db.qsos.ourCall.equals(normalized);
+    final query = db.select(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
+      ..where(
+        ourCall & (includeDeleted ? const Constant(true) : db.qsos.deleted.equals(false)) & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()),
+      )
+      ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis)]);
+    final decoded = await qsosFromRows([for (final row in await query.get()) row.readTable(db.qsos)]);
+    return decoded.where((qso) => !qso.isEvent).toList();
+  }
+
   Stream<List<Qso>> _watchOurContacts(Expression<bool> ourCall) {
     final query = db.select(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
       ..where(ourCall & db.qsos.deleted.equals(false) & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))

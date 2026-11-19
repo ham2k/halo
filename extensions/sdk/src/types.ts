@@ -2910,9 +2910,13 @@ export interface TransferDestination {
   stationCall?: string
 }
 
-/// What a push is asked about: one operation. Check `kind`, and offer
+/// What a push is asked about: one operation; the contacts the Chasing view
+/// logged outside any operation, under its station (extension API 29); or the
+/// Logs view's whole log under one station callsign, or under every one when
+/// `stationCall` is left out (extension API 29). Check `kind`, and offer
 /// nothing for one you do not know: later API levels add other scopes.
-export type PushScope = { kind: "operation"; operation: Record<string, JSONValue> }
+export type PushScope =
+  { kind: "operation"; operation: Record<string, JSONValue> } | { kind: "chasing"; stationCall: string } | { kind: "log"; stationCall?: string }
 
 export interface PushSuggestionsRequest {
   scope: PushScope

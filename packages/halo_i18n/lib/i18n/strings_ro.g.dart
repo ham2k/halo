@@ -1757,9 +1757,9 @@ class _Translations$operation$export$ro extends Translations$operation$export$en
 	@override String get title => 'Exporturi operațiune';
 	@override String get syncedOperation => 'Operațiunea este sincronizată';
 	@override String get unsyncedOperation => 'Operațiunea are modificări nesincronizate';
-	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: '${count} QSO în această operațiune',
-		other: '${count} QSO-uri în această operațiune',
+	@override String qsosInOperation({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: '${n} QSO în această operațiune',
+		other: '${n} QSO-uri în această operațiune',
 	);
 	@override String qsosSynced({required Object total}) => 'Toate cele ${total} QSO-uri sunt sincronizate';
 	@override String qsosPending({required Object pending, required Object total}) => '${pending} din ${total} QSO-uri așteaptă sincronizarea';
@@ -1770,49 +1770,49 @@ class _Translations$operation$export$ro extends Translations$operation$export$en
 	@override String get nothingLogged => 'Nimic de exportat încă — această operațiune nu are QSO-uri.';
 	@override String get share => 'Partajează';
 	@override String get nothingSelected => 'Nimic selectat';
-	@override String saveFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: 'Salvează ${count} fișier',
-		other: 'Salvează ${count} fișiere',
+	@override String saveFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: 'Salvează ${n} fișier',
+		other: 'Salvează ${n} fișiere',
 	);
-	@override String shareFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: 'Partajează ${count} fișier',
-		other: 'Partajează ${count} fișiere',
+	@override String shareFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: 'Partajează ${n} fișier',
+		other: 'Partajează ${n} fișiere',
 	);
-	@override String exportFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: 'Exportă ${count} fișier',
-		other: 'Exportă ${count} fișiere',
+	@override String exportFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: 'Exportă ${n} fișier',
+		other: 'Exportă ${n} fișiere',
 	);
-	@override String downloadFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: 'Descarcă ${count} fișier',
-		other: 'Descarcă ${count} fișiere',
+	@override String downloadFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: 'Descarcă ${n} fișier',
+		other: 'Descarcă ${n} fișiere',
 	);
-	@override String saveCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: 'Salvează ${count} fișier combinat',
-		other: 'Salvează ${count} fișiere combinate',
+	@override String saveCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: 'Salvează ${n} fișier combinat',
+		other: 'Salvează ${n} fișiere combinate',
 	);
-	@override String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: 'Partajează ${count} fișier combinat',
-		other: 'Partajează ${count} fișiere combinate',
+	@override String shareCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: 'Partajează ${n} fișier combinat',
+		other: 'Partajează ${n} fișiere combinate',
 	);
-	@override String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: 'Exportă ${count} fișier combinat',
-		other: 'Exportă ${count} fișiere combinate',
+	@override String exportCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: 'Exportă ${n} fișier combinat',
+		other: 'Exportă ${n} fișiere combinate',
 	);
-	@override String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: 'Descarcă ${count} fișier combinat',
-		other: 'Descarcă ${count} fișiere combinate',
+	@override String downloadCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: 'Descarcă ${n} fișier combinat',
+		other: 'Descarcă ${n} fișiere combinate',
 	);
 	@override String saveOne({required Object name}) => 'Salvează ${name}';
 	@override String shareOne({required Object name}) => 'Partajează ${name}';
 	@override String exportOne({required Object name}) => 'Exportă ${name}';
 	@override String downloadOne({required Object name}) => 'Descarcă ${name}';
-	@override String stashFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: 'Trimite ${count} fișier în Stash',
-		other: 'Trimite ${count} fișiere în Stash',
+	@override String stashFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: 'Trimite ${n} fișier în Stash',
+		other: 'Trimite ${n} fișiere în Stash',
 	);
-	@override String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: 'Trimite ${count} fișier combinat în Stash',
-		other: 'Trimite ${count} fișiere combinate în Stash',
+	@override String stashCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: 'Trimite ${n} fișier combinat în Stash',
+		other: 'Trimite ${n} fișiere combinate în Stash',
 	);
 	@override String get settingsButton => 'Setări export';
 	@override String get settingsTitle => 'Setări export';
@@ -1820,21 +1820,21 @@ class _Translations$operation$export$ro extends Translations$operation$export$en
 	@override late final _Translations$operation$export$includePrivateData$ro includePrivateData = _Translations$operation$export$includePrivateData$ro._(_root);
 	@override String get resultTitle => 'Export finalizat';
 	@override String get resultFailedTitle => 'Exportul a eșuat';
-	@override String saveSuccess({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: '${count} fișier exportat în ${path}',
-		other: '${count} fișiere exportate în ${path}',
+	@override String saveSuccess({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: '${n} fișier exportat în ${path}',
+		other: '${n} fișiere exportate în ${path}',
 	);
-	@override String saveSuccessNamed({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: '${count} fișier exportat: ${path}',
-		other: '${count} fișiere exportate: ${path}',
+	@override String saveSuccessNamed({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: '${n} fișier exportat: ${path}',
+		other: '${n} fișiere exportate: ${path}',
 	);
-	@override String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: '${count} fișier partajat',
-		other: '${count} fișiere partajate',
+	@override String shareSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: '${n} fișier partajat',
+		other: '${n} fișiere partajate',
 	);
-	@override String downloadSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: '${count} fișier descărcat',
-		other: '${count} fișiere descărcate',
+	@override String downloadSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: '${n} fișier descărcat',
+		other: '${n} fișiere descărcate',
 	);
 	@override String exportFailed({required Object error}) => 'Exportul a eșuat: ${error}';
 	@override late final _Translations$operation$export$stash$ro stash = _Translations$operation$export$stash$ro._(_root);
@@ -3597,18 +3597,18 @@ class _Translations$operation$export$stash$ro extends Translations$operation$exp
 	);
 	@override String get mayHaveArrived => 'Niciun răspuns de la stash — fișierul poate să fi ajuns totuși. Verificați stash.ham2k.net înainte de a trimite din nou';
 	@override String get notSent => 'netrimis';
-	@override String notArrived({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+	@override String notArrived({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
 		one: 'Acest fișier nu a ajuns:',
-		other: 'Aceste ${count} fișiere nu au ajuns:',
+		other: 'Aceste ${n} fișiere nu au ajuns:',
 	);
 	@override String get emailOffer => 'Sau, pentru confortul dvs., vă putem trimite un e-mail cu un link direct.';
 	@override String get emailMe => 'Trimite-mi un link prin e-mail';
 	@override String get emailSent => 'V-am trimis prin e-mail un link de descărcare.';
 	@override String emailFailed({required Object error}) => 'Nu s-a putut trimite e-mailul: ${error}';
 	@override String get freeTier => 'Conturile gratuite pot păstra un singur stash o dată. Abonații pot păstra câte doresc.';
-	@override String sentStatus({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: '${count} fișier trimis la Ham2K File Stash (stash.ham2k.net)',
-		other: '${count} fișiere trimise la Ham2K File Stash (stash.ham2k.net)',
+	@override String sentStatus({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: '${n} fișier trimis la Ham2K File Stash (stash.ham2k.net)',
+		other: '${n} fișiere trimise la Ham2K File Stash (stash.ham2k.net)',
 	);
 }
 
@@ -5101,7 +5101,7 @@ extension on TranslationsRo {
 			'operation.export.title' => 'Exporturi operațiune',
 			'operation.export.syncedOperation' => 'Operațiunea este sincronizată',
 			'operation.export.unsyncedOperation' => 'Operațiunea are modificări nesincronizate',
-			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} QSO în această operațiune', other: '${count} QSO-uri în această operațiune', ), 
+			'operation.export.qsosInOperation' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${n} QSO în această operațiune', other: '${n} QSO-uri în această operațiune', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => 'Toate cele ${total} QSO-uri sunt sincronizate',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} din ${total} QSO-uri așteaptă sincronizarea',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} marcaje de eveniment sincronizate',
@@ -5111,20 +5111,20 @@ extension on TranslationsRo {
 			'operation.export.nothingLogged' => 'Nimic de exportat încă — această operațiune nu are QSO-uri.',
 			'operation.export.share' => 'Partajează',
 			'operation.export.nothingSelected' => 'Nimic selectat',
-			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Salvează ${count} fișier', other: 'Salvează ${count} fișiere', ), 
-			'operation.export.shareFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Partajează ${count} fișier', other: 'Partajează ${count} fișiere', ), 
-			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Exportă ${count} fișier', other: 'Exportă ${count} fișiere', ), 
-			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Descarcă ${count} fișier', other: 'Descarcă ${count} fișiere', ), 
-			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Salvează ${count} fișier combinat', other: 'Salvează ${count} fișiere combinate', ), 
-			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Partajează ${count} fișier combinat', other: 'Partajează ${count} fișiere combinate', ), 
-			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Exportă ${count} fișier combinat', other: 'Exportă ${count} fișiere combinate', ), 
-			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Descarcă ${count} fișier combinat', other: 'Descarcă ${count} fișiere combinate', ), 
+			'operation.export.saveFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Salvează ${n} fișier', other: 'Salvează ${n} fișiere', ), 
+			'operation.export.shareFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Partajează ${n} fișier', other: 'Partajează ${n} fișiere', ), 
+			'operation.export.exportFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Exportă ${n} fișier', other: 'Exportă ${n} fișiere', ), 
+			'operation.export.downloadFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Descarcă ${n} fișier', other: 'Descarcă ${n} fișiere', ), 
+			'operation.export.saveCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Salvează ${n} fișier combinat', other: 'Salvează ${n} fișiere combinate', ), 
+			'operation.export.shareCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Partajează ${n} fișier combinat', other: 'Partajează ${n} fișiere combinate', ), 
+			'operation.export.exportCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Exportă ${n} fișier combinat', other: 'Exportă ${n} fișiere combinate', ), 
+			'operation.export.downloadCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Descarcă ${n} fișier combinat', other: 'Descarcă ${n} fișiere combinate', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Salvează ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Partajează ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportă ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Descarcă ${name}',
-			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Trimite ${count} fișier în Stash', other: 'Trimite ${count} fișiere în Stash', ), 
-			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Trimite ${count} fișier combinat în Stash', other: 'Trimite ${count} fișiere combinate în Stash', ), 
+			'operation.export.stashFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Trimite ${n} fișier în Stash', other: 'Trimite ${n} fișiere în Stash', ), 
+			'operation.export.stashCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Trimite ${n} fișier combinat în Stash', other: 'Trimite ${n} fișiere combinate în Stash', ), 
 			'operation.export.settingsButton' => 'Setări export',
 			'operation.export.settingsTitle' => 'Setări export',
 			'operation.export.compactFileNames.title' => 'Folosește nume de fișiere compacte',
@@ -5136,10 +5136,10 @@ extension on TranslationsRo {
 			'operation.export.includePrivateData.note' => 'Exportul ADIF complet include întotdeauna tot',
 			'operation.export.resultTitle' => 'Export finalizat',
 			'operation.export.resultFailedTitle' => 'Exportul a eșuat',
-			'operation.export.saveSuccess' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} fișier exportat în ${path}', other: '${count} fișiere exportate în ${path}', ), 
-			'operation.export.saveSuccessNamed' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} fișier exportat: ${path}', other: '${count} fișiere exportate: ${path}', ), 
-			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} fișier partajat', other: '${count} fișiere partajate', ), 
-			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} fișier descărcat', other: '${count} fișiere descărcate', ), 
+			'operation.export.saveSuccess' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${n} fișier exportat în ${path}', other: '${n} fișiere exportate în ${path}', ), 
+			'operation.export.saveSuccessNamed' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${n} fișier exportat: ${path}', other: '${n} fișiere exportate: ${path}', ), 
+			'operation.export.shareSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${n} fișier partajat', other: '${n} fișiere partajate', ), 
+			'operation.export.downloadSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${n} fișier descărcat', other: '${n} fișiere descărcate', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'Exportul a eșuat: ${error}',
 			'operation.export.stash.needsEmailTitle' => 'Adăugați mai întâi o adresă de e-mail',
 			'operation.export.stash.needsEmailBody' => 'Ham2K File Stash trimite fișierele dvs. la adresa de e-mail a contului LoFi, iar cu ea vă autentificați la stash.ham2k.net. Contul dvs. nu are încă una confirmată — adăugați-o în Setări › Sincronizare în cloud.',
@@ -5152,13 +5152,13 @@ extension on TranslationsRo {
 			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Puteți recupera acest fișier vizitând **[stash.ham2k.net](https://stash.ham2k.net)** în orice browser.', other: 'Puteți recupera aceste fișiere vizitând **[stash.ham2k.net](https://stash.ham2k.net)** în orice browser.', ), 
 			'operation.export.stash.mayHaveArrived' => 'Niciun răspuns de la stash — fișierul poate să fi ajuns totuși. Verificați stash.ham2k.net înainte de a trimite din nou',
 			'operation.export.stash.notSent' => 'netrimis',
-			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Acest fișier nu a ajuns:', other: 'Aceste ${count} fișiere nu au ajuns:', ), 
+			'operation.export.stash.notArrived' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Acest fișier nu a ajuns:', other: 'Aceste ${n} fișiere nu au ajuns:', ), 
 			'operation.export.stash.emailOffer' => 'Sau, pentru confortul dvs., vă putem trimite un e-mail cu un link direct.',
 			'operation.export.stash.emailMe' => 'Trimite-mi un link prin e-mail',
 			'operation.export.stash.emailSent' => 'V-am trimis prin e-mail un link de descărcare.',
 			'operation.export.stash.emailFailed' => ({required Object error}) => 'Nu s-a putut trimite e-mailul: ${error}',
 			'operation.export.stash.freeTier' => 'Conturile gratuite pot păstra un singur stash o dată. Abonații pot păstra câte doresc.',
-			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} fișier trimis la Ham2K File Stash (stash.ham2k.net)', other: '${count} fișiere trimise la Ham2K File Stash (stash.ham2k.net)', ), 
+			'operation.export.stash.sentStatus' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${n} fișier trimis la Ham2K File Stash (stash.ham2k.net)', other: '${n} fișiere trimise la Ham2K File Stash (stash.ham2k.net)', ), 
 			'operation.spots.empty' => 'Niciun spot nu corespunde filtrelor',
 			'operation.spots.error' => ({required Object error}) => 'Spoturile nu au putut fi încărcate: ${error}',
 			'operation.spots.unknownBand' => 'Altele',

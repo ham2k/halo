@@ -1757,9 +1757,9 @@ class _Translations$operation$export$fr extends Translations$operation$export$en
 	@override String get title => 'Exports de l\'opération';
 	@override String get syncedOperation => 'L\'opération est synchronisée';
 	@override String get unsyncedOperation => 'L\'opération a des modifications non synchronisées';
-	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: '${count} QSO dans cette opération',
-		other: '${count} QSOs dans cette opération',
+	@override String qsosInOperation({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: '${n} QSO dans cette opération',
+		other: '${n} QSOs dans cette opération',
 	);
 	@override String qsosSynced({required Object total}) => 'Les ${total} QSOs sont synchronisés';
 	@override String qsosPending({required Object pending, required Object total}) => '${pending} QSOs sur ${total} en attente de synchronisation';
@@ -1770,49 +1770,49 @@ class _Translations$operation$export$fr extends Translations$operation$export$en
 	@override String get nothingLogged => 'Rien à exporter pour l\'instant — cette opération n\'a aucun QSO.';
 	@override String get share => 'Partager';
 	@override String get nothingSelected => 'Aucune sélection';
-	@override String saveFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: 'Enregistrer ${count} fichier',
-		other: 'Enregistrer ${count} fichiers',
+	@override String saveFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: 'Enregistrer ${n} fichier',
+		other: 'Enregistrer ${n} fichiers',
 	);
-	@override String shareFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: 'Partager ${count} fichier',
-		other: 'Partager ${count} fichiers',
+	@override String shareFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: 'Partager ${n} fichier',
+		other: 'Partager ${n} fichiers',
 	);
-	@override String exportFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: 'Exporter ${count} fichier',
-		other: 'Exporter ${count} fichiers',
+	@override String exportFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: 'Exporter ${n} fichier',
+		other: 'Exporter ${n} fichiers',
 	);
-	@override String downloadFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: 'Télécharger ${count} fichier',
-		other: 'Télécharger ${count} fichiers',
+	@override String downloadFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: 'Télécharger ${n} fichier',
+		other: 'Télécharger ${n} fichiers',
 	);
-	@override String saveCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: 'Enregistrer ${count} fichier combiné',
-		other: 'Enregistrer ${count} fichiers combinés',
+	@override String saveCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: 'Enregistrer ${n} fichier combiné',
+		other: 'Enregistrer ${n} fichiers combinés',
 	);
-	@override String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: 'Partager ${count} fichier combiné',
-		other: 'Partager ${count} fichiers combinés',
+	@override String shareCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: 'Partager ${n} fichier combiné',
+		other: 'Partager ${n} fichiers combinés',
 	);
-	@override String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: 'Exporter ${count} fichier combiné',
-		other: 'Exporter ${count} fichiers combinés',
+	@override String exportCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: 'Exporter ${n} fichier combiné',
+		other: 'Exporter ${n} fichiers combinés',
 	);
-	@override String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: 'Télécharger ${count} fichier combiné',
-		other: 'Télécharger ${count} fichiers combinés',
+	@override String downloadCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: 'Télécharger ${n} fichier combiné',
+		other: 'Télécharger ${n} fichiers combinés',
 	);
 	@override String saveOne({required Object name}) => 'Enregistrer ${name}';
 	@override String shareOne({required Object name}) => 'Partager ${name}';
 	@override String exportOne({required Object name}) => 'Exporter ${name}';
 	@override String downloadOne({required Object name}) => 'Télécharger ${name}';
-	@override String stashFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: 'Stocker ${count} fichier',
-		other: 'Stocker ${count} fichiers',
+	@override String stashFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: 'Stocker ${n} fichier',
+		other: 'Stocker ${n} fichiers',
 	);
-	@override String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: 'Stocker ${count} fichier combiné',
-		other: 'Stocker ${count} fichiers combinés',
+	@override String stashCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: 'Stocker ${n} fichier combiné',
+		other: 'Stocker ${n} fichiers combinés',
 	);
 	@override String get settingsButton => 'Paramètres d\'export';
 	@override String get settingsTitle => 'Paramètres d\'export';
@@ -1820,21 +1820,21 @@ class _Translations$operation$export$fr extends Translations$operation$export$en
 	@override late final _Translations$operation$export$includePrivateData$fr includePrivateData = _Translations$operation$export$includePrivateData$fr._(_root);
 	@override String get resultTitle => 'Export terminé';
 	@override String get resultFailedTitle => 'Échec de l\'export';
-	@override String saveSuccess({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: '${count} fichier exporté vers ${path}',
-		other: '${count} fichiers exportés vers ${path}',
+	@override String saveSuccess({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: '${n} fichier exporté vers ${path}',
+		other: '${n} fichiers exportés vers ${path}',
 	);
-	@override String saveSuccessNamed({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: '${count} fichier exporté : ${path}',
-		other: '${count} fichiers exportés : ${path}',
+	@override String saveSuccessNamed({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: '${n} fichier exporté : ${path}',
+		other: '${n} fichiers exportés : ${path}',
 	);
-	@override String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: '${count} fichier partagé',
-		other: '${count} fichiers partagés',
+	@override String shareSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: '${n} fichier partagé',
+		other: '${n} fichiers partagés',
 	);
-	@override String downloadSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: '${count} fichier téléchargé',
-		other: '${count} fichiers téléchargés',
+	@override String downloadSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: '${n} fichier téléchargé',
+		other: '${n} fichiers téléchargés',
 	);
 	@override String exportFailed({required Object error}) => 'Échec de l\'export : ${error}';
 	@override late final _Translations$operation$export$stash$fr stash = _Translations$operation$export$stash$fr._(_root);
@@ -3597,18 +3597,18 @@ class _Translations$operation$export$stash$fr extends Translations$operation$exp
 	);
 	@override String get mayHaveArrived => 'Pas de réponse du dépôt — le fichier est peut-être arrivé quand même. Vérifiez stash.ham2k.net avant de renvoyer';
 	@override String get notSent => 'non envoyé';
-	@override String notArrived({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+	@override String notArrived({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
 		one: 'Ce fichier n\'est pas arrivé :',
-		other: 'Ces ${count} fichiers ne sont pas arrivés :',
+		other: 'Ces ${n} fichiers ne sont pas arrivés :',
 	);
 	@override String get emailOffer => 'Ou, pour plus de commodité, nous pouvons vous envoyer un e-mail avec un lien direct.';
 	@override String get emailMe => 'M\'envoyer un lien par e-mail';
 	@override String get emailSent => 'Nous vous avons envoyé un lien de téléchargement par e-mail.';
 	@override String emailFailed({required Object error}) => 'Impossible d\'envoyer l\'e-mail : ${error}';
 	@override String get freeTier => 'Les comptes gratuits ne peuvent conserver qu\'un seul dépôt à la fois. Les abonnés peuvent en conserver autant qu\'ils le souhaitent.';
-	@override String sentStatus({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
-		one: '${count} fichier envoyé vers Ham2K File Stash (stash.ham2k.net)',
-		other: '${count} fichiers envoyés vers Ham2K File Stash (stash.ham2k.net)',
+	@override String sentStatus({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count,
+		one: '${n} fichier envoyé vers Ham2K File Stash (stash.ham2k.net)',
+		other: '${n} fichiers envoyés vers Ham2K File Stash (stash.ham2k.net)',
 	);
 }
 
@@ -5101,7 +5101,7 @@ extension on TranslationsFr {
 			'operation.export.title' => 'Exports de l\'opération',
 			'operation.export.syncedOperation' => 'L\'opération est synchronisée',
 			'operation.export.unsyncedOperation' => 'L\'opération a des modifications non synchronisées',
-			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} QSO dans cette opération', other: '${count} QSOs dans cette opération', ), 
+			'operation.export.qsosInOperation' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${n} QSO dans cette opération', other: '${n} QSOs dans cette opération', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => 'Les ${total} QSOs sont synchronisés',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} QSOs sur ${total} en attente de synchronisation',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} marqueurs d\'événement synchronisés',
@@ -5111,20 +5111,20 @@ extension on TranslationsFr {
 			'operation.export.nothingLogged' => 'Rien à exporter pour l\'instant — cette opération n\'a aucun QSO.',
 			'operation.export.share' => 'Partager',
 			'operation.export.nothingSelected' => 'Aucune sélection',
-			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Enregistrer ${count} fichier', other: 'Enregistrer ${count} fichiers', ), 
-			'operation.export.shareFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Partager ${count} fichier', other: 'Partager ${count} fichiers', ), 
-			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Exporter ${count} fichier', other: 'Exporter ${count} fichiers', ), 
-			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Télécharger ${count} fichier', other: 'Télécharger ${count} fichiers', ), 
-			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Enregistrer ${count} fichier combiné', other: 'Enregistrer ${count} fichiers combinés', ), 
-			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Partager ${count} fichier combiné', other: 'Partager ${count} fichiers combinés', ), 
-			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Exporter ${count} fichier combiné', other: 'Exporter ${count} fichiers combinés', ), 
-			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Télécharger ${count} fichier combiné', other: 'Télécharger ${count} fichiers combinés', ), 
+			'operation.export.saveFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Enregistrer ${n} fichier', other: 'Enregistrer ${n} fichiers', ), 
+			'operation.export.shareFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Partager ${n} fichier', other: 'Partager ${n} fichiers', ), 
+			'operation.export.exportFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Exporter ${n} fichier', other: 'Exporter ${n} fichiers', ), 
+			'operation.export.downloadFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Télécharger ${n} fichier', other: 'Télécharger ${n} fichiers', ), 
+			'operation.export.saveCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Enregistrer ${n} fichier combiné', other: 'Enregistrer ${n} fichiers combinés', ), 
+			'operation.export.shareCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Partager ${n} fichier combiné', other: 'Partager ${n} fichiers combinés', ), 
+			'operation.export.exportCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Exporter ${n} fichier combiné', other: 'Exporter ${n} fichiers combinés', ), 
+			'operation.export.downloadCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Télécharger ${n} fichier combiné', other: 'Télécharger ${n} fichiers combinés', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Enregistrer ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Partager ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exporter ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Télécharger ${name}',
-			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Stocker ${count} fichier', other: 'Stocker ${count} fichiers', ), 
-			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Stocker ${count} fichier combiné', other: 'Stocker ${count} fichiers combinés', ), 
+			'operation.export.stashFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Stocker ${n} fichier', other: 'Stocker ${n} fichiers', ), 
+			'operation.export.stashCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Stocker ${n} fichier combiné', other: 'Stocker ${n} fichiers combinés', ), 
 			'operation.export.settingsButton' => 'Paramètres d\'export',
 			'operation.export.settingsTitle' => 'Paramètres d\'export',
 			'operation.export.compactFileNames.title' => 'Utiliser des noms de fichiers compacts',
@@ -5136,10 +5136,10 @@ extension on TranslationsFr {
 			'operation.export.includePrivateData.note' => 'L\'export ADIF complet inclut toujours tout',
 			'operation.export.resultTitle' => 'Export terminé',
 			'operation.export.resultFailedTitle' => 'Échec de l\'export',
-			'operation.export.saveSuccess' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} fichier exporté vers ${path}', other: '${count} fichiers exportés vers ${path}', ), 
-			'operation.export.saveSuccessNamed' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} fichier exporté : ${path}', other: '${count} fichiers exportés : ${path}', ), 
-			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} fichier partagé', other: '${count} fichiers partagés', ), 
-			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} fichier téléchargé', other: '${count} fichiers téléchargés', ), 
+			'operation.export.saveSuccess' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${n} fichier exporté vers ${path}', other: '${n} fichiers exportés vers ${path}', ), 
+			'operation.export.saveSuccessNamed' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${n} fichier exporté : ${path}', other: '${n} fichiers exportés : ${path}', ), 
+			'operation.export.shareSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${n} fichier partagé', other: '${n} fichiers partagés', ), 
+			'operation.export.downloadSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${n} fichier téléchargé', other: '${n} fichiers téléchargés', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'Échec de l\'export : ${error}',
 			'operation.export.stash.needsEmailTitle' => 'Ajoutez d\'abord une adresse e-mail',
 			'operation.export.stash.needsEmailBody' => 'Ham2K File Stash envoie vos fichiers à l\'adresse e-mail de votre compte LoFi, et vous vous connectez avec elle sur stash.ham2k.net. Votre compte n\'a pas encore d\'adresse confirmée — ajoutez-la dans Paramètres › Synchronisation cloud.',
@@ -5152,13 +5152,13 @@ extension on TranslationsFr {
 			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Vous pouvez récupérer ce fichier en vous rendant sur **[stash.ham2k.net](https://stash.ham2k.net)** depuis n\'importe quel navigateur.', other: 'Vous pouvez récupérer ces fichiers en vous rendant sur **[stash.ham2k.net](https://stash.ham2k.net)** depuis n\'importe quel navigateur.', ), 
 			'operation.export.stash.mayHaveArrived' => 'Pas de réponse du dépôt — le fichier est peut-être arrivé quand même. Vérifiez stash.ham2k.net avant de renvoyer',
 			'operation.export.stash.notSent' => 'non envoyé',
-			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Ce fichier n\'est pas arrivé :', other: 'Ces ${count} fichiers ne sont pas arrivés :', ), 
+			'operation.export.stash.notArrived' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: 'Ce fichier n\'est pas arrivé :', other: 'Ces ${n} fichiers ne sont pas arrivés :', ), 
 			'operation.export.stash.emailOffer' => 'Ou, pour plus de commodité, nous pouvons vous envoyer un e-mail avec un lien direct.',
 			'operation.export.stash.emailMe' => 'M\'envoyer un lien par e-mail',
 			'operation.export.stash.emailSent' => 'Nous vous avons envoyé un lien de téléchargement par e-mail.',
 			'operation.export.stash.emailFailed' => ({required Object error}) => 'Impossible d\'envoyer l\'e-mail : ${error}',
 			'operation.export.stash.freeTier' => 'Les comptes gratuits ne peuvent conserver qu\'un seul dépôt à la fois. Les abonnés peuvent en conserver autant qu\'ils le souhaitent.',
-			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} fichier envoyé vers Ham2K File Stash (stash.ham2k.net)', other: '${count} fichiers envoyés vers Ham2K File Stash (stash.ham2k.net)', ), 
+			'operation.export.stash.sentStatus' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${n} fichier envoyé vers Ham2K File Stash (stash.ham2k.net)', other: '${n} fichiers envoyés vers Ham2K File Stash (stash.ham2k.net)', ), 
 			'operation.spots.empty' => 'Aucun spot ne correspond à vos filtres',
 			'operation.spots.error' => ({required Object error}) => 'Échec du chargement des spots : ${error}',
 			'operation.spots.unknownBand' => 'Autre',

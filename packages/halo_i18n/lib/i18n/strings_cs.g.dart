@@ -1757,9 +1757,9 @@ class _Translations$operation$export$cs extends Translations$operation$export$en
 	@override String get title => 'Exporty aktivity';
 	@override String get syncedOperation => 'Aktivita je synchronizována';
 	@override String get unsyncedOperation => 'Aktivita má nesynchronizované změny';
-	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: '${count} QSO v této aktivitě',
-		other: '${count} QSO v této aktivitě',
+	@override String qsosInOperation({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: '${n} QSO v této aktivitě',
+		other: '${n} QSO v této aktivitě',
 	);
 	@override String qsosSynced({required Object total}) => 'Všech ${total} QSO je synchronizováno';
 	@override String qsosPending({required Object pending, required Object total}) => '${pending} z ${total} QSO čeká na synchronizaci';
@@ -1770,49 +1770,49 @@ class _Translations$operation$export$cs extends Translations$operation$export$en
 	@override String get nothingLogged => 'Zatím není co exportovat — tato aktivita nemá žádná QSO.';
 	@override String get share => 'Sdílet';
 	@override String get nothingSelected => 'Nic není vybráno';
-	@override String saveFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: 'Uložit ${count} soubor',
-		other: 'Uložit ${count} souborů',
+	@override String saveFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: 'Uložit ${n} soubor',
+		other: 'Uložit ${n} souborů',
 	);
-	@override String shareFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: 'Sdílet ${count} soubor',
-		other: 'Sdílet ${count} souborů',
+	@override String shareFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: 'Sdílet ${n} soubor',
+		other: 'Sdílet ${n} souborů',
 	);
-	@override String exportFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: 'Exportovat ${count} soubor',
-		other: 'Exportovat ${count} souborů',
+	@override String exportFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: 'Exportovat ${n} soubor',
+		other: 'Exportovat ${n} souborů',
 	);
-	@override String downloadFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: 'Stáhnout ${count} soubor',
-		other: 'Stáhnout ${count} souborů',
+	@override String downloadFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: 'Stáhnout ${n} soubor',
+		other: 'Stáhnout ${n} souborů',
 	);
-	@override String saveCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: 'Uložit ${count} sloučený soubor',
-		other: 'Uložit ${count} sloučených souborů',
+	@override String saveCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: 'Uložit ${n} sloučený soubor',
+		other: 'Uložit ${n} sloučených souborů',
 	);
-	@override String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: 'Sdílet ${count} sloučený soubor',
-		other: 'Sdílet ${count} sloučených souborů',
+	@override String shareCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: 'Sdílet ${n} sloučený soubor',
+		other: 'Sdílet ${n} sloučených souborů',
 	);
-	@override String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: 'Exportovat ${count} sloučený soubor',
-		other: 'Exportovat ${count} sloučených souborů',
+	@override String exportCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: 'Exportovat ${n} sloučený soubor',
+		other: 'Exportovat ${n} sloučených souborů',
 	);
-	@override String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: 'Stáhnout ${count} sloučený soubor',
-		other: 'Stáhnout ${count} sloučených souborů',
+	@override String downloadCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: 'Stáhnout ${n} sloučený soubor',
+		other: 'Stáhnout ${n} sloučených souborů',
 	);
 	@override String saveOne({required Object name}) => 'Uložit ${name}';
 	@override String shareOne({required Object name}) => 'Sdílet ${name}';
 	@override String exportOne({required Object name}) => 'Exportovat ${name}';
 	@override String downloadOne({required Object name}) => 'Stáhnout ${name}';
-	@override String stashFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: 'Uschovat ${count} soubor',
-		other: 'Uschovat ${count} souborů',
+	@override String stashFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: 'Uschovat ${n} soubor',
+		other: 'Uschovat ${n} souborů',
 	);
-	@override String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: 'Uschovat ${count} sloučený soubor',
-		other: 'Uschovat ${count} sloučených souborů',
+	@override String stashCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: 'Uschovat ${n} sloučený soubor',
+		other: 'Uschovat ${n} sloučených souborů',
 	);
 	@override String get settingsButton => 'Nastavení exportu';
 	@override String get settingsTitle => 'Nastavení exportu';
@@ -1820,21 +1820,21 @@ class _Translations$operation$export$cs extends Translations$operation$export$en
 	@override late final _Translations$operation$export$includePrivateData$cs includePrivateData = _Translations$operation$export$includePrivateData$cs._(_root);
 	@override String get resultTitle => 'Export dokončen';
 	@override String get resultFailedTitle => 'Export selhal';
-	@override String saveSuccess({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: 'Exportován ${count} soubor do ${path}',
-		other: 'Exportováno ${count} souborů do ${path}',
+	@override String saveSuccess({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: 'Exportován ${n} soubor do ${path}',
+		other: 'Exportováno ${n} souborů do ${path}',
 	);
-	@override String saveSuccessNamed({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: 'Exportován ${count} soubor: ${path}',
-		other: 'Exportováno ${count} souborů: ${path}',
+	@override String saveSuccessNamed({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: 'Exportován ${n} soubor: ${path}',
+		other: 'Exportováno ${n} souborů: ${path}',
 	);
-	@override String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: 'Sdílen ${count} soubor',
-		other: 'Sdíleno ${count} souborů',
+	@override String shareSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: 'Sdílen ${n} soubor',
+		other: 'Sdíleno ${n} souborů',
 	);
-	@override String downloadSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: 'Stažen ${count} soubor',
-		other: 'Staženo ${count} souborů',
+	@override String downloadSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: 'Stažen ${n} soubor',
+		other: 'Staženo ${n} souborů',
 	);
 	@override String exportFailed({required Object error}) => 'Export selhal: ${error}';
 	@override late final _Translations$operation$export$stash$cs stash = _Translations$operation$export$stash$cs._(_root);
@@ -3597,18 +3597,18 @@ class _Translations$operation$export$stash$cs extends Translations$operation$exp
 	);
 	@override String get mayHaveArrived => 'Úschovna neodpověděla — soubor možná přesto dorazil. Než ho pošlete znovu, zkontrolujte stash.ham2k.net';
 	@override String get notSent => 'neodesláno';
-	@override String notArrived({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+	@override String notArrived({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
 		one: 'Tento soubor nedorazil:',
-		other: 'Těchto ${count} souborů nedorazilo:',
+		other: 'Těchto ${n} souborů nedorazilo:',
 	);
 	@override String get emailOffer => 'Nebo vám pro vaše pohodlí můžeme poslat e-mail s přímým odkazem.';
 	@override String get emailMe => 'Poslat mi odkaz e-mailem';
 	@override String get emailSent => 'Poslali jsme vám e-mailem odkaz ke stažení.';
 	@override String emailFailed({required Object error}) => 'E-mail se nepodařilo odeslat: ${error}';
 	@override String get freeTier => 'Bezplatné účty mohou mít najednou pouze jednu úschovu. Předplatitelé jich mohou mít, kolik chtějí.';
-	@override String sentStatus({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
-		one: '${count} soubor odeslán do Ham2K File Stash (stash.ham2k.net)',
-		other: '${count} souborů odesláno do Ham2K File Stash (stash.ham2k.net)',
+	@override String sentStatus({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: '${n} soubor odeslán do Ham2K File Stash (stash.ham2k.net)',
+		other: '${n} souborů odesláno do Ham2K File Stash (stash.ham2k.net)',
 	);
 }
 
@@ -5101,7 +5101,7 @@ extension on TranslationsCs {
 			'operation.export.title' => 'Exporty aktivity',
 			'operation.export.syncedOperation' => 'Aktivita je synchronizována',
 			'operation.export.unsyncedOperation' => 'Aktivita má nesynchronizované změny',
-			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} QSO v této aktivitě', other: '${count} QSO v této aktivitě', ), 
+			'operation.export.qsosInOperation' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${n} QSO v této aktivitě', other: '${n} QSO v této aktivitě', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => 'Všech ${total} QSO je synchronizováno',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} z ${total} QSO čeká na synchronizaci',
 			'operation.export.eventsSynced' => ({required Object total}) => 'Synchronizováno ${total} značek událostí',
@@ -5111,20 +5111,20 @@ extension on TranslationsCs {
 			'operation.export.nothingLogged' => 'Zatím není co exportovat — tato aktivita nemá žádná QSO.',
 			'operation.export.share' => 'Sdílet',
 			'operation.export.nothingSelected' => 'Nic není vybráno',
-			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Uložit ${count} soubor', other: 'Uložit ${count} souborů', ), 
-			'operation.export.shareFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Sdílet ${count} soubor', other: 'Sdílet ${count} souborů', ), 
-			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Exportovat ${count} soubor', other: 'Exportovat ${count} souborů', ), 
-			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Stáhnout ${count} soubor', other: 'Stáhnout ${count} souborů', ), 
-			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Uložit ${count} sloučený soubor', other: 'Uložit ${count} sloučených souborů', ), 
-			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Sdílet ${count} sloučený soubor', other: 'Sdílet ${count} sloučených souborů', ), 
-			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Exportovat ${count} sloučený soubor', other: 'Exportovat ${count} sloučených souborů', ), 
-			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Stáhnout ${count} sloučený soubor', other: 'Stáhnout ${count} sloučených souborů', ), 
+			'operation.export.saveFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Uložit ${n} soubor', other: 'Uložit ${n} souborů', ), 
+			'operation.export.shareFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Sdílet ${n} soubor', other: 'Sdílet ${n} souborů', ), 
+			'operation.export.exportFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Exportovat ${n} soubor', other: 'Exportovat ${n} souborů', ), 
+			'operation.export.downloadFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Stáhnout ${n} soubor', other: 'Stáhnout ${n} souborů', ), 
+			'operation.export.saveCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Uložit ${n} sloučený soubor', other: 'Uložit ${n} sloučených souborů', ), 
+			'operation.export.shareCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Sdílet ${n} sloučený soubor', other: 'Sdílet ${n} sloučených souborů', ), 
+			'operation.export.exportCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Exportovat ${n} sloučený soubor', other: 'Exportovat ${n} sloučených souborů', ), 
+			'operation.export.downloadCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Stáhnout ${n} sloučený soubor', other: 'Stáhnout ${n} sloučených souborů', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Uložit ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Sdílet ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportovat ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Stáhnout ${name}',
-			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Uschovat ${count} soubor', other: 'Uschovat ${count} souborů', ), 
-			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Uschovat ${count} sloučený soubor', other: 'Uschovat ${count} sloučených souborů', ), 
+			'operation.export.stashFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Uschovat ${n} soubor', other: 'Uschovat ${n} souborů', ), 
+			'operation.export.stashCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Uschovat ${n} sloučený soubor', other: 'Uschovat ${n} sloučených souborů', ), 
 			'operation.export.settingsButton' => 'Nastavení exportu',
 			'operation.export.settingsTitle' => 'Nastavení exportu',
 			'operation.export.compactFileNames.title' => 'Použít kompaktní názvy souborů',
@@ -5136,10 +5136,10 @@ extension on TranslationsCs {
 			'operation.export.includePrivateData.note' => 'Úplný export ADIF vždy zahrnuje vše',
 			'operation.export.resultTitle' => 'Export dokončen',
 			'operation.export.resultFailedTitle' => 'Export selhal',
-			'operation.export.saveSuccess' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Exportován ${count} soubor do ${path}', other: 'Exportováno ${count} souborů do ${path}', ), 
-			'operation.export.saveSuccessNamed' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Exportován ${count} soubor: ${path}', other: 'Exportováno ${count} souborů: ${path}', ), 
-			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Sdílen ${count} soubor', other: 'Sdíleno ${count} souborů', ), 
-			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Stažen ${count} soubor', other: 'Staženo ${count} souborů', ), 
+			'operation.export.saveSuccess' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Exportován ${n} soubor do ${path}', other: 'Exportováno ${n} souborů do ${path}', ), 
+			'operation.export.saveSuccessNamed' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Exportován ${n} soubor: ${path}', other: 'Exportováno ${n} souborů: ${path}', ), 
+			'operation.export.shareSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Sdílen ${n} soubor', other: 'Sdíleno ${n} souborů', ), 
+			'operation.export.downloadSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Stažen ${n} soubor', other: 'Staženo ${n} souborů', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'Export selhal: ${error}',
 			'operation.export.stash.needsEmailTitle' => 'Nejprve přidejte e-mailovou adresu',
 			'operation.export.stash.needsEmailBody' => 'Ham2K File Stash posílá vaše soubory na e-mailovou adresu vašeho účtu LoFi a stejnou adresou se přihlašujete na stash.ham2k.net. Váš účet zatím nemá potvrzenou adresu — přidejte ji v Nastavení › Synchronizace v cloudu.',
@@ -5152,13 +5152,13 @@ extension on TranslationsCs {
 			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Tento soubor můžete získat návštěvou **[stash.ham2k.net](https://stash.ham2k.net)** v libovolném prohlížeči.', other: 'Tyto soubory můžete získat návštěvou **[stash.ham2k.net](https://stash.ham2k.net)** v libovolném prohlížeči.', ), 
 			'operation.export.stash.mayHaveArrived' => 'Úschovna neodpověděla — soubor možná přesto dorazil. Než ho pošlete znovu, zkontrolujte stash.ham2k.net',
 			'operation.export.stash.notSent' => 'neodesláno',
-			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Tento soubor nedorazil:', other: 'Těchto ${count} souborů nedorazilo:', ), 
+			'operation.export.stash.notArrived' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Tento soubor nedorazil:', other: 'Těchto ${n} souborů nedorazilo:', ), 
 			'operation.export.stash.emailOffer' => 'Nebo vám pro vaše pohodlí můžeme poslat e-mail s přímým odkazem.',
 			'operation.export.stash.emailMe' => 'Poslat mi odkaz e-mailem',
 			'operation.export.stash.emailSent' => 'Poslali jsme vám e-mailem odkaz ke stažení.',
 			'operation.export.stash.emailFailed' => ({required Object error}) => 'E-mail se nepodařilo odeslat: ${error}',
 			'operation.export.stash.freeTier' => 'Bezplatné účty mohou mít najednou pouze jednu úschovu. Předplatitelé jich mohou mít, kolik chtějí.',
-			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} soubor odeslán do Ham2K File Stash (stash.ham2k.net)', other: '${count} souborů odesláno do Ham2K File Stash (stash.ham2k.net)', ), 
+			'operation.export.stash.sentStatus' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${n} soubor odeslán do Ham2K File Stash (stash.ham2k.net)', other: '${n} souborů odesláno do Ham2K File Stash (stash.ham2k.net)', ), 
 			'operation.spots.empty' => 'Vašim filtrům neodpovídají žádné spoty',
 			'operation.spots.error' => ({required Object error}) => 'Načtení spotů selhalo: ${error}',
 			'operation.spots.unknownBand' => 'Jiné',

@@ -609,6 +609,55 @@ void main() {
       expect(extensions.optionRequests.map((request) => (request['operation'] as Map)['stationCall']), ['K1A']);
     });
 
+    test("a file written operation by operation counts each operation's contacts as its share is done", () async {
+      final park = await operations.create(stationCall: 'N0CALL');
+      final home = await operations.create(stationCall: 'N0CALL');
+      Future<Qso> add(String operationUuid, String theirCall, int at) => qsos.add(operationUuid, {
+        'our': {'call': 'N0CALL'},
+        'their': {'call': theirCall},
+        'startAtMillis': at,
+      });
+      final contacts = [await add(home.uuid, 'G4HOME', 1000), await add(park.uuid, 'DL1PARK', 2000), await add('', 'JA1LOOSE', 3000)];
+      final progress = <(int, int)>[];
+      await ExportService(
+        extensions: _ExtensionsWithHost(_CapturingHost(content: 'ADIF\n<EOH>\n<CALL:3>ABC<EOR>\n')),
+        qsos: qsos,
+        settings: settings,
+      ).generateExports(
+        Operation(uuid: '', data: {'stationCall': 'N0CALL'}),
+        [
+          {'hookKey': 'adif', 'exportType': 'adif', 'format': 'adif', 'stationCall': 'N0CALL'},
+        ],
+        contacts: contacts,
+        operations: {
+          for (final op in await operations.byUuids([park.uuid, home.uuid])) op.uuid: op,
+        },
+        onProgress: (done, total) => progress.add((done, total)),
+      );
+
+      expect(progress, [(0, 3), (1, 3), (2, 3), (3, 3)], reason: 'a contact in each of two operations and one in none, each counted as its share is written');
+    });
+
+    test('several files over the same contacts count to the contacts, not to the files', () async {
+      // An operation exporting its ADIF, its POTA file and its Cabrillo over
+      // 100 contacts said "0 of 300 QSOs".
+      final op = await operations.create(stationCall: 'N0CALL');
+      for (var i = 0; i < 4; i++) {
+        await qsos.add(op.uuid, {
+          'their': {'call': 'DL${i}ABC'},
+          'startAtMillis': 1000 + i,
+        });
+      }
+      final progress = <(int, int)>[];
+      await ExportService(extensions: _ExtensionsWithHost(_CapturingHost()), qsos: qsos, settings: settings).generateExports((await operations.get(op.uuid))!, [
+        for (final type in ['adif', 'pota', 'cabrillo']) {'hookKey': type, 'exportType': type, 'stationCall': 'N0CALL', 'qsoCount': 4},
+      ], onProgress: (done, total) => progress.add((done, total)));
+
+      expect(progress.map((p) => p.$2).toSet(), {4});
+      expect(progress.first.$1, 0);
+      expect(progress.last.$1, 4);
+    });
+
     test("each operation's share is headed with the file's call, not the stand-in's", () async {
       final op = await operations.create(stationCall: 'K1B');
       final contact = await qsos.add(op.uuid, {

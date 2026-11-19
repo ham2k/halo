@@ -755,8 +755,8 @@
       "syncedOperation": "Operasjonen er synkronisert",
       "unsyncedOperation": "Operasjonen har endringer som ikke er synkronisert",
       "qsosInOperation": {
-        "one": "${count} QSO i denne operasjonen",
-        "other": "${count} QSOer i denne operasjonen"
+        "one": "${n} QSO i denne operasjonen",
+        "other": "${n} QSOer i denne operasjonen"
       },
       "qsosSynced": "Alle ${total} QSOer er synkronisert",
       "qsosPending": "${pending} av ${total} QSOer venter på synkronisering",
@@ -768,48 +768,48 @@
       "share": "Del",
       "nothingSelected": "Ingenting valgt",
       "saveFiles": {
-        "one": "Lagre ${count} fil",
-        "other": "Lagre ${count} filer"
+        "one": "Lagre ${n} fil",
+        "other": "Lagre ${n} filer"
       },
       "shareFiles": {
-        "one": "Del ${count} fil",
-        "other": "Del ${count} filer"
+        "one": "Del ${n} fil",
+        "other": "Del ${n} filer"
       },
       "exportFiles": {
-        "one": "Eksporter ${count} fil",
-        "other": "Eksporter ${count} filer"
+        "one": "Eksporter ${n} fil",
+        "other": "Eksporter ${n} filer"
       },
       "downloadFiles": {
-        "one": "Last ned ${count} fil",
-        "other": "Last ned ${count} filer"
+        "one": "Last ned ${n} fil",
+        "other": "Last ned ${n} filer"
       },
       "saveCombined": {
-        "one": "Lagre ${count} samlet fil",
-        "other": "Lagre ${count} samlede filer"
+        "one": "Lagre ${n} samlet fil",
+        "other": "Lagre ${n} samlede filer"
       },
       "shareCombined": {
-        "one": "Del ${count} samlet fil",
-        "other": "Del ${count} samlede filer"
+        "one": "Del ${n} samlet fil",
+        "other": "Del ${n} samlede filer"
       },
       "exportCombined": {
-        "one": "Eksporter ${count} samlet fil",
-        "other": "Eksporter ${count} samlede filer"
+        "one": "Eksporter ${n} samlet fil",
+        "other": "Eksporter ${n} samlede filer"
       },
       "downloadCombined": {
-        "one": "Last ned ${count} samlet fil",
-        "other": "Last ned ${count} samlede filer"
+        "one": "Last ned ${n} samlet fil",
+        "other": "Last ned ${n} samlede filer"
       },
       "saveOne": "Lagre ${name}",
       "shareOne": "Del ${name}",
       "exportOne": "Eksporter ${name}",
       "downloadOne": "Last ned ${name}",
       "stashFiles": {
-        "one": "Legg ${count} fil i Stash",
-        "other": "Legg ${count} filer i Stash"
+        "one": "Legg ${n} fil i Stash",
+        "other": "Legg ${n} filer i Stash"
       },
       "stashCombined": {
-        "one": "Legg ${count} samlet fil i Stash",
-        "other": "Legg ${count} samlede filer i Stash"
+        "one": "Legg ${n} samlet fil i Stash",
+        "other": "Legg ${n} samlede filer i Stash"
       },
       "settingsButton": "Eksportinnstillinger",
       "settingsTitle": "Eksportinnstillinger",
@@ -827,20 +827,20 @@
       "resultTitle": "Eksport fullført",
       "resultFailedTitle": "Eksport mislyktes",
       "saveSuccess": {
-        "one": "Eksporterte ${count} fil til ${path}",
-        "other": "Eksporterte ${count} filer til ${path}"
+        "one": "Eksporterte ${n} fil til ${path}",
+        "other": "Eksporterte ${n} filer til ${path}"
       },
       "saveSuccessNamed": {
-        "one": "Eksporterte ${count} fil: ${path}",
-        "other": "Eksporterte ${count} filer: ${path}"
+        "one": "Eksporterte ${n} fil: ${path}",
+        "other": "Eksporterte ${n} filer: ${path}"
       },
       "shareSuccess": {
-        "one": "Delte ${count} fil",
-        "other": "Delte ${count} filer"
+        "one": "Delte ${n} fil",
+        "other": "Delte ${n} filer"
       },
       "downloadSuccess": {
-        "one": "Lastet ned ${count} fil",
-        "other": "Lastet ned ${count} filer"
+        "one": "Lastet ned ${n} fil",
+        "other": "Lastet ned ${n} filer"
       },
       "exportFailed": "Eksport mislyktes: ${error}",
       "stash": {
@@ -860,7 +860,7 @@
         "notSent": "ikke sendt",
         "notArrived": {
           "one": "Denne filen kom ikke fram:",
-          "other": "Disse ${count} filene kom ikke fram:"
+          "other": "Disse ${n} filene kom ikke fram:"
         },
         "emailOffer": "Eller for enkelhets skyld kan vi sende deg en e-post med en direkte lenke.",
         "emailMe": "Send meg en lenke på e-post",
@@ -868,8 +868,8 @@
         "emailFailed": "Kunne ikke sende e-posten: ${error}",
         "freeTier": "Gratiskontoer kan bare beholde én stash om gangen. Abonnenter kan beholde så mange de vil.",
         "sentStatus": {
-          "one": "Sendte ${count} fil til Ham2K File Stash (stash.ham2k.net)",
-          "other": "Sendte ${count} filer til Ham2K File Stash (stash.ham2k.net)"
+          "one": "Sendte ${n} fil til Ham2K File Stash (stash.ham2k.net)",
+          "other": "Sendte ${n} filer til Ham2K File Stash (stash.ham2k.net)"
         }
       }
     },

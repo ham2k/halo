@@ -689,11 +689,17 @@ class ExportService {
   /// Generates file content for the given (previously listed) options.
   /// Returns one `{filename, mimeType, content}` map per option, in the same
   /// order. [contacts] and [operations] as [getExportOptions] took them.
+  /// [onProgress] counts the contacts written as the work finishes: a file's
+  /// at once, or each operation's share of a file written operation by
+  /// operation, so a long log moves steadily. Out of the contacts there are,
+  /// however many files cover them: three files of 100 contacts count to 100,
+  /// not 300.
   Future<List<Map<String, dynamic>>> generateExports(
     Operation operation,
     List<Map<String, dynamic>> selectedOptions, {
     List<Qso>? contacts,
     Map<String, Operation> operations = const {},
+    void Function(int done, int total)? onProgress,
   }) async {
     final host = extensions.host;
     if (host == null && selectedOptions.any((o) => !isQsonOption(o))) {
@@ -701,6 +707,27 @@ class ExportService {
     }
     final log = await _logFor(operation, contacts);
     final perCall = allStationCallsOf(log.segmented, log.qsos).length >= 2;
+    final acrossOperations = contacts != null && operations.isNotEmpty;
+    String callOf(Map<String, dynamic> option) => option['stationCall'] as String? ?? operation.stationCalls.first;
+    final shares = {
+      for (final option in selectedOptions)
+        if (acrossOperations && _isFullAdif(option))
+          option: _sharesOf(perCall ? log.qsos.where((qso) => contactUsesStationCall(qso, log.segmented, callOf(option))) : log.qsos, operations),
+    };
+    int contactsOf(Map<String, dynamic> option) => (option['qsoCount'] as num?)?.toInt() ?? log.qsos.length;
+    final total = [
+      for (final option in selectedOptions)
+        if (shares[option] case final groups?) groups.fold<int>(0, (sum, group) => sum + group.value.length) else contactsOf(option),
+    ].fold<int>(0, (sum, count) => sum + count);
+    final contactCount = log.qsos.length;
+    var done = 0;
+    void report() => onProgress?.call(total == 0 ? 0 : (done * contactCount / total).round(), contactCount);
+    void advance(int count) {
+      done += count;
+      report();
+    }
+
+    report();
 
     // Independent per-option calls (each produces its own file) — no
     // ordering dependency, so run them concurrently rather than paying for
@@ -708,12 +735,16 @@ class ExportService {
     final results = await Future.wait(
       selectedOptions.map((option) async {
         if (isQsonOption(option)) {
-          return {'filename': _qsonOptionFor(operation)['filename'], 'mimeType': 'application/json', 'content': jsonEncode(await _qsonDumpFor(operation))};
+          final dump = {
+            'filename': _qsonOptionFor(operation)['filename'],
+            'mimeType': 'application/json',
+            'content': jsonEncode(await _qsonDumpFor(operation)),
+          };
+          advance(contactsOf(option));
+          return dump;
         }
-        if (contacts != null && operations.isNotEmpty && _isFullAdif(option)) {
-          final call = option['stationCall'] as String? ?? operation.stationCalls.first;
-          final mine = perCall ? log.qsos.where((qso) => contactUsesStationCall(qso, log.segmented, call)) : log.qsos;
-          return _generateAcrossOperations(host!, option, call, operation, mine.toList(), operations);
+        if (shares[option] case final groups?) {
+          return _generateAcrossOperations(host!, option, callOf(option), operation, groups, operations, advance);
         }
         final scoped = _qsosForOption(option, log.qsos, log.segmented);
         // Rebuilt for the SAME call the option was listed under, so the file
@@ -760,6 +791,7 @@ class ExportService {
         // start of the log. Both are defensible; disagreeing in front of the
         // user is not.
         final offered = option['filename'];
+        advance(contactsOf(option));
         if (offered is String && offered.isNotEmpty) {
           return {...file, 'filename': offered};
         }
@@ -793,28 +825,10 @@ class ExportService {
           )
           as Map<dynamic, dynamic>;
 
-  /// [option]'s ADIF over [contacts] logged in several operations: each
-  /// operation's share written against that operation, as its own export
-  /// writes it (the park it activated, its location, its segments), and
-  /// the shares joined into one file under the first one's header. Contacts
-  /// in no operation, or in one not in [operations], are written against
-  /// [standIn].
-  ///
-  /// [contacts] are already the call's ([_pinnedToItsCall]): an operation's
-  /// own calls would hand a contact logged under a call that is not one of
-  /// them to its other calls, and to none of this file.
-  ///
-  /// Without the operation's events: the file is these contacts, not the
-  /// operations' timelines. The header names [standIn]'s call, never one
-  /// operation's title or notes, which describe only part of the file.
-  Future<Map<String, dynamic>> _generateAcrossOperations(
-    ExtensionHost host,
-    Map<String, dynamic> option,
-    String stationCall,
-    Operation standIn,
-    List<Qso> contacts,
-    Map<String, Operation> operations,
-  ) async {
+  /// [contacts] by the operation each was logged in, those in no operation
+  /// [operations] holds under '', each in time order, the earliest first:
+  /// the shares [_generateAcrossOperations] writes.
+  static List<MapEntry<String, List<Qso>>> _sharesOf(Iterable<Qso> contacts, Map<String, Operation> operations) {
     final byOperation = <String, List<Qso>>{};
     for (final qso in contacts) {
       byOperation.putIfAbsent(operations.containsKey(qso.operationUuid) ? qso.operationUuid : '', () => []).add(qso);
@@ -823,11 +837,38 @@ class ExportService {
     for (final group in byOperation.values) {
       group.sort((a, b) => startOf(a).compareTo(startOf(b)));
     }
-    final groups = byOperation.entries.toList()..sort((a, b) => startOf(a.value.first).compareTo(startOf(b.value.first)));
+    return byOperation.entries.toList()..sort((a, b) => startOf(a.value.first).compareTo(startOf(b.value.first)));
+  }
+
+  /// [option]'s ADIF over contacts logged in several operations, in
+  /// [groups] by operation ([_sharesOf]): each
+  /// operation's share written against that operation, as its own export
+  /// writes it (the park it activated, its location, its segments), and
+  /// the shares joined into one file under the first one's header. Contacts
+  /// in no operation, or in one not in [operations], are written against
+  /// [standIn].
+  ///
+  /// The contacts are already the call's ([_pinnedToItsCall]): an operation's
+  /// own calls would hand a contact logged under a call that is not one of
+  /// them to its other calls, and to none of this file.
+  ///
+  /// Without the operation's events: the file is these contacts, not the
+  /// operations' timelines. The header names [standIn]'s call, never one
+  /// operation's title or notes, which describe only part of the file.
+  /// [shareDone] counts each share's contacts as it is written.
+  Future<Map<String, dynamic>> _generateAcrossOperations(
+    ExtensionHost host,
+    Map<String, dynamic> option,
+    String stationCall,
+    Operation standIn,
+    List<MapEntry<String, List<Qso>>> groups,
+    Map<String, Operation> operations,
+    void Function(int contacts) shareDone,
+  ) async {
     // Every share's header names the file's call, whichever operation it
     // was written against.
     final titled = {...option, 'exportTitle': option['exportTitle'] ?? stationCall};
-    Future<Map<dynamic, dynamic>> share(MapEntry<String, List<Qso>> group) async {
+    Future<Map<dynamic, dynamic>> shareOf(MapEntry<String, List<Qso>> group) async {
       final own = operations[group.key];
       if (own == null) {
         final segmented = SegmentedOperation.from(operation: standIn.data, qsos: group.value);
@@ -841,6 +882,12 @@ class ExportService {
       final segmented = SegmentedOperation.from(operation: own.data, qsos: rows);
       final perCall = allStationCallsOf(segmented, rows.where((qso) => !qso.isEvent)).length >= 2;
       return _generate(host, titled, _payloadAs(stationCall, own, group.value, segmented, perCall: perCall));
+    }
+
+    Future<Map<dynamic, dynamic>> share(MapEntry<String, List<Qso>> group) async {
+      final written = await shareOf(group);
+      shareDone(group.value.length);
+      return written;
     }
 
     // A few at a time: the runtime works through its calls one by one, and

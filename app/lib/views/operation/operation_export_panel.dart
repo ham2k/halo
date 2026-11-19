@@ -21,10 +21,11 @@
 // which made the row do two unrelated things and left Android with no
 // per-row save at all.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
+import 'package:flutter/foundation.dart' show TargetPlatform, ValueListenable, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -38,6 +39,7 @@ import '../../services/export_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/status_bar_service.dart';
 import '../../tools/operation_title.dart';
+import '../../services/transfer_service.dart';
 import 'operation_push_section.dart';
 import 'stash_sent_dialog.dart';
 
@@ -147,9 +149,10 @@ IconData exportActionIcon(ExportAction action) => switch (action) {
 /// the hooks are asked about (see `ExportService.getExportOptions`),
 /// [operations] those the contacts were logged in, by uuid, [title] names
 /// the pane after the view it opens from, [stashTitle] is what the stash
-/// files the upload under, and [fullAdifOnly] offers the Full ADIF alone.
-/// Files only: Cloud Sync and the pushes are an operation's (EXP PUSH), and
-/// nothing is marked exported, since there is no operation to mark.
+/// files the upload under, [fullAdifOnly] offers the Full ADIF alone, and
+/// [pushScope] is what its push rows push (EXP PUSH). Cloud Sync is an
+/// operation's, and nothing is marked exported, since there is no operation
+/// to mark.
 Future<void> showOperationExportPanel(
   BuildContext context, {
   required HaLoServices services,
@@ -159,6 +162,7 @@ Future<void> showOperationExportPanel(
   String? title,
   String? stashTitle,
   bool fullAdifOnly = false,
+  PushScope? pushScope,
 }) async {
   final t = context.t;
   // With EXP PUSH the count leads an operation's pane, in its title: the
@@ -202,9 +206,10 @@ Future<void> showOperationExportPanel(
       operations: operations,
       stashTitle: stashTitle,
       fullAdifOnly: fullAdifOnly,
+      pushScope: pushScope,
       onContactCount: counted
           ? (count) {
-              if (open) paneTitle.value = t.operation.export.titleWithCount(count: count);
+              if (open) paneTitle.value = t.operation.export.titleWithCount(count: count, n: formatNumber(count));
             }
           : null,
     ),
@@ -240,6 +245,10 @@ class OperationExportPanel extends StatefulWidget {
   /// Only the core's Full ADIF is offered.
   final bool fullAdifOnly;
 
+  /// What the push rows push, over [contacts]; none without it. An
+  /// operation's own pane pushes the operation.
+  final PushScope? pushScope;
+
   const OperationExportPanel({
     super.key,
     required this.services,
@@ -249,6 +258,7 @@ class OperationExportPanel extends StatefulWidget {
     this.operations = const {},
     this.stashTitle,
     this.fullAdifOnly = false,
+    this.pushScope,
   });
 
   @override
@@ -311,9 +321,16 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   @override
   void initState() {
     super.initState();
-    if (widget.services.transfers.enabled && _exportsOperation) {
-      _pushes = PushServicesModel(widget.services, widget.operation.uuid, onPushed: _refreshSyncState, shown: () => mounted && _openSection == 'push')
-        ..addListener(_onPushesChanged)
+    if (widget.services.transfers.enabled) {
+      bool shown() => mounted && _openSection == 'push';
+      final pushScope = widget.pushScope;
+      _pushes = _exportsOperation
+          ? PushServicesModel.forOperation(widget.services, widget.operation.uuid, onPushed: _refreshSyncState, shown: shown)
+          : pushScope == null
+          ? null
+          : PushServicesModel(widget.services, () async => pushScope, shown: shown);
+      _pushes
+        ?..addListener(_onPushesChanged)
         ..load();
     }
     _exportSettingsSnapshot = _settingsSnapshot();
@@ -398,6 +415,58 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     }
   }
 
+  /// The files for [options], with a dialog counting the contacts written
+  /// while they take long enough to wonder about: a log of thousands of
+  /// contacts does, and a quick export never flashes one.
+  Future<List<Map<String, dynamic>>> _generateShowingProgress(List<Map<String, dynamic>> options) async {
+    final progress = ValueNotifier<({int done, int total})?>(null);
+    BuildContext? dialogContext;
+    var generating = true;
+    final opener = Timer(const Duration(milliseconds: 400), () {
+      if (!generating || !mounted) return;
+      unawaited(
+        showHaloDialog<void>(
+          context: context,
+          // It closes itself when the files are ready; there is nothing to
+          // cancel, as a hook's file cannot be stopped halfway.
+          barrierDismissible: false,
+          builder: (context) {
+            // The route is pushed now and built a frame later: work that
+            // finished in between found no dialog to close, so the dialog
+            // closes itself, unseen, rather than stay up with no way out.
+            if (!generating) {
+              final route = ModalRoute.of(context);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (route != null && route.isActive) route.navigator?.removeRoute(route);
+              });
+              return const SizedBox.shrink();
+            }
+            dialogContext = context;
+            return _ExportProgressDialog(progress: progress);
+          },
+        ),
+      );
+    });
+    try {
+      return await widget.services.exports.generateExports(
+        widget.operation,
+        options,
+        contacts: widget.contacts,
+        operations: widget.operations,
+        onProgress: (done, total) => progress.value = (done: done, total: total),
+      );
+    } finally {
+      generating = false;
+      opener.cancel();
+      // This dialog's own route, not whatever is on top.
+      if (dialogContext case final shown? when shown.mounted) {
+        if (ModalRoute.of(shown) case final route? when route.isActive) Navigator.of(shown).removeRoute(route);
+      }
+      // After the dialog's last frame, which still listens to it.
+      WidgetsBinding.instance.addPostFrameCallback((_) => progress.dispose());
+    }
+  }
+
   /// A hook may offer multiple options of the same exportType. exportKey
   /// distinguishes them, with exportType as the default for single options.
   /// The callsign separates identical options offered for different stations.
@@ -437,30 +506,30 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   String _bulkLabel(ExportAction action, int count, {bool combined = false}) {
     final s = context.t.operation.export;
     // The sync and push panel's files header: that batch is the section's.
-    if (combined && _pushes != null) {
+    if (combined && _pushes != null && _exportsOperation) {
       return switch (action) {
-        ExportAction.save => s.saveAll(count: count),
-        ExportAction.share => s.shareAll(count: count),
-        ExportAction.export => s.exportAll(count: count),
-        ExportAction.download => s.downloadAll(count: count),
-        ExportAction.stash => s.stashAll(count: count),
+        ExportAction.save => s.saveAll(count: count, n: formatNumber(count)),
+        ExportAction.share => s.shareAll(count: count, n: formatNumber(count)),
+        ExportAction.export => s.exportAll(count: count, n: formatNumber(count)),
+        ExportAction.download => s.downloadAll(count: count, n: formatNumber(count)),
+        ExportAction.stash => s.stashAll(count: count, n: formatNumber(count)),
       };
     }
     if (combined) {
       return switch (action) {
-        ExportAction.save => s.saveCombined(count: count),
-        ExportAction.share => s.shareCombined(count: count),
-        ExportAction.export => s.exportCombined(count: count),
-        ExportAction.download => s.downloadCombined(count: count),
-        ExportAction.stash => s.stashCombined(count: count),
+        ExportAction.save => s.saveCombined(count: count, n: formatNumber(count)),
+        ExportAction.share => s.shareCombined(count: count, n: formatNumber(count)),
+        ExportAction.export => s.exportCombined(count: count, n: formatNumber(count)),
+        ExportAction.download => s.downloadCombined(count: count, n: formatNumber(count)),
+        ExportAction.stash => s.stashCombined(count: count, n: formatNumber(count)),
       };
     }
     return switch (action) {
-      ExportAction.save => s.saveFiles(count: count),
-      ExportAction.share => s.shareFiles(count: count),
-      ExportAction.export => s.exportFiles(count: count),
-      ExportAction.download => s.downloadFiles(count: count),
-      ExportAction.stash => s.stashFiles(count: count),
+      ExportAction.save => s.saveFiles(count: count, n: formatNumber(count)),
+      ExportAction.share => s.shareFiles(count: count, n: formatNumber(count)),
+      ExportAction.export => s.exportFiles(count: count, n: formatNumber(count)),
+      ExportAction.download => s.downloadFiles(count: count, n: formatNumber(count)),
+      ExportAction.stash => s.stashFiles(count: count, n: formatNumber(count)),
     };
   }
 
@@ -472,7 +541,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       ExportAction.export => s.exportOne(name: name),
       ExportAction.download => s.downloadOne(name: name),
       // Never a row's verb (see [rowExportAction]); the switch only has to be whole.
-      ExportAction.stash => s.stashFiles(count: 1),
+      ExportAction.stash => s.stashFiles(count: 1, n: formatNumber(1)),
     };
   }
 
@@ -525,7 +594,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
           setState(() => _busy = true);
         }
       }
-      final files = await exports.generateExports(widget.operation, options, contacts: widget.contacts, operations: widget.operations);
+      final files = await _generateShowingProgress(options);
       widget.services.track('operation_exported', {
         'formats': options.map((o) => o['format'] ?? o['key'] ?? '?').join(','),
         'files': files.length,
@@ -544,8 +613,8 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
             // the operator would be told their files went to their own
             // filenames.
             outcome = saved.namesFiles
-                ? t.operation.export.saveSuccessNamed(count: saved.count, path: saved.location)
-                : t.operation.export.saveSuccess(count: saved.count, path: saved.location);
+                ? t.operation.export.saveSuccessNamed(count: saved.count, n: formatNumber(saved.count), path: saved.location)
+                : t.operation.export.saveSuccess(count: saved.count, n: formatNumber(saved.count), path: saved.location);
           }
         case ExportAction.share:
         case ExportAction.export:
@@ -553,11 +622,11 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
           // would announce a completed share for a sheet they dismissed —
           // asserting an outcome that didn't happen.
           if (await exports.shareFiles(files, sharePositionOrigin: shareOrigin)) {
-            outcome = t.operation.export.shareSuccess(count: files.length);
+            outcome = t.operation.export.shareSuccess(count: files.length, n: formatNumber(files.length));
           }
         case ExportAction.download:
           await exports.downloadFiles(files);
-          outcome = t.operation.export.downloadSuccess(count: files.length);
+          outcome = t.operation.export.downloadSuccess(count: files.length, n: formatNumber(files.length));
         case ExportAction.stash:
           final result = await exports.stashFiles(files, groupTitle: stashTitle);
           if (result.errors.isNotEmpty) debugPrint('[export] stash: ${result.uploaded} of ${files.length} uploaded; ${result.errors.join('; ')}');
@@ -570,7 +639,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
             // the previous stash — and the operator has to be told where,
             // with the ones that didn't make it named beside them.
             stashed = (count: result.uploaded, freeAccount: preflight?.freeAccount, failures: result.errors);
-            outcome = t.operation.export.stash.sentStatus(count: result.uploaded);
+            outcome = t.operation.export.stash.sentStatus(count: result.uploaded, n: formatNumber(result.uploaded));
           }
       }
     } catch (e, stack) {
@@ -734,7 +803,9 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       // button saying "Save 3 files" belongs with the ticks it counted, and
       // the operator who came to export everything should not have to reach
       // the end of the formats to find the button that does it.
-      if (_options.isNotEmpty && _pushes == null) SliverToBoxAdapter(child: _buildActionBand(context, combined: groups.length > 1)),
+      // A contacts pane keeps its count here even beside the pushes: its
+      // title is the view's, and names no count.
+      if (_options.isNotEmpty && (_pushes == null || !_exportsOperation)) SliverToBoxAdapter(child: _buildActionBand(context, combined: groups.length > 1)),
       if (_error case final error?)
         SliverToBoxAdapter(
           child: Padding(
@@ -808,7 +879,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
             context,
             'files',
             t.operation.export.filesTitle,
-            trailing: _options.isEmpty || _error != null
+            trailing: _options.isEmpty || _error != null || !_exportsOperation
                 ? null
                 : _buildBulkActions(
                     context,
@@ -824,12 +895,17 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
           ),
         ),
         if (_openSection == 'files') Expanded(child: CustomScrollView(slivers: [...files, spacer])),
-        _sectionHeader(context, 'push', t.operation.export.push.title, trailing: _syncAndPushTally(context)),
+        _sectionHeader(
+          context,
+          'push',
+          _exportsOperation ? t.operation.export.push.title : t.operation.export.push.pushOnlyTitle,
+          trailing: _syncAndPushTally(context),
+        ),
         if (_openSection == 'push')
           Expanded(
             child: CustomScrollView(
               slivers: [
-                OperationPushSection(model: _pushes!, leading: _buildCloudSyncRow(context, _syncCounts)),
+                OperationPushSection(model: _pushes!, leading: _exportsOperation ? _buildCloudSyncRow(context, _syncCounts) : null),
                 spacer,
               ],
             ),
@@ -868,7 +944,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     final pushes = _pushes;
     if (pushes == null) return null;
     final t = context.t.operation.export.push;
-    final sync = _cloudSyncDone;
+    final sync = _exportsOperation ? _cloudSyncDone : null;
     final pending = pushes.pending + (sync == false ? 1 : 0);
     final completed = pushes.completed + (sync == true ? 1 : 0);
     return Text(
@@ -877,8 +953,8 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       pushes.loadError != null
           ? t.checkFailed
           : pending > 0
-          ? t.pending(count: pending)
-          : t.completed(count: completed),
+          ? t.pending(count: formatNumber(pending))
+          : t.completed(count: formatNumber(completed)),
       style: Theme.of(context).textTheme.labelLarge,
     );
   }
@@ -966,9 +1042,13 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     if (counts == null) return null;
     final t = context.t.operation.export;
     return [
-      counts.pending == 0 ? t.qsosSynced(total: counts.total) : t.qsosPending(pending: counts.pending, total: counts.total),
+      counts.pending == 0
+          ? t.qsosSynced(total: formatNumber(counts.total))
+          : t.qsosPending(pending: formatNumber(counts.pending), total: formatNumber(counts.total)),
       if (counts.eventTotal > 0)
-        counts.eventPending == 0 ? t.eventsSynced(total: counts.eventTotal) : t.eventsPending(pending: counts.eventPending, total: counts.eventTotal),
+        counts.eventPending == 0
+            ? t.eventsSynced(total: formatNumber(counts.eventTotal))
+            : t.eventsPending(pending: formatNumber(counts.eventPending), total: formatNumber(counts.eventTotal)),
     ].join(' · ');
   }
 
@@ -1014,7 +1094,9 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     final count = counts == null || counts.total == 0
         ? null
         : Text(
-            _exportsOperation ? context.t.operation.export.qsosInOperation(count: counts.total) : context.t.operation.export.qsosToExport(count: counts.total),
+            _exportsOperation
+                ? context.t.operation.export.qsosInOperation(count: counts.total, n: formatNumber(counts.total))
+                : context.t.operation.export.qsosToExport(count: counts.total, n: formatNumber(counts.total)),
             // The band's accent and slab at the ROW face's size, not
             // SectionHeader.titleStyle: that is the HEADING face, a step up,
             // and a count is a sentence, which at that size takes two lines
@@ -1339,4 +1421,34 @@ class _PinnedGroupHeader extends SliverPersistentHeaderDelegate {
   // so.
   @override
   bool shouldRebuild(_PinnedGroupHeader oldDelegate) => true;
+}
+
+/// The files being generated: how many contacts are written, of how many.
+class _ExportProgressDialog extends StatelessWidget {
+  final ValueListenable<({int done, int total})?> progress;
+
+  const _ExportProgressDialog({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.t.operation.export;
+    return HaloDialog(
+      title: Text(t.progressTitle),
+      content: ValueListenableBuilder(
+        valueListenable: progress,
+        builder: (context, progress, _) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LinearProgressIndicator(value: progress == null || progress.total == 0 ? null : progress.done / progress.total),
+            const SizedBox(height: Space.md),
+            Text(
+              progress == null ? '' : t.progressCount(count: progress.total, n: formatNumber(progress.total), done: formatNumber(progress.done)),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

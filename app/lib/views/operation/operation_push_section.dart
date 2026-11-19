@@ -15,15 +15,32 @@ import '../../services/error_reporting_service.dart';
 import '../../services/halo_services.dart';
 import '../../services/transfer_service.dart';
 
-/// The services an operation pushes to, and the push running, if any. The
+/// The services a scope pushes to, and the push running, if any. The
 /// panel owns it, not the section: the section's header counts what is
 /// pending while the section is closed, and a push outlives the section
 /// being closed under it.
 class PushServicesModel extends ChangeNotifier {
-  PushServicesModel(this.services, this.operationUuid, {this.onPushed, this.shown});
+  PushServicesModel(this.services, this.scope, {this.onPushed, this.shown});
+
+  /// Over [operationUuid]'s contacts, the operation read as stored on each
+  /// load and push: a hook reads its status to decide what is due, and a
+  /// push just changed it.
+  PushServicesModel.forOperation(HaLoServices services, String operationUuid, {Future<void> Function()? onPushed, bool Function()? shown})
+    : this(
+        services,
+        () async {
+          final operation = await services.operations.get(operationUuid);
+          return operation == null ? null : OperationPushScope(operation);
+        },
+        onPushed: onPushed,
+        shown: shown,
+      );
 
   final HaLoServices services;
-  final String operationUuid;
+
+  /// What the rows are for, read on each load and push; null when it is
+  /// gone.
+  final Future<PushScope?> Function() scope;
 
   /// After each push: what it wrote back also changed what Ham2K Cloud Sync
   /// owes.
@@ -59,11 +76,9 @@ class PushServicesModel extends ChangeNotifier {
   Future<void> load() async {
     final request = ++_loadRequest;
     try {
-      // The operation as stored: a hook reads its status to decide what is
-      // due, and a push just changed it.
-      final operation = await services.operations.get(operationUuid);
-      if (operation == null || _disposed || request != _loadRequest) return;
-      final rows = await services.transfers.servicesFor(OperationPushScope(operation));
+      final scope = await this.scope();
+      if (scope == null || _disposed || request != _loadRequest) return;
+      final rows = await services.transfers.servicesFor(scope);
       if (_disposed || request != _loadRequest) return;
       this.rows = rows;
       loadError = null;
@@ -86,10 +101,10 @@ class PushServicesModel extends ChangeNotifier {
     notifyListeners();
     final outcome = PushOutcome();
     try {
-      final operation = await services.operations.get(operationUuid);
-      if (operation == null) throw StateError('The operation is gone');
+      final scope = await this.scope();
+      if (scope == null) throw StateError('The operation is gone');
       await services.transfers.push(
-        OperationPushScope(operation),
+        scope,
         row,
         outcome: outcome,
         onProgress: (done, total) {
@@ -145,20 +160,22 @@ class PushServicesModel extends ChangeNotifier {
   }
 }
 
-/// The section's rows: [leading] (the Ham2K Cloud Sync row), then a row per
-/// service.
+/// The section's rows: [leading] (the Ham2K Cloud Sync row), when there is
+/// one, then a row per service.
 class OperationPushSection extends StatelessWidget {
   final PushServicesModel model;
-  final Widget leading;
 
-  const OperationPushSection({super.key, required this.model, required this.leading});
+  /// The Ham2K Cloud Sync row, over an operation's contacts.
+  final Widget? leading;
+
+  const OperationPushSection({super.key, required this.model, this.leading});
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: model,
     builder: (context, _) => SliverList.list(
       children: [
-        leading,
+        ?leading,
         if (model.loadError case final error?)
           ListTile(
             leading: Icon(MdiIcons.cloudAlert),
@@ -182,7 +199,7 @@ class OperationPushSection extends StatelessWidget {
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(t.progress(done: progress.done, total: progress.total)),
+                Text(t.progress(done: formatNumber(progress.done), total: formatNumber(progress.total))),
                 const SizedBox(height: Space.xs),
                 LinearProgressIndicator(value: progress.total == 0 ? null : progress.done / progress.total),
               ],
@@ -206,11 +223,16 @@ class OperationPushSection extends StatelessWidget {
     final where = row.destination?.label;
     if (row.completed) {
       if (row.sent == 0) return t.nothingToSend;
-      return where == null ? t.allSent(count: row.sent) : t.allSentTo(count: row.sent, destination: where);
+      return where == null
+          ? t.allSent(count: row.sent, n: formatNumber(row.sent))
+          : t.allSentTo(count: row.sent, n: formatNumber(row.sent), destination: where);
     }
     return [
-      if (row.toSend > 0) where == null ? t.toSend(count: row.toSend) : t.toSendTo(count: row.toSend, destination: where),
-      if (row.toDelete > 0) t.toDelete(count: row.toDelete),
+      if (row.toSend > 0)
+        where == null
+            ? t.toSend(count: row.toSend, n: formatNumber(row.toSend))
+            : t.toSendTo(count: row.toSend, n: formatNumber(row.toSend), destination: where),
+      if (row.toDelete > 0) t.toDelete(count: row.toDelete, n: formatNumber(row.toDelete)),
     ].join(' · ');
   }
 }
@@ -219,5 +241,6 @@ class OperationPushSection extends StatelessWidget {
 /// service refused.
 String pushFailureText(Translations$operation$export$push$en t, ({PushOutcome outcome, Object? error}) failure) => [
   if (failure.error case final error?) error is PushTimedOut ? t.timedOut : t.pushFailed(error: ErrorReportingService.messageOf(error)),
-  if (failure.outcome.failures.isNotEmpty) t.failed(count: failure.outcome.failures.length, error: failure.outcome.failures.values.first),
+  if (failure.outcome.failures.isNotEmpty)
+    t.failed(count: failure.outcome.failures.length, n: formatNumber(failure.outcome.failures.length), error: failure.outcome.failures.values.first),
 ].join(' · ');

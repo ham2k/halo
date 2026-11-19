@@ -755,8 +755,8 @@
       "syncedOperation": "L'operació està sincronitzada",
       "unsyncedOperation": "L'operació té canvis sense sincronitzar",
       "qsosInOperation": {
-        "one": "${count} QSO en aquesta operació",
-        "other": "${count} QSOs en aquesta operació"
+        "one": "${n} QSO en aquesta operació",
+        "other": "${n} QSOs en aquesta operació"
       },
       "qsosSynced": "Els ${total} QSOs estan sincronitzats",
       "qsosPending": "${pending} de ${total} QSOs pendents de sincronitzar",
@@ -768,48 +768,48 @@
       "share": "Comparteix",
       "nothingSelected": "No hi ha res seleccionat",
       "saveFiles": {
-        "one": "Desa ${count} fitxer",
-        "other": "Desa ${count} fitxers"
+        "one": "Desa ${n} fitxer",
+        "other": "Desa ${n} fitxers"
       },
       "shareFiles": {
-        "one": "Comparteix ${count} fitxer",
-        "other": "Comparteix ${count} fitxers"
+        "one": "Comparteix ${n} fitxer",
+        "other": "Comparteix ${n} fitxers"
       },
       "exportFiles": {
-        "one": "Exporta ${count} fitxer",
-        "other": "Exporta ${count} fitxers"
+        "one": "Exporta ${n} fitxer",
+        "other": "Exporta ${n} fitxers"
       },
       "downloadFiles": {
-        "one": "Descarrega ${count} fitxer",
-        "other": "Descarrega ${count} fitxers"
+        "one": "Descarrega ${n} fitxer",
+        "other": "Descarrega ${n} fitxers"
       },
       "saveCombined": {
-        "one": "Desa ${count} fitxer combinat",
-        "other": "Desa ${count} fitxers combinats"
+        "one": "Desa ${n} fitxer combinat",
+        "other": "Desa ${n} fitxers combinats"
       },
       "shareCombined": {
-        "one": "Comparteix ${count} fitxer combinat",
-        "other": "Comparteix ${count} fitxers combinats"
+        "one": "Comparteix ${n} fitxer combinat",
+        "other": "Comparteix ${n} fitxers combinats"
       },
       "exportCombined": {
-        "one": "Exporta ${count} fitxer combinat",
-        "other": "Exporta ${count} fitxers combinats"
+        "one": "Exporta ${n} fitxer combinat",
+        "other": "Exporta ${n} fitxers combinats"
       },
       "downloadCombined": {
-        "one": "Descarrega ${count} fitxer combinat",
-        "other": "Descarrega ${count} fitxers combinats"
+        "one": "Descarrega ${n} fitxer combinat",
+        "other": "Descarrega ${n} fitxers combinats"
       },
       "saveOne": "Desa ${name}",
       "shareOne": "Comparteix ${name}",
       "exportOne": "Exporta ${name}",
       "downloadOne": "Descarrega ${name}",
       "stashFiles": {
-        "one": "Desa ${count} fitxer a l'Stash",
-        "other": "Desa ${count} fitxers a l'Stash"
+        "one": "Desa ${n} fitxer a l'Stash",
+        "other": "Desa ${n} fitxers a l'Stash"
       },
       "stashCombined": {
-        "one": "Desa ${count} fitxer combinat a l'Stash",
-        "other": "Desa ${count} fitxers combinats a l'Stash"
+        "one": "Desa ${n} fitxer combinat a l'Stash",
+        "other": "Desa ${n} fitxers combinats a l'Stash"
       },
       "settingsButton": "Configuració d'exportació",
       "settingsTitle": "Configuració d'exportació",
@@ -827,20 +827,20 @@
       "resultTitle": "Exportació completada",
       "resultFailedTitle": "L'exportació ha fallat",
       "saveSuccess": {
-        "one": "S'ha exportat ${count} fitxer a ${path}",
-        "other": "S'han exportat ${count} fitxers a ${path}"
+        "one": "S'ha exportat ${n} fitxer a ${path}",
+        "other": "S'han exportat ${n} fitxers a ${path}"
       },
       "saveSuccessNamed": {
-        "one": "S'ha exportat ${count} fitxer: ${path}",
-        "other": "S'han exportat ${count} fitxers: ${path}"
+        "one": "S'ha exportat ${n} fitxer: ${path}",
+        "other": "S'han exportat ${n} fitxers: ${path}"
       },
       "shareSuccess": {
-        "one": "S'ha compartit ${count} fitxer",
-        "other": "S'han compartit ${count} fitxers"
+        "one": "S'ha compartit ${n} fitxer",
+        "other": "S'han compartit ${n} fitxers"
       },
       "downloadSuccess": {
-        "one": "S'ha descarregat ${count} fitxer",
-        "other": "S'han descarregat ${count} fitxers"
+        "one": "S'ha descarregat ${n} fitxer",
+        "other": "S'han descarregat ${n} fitxers"
       },
       "exportFailed": "L'exportació ha fallat: ${error}",
       "stash": {
@@ -860,7 +860,7 @@
         "notSent": "no enviat",
         "notArrived": {
           "one": "Aquest fitxer no ha arribat:",
-          "other": "Aquests ${count} fitxers no han arribat:"
+          "other": "Aquests ${n} fitxers no han arribat:"
         },
         "emailOffer": "O, per a la teva comoditat, et podem enviar un correu electrònic amb un enllaç directe.",
         "emailMe": "Envia'm un enllaç per correu electrònic",
@@ -868,8 +868,8 @@
         "emailFailed": "No s'ha pogut enviar el correu electrònic: ${error}",
         "freeTier": "Els comptes gratuïts només poden conservar un element a l'Stash alhora. Els subscriptors en poden conservar tants com vulguin.",
         "sentStatus": {
-          "one": "S'ha enviat ${count} fitxer a Ham2K File Stash (stash.ham2k.net)",
-          "other": "S'han enviat ${count} fitxers a Ham2K File Stash (stash.ham2k.net)"
+          "one": "S'ha enviat ${n} fitxer a Ham2K File Stash (stash.ham2k.net)",
+          "other": "S'han enviat ${n} fitxers a Ham2K File Stash (stash.ham2k.net)"
         }
       }
     },

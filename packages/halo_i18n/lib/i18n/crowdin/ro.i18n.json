@@ -755,8 +755,8 @@
       "syncedOperation": "Operațiunea este sincronizată",
       "unsyncedOperation": "Operațiunea are modificări nesincronizate",
       "qsosInOperation": {
-        "one": "${count} QSO în această operațiune",
-        "other": "${count} QSO-uri în această operațiune"
+        "one": "${n} QSO în această operațiune",
+        "other": "${n} QSO-uri în această operațiune"
       },
       "qsosSynced": "Toate cele ${total} QSO-uri sunt sincronizate",
       "qsosPending": "${pending} din ${total} QSO-uri așteaptă sincronizarea",
@@ -768,48 +768,48 @@
       "share": "Partajează",
       "nothingSelected": "Nimic selectat",
       "saveFiles": {
-        "one": "Salvează ${count} fișier",
-        "other": "Salvează ${count} fișiere"
+        "one": "Salvează ${n} fișier",
+        "other": "Salvează ${n} fișiere"
       },
       "shareFiles": {
-        "one": "Partajează ${count} fișier",
-        "other": "Partajează ${count} fișiere"
+        "one": "Partajează ${n} fișier",
+        "other": "Partajează ${n} fișiere"
       },
       "exportFiles": {
-        "one": "Exportă ${count} fișier",
-        "other": "Exportă ${count} fișiere"
+        "one": "Exportă ${n} fișier",
+        "other": "Exportă ${n} fișiere"
       },
       "downloadFiles": {
-        "one": "Descarcă ${count} fișier",
-        "other": "Descarcă ${count} fișiere"
+        "one": "Descarcă ${n} fișier",
+        "other": "Descarcă ${n} fișiere"
       },
       "saveCombined": {
-        "one": "Salvează ${count} fișier combinat",
-        "other": "Salvează ${count} fișiere combinate"
+        "one": "Salvează ${n} fișier combinat",
+        "other": "Salvează ${n} fișiere combinate"
       },
       "shareCombined": {
-        "one": "Partajează ${count} fișier combinat",
-        "other": "Partajează ${count} fișiere combinate"
+        "one": "Partajează ${n} fișier combinat",
+        "other": "Partajează ${n} fișiere combinate"
       },
       "exportCombined": {
-        "one": "Exportă ${count} fișier combinat",
-        "other": "Exportă ${count} fișiere combinate"
+        "one": "Exportă ${n} fișier combinat",
+        "other": "Exportă ${n} fișiere combinate"
       },
       "downloadCombined": {
-        "one": "Descarcă ${count} fișier combinat",
-        "other": "Descarcă ${count} fișiere combinate"
+        "one": "Descarcă ${n} fișier combinat",
+        "other": "Descarcă ${n} fișiere combinate"
       },
       "saveOne": "Salvează ${name}",
       "shareOne": "Partajează ${name}",
       "exportOne": "Exportă ${name}",
       "downloadOne": "Descarcă ${name}",
       "stashFiles": {
-        "one": "Trimite ${count} fișier în Stash",
-        "other": "Trimite ${count} fișiere în Stash"
+        "one": "Trimite ${n} fișier în Stash",
+        "other": "Trimite ${n} fișiere în Stash"
       },
       "stashCombined": {
-        "one": "Trimite ${count} fișier combinat în Stash",
-        "other": "Trimite ${count} fișiere combinate în Stash"
+        "one": "Trimite ${n} fișier combinat în Stash",
+        "other": "Trimite ${n} fișiere combinate în Stash"
       },
       "settingsButton": "Setări export",
       "settingsTitle": "Setări export",
@@ -827,20 +827,20 @@
       "resultTitle": "Export finalizat",
       "resultFailedTitle": "Exportul a eșuat",
       "saveSuccess": {
-        "one": "${count} fișier exportat în ${path}",
-        "other": "${count} fișiere exportate în ${path}"
+        "one": "${n} fișier exportat în ${path}",
+        "other": "${n} fișiere exportate în ${path}"
       },
       "saveSuccessNamed": {
-        "one": "${count} fișier exportat: ${path}",
-        "other": "${count} fișiere exportate: ${path}"
+        "one": "${n} fișier exportat: ${path}",
+        "other": "${n} fișiere exportate: ${path}"
       },
       "shareSuccess": {
-        "one": "${count} fișier partajat",
-        "other": "${count} fișiere partajate"
+        "one": "${n} fișier partajat",
+        "other": "${n} fișiere partajate"
       },
       "downloadSuccess": {
-        "one": "${count} fișier descărcat",
-        "other": "${count} fișiere descărcate"
+        "one": "${n} fișier descărcat",
+        "other": "${n} fișiere descărcate"
       },
       "exportFailed": "Exportul a eșuat: ${error}",
       "stash": {
@@ -860,7 +860,7 @@
         "notSent": "netrimis",
         "notArrived": {
           "one": "Acest fișier nu a ajuns:",
-          "other": "Aceste ${count} fișiere nu au ajuns:"
+          "other": "Aceste ${n} fișiere nu au ajuns:"
         },
         "emailOffer": "Sau, pentru confortul dvs., vă putem trimite un e-mail cu un link direct.",
         "emailMe": "Trimite-mi un link prin e-mail",
@@ -868,8 +868,8 @@
         "emailFailed": "Nu s-a putut trimite e-mailul: ${error}",
         "freeTier": "Conturile gratuite pot păstra un singur stash o dată. Abonații pot păstra câte doresc.",
         "sentStatus": {
-          "one": "${count} fișier trimis la Ham2K File Stash (stash.ham2k.net)",
-          "other": "${count} fișiere trimise la Ham2K File Stash (stash.ham2k.net)"
+          "one": "${n} fișier trimis la Ham2K File Stash (stash.ham2k.net)",
+          "other": "${n} fișiere trimise la Ham2K File Stash (stash.ham2k.net)"
         }
       }
     },

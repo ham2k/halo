@@ -755,8 +755,8 @@
       "syncedOperation": "운용이 동기화됨",
       "unsyncedOperation": "운용에 동기화되지 않은 변경 사항이 있음",
       "qsosInOperation": {
-        "one": "이 운용에서 ${count} QSO",
-        "other": "이 운용에서 ${count} QSO"
+        "one": "이 운용에서 ${n} QSO",
+        "other": "이 운용에서 ${n} QSO"
       },
       "qsosSynced": "QSO ${total}개 모두 동기화됨",
       "qsosPending": "QSO ${total}개 중 ${pending}개 동기화 대기 중",
@@ -768,48 +768,48 @@
       "share": "공유",
       "nothingSelected": "선택된 항목 없음",
       "saveFiles": {
-        "one": "파일 ${count}개 저장",
-        "other": "파일 ${count}개 저장"
+        "one": "파일 ${n}개 저장",
+        "other": "파일 ${n}개 저장"
       },
       "shareFiles": {
-        "one": "파일 ${count}개 공유",
-        "other": "파일 ${count}개 공유"
+        "one": "파일 ${n}개 공유",
+        "other": "파일 ${n}개 공유"
       },
       "exportFiles": {
-        "one": "파일 ${count}개 내보내기",
-        "other": "파일 ${count}개 내보내기"
+        "one": "파일 ${n}개 내보내기",
+        "other": "파일 ${n}개 내보내기"
       },
       "downloadFiles": {
-        "one": "파일 ${count}개 다운로드",
-        "other": "파일 ${count}개 다운로드"
+        "one": "파일 ${n}개 다운로드",
+        "other": "파일 ${n}개 다운로드"
       },
       "saveCombined": {
-        "one": "통합 파일 ${count}개 저장",
-        "other": "통합 파일 ${count}개 저장"
+        "one": "통합 파일 ${n}개 저장",
+        "other": "통합 파일 ${n}개 저장"
       },
       "shareCombined": {
-        "one": "통합 파일 ${count}개 공유",
-        "other": "통합 파일 ${count}개 공유"
+        "one": "통합 파일 ${n}개 공유",
+        "other": "통합 파일 ${n}개 공유"
       },
       "exportCombined": {
-        "one": "통합 파일 ${count}개 내보내기",
-        "other": "통합 파일 ${count}개 내보내기"
+        "one": "통합 파일 ${n}개 내보내기",
+        "other": "통합 파일 ${n}개 내보내기"
       },
       "downloadCombined": {
-        "one": "통합 파일 ${count}개 다운로드",
-        "other": "통합 파일 ${count}개 다운로드"
+        "one": "통합 파일 ${n}개 다운로드",
+        "other": "통합 파일 ${n}개 다운로드"
       },
       "saveOne": "${name} 저장",
       "shareOne": "${name} 공유",
       "exportOne": "${name} 내보내기",
       "downloadOne": "${name} 다운로드",
       "stashFiles": {
-        "one": "파일 ${count}개 보관",
-        "other": "파일 ${count}개 보관"
+        "one": "파일 ${n}개 보관",
+        "other": "파일 ${n}개 보관"
       },
       "stashCombined": {
-        "one": "통합 파일 ${count}개 보관",
-        "other": "통합 파일 ${count}개 보관"
+        "one": "통합 파일 ${n}개 보관",
+        "other": "통합 파일 ${n}개 보관"
       },
       "settingsButton": "내보내기 설정",
       "settingsTitle": "내보내기 설정",
@@ -827,20 +827,20 @@
       "resultTitle": "내보내기 완료",
       "resultFailedTitle": "내보내기 실패",
       "saveSuccess": {
-        "one": "파일 ${count}개를 ${path}에 내보냈습니다",
-        "other": "파일 ${count}개를 ${path}에 내보냈습니다"
+        "one": "파일 ${n}개를 ${path}에 내보냈습니다",
+        "other": "파일 ${n}개를 ${path}에 내보냈습니다"
       },
       "saveSuccessNamed": {
-        "one": "파일 ${count}개를 내보냈습니다: ${path}",
-        "other": "파일 ${count}개를 내보냈습니다: ${path}"
+        "one": "파일 ${n}개를 내보냈습니다: ${path}",
+        "other": "파일 ${n}개를 내보냈습니다: ${path}"
       },
       "shareSuccess": {
-        "one": "파일 ${count}개를 공유했습니다",
-        "other": "파일 ${count}개를 공유했습니다"
+        "one": "파일 ${n}개를 공유했습니다",
+        "other": "파일 ${n}개를 공유했습니다"
       },
       "downloadSuccess": {
-        "one": "파일 ${count}개를 다운로드했습니다",
-        "other": "파일 ${count}개를 다운로드했습니다"
+        "one": "파일 ${n}개를 다운로드했습니다",
+        "other": "파일 ${n}개를 다운로드했습니다"
       },
       "exportFailed": "내보내기 실패: ${error}",
       "stash": {
@@ -860,7 +860,7 @@
         "notSent": "보내지 않음",
         "notArrived": {
           "one": "이 파일이 도착하지 않았습니다:",
-          "other": "다음 파일 ${count}개가 도착하지 않았습니다:"
+          "other": "다음 파일 ${n}개가 도착하지 않았습니다:"
         },
         "emailOffer": "또는 해당 링크를 이메일로 보내 드릴 수 있습니다.",
         "emailMe": "링크를 이메일로 받기",
@@ -868,8 +868,8 @@
         "emailFailed": "이메일을 보낼 수 없습니다: ${error}",
         "freeTier": "무료 계정은 한 번에 하나만 보관할 수 있습니다. 구독자는 원하는 만큼 보관할 수 있습니다.",
         "sentStatus": {
-          "one": "Ham2K File Stash(stash.ham2k.net)로 파일 ${count}개를 보냈습니다",
-          "other": "Ham2K File Stash(stash.ham2k.net)로 파일 ${count}개를 보냈습니다"
+          "one": "Ham2K File Stash(stash.ham2k.net)로 파일 ${n}개를 보냈습니다",
+          "other": "Ham2K File Stash(stash.ham2k.net)로 파일 ${n}개를 보냈습니다"
         }
       }
     },

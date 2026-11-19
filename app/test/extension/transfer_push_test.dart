@@ -410,6 +410,94 @@ void main() {
 
   // Dropped, a hook that cannot list its services leaves no row: the
   // operator reads that as nothing to push there.
+  group('beyond one operation', () {
+    // The Chasing and Logs views push the whole log under their station:
+    // contacts of every operation and of none. A scope that missed one would
+    // leave the service short of a contact the operator logged; one that took
+    // another station's would send it to the wrong logbook.
+    Future<Qso> logUnder(String operationUuid, String ourCall, String theirCall) => services.qsos.add(operationUuid, {
+      'band': '20m',
+      'mode': 'CW',
+      'startAtMillis': 1794000000000,
+      'our': {'call': ourCall},
+      'their': {'call': theirCall},
+    });
+    PushServiceStatus rowFor(List<PushServiceStatus> rows, String id) => rows.singleWhere((row) => row.destination?.id == id);
+    Future<PushOutcome> pushRow(PushScope scope, PushServiceStatus row) => services.transfers.push(
+      scope,
+      PushServiceStatus(hookKey: row.hookKey, service: row.service, label: row.label, due: row.due, sent: 0, destination: row.destination),
+    );
+
+    test("the Chasing scope pushes the station's contacts logged outside any operation, and no operation's", () async {
+      final chased = await logUnder('', 'N0DEV', 'W1AW');
+      await logUnder('', 'K1OTHER', 'W2AW');
+      await logUnder(operation.uuid, 'N0DEV', 'W3AW');
+
+      const scope = ChasingPushScope('N0DEV');
+      final row = rowFor(await services.transfers.servicesFor(scope), 'N0DEV');
+      final due = row.due.singleWhere((s) => s.key == 'new');
+      expect(due.contacts.map((q) => q.uuid), [chased.uuid]);
+      expect(asQsonMap((await bench())?['asked'])?['scope'], {'kind': 'chasing', 'stationCall': 'N0DEV'});
+
+      final outcome = await pushRow(scope, row);
+      expect(outcome.sent, 1);
+      expect(transferRecordOf((await services.qsos.get(chased.uuid))!.data, 'echo:n0dev'), isNotNull);
+      expect(rowFor(await services.transfers.servicesFor(scope), 'N0DEV').completed, isTrue);
+    }, timeout: const Timeout(Duration(seconds: 90)));
+
+    test("the Logs scope pushes the callsign's whole log, every operation's and none's, deletes included", () async {
+      final other = await services.operations.create(stationCall: 'N0DEV');
+      final first = await logUnder(operation.uuid, 'N0DEV', 'W1AW');
+      final second = await logUnder(other.uuid, 'N0DEV', 'W2AW');
+      final loose = await logUnder('', 'N0DEV', 'W3AW');
+      await logUnder(other.uuid, 'K1OTHER', 'W4AW');
+
+      const scope = LogPushScope('N0DEV');
+      var row = rowFor(await services.transfers.servicesFor(scope), 'N0DEV');
+      expect(row.due.singleWhere((s) => s.key == 'new').contacts.map((q) => q.uuid), unorderedEquals([first.uuid, second.uuid, loose.uuid]));
+      expect(asQsonMap((await bench())?['asked'])?['scope'], {'kind': 'log', 'stationCall': 'N0DEV'});
+
+      for (final uuid in [operation.uuid, other.uuid]) {
+        await services.operations.setStatus(uuid, OperationStatus.completed);
+      }
+      row = rowFor(await services.transfers.servicesFor(scope), 'N0DEV');
+      await pushRow(scope, row);
+      // Each operation keeps its summary; neither is marked processed, as no
+      // operation was the one being sent.
+      for (final uuid in [operation.uuid, other.uuid]) {
+        final stored = (await services.operations.get(uuid))!;
+        expect(asQsonMap(stored.data[qsoTransferKey])?['echo:n0dev'], isNotNull);
+        expect(stored.status, OperationStatus.completed);
+      }
+
+      await services.qsos.softDelete((await services.qsos.get(second.uuid))!);
+      row = rowFor(await services.transfers.servicesFor(scope), 'N0DEV');
+      expect(row.due.singleWhere((s) => s.key == 'updates').deletes.map((q) => q.uuid), [second.uuid], reason: 'the service still holds it');
+    }, timeout: const Timeout(Duration(seconds: 90)));
+
+    test('a purged contact the service holds is still owed its delete from the Logs view', () async {
+      // Purged test contacts stay as tombstones until sync carries them; the
+      // operation and Chasing scopes send their deletes, and a Logs push that
+      // left them out would leave them at the service for good.
+      const scope = LogPushScope('N0DEV/T');
+      final test = await logUnder('', 'N0DEV/T', 'W1AW');
+      await pushRow(scope, rowFor(await services.transfers.servicesFor(scope), 'N0DEV/T'));
+
+      expect(await services.qsos.purgeQsos([test.uuid]), 1);
+      final row = rowFor(await services.transfers.servicesFor(scope), 'N0DEV/T');
+      expect(row.due.singleWhere((s) => s.key == 'updates').deletes.map((q) => q.uuid), [test.uuid]);
+    }, timeout: const Timeout(Duration(seconds: 90)));
+
+    test('the Logs scope over every callsign offers each its own logbook', () async {
+      await logUnder(operation.uuid, 'N0DEV', 'W1AW');
+      await logUnder('', 'N0TWO', 'W2AW');
+
+      final rows = await services.transfers.servicesFor(const LogPushScope(null));
+      expect(rows.map((row) => row.destination?.id), unorderedEquals(['N0DEV', 'N0TWO-A', 'N0TWO-B']));
+      expect(asQsonMap((await bench())?['asked'])?['scope'], {'kind': 'log'});
+    }, timeout: const Timeout(Duration(seconds: 90)));
+  });
+
   test('a hook that cannot list its services shows its error in a row of its own', () async {
     await services.extensions.setDevBundles({
       'echo': (source: _echo, info: const ExtensionInfo(key: 'echo', file: 'echo.js', source: ExtensionSource.dev, core: true, name: 'Echo')),

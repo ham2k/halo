@@ -25,6 +25,7 @@ import '../services/map_preferences.dart' show MapScope;
 import '../services/settings_service.dart';
 import '../settings/core_settings_groups.dart' show MapSettingsGroup;
 import '../services/status_bar_service.dart';
+import '../services/transfer_service.dart' show LogPushScope;
 import '../settings/settings_target_dialog.dart';
 import '../tools/log_find_query.dart';
 import '../tools/operation_title.dart';
@@ -1254,6 +1255,9 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
       operations: operations,
       stashTitle: stashTitle,
       title: t.operation.export.logTitle,
+      // The whole log under the callsign filter, whatever the period or
+      // search: what the service should hold is not what is on screen.
+      pushScope: LogPushScope(call),
       // A log spanning operations is no program's submission: those come
       // from each operation's own Exports.
       fullAdifOnly: true,

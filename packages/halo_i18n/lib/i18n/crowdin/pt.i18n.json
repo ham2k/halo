@@ -755,8 +755,8 @@
       "syncedOperation": "A operação está sincronizada",
       "unsyncedOperation": "A operação tem alterações não sincronizadas",
       "qsosInOperation": {
-        "one": "${count} QSO nesta operação",
-        "other": "${count} QSOs nesta operação"
+        "one": "${n} QSO nesta operação",
+        "other": "${n} QSOs nesta operação"
       },
       "qsosSynced": "Todos os ${total} QSOs estão sincronizados",
       "qsosPending": "${pending} de ${total} QSOs por sincronizar",
@@ -768,48 +768,48 @@
       "share": "Partilhar",
       "nothingSelected": "Nada selecionado",
       "saveFiles": {
-        "one": "Guardar ${count} ficheiro",
-        "other": "Guardar ${count} ficheiros"
+        "one": "Guardar ${n} ficheiro",
+        "other": "Guardar ${n} ficheiros"
       },
       "shareFiles": {
-        "one": "Partilhar ${count} ficheiro",
-        "other": "Partilhar ${count} ficheiros"
+        "one": "Partilhar ${n} ficheiro",
+        "other": "Partilhar ${n} ficheiros"
       },
       "exportFiles": {
-        "one": "Exportar ${count} ficheiro",
-        "other": "Exportar ${count} ficheiros"
+        "one": "Exportar ${n} ficheiro",
+        "other": "Exportar ${n} ficheiros"
       },
       "downloadFiles": {
-        "one": "Descarregar ${count} ficheiro",
-        "other": "Descarregar ${count} ficheiros"
+        "one": "Descarregar ${n} ficheiro",
+        "other": "Descarregar ${n} ficheiros"
       },
       "saveCombined": {
-        "one": "Guardar ${count} ficheiro combinado",
-        "other": "Guardar ${count} ficheiros combinados"
+        "one": "Guardar ${n} ficheiro combinado",
+        "other": "Guardar ${n} ficheiros combinados"
       },
       "shareCombined": {
-        "one": "Partilhar ${count} ficheiro combinado",
-        "other": "Partilhar ${count} ficheiros combinados"
+        "one": "Partilhar ${n} ficheiro combinado",
+        "other": "Partilhar ${n} ficheiros combinados"
       },
       "exportCombined": {
-        "one": "Exportar ${count} ficheiro combinado",
-        "other": "Exportar ${count} ficheiros combinados"
+        "one": "Exportar ${n} ficheiro combinado",
+        "other": "Exportar ${n} ficheiros combinados"
       },
       "downloadCombined": {
-        "one": "Descarregar ${count} ficheiro combinado",
-        "other": "Descarregar ${count} ficheiros combinados"
+        "one": "Descarregar ${n} ficheiro combinado",
+        "other": "Descarregar ${n} ficheiros combinados"
       },
       "saveOne": "Guardar ${name}",
       "shareOne": "Partilhar ${name}",
       "exportOne": "Exportar ${name}",
       "downloadOne": "Descarregar ${name}",
       "stashFiles": {
-        "one": "Arquivar ${count} ficheiro",
-        "other": "Arquivar ${count} ficheiros"
+        "one": "Arquivar ${n} ficheiro",
+        "other": "Arquivar ${n} ficheiros"
       },
       "stashCombined": {
-        "one": "Arquivar ${count} ficheiro combinado",
-        "other": "Arquivar ${count} ficheiros combinados"
+        "one": "Arquivar ${n} ficheiro combinado",
+        "other": "Arquivar ${n} ficheiros combinados"
       },
       "settingsButton": "Configurações de exportação",
       "settingsTitle": "Configurações de Exportação",
@@ -827,20 +827,20 @@
       "resultTitle": "Exportação concluída",
       "resultFailedTitle": "A exportação falhou",
       "saveSuccess": {
-        "one": "${count} ficheiro exportado para ${path}",
-        "other": "${count} ficheiros exportados para ${path}"
+        "one": "${n} ficheiro exportado para ${path}",
+        "other": "${n} ficheiros exportados para ${path}"
       },
       "saveSuccessNamed": {
-        "one": "${count} ficheiro exportado: ${path}",
-        "other": "${count} ficheiros exportados: ${path}"
+        "one": "${n} ficheiro exportado: ${path}",
+        "other": "${n} ficheiros exportados: ${path}"
       },
       "shareSuccess": {
-        "one": "${count} ficheiro partilhado",
-        "other": "${count} ficheiros partilhados"
+        "one": "${n} ficheiro partilhado",
+        "other": "${n} ficheiros partilhados"
       },
       "downloadSuccess": {
-        "one": "${count} ficheiro descarregado",
-        "other": "${count} ficheiros descarregados"
+        "one": "${n} ficheiro descarregado",
+        "other": "${n} ficheiros descarregados"
       },
       "exportFailed": "A exportação falhou: ${error}",
       "stash": {
@@ -860,7 +860,7 @@
         "notSent": "não enviado",
         "notArrived": {
           "one": "Este ficheiro não chegou:",
-          "other": "Estes ${count} ficheiros não chegaram:"
+          "other": "Estes ${n} ficheiros não chegaram:"
         },
         "emailOffer": "Ou, para sua conveniência, podemos enviar-lhe um email com um link direto.",
         "emailMe": "Enviar-me um Link por Email",
@@ -868,8 +868,8 @@
         "emailFailed": "Não foi possível enviar o email: ${error}",
         "freeTier": "As contas gratuitas só podem manter um stash de cada vez. Os subscritores podem manter quantos quiserem.",
         "sentStatus": {
-          "one": "${count} ficheiro enviado para o Ham2K File Stash (stash.ham2k.net)",
-          "other": "${count} ficheiros enviados para o Ham2K File Stash (stash.ham2k.net)"
+          "one": "${n} ficheiro enviado para o Ham2K File Stash (stash.ham2k.net)",
+          "other": "${n} ficheiros enviados para o Ham2K File Stash (stash.ham2k.net)"
         }
       }
     },

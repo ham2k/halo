@@ -90,7 +90,7 @@ class _StashSentDialogState extends State<StashSentDialog> {
           if (widget.failures.isNotEmpty) ...[
             const SizedBox(height: Space.lg),
             Text(
-              [s.notArrived(count: widget.failures.length), ...widget.failures].join('\n'),
+              [s.notArrived(count: widget.failures.length, n: formatNumber(widget.failures.length)), ...widget.failures].join('\n'),
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
             ),
           ],

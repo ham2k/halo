@@ -755,8 +755,8 @@
       "syncedOperation": "Aktivita je synchronizována",
       "unsyncedOperation": "Aktivita má nesynchronizované změny",
       "qsosInOperation": {
-        "one": "${count} QSO v této aktivitě",
-        "other": "${count} QSO v této aktivitě"
+        "one": "${n} QSO v této aktivitě",
+        "other": "${n} QSO v této aktivitě"
       },
       "qsosSynced": "Všech ${total} QSO je synchronizováno",
       "qsosPending": "${pending} z ${total} QSO čeká na synchronizaci",
@@ -768,48 +768,48 @@
       "share": "Sdílet",
       "nothingSelected": "Nic není vybráno",
       "saveFiles": {
-        "one": "Uložit ${count} soubor",
-        "other": "Uložit ${count} souborů"
+        "one": "Uložit ${n} soubor",
+        "other": "Uložit ${n} souborů"
       },
       "shareFiles": {
-        "one": "Sdílet ${count} soubor",
-        "other": "Sdílet ${count} souborů"
+        "one": "Sdílet ${n} soubor",
+        "other": "Sdílet ${n} souborů"
       },
       "exportFiles": {
-        "one": "Exportovat ${count} soubor",
-        "other": "Exportovat ${count} souborů"
+        "one": "Exportovat ${n} soubor",
+        "other": "Exportovat ${n} souborů"
       },
       "downloadFiles": {
-        "one": "Stáhnout ${count} soubor",
-        "other": "Stáhnout ${count} souborů"
+        "one": "Stáhnout ${n} soubor",
+        "other": "Stáhnout ${n} souborů"
       },
       "saveCombined": {
-        "one": "Uložit ${count} sloučený soubor",
-        "other": "Uložit ${count} sloučených souborů"
+        "one": "Uložit ${n} sloučený soubor",
+        "other": "Uložit ${n} sloučených souborů"
       },
       "shareCombined": {
-        "one": "Sdílet ${count} sloučený soubor",
-        "other": "Sdílet ${count} sloučených souborů"
+        "one": "Sdílet ${n} sloučený soubor",
+        "other": "Sdílet ${n} sloučených souborů"
       },
       "exportCombined": {
-        "one": "Exportovat ${count} sloučený soubor",
-        "other": "Exportovat ${count} sloučených souborů"
+        "one": "Exportovat ${n} sloučený soubor",
+        "other": "Exportovat ${n} sloučených souborů"
       },
       "downloadCombined": {
-        "one": "Stáhnout ${count} sloučený soubor",
-        "other": "Stáhnout ${count} sloučených souborů"
+        "one": "Stáhnout ${n} sloučený soubor",
+        "other": "Stáhnout ${n} sloučených souborů"
       },
       "saveOne": "Uložit ${name}",
       "shareOne": "Sdílet ${name}",
       "exportOne": "Exportovat ${name}",
       "downloadOne": "Stáhnout ${name}",
       "stashFiles": {
-        "one": "Uschovat ${count} soubor",
-        "other": "Uschovat ${count} souborů"
+        "one": "Uschovat ${n} soubor",
+        "other": "Uschovat ${n} souborů"
       },
       "stashCombined": {
-        "one": "Uschovat ${count} sloučený soubor",
-        "other": "Uschovat ${count} sloučených souborů"
+        "one": "Uschovat ${n} sloučený soubor",
+        "other": "Uschovat ${n} sloučených souborů"
       },
       "settingsButton": "Nastavení exportu",
       "settingsTitle": "Nastavení exportu",
@@ -827,20 +827,20 @@
       "resultTitle": "Export dokončen",
       "resultFailedTitle": "Export selhal",
       "saveSuccess": {
-        "one": "Exportován ${count} soubor do ${path}",
-        "other": "Exportováno ${count} souborů do ${path}"
+        "one": "Exportován ${n} soubor do ${path}",
+        "other": "Exportováno ${n} souborů do ${path}"
       },
       "saveSuccessNamed": {
-        "one": "Exportován ${count} soubor: ${path}",
-        "other": "Exportováno ${count} souborů: ${path}"
+        "one": "Exportován ${n} soubor: ${path}",
+        "other": "Exportováno ${n} souborů: ${path}"
       },
       "shareSuccess": {
-        "one": "Sdílen ${count} soubor",
-        "other": "Sdíleno ${count} souborů"
+        "one": "Sdílen ${n} soubor",
+        "other": "Sdíleno ${n} souborů"
       },
       "downloadSuccess": {
-        "one": "Stažen ${count} soubor",
-        "other": "Staženo ${count} souborů"
+        "one": "Stažen ${n} soubor",
+        "other": "Staženo ${n} souborů"
       },
       "exportFailed": "Export selhal: ${error}",
       "stash": {
@@ -860,7 +860,7 @@
         "notSent": "neodesláno",
         "notArrived": {
           "one": "Tento soubor nedorazil:",
-          "other": "Těchto ${count} souborů nedorazilo:"
+          "other": "Těchto ${n} souborů nedorazilo:"
         },
         "emailOffer": "Nebo vám pro vaše pohodlí můžeme poslat e-mail s přímým odkazem.",
         "emailMe": "Poslat mi odkaz e-mailem",
@@ -868,8 +868,8 @@
         "emailFailed": "E-mail se nepodařilo odeslat: ${error}",
         "freeTier": "Bezplatné účty mohou mít najednou pouze jednu úschovu. Předplatitelé jich mohou mít, kolik chtějí.",
         "sentStatus": {
-          "one": "${count} soubor odeslán do Ham2K File Stash (stash.ham2k.net)",
-          "other": "${count} souborů odesláno do Ham2K File Stash (stash.ham2k.net)"
+          "one": "${n} soubor odeslán do Ham2K File Stash (stash.ham2k.net)",
+          "other": "${n} souborů odesláno do Ham2K File Stash (stash.ham2k.net)"
         }
       }
     },

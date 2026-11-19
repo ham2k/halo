@@ -2007,9 +2007,9 @@ class _Translations$operation$export$qrp extends Translations$operation$export$e
 
 	// Translations
 	@override String get title => 'operation exports';
-	@override String titleWithCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'operation exports: ${count} qso',
-		other: 'operation exports: ${count} qsos',
+	@override String titleWithCount({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'operation exports: ${n} qso',
+		other: 'operation exports: ${n} qsos',
 	);
 	@override String get logTitle => 'log exports';
 	@override String get chaseTitle => 'chasing exports';
@@ -2021,13 +2021,18 @@ class _Translations$operation$export$qrp extends Translations$operation$export$e
 	@override String get syncNotRun => 'sync didn\'t run. check ham2k cloud sync in settings.';
 	@override String get syncedOperation => 'operation is synced';
 	@override String get unsyncedOperation => 'operation has unsynced changes';
-	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: '${count} qso in this operation',
-		other: '${count} qsos in this operation',
+	@override String qsosInOperation({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${n} qso in this operation',
+		other: '${n} qsos in this operation',
 	);
-	@override String qsosToExport({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: '${count} qso to be exported',
-		other: '${count} qsos to be exported',
+	@override String qsosToExport({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${n} qso to be exported',
+		other: '${n} qsos to be exported',
+	);
+	@override String get progressTitle => 'exporting';
+	@override String progressCount({required num count, required Object done, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${done} of ${n} qso',
+		other: '${done} of ${n} qsos',
 	);
 	@override String qsosSynced({required Object total}) => 'all ${total} qsos are synced';
 	@override String qsosPending({required Object pending, required Object total}) => '${pending} of ${total} qsos pending sync';
@@ -2038,69 +2043,69 @@ class _Translations$operation$export$qrp extends Translations$operation$export$e
 	@override String get nothingLogged => 'nothing to export yet — this operation has no qsos.';
 	@override String get share => 'share';
 	@override String get nothingSelected => 'nothing selected';
-	@override String saveFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'save ${count} file',
-		other: 'save ${count} files',
+	@override String saveFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'save ${n} file',
+		other: 'save ${n} files',
 	);
-	@override String shareFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'share ${count} file',
-		other: 'share ${count} files',
+	@override String shareFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'share ${n} file',
+		other: 'share ${n} files',
 	);
-	@override String exportFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'export ${count} file',
-		other: 'export ${count} files',
+	@override String exportFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'export ${n} file',
+		other: 'export ${n} files',
 	);
-	@override String downloadFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'download ${count} file',
-		other: 'download ${count} files',
+	@override String downloadFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'download ${n} file',
+		other: 'download ${n} files',
 	);
-	@override String saveCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'save combined ${count} file',
-		other: 'save combined ${count} files',
+	@override String saveCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'save combined ${n} file',
+		other: 'save combined ${n} files',
 	);
-	@override String saveAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'save ${count} file',
-		other: 'save all ${count} files',
+	@override String saveAll({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'save ${n} file',
+		other: 'save all ${n} files',
 	);
-	@override String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'share combined ${count} file',
-		other: 'share combined ${count} files',
+	@override String shareCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'share combined ${n} file',
+		other: 'share combined ${n} files',
 	);
-	@override String shareAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'share ${count} file',
-		other: 'share all ${count} files',
+	@override String shareAll({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'share ${n} file',
+		other: 'share all ${n} files',
 	);
-	@override String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'export combined ${count} file',
-		other: 'export combined ${count} files',
+	@override String exportCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'export combined ${n} file',
+		other: 'export combined ${n} files',
 	);
-	@override String exportAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'export ${count} file',
-		other: 'export all ${count} files',
+	@override String exportAll({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'export ${n} file',
+		other: 'export all ${n} files',
 	);
-	@override String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'download combined ${count} file',
-		other: 'download combined ${count} files',
+	@override String downloadCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'download combined ${n} file',
+		other: 'download combined ${n} files',
 	);
-	@override String downloadAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'download ${count} file',
-		other: 'download all ${count} files',
+	@override String downloadAll({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'download ${n} file',
+		other: 'download all ${n} files',
 	);
 	@override String saveOne({required Object name}) => 'save ${name}';
 	@override String shareOne({required Object name}) => 'share ${name}';
 	@override String exportOne({required Object name}) => 'export ${name}';
 	@override String downloadOne({required Object name}) => 'download ${name}';
-	@override String stashFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'stash ${count} file',
-		other: 'stash ${count} files',
+	@override String stashFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'stash ${n} file',
+		other: 'stash ${n} files',
 	);
-	@override String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'stash combined ${count} file',
-		other: 'stash combined ${count} files',
+	@override String stashCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'stash combined ${n} file',
+		other: 'stash combined ${n} files',
 	);
-	@override String stashAll({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'stash ${count} file',
-		other: 'stash all ${count} files',
+	@override String stashAll({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'stash ${n} file',
+		other: 'stash all ${n} files',
 	);
 	@override String get settingsButton => 'export settings';
 	@override String get settingsTitle => 'export settings';
@@ -2108,21 +2113,21 @@ class _Translations$operation$export$qrp extends Translations$operation$export$e
 	@override late final _Translations$operation$export$includePrivateData$qrp includePrivateData = _Translations$operation$export$includePrivateData$qrp._(_root);
 	@override String get resultTitle => 'export complete';
 	@override String get resultFailedTitle => 'export failed';
-	@override String saveSuccess({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'exported ${count} file to ${path}',
-		other: 'exported ${count} files to ${path}',
+	@override String saveSuccess({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'exported ${n} file to ${path}',
+		other: 'exported ${n} files to ${path}',
 	);
-	@override String saveSuccessNamed({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'exported ${count} file: ${path}',
-		other: 'exported ${count} files: ${path}',
+	@override String saveSuccessNamed({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'exported ${n} file: ${path}',
+		other: 'exported ${n} files: ${path}',
 	);
-	@override String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'shared ${count} file',
-		other: 'shared ${count} files',
+	@override String shareSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'shared ${n} file',
+		other: 'shared ${n} files',
 	);
-	@override String downloadSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'downloaded ${count} file',
-		other: 'downloaded ${count} files',
+	@override String downloadSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'downloaded ${n} file',
+		other: 'downloaded ${n} files',
 	);
 	@override String exportFailed({required Object error}) => 'export failed: ${error}';
 	@override late final _Translations$operation$export$stash$qrp stash = _Translations$operation$export$stash$qrp._(_root);
@@ -4276,18 +4281,18 @@ class _Translations$operation$export$stash$qrp extends Translations$operation$ex
 	);
 	@override String get mayHaveArrived => 'no answer from the stash — the file may have arrived anyway. check stash.ham2k.net before sending again';
 	@override String get notSent => 'not sent';
-	@override String notArrived({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+	@override String notArrived({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
 		one: 'this file didn’t arrive:',
-		other: 'these ${count} files didn’t arrive:',
+		other: 'these ${n} files didn’t arrive:',
 	);
 	@override String get emailOffer => 'or for your convenience, we can send you an email with a direct link.';
 	@override String get emailMe => 'email me a link';
 	@override String get emailSent => 'we’ve emailed you a download link.';
 	@override String emailFailed({required Object error}) => 'couldn’t send the email: ${error}';
 	@override String get freeTier => 'free accounts can only keep one stash at a time. subscribers can keep as many as they want.';
-	@override String sentStatus({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: 'sent ${count} file to ham2k’s file stash (stash.ham2k.net)',
-		other: 'sent ${count} files to ham2k’s file stash (stash.ham2k.net)',
+	@override String sentStatus({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'sent ${n} file to ham2k’s file stash (stash.ham2k.net)',
+		other: 'sent ${n} files to ham2k’s file stash (stash.ham2k.net)',
 	);
 }
 
@@ -4299,25 +4304,26 @@ class _Translations$operation$export$push$qrp extends Translations$operation$exp
 
 	// Translations
 	@override String get title => 'sync & push to services';
-	@override String toSend({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: '${count} qso to send',
-		other: '${count} qsos to send',
+	@override String get pushOnlyTitle => 'push to services';
+	@override String toSend({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${n} qso to send',
+		other: '${n} qsos to send',
 	);
-	@override String toDelete({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: '${count} to remove',
-		other: '${count} to remove',
+	@override String toDelete({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${n} to remove',
+		other: '${n} to remove',
 	);
-	@override String toSendTo({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: '${count} qso to send to ${destination}',
-		other: '${count} qsos to send to ${destination}',
+	@override String toSendTo({required num count, required Object n, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${n} qso to send to ${destination}',
+		other: '${n} qsos to send to ${destination}',
 	);
-	@override String allSent({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: '${count} qso sent',
-		other: 'all ${count} qsos sent',
+	@override String allSent({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${n} qso sent',
+		other: 'all ${n} qsos sent',
 	);
-	@override String allSentTo({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: '${count} qso sent to ${destination}',
-		other: 'all ${count} qsos sent to ${destination}',
+	@override String allSentTo({required num count, required Object n, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${n} qso sent to ${destination}',
+		other: 'all ${n} qsos sent to ${destination}',
 	);
 	@override String get nothingToSend => 'nothing to send';
 	@override String get done => 'done';
@@ -4326,9 +4332,9 @@ class _Translations$operation$export$push$qrp extends Translations$operation$exp
 	@override String get button => 'push';
 	@override String buttonFor({required Object name}) => 'push: ${name}';
 	@override String progress({required Object done, required Object total}) => 'pushing ${done} of ${total}…';
-	@override String failed({required num count, required Object error}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: '${count} failed: ${error}',
-		other: '${count} failed, the first: ${error}',
+	@override String failed({required num count, required Object n, required Object error}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${n} failed: ${error}',
+		other: '${n} failed, the first: ${error}',
 	);
 	@override String pushFailed({required Object error}) => 'push failed: ${error}';
 	@override String get timedOut => 'the service took too long to answer, so the push stopped. push again to finish.';
@@ -6131,7 +6137,7 @@ extension on TranslationsQrp {
 			'operation.layout.htmlPanelUnsupported' => 'this panel needs a web view, which this platform does not provide',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'this panel needs a sandbox the web version cannot provide',
 			'operation.export.title' => 'operation exports',
-			'operation.export.titleWithCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'operation exports: ${count} qso', other: 'operation exports: ${count} qsos', ), 
+			'operation.export.titleWithCount' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'operation exports: ${n} qso', other: 'operation exports: ${n} qsos', ), 
 			'operation.export.logTitle' => 'log exports',
 			'operation.export.chaseTitle' => 'chasing exports',
 			'operation.export.filesTitle' => 'file exports',
@@ -6142,8 +6148,10 @@ extension on TranslationsQrp {
 			'operation.export.syncNotRun' => 'sync didn\'t run. check ham2k cloud sync in settings.',
 			'operation.export.syncedOperation' => 'operation is synced',
 			'operation.export.unsyncedOperation' => 'operation has unsynced changes',
-			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} qso in this operation', other: '${count} qsos in this operation', ), 
-			'operation.export.qsosToExport' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} qso to be exported', other: '${count} qsos to be exported', ), 
+			'operation.export.qsosInOperation' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${n} qso in this operation', other: '${n} qsos in this operation', ), 
+			'operation.export.qsosToExport' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${n} qso to be exported', other: '${n} qsos to be exported', ), 
+			'operation.export.progressTitle' => 'exporting',
+			'operation.export.progressCount' => ({required num count, required Object done, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${done} of ${n} qso', other: '${done} of ${n} qsos', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => 'all ${total} qsos are synced',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} of ${total} qsos pending sync',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} event markers synced',
@@ -6153,25 +6161,25 @@ extension on TranslationsQrp {
 			'operation.export.nothingLogged' => 'nothing to export yet — this operation has no qsos.',
 			'operation.export.share' => 'share',
 			'operation.export.nothingSelected' => 'nothing selected',
-			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'save ${count} file', other: 'save ${count} files', ), 
-			'operation.export.shareFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'share ${count} file', other: 'share ${count} files', ), 
-			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'export ${count} file', other: 'export ${count} files', ), 
-			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'download ${count} file', other: 'download ${count} files', ), 
-			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'save combined ${count} file', other: 'save combined ${count} files', ), 
-			'operation.export.saveAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'save ${count} file', other: 'save all ${count} files', ), 
-			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'share combined ${count} file', other: 'share combined ${count} files', ), 
-			'operation.export.shareAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'share ${count} file', other: 'share all ${count} files', ), 
-			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'export combined ${count} file', other: 'export combined ${count} files', ), 
-			'operation.export.exportAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'export ${count} file', other: 'export all ${count} files', ), 
-			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'download combined ${count} file', other: 'download combined ${count} files', ), 
-			'operation.export.downloadAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'download ${count} file', other: 'download all ${count} files', ), 
+			'operation.export.saveFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'save ${n} file', other: 'save ${n} files', ), 
+			'operation.export.shareFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'share ${n} file', other: 'share ${n} files', ), 
+			'operation.export.exportFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'export ${n} file', other: 'export ${n} files', ), 
+			'operation.export.downloadFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'download ${n} file', other: 'download ${n} files', ), 
+			'operation.export.saveCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'save combined ${n} file', other: 'save combined ${n} files', ), 
+			'operation.export.saveAll' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'save ${n} file', other: 'save all ${n} files', ), 
+			'operation.export.shareCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'share combined ${n} file', other: 'share combined ${n} files', ), 
+			'operation.export.shareAll' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'share ${n} file', other: 'share all ${n} files', ), 
+			'operation.export.exportCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'export combined ${n} file', other: 'export combined ${n} files', ), 
+			'operation.export.exportAll' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'export ${n} file', other: 'export all ${n} files', ), 
+			'operation.export.downloadCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'download combined ${n} file', other: 'download combined ${n} files', ), 
+			'operation.export.downloadAll' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'download ${n} file', other: 'download all ${n} files', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'save ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'share ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'export ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'download ${name}',
-			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'stash ${count} file', other: 'stash ${count} files', ), 
-			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'stash combined ${count} file', other: 'stash combined ${count} files', ), 
-			'operation.export.stashAll' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'stash ${count} file', other: 'stash all ${count} files', ), 
+			'operation.export.stashFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'stash ${n} file', other: 'stash ${n} files', ), 
+			'operation.export.stashCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'stash combined ${n} file', other: 'stash combined ${n} files', ), 
+			'operation.export.stashAll' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'stash ${n} file', other: 'stash all ${n} files', ), 
 			'operation.export.settingsButton' => 'export settings',
 			'operation.export.settingsTitle' => 'export settings',
 			'operation.export.compactFileNames.title' => 'use compact file names',
@@ -6183,10 +6191,10 @@ extension on TranslationsQrp {
 			'operation.export.includePrivateData.note' => 'the full adif export always includes everything',
 			'operation.export.resultTitle' => 'export complete',
 			'operation.export.resultFailedTitle' => 'export failed',
-			'operation.export.saveSuccess' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'exported ${count} file to ${path}', other: 'exported ${count} files to ${path}', ), 
-			'operation.export.saveSuccessNamed' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'exported ${count} file: ${path}', other: 'exported ${count} files: ${path}', ), 
-			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'shared ${count} file', other: 'shared ${count} files', ), 
-			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'downloaded ${count} file', other: 'downloaded ${count} files', ), 
+			'operation.export.saveSuccess' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'exported ${n} file to ${path}', other: 'exported ${n} files to ${path}', ), 
+			'operation.export.saveSuccessNamed' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'exported ${n} file: ${path}', other: 'exported ${n} files: ${path}', ), 
+			'operation.export.shareSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'shared ${n} file', other: 'shared ${n} files', ), 
+			'operation.export.downloadSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'downloaded ${n} file', other: 'downloaded ${n} files', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'export failed: ${error}',
 			'operation.export.stash.needsEmailTitle' => 'add an email address first',
 			'operation.export.stash.needsEmailBody' => 'ham2k’s file stash sends your files to the email address on your lofi account, and you sign in with it at stash.ham2k.net. your account doesn’t have a confirmed one yet — add it in settings › cloud sync.',
@@ -6199,19 +6207,20 @@ extension on TranslationsQrp {
 			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'you can retrieve this file by visiting **[stash.ham2k.net](https://stash.ham2k.net)** on any browser.', other: 'you can retrieve these files by visiting **[stash.ham2k.net](https://stash.ham2k.net)** on any browser.', ), 
 			'operation.export.stash.mayHaveArrived' => 'no answer from the stash — the file may have arrived anyway. check stash.ham2k.net before sending again',
 			'operation.export.stash.notSent' => 'not sent',
-			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'this file didn’t arrive:', other: 'these ${count} files didn’t arrive:', ), 
+			'operation.export.stash.notArrived' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'this file didn’t arrive:', other: 'these ${n} files didn’t arrive:', ), 
 			'operation.export.stash.emailOffer' => 'or for your convenience, we can send you an email with a direct link.',
 			'operation.export.stash.emailMe' => 'email me a link',
 			'operation.export.stash.emailSent' => 'we’ve emailed you a download link.',
 			'operation.export.stash.emailFailed' => ({required Object error}) => 'couldn’t send the email: ${error}',
 			'operation.export.stash.freeTier' => 'free accounts can only keep one stash at a time. subscribers can keep as many as they want.',
-			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'sent ${count} file to ham2k’s file stash (stash.ham2k.net)', other: 'sent ${count} files to ham2k’s file stash (stash.ham2k.net)', ), 
+			'operation.export.stash.sentStatus' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'sent ${n} file to ham2k’s file stash (stash.ham2k.net)', other: 'sent ${n} files to ham2k’s file stash (stash.ham2k.net)', ), 
 			'operation.export.push.title' => 'sync & push to services',
-			'operation.export.push.toSend' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} qso to send', other: '${count} qsos to send', ), 
-			'operation.export.push.toDelete' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} to remove', other: '${count} to remove', ), 
-			'operation.export.push.toSendTo' => ({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} qso to send to ${destination}', other: '${count} qsos to send to ${destination}', ), 
-			'operation.export.push.allSent' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} qso sent', other: 'all ${count} qsos sent', ), 
-			'operation.export.push.allSentTo' => ({required num count, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} qso sent to ${destination}', other: 'all ${count} qsos sent to ${destination}', ), 
+			'operation.export.push.pushOnlyTitle' => 'push to services',
+			'operation.export.push.toSend' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${n} qso to send', other: '${n} qsos to send', ), 
+			'operation.export.push.toDelete' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${n} to remove', other: '${n} to remove', ), 
+			'operation.export.push.toSendTo' => ({required num count, required Object n, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${n} qso to send to ${destination}', other: '${n} qsos to send to ${destination}', ), 
+			'operation.export.push.allSent' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${n} qso sent', other: 'all ${n} qsos sent', ), 
+			'operation.export.push.allSentTo' => ({required num count, required Object n, required Object destination}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${n} qso sent to ${destination}', other: 'all ${n} qsos sent to ${destination}', ), 
 			'operation.export.push.nothingToSend' => 'nothing to send',
 			'operation.export.push.done' => 'done',
 			'operation.export.push.pending' => ({required Object count}) => '${count} pending',
@@ -6219,7 +6228,7 @@ extension on TranslationsQrp {
 			'operation.export.push.button' => 'push',
 			'operation.export.push.buttonFor' => ({required Object name}) => 'push: ${name}',
 			'operation.export.push.progress' => ({required Object done, required Object total}) => 'pushing ${done} of ${total}…',
-			'operation.export.push.failed' => ({required num count, required Object error}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} failed: ${error}', other: '${count} failed, the first: ${error}', ), 
+			'operation.export.push.failed' => ({required num count, required Object n, required Object error}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${n} failed: ${error}', other: '${n} failed, the first: ${error}', ), 
 			'operation.export.push.pushFailed' => ({required Object error}) => 'push failed: ${error}',
 			'operation.export.push.timedOut' => 'the service took too long to answer, so the push stopped. push again to finish.',
 			'operation.export.push.loadFailed' => ({required Object error}) => 'couldn\'t check the services: ${error}',
@@ -6430,11 +6439,11 @@ extension on TranslationsQrp {
 			'activitiesView.searchHint' => 'search by name, reference or anything else…',
 			'activitiesView.noSuggestions' => 'no matches',
 			'activitiesView.noSuggestionsHint' => 'search by reference name or number above',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.noSuggestionsExample' => '(for example \'trail\' or \'4556\')',
 			'activitiesView.allOptions' => 'activity types',
 			'activitiesView.determiningLocation' => 'determining current location…\nwaiting for gps fix to find nearby references',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.locationUnavailableTitle' => 'location data not available',
 			'activitiesView.locationDeniedTitle' => 'location permission denied',
 			'activitiesView.locationBlockedTitle' => 'location permission blocked',
@@ -6944,11 +6953,11 @@ extension on TranslationsQrp {
 			'settings.radio.cwMessages.helpFullExample' => 'full example:',
 			'settings.radio.cwMessages.helpExample' => 'sends w1aw 5nn tt7',
 			'settings.radio.cwMessages.helpEsmIntro' => 'with enter sends messages on, enter keys messages by their function key, as n1mm does. the esm messages set starts with these:',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmCq' => 'running, enter with the call field empty calls cq',
 			'settings.radio.cwMessages.helpEsmExchange' => 'your exchange: after their call when running, after they answer in s&p',
 			'settings.radio.cwMessages.helpEsmThanks' => 'thanks, once the contact has logged: qso is the contact as logged, next the one up next',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmMyCall' => 'in s&p, your call to the station you are answering',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'running, their call ahead of your exchange',
 			'settings.radio.cwMessages.helpEsmAgain' => 'asks again when nothing of their exchange was copied',
@@ -7458,11 +7467,11 @@ extension on TranslationsQrp {
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'the radio refused a dax iq stream (error ${code})',
 			'settings.station.spectrumNoUdp' => 'the radio\'s spectrum data cannot reach this device',
 			'settings.station.spectrumTciNoIq' => 'no iq is coming from the tci server. thetis sends it from version 2.10.3.13 on.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.spectrumK4Unavailable' => 'cannot receive the k4’s lan spectrum. retrying…',
 			'settings.station.spectrumK4RemoteUnavailable' => 'cannot receive the k4’s remote spectrum',
 			'settings.station.spectrumScopeRefused' => 'the radio refused its scope commands',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumOutOfRange' => 'the radio\'s scope is set outside the range it can show',
 			'settings.station.spectrumBandUnsupported' => 'the radio\'s scope cannot be shown on this band',
 			'settings.station.spectrumCropped' => ({required Object why}) => 'cropped from a wider sweep. ${why}',
@@ -7972,11 +7981,11 @@ extension on TranslationsQrp {
 			'settings.station.switchPortInhibitedHint' => 'transmit inhibited',
 			'settings.station.rotatorAxes' => 'axes',
 			'settings.station.rotatorAxesDescription' => 'whether the rotator turns in azimuth only, or in elevation too (a g-5500 or similar).',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorAxesAzimuth' => 'azimuth only',
 			'settings.station.rotatorAxesAzimuthElevation' => 'azimuth and elevation',
 			'settings.station.rotatorAzimuthOffset' => 'azimuth offset',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorAzimuthOffsetDescription' => 'degrees to add to what the controller reads, when its zero is not true north. turns are corrected to match.',
 			'settings.station.rotatorElevationOffset' => 'elevation offset',
 			'settings.station.rotatorAzimuthMin' => 'lowest azimuth',
@@ -8486,11 +8495,11 @@ extension on TranslationsQrp {
 			'extensionService.reportUnavailable' => 'reports can\'t be sent right now',
 			'extensionService.stashUnavailable' => 'ham2k’s file stash can’t be reached right now',
 			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => '${names} didn\'t answer the activity search, so some results may be missing.',
+			_ => null,
+		} ?? switch (path) {
 			'extensionService.activitySearchSomeSourcesFailed' => 'some activity extensions didn\'t answer the search, so some results may be missing.',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} spent too much time in its timers. they\'re stopped until the extensions restart.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name}\'s timers kept failing. they\'re stopped until the extensions restart.',
-			_ => null,
-		} ?? switch (path) {
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} got stuck in a timer. its timers are stopped until the extensions restart.',
 			'operationLocationScreen.title' => 'operation location',
 			'operationLocationScreen.selectedLocation' => 'selected location',

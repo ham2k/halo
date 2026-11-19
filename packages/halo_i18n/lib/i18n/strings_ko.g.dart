@@ -1757,9 +1757,9 @@ class _Translations$operation$export$ko extends Translations$operation$export$en
 	@override String get title => '운용 내보내기';
 	@override String get syncedOperation => '운용이 동기화됨';
 	@override String get unsyncedOperation => '운용에 동기화되지 않은 변경 사항이 있음';
-	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '이 운용에서 ${count} QSO',
-		other: '이 운용에서 ${count} QSO',
+	@override String qsosInOperation({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '이 운용에서 ${n} QSO',
+		other: '이 운용에서 ${n} QSO',
 	);
 	@override String qsosSynced({required Object total}) => 'QSO ${total}개 모두 동기화됨';
 	@override String qsosPending({required Object total, required Object pending}) => 'QSO ${total}개 중 ${pending}개 동기화 대기 중';
@@ -1770,49 +1770,49 @@ class _Translations$operation$export$ko extends Translations$operation$export$en
 	@override String get nothingLogged => '아직 내보낼 것이 없습니다. 이 운용에 QSO가 없습니다.';
 	@override String get share => '공유';
 	@override String get nothingSelected => '선택된 항목 없음';
-	@override String saveFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '파일 ${count}개 저장',
-		other: '파일 ${count}개 저장',
+	@override String saveFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '파일 ${n}개 저장',
+		other: '파일 ${n}개 저장',
 	);
-	@override String shareFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '파일 ${count}개 공유',
-		other: '파일 ${count}개 공유',
+	@override String shareFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '파일 ${n}개 공유',
+		other: '파일 ${n}개 공유',
 	);
-	@override String exportFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '파일 ${count}개 내보내기',
-		other: '파일 ${count}개 내보내기',
+	@override String exportFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '파일 ${n}개 내보내기',
+		other: '파일 ${n}개 내보내기',
 	);
-	@override String downloadFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '파일 ${count}개 다운로드',
-		other: '파일 ${count}개 다운로드',
+	@override String downloadFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '파일 ${n}개 다운로드',
+		other: '파일 ${n}개 다운로드',
 	);
-	@override String saveCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '통합 파일 ${count}개 저장',
-		other: '통합 파일 ${count}개 저장',
+	@override String saveCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '통합 파일 ${n}개 저장',
+		other: '통합 파일 ${n}개 저장',
 	);
-	@override String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '통합 파일 ${count}개 공유',
-		other: '통합 파일 ${count}개 공유',
+	@override String shareCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '통합 파일 ${n}개 공유',
+		other: '통합 파일 ${n}개 공유',
 	);
-	@override String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '통합 파일 ${count}개 내보내기',
-		other: '통합 파일 ${count}개 내보내기',
+	@override String exportCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '통합 파일 ${n}개 내보내기',
+		other: '통합 파일 ${n}개 내보내기',
 	);
-	@override String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '통합 파일 ${count}개 다운로드',
-		other: '통합 파일 ${count}개 다운로드',
+	@override String downloadCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '통합 파일 ${n}개 다운로드',
+		other: '통합 파일 ${n}개 다운로드',
 	);
 	@override String saveOne({required Object name}) => '${name} 저장';
 	@override String shareOne({required Object name}) => '${name} 공유';
 	@override String exportOne({required Object name}) => '${name} 내보내기';
 	@override String downloadOne({required Object name}) => '${name} 다운로드';
-	@override String stashFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '파일 ${count}개 보관',
-		other: '파일 ${count}개 보관',
+	@override String stashFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '파일 ${n}개 보관',
+		other: '파일 ${n}개 보관',
 	);
-	@override String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '통합 파일 ${count}개 보관',
-		other: '통합 파일 ${count}개 보관',
+	@override String stashCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '통합 파일 ${n}개 보관',
+		other: '통합 파일 ${n}개 보관',
 	);
 	@override String get settingsButton => '내보내기 설정';
 	@override String get settingsTitle => '내보내기 설정';
@@ -1820,21 +1820,21 @@ class _Translations$operation$export$ko extends Translations$operation$export$en
 	@override late final _Translations$operation$export$includePrivateData$ko includePrivateData = _Translations$operation$export$includePrivateData$ko._(_root);
 	@override String get resultTitle => '내보내기 완료';
 	@override String get resultFailedTitle => '내보내기 실패';
-	@override String saveSuccess({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '파일 ${count}개를 ${path}에 내보냈습니다',
-		other: '파일 ${count}개를 ${path}에 내보냈습니다',
+	@override String saveSuccess({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '파일 ${n}개를 ${path}에 내보냈습니다',
+		other: '파일 ${n}개를 ${path}에 내보냈습니다',
 	);
-	@override String saveSuccessNamed({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '파일 ${count}개를 내보냈습니다: ${path}',
-		other: '파일 ${count}개를 내보냈습니다: ${path}',
+	@override String saveSuccessNamed({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '파일 ${n}개를 내보냈습니다: ${path}',
+		other: '파일 ${n}개를 내보냈습니다: ${path}',
 	);
-	@override String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '파일 ${count}개를 공유했습니다',
-		other: '파일 ${count}개를 공유했습니다',
+	@override String shareSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '파일 ${n}개를 공유했습니다',
+		other: '파일 ${n}개를 공유했습니다',
 	);
-	@override String downloadSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '파일 ${count}개를 다운로드했습니다',
-		other: '파일 ${count}개를 다운로드했습니다',
+	@override String downloadSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '파일 ${n}개를 다운로드했습니다',
+		other: '파일 ${n}개를 다운로드했습니다',
 	);
 	@override String exportFailed({required Object error}) => '내보내기 실패: ${error}';
 	@override late final _Translations$operation$export$stash$ko stash = _Translations$operation$export$stash$ko._(_root);
@@ -3597,18 +3597,18 @@ class _Translations$operation$export$stash$ko extends Translations$operation$exp
 	);
 	@override String get mayHaveArrived => 'File Stash에서 응답이 없습니다. 파일이 도착했을 수도 있습니다. 다시 보내기 전에 stash.ham2k.net을 확인하세요';
 	@override String get notSent => '보내지 않음';
-	@override String notArrived({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+	@override String notArrived({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
 		one: '이 파일이 도착하지 않았습니다:',
-		other: '다음 파일 ${count}개가 도착하지 않았습니다:',
+		other: '다음 파일 ${n}개가 도착하지 않았습니다:',
 	);
 	@override String get emailOffer => '또는 해당 링크를 이메일로 보내 드릴 수 있습니다.';
 	@override String get emailMe => '링크를 이메일로 받기';
 	@override String get emailSent => '다운로드 링크를 이메일로 보냈습니다.';
 	@override String emailFailed({required Object error}) => '이메일을 보낼 수 없습니다: ${error}';
 	@override String get freeTier => '무료 계정은 한 번에 하나만 보관할 수 있습니다. 구독자는 원하는 만큼 보관할 수 있습니다.';
-	@override String sentStatus({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: 'Ham2K File Stash(stash.ham2k.net)로 파일 ${count}개를 보냈습니다',
-		other: 'Ham2K File Stash(stash.ham2k.net)로 파일 ${count}개를 보냈습니다',
+	@override String sentStatus({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: 'Ham2K File Stash(stash.ham2k.net)로 파일 ${n}개를 보냈습니다',
+		other: 'Ham2K File Stash(stash.ham2k.net)로 파일 ${n}개를 보냈습니다',
 	);
 }
 
@@ -5101,7 +5101,7 @@ extension on TranslationsKo {
 			'operation.export.title' => '운용 내보내기',
 			'operation.export.syncedOperation' => '운용이 동기화됨',
 			'operation.export.unsyncedOperation' => '운용에 동기화되지 않은 변경 사항이 있음',
-			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '이 운용에서 ${count} QSO', other: '이 운용에서 ${count} QSO', ), 
+			'operation.export.qsosInOperation' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '이 운용에서 ${n} QSO', other: '이 운용에서 ${n} QSO', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => 'QSO ${total}개 모두 동기화됨',
 			'operation.export.qsosPending' => ({required Object total, required Object pending}) => 'QSO ${total}개 중 ${pending}개 동기화 대기 중',
 			'operation.export.eventsSynced' => ({required Object total}) => '이벤트 마커 ${total}개 동기화됨',
@@ -5111,20 +5111,20 @@ extension on TranslationsKo {
 			'operation.export.nothingLogged' => '아직 내보낼 것이 없습니다. 이 운용에 QSO가 없습니다.',
 			'operation.export.share' => '공유',
 			'operation.export.nothingSelected' => '선택된 항목 없음',
-			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${count}개 저장', other: '파일 ${count}개 저장', ), 
-			'operation.export.shareFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${count}개 공유', other: '파일 ${count}개 공유', ), 
-			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${count}개 내보내기', other: '파일 ${count}개 내보내기', ), 
-			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${count}개 다운로드', other: '파일 ${count}개 다운로드', ), 
-			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${count}개 저장', other: '통합 파일 ${count}개 저장', ), 
-			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${count}개 공유', other: '통합 파일 ${count}개 공유', ), 
-			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${count}개 내보내기', other: '통합 파일 ${count}개 내보내기', ), 
-			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${count}개 다운로드', other: '통합 파일 ${count}개 다운로드', ), 
+			'operation.export.saveFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${n}개 저장', other: '파일 ${n}개 저장', ), 
+			'operation.export.shareFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${n}개 공유', other: '파일 ${n}개 공유', ), 
+			'operation.export.exportFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${n}개 내보내기', other: '파일 ${n}개 내보내기', ), 
+			'operation.export.downloadFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${n}개 다운로드', other: '파일 ${n}개 다운로드', ), 
+			'operation.export.saveCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${n}개 저장', other: '통합 파일 ${n}개 저장', ), 
+			'operation.export.shareCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${n}개 공유', other: '통합 파일 ${n}개 공유', ), 
+			'operation.export.exportCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${n}개 내보내기', other: '통합 파일 ${n}개 내보내기', ), 
+			'operation.export.downloadCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${n}개 다운로드', other: '통합 파일 ${n}개 다운로드', ), 
 			'operation.export.saveOne' => ({required Object name}) => '${name} 저장',
 			'operation.export.shareOne' => ({required Object name}) => '${name} 공유',
 			'operation.export.exportOne' => ({required Object name}) => '${name} 내보내기',
 			'operation.export.downloadOne' => ({required Object name}) => '${name} 다운로드',
-			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${count}개 보관', other: '파일 ${count}개 보관', ), 
-			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${count}개 보관', other: '통합 파일 ${count}개 보관', ), 
+			'operation.export.stashFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${n}개 보관', other: '파일 ${n}개 보관', ), 
+			'operation.export.stashCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${n}개 보관', other: '통합 파일 ${n}개 보관', ), 
 			'operation.export.settingsButton' => '내보내기 설정',
 			'operation.export.settingsTitle' => '내보내기 설정',
 			'operation.export.compactFileNames.title' => '짧은 파일명 사용',
@@ -5136,10 +5136,10 @@ extension on TranslationsKo {
 			'operation.export.includePrivateData.note' => '전체 ADIF 내보내기에는 항상 모든 정보가 포함됩니다',
 			'operation.export.resultTitle' => '내보내기 완료',
 			'operation.export.resultFailedTitle' => '내보내기 실패',
-			'operation.export.saveSuccess' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${count}개를 ${path}에 내보냈습니다', other: '파일 ${count}개를 ${path}에 내보냈습니다', ), 
-			'operation.export.saveSuccessNamed' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${count}개를 내보냈습니다: ${path}', other: '파일 ${count}개를 내보냈습니다: ${path}', ), 
-			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${count}개를 공유했습니다', other: '파일 ${count}개를 공유했습니다', ), 
-			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${count}개를 다운로드했습니다', other: '파일 ${count}개를 다운로드했습니다', ), 
+			'operation.export.saveSuccess' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${n}개를 ${path}에 내보냈습니다', other: '파일 ${n}개를 ${path}에 내보냈습니다', ), 
+			'operation.export.saveSuccessNamed' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${n}개를 내보냈습니다: ${path}', other: '파일 ${n}개를 내보냈습니다: ${path}', ), 
+			'operation.export.shareSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${n}개를 공유했습니다', other: '파일 ${n}개를 공유했습니다', ), 
+			'operation.export.downloadSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${n}개를 다운로드했습니다', other: '파일 ${n}개를 다운로드했습니다', ), 
 			'operation.export.exportFailed' => ({required Object error}) => '내보내기 실패: ${error}',
 			'operation.export.stash.needsEmailTitle' => '먼저 이메일 주소를 추가하세요',
 			'operation.export.stash.needsEmailBody' => 'Ham2K File Stash는 LoFi 계정의 이메일 주소로 파일을 보내며, stash.ham2k.net에서 그 주소로 로그인합니다. 계정에 아직 확인된 이메일이 없습니다. 설정 › 클라우드 동기화에서 추가하세요.',
@@ -5152,13 +5152,13 @@ extension on TranslationsKo {
 			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '어떤 브라우저에서든 **[stash.ham2k.net](https://stash.ham2k.net)** 에 접속하면 이 파일을 가져올 수 있습니다.', other: '어떤 브라우저에서든 **[stash.ham2k.net](https://stash.ham2k.net)** 에 접속하면 이 파일들을 가져올 수 있습니다.', ), 
 			'operation.export.stash.mayHaveArrived' => 'File Stash에서 응답이 없습니다. 파일이 도착했을 수도 있습니다. 다시 보내기 전에 stash.ham2k.net을 확인하세요',
 			'operation.export.stash.notSent' => '보내지 않음',
-			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '이 파일이 도착하지 않았습니다:', other: '다음 파일 ${count}개가 도착하지 않았습니다:', ), 
+			'operation.export.stash.notArrived' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '이 파일이 도착하지 않았습니다:', other: '다음 파일 ${n}개가 도착하지 않았습니다:', ), 
 			'operation.export.stash.emailOffer' => '또는 해당 링크를 이메일로 보내 드릴 수 있습니다.',
 			'operation.export.stash.emailMe' => '링크를 이메일로 받기',
 			'operation.export.stash.emailSent' => '다운로드 링크를 이메일로 보냈습니다.',
 			'operation.export.stash.emailFailed' => ({required Object error}) => '이메일을 보낼 수 없습니다: ${error}',
 			'operation.export.stash.freeTier' => '무료 계정은 한 번에 하나만 보관할 수 있습니다. 구독자는 원하는 만큼 보관할 수 있습니다.',
-			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: 'Ham2K File Stash(stash.ham2k.net)로 파일 ${count}개를 보냈습니다', other: 'Ham2K File Stash(stash.ham2k.net)로 파일 ${count}개를 보냈습니다', ), 
+			'operation.export.stash.sentStatus' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: 'Ham2K File Stash(stash.ham2k.net)로 파일 ${n}개를 보냈습니다', other: 'Ham2K File Stash(stash.ham2k.net)로 파일 ${n}개를 보냈습니다', ), 
 			'operation.spots.empty' => '필터와 일치하는 스팟이 없습니다',
 			'operation.spots.error' => ({required Object error}) => '스팟을 불러오지 못했습니다: ${error}',
 			'operation.spots.unknownBand' => '기타',

@@ -1757,9 +1757,9 @@ class _Translations$operation$export$zh extends Translations$operation$export$en
 	@override String get title => '操作导出';
 	@override String get syncedOperation => '操作已同步';
 	@override String get unsyncedOperation => '操作有未同步的更改';
-	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '本操作中有 ${count} 个 QSO',
-		other: '本操作中有 ${count} 个 QSO',
+	@override String qsosInOperation({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '本操作中有 ${n} 个 QSO',
+		other: '本操作中有 ${n} 个 QSO',
 	);
 	@override String qsosSynced({required Object total}) => '全部 ${total} 个 QSO 已同步';
 	@override String qsosPending({required Object pending, required Object total}) => '${pending} / ${total} 个 QSO 待同步';
@@ -1770,49 +1770,49 @@ class _Translations$operation$export$zh extends Translations$operation$export$en
 	@override String get nothingLogged => '暂无可导出的内容——此操作没有 QSO。';
 	@override String get share => '分享';
 	@override String get nothingSelected => '未选择任何内容';
-	@override String saveFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '保存 ${count} 个文件',
-		other: '保存 ${count} 个文件',
+	@override String saveFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '保存 ${n} 个文件',
+		other: '保存 ${n} 个文件',
 	);
-	@override String shareFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '分享 ${count} 个文件',
-		other: '分享 ${count} 个文件',
+	@override String shareFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '分享 ${n} 个文件',
+		other: '分享 ${n} 个文件',
 	);
-	@override String exportFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '导出 ${count} 个文件',
-		other: '导出 ${count} 个文件',
+	@override String exportFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '导出 ${n} 个文件',
+		other: '导出 ${n} 个文件',
 	);
-	@override String downloadFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '下载 ${count} 个文件',
-		other: '下载 ${count} 个文件',
+	@override String downloadFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '下载 ${n} 个文件',
+		other: '下载 ${n} 个文件',
 	);
-	@override String saveCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '保存合并的 ${count} 个文件',
-		other: '保存合并的 ${count} 个文件',
+	@override String saveCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '保存合并的 ${n} 个文件',
+		other: '保存合并的 ${n} 个文件',
 	);
-	@override String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '分享合并的 ${count} 个文件',
-		other: '分享合并的 ${count} 个文件',
+	@override String shareCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '分享合并的 ${n} 个文件',
+		other: '分享合并的 ${n} 个文件',
 	);
-	@override String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '导出合并的 ${count} 个文件',
-		other: '导出合并的 ${count} 个文件',
+	@override String exportCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '导出合并的 ${n} 个文件',
+		other: '导出合并的 ${n} 个文件',
 	);
-	@override String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '下载合并的 ${count} 个文件',
-		other: '下载合并的 ${count} 个文件',
+	@override String downloadCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '下载合并的 ${n} 个文件',
+		other: '下载合并的 ${n} 个文件',
 	);
 	@override String saveOne({required Object name}) => '保存 ${name}';
 	@override String shareOne({required Object name}) => '分享 ${name}';
 	@override String exportOne({required Object name}) => '导出 ${name}';
 	@override String downloadOne({required Object name}) => '下载 ${name}';
-	@override String stashFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '暂存 ${count} 个文件',
-		other: '暂存 ${count} 个文件',
+	@override String stashFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '暂存 ${n} 个文件',
+		other: '暂存 ${n} 个文件',
 	);
-	@override String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '暂存合并的 ${count} 个文件',
-		other: '暂存合并的 ${count} 个文件',
+	@override String stashCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '暂存合并的 ${n} 个文件',
+		other: '暂存合并的 ${n} 个文件',
 	);
 	@override String get settingsButton => '导出设置';
 	@override String get settingsTitle => '导出设置';
@@ -1820,21 +1820,21 @@ class _Translations$operation$export$zh extends Translations$operation$export$en
 	@override late final _Translations$operation$export$includePrivateData$zh includePrivateData = _Translations$operation$export$includePrivateData$zh._(_root);
 	@override String get resultTitle => '导出完成';
 	@override String get resultFailedTitle => '导出失败';
-	@override String saveSuccess({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '已将 ${count} 个文件导出到 ${path}',
-		other: '已将 ${count} 个文件导出到 ${path}',
+	@override String saveSuccess({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '已将 ${n} 个文件导出到 ${path}',
+		other: '已将 ${n} 个文件导出到 ${path}',
 	);
-	@override String saveSuccessNamed({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '已导出 ${count} 个文件：${path}',
-		other: '已导出 ${count} 个文件：${path}',
+	@override String saveSuccessNamed({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '已导出 ${n} 个文件：${path}',
+		other: '已导出 ${n} 个文件：${path}',
 	);
-	@override String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '已分享 ${count} 个文件',
-		other: '已分享 ${count} 个文件',
+	@override String shareSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '已分享 ${n} 个文件',
+		other: '已分享 ${n} 个文件',
 	);
-	@override String downloadSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '已下载 ${count} 个文件',
-		other: '已下载 ${count} 个文件',
+	@override String downloadSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '已下载 ${n} 个文件',
+		other: '已下载 ${n} 个文件',
 	);
 	@override String exportFailed({required Object error}) => '导出失败：${error}';
 	@override late final _Translations$operation$export$stash$zh stash = _Translations$operation$export$stash$zh._(_root);
@@ -3597,18 +3597,18 @@ class _Translations$operation$export$stash$zh extends Translations$operation$exp
 	);
 	@override String get mayHaveArrived => '暂存服务没有响应——文件可能已经送达。再次发送前请先查看 stash.ham2k.net';
 	@override String get notSent => '未发送';
-	@override String notArrived({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+	@override String notArrived({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
 		one: '此文件未送达：',
-		other: '这 ${count} 个文件未送达：',
+		other: '这 ${n} 个文件未送达：',
 	);
 	@override String get emailOffer => '或者为了方便，我们可以给您发送一封包含直接链接的电子邮件。';
 	@override String get emailMe => '通过电子邮件给我发送链接';
 	@override String get emailSent => '我们已通过电子邮件向您发送下载链接。';
 	@override String emailFailed({required Object error}) => '无法发送电子邮件：${error}';
 	@override String get freeTier => '免费账户一次只能保留一个暂存文件。订阅者可以按需保留任意数量。';
-	@override String sentStatus({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '已发送 ${count} 个文件到 Ham2K File Stash（stash.ham2k.net）',
-		other: '已发送 ${count} 个文件到 Ham2K File Stash（stash.ham2k.net）',
+	@override String sentStatus({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '已发送 ${n} 个文件到 Ham2K File Stash（stash.ham2k.net）',
+		other: '已发送 ${n} 个文件到 Ham2K File Stash（stash.ham2k.net）',
 	);
 }
 
@@ -5101,7 +5101,7 @@ extension on TranslationsZh {
 			'operation.export.title' => '操作导出',
 			'operation.export.syncedOperation' => '操作已同步',
 			'operation.export.unsyncedOperation' => '操作有未同步的更改',
-			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '本操作中有 ${count} 个 QSO', other: '本操作中有 ${count} 个 QSO', ), 
+			'operation.export.qsosInOperation' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '本操作中有 ${n} 个 QSO', other: '本操作中有 ${n} 个 QSO', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => '全部 ${total} 个 QSO 已同步',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} / ${total} 个 QSO 待同步',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} 个事件标记已同步',
@@ -5111,20 +5111,20 @@ extension on TranslationsZh {
 			'operation.export.nothingLogged' => '暂无可导出的内容——此操作没有 QSO。',
 			'operation.export.share' => '分享',
 			'operation.export.nothingSelected' => '未选择任何内容',
-			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '保存 ${count} 个文件', other: '保存 ${count} 个文件', ), 
-			'operation.export.shareFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '分享 ${count} 个文件', other: '分享 ${count} 个文件', ), 
-			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '导出 ${count} 个文件', other: '导出 ${count} 个文件', ), 
-			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '下载 ${count} 个文件', other: '下载 ${count} 个文件', ), 
-			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '保存合并的 ${count} 个文件', other: '保存合并的 ${count} 个文件', ), 
-			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '分享合并的 ${count} 个文件', other: '分享合并的 ${count} 个文件', ), 
-			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '导出合并的 ${count} 个文件', other: '导出合并的 ${count} 个文件', ), 
-			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '下载合并的 ${count} 个文件', other: '下载合并的 ${count} 个文件', ), 
+			'operation.export.saveFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '保存 ${n} 个文件', other: '保存 ${n} 个文件', ), 
+			'operation.export.shareFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '分享 ${n} 个文件', other: '分享 ${n} 个文件', ), 
+			'operation.export.exportFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '导出 ${n} 个文件', other: '导出 ${n} 个文件', ), 
+			'operation.export.downloadFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '下载 ${n} 个文件', other: '下载 ${n} 个文件', ), 
+			'operation.export.saveCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '保存合并的 ${n} 个文件', other: '保存合并的 ${n} 个文件', ), 
+			'operation.export.shareCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '分享合并的 ${n} 个文件', other: '分享合并的 ${n} 个文件', ), 
+			'operation.export.exportCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '导出合并的 ${n} 个文件', other: '导出合并的 ${n} 个文件', ), 
+			'operation.export.downloadCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '下载合并的 ${n} 个文件', other: '下载合并的 ${n} 个文件', ), 
 			'operation.export.saveOne' => ({required Object name}) => '保存 ${name}',
 			'operation.export.shareOne' => ({required Object name}) => '分享 ${name}',
 			'operation.export.exportOne' => ({required Object name}) => '导出 ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => '下载 ${name}',
-			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '暂存 ${count} 个文件', other: '暂存 ${count} 个文件', ), 
-			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '暂存合并的 ${count} 个文件', other: '暂存合并的 ${count} 个文件', ), 
+			'operation.export.stashFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '暂存 ${n} 个文件', other: '暂存 ${n} 个文件', ), 
+			'operation.export.stashCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '暂存合并的 ${n} 个文件', other: '暂存合并的 ${n} 个文件', ), 
 			'operation.export.settingsButton' => '导出设置',
 			'operation.export.settingsTitle' => '导出设置',
 			'operation.export.compactFileNames.title' => '使用简易文件名',
@@ -5136,10 +5136,10 @@ extension on TranslationsZh {
 			'operation.export.includePrivateData.note' => '完整 ADIF 导出始终包含全部内容',
 			'operation.export.resultTitle' => '导出完成',
 			'operation.export.resultFailedTitle' => '导出失败',
-			'operation.export.saveSuccess' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已将 ${count} 个文件导出到 ${path}', other: '已将 ${count} 个文件导出到 ${path}', ), 
-			'operation.export.saveSuccessNamed' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已导出 ${count} 个文件：${path}', other: '已导出 ${count} 个文件：${path}', ), 
-			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已分享 ${count} 个文件', other: '已分享 ${count} 个文件', ), 
-			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已下载 ${count} 个文件', other: '已下载 ${count} 个文件', ), 
+			'operation.export.saveSuccess' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已将 ${n} 个文件导出到 ${path}', other: '已将 ${n} 个文件导出到 ${path}', ), 
+			'operation.export.saveSuccessNamed' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已导出 ${n} 个文件：${path}', other: '已导出 ${n} 个文件：${path}', ), 
+			'operation.export.shareSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已分享 ${n} 个文件', other: '已分享 ${n} 个文件', ), 
+			'operation.export.downloadSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已下载 ${n} 个文件', other: '已下载 ${n} 个文件', ), 
 			'operation.export.exportFailed' => ({required Object error}) => '导出失败：${error}',
 			'operation.export.stash.needsEmailTitle' => '请先添加电子邮件地址',
 			'operation.export.stash.needsEmailBody' => 'Ham2K File Stash 会将文件发送到您 LoFi 账户的电子邮件地址，您也用它登录 stash.ham2k.net。您的账户还没有已确认的地址——请在 设置 › 云同步 中添加。',
@@ -5152,13 +5152,13 @@ extension on TranslationsZh {
 			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '您可以在任何浏览器中访问 **[stash.ham2k.net](https://stash.ham2k.net)** 来取回此文件。', other: '您可以在任何浏览器中访问 **[stash.ham2k.net](https://stash.ham2k.net)** 来取回这些文件。', ), 
 			'operation.export.stash.mayHaveArrived' => '暂存服务没有响应——文件可能已经送达。再次发送前请先查看 stash.ham2k.net',
 			'operation.export.stash.notSent' => '未发送',
-			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '此文件未送达：', other: '这 ${count} 个文件未送达：', ), 
+			'operation.export.stash.notArrived' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '此文件未送达：', other: '这 ${n} 个文件未送达：', ), 
 			'operation.export.stash.emailOffer' => '或者为了方便，我们可以给您发送一封包含直接链接的电子邮件。',
 			'operation.export.stash.emailMe' => '通过电子邮件给我发送链接',
 			'operation.export.stash.emailSent' => '我们已通过电子邮件向您发送下载链接。',
 			'operation.export.stash.emailFailed' => ({required Object error}) => '无法发送电子邮件：${error}',
 			'operation.export.stash.freeTier' => '免费账户一次只能保留一个暂存文件。订阅者可以按需保留任意数量。',
-			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已发送 ${count} 个文件到 Ham2K File Stash（stash.ham2k.net）', other: '已发送 ${count} 个文件到 Ham2K File Stash（stash.ham2k.net）', ), 
+			'operation.export.stash.sentStatus' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已发送 ${n} 个文件到 Ham2K File Stash（stash.ham2k.net）', other: '已发送 ${n} 个文件到 Ham2K File Stash（stash.ham2k.net）', ), 
 			'operation.spots.empty' => '没有符合筛选条件的信号',
 			'operation.spots.error' => ({required Object error}) => '加载信号失败：${error}',
 			'operation.spots.unknownBand' => '其他',

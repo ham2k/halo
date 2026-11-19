@@ -1757,9 +1757,9 @@ class _Translations$operation$export$nb extends Translations$operation$export$en
 	@override String get title => 'Eksport av operasjon';
 	@override String get syncedOperation => 'Operasjonen er synkronisert';
 	@override String get unsyncedOperation => 'Operasjonen har endringer som ikke er synkronisert';
-	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: '${count} QSO i denne operasjonen',
-		other: '${count} QSOer i denne operasjonen',
+	@override String qsosInOperation({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: '${n} QSO i denne operasjonen',
+		other: '${n} QSOer i denne operasjonen',
 	);
 	@override String qsosSynced({required Object total}) => 'Alle ${total} QSOer er synkronisert';
 	@override String qsosPending({required Object pending, required Object total}) => '${pending} av ${total} QSOer venter på synkronisering';
@@ -1770,49 +1770,49 @@ class _Translations$operation$export$nb extends Translations$operation$export$en
 	@override String get nothingLogged => 'Ingenting å eksportere ennå — denne operasjonen har ingen QSOer.';
 	@override String get share => 'Del';
 	@override String get nothingSelected => 'Ingenting valgt';
-	@override String saveFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Lagre ${count} fil',
-		other: 'Lagre ${count} filer',
+	@override String saveFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Lagre ${n} fil',
+		other: 'Lagre ${n} filer',
 	);
-	@override String shareFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Del ${count} fil',
-		other: 'Del ${count} filer',
+	@override String shareFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Del ${n} fil',
+		other: 'Del ${n} filer',
 	);
-	@override String exportFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Eksporter ${count} fil',
-		other: 'Eksporter ${count} filer',
+	@override String exportFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Eksporter ${n} fil',
+		other: 'Eksporter ${n} filer',
 	);
-	@override String downloadFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Last ned ${count} fil',
-		other: 'Last ned ${count} filer',
+	@override String downloadFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Last ned ${n} fil',
+		other: 'Last ned ${n} filer',
 	);
-	@override String saveCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Lagre ${count} samlet fil',
-		other: 'Lagre ${count} samlede filer',
+	@override String saveCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Lagre ${n} samlet fil',
+		other: 'Lagre ${n} samlede filer',
 	);
-	@override String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Del ${count} samlet fil',
-		other: 'Del ${count} samlede filer',
+	@override String shareCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Del ${n} samlet fil',
+		other: 'Del ${n} samlede filer',
 	);
-	@override String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Eksporter ${count} samlet fil',
-		other: 'Eksporter ${count} samlede filer',
+	@override String exportCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Eksporter ${n} samlet fil',
+		other: 'Eksporter ${n} samlede filer',
 	);
-	@override String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Last ned ${count} samlet fil',
-		other: 'Last ned ${count} samlede filer',
+	@override String downloadCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Last ned ${n} samlet fil',
+		other: 'Last ned ${n} samlede filer',
 	);
 	@override String saveOne({required Object name}) => 'Lagre ${name}';
 	@override String shareOne({required Object name}) => 'Del ${name}';
 	@override String exportOne({required Object name}) => 'Eksporter ${name}';
 	@override String downloadOne({required Object name}) => 'Last ned ${name}';
-	@override String stashFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Legg ${count} fil i Stash',
-		other: 'Legg ${count} filer i Stash',
+	@override String stashFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Legg ${n} fil i Stash',
+		other: 'Legg ${n} filer i Stash',
 	);
-	@override String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Legg ${count} samlet fil i Stash',
-		other: 'Legg ${count} samlede filer i Stash',
+	@override String stashCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Legg ${n} samlet fil i Stash',
+		other: 'Legg ${n} samlede filer i Stash',
 	);
 	@override String get settingsButton => 'Eksportinnstillinger';
 	@override String get settingsTitle => 'Eksportinnstillinger';
@@ -1820,21 +1820,21 @@ class _Translations$operation$export$nb extends Translations$operation$export$en
 	@override late final _Translations$operation$export$includePrivateData$nb includePrivateData = _Translations$operation$export$includePrivateData$nb._(_root);
 	@override String get resultTitle => 'Eksport fullført';
 	@override String get resultFailedTitle => 'Eksport mislyktes';
-	@override String saveSuccess({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Eksporterte ${count} fil til ${path}',
-		other: 'Eksporterte ${count} filer til ${path}',
+	@override String saveSuccess({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Eksporterte ${n} fil til ${path}',
+		other: 'Eksporterte ${n} filer til ${path}',
 	);
-	@override String saveSuccessNamed({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Eksporterte ${count} fil: ${path}',
-		other: 'Eksporterte ${count} filer: ${path}',
+	@override String saveSuccessNamed({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Eksporterte ${n} fil: ${path}',
+		other: 'Eksporterte ${n} filer: ${path}',
 	);
-	@override String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Delte ${count} fil',
-		other: 'Delte ${count} filer',
+	@override String shareSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Delte ${n} fil',
+		other: 'Delte ${n} filer',
 	);
-	@override String downloadSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Lastet ned ${count} fil',
-		other: 'Lastet ned ${count} filer',
+	@override String downloadSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Lastet ned ${n} fil',
+		other: 'Lastet ned ${n} filer',
 	);
 	@override String exportFailed({required Object error}) => 'Eksport mislyktes: ${error}';
 	@override late final _Translations$operation$export$stash$nb stash = _Translations$operation$export$stash$nb._(_root);
@@ -3597,18 +3597,18 @@ class _Translations$operation$export$stash$nb extends Translations$operation$exp
 	);
 	@override String get mayHaveArrived => 'Ikke noe svar fra Stash — filen kan ha kommet fram likevel. Sjekk stash.ham2k.net før du sender på nytt';
 	@override String get notSent => 'ikke sendt';
-	@override String notArrived({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+	@override String notArrived({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
 		one: 'Denne filen kom ikke fram:',
-		other: 'Disse ${count} filene kom ikke fram:',
+		other: 'Disse ${n} filene kom ikke fram:',
 	);
 	@override String get emailOffer => 'Eller for enkelhets skyld kan vi sende deg en e-post med en direkte lenke.';
 	@override String get emailMe => 'Send meg en lenke på e-post';
 	@override String get emailSent => 'Vi har sendt deg en nedlastingslenke på e-post.';
 	@override String emailFailed({required Object error}) => 'Kunne ikke sende e-posten: ${error}';
 	@override String get freeTier => 'Gratiskontoer kan bare beholde én stash om gangen. Abonnenter kan beholde så mange de vil.';
-	@override String sentStatus({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: 'Sendte ${count} fil til Ham2K File Stash (stash.ham2k.net)',
-		other: 'Sendte ${count} filer til Ham2K File Stash (stash.ham2k.net)',
+	@override String sentStatus({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: 'Sendte ${n} fil til Ham2K File Stash (stash.ham2k.net)',
+		other: 'Sendte ${n} filer til Ham2K File Stash (stash.ham2k.net)',
 	);
 }
 
@@ -5101,7 +5101,7 @@ extension on TranslationsNb {
 			'operation.export.title' => 'Eksport av operasjon',
 			'operation.export.syncedOperation' => 'Operasjonen er synkronisert',
 			'operation.export.unsyncedOperation' => 'Operasjonen har endringer som ikke er synkronisert',
-			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} QSO i denne operasjonen', other: '${count} QSOer i denne operasjonen', ), 
+			'operation.export.qsosInOperation' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${n} QSO i denne operasjonen', other: '${n} QSOer i denne operasjonen', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => 'Alle ${total} QSOer er synkronisert',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} av ${total} QSOer venter på synkronisering',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} hendelsesmarkører synkronisert',
@@ -5111,20 +5111,20 @@ extension on TranslationsNb {
 			'operation.export.nothingLogged' => 'Ingenting å eksportere ennå — denne operasjonen har ingen QSOer.',
 			'operation.export.share' => 'Del',
 			'operation.export.nothingSelected' => 'Ingenting valgt',
-			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Lagre ${count} fil', other: 'Lagre ${count} filer', ), 
-			'operation.export.shareFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Del ${count} fil', other: 'Del ${count} filer', ), 
-			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Eksporter ${count} fil', other: 'Eksporter ${count} filer', ), 
-			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Last ned ${count} fil', other: 'Last ned ${count} filer', ), 
-			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Lagre ${count} samlet fil', other: 'Lagre ${count} samlede filer', ), 
-			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Del ${count} samlet fil', other: 'Del ${count} samlede filer', ), 
-			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Eksporter ${count} samlet fil', other: 'Eksporter ${count} samlede filer', ), 
-			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Last ned ${count} samlet fil', other: 'Last ned ${count} samlede filer', ), 
+			'operation.export.saveFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Lagre ${n} fil', other: 'Lagre ${n} filer', ), 
+			'operation.export.shareFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Del ${n} fil', other: 'Del ${n} filer', ), 
+			'operation.export.exportFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Eksporter ${n} fil', other: 'Eksporter ${n} filer', ), 
+			'operation.export.downloadFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Last ned ${n} fil', other: 'Last ned ${n} filer', ), 
+			'operation.export.saveCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Lagre ${n} samlet fil', other: 'Lagre ${n} samlede filer', ), 
+			'operation.export.shareCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Del ${n} samlet fil', other: 'Del ${n} samlede filer', ), 
+			'operation.export.exportCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Eksporter ${n} samlet fil', other: 'Eksporter ${n} samlede filer', ), 
+			'operation.export.downloadCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Last ned ${n} samlet fil', other: 'Last ned ${n} samlede filer', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Lagre ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Del ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Eksporter ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Last ned ${name}',
-			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Legg ${count} fil i Stash', other: 'Legg ${count} filer i Stash', ), 
-			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Legg ${count} samlet fil i Stash', other: 'Legg ${count} samlede filer i Stash', ), 
+			'operation.export.stashFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Legg ${n} fil i Stash', other: 'Legg ${n} filer i Stash', ), 
+			'operation.export.stashCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Legg ${n} samlet fil i Stash', other: 'Legg ${n} samlede filer i Stash', ), 
 			'operation.export.settingsButton' => 'Eksportinnstillinger',
 			'operation.export.settingsTitle' => 'Eksportinnstillinger',
 			'operation.export.compactFileNames.title' => 'Bruk kompakte filnavn',
@@ -5136,10 +5136,10 @@ extension on TranslationsNb {
 			'operation.export.includePrivateData.note' => 'Full ADIF-eksport tar alltid med alt',
 			'operation.export.resultTitle' => 'Eksport fullført',
 			'operation.export.resultFailedTitle' => 'Eksport mislyktes',
-			'operation.export.saveSuccess' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Eksporterte ${count} fil til ${path}', other: 'Eksporterte ${count} filer til ${path}', ), 
-			'operation.export.saveSuccessNamed' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Eksporterte ${count} fil: ${path}', other: 'Eksporterte ${count} filer: ${path}', ), 
-			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Delte ${count} fil', other: 'Delte ${count} filer', ), 
-			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Lastet ned ${count} fil', other: 'Lastet ned ${count} filer', ), 
+			'operation.export.saveSuccess' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Eksporterte ${n} fil til ${path}', other: 'Eksporterte ${n} filer til ${path}', ), 
+			'operation.export.saveSuccessNamed' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Eksporterte ${n} fil: ${path}', other: 'Eksporterte ${n} filer: ${path}', ), 
+			'operation.export.shareSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Delte ${n} fil', other: 'Delte ${n} filer', ), 
+			'operation.export.downloadSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Lastet ned ${n} fil', other: 'Lastet ned ${n} filer', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'Eksport mislyktes: ${error}',
 			'operation.export.stash.needsEmailTitle' => 'Legg til en e-postadresse først',
 			'operation.export.stash.needsEmailBody' => 'Ham2K File Stash sender filene dine til e-postadressen på LoFi-kontoen din, og du logger inn med den på stash.ham2k.net. Kontoen din har ikke en bekreftet adresse ennå — legg den til i Innstillinger › Skysynkronisering.',
@@ -5152,13 +5152,13 @@ extension on TranslationsNb {
 			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Du kan hente denne filen ved å gå til **[stash.ham2k.net](https://stash.ham2k.net)** i hvilken som helst nettleser.', other: 'Du kan hente disse filene ved å gå til **[stash.ham2k.net](https://stash.ham2k.net)** i hvilken som helst nettleser.', ), 
 			'operation.export.stash.mayHaveArrived' => 'Ikke noe svar fra Stash — filen kan ha kommet fram likevel. Sjekk stash.ham2k.net før du sender på nytt',
 			'operation.export.stash.notSent' => 'ikke sendt',
-			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Denne filen kom ikke fram:', other: 'Disse ${count} filene kom ikke fram:', ), 
+			'operation.export.stash.notArrived' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Denne filen kom ikke fram:', other: 'Disse ${n} filene kom ikke fram:', ), 
 			'operation.export.stash.emailOffer' => 'Eller for enkelhets skyld kan vi sende deg en e-post med en direkte lenke.',
 			'operation.export.stash.emailMe' => 'Send meg en lenke på e-post',
 			'operation.export.stash.emailSent' => 'Vi har sendt deg en nedlastingslenke på e-post.',
 			'operation.export.stash.emailFailed' => ({required Object error}) => 'Kunne ikke sende e-posten: ${error}',
 			'operation.export.stash.freeTier' => 'Gratiskontoer kan bare beholde én stash om gangen. Abonnenter kan beholde så mange de vil.',
-			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Sendte ${count} fil til Ham2K File Stash (stash.ham2k.net)', other: 'Sendte ${count} filer til Ham2K File Stash (stash.ham2k.net)', ), 
+			'operation.export.stash.sentStatus' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Sendte ${n} fil til Ham2K File Stash (stash.ham2k.net)', other: 'Sendte ${n} filer til Ham2K File Stash (stash.ham2k.net)', ), 
 			'operation.spots.empty' => 'Ingen spotter samsvarer med filtrene dine',
 			'operation.spots.error' => ({required Object error}) => 'Kunne ikke laste spotter: ${error}',
 			'operation.spots.unknownBand' => 'Annet',

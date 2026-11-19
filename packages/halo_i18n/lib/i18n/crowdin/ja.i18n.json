@@ -755,8 +755,8 @@
       "syncedOperation": "オペレーションは同期済みです",
       "unsyncedOperation": "オペレーションに未同期の変更があります",
       "qsosInOperation": {
-        "one": "このオペレーションのQSO：${count}件",
-        "other": "このオペレーションのQSO：${count}件"
+        "one": "このオペレーションのQSO：${n}件",
+        "other": "このオペレーションのQSO：${n}件"
       },
       "qsosSynced": "${total}件のQSOすべてが同期済み",
       "qsosPending": "${total}件中${pending}件のQSOが同期待ち",
@@ -768,48 +768,48 @@
       "share": "共有",
       "nothingSelected": "何も選択されていません",
       "saveFiles": {
-        "one": "${count}件のファイルを保存",
-        "other": "${count}件のファイルを保存"
+        "one": "${n}件のファイルを保存",
+        "other": "${n}件のファイルを保存"
       },
       "shareFiles": {
-        "one": "${count}件のファイルを共有",
-        "other": "${count}件のファイルを共有"
+        "one": "${n}件のファイルを共有",
+        "other": "${n}件のファイルを共有"
       },
       "exportFiles": {
-        "one": "${count}件のファイルをエクスポート",
-        "other": "${count}件のファイルをエクスポート"
+        "one": "${n}件のファイルをエクスポート",
+        "other": "${n}件のファイルをエクスポート"
       },
       "downloadFiles": {
-        "one": "${count}件のファイルをダウンロード",
-        "other": "${count}件のファイルをダウンロード"
+        "one": "${n}件のファイルをダウンロード",
+        "other": "${n}件のファイルをダウンロード"
       },
       "saveCombined": {
-        "one": "${count}件の結合ファイルを保存",
-        "other": "${count}件の結合ファイルを保存"
+        "one": "${n}件の結合ファイルを保存",
+        "other": "${n}件の結合ファイルを保存"
       },
       "shareCombined": {
-        "one": "${count}件の結合ファイルを共有",
-        "other": "${count}件の結合ファイルを共有"
+        "one": "${n}件の結合ファイルを共有",
+        "other": "${n}件の結合ファイルを共有"
       },
       "exportCombined": {
-        "one": "${count}件の結合ファイルをエクスポート",
-        "other": "${count}件の結合ファイルをエクスポート"
+        "one": "${n}件の結合ファイルをエクスポート",
+        "other": "${n}件の結合ファイルをエクスポート"
       },
       "downloadCombined": {
-        "one": "${count}件の結合ファイルをダウンロード",
-        "other": "${count}件の結合ファイルをダウンロード"
+        "one": "${n}件の結合ファイルをダウンロード",
+        "other": "${n}件の結合ファイルをダウンロード"
       },
       "saveOne": "${name}を保存",
       "shareOne": "${name}を共有",
       "exportOne": "${name}をエクスポート",
       "downloadOne": "${name}をダウンロード",
       "stashFiles": {
-        "one": "${count}件のファイルをスタッシュ",
-        "other": "${count}件のファイルをスタッシュ"
+        "one": "${n}件のファイルをスタッシュ",
+        "other": "${n}件のファイルをスタッシュ"
       },
       "stashCombined": {
-        "one": "${count}件の結合ファイルをスタッシュ",
-        "other": "${count}件の結合ファイルをスタッシュ"
+        "one": "${n}件の結合ファイルをスタッシュ",
+        "other": "${n}件の結合ファイルをスタッシュ"
       },
       "settingsButton": "エクスポート設定",
       "settingsTitle": "エクスポート設定",
@@ -827,20 +827,20 @@
       "resultTitle": "エクスポート完了",
       "resultFailedTitle": "エクスポート失敗",
       "saveSuccess": {
-        "one": "${count}件のファイルを${path}にエクスポートしました",
-        "other": "${count}件のファイルを${path}にエクスポートしました"
+        "one": "${n}件のファイルを${path}にエクスポートしました",
+        "other": "${n}件のファイルを${path}にエクスポートしました"
       },
       "saveSuccessNamed": {
-        "one": "${count}件のファイルをエクスポートしました：${path}",
-        "other": "${count}件のファイルをエクスポートしました：${path}"
+        "one": "${n}件のファイルをエクスポートしました：${path}",
+        "other": "${n}件のファイルをエクスポートしました：${path}"
       },
       "shareSuccess": {
-        "one": "${count}件のファイルを共有しました",
-        "other": "${count}件のファイルを共有しました"
+        "one": "${n}件のファイルを共有しました",
+        "other": "${n}件のファイルを共有しました"
       },
       "downloadSuccess": {
-        "one": "${count}件のファイルをダウンロードしました",
-        "other": "${count}件のファイルをダウンロードしました"
+        "one": "${n}件のファイルをダウンロードしました",
+        "other": "${n}件のファイルをダウンロードしました"
       },
       "exportFailed": "エクスポート失敗：${error}",
       "stash": {
@@ -860,7 +860,7 @@
         "notSent": "未送信",
         "notArrived": {
           "one": "このファイルは届きませんでした：",
-          "other": "これら${count}件のファイルは届きませんでした："
+          "other": "これら${n}件のファイルは届きませんでした："
         },
         "emailOffer": "また、ご希望であれば、直接リンクを記載したメールをお送りできます。",
         "emailMe": "リンクをメールで送信",
@@ -868,8 +868,8 @@
         "emailFailed": "メールを送信できませんでした：${error}",
         "freeTier": "無料アカウントでは一度に保持できるスタッシュは1つだけです。サブスクライバーは必要な数だけ保持できます。",
         "sentStatus": {
-          "one": "${count}件のファイルをHam2K File Stash（stash.ham2k.net）に送信しました",
-          "other": "${count}件のファイルをHam2K File Stash（stash.ham2k.net）に送信しました"
+          "one": "${n}件のファイルをHam2K File Stash（stash.ham2k.net）に送信しました",
+          "other": "${n}件のファイルをHam2K File Stash（stash.ham2k.net）に送信しました"
         }
       }
     },

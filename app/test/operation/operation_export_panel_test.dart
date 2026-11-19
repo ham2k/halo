@@ -31,6 +31,7 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/export_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/services/transfer_service.dart' show LogPushScope;
 import 'package:ham2k_logger/views/operation/operation_export_panel.dart';
 
 void main() {
@@ -426,6 +427,52 @@ void main() {
 
       final title = tester.widget<Text>(find.text('Full ADIF Export'));
       expect(title.style?.fontWeight, FontWeight.bold);
+    });
+
+    testWidgets('a long export counts its contacts in a dialog of its own, which closes when the files are ready', (tester) async {
+      // A Logs export over thousands of contacts takes long enough to wonder
+      // whether anything is happening; a quick one must not flash a dialog.
+      exports.holdGenerate = Completer<void>();
+      exports.progressReported = (done: 1200, total: 5400);
+      await pump(tester);
+
+      await tester.tap(find.text('Save 1 file'));
+      await tester.pump();
+      expect(find.text('Exporting'), findsNothing, reason: 'not yet: most exports are done before it would show');
+
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump();
+      expect(find.text('Exporting'), findsOneWidget);
+      expect(find.text('1,200 of 5,400 QSOs'), findsOneWidget);
+      expect(tester.widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator)).value, closeTo(1200 / 5400, 1e-9));
+
+      exports.holdGenerate!.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Exporting'), findsNothing);
+      // The export's own result, not the progress dialog, is what is left.
+      expect(await readAndDismissResult(tester), contains('Exported 1 file'));
+    });
+
+    testWidgets('an export finishing as its progress dialog opens leaves no dialog behind', (tester) async {
+      // The dialog's route is pushed when it is due and built a frame later;
+      // work finishing in between found nothing to close, and the dialog,
+      // with no button and no barrier to tap, stayed up for good.
+      exports.generateTakes = const Duration(milliseconds: 400);
+      await pump(tester);
+
+      await tester.tap(find.text('Save 1 file'));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      await readAndDismissResult(tester);
+      expect(find.text('Exporting'), findsNothing);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+    });
+
+    testWidgets('a quick export shows no progress dialog', (tester) async {
+      await pump(tester);
+      await tester.tap(find.text('Save 1 file'));
+      await tester.pumpAndSettle();
+      expect(find.text('Exporting'), findsNothing);
     });
 
     testWidgets('the primary button exports exactly what is ticked', (tester) async {
@@ -871,6 +918,51 @@ void main() {
         expect(find.text('Operation is synced'), findsNothing);
       });
 
+      testWidgets('given what to push, it pushes to services with no Cloud Sync, and keeps its count', (tester) async {
+        // Cloud Sync reports on an operation; over the Logs view's contacts it
+        // would report on the empty uuid of the stand-in.
+        await settings.setExperimentEnabled(kPushExperiment, true);
+        await settings.setSyncEnabled(true);
+        tester.view.physicalSize = const Size(1000, 900);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(
+          TranslationProvider(
+            child: MaterialApp(
+              home: Scaffold(
+                body: OperationExportPanel(services: services, operation: standIn, contacts: contacts, pushScope: const LogPushScope('N0CALL')),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Push to Services'), findsOneWidget);
+        expect(find.textContaining('Sync & Push'), findsNothing);
+        expect(find.text('2 QSOs to be exported'), findsOneWidget, reason: "the pane's title names no count");
+        await tester.tap(find.text('Push to Services'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('synced'), findsNothing);
+        expect(find.textContaining('unsynced'), findsNothing);
+      });
+
+      testWidgets('a count in the thousands is grouped', (tester) async {
+        contacts = [
+          for (var i = 0; i < 1234; i++)
+            Qso(
+              uuid: 'q$i',
+              operationUuid: '',
+              data: {
+                'our': {'call': 'N0CALL'},
+                'their': {'call': 'DL1ABC'},
+                'startAtMillis': 1000 + i,
+              },
+            ),
+        ];
+        await pumpContacts(tester);
+        expect(find.text('1,234 QSOs to be exported'), findsOneWidget);
+      });
+
       testWidgets('the service lists and writes the same contacts, against their operations', (tester) async {
         await pumpContacts(tester);
         expect(exports.listedFor?.contacts, same(contacts));
@@ -1301,6 +1393,7 @@ class _MultiCallExportService extends ExportService {
     List<Map<String, dynamic>> selectedOptions, {
     List<Qso>? contacts,
     Map<String, Operation> operations = const {},
+    void Function(int done, int total)? onProgress,
   }) async {
     generated.add(selectedOptions);
     return [
@@ -1401,6 +1494,15 @@ class _FakeExportService extends ExportService {
   /// answering synchronously never reproduces.
   Completer<void>? holdOptions;
 
+  /// Holds generation open after reporting [progressReported], for the test
+  /// that watches it run.
+  Completer<void>? holdGenerate;
+  ({int done, int total}) progressReported = (done: 1, total: 2);
+
+  /// How long generating takes, for the test that finishes it just as the
+  /// progress dialog is due.
+  Duration? generateTakes;
+
   /// What the pane asked the options for, and generated them from.
   ({List<Qso>? contacts, Map<String, Operation> operations, bool fullAdifOnly})? listedFor;
   ({List<Qso>? contacts, Map<String, Operation> operations})? generatedFrom;
@@ -1493,9 +1595,16 @@ class _FakeExportService extends ExportService {
     List<Map<String, dynamic>> selectedOptions, {
     List<Qso>? contacts,
     Map<String, Operation> operations = const {},
+    void Function(int done, int total)? onProgress,
   }) async {
     generated.add(selectedOptions);
     generatedFrom = (contacts: contacts, operations: operations);
+    if (holdGenerate case final hold?) {
+      final (:done, :total) = progressReported;
+      onProgress?.call(done, total);
+      await hold.future;
+    }
+    if (generateTakes case final takes?) await Future<void>.delayed(takes);
     if (generateThrows != null) throw generateThrows!;
     return [
       for (final option in selectedOptions) {'filename': option['filename'], 'mimeType': 'text/plain', 'content': 'x'},

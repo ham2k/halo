@@ -1757,9 +1757,9 @@ class _Translations$operation$export$tr extends Translations$operation$export$en
 	@override String get title => 'Operasyon Dışa Aktarımları';
 	@override String get syncedOperation => 'Operasyon senkronize edildi';
 	@override String get unsyncedOperation => 'Operasyonda senkronize edilmemiş değişiklikler var';
-	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: 'Bu operasyonda ${count} QSO',
-		other: 'Bu operasyonda ${count} QSO',
+	@override String qsosInOperation({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: 'Bu operasyonda ${n} QSO',
+		other: 'Bu operasyonda ${n} QSO',
 	);
 	@override String qsosSynced({required Object total}) => '${total} QSO\'nun tümü senkronize edildi';
 	@override String qsosPending({required Object total, required Object pending}) => '${total} QSO\'dan ${pending} tanesi senkronizasyon bekliyor';
@@ -1770,49 +1770,49 @@ class _Translations$operation$export$tr extends Translations$operation$export$en
 	@override String get nothingLogged => 'Henüz dışa aktarılacak bir şey yok — bu operasyonda QSO yok.';
 	@override String get share => 'Paylaş';
 	@override String get nothingSelected => 'Hiçbir şey seçilmedi';
-	@override String saveFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: '${count} dosyayı kaydet',
-		other: '${count} dosyayı kaydet',
+	@override String saveFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: '${n} dosyayı kaydet',
+		other: '${n} dosyayı kaydet',
 	);
-	@override String shareFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: '${count} dosyayı paylaş',
-		other: '${count} dosyayı paylaş',
+	@override String shareFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: '${n} dosyayı paylaş',
+		other: '${n} dosyayı paylaş',
 	);
-	@override String exportFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: '${count} dosyayı dışa aktar',
-		other: '${count} dosyayı dışa aktar',
+	@override String exportFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: '${n} dosyayı dışa aktar',
+		other: '${n} dosyayı dışa aktar',
 	);
-	@override String downloadFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: '${count} dosyayı indir',
-		other: '${count} dosyayı indir',
+	@override String downloadFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: '${n} dosyayı indir',
+		other: '${n} dosyayı indir',
 	);
-	@override String saveCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: 'Birleştirilmiş ${count} dosyayı kaydet',
-		other: 'Birleştirilmiş ${count} dosyayı kaydet',
+	@override String saveCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: 'Birleştirilmiş ${n} dosyayı kaydet',
+		other: 'Birleştirilmiş ${n} dosyayı kaydet',
 	);
-	@override String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: 'Birleştirilmiş ${count} dosyayı paylaş',
-		other: 'Birleştirilmiş ${count} dosyayı paylaş',
+	@override String shareCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: 'Birleştirilmiş ${n} dosyayı paylaş',
+		other: 'Birleştirilmiş ${n} dosyayı paylaş',
 	);
-	@override String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: 'Birleştirilmiş ${count} dosyayı dışa aktar',
-		other: 'Birleştirilmiş ${count} dosyayı dışa aktar',
+	@override String exportCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: 'Birleştirilmiş ${n} dosyayı dışa aktar',
+		other: 'Birleştirilmiş ${n} dosyayı dışa aktar',
 	);
-	@override String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: 'Birleştirilmiş ${count} dosyayı indir',
-		other: 'Birleştirilmiş ${count} dosyayı indir',
+	@override String downloadCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: 'Birleştirilmiş ${n} dosyayı indir',
+		other: 'Birleştirilmiş ${n} dosyayı indir',
 	);
 	@override String saveOne({required Object name}) => '${name} dosyasını kaydet';
 	@override String shareOne({required Object name}) => '${name} dosyasını paylaş';
 	@override String exportOne({required Object name}) => '${name} dosyasını dışa aktar';
 	@override String downloadOne({required Object name}) => '${name} dosyasını indir';
-	@override String stashFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: '${count} dosyayı Stash\'e kaydet',
-		other: '${count} dosyayı Stash\'e kaydet',
+	@override String stashFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: '${n} dosyayı Stash\'e kaydet',
+		other: '${n} dosyayı Stash\'e kaydet',
 	);
-	@override String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: 'Birleştirilmiş ${count} dosyayı Stash\'e kaydet',
-		other: 'Birleştirilmiş ${count} dosyayı Stash\'e kaydet',
+	@override String stashCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: 'Birleştirilmiş ${n} dosyayı Stash\'e kaydet',
+		other: 'Birleştirilmiş ${n} dosyayı Stash\'e kaydet',
 	);
 	@override String get settingsButton => 'Dışa aktarma ayarları';
 	@override String get settingsTitle => 'Dışa Aktarma Ayarları';
@@ -1820,21 +1820,21 @@ class _Translations$operation$export$tr extends Translations$operation$export$en
 	@override late final _Translations$operation$export$includePrivateData$tr includePrivateData = _Translations$operation$export$includePrivateData$tr._(_root);
 	@override String get resultTitle => 'Dışa aktarma tamamlandı';
 	@override String get resultFailedTitle => 'Dışa aktarma başarısız';
-	@override String saveSuccess({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: '${count} dosya ${path} konumuna aktarıldı',
-		other: '${count} dosya ${path} konumuna aktarıldı',
+	@override String saveSuccess({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: '${n} dosya ${path} konumuna aktarıldı',
+		other: '${n} dosya ${path} konumuna aktarıldı',
 	);
-	@override String saveSuccessNamed({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: '${count} dosya aktarıldı: ${path}',
-		other: '${count} dosya aktarıldı: ${path}',
+	@override String saveSuccessNamed({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: '${n} dosya aktarıldı: ${path}',
+		other: '${n} dosya aktarıldı: ${path}',
 	);
-	@override String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: '${count} dosya paylaşıldı',
-		other: '${count} dosya paylaşıldı',
+	@override String shareSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: '${n} dosya paylaşıldı',
+		other: '${n} dosya paylaşıldı',
 	);
-	@override String downloadSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: '${count} dosya indirildi',
-		other: '${count} dosya indirildi',
+	@override String downloadSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: '${n} dosya indirildi',
+		other: '${n} dosya indirildi',
 	);
 	@override String exportFailed({required Object error}) => 'Dışa aktarma başarısız: ${error}';
 	@override late final _Translations$operation$export$stash$tr stash = _Translations$operation$export$stash$tr._(_root);
@@ -3597,18 +3597,18 @@ class _Translations$operation$export$stash$tr extends Translations$operation$exp
 	);
 	@override String get mayHaveArrived => 'Stash\'ten yanıt yok — dosya yine de ulaşmış olabilir. Tekrar göndermeden önce stash.ham2k.net adresini kontrol edin';
 	@override String get notSent => 'gönderilmedi';
-	@override String notArrived({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+	@override String notArrived({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
 		one: 'Bu dosya ulaşmadı:',
-		other: 'Bu ${count} dosya ulaşmadı:',
+		other: 'Bu ${n} dosya ulaşmadı:',
 	);
 	@override String get emailOffer => 'Ya da kolaylık olması için size doğrudan bağlantı içeren bir e-posta gönderebiliriz.';
 	@override String get emailMe => 'Bana Bağlantıyı E-postayla Gönder';
 	@override String get emailSent => 'Size indirme bağlantısını e-postayla gönderdik.';
 	@override String emailFailed({required Object error}) => 'E-posta gönderilemedi: ${error}';
 	@override String get freeTier => 'Ücretsiz hesaplar aynı anda yalnızca bir stash tutabilir. Aboneler istedikleri kadar tutabilir.';
-	@override String sentStatus({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: '${count} dosya Ham2K File Stash\'e gönderildi (stash.ham2k.net)',
-		other: '${count} dosya Ham2K File Stash\'e gönderildi (stash.ham2k.net)',
+	@override String sentStatus({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: '${n} dosya Ham2K File Stash\'e gönderildi (stash.ham2k.net)',
+		other: '${n} dosya Ham2K File Stash\'e gönderildi (stash.ham2k.net)',
 	);
 }
 
@@ -5101,7 +5101,7 @@ extension on TranslationsTr {
 			'operation.export.title' => 'Operasyon Dışa Aktarımları',
 			'operation.export.syncedOperation' => 'Operasyon senkronize edildi',
 			'operation.export.unsyncedOperation' => 'Operasyonda senkronize edilmemiş değişiklikler var',
-			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Bu operasyonda ${count} QSO', other: 'Bu operasyonda ${count} QSO', ), 
+			'operation.export.qsosInOperation' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Bu operasyonda ${n} QSO', other: 'Bu operasyonda ${n} QSO', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => '${total} QSO\'nun tümü senkronize edildi',
 			'operation.export.qsosPending' => ({required Object total, required Object pending}) => '${total} QSO\'dan ${pending} tanesi senkronizasyon bekliyor',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} olay işareti senkronize edildi',
@@ -5111,20 +5111,20 @@ extension on TranslationsTr {
 			'operation.export.nothingLogged' => 'Henüz dışa aktarılacak bir şey yok — bu operasyonda QSO yok.',
 			'operation.export.share' => 'Paylaş',
 			'operation.export.nothingSelected' => 'Hiçbir şey seçilmedi',
-			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} dosyayı kaydet', other: '${count} dosyayı kaydet', ), 
-			'operation.export.shareFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} dosyayı paylaş', other: '${count} dosyayı paylaş', ), 
-			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} dosyayı dışa aktar', other: '${count} dosyayı dışa aktar', ), 
-			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} dosyayı indir', other: '${count} dosyayı indir', ), 
-			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı kaydet', other: 'Birleştirilmiş ${count} dosyayı kaydet', ), 
-			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı paylaş', other: 'Birleştirilmiş ${count} dosyayı paylaş', ), 
-			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı dışa aktar', other: 'Birleştirilmiş ${count} dosyayı dışa aktar', ), 
-			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı indir', other: 'Birleştirilmiş ${count} dosyayı indir', ), 
+			'operation.export.saveFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${n} dosyayı kaydet', other: '${n} dosyayı kaydet', ), 
+			'operation.export.shareFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${n} dosyayı paylaş', other: '${n} dosyayı paylaş', ), 
+			'operation.export.exportFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${n} dosyayı dışa aktar', other: '${n} dosyayı dışa aktar', ), 
+			'operation.export.downloadFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${n} dosyayı indir', other: '${n} dosyayı indir', ), 
+			'operation.export.saveCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${n} dosyayı kaydet', other: 'Birleştirilmiş ${n} dosyayı kaydet', ), 
+			'operation.export.shareCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${n} dosyayı paylaş', other: 'Birleştirilmiş ${n} dosyayı paylaş', ), 
+			'operation.export.exportCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${n} dosyayı dışa aktar', other: 'Birleştirilmiş ${n} dosyayı dışa aktar', ), 
+			'operation.export.downloadCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${n} dosyayı indir', other: 'Birleştirilmiş ${n} dosyayı indir', ), 
 			'operation.export.saveOne' => ({required Object name}) => '${name} dosyasını kaydet',
 			'operation.export.shareOne' => ({required Object name}) => '${name} dosyasını paylaş',
 			'operation.export.exportOne' => ({required Object name}) => '${name} dosyasını dışa aktar',
 			'operation.export.downloadOne' => ({required Object name}) => '${name} dosyasını indir',
-			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} dosyayı Stash\'e kaydet', other: '${count} dosyayı Stash\'e kaydet', ), 
-			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı Stash\'e kaydet', other: 'Birleştirilmiş ${count} dosyayı Stash\'e kaydet', ), 
+			'operation.export.stashFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${n} dosyayı Stash\'e kaydet', other: '${n} dosyayı Stash\'e kaydet', ), 
+			'operation.export.stashCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${n} dosyayı Stash\'e kaydet', other: 'Birleştirilmiş ${n} dosyayı Stash\'e kaydet', ), 
 			'operation.export.settingsButton' => 'Dışa aktarma ayarları',
 			'operation.export.settingsTitle' => 'Dışa Aktarma Ayarları',
 			'operation.export.compactFileNames.title' => 'Kısa dosya adları kullan',
@@ -5136,10 +5136,10 @@ extension on TranslationsTr {
 			'operation.export.includePrivateData.note' => 'Tam ADIF Dışa Aktarımı her zaman her şeyi içerir',
 			'operation.export.resultTitle' => 'Dışa aktarma tamamlandı',
 			'operation.export.resultFailedTitle' => 'Dışa aktarma başarısız',
-			'operation.export.saveSuccess' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} dosya ${path} konumuna aktarıldı', other: '${count} dosya ${path} konumuna aktarıldı', ), 
-			'operation.export.saveSuccessNamed' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} dosya aktarıldı: ${path}', other: '${count} dosya aktarıldı: ${path}', ), 
-			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} dosya paylaşıldı', other: '${count} dosya paylaşıldı', ), 
-			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} dosya indirildi', other: '${count} dosya indirildi', ), 
+			'operation.export.saveSuccess' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${n} dosya ${path} konumuna aktarıldı', other: '${n} dosya ${path} konumuna aktarıldı', ), 
+			'operation.export.saveSuccessNamed' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${n} dosya aktarıldı: ${path}', other: '${n} dosya aktarıldı: ${path}', ), 
+			'operation.export.shareSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${n} dosya paylaşıldı', other: '${n} dosya paylaşıldı', ), 
+			'operation.export.downloadSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${n} dosya indirildi', other: '${n} dosya indirildi', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'Dışa aktarma başarısız: ${error}',
 			'operation.export.stash.needsEmailTitle' => 'Önce bir e-posta adresi ekleyin',
 			'operation.export.stash.needsEmailBody' => 'Ham2K File Stash dosyalarınızı LoFi hesabınızdaki e-posta adresine gönderir ve stash.ham2k.net adresinde bu adresle giriş yaparsınız. Hesabınızda henüz onaylanmış bir adres yok — Ayarlar › Bulut Senkronizasyonu bölümünden ekleyin.',
@@ -5152,13 +5152,13 @@ extension on TranslationsTr {
 			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Herhangi bir tarayıcıdan **[stash.ham2k.net](https://stash.ham2k.net)** adresini ziyaret ederek bu dosyayı alabilirsiniz.', other: 'Herhangi bir tarayıcıdan **[stash.ham2k.net](https://stash.ham2k.net)** adresini ziyaret ederek bu dosyaları alabilirsiniz.', ), 
 			'operation.export.stash.mayHaveArrived' => 'Stash\'ten yanıt yok — dosya yine de ulaşmış olabilir. Tekrar göndermeden önce stash.ham2k.net adresini kontrol edin',
 			'operation.export.stash.notSent' => 'gönderilmedi',
-			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Bu dosya ulaşmadı:', other: 'Bu ${count} dosya ulaşmadı:', ), 
+			'operation.export.stash.notArrived' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Bu dosya ulaşmadı:', other: 'Bu ${n} dosya ulaşmadı:', ), 
 			'operation.export.stash.emailOffer' => 'Ya da kolaylık olması için size doğrudan bağlantı içeren bir e-posta gönderebiliriz.',
 			'operation.export.stash.emailMe' => 'Bana Bağlantıyı E-postayla Gönder',
 			'operation.export.stash.emailSent' => 'Size indirme bağlantısını e-postayla gönderdik.',
 			'operation.export.stash.emailFailed' => ({required Object error}) => 'E-posta gönderilemedi: ${error}',
 			'operation.export.stash.freeTier' => 'Ücretsiz hesaplar aynı anda yalnızca bir stash tutabilir. Aboneler istedikleri kadar tutabilir.',
-			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} dosya Ham2K File Stash\'e gönderildi (stash.ham2k.net)', other: '${count} dosya Ham2K File Stash\'e gönderildi (stash.ham2k.net)', ), 
+			'operation.export.stash.sentStatus' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${n} dosya Ham2K File Stash\'e gönderildi (stash.ham2k.net)', other: '${n} dosya Ham2K File Stash\'e gönderildi (stash.ham2k.net)', ), 
 			'operation.spots.empty' => 'Filtrelerinizle eşleşen spot yok',
 			'operation.spots.error' => ({required Object error}) => 'Spotlar yüklenemedi: ${error}',
 			'operation.spots.unknownBand' => 'Diğer',

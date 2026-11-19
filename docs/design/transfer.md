@@ -2,9 +2,9 @@
 
 *Status: in progress (HALO-948), behind `EXP PUSH`: with it off the app
 asks no `transfer` hook anything. Push (§2–§7) is built in the app and the
-SDK, at extension API 28, and offered from an operation's Exports panel.
-The Logs and Chasing views have Exports panels of their own, for files
-only, and do not offer it yet. The `import` hook
+SDK, at extension API 28, and offered from an operation's Exports panel;
+the Chasing and Logs views' Exports panels offer it too, over their whole
+log, at API 29. The `import` hook
 (§9) builds on imports.md (HALO-841), and pull (§8) on both.*
 
 Operators keep copies of their log elsewhere: QRZ.com's logbook, Wavelog,
@@ -123,11 +123,13 @@ a **scope**, because pushing is not only about operations:
 ```ts
 type PushScope =
   | { kind: "operation"; operation }        // the Exports panel; operation.status included
-  | { kind: "chasing" }                     // contacts logged outside any operation
-  | { kind: "log"; stationCall; selection?: true }   // the Logs view: its callsign filter,
-                                                     // or the selected rows when there are any
-// `chasing` and `log` come with push from the Logs and Chasing views; the
-// SDK declares only `operation` until then.
+  | { kind: "chasing"; stationCall }       // the Chasing view: contacts logged outside any
+                                            // operation under its station
+  | { kind: "log"; stationCall? }           // the Logs view: the whole log under its callsign
+                                            // filter, every callsign when left out, whatever
+                                            // period or search it shows
+// `chasing` and `log` are API 29's; a hook that predates them offers
+// nothing for them.
 
 interface PushSuggestion {
   key: string

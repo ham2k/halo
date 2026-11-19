@@ -1757,9 +1757,9 @@ class _Translations$operation$export$ca extends Translations$operation$export$en
 	@override String get title => 'Exportacions de l\'operació';
 	@override String get syncedOperation => 'L\'operació està sincronitzada';
 	@override String get unsyncedOperation => 'L\'operació té canvis sense sincronitzar';
-	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: '${count} QSO en aquesta operació',
-		other: '${count} QSOs en aquesta operació',
+	@override String qsosInOperation({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: '${n} QSO en aquesta operació',
+		other: '${n} QSOs en aquesta operació',
 	);
 	@override String qsosSynced({required Object total}) => 'Els ${total} QSOs estan sincronitzats';
 	@override String qsosPending({required Object pending, required Object total}) => '${pending} de ${total} QSOs pendents de sincronitzar';
@@ -1770,49 +1770,49 @@ class _Translations$operation$export$ca extends Translations$operation$export$en
 	@override String get nothingLogged => 'Encara no hi ha res per exportar — aquesta operació no té QSOs.';
 	@override String get share => 'Comparteix';
 	@override String get nothingSelected => 'No hi ha res seleccionat';
-	@override String saveFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'Desa ${count} fitxer',
-		other: 'Desa ${count} fitxers',
+	@override String saveFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'Desa ${n} fitxer',
+		other: 'Desa ${n} fitxers',
 	);
-	@override String shareFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'Comparteix ${count} fitxer',
-		other: 'Comparteix ${count} fitxers',
+	@override String shareFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'Comparteix ${n} fitxer',
+		other: 'Comparteix ${n} fitxers',
 	);
-	@override String exportFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'Exporta ${count} fitxer',
-		other: 'Exporta ${count} fitxers',
+	@override String exportFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'Exporta ${n} fitxer',
+		other: 'Exporta ${n} fitxers',
 	);
-	@override String downloadFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'Descarrega ${count} fitxer',
-		other: 'Descarrega ${count} fitxers',
+	@override String downloadFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'Descarrega ${n} fitxer',
+		other: 'Descarrega ${n} fitxers',
 	);
-	@override String saveCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'Desa ${count} fitxer combinat',
-		other: 'Desa ${count} fitxers combinats',
+	@override String saveCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'Desa ${n} fitxer combinat',
+		other: 'Desa ${n} fitxers combinats',
 	);
-	@override String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'Comparteix ${count} fitxer combinat',
-		other: 'Comparteix ${count} fitxers combinats',
+	@override String shareCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'Comparteix ${n} fitxer combinat',
+		other: 'Comparteix ${n} fitxers combinats',
 	);
-	@override String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'Exporta ${count} fitxer combinat',
-		other: 'Exporta ${count} fitxers combinats',
+	@override String exportCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'Exporta ${n} fitxer combinat',
+		other: 'Exporta ${n} fitxers combinats',
 	);
-	@override String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'Descarrega ${count} fitxer combinat',
-		other: 'Descarrega ${count} fitxers combinats',
+	@override String downloadCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'Descarrega ${n} fitxer combinat',
+		other: 'Descarrega ${n} fitxers combinats',
 	);
 	@override String saveOne({required Object name}) => 'Desa ${name}';
 	@override String shareOne({required Object name}) => 'Comparteix ${name}';
 	@override String exportOne({required Object name}) => 'Exporta ${name}';
 	@override String downloadOne({required Object name}) => 'Descarrega ${name}';
-	@override String stashFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'Desa ${count} fitxer a l\'Stash',
-		other: 'Desa ${count} fitxers a l\'Stash',
+	@override String stashFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'Desa ${n} fitxer a l\'Stash',
+		other: 'Desa ${n} fitxers a l\'Stash',
 	);
-	@override String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'Desa ${count} fitxer combinat a l\'Stash',
-		other: 'Desa ${count} fitxers combinats a l\'Stash',
+	@override String stashCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'Desa ${n} fitxer combinat a l\'Stash',
+		other: 'Desa ${n} fitxers combinats a l\'Stash',
 	);
 	@override String get settingsButton => 'Configuració d\'exportació';
 	@override String get settingsTitle => 'Configuració d\'exportació';
@@ -1820,21 +1820,21 @@ class _Translations$operation$export$ca extends Translations$operation$export$en
 	@override late final _Translations$operation$export$includePrivateData$ca includePrivateData = _Translations$operation$export$includePrivateData$ca._(_root);
 	@override String get resultTitle => 'Exportació completada';
 	@override String get resultFailedTitle => 'L\'exportació ha fallat';
-	@override String saveSuccess({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'S\'ha exportat ${count} fitxer a ${path}',
-		other: 'S\'han exportat ${count} fitxers a ${path}',
+	@override String saveSuccess({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'S\'ha exportat ${n} fitxer a ${path}',
+		other: 'S\'han exportat ${n} fitxers a ${path}',
 	);
-	@override String saveSuccessNamed({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'S\'ha exportat ${count} fitxer: ${path}',
-		other: 'S\'han exportat ${count} fitxers: ${path}',
+	@override String saveSuccessNamed({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'S\'ha exportat ${n} fitxer: ${path}',
+		other: 'S\'han exportat ${n} fitxers: ${path}',
 	);
-	@override String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'S\'ha compartit ${count} fitxer',
-		other: 'S\'han compartit ${count} fitxers',
+	@override String shareSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'S\'ha compartit ${n} fitxer',
+		other: 'S\'han compartit ${n} fitxers',
 	);
-	@override String downloadSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'S\'ha descarregat ${count} fitxer',
-		other: 'S\'han descarregat ${count} fitxers',
+	@override String downloadSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'S\'ha descarregat ${n} fitxer',
+		other: 'S\'han descarregat ${n} fitxers',
 	);
 	@override String exportFailed({required Object error}) => 'L\'exportació ha fallat: ${error}';
 	@override late final _Translations$operation$export$stash$ca stash = _Translations$operation$export$stash$ca._(_root);
@@ -3597,18 +3597,18 @@ class _Translations$operation$export$stash$ca extends Translations$operation$exp
 	);
 	@override String get mayHaveArrived => 'L\'Stash no ha respost — potser el fitxer ha arribat igualment. Comprova stash.ham2k.net abans de tornar-lo a enviar';
 	@override String get notSent => 'no enviat';
-	@override String notArrived({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+	@override String notArrived({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
 		one: 'Aquest fitxer no ha arribat:',
-		other: 'Aquests ${count} fitxers no han arribat:',
+		other: 'Aquests ${n} fitxers no han arribat:',
 	);
 	@override String get emailOffer => 'O, per a la teva comoditat, et podem enviar un correu electrònic amb un enllaç directe.';
 	@override String get emailMe => 'Envia\'m un enllaç per correu electrònic';
 	@override String get emailSent => 'T\'hem enviat un enllaç de descàrrega per correu electrònic.';
 	@override String emailFailed({required Object error}) => 'No s\'ha pogut enviar el correu electrònic: ${error}';
 	@override String get freeTier => 'Els comptes gratuïts només poden conservar un element a l\'Stash alhora. Els subscriptors en poden conservar tants com vulguin.';
-	@override String sentStatus({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: 'S\'ha enviat ${count} fitxer a Ham2K File Stash (stash.ham2k.net)',
-		other: 'S\'han enviat ${count} fitxers a Ham2K File Stash (stash.ham2k.net)',
+	@override String sentStatus({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: 'S\'ha enviat ${n} fitxer a Ham2K File Stash (stash.ham2k.net)',
+		other: 'S\'han enviat ${n} fitxers a Ham2K File Stash (stash.ham2k.net)',
 	);
 }
 
@@ -5101,7 +5101,7 @@ extension on TranslationsCa {
 			'operation.export.title' => 'Exportacions de l\'operació',
 			'operation.export.syncedOperation' => 'L\'operació està sincronitzada',
 			'operation.export.unsyncedOperation' => 'L\'operació té canvis sense sincronitzar',
-			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} QSO en aquesta operació', other: '${count} QSOs en aquesta operació', ), 
+			'operation.export.qsosInOperation' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${n} QSO en aquesta operació', other: '${n} QSOs en aquesta operació', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => 'Els ${total} QSOs estan sincronitzats',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} de ${total} QSOs pendents de sincronitzar',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} marcadors d\'esdeveniment sincronitzats',
@@ -5111,20 +5111,20 @@ extension on TranslationsCa {
 			'operation.export.nothingLogged' => 'Encara no hi ha res per exportar — aquesta operació no té QSOs.',
 			'operation.export.share' => 'Comparteix',
 			'operation.export.nothingSelected' => 'No hi ha res seleccionat',
-			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Desa ${count} fitxer', other: 'Desa ${count} fitxers', ), 
-			'operation.export.shareFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Comparteix ${count} fitxer', other: 'Comparteix ${count} fitxers', ), 
-			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Exporta ${count} fitxer', other: 'Exporta ${count} fitxers', ), 
-			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Descarrega ${count} fitxer', other: 'Descarrega ${count} fitxers', ), 
-			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Desa ${count} fitxer combinat', other: 'Desa ${count} fitxers combinats', ), 
-			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Comparteix ${count} fitxer combinat', other: 'Comparteix ${count} fitxers combinats', ), 
-			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Exporta ${count} fitxer combinat', other: 'Exporta ${count} fitxers combinats', ), 
-			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Descarrega ${count} fitxer combinat', other: 'Descarrega ${count} fitxers combinats', ), 
+			'operation.export.saveFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Desa ${n} fitxer', other: 'Desa ${n} fitxers', ), 
+			'operation.export.shareFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Comparteix ${n} fitxer', other: 'Comparteix ${n} fitxers', ), 
+			'operation.export.exportFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Exporta ${n} fitxer', other: 'Exporta ${n} fitxers', ), 
+			'operation.export.downloadFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Descarrega ${n} fitxer', other: 'Descarrega ${n} fitxers', ), 
+			'operation.export.saveCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Desa ${n} fitxer combinat', other: 'Desa ${n} fitxers combinats', ), 
+			'operation.export.shareCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Comparteix ${n} fitxer combinat', other: 'Comparteix ${n} fitxers combinats', ), 
+			'operation.export.exportCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Exporta ${n} fitxer combinat', other: 'Exporta ${n} fitxers combinats', ), 
+			'operation.export.downloadCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Descarrega ${n} fitxer combinat', other: 'Descarrega ${n} fitxers combinats', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Desa ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Comparteix ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exporta ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Descarrega ${name}',
-			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Desa ${count} fitxer a l\'Stash', other: 'Desa ${count} fitxers a l\'Stash', ), 
-			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Desa ${count} fitxer combinat a l\'Stash', other: 'Desa ${count} fitxers combinats a l\'Stash', ), 
+			'operation.export.stashFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Desa ${n} fitxer a l\'Stash', other: 'Desa ${n} fitxers a l\'Stash', ), 
+			'operation.export.stashCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Desa ${n} fitxer combinat a l\'Stash', other: 'Desa ${n} fitxers combinats a l\'Stash', ), 
 			'operation.export.settingsButton' => 'Configuració d\'exportació',
 			'operation.export.settingsTitle' => 'Configuració d\'exportació',
 			'operation.export.compactFileNames.title' => 'Utilitza noms de fitxer compactes',
@@ -5136,10 +5136,10 @@ extension on TranslationsCa {
 			'operation.export.includePrivateData.note' => 'L\'exportació ADIF completa sempre ho inclou tot',
 			'operation.export.resultTitle' => 'Exportació completada',
 			'operation.export.resultFailedTitle' => 'L\'exportació ha fallat',
-			'operation.export.saveSuccess' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'S\'ha exportat ${count} fitxer a ${path}', other: 'S\'han exportat ${count} fitxers a ${path}', ), 
-			'operation.export.saveSuccessNamed' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'S\'ha exportat ${count} fitxer: ${path}', other: 'S\'han exportat ${count} fitxers: ${path}', ), 
-			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'S\'ha compartit ${count} fitxer', other: 'S\'han compartit ${count} fitxers', ), 
-			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'S\'ha descarregat ${count} fitxer', other: 'S\'han descarregat ${count} fitxers', ), 
+			'operation.export.saveSuccess' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'S\'ha exportat ${n} fitxer a ${path}', other: 'S\'han exportat ${n} fitxers a ${path}', ), 
+			'operation.export.saveSuccessNamed' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'S\'ha exportat ${n} fitxer: ${path}', other: 'S\'han exportat ${n} fitxers: ${path}', ), 
+			'operation.export.shareSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'S\'ha compartit ${n} fitxer', other: 'S\'han compartit ${n} fitxers', ), 
+			'operation.export.downloadSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'S\'ha descarregat ${n} fitxer', other: 'S\'han descarregat ${n} fitxers', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'L\'exportació ha fallat: ${error}',
 			'operation.export.stash.needsEmailTitle' => 'Afegeix primer una adreça de correu electrònic',
 			'operation.export.stash.needsEmailBody' => 'Ham2K File Stash envia els teus fitxers a l\'adreça de correu electrònic del teu compte LoFi, i hi inicies sessió amb ella a stash.ham2k.net. El teu compte encara no en té cap de confirmada — afegeix-la a Configuració › Sincronització al núvol.',
@@ -5152,13 +5152,13 @@ extension on TranslationsCa {
 			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Pots recuperar aquest fitxer visitant **[stash.ham2k.net](https://stash.ham2k.net)** des de qualsevol navegador.', other: 'Pots recuperar aquests fitxers visitant **[stash.ham2k.net](https://stash.ham2k.net)** des de qualsevol navegador.', ), 
 			'operation.export.stash.mayHaveArrived' => 'L\'Stash no ha respost — potser el fitxer ha arribat igualment. Comprova stash.ham2k.net abans de tornar-lo a enviar',
 			'operation.export.stash.notSent' => 'no enviat',
-			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Aquest fitxer no ha arribat:', other: 'Aquests ${count} fitxers no han arribat:', ), 
+			'operation.export.stash.notArrived' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Aquest fitxer no ha arribat:', other: 'Aquests ${n} fitxers no han arribat:', ), 
 			'operation.export.stash.emailOffer' => 'O, per a la teva comoditat, et podem enviar un correu electrònic amb un enllaç directe.',
 			'operation.export.stash.emailMe' => 'Envia\'m un enllaç per correu electrònic',
 			'operation.export.stash.emailSent' => 'T\'hem enviat un enllaç de descàrrega per correu electrònic.',
 			'operation.export.stash.emailFailed' => ({required Object error}) => 'No s\'ha pogut enviar el correu electrònic: ${error}',
 			'operation.export.stash.freeTier' => 'Els comptes gratuïts només poden conservar un element a l\'Stash alhora. Els subscriptors en poden conservar tants com vulguin.',
-			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'S\'ha enviat ${count} fitxer a Ham2K File Stash (stash.ham2k.net)', other: 'S\'han enviat ${count} fitxers a Ham2K File Stash (stash.ham2k.net)', ), 
+			'operation.export.stash.sentStatus' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'S\'ha enviat ${n} fitxer a Ham2K File Stash (stash.ham2k.net)', other: 'S\'han enviat ${n} fitxers a Ham2K File Stash (stash.ham2k.net)', ), 
 			'operation.spots.empty' => 'Cap anunci coincideix amb els filtres',
 			'operation.spots.error' => ({required Object error}) => 'No s\'han pogut carregar els anuncis: ${error}',
 			'operation.spots.unknownBand' => 'Altres',

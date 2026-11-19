@@ -39,6 +39,26 @@ final class OperationPushScope extends PushScope {
   Map<String, dynamic> toJson() => {'kind': 'operation', 'operation': operationQsonFor(operation)};
 }
 
+/// The Chasing view's: every contact logged outside any operation under
+/// [stationCall], the chasing station.
+final class ChasingPushScope extends PushScope {
+  final String stationCall;
+  const ChasingPushScope(this.stationCall);
+  @override
+  Map<String, dynamic> toJson() => {'kind': 'chasing', 'stationCall': stationCall};
+}
+
+/// The Logs view's: every contact logged under [stationCall] in any
+/// operation or none, or under any call when it is null (the All filter).
+/// The whole log, whatever period or search the view shows: a push keeps
+/// the service in step with the log, not with what is on screen.
+final class LogPushScope extends PushScope {
+  final String? stationCall;
+  const LogPushScope(this.stationCall);
+  @override
+  Map<String, dynamic> toJson() => {'kind': 'log', 'stationCall': ?stationCall};
+}
+
 /// One place a hook offers to send a scope's contacts on a service: a
 /// logbook, a folder, a station location (transfer.md §6).
 class TransferDestination {
@@ -180,25 +200,36 @@ class TransferService {
   /// suggests a push to, whether anything is due there or not, in the order
   /// the hooks offered them; then a row with its problem for each hook that
   /// could not say what it offers. None while [enabled] is false.
-  Future<List<PushServiceStatus>> servicesFor(OperationPushScope scope) async {
+  Future<List<PushServiceStatus>> servicesFor(PushScope scope) async {
     if (!enabled) return [];
-    final (contacts, refsOf) = await _contactsOf(scope);
+    final contacts = await _contactsOf(scope);
     final byService = <String, List<_Offer>>{};
     final (:offers, :problems) = await _offered(scope);
     for (final offer in offers) {
       byService.putIfAbsent(offer.service, () => []).add(offer);
     }
-    final logOf = _logReader(seed: (operation: scope.operation, qsos: [...contacts.where((qso) => !qso.deleted)]));
+    final logOf = _logReader(seed: scope is OperationPushScope ? (operation: scope.operation, qsos: [...contacts.where((qso) => !qso.deleted)]) : null);
     // Deleted contacts too: a delete still owed goes to a station call's
     // destination after its last live contact is gone.
     final callsOf = <String, List<String>>{};
     final hashOf = <String, String?>{};
+    final refsByOperation = <String, List<Map<String, dynamic>>>{};
     for (final qso in contacts) {
       if (qso.isEvent) continue;
       final log = await logOf(qso.operationUuid);
       callsOf[qso.uuid] = _stationCallsOf(qso, log);
       hashOf[qso.operationUuid] = log.hash;
+      refsByOperation[qso.operationUuid] ??= log.segmented.allRefs;
     }
+    // The references each contact's own operation carries, for an
+    // `activated` selector; an operation scope reads them from every row it
+    // holds, deleted ones included.
+    final List<Map<String, dynamic>> Function(Qso) refsOf = scope is OperationPushScope
+        ? () {
+            final refs = SegmentedOperation.from(operation: scope.operation.data, qsos: contacts).allRefs;
+            return (Qso _) => refs;
+          }()
+        : (qso) => refsByOperation[qso.operationUuid] ?? const [];
     final services = byService.entries.toList();
     final asked = await Future.wait([
       for (final MapEntry(key: service, value: offers) in services)
@@ -386,27 +417,35 @@ class TransferService {
     }();
   }
 
-  /// The scope's contacts, live and deleted, with a reader for the
-  /// references each one's operation carries.
-  Future<(List<Qso>, List<Map<String, dynamic>> Function(Qso))> _contactsOf(OperationPushScope scope) async {
-    final all = await qsos.forOperation(scope.operation.uuid, includeDeleted: true);
-    final refs = SegmentedOperation.from(operation: scope.operation.data, qsos: all).allRefs;
-    return (all, (Qso _) => refs);
-  }
+  /// The scope's contacts, live and deleted.
+  Future<List<Qso>> _contactsOf(PushScope scope) async => switch (scope) {
+    OperationPushScope(:final operation) => await qsos.forOperation(operation.uuid, includeDeleted: true),
+    ChasingPushScope(:final stationCall) => [
+      for (final qso in await qsos.forOperation('', includeDeleted: true))
+        if (!qso.isEvent && qso.ourCall.toUpperCase() == stationCall.trim().toUpperCase()) qso,
+    ],
+    LogPushScope(:final stationCall) => await qsos.forOurCall(stationCall, includeDeleted: true),
+  };
 
   /// Sends everything due in [row], one suggestion after another, adding
   /// to [outcome] as it goes, so a caller holding it knows what went before
   /// a throw. A contact two suggestions select goes with the first only.
-  /// Only a push that ends with every record accepted marks [scope]'s
-  /// operation processed (transfer.md §7).
-  Future<PushOutcome> push(OperationPushScope scope, PushServiceStatus row, {PushOutcome? outcome, void Function(int done, int total)? onProgress}) async {
+  /// Only a push that ends with every record accepted marks an operation
+  /// scope's operation processed (transfer.md §7); the Chasing and Logs
+  /// scopes are no operation's to mark.
+  Future<PushOutcome> push(PushScope scope, PushServiceStatus row, {PushOutcome? outcome, void Function(int done, int total)? onProgress}) async {
     if (!enabled) throw StateError('Pushing is off (EXP PUSH)');
     final destination = row.destination;
     if (destination == null) throw StateError('"${row.service}" names no destination to push to');
     // Refused before anything is sent: refused at the write-back instead, the
     // service would hold contacts with no id saved here, and the next push
     // would make copies.
-    if (WritePolicy.forQso(operation: scope.operation) case final refusal?) throw refusal;
+    final refusal = switch (scope) {
+      OperationPushScope(:final operation) => WritePolicy.forQso(operation: operation),
+      ChasingPushScope(:final stationCall) => WritePolicy.forQso(operation: null, ourCall: stationCall),
+      LogPushScope(:final stationCall) => WritePolicy.forQso(operation: null, ourCall: stationCall ?? ''),
+    };
+    if (refusal != null) throw refusal;
     final result = outcome ?? PushOutcome();
     final service = (await extensions.transferServices()).byKey[row.service];
     if (service == null || service.hookKey != row.hookKey || !service.pushes) {
@@ -442,7 +481,7 @@ class TransferService {
       rethrow;
     }
     await recordSummaries();
-    if (result.failures.isEmpty) await operations.markExported(scope.operation.uuid);
+    if (scope is OperationPushScope && result.failures.isEmpty) await operations.markExported(scope.operation.uuid);
     return result;
   }
 

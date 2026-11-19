@@ -1757,9 +1757,9 @@ class _Translations$operation$export$nl extends Translations$operation$export$en
 	@override String get title => 'Activatie exporteren';
 	@override String get syncedOperation => 'Activatie is gesynchroniseerd';
 	@override String get unsyncedOperation => 'Activatie heeft niet-gesynchroniseerde wijzigingen';
-	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} QSO in deze activatie',
-		other: '${count} QSO\'s in deze activatie',
+	@override String qsosInOperation({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} QSO in deze activatie',
+		other: '${n} QSO\'s in deze activatie',
 	);
 	@override String qsosSynced({required Object total}) => 'Alle ${total} QSO\'s zijn gesynchroniseerd';
 	@override String qsosPending({required Object pending, required Object total}) => '${pending} van ${total} QSO\'s wachten op synchronisatie';
@@ -1770,49 +1770,49 @@ class _Translations$operation$export$nl extends Translations$operation$export$en
 	@override String get nothingLogged => 'Nog niets te exporteren — deze activatie heeft geen QSO\'s.';
 	@override String get share => 'Delen';
 	@override String get nothingSelected => 'Niets geselecteerd';
-	@override String saveFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} bestand opslaan',
-		other: '${count} bestanden opslaan',
+	@override String saveFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} bestand opslaan',
+		other: '${n} bestanden opslaan',
 	);
-	@override String shareFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} bestand delen',
-		other: '${count} bestanden delen',
+	@override String shareFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} bestand delen',
+		other: '${n} bestanden delen',
 	);
-	@override String exportFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} bestand exporteren',
-		other: '${count} bestanden exporteren',
+	@override String exportFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} bestand exporteren',
+		other: '${n} bestanden exporteren',
 	);
-	@override String downloadFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} bestand downloaden',
-		other: '${count} bestanden downloaden',
+	@override String downloadFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} bestand downloaden',
+		other: '${n} bestanden downloaden',
 	);
-	@override String saveCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} gecombineerd bestand opslaan',
-		other: '${count} gecombineerde bestanden opslaan',
+	@override String saveCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} gecombineerd bestand opslaan',
+		other: '${n} gecombineerde bestanden opslaan',
 	);
-	@override String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} gecombineerd bestand delen',
-		other: '${count} gecombineerde bestanden delen',
+	@override String shareCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} gecombineerd bestand delen',
+		other: '${n} gecombineerde bestanden delen',
 	);
-	@override String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} gecombineerd bestand exporteren',
-		other: '${count} gecombineerde bestanden exporteren',
+	@override String exportCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} gecombineerd bestand exporteren',
+		other: '${n} gecombineerde bestanden exporteren',
 	);
-	@override String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} gecombineerd bestand downloaden',
-		other: '${count} gecombineerde bestanden downloaden',
+	@override String downloadCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} gecombineerd bestand downloaden',
+		other: '${n} gecombineerde bestanden downloaden',
 	);
 	@override String saveOne({required Object name}) => '${name} opslaan';
 	@override String shareOne({required Object name}) => '${name} delen';
 	@override String exportOne({required Object name}) => '${name} exporteren';
 	@override String downloadOne({required Object name}) => '${name} downloaden';
-	@override String stashFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} bestand naar Stash',
-		other: '${count} bestanden naar Stash',
+	@override String stashFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} bestand naar Stash',
+		other: '${n} bestanden naar Stash',
 	);
-	@override String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} gecombineerd bestand naar Stash',
-		other: '${count} gecombineerde bestanden naar Stash',
+	@override String stashCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} gecombineerd bestand naar Stash',
+		other: '${n} gecombineerde bestanden naar Stash',
 	);
 	@override String get settingsButton => 'Exportinstellingen';
 	@override String get settingsTitle => 'Exportinstellingen';
@@ -1820,21 +1820,21 @@ class _Translations$operation$export$nl extends Translations$operation$export$en
 	@override late final _Translations$operation$export$includePrivateData$nl includePrivateData = _Translations$operation$export$includePrivateData$nl._(_root);
 	@override String get resultTitle => 'Export voltooid';
 	@override String get resultFailedTitle => 'Export mislukt';
-	@override String saveSuccess({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} bestand geëxporteerd naar ${path}',
-		other: '${count} bestanden geëxporteerd naar ${path}',
+	@override String saveSuccess({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} bestand geëxporteerd naar ${path}',
+		other: '${n} bestanden geëxporteerd naar ${path}',
 	);
-	@override String saveSuccessNamed({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} bestand geëxporteerd: ${path}',
-		other: '${count} bestanden geëxporteerd: ${path}',
+	@override String saveSuccessNamed({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} bestand geëxporteerd: ${path}',
+		other: '${n} bestanden geëxporteerd: ${path}',
 	);
-	@override String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} bestand gedeeld',
-		other: '${count} bestanden gedeeld',
+	@override String shareSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} bestand gedeeld',
+		other: '${n} bestanden gedeeld',
 	);
-	@override String downloadSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} bestand gedownload',
-		other: '${count} bestanden gedownload',
+	@override String downloadSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} bestand gedownload',
+		other: '${n} bestanden gedownload',
 	);
 	@override String exportFailed({required Object error}) => 'Export mislukt: ${error}';
 	@override late final _Translations$operation$export$stash$nl stash = _Translations$operation$export$stash$nl._(_root);
@@ -3597,18 +3597,18 @@ class _Translations$operation$export$stash$nl extends Translations$operation$exp
 	);
 	@override String get mayHaveArrived => 'Geen reactie van de stash — het bestand is mogelijk toch aangekomen. Kijk op stash.ham2k.net voordat je opnieuw verstuurt';
 	@override String get notSent => 'niet verzonden';
-	@override String notArrived({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+	@override String notArrived({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
 		one: 'Dit bestand is niet aangekomen:',
-		other: 'Deze ${count} bestanden zijn niet aangekomen:',
+		other: 'Deze ${n} bestanden zijn niet aangekomen:',
 	);
 	@override String get emailOffer => 'Of, voor je gemak, kunnen we je een e-mail met een directe link sturen.';
 	@override String get emailMe => 'Stuur mij een link per e-mail';
 	@override String get emailSent => 'We hebben je een downloadlink per e-mail gestuurd.';
 	@override String emailFailed({required Object error}) => 'Kon de e-mail niet versturen: ${error}';
 	@override String get freeTier => 'Gratis accounts kunnen maar één stash tegelijk bewaren. Abonnees kunnen er zoveel bewaren als ze willen.';
-	@override String sentStatus({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} bestand verstuurd naar Ham2K File Stash (stash.ham2k.net)',
-		other: '${count} bestanden verstuurd naar Ham2K File Stash (stash.ham2k.net)',
+	@override String sentStatus({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${n} bestand verstuurd naar Ham2K File Stash (stash.ham2k.net)',
+		other: '${n} bestanden verstuurd naar Ham2K File Stash (stash.ham2k.net)',
 	);
 }
 
@@ -5101,7 +5101,7 @@ extension on TranslationsNl {
 			'operation.export.title' => 'Activatie exporteren',
 			'operation.export.syncedOperation' => 'Activatie is gesynchroniseerd',
 			'operation.export.unsyncedOperation' => 'Activatie heeft niet-gesynchroniseerde wijzigingen',
-			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO in deze activatie', other: '${count} QSO\'s in deze activatie', ), 
+			'operation.export.qsosInOperation' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} QSO in deze activatie', other: '${n} QSO\'s in deze activatie', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => 'Alle ${total} QSO\'s zijn gesynchroniseerd',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} van ${total} QSO\'s wachten op synchronisatie',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} gebeurtenismarkeringen gesynchroniseerd',
@@ -5111,20 +5111,20 @@ extension on TranslationsNl {
 			'operation.export.nothingLogged' => 'Nog niets te exporteren — deze activatie heeft geen QSO\'s.',
 			'operation.export.share' => 'Delen',
 			'operation.export.nothingSelected' => 'Niets geselecteerd',
-			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} bestand opslaan', other: '${count} bestanden opslaan', ), 
-			'operation.export.shareFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} bestand delen', other: '${count} bestanden delen', ), 
-			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} bestand exporteren', other: '${count} bestanden exporteren', ), 
-			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} bestand downloaden', other: '${count} bestanden downloaden', ), 
-			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} gecombineerd bestand opslaan', other: '${count} gecombineerde bestanden opslaan', ), 
-			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} gecombineerd bestand delen', other: '${count} gecombineerde bestanden delen', ), 
-			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} gecombineerd bestand exporteren', other: '${count} gecombineerde bestanden exporteren', ), 
-			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} gecombineerd bestand downloaden', other: '${count} gecombineerde bestanden downloaden', ), 
+			'operation.export.saveFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} bestand opslaan', other: '${n} bestanden opslaan', ), 
+			'operation.export.shareFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} bestand delen', other: '${n} bestanden delen', ), 
+			'operation.export.exportFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} bestand exporteren', other: '${n} bestanden exporteren', ), 
+			'operation.export.downloadFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} bestand downloaden', other: '${n} bestanden downloaden', ), 
+			'operation.export.saveCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} gecombineerd bestand opslaan', other: '${n} gecombineerde bestanden opslaan', ), 
+			'operation.export.shareCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} gecombineerd bestand delen', other: '${n} gecombineerde bestanden delen', ), 
+			'operation.export.exportCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} gecombineerd bestand exporteren', other: '${n} gecombineerde bestanden exporteren', ), 
+			'operation.export.downloadCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} gecombineerd bestand downloaden', other: '${n} gecombineerde bestanden downloaden', ), 
 			'operation.export.saveOne' => ({required Object name}) => '${name} opslaan',
 			'operation.export.shareOne' => ({required Object name}) => '${name} delen',
 			'operation.export.exportOne' => ({required Object name}) => '${name} exporteren',
 			'operation.export.downloadOne' => ({required Object name}) => '${name} downloaden',
-			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} bestand naar Stash', other: '${count} bestanden naar Stash', ), 
-			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} gecombineerd bestand naar Stash', other: '${count} gecombineerde bestanden naar Stash', ), 
+			'operation.export.stashFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} bestand naar Stash', other: '${n} bestanden naar Stash', ), 
+			'operation.export.stashCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} gecombineerd bestand naar Stash', other: '${n} gecombineerde bestanden naar Stash', ), 
 			'operation.export.settingsButton' => 'Exportinstellingen',
 			'operation.export.settingsTitle' => 'Exportinstellingen',
 			'operation.export.compactFileNames.title' => 'Gebruik compacte bestandsnamen',
@@ -5136,10 +5136,10 @@ extension on TranslationsNl {
 			'operation.export.includePrivateData.note' => 'De volledige ADIF-export bevat altijd alles',
 			'operation.export.resultTitle' => 'Export voltooid',
 			'operation.export.resultFailedTitle' => 'Export mislukt',
-			'operation.export.saveSuccess' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} bestand geëxporteerd naar ${path}', other: '${count} bestanden geëxporteerd naar ${path}', ), 
-			'operation.export.saveSuccessNamed' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} bestand geëxporteerd: ${path}', other: '${count} bestanden geëxporteerd: ${path}', ), 
-			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} bestand gedeeld', other: '${count} bestanden gedeeld', ), 
-			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} bestand gedownload', other: '${count} bestanden gedownload', ), 
+			'operation.export.saveSuccess' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} bestand geëxporteerd naar ${path}', other: '${n} bestanden geëxporteerd naar ${path}', ), 
+			'operation.export.saveSuccessNamed' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} bestand geëxporteerd: ${path}', other: '${n} bestanden geëxporteerd: ${path}', ), 
+			'operation.export.shareSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} bestand gedeeld', other: '${n} bestanden gedeeld', ), 
+			'operation.export.downloadSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} bestand gedownload', other: '${n} bestanden gedownload', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'Export mislukt: ${error}',
 			'operation.export.stash.needsEmailTitle' => 'Voeg eerst een e-mailadres toe',
 			'operation.export.stash.needsEmailBody' => 'Ham2K\'s File Stash stuurt je bestanden naar het e-mailadres van je LoFi-account, en daarmee log je in op stash.ham2k.net. Je account heeft nog geen bevestigd adres — voeg het toe in Instellingen › Cloudsynchronisatie.',
@@ -5152,13 +5152,13 @@ extension on TranslationsNl {
 			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: 'Je kunt dit bestand ophalen door **[stash.ham2k.net](https://stash.ham2k.net)** in een willekeurige browser te bezoeken.', other: 'Je kunt deze bestanden ophalen door **[stash.ham2k.net](https://stash.ham2k.net)** in een willekeurige browser te bezoeken.', ), 
 			'operation.export.stash.mayHaveArrived' => 'Geen reactie van de stash — het bestand is mogelijk toch aangekomen. Kijk op stash.ham2k.net voordat je opnieuw verstuurt',
 			'operation.export.stash.notSent' => 'niet verzonden',
-			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: 'Dit bestand is niet aangekomen:', other: 'Deze ${count} bestanden zijn niet aangekomen:', ), 
+			'operation.export.stash.notArrived' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: 'Dit bestand is niet aangekomen:', other: 'Deze ${n} bestanden zijn niet aangekomen:', ), 
 			'operation.export.stash.emailOffer' => 'Of, voor je gemak, kunnen we je een e-mail met een directe link sturen.',
 			'operation.export.stash.emailMe' => 'Stuur mij een link per e-mail',
 			'operation.export.stash.emailSent' => 'We hebben je een downloadlink per e-mail gestuurd.',
 			'operation.export.stash.emailFailed' => ({required Object error}) => 'Kon de e-mail niet versturen: ${error}',
 			'operation.export.stash.freeTier' => 'Gratis accounts kunnen maar één stash tegelijk bewaren. Abonnees kunnen er zoveel bewaren als ze willen.',
-			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} bestand verstuurd naar Ham2K File Stash (stash.ham2k.net)', other: '${count} bestanden verstuurd naar Ham2K File Stash (stash.ham2k.net)', ), 
+			'operation.export.stash.sentStatus' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} bestand verstuurd naar Ham2K File Stash (stash.ham2k.net)', other: '${n} bestanden verstuurd naar Ham2K File Stash (stash.ham2k.net)', ), 
 			'operation.spots.empty' => 'Geen spots die aan je filters voldoen',
 			'operation.spots.error' => ({required Object error}) => 'Spots laden mislukt: ${error}',
 			'operation.spots.unknownBand' => 'Andere',

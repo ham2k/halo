@@ -1757,9 +1757,9 @@ class _Translations$operation$export$ja extends Translations$operation$export$en
 	@override String get title => 'オペレーションのエクスポート';
 	@override String get syncedOperation => 'オペレーションは同期済みです';
 	@override String get unsyncedOperation => 'オペレーションに未同期の変更があります';
-	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: 'このオペレーションのQSO：${count}件',
-		other: 'このオペレーションのQSO：${count}件',
+	@override String qsosInOperation({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: 'このオペレーションのQSO：${n}件',
+		other: 'このオペレーションのQSO：${n}件',
 	);
 	@override String qsosSynced({required Object total}) => '${total}件のQSOすべてが同期済み';
 	@override String qsosPending({required Object total, required Object pending}) => '${total}件中${pending}件のQSOが同期待ち';
@@ -1770,49 +1770,49 @@ class _Translations$operation$export$ja extends Translations$operation$export$en
 	@override String get nothingLogged => 'エクスポートするものはまだありません。このオペレーションにはQSOがありません。';
 	@override String get share => '共有';
 	@override String get nothingSelected => '何も選択されていません';
-	@override String saveFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件のファイルを保存',
-		other: '${count}件のファイルを保存',
+	@override String saveFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件のファイルを保存',
+		other: '${n}件のファイルを保存',
 	);
-	@override String shareFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件のファイルを共有',
-		other: '${count}件のファイルを共有',
+	@override String shareFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件のファイルを共有',
+		other: '${n}件のファイルを共有',
 	);
-	@override String exportFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件のファイルをエクスポート',
-		other: '${count}件のファイルをエクスポート',
+	@override String exportFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件のファイルをエクスポート',
+		other: '${n}件のファイルをエクスポート',
 	);
-	@override String downloadFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件のファイルをダウンロード',
-		other: '${count}件のファイルをダウンロード',
+	@override String downloadFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件のファイルをダウンロード',
+		other: '${n}件のファイルをダウンロード',
 	);
-	@override String saveCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件の結合ファイルを保存',
-		other: '${count}件の結合ファイルを保存',
+	@override String saveCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件の結合ファイルを保存',
+		other: '${n}件の結合ファイルを保存',
 	);
-	@override String shareCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件の結合ファイルを共有',
-		other: '${count}件の結合ファイルを共有',
+	@override String shareCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件の結合ファイルを共有',
+		other: '${n}件の結合ファイルを共有',
 	);
-	@override String exportCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件の結合ファイルをエクスポート',
-		other: '${count}件の結合ファイルをエクスポート',
+	@override String exportCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件の結合ファイルをエクスポート',
+		other: '${n}件の結合ファイルをエクスポート',
 	);
-	@override String downloadCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件の結合ファイルをダウンロード',
-		other: '${count}件の結合ファイルをダウンロード',
+	@override String downloadCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件の結合ファイルをダウンロード',
+		other: '${n}件の結合ファイルをダウンロード',
 	);
 	@override String saveOne({required Object name}) => '${name}を保存';
 	@override String shareOne({required Object name}) => '${name}を共有';
 	@override String exportOne({required Object name}) => '${name}をエクスポート';
 	@override String downloadOne({required Object name}) => '${name}をダウンロード';
-	@override String stashFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件のファイルをスタッシュ',
-		other: '${count}件のファイルをスタッシュ',
+	@override String stashFiles({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件のファイルをスタッシュ',
+		other: '${n}件のファイルをスタッシュ',
 	);
-	@override String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件の結合ファイルをスタッシュ',
-		other: '${count}件の結合ファイルをスタッシュ',
+	@override String stashCombined({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件の結合ファイルをスタッシュ',
+		other: '${n}件の結合ファイルをスタッシュ',
 	);
 	@override String get settingsButton => 'エクスポート設定';
 	@override String get settingsTitle => 'エクスポート設定';
@@ -1820,21 +1820,21 @@ class _Translations$operation$export$ja extends Translations$operation$export$en
 	@override late final _Translations$operation$export$includePrivateData$ja includePrivateData = _Translations$operation$export$includePrivateData$ja._(_root);
 	@override String get resultTitle => 'エクスポート完了';
 	@override String get resultFailedTitle => 'エクスポート失敗';
-	@override String saveSuccess({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件のファイルを${path}にエクスポートしました',
-		other: '${count}件のファイルを${path}にエクスポートしました',
+	@override String saveSuccess({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件のファイルを${path}にエクスポートしました',
+		other: '${n}件のファイルを${path}にエクスポートしました',
 	);
-	@override String saveSuccessNamed({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件のファイルをエクスポートしました：${path}',
-		other: '${count}件のファイルをエクスポートしました：${path}',
+	@override String saveSuccessNamed({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件のファイルをエクスポートしました：${path}',
+		other: '${n}件のファイルをエクスポートしました：${path}',
 	);
-	@override String shareSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件のファイルを共有しました',
-		other: '${count}件のファイルを共有しました',
+	@override String shareSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件のファイルを共有しました',
+		other: '${n}件のファイルを共有しました',
 	);
-	@override String downloadSuccess({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件のファイルをダウンロードしました',
-		other: '${count}件のファイルをダウンロードしました',
+	@override String downloadSuccess({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件のファイルをダウンロードしました',
+		other: '${n}件のファイルをダウンロードしました',
 	);
 	@override String exportFailed({required Object error}) => 'エクスポート失敗：${error}';
 	@override late final _Translations$operation$export$stash$ja stash = _Translations$operation$export$stash$ja._(_root);
@@ -3597,18 +3597,18 @@ class _Translations$operation$export$stash$ja extends Translations$operation$exp
 	);
 	@override String get mayHaveArrived => 'スタッシュから応答がありません。ファイルは届いている可能性があります。再送信する前にstash.ham2k.netを確認してください';
 	@override String get notSent => '未送信';
-	@override String notArrived({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+	@override String notArrived({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
 		one: 'このファイルは届きませんでした：',
-		other: 'これら${count}件のファイルは届きませんでした：',
+		other: 'これら${n}件のファイルは届きませんでした：',
 	);
 	@override String get emailOffer => 'また、ご希望であれば、直接リンクを記載したメールをお送りできます。';
 	@override String get emailMe => 'リンクをメールで送信';
 	@override String get emailSent => 'ダウンロードリンクをメールでお送りしました。';
 	@override String emailFailed({required Object error}) => 'メールを送信できませんでした：${error}';
 	@override String get freeTier => '無料アカウントでは一度に保持できるスタッシュは1つだけです。サブスクライバーは必要な数だけ保持できます。';
-	@override String sentStatus({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件のファイルをHam2K File Stash（stash.ham2k.net）に送信しました',
-		other: '${count}件のファイルをHam2K File Stash（stash.ham2k.net）に送信しました',
+	@override String sentStatus({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${n}件のファイルをHam2K File Stash（stash.ham2k.net）に送信しました',
+		other: '${n}件のファイルをHam2K File Stash（stash.ham2k.net）に送信しました',
 	);
 }
 
@@ -5101,7 +5101,7 @@ extension on TranslationsJa {
 			'operation.export.title' => 'オペレーションのエクスポート',
 			'operation.export.syncedOperation' => 'オペレーションは同期済みです',
 			'operation.export.unsyncedOperation' => 'オペレーションに未同期の変更があります',
-			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'このオペレーションのQSO：${count}件', other: 'このオペレーションのQSO：${count}件', ), 
+			'operation.export.qsosInOperation' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'このオペレーションのQSO：${n}件', other: 'このオペレーションのQSO：${n}件', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => '${total}件のQSOすべてが同期済み',
 			'operation.export.qsosPending' => ({required Object total, required Object pending}) => '${total}件中${pending}件のQSOが同期待ち',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total}件のイベントマーカーが同期済み',
@@ -5111,20 +5111,20 @@ extension on TranslationsJa {
 			'operation.export.nothingLogged' => 'エクスポートするものはまだありません。このオペレーションにはQSOがありません。',
 			'operation.export.share' => '共有',
 			'operation.export.nothingSelected' => '何も選択されていません',
-			'operation.export.saveFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のファイルを保存', other: '${count}件のファイルを保存', ), 
-			'operation.export.shareFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のファイルを共有', other: '${count}件のファイルを共有', ), 
-			'operation.export.exportFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のファイルをエクスポート', other: '${count}件のファイルをエクスポート', ), 
-			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のファイルをダウンロード', other: '${count}件のファイルをダウンロード', ), 
-			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルを保存', other: '${count}件の結合ファイルを保存', ), 
-			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルを共有', other: '${count}件の結合ファイルを共有', ), 
-			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルをエクスポート', other: '${count}件の結合ファイルをエクスポート', ), 
-			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルをダウンロード', other: '${count}件の結合ファイルをダウンロード', ), 
+			'operation.export.saveFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件のファイルを保存', other: '${n}件のファイルを保存', ), 
+			'operation.export.shareFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件のファイルを共有', other: '${n}件のファイルを共有', ), 
+			'operation.export.exportFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件のファイルをエクスポート', other: '${n}件のファイルをエクスポート', ), 
+			'operation.export.downloadFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件のファイルをダウンロード', other: '${n}件のファイルをダウンロード', ), 
+			'operation.export.saveCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件の結合ファイルを保存', other: '${n}件の結合ファイルを保存', ), 
+			'operation.export.shareCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件の結合ファイルを共有', other: '${n}件の結合ファイルを共有', ), 
+			'operation.export.exportCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件の結合ファイルをエクスポート', other: '${n}件の結合ファイルをエクスポート', ), 
+			'operation.export.downloadCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件の結合ファイルをダウンロード', other: '${n}件の結合ファイルをダウンロード', ), 
 			'operation.export.saveOne' => ({required Object name}) => '${name}を保存',
 			'operation.export.shareOne' => ({required Object name}) => '${name}を共有',
 			'operation.export.exportOne' => ({required Object name}) => '${name}をエクスポート',
 			'operation.export.downloadOne' => ({required Object name}) => '${name}をダウンロード',
-			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のファイルをスタッシュ', other: '${count}件のファイルをスタッシュ', ), 
-			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルをスタッシュ', other: '${count}件の結合ファイルをスタッシュ', ), 
+			'operation.export.stashFiles' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件のファイルをスタッシュ', other: '${n}件のファイルをスタッシュ', ), 
+			'operation.export.stashCombined' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件の結合ファイルをスタッシュ', other: '${n}件の結合ファイルをスタッシュ', ), 
 			'operation.export.settingsButton' => 'エクスポート設定',
 			'operation.export.settingsTitle' => 'エクスポート設定',
 			'operation.export.compactFileNames.title' => 'コンパクトファイル名を使用',
@@ -5136,10 +5136,10 @@ extension on TranslationsJa {
 			'operation.export.includePrivateData.note' => 'Full ADIF Exportには常にすべてが含まれます',
 			'operation.export.resultTitle' => 'エクスポート完了',
 			'operation.export.resultFailedTitle' => 'エクスポート失敗',
-			'operation.export.saveSuccess' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のファイルを${path}にエクスポートしました', other: '${count}件のファイルを${path}にエクスポートしました', ), 
-			'operation.export.saveSuccessNamed' => ({required num count, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のファイルをエクスポートしました：${path}', other: '${count}件のファイルをエクスポートしました：${path}', ), 
-			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のファイルを共有しました', other: '${count}件のファイルを共有しました', ), 
-			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のファイルをダウンロードしました', other: '${count}件のファイルをダウンロードしました', ), 
+			'operation.export.saveSuccess' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件のファイルを${path}にエクスポートしました', other: '${n}件のファイルを${path}にエクスポートしました', ), 
+			'operation.export.saveSuccessNamed' => ({required num count, required Object n, required Object path}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件のファイルをエクスポートしました：${path}', other: '${n}件のファイルをエクスポートしました：${path}', ), 
+			'operation.export.shareSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件のファイルを共有しました', other: '${n}件のファイルを共有しました', ), 
+			'operation.export.downloadSuccess' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件のファイルをダウンロードしました', other: '${n}件のファイルをダウンロードしました', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'エクスポート失敗：${error}',
 			'operation.export.stash.needsEmailTitle' => '先にメールアドレスを追加してください',
 			'operation.export.stash.needsEmailBody' => 'Ham2K File StashはLoFiアカウントのメールアドレスにファイルを送信し、stash.ham2k.netへのログインにもそのアドレスを使います。あなたのアカウントにはまだ確認済みのメールアドレスがありません。設定 › クラウド同期で追加してください。',
@@ -5152,13 +5152,13 @@ extension on TranslationsJa {
 			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'このファイルは、任意のブラウザで **[stash.ham2k.net](https://stash.ham2k.net)** にアクセスして取得できます。', other: 'これらのファイルは、任意のブラウザで **[stash.ham2k.net](https://stash.ham2k.net)** にアクセスして取得できます。', ), 
 			'operation.export.stash.mayHaveArrived' => 'スタッシュから応答がありません。ファイルは届いている可能性があります。再送信する前にstash.ham2k.netを確認してください',
 			'operation.export.stash.notSent' => '未送信',
-			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'このファイルは届きませんでした：', other: 'これら${count}件のファイルは届きませんでした：', ), 
+			'operation.export.stash.notArrived' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'このファイルは届きませんでした：', other: 'これら${n}件のファイルは届きませんでした：', ), 
 			'operation.export.stash.emailOffer' => 'また、ご希望であれば、直接リンクを記載したメールをお送りできます。',
 			'operation.export.stash.emailMe' => 'リンクをメールで送信',
 			'operation.export.stash.emailSent' => 'ダウンロードリンクをメールでお送りしました。',
 			'operation.export.stash.emailFailed' => ({required Object error}) => 'メールを送信できませんでした：${error}',
 			'operation.export.stash.freeTier' => '無料アカウントでは一度に保持できるスタッシュは1つだけです。サブスクライバーは必要な数だけ保持できます。',
-			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のファイルをHam2K File Stash（stash.ham2k.net）に送信しました', other: '${count}件のファイルをHam2K File Stash（stash.ham2k.net）に送信しました', ), 
+			'operation.export.stash.sentStatus' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件のファイルをHam2K File Stash（stash.ham2k.net）に送信しました', other: '${n}件のファイルをHam2K File Stash（stash.ham2k.net）に送信しました', ), 
 			'operation.spots.empty' => 'フィルターに一致するスポットはありません',
 			'operation.spots.error' => ({required Object error}) => 'スポットの読み込みに失敗しました：${error}',
 			'operation.spots.unknownBand' => 'その他',

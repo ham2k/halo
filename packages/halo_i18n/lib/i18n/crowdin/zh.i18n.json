@@ -755,8 +755,8 @@
       "syncedOperation": "操作已同步",
       "unsyncedOperation": "操作有未同步的更改",
       "qsosInOperation": {
-        "one": "本操作中有 ${count} 个 QSO",
-        "other": "本操作中有 ${count} 个 QSO"
+        "one": "本操作中有 ${n} 个 QSO",
+        "other": "本操作中有 ${n} 个 QSO"
       },
       "qsosSynced": "全部 ${total} 个 QSO 已同步",
       "qsosPending": "${pending} / ${total} 个 QSO 待同步",
@@ -768,48 +768,48 @@
       "share": "分享",
       "nothingSelected": "未选择任何内容",
       "saveFiles": {
-        "one": "保存 ${count} 个文件",
-        "other": "保存 ${count} 个文件"
+        "one": "保存 ${n} 个文件",
+        "other": "保存 ${n} 个文件"
       },
       "shareFiles": {
-        "one": "分享 ${count} 个文件",
-        "other": "分享 ${count} 个文件"
+        "one": "分享 ${n} 个文件",
+        "other": "分享 ${n} 个文件"
       },
       "exportFiles": {
-        "one": "导出 ${count} 个文件",
-        "other": "导出 ${count} 个文件"
+        "one": "导出 ${n} 个文件",
+        "other": "导出 ${n} 个文件"
       },
       "downloadFiles": {
-        "one": "下载 ${count} 个文件",
-        "other": "下载 ${count} 个文件"
+        "one": "下载 ${n} 个文件",
+        "other": "下载 ${n} 个文件"
       },
       "saveCombined": {
-        "one": "保存合并的 ${count} 个文件",
-        "other": "保存合并的 ${count} 个文件"
+        "one": "保存合并的 ${n} 个文件",
+        "other": "保存合并的 ${n} 个文件"
       },
       "shareCombined": {
-        "one": "分享合并的 ${count} 个文件",
-        "other": "分享合并的 ${count} 个文件"
+        "one": "分享合并的 ${n} 个文件",
+        "other": "分享合并的 ${n} 个文件"
       },
       "exportCombined": {
-        "one": "导出合并的 ${count} 个文件",
-        "other": "导出合并的 ${count} 个文件"
+        "one": "导出合并的 ${n} 个文件",
+        "other": "导出合并的 ${n} 个文件"
       },
       "downloadCombined": {
-        "one": "下载合并的 ${count} 个文件",
-        "other": "下载合并的 ${count} 个文件"
+        "one": "下载合并的 ${n} 个文件",
+        "other": "下载合并的 ${n} 个文件"
       },
       "saveOne": "保存 ${name}",
       "shareOne": "分享 ${name}",
       "exportOne": "导出 ${name}",
       "downloadOne": "下载 ${name}",
       "stashFiles": {
-        "one": "暂存 ${count} 个文件",
-        "other": "暂存 ${count} 个文件"
+        "one": "暂存 ${n} 个文件",
+        "other": "暂存 ${n} 个文件"
       },
       "stashCombined": {
-        "one": "暂存合并的 ${count} 个文件",
-        "other": "暂存合并的 ${count} 个文件"
+        "one": "暂存合并的 ${n} 个文件",
+        "other": "暂存合并的 ${n} 个文件"
       },
       "settingsButton": "导出设置",
       "settingsTitle": "导出设置",
@@ -827,20 +827,20 @@
       "resultTitle": "导出完成",
       "resultFailedTitle": "导出失败",
       "saveSuccess": {
-        "one": "已将 ${count} 个文件导出到 ${path}",
-        "other": "已将 ${count} 个文件导出到 ${path}"
+        "one": "已将 ${n} 个文件导出到 ${path}",
+        "other": "已将 ${n} 个文件导出到 ${path}"
       },
       "saveSuccessNamed": {
-        "one": "已导出 ${count} 个文件：${path}",
-        "other": "已导出 ${count} 个文件：${path}"
+        "one": "已导出 ${n} 个文件：${path}",
+        "other": "已导出 ${n} 个文件：${path}"
       },
       "shareSuccess": {
-        "one": "已分享 ${count} 个文件",
-        "other": "已分享 ${count} 个文件"
+        "one": "已分享 ${n} 个文件",
+        "other": "已分享 ${n} 个文件"
       },
       "downloadSuccess": {
-        "one": "已下载 ${count} 个文件",
-        "other": "已下载 ${count} 个文件"
+        "one": "已下载 ${n} 个文件",
+        "other": "已下载 ${n} 个文件"
       },
       "exportFailed": "导出失败：${error}",
       "stash": {
@@ -860,7 +860,7 @@
         "notSent": "未发送",
         "notArrived": {
           "one": "此文件未送达：",
-          "other": "这 ${count} 个文件未送达："
+          "other": "这 ${n} 个文件未送达："
         },
         "emailOffer": "或者为了方便，我们可以给您发送一封包含直接链接的电子邮件。",
         "emailMe": "通过电子邮件给我发送链接",
@@ -868,8 +868,8 @@
         "emailFailed": "无法发送电子邮件：${error}",
         "freeTier": "免费账户一次只能保留一个暂存文件。订阅者可以按需保留任意数量。",
         "sentStatus": {
-          "one": "已发送 ${count} 个文件到 Ham2K File Stash（stash.ham2k.net）",
-          "other": "已发送 ${count} 个文件到 Ham2K File Stash（stash.ham2k.net）"
+          "one": "已发送 ${n} 个文件到 Ham2K File Stash（stash.ham2k.net）",
+          "other": "已发送 ${n} 个文件到 Ham2K File Stash（stash.ham2k.net）"
         }
       }
     },

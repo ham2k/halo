@@ -755,8 +755,8 @@
       "syncedOperation": "Activatie is gesynchroniseerd",
       "unsyncedOperation": "Activatie heeft niet-gesynchroniseerde wijzigingen",
       "qsosInOperation": {
-        "one": "${count} QSO in deze activatie",
-        "other": "${count} QSO's in deze activatie"
+        "one": "${n} QSO in deze activatie",
+        "other": "${n} QSO's in deze activatie"
       },
       "qsosSynced": "Alle ${total} QSO's zijn gesynchroniseerd",
       "qsosPending": "${pending} van ${total} QSO's wachten op synchronisatie",
@@ -768,48 +768,48 @@
       "share": "Delen",
       "nothingSelected": "Niets geselecteerd",
       "saveFiles": {
-        "one": "${count} bestand opslaan",
-        "other": "${count} bestanden opslaan"
+        "one": "${n} bestand opslaan",
+        "other": "${n} bestanden opslaan"
       },
       "shareFiles": {
-        "one": "${count} bestand delen",
-        "other": "${count} bestanden delen"
+        "one": "${n} bestand delen",
+        "other": "${n} bestanden delen"
       },
       "exportFiles": {
-        "one": "${count} bestand exporteren",
-        "other": "${count} bestanden exporteren"
+        "one": "${n} bestand exporteren",
+        "other": "${n} bestanden exporteren"
       },
       "downloadFiles": {
-        "one": "${count} bestand downloaden",
-        "other": "${count} bestanden downloaden"
+        "one": "${n} bestand downloaden",
+        "other": "${n} bestanden downloaden"
       },
       "saveCombined": {
-        "one": "${count} gecombineerd bestand opslaan",
-        "other": "${count} gecombineerde bestanden opslaan"
+        "one": "${n} gecombineerd bestand opslaan",
+        "other": "${n} gecombineerde bestanden opslaan"
       },
       "shareCombined": {
-        "one": "${count} gecombineerd bestand delen",
-        "other": "${count} gecombineerde bestanden delen"
+        "one": "${n} gecombineerd bestand delen",
+        "other": "${n} gecombineerde bestanden delen"
       },
       "exportCombined": {
-        "one": "${count} gecombineerd bestand exporteren",
-        "other": "${count} gecombineerde bestanden exporteren"
+        "one": "${n} gecombineerd bestand exporteren",
+        "other": "${n} gecombineerde bestanden exporteren"
       },
       "downloadCombined": {
-        "one": "${count} gecombineerd bestand downloaden",
-        "other": "${count} gecombineerde bestanden downloaden"
+        "one": "${n} gecombineerd bestand downloaden",
+        "other": "${n} gecombineerde bestanden downloaden"
       },
       "saveOne": "${name} opslaan",
       "shareOne": "${name} delen",
       "exportOne": "${name} exporteren",
       "downloadOne": "${name} downloaden",
       "stashFiles": {
-        "one": "${count} bestand naar Stash",
-        "other": "${count} bestanden naar Stash"
+        "one": "${n} bestand naar Stash",
+        "other": "${n} bestanden naar Stash"
       },
       "stashCombined": {
-        "one": "${count} gecombineerd bestand naar Stash",
-        "other": "${count} gecombineerde bestanden naar Stash"
+        "one": "${n} gecombineerd bestand naar Stash",
+        "other": "${n} gecombineerde bestanden naar Stash"
       },
       "settingsButton": "Exportinstellingen",
       "settingsTitle": "Exportinstellingen",
@@ -827,20 +827,20 @@
       "resultTitle": "Export voltooid",
       "resultFailedTitle": "Export mislukt",
       "saveSuccess": {
-        "one": "${count} bestand geëxporteerd naar ${path}",
-        "other": "${count} bestanden geëxporteerd naar ${path}"
+        "one": "${n} bestand geëxporteerd naar ${path}",
+        "other": "${n} bestanden geëxporteerd naar ${path}"
       },
       "saveSuccessNamed": {
-        "one": "${count} bestand geëxporteerd: ${path}",
-        "other": "${count} bestanden geëxporteerd: ${path}"
+        "one": "${n} bestand geëxporteerd: ${path}",
+        "other": "${n} bestanden geëxporteerd: ${path}"
       },
       "shareSuccess": {
-        "one": "${count} bestand gedeeld",
-        "other": "${count} bestanden gedeeld"
+        "one": "${n} bestand gedeeld",
+        "other": "${n} bestanden gedeeld"
       },
       "downloadSuccess": {
-        "one": "${count} bestand gedownload",
-        "other": "${count} bestanden gedownload"
+        "one": "${n} bestand gedownload",
+        "other": "${n} bestanden gedownload"
       },
       "exportFailed": "Export mislukt: ${error}",
       "stash": {
@@ -860,7 +860,7 @@
         "notSent": "niet verzonden",
         "notArrived": {
           "one": "Dit bestand is niet aangekomen:",
-          "other": "Deze ${count} bestanden zijn niet aangekomen:"
+          "other": "Deze ${n} bestanden zijn niet aangekomen:"
         },
         "emailOffer": "Of, voor je gemak, kunnen we je een e-mail met een directe link sturen.",
         "emailMe": "Stuur mij een link per e-mail",
@@ -868,8 +868,8 @@
         "emailFailed": "Kon de e-mail niet versturen: ${error}",
         "freeTier": "Gratis accounts kunnen maar één stash tegelijk bewaren. Abonnees kunnen er zoveel bewaren als ze willen.",
         "sentStatus": {
-          "one": "${count} bestand verstuurd naar Ham2K File Stash (stash.ham2k.net)",
-          "other": "${count} bestanden verstuurd naar Ham2K File Stash (stash.ham2k.net)"
+          "one": "${n} bestand verstuurd naar Ham2K File Stash (stash.ham2k.net)",
+          "other": "${n} bestanden verstuurd naar Ham2K File Stash (stash.ham2k.net)"
         }
       }
     },

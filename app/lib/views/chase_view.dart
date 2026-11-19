@@ -26,6 +26,7 @@ import '../services/logging_scope.dart';
 import '../services/map_preferences.dart' show MapScope;
 import '../services/settings_service.dart';
 import '../services/spot_board_service.dart' show SpotBoardSubscription;
+import '../services/transfer_service.dart' show ChasingPushScope;
 import '../settings/core_settings_groups.dart' show GeneralSettingsGroup, LoggingSettingsGroup, MapSettingsGroup;
 import '../settings/settings_scan.dart' show frontSettingsOverrides;
 import '../settings/settings_target_dialog.dart';
@@ -860,6 +861,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     contacts: qsos,
     stashTitle: '${operation.stationCall} ${context.t.chase.chasing} ${_period.inlineLabel(context)}',
     title: context.t.operation.export.chaseTitle,
+    pushScope: ChasingPushScope(operation.stationCall),
   );
 
   /// "**KI2D** chasing **POTA** today": who and what in bold, as one

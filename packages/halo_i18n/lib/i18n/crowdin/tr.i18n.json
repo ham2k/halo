@@ -755,8 +755,8 @@
       "syncedOperation": "Operasyon senkronize edildi",
       "unsyncedOperation": "Operasyonda senkronize edilmemiş değişiklikler var",
       "qsosInOperation": {
-        "one": "Bu operasyonda ${count} QSO",
-        "other": "Bu operasyonda ${count} QSO"
+        "one": "Bu operasyonda ${n} QSO",
+        "other": "Bu operasyonda ${n} QSO"
       },
       "qsosSynced": "${total} QSO'nun tümü senkronize edildi",
       "qsosPending": "${total} QSO'dan ${pending} tanesi senkronizasyon bekliyor",
@@ -768,48 +768,48 @@
       "share": "Paylaş",
       "nothingSelected": "Hiçbir şey seçilmedi",
       "saveFiles": {
-        "one": "${count} dosyayı kaydet",
-        "other": "${count} dosyayı kaydet"
+        "one": "${n} dosyayı kaydet",
+        "other": "${n} dosyayı kaydet"
       },
       "shareFiles": {
-        "one": "${count} dosyayı paylaş",
-        "other": "${count} dosyayı paylaş"
+        "one": "${n} dosyayı paylaş",
+        "other": "${n} dosyayı paylaş"
       },
       "exportFiles": {
-        "one": "${count} dosyayı dışa aktar",
-        "other": "${count} dosyayı dışa aktar"
+        "one": "${n} dosyayı dışa aktar",
+        "other": "${n} dosyayı dışa aktar"
       },
       "downloadFiles": {
-        "one": "${count} dosyayı indir",
-        "other": "${count} dosyayı indir"
+        "one": "${n} dosyayı indir",
+        "other": "${n} dosyayı indir"
       },
       "saveCombined": {
-        "one": "Birleştirilmiş ${count} dosyayı kaydet",
-        "other": "Birleştirilmiş ${count} dosyayı kaydet"
+        "one": "Birleştirilmiş ${n} dosyayı kaydet",
+        "other": "Birleştirilmiş ${n} dosyayı kaydet"
       },
       "shareCombined": {
-        "one": "Birleştirilmiş ${count} dosyayı paylaş",
-        "other": "Birleştirilmiş ${count} dosyayı paylaş"
+        "one": "Birleştirilmiş ${n} dosyayı paylaş",
+        "other": "Birleştirilmiş ${n} dosyayı paylaş"
       },
       "exportCombined": {
-        "one": "Birleştirilmiş ${count} dosyayı dışa aktar",
-        "other": "Birleştirilmiş ${count} dosyayı dışa aktar"
+        "one": "Birleştirilmiş ${n} dosyayı dışa aktar",
+        "other": "Birleştirilmiş ${n} dosyayı dışa aktar"
       },
       "downloadCombined": {
-        "one": "Birleştirilmiş ${count} dosyayı indir",
-        "other": "Birleştirilmiş ${count} dosyayı indir"
+        "one": "Birleştirilmiş ${n} dosyayı indir",
+        "other": "Birleştirilmiş ${n} dosyayı indir"
       },
       "saveOne": "${name} dosyasını kaydet",
       "shareOne": "${name} dosyasını paylaş",
       "exportOne": "${name} dosyasını dışa aktar",
       "downloadOne": "${name} dosyasını indir",
       "stashFiles": {
-        "one": "${count} dosyayı Stash'e kaydet",
-        "other": "${count} dosyayı Stash'e kaydet"
+        "one": "${n} dosyayı Stash'e kaydet",
+        "other": "${n} dosyayı Stash'e kaydet"
       },
       "stashCombined": {
-        "one": "Birleştirilmiş ${count} dosyayı Stash'e kaydet",
-        "other": "Birleştirilmiş ${count} dosyayı Stash'e kaydet"
+        "one": "Birleştirilmiş ${n} dosyayı Stash'e kaydet",
+        "other": "Birleştirilmiş ${n} dosyayı Stash'e kaydet"
       },
       "settingsButton": "Dışa aktarma ayarları",
       "settingsTitle": "Dışa Aktarma Ayarları",
@@ -827,20 +827,20 @@
       "resultTitle": "Dışa aktarma tamamlandı",
       "resultFailedTitle": "Dışa aktarma başarısız",
       "saveSuccess": {
-        "one": "${count} dosya ${path} konumuna aktarıldı",
-        "other": "${count} dosya ${path} konumuna aktarıldı"
+        "one": "${n} dosya ${path} konumuna aktarıldı",
+        "other": "${n} dosya ${path} konumuna aktarıldı"
       },
       "saveSuccessNamed": {
-        "one": "${count} dosya aktarıldı: ${path}",
-        "other": "${count} dosya aktarıldı: ${path}"
+        "one": "${n} dosya aktarıldı: ${path}",
+        "other": "${n} dosya aktarıldı: ${path}"
       },
       "shareSuccess": {
-        "one": "${count} dosya paylaşıldı",
-        "other": "${count} dosya paylaşıldı"
+        "one": "${n} dosya paylaşıldı",
+        "other": "${n} dosya paylaşıldı"
       },
       "downloadSuccess": {
-        "one": "${count} dosya indirildi",
-        "other": "${count} dosya indirildi"
+        "one": "${n} dosya indirildi",
+        "other": "${n} dosya indirildi"
       },
       "exportFailed": "Dışa aktarma başarısız: ${error}",
       "stash": {
@@ -860,7 +860,7 @@
         "notSent": "gönderilmedi",
         "notArrived": {
           "one": "Bu dosya ulaşmadı:",
-          "other": "Bu ${count} dosya ulaşmadı:"
+          "other": "Bu ${n} dosya ulaşmadı:"
         },
         "emailOffer": "Ya da kolaylık olması için size doğrudan bağlantı içeren bir e-posta gönderebiliriz.",
         "emailMe": "Bana Bağlantıyı E-postayla Gönder",
@@ -868,8 +868,8 @@
         "emailFailed": "E-posta gönderilemedi: ${error}",
         "freeTier": "Ücretsiz hesaplar aynı anda yalnızca bir stash tutabilir. Aboneler istedikleri kadar tutabilir.",
         "sentStatus": {
-          "one": "${count} dosya Ham2K File Stash'e gönderildi (stash.ham2k.net)",
-          "other": "${count} dosya Ham2K File Stash'e gönderildi (stash.ham2k.net)"
+          "one": "${n} dosya Ham2K File Stash'e gönderildi (stash.ham2k.net)",
+          "other": "${n} dosya Ham2K File Stash'e gönderildi (stash.ham2k.net)"
         }
       }
     },

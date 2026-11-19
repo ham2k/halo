@@ -824,8 +824,8 @@
     "export": {
       "title": "Operation Exports",
       "titleWithCount": {
-        "one": "Operation Exports: ${count} QSO",
-        "other": "Operation Exports: ${count} QSOs"
+        "one": "Operation Exports: ${n} QSO",
+        "other": "Operation Exports: ${n} QSOs"
       },
       "logTitle": "Log Exports",
       "chaseTitle": "Chasing Exports",
@@ -838,12 +838,17 @@
       "syncedOperation": "Operation is synced",
       "unsyncedOperation": "Operation has unsynced changes",
       "qsosInOperation": {
-        "one": "${count} QSO in this operation",
-        "other": "${count} QSOs in this operation"
+        "one": "${n} QSO in this operation",
+        "other": "${n} QSOs in this operation"
       },
       "qsosToExport": {
-        "one": "${count} QSO to be exported",
-        "other": "${count} QSOs to be exported"
+        "one": "${n} QSO to be exported",
+        "other": "${n} QSOs to be exported"
+      },
+      "progressTitle": "Exporting",
+      "progressCount": {
+        "one": "${done} of ${n} QSO",
+        "other": "${done} of ${n} QSOs"
       },
       "qsosSynced": "All ${total} QSOs are synced",
       "qsosPending": "${pending} of ${total} QSOs pending sync",
@@ -855,68 +860,68 @@
       "share": "Share",
       "nothingSelected": "Nothing selected",
       "saveFiles": {
-        "one": "Save ${count} file",
-        "other": "Save ${count} files"
+        "one": "Save ${n} file",
+        "other": "Save ${n} files"
       },
       "shareFiles": {
-        "one": "Share ${count} file",
-        "other": "Share ${count} files"
+        "one": "Share ${n} file",
+        "other": "Share ${n} files"
       },
       "exportFiles": {
-        "one": "Export ${count} file",
-        "other": "Export ${count} files"
+        "one": "Export ${n} file",
+        "other": "Export ${n} files"
       },
       "downloadFiles": {
-        "one": "Download ${count} file",
-        "other": "Download ${count} files"
+        "one": "Download ${n} file",
+        "other": "Download ${n} files"
       },
       "saveCombined": {
-        "one": "Save combined ${count} file",
-        "other": "Save combined ${count} files"
+        "one": "Save combined ${n} file",
+        "other": "Save combined ${n} files"
       },
       "saveAll": {
-        "one": "Save ${count} file",
-        "other": "Save all ${count} files"
+        "one": "Save ${n} file",
+        "other": "Save all ${n} files"
       },
       "shareCombined": {
-        "one": "Share combined ${count} file",
-        "other": "Share combined ${count} files"
+        "one": "Share combined ${n} file",
+        "other": "Share combined ${n} files"
       },
       "shareAll": {
-        "one": "Share ${count} file",
-        "other": "Share all ${count} files"
+        "one": "Share ${n} file",
+        "other": "Share all ${n} files"
       },
       "exportCombined": {
-        "one": "Export combined ${count} file",
-        "other": "Export combined ${count} files"
+        "one": "Export combined ${n} file",
+        "other": "Export combined ${n} files"
       },
       "exportAll": {
-        "one": "Export ${count} file",
-        "other": "Export all ${count} files"
+        "one": "Export ${n} file",
+        "other": "Export all ${n} files"
       },
       "downloadCombined": {
-        "one": "Download combined ${count} file",
-        "other": "Download combined ${count} files"
+        "one": "Download combined ${n} file",
+        "other": "Download combined ${n} files"
       },
       "downloadAll": {
-        "one": "Download ${count} file",
-        "other": "Download all ${count} files"
+        "one": "Download ${n} file",
+        "other": "Download all ${n} files"
       },
       "saveOne": "Save ${name}",
       "shareOne": "Share ${name}",
       "exportOne": "Export ${name}",
       "downloadOne": "Download ${name}",
       "stashFiles": {
-        "one": "Stash ${count} file",
-        "other": "Stash ${count} files"
+        "one": "Stash ${n} file",
+        "other": "Stash ${n} files"
       },
       "stashCombined": {
-        "one": "Stash combined ${count} file",
-        "other": "Stash combined ${count} files"
+        "one": "Stash combined ${n} file",
+        "other": "Stash combined ${n} files"
       },
       "stashAll": {
-        "one": "Stash ${count} file",
-        "other": "Stash all ${count} files"
+        "one": "Stash ${n} file",
+        "other": "Stash all ${n} files"
       },
       "settingsButton": "Export settings",
       "settingsTitle": "Export Settings",
@@ -934,20 +939,20 @@
       "resultTitle": "Export complete",
       "resultFailedTitle": "Export failed",
       "saveSuccess": {
-        "one": "Exported ${count} file to ${path}",
-        "other": "Exported ${count} files to ${path}"
+        "one": "Exported ${n} file to ${path}",
+        "other": "Exported ${n} files to ${path}"
       },
       "saveSuccessNamed": {
-        "one": "Exported ${count} file: ${path}",
-        "other": "Exported ${count} files: ${path}"
+        "one": "Exported ${n} file: ${path}",
+        "other": "Exported ${n} files: ${path}"
       },
       "shareSuccess": {
-        "one": "Shared ${count} file",
-        "other": "Shared ${count} files"
+        "one": "Shared ${n} file",
+        "other": "Shared ${n} files"
       },
       "downloadSuccess": {
-        "one": "Downloaded ${count} file",
-        "other": "Downloaded ${count} files"
+        "one": "Downloaded ${n} file",
+        "other": "Downloaded ${n} files"
       },
       "exportFailed": "Export failed: ${error}",
       "stash": {
@@ -967,7 +972,7 @@
         "notSent": "not sent",
         "notArrived": {
           "one": "This file didn’t arrive:",
-          "other": "These ${count} files didn’t arrive:"
+          "other": "These ${n} files didn’t arrive:"
         },
         "emailOffer": "Or for your convenience, we can send you an email with a direct link.",
         "emailMe": "Email Me a Link",
@@ -975,31 +980,32 @@
         "emailFailed": "Couldn’t send the email: ${error}",
         "freeTier": "Free accounts can only keep one stash at a time. Subscribers can keep as many as they want.",
         "sentStatus": {
-          "one": "Sent ${count} file to Ham2K’s File Stash (stash.ham2k.net)",
-          "other": "Sent ${count} files to Ham2K’s File Stash (stash.ham2k.net)"
+          "one": "Sent ${n} file to Ham2K’s File Stash (stash.ham2k.net)",
+          "other": "Sent ${n} files to Ham2K’s File Stash (stash.ham2k.net)"
         }
       },
       "push": {
         "title": "Sync & Push to Services",
+        "pushOnlyTitle": "Push to Services",
         "toSend": {
-          "one": "${count} QSO to send",
-          "other": "${count} QSOs to send"
+          "one": "${n} QSO to send",
+          "other": "${n} QSOs to send"
         },
         "toDelete": {
-          "one": "${count} to remove",
-          "other": "${count} to remove"
+          "one": "${n} to remove",
+          "other": "${n} to remove"
         },
         "toSendTo": {
-          "one": "${count} QSO to send to ${destination}",
-          "other": "${count} QSOs to send to ${destination}"
+          "one": "${n} QSO to send to ${destination}",
+          "other": "${n} QSOs to send to ${destination}"
         },
         "allSent": {
-          "one": "${count} QSO sent",
-          "other": "All ${count} QSOs sent"
+          "one": "${n} QSO sent",
+          "other": "All ${n} QSOs sent"
         },
         "allSentTo": {
-          "one": "${count} QSO sent to ${destination}",
-          "other": "All ${count} QSOs sent to ${destination}"
+          "one": "${n} QSO sent to ${destination}",
+          "other": "All ${n} QSOs sent to ${destination}"
         },
         "nothingToSend": "Nothing to send",
         "done": "Done",
@@ -1009,8 +1015,8 @@
         "buttonFor": "Push: ${name}",
         "progress": "Pushing ${done} of ${total}…",
         "failed": {
-          "one": "${count} failed: ${error}",
-          "other": "${count} failed, the first: ${error}"
+          "one": "${n} failed: ${error}",
+          "other": "${n} failed, the first: ${error}"
         },
         "pushFailed": "Push failed: ${error}",
         "timedOut": "The service took too long to answer, so the push stopped. Push again to finish.",

@@ -320,7 +320,7 @@ interface TransferHook {
 // DestinationsRequest:    { service, scope: PushScope, stationCalls: string[] }
 // TransferDestination:    { id, label?, stationCall? }
 // PushSuggestionsRequest: { scope: PushScope, sent? }
-// PushScope:              { kind: "operation", operation }
+// PushScope:              { kind: "operation", operation } | { kind: "chasing", stationCall } | { kind: "log", stationCall? }
 // TransferSummary:        { key?, sentAtMillis?, sentCount? }   (each of `sent`'s entries, by record key; sentCount: the operation's contacts the destination holds)
 // PushSuggestion:         { key, service, label, description?, payload?, select, emphasis?, selectedByDefault? }
 // PushPayload:            { mainHandler, includeFieldsFrom? } | { full: true, includePrivateData?, omit? }
@@ -342,11 +342,17 @@ did not declare is dropped. A service's `label`, or your hook's when it
 gives none, names its push rows, and your hook's `description` stands in
 for a suggestion that gives none.
 
-**Suggestions.** `suggestPushes` is asked about a scope, which is one
-operation (`kind: "operation"`). Check `kind` and offer nothing for one you
-do not know: later API levels add other scopes. `sent` holds the
+**Suggestions.** `suggestPushes` is asked about a scope. In an operation's
+Exports panel it is that operation (`kind: "operation"`); `sent` holds the
 operation's summary of earlier pushes, by record key, and
-`scope.operation.status` says whether the operator finished it.
+`scope.operation.status` says whether the operator finished it. From API 29
+the Chasing view asks about the contacts it logged outside any operation
+under its station (`kind: "chasing"`, with `stationCall`), and the Logs view
+about the whole log under one station callsign (`kind: "log"`, with
+`stationCall`, left out for every callsign), whatever period it shows. Those
+carry no `sent` and no operation to read: offer what fits any contact.
+Check `kind` and offer nothing for one you do not know: later API levels add
+other scopes.
 You name the contacts with `select` and the app finds them, so you never
 receive the log:
 
@@ -388,8 +394,8 @@ the operator's full copy. A full copy leaves the private fields out unless
 
 **Destinations.** A destination is a place on the service the contacts can
 go: a logbook, a folder, a station location. The app asks
-`suggestDestinations` for each service with the scope (the operation itself,
-in the Exports panel) and `stationCalls`, every station callsign the
+`suggestDestinations` for each service with the scope and `stationCalls`,
+every station callsign the
 scope's contacts were made under, segments included. Offer as many as fit:
 none hides the push, and each one you offer is a push of its own, which the
 operator sends separately. Name a `stationCall` when only that call's
