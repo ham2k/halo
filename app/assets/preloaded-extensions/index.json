@@ -50,9 +50,9 @@
     },
     {
       "key": "ham2k-qrz",
-      "version": "0.2.5",
-      "file": "ham2k-qrz-0.2.5.h2kext",
-      "sha256": "5e991ac82c6d15b5857c41f63fbb449e3b2a7bf067f01dfa53ef0f04a4417c1d"
+      "version": "0.3.0",
+      "file": "ham2k-qrz-0.3.0.h2kext",
+      "sha256": "e064baa12151456691fa83c7b27c8168becb0c8627d2c9ceab3041b93f9cabad"
     },
     {
       "key": "ham2k-rotator",
