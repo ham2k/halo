@@ -6,20 +6,25 @@
 /// but not on every Linux backend, which is why [matchAudioDevice] falls
 /// back to [name].
 class AudioDevice {
-  const AudioDevice({required this.id, required this.name, this.isDefault = false});
+  const AudioDevice({required this.id, required this.name, this.isDefault = false, this.channels = 0});
 
   final String id;
   final String name;
   final bool isDefault;
 
-  @override
-  bool operator ==(Object other) => other is AudioDevice && other.id == id && other.name == name && other.isDefault == isDefault;
+  /// The most channels the device offers in its direction; 0 when it was
+  /// not asked, or its backend does not say, takes any count or cannot be
+  /// asked.
+  final int channels;
 
   @override
-  int get hashCode => Object.hash(id, name, isDefault);
+  bool operator ==(Object other) => other is AudioDevice && other.id == id && other.name == name && other.isDefault == isDefault && other.channels == channels;
 
   @override
-  String toString() => 'AudioDevice($name${isDefault ? ', default' : ''})';
+  int get hashCode => Object.hash(id, name, isDefault, channels);
+
+  @override
+  String toString() => 'AudioDevice($name${isDefault ? ', default' : ''}${channels > 0 ? ', $channels ch' : ''})';
 }
 
 /// The device among [devices] that a stored [id] and [name] name: the id

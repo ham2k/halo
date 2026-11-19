@@ -214,10 +214,7 @@ extension _Devices on CatService {
 
   /// The letter of HaLo's own slice [node] is, on HaLo's station on the
   /// radio; null for a slice another station holds.
-  String? _ownedFlexSlice(EquipmentNode node) => switch (node.config[flexOwnSliceConfigKey]) {
-    final String letter when letter.isNotEmpty => letter,
-    _ => null,
-  };
+  String? _ownedFlexSlice(EquipmentNode node) => flexOwnSliceOf(node.config);
 
   /// Whether [slice] of the Flex [deviceId] is held by HaLo's own station:
   /// by the radio's id for it, since SmartSDR on the same computer goes by

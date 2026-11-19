@@ -16,9 +16,9 @@ abstract final class HaloAudio {
 
   static void useNullBackend() => throw UnsupportedError('halo_audio: no audio on this platform');
 
-  static List<AudioDevice> playbackDevices() => throw UnsupportedError('halo_audio: no audio on this platform');
+  static List<AudioDevice> playbackDevices({bool channels = false}) => throw UnsupportedError('halo_audio: no audio on this platform');
 
-  static List<AudioDevice> captureDevices() => throw UnsupportedError('halo_audio: no audio on this platform');
+  static List<AudioDevice> captureDevices({bool channels = false}) => throw UnsupportedError('halo_audio: no audio on this platform');
 
   static Duration? fileLength(String path) => throw UnsupportedError('halo_audio: no audio on this platform');
 

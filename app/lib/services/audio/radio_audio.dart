@@ -7,9 +7,11 @@
 // it.
 
 import 'package:halo_audio/halo_audio.dart';
+import 'package:halo_core/halo_core.dart' show realNowMillis;
 import 'package:halo_i18n/halo_i18n.dart';
 
 import '../cat/driver.dart' show RadioAudioLink, TalkAudioLink, TalkRoute;
+import '../error_reporting_service.dart';
 import '../settings_service.dart' show SettingsService;
 
 /// Whether HaLo carries radio audio on this device: the experiment on, and
@@ -46,6 +48,7 @@ class RadioAudio {
     AudioEngine Function()? engine,
     List<AudioDevice> Function()? outputs,
     List<AudioDevice> Function()? inputs,
+    ({List<AudioDevice> playback, List<AudioDevice> capture}) Function()? soundCards,
     ({String? id, String? name})? Function()? microphone,
     ({String? id, String? name})? Function()? output,
     double Function()? volume,
@@ -54,6 +57,13 @@ class RadioAudio {
   }) : _newEngine = engine ?? AudioEngine.new,
        _outputs = outputs ?? HaloAudio.playbackDevices,
        _inputs = inputs ?? HaloAudio.captureDevices,
+       // Without one of its own, the lists given for routing: a caller that
+       // keeps the native library out of a test keeps it out of this too.
+       _soundCards =
+           soundCards ??
+           (outputs == null && inputs == null
+               ? _countedCards
+               : () => (playback: (outputs ?? HaloAudio.playbackDevices)(), capture: (inputs ?? HaloAudio.captureDevices)())),
        _microphone = microphone ?? _systemDefault,
        _output = output ?? _systemDefault,
        _volume = volume ?? _unity,
@@ -62,6 +72,14 @@ class RadioAudio {
   final AudioEngine Function() _newEngine;
   final List<AudioDevice> Function() _outputs;
   final List<AudioDevice> Function() _inputs;
+
+  /// The lists with their channel counts, which [_outputs] and [_inputs]
+  /// leave out: counting probes every device, and those are read on the way
+  /// to a key-down.
+  final ({List<AudioDevice> playback, List<AudioDevice> capture}) Function() _soundCards;
+
+  static ({List<AudioDevice> playback, List<AudioDevice> capture}) _countedCards() =>
+      (playback: HaloAudio.playbackDevices(channels: true), capture: HaloAudio.captureDevices(channels: true));
 
   /// The station's microphone, read at each over, so a change takes effect
   /// at the next key; null for the system's default input.
@@ -95,6 +113,35 @@ class RadioAudio {
   final _routes = <String, List<AudioRoute>>{};
 
   AudioEngine get engine => _engine ??= _newEngine();
+
+  /// The sound cards this computer lists each way, each with how many
+  /// channels it has: none when they will not list.
+  ///
+  /// Read again once [soundCardsFresh] has passed rather than on a change,
+  /// which the engine is not told of: each read probes every card, and a
+  /// picker or the resolver asks on every build.
+  ({List<AudioDevice> playback, List<AudioDevice> capture}) get soundCards {
+    final now = realNowMillis();
+    if (_cards case final cards? when now - _cardsAt < soundCardsFresh.inMilliseconds) return cards;
+    _cardsAt = now;
+    try {
+      return _cards = _soundCards();
+    } on HaloAudioException {
+      // No backend opened: the shack's state, which the audio mixing
+      // settings' pickers say where the operator can act on it.
+    } catch (e, st) {
+      if (!_cardsFailureReported) ErrorReportingService.report(e, st, context: 'audio:sound-cards');
+      _cardsFailureReported = true;
+    }
+    return _cards = (playback: const [], capture: const []);
+  }
+
+  static const soundCardsFresh = Duration(seconds: 5);
+  ({List<AudioDevice> playback, List<AudioDevice> capture})? _cards;
+  int _cardsAt = 0;
+
+  /// One report a launch: the same failure comes back at every read.
+  bool _cardsFailureReported = false;
 
   /// A link for [radio], whose audio may fall [delayMs] behind.
   RadioAudioLink link({required String radio, int delayMs = receiveAudioDelayDefault}) => _Link(this, radio, delayMs);

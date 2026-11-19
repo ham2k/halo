@@ -39,6 +39,10 @@ class TciDriver extends EquipmentDriver with AlwaysOffersScope {
   @override
   String get name => 'TCI';
 
+  /// The server's IQ stream, whose FFT is the scope (tci_spectrum.dart).
+  @override
+  bool offersIqWith(Map<String, dynamic> config) => true;
+
   @override
   List<String> settableModes(Map<String, dynamic> config) => radioModeOrder(tciSettableModes);
 

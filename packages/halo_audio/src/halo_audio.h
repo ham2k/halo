@@ -59,12 +59,17 @@ HALO_AUDIO_API void halo_audio_set_post(void* post_c_object);
 HALO_AUDIO_API int halo_audio_use_null_backend(void);
 
 /// Reads the system's devices — capture when [capture] is non-zero,
-/// playback otherwise — into the list the three accessors below read.
+/// playback otherwise — into the list the accessors below read.
 /// Returns how many, or -1 when no audio backend could be opened.
 HALO_AUDIO_API int halo_audio_enumerate(int capture);
 HALO_AUDIO_API const char* halo_audio_device_id(int capture, int index);
 HALO_AUDIO_API const char* halo_audio_device_name(int capture, int index);
 HALO_AUDIO_API int halo_audio_device_is_default(int capture, int index);
+/// The most channels the device offers natively; 0 when its backend does
+/// not say, takes any count, or cannot be asked — ALSA's never is, since it
+/// would block on a busy device. Probes the device, so it costs far more
+/// than the accessors above.
+HALO_AUDIO_API int halo_audio_device_channels(int capture, int index);
 
 /// The length of the audio file at [path] in milliseconds, or -1 when it
 /// cannot be decoded (WAV, FLAC and MP3 can).

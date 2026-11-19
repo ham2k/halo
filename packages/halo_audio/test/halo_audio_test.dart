@@ -123,6 +123,8 @@ void main() {
 
   test('the null backend lists one device each way, as default', () {
     expect(HaloAudio.playbackDevices(), [isA<AudioDevice>().having((d) => d.isDefault, 'isDefault', true)]);
+    // It names no channel count, which a real backend does: 0 is "not said".
+    expect(HaloAudio.playbackDevices(channels: true).single.channels, 0);
     expect(HaloAudio.captureDevices(), hasLength(1));
   });
 

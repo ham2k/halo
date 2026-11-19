@@ -26,6 +26,16 @@ extension _RadioAudioLinks on CatService {
     return _engineAudio.talkLink();
   }
 
+  /// What [kComputerDevice] offers: its sound cards as the engine lists
+  /// them ([RadioAudio.soundCards]), and the mixer even with none.
+  List<Capability> _computerOffers() {
+    final audio = _audioOffered;
+    final cards = audio ? _engineAudio.soundCards : (playback: const <AudioDevice>[], capture: const <AudioDevice>[]);
+    // The keying's own field rather than [computerVoiceAudio], which starts
+    // looking for the recordings' directory as it answers.
+    return computerOffers(voice: _keying.voiceAudio != null, audio: audio, playback: cards.playback, capture: cards.capture);
+  }
+
   RadioAudio get _engineAudio => _radioAudio ??= RadioAudio(
     microphone: () => _settings.stationMicrophone,
     output: () => _settings.stationOutput,
@@ -75,21 +85,14 @@ extension _RadioAudioLinks on CatService {
 /// per receiver, since a slice of a Flex is an entry of its own, which the
 /// radio's editor does not reach.
 extension CatRadioAudioChoices on CatService {
-  /// Whether [uuid] could be heard in HaLo: the experiment on, an engine on
-  /// this device, and a driver that carries its audio.
-  bool offersReceiveAudio(String uuid) => _radioAudioOffered(uuid, (driver) => driver.carriesReceiveAudio);
+  /// Whether [uuid] could be heard in HaLo: its `audio` brings channels in,
+  /// which it offers only under the experiment with an engine on this
+  /// device ([CatService.capabilitiesOf]).
+  bool offersReceiveAudio(String uuid) => capabilitiesOf(uuid).any((c) => c.kind == kCapabilityAudio && c.inputs.isNotEmpty);
 
-  /// Whether the station's microphone could reach [uuid] through HaLo.
-  bool offersTalkAudio(String uuid) => _radioAudioOffered(uuid, (driver) => driver.carriesTalkAudio);
-
-  bool _radioAudioOffered(String uuid, bool Function(EquipmentDriver driver) carries) {
-    final node = _nodes[uuid];
-    if (node == null || !radioAudioAvailable(_settings)) return false;
-    return switch (typeFor(node)) {
-      final type? => carries(type.driver),
-      null => false,
-    };
-  }
+  /// Whether the station's microphone could reach [uuid] through HaLo: its
+  /// `audio` sends channels out.
+  bool offersTalkAudio(String uuid) => capabilitiesOf(uuid).any((c) => c.kind == kCapabilityAudio && c.outputs.isNotEmpty);
 
   bool hearsInHalo(String uuid) => _nodes[uuid]?.config[receiveAudioConfigKey] == true;
 

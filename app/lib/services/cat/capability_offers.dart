@@ -6,18 +6,58 @@
 // the equipment switched off, and corrected by what the equipment says once
 // it is on.
 
+import 'package:halo_audio/halo_audio.dart' show AudioDevice;
+
 import 'capability.dart';
 import 'equipment.dart';
 import 'equipment_registry.dart';
 
 /// [offered] as one line for a developer: each capability by kind and key,
-/// a switch with its ports.
+/// with its name where it has one, and a switch's ports or an audio's
+/// channels.
 String describeOffers(List<Capability> offered) => [
   for (final capability in offered)
-    capability.inputs.isEmpty && capability.outputs.isEmpty
-        ? '${capability.kind}:${capability.key}'
-        : '${capability.kind}:${capability.key} (in: ${capability.inputs.join(', ')}; out: ${capability.outputs.join(', ')})',
+    [
+      '${capability.kind}:${capability.key}',
+      if (capability.name case final name?) '"$name"',
+      if (capability.inputs.isNotEmpty || capability.outputs.isNotEmpty) '(in: ${capability.inputs.join(', ')}; out: ${capability.outputs.join(', ')})',
+    ].join(' '),
 ].join(', ');
+
+/// Channels `0` to `count - 1`, as an audio's ports are keyed.
+List<String> audioChannels(int count) => [for (var i = 0; i < count; i++) '$i'];
+
+/// What this computer offers ([kComputerDevice]): its own voice recordings
+/// where it plays audio at all, and, where [audio] (the experiment on and
+/// the engine here), each sound card it lists and the mixer over them.
+///
+/// A card is keyed by the system's id for it, with its name beside, and is
+/// one capability in each direction it is listed in. CoreAudio lists a card
+/// that records and plays under one id, so it is one capability with both;
+/// WASAPI gives each direction an id of its own, so it is two. A count the
+/// backend does not say is what the engine opens a device at when it is
+/// given none: one channel in, two out.
+List<Capability> computerOffers({required bool voice, required bool audio, List<AudioDevice> playback = const [], List<AudioDevice> capture = const []}) {
+  final cards = <String, ({String name, int ins, int outs})>{};
+  for (final (devices, isCapture) in [(capture, true), (playback, false)]) {
+    // An id of nothing is how a backend with no ids of its own (JACK, the
+    // null backend) lists its defaults: no address can name it, and both
+    // directions would merge under it.
+    for (final device in devices.where((d) => d.id.isNotEmpty)) {
+      final known = cards[device.id] ?? (name: device.name, ins: 0, outs: 0);
+      final channels = device.channels > 0 ? device.channels : (isCapture ? 1 : 2);
+      cards[device.id] = isCapture ? (name: known.name, ins: channels, outs: known.outs) : (name: known.name, ins: known.ins, outs: channels);
+    }
+  }
+  return [
+    if (voice) const Capability(kCapabilityVoice),
+    if (audio) ...[
+      const Capability(kCapabilityAudioMixer),
+      for (final MapEntry(key: id, value: card) in cards.entries)
+        Capability(kCapabilityAudio, key: id, name: card.name, inputs: audioChannels(card.ins), outputs: audioChannels(card.outs)),
+    ],
+  ];
+}
 
 extension EquipmentOffers on EquipmentType {
   /// What a node on this pairing, configured like [config], offers, without
@@ -37,11 +77,16 @@ extension EquipmentOffers on EquipmentType {
         // slice holds the TX flag.
         const Capability(kCapabilityTransmitter),
         if (driver.offersScopeWith(merged)) Capability(kCapabilityScope, key: key),
+        if (driver.offersIqWith(merged)) Capability(kCapabilityIq, key: key),
+        // Withheld from pickers and the resolver while the audio experiment
+        // is off (CatService.capabilitiesOf); a report lists it regardless.
+        if (driver.carriesReceiveAudio || driver.carriesTalkAudio)
+          Capability(kCapabilityAudio, key: key, inputs: audioChannels(driver.receiveAudioChannels), outputs: audioChannels(driver.talkAudioChannels)),
         if (driver.canKeyCwWith(merged)) const Capability(kCapabilityKeyer),
         if (driver.voiceMemoryCountWith(merged) > 0) const Capability(kCapabilityVoice),
         if (driver.so2rAudioReceiverWith(merged) != null) const Capability(kCapabilityAudioMixer),
       ],
-      kCategorySdr => const [Capability(kCapabilityScope)],
+      kCategorySdr => [const Capability(kCapabilityScope), if (driver.offersIqWith(merged)) const Capability(kCapabilityIq)],
       kCategoryAntennaSwitch => [Capability(kCapabilitySwitch, key: key)],
       kCategoryRotator => [Capability(kCapabilityRotator, key: key)],
       kCategoryKeyer => const [Capability(kCapabilityKeyer)],

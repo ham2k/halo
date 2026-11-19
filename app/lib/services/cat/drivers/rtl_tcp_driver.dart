@@ -69,6 +69,10 @@ class RtlTcpDriver extends EquipmentDriver {
   @override
   String get name => 'rtl_tcp';
 
+  /// The samples themselves, whose FFT is the scope (sdr_spectrum.dart).
+  @override
+  bool offersIqWith(Map<String, dynamic> config) => true;
+
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
     for (final element in sdrConfigElements())

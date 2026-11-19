@@ -15,6 +15,14 @@ const kCapabilityTransmitter = 'tx';
 /// A spectrum and waterfall for a receiver.
 const kCapabilityScope = 'scope';
 
+/// A stream of IQ samples, which a scope is computed from.
+const kCapabilityIq = 'iq';
+
+/// A source of audio, a sink for it, or both: its channels are its ports,
+/// [Capability.inputs] the ones the app receives and [Capability.outputs]
+/// the ones it sends.
+const kCapabilityAudio = 'audio';
+
 /// Something that sends CW for the app.
 const kCapabilityKeyer = 'keyer';
 
@@ -44,6 +52,11 @@ const kCapabilityKey = 'key';
 /// The key of a capability its device has only one of.
 const capabilityDefaultKey = 'main';
 
+/// The device that is always there and never stored: this computer, with
+/// its sound cards, its mixer and its own voice recordings
+/// (station-model.md § 3).
+const kComputerDevice = 'computer';
+
 /// A radio's own antenna ports, as a [kCapabilitySwitch]: its key, and the
 /// outputs every one has, wired inside the radio to its receiver and its
 /// transmitter.
@@ -61,21 +74,32 @@ class Capability {
   final String key;
 
   /// A [kCapabilitySwitch]'s ports, by the equipment's own keys: [inputs] on
-  /// the antenna side, [outputs] on the side a radio plugs into. Empty for
-  /// every other kind, and for a switch that has not said what it has.
+  /// the antenna side, [outputs] on the side a radio plugs into. A
+  /// [kCapabilityAudio]'s channels, numbered from 0, in the app's direction.
+  /// Empty for every other kind, for a switch that has not said what it has,
+  /// and for an audio's direction it does not have.
   final List<String> inputs, outputs;
 
-  const Capability(this.kind, {this.key = capabilityDefaultKey, this.inputs = const [], this.outputs = const []});
+  /// What the equipment calls it, where [key] is no name a person reads: a
+  /// sound card's, keyed by the system's id for it.
+  final String? name;
+
+  const Capability(this.kind, {this.key = capabilityDefaultKey, this.inputs = const [], this.outputs = const [], this.name});
 
   @override
   bool operator ==(Object other) =>
-      other is Capability && other.kind == kind && other.key == key && listEquals(other.inputs, inputs) && listEquals(other.outputs, outputs);
+      other is Capability &&
+      other.kind == kind &&
+      other.key == key &&
+      other.name == name &&
+      listEquals(other.inputs, inputs) &&
+      listEquals(other.outputs, outputs);
 
   @override
-  int get hashCode => Object.hash(kind, key, Object.hashAll(inputs), Object.hashAll(outputs));
+  int get hashCode => Object.hash(kind, key, name, Object.hashAll(inputs), Object.hashAll(outputs));
 
   @override
-  String toString() => 'Capability($kind:$key${inputs.isEmpty && outputs.isEmpty ? '' : ', in: $inputs, out: $outputs'})';
+  String toString() => 'Capability($kind:$key${name == null ? '' : ' "$name"'}${inputs.isEmpty && outputs.isEmpty ? '' : ', in: $inputs, out: $outputs'})';
 }
 
 /// Which piece of which device: `<device>/<kind>:<key>`, and

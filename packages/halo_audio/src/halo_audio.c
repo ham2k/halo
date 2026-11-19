@@ -187,6 +187,27 @@ int halo_audio_device_is_default(int capture, int index) {
   return e ? e->is_default : 0;
 }
 
+// Asked one device at a time rather than as the list is read: it opens
+// the device to probe its formats, which on ALSA re-enumerates every device,
+// and the list is read on the way to every key-down that talks through HaLo.
+int halo_audio_device_channels(int capture, int index) {
+  DeviceEntry* e = entry(capture, index);
+  ma_context* ctx = context();
+  ma_device_id id;
+  if (e == NULL || ctx == NULL || id_from_hex(e->id, &id) != 1) return 0;
+  // ALSA probes by opening the device in blocking mode, which waits for as
+  // long as another program (or the engine) holds it: a hung app, to read a
+  // count the engine converts to and from anyway.
+  if (ctx->backend == ma_backend_alsa) return 0;
+  ma_device_info info;
+  if (ma_context_get_device_info(ctx, capture ? ma_device_type_capture : ma_device_type_playback, &id, &info) != MA_SUCCESS) return 0;
+  ma_uint32 most = 0;
+  for (ma_uint32 i = 0; i < info.nativeDataFormatCount; i++) {
+    if (info.nativeDataFormats[i].channels > most) most = info.nativeDataFormats[i].channels;
+  }
+  return (int)most;
+}
+
 // --- Files --------------------------------------------------------------------
 
 // miniaudio's char* file functions take the platform's narrow encoding,

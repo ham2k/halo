@@ -987,15 +987,22 @@ abstract class EquipmentDriver {
   /// sessions that are.
   bool get canKeyCw => false;
 
-  /// Whether this driver's sessions can carry their radio's receive audio
-  /// to the audio engine themselves ([ReceiveAudioSink]): what the editor
-  /// offers "Hear this radio in HaLo" on.
-  bool get carriesReceiveAudio => false;
+  /// How many channels of their radio's receive audio this driver's
+  /// sessions carry to the audio engine themselves ([ReceiveAudioSink]):
+  /// what its `audio` capability lists as coming in. Zero for a driver
+  /// whose sessions carry none.
+  int get receiveAudioChannels => 0;
 
-  /// Whether this driver's sessions can carry the station's microphone to
-  /// their radio themselves ([TalkPttSession]): what the editor offers
-  /// "Talk through HaLo" on.
-  bool get carriesTalkAudio => false;
+  /// How many channels of the station's microphone this driver's sessions
+  /// carry to their radio themselves ([TalkPttSession]): what its `audio`
+  /// capability lists as going out.
+  int get talkAudioChannels => 0;
+
+  /// What the editor offers "Hear this radio in HaLo" on.
+  bool get carriesReceiveAudio => receiveAudioChannels > 0;
+
+  /// What the editor offers "Talk through HaLo" on.
+  bool get carriesTalkAudio => talkAudioChannels > 0;
 
   /// [canKeyCw] for one node: [config] is the node's merged configuration
   /// (the entry's overrides included), and a driver whose keyer is a
@@ -1117,6 +1124,11 @@ abstract class EquipmentDriver {
   /// sweeps still offers the scope, and its session says why it cannot
   /// (`SpectrumSession.spectrumUnavailable`).
   bool offersScopeWith(Map<String, dynamic> config) => false;
+
+  /// Whether the equipment behind a node configured like [config] streams
+  /// IQ samples the app computes a scope from — known without a session, as
+  /// [offersScopeWith] is, and true only where that holds too.
+  bool offersIqWith(Map<String, dynamic> config) => false;
 
   /// How many antenna ports this equipment has when nobody has asked it yet.
   ///

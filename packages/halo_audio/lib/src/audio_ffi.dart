@@ -93,6 +93,7 @@ final _enumerate = _lib.lookupFunction<Int32 Function(Int32), int Function(int)>
 final _deviceId = _lib.lookupFunction<Pointer<Utf8> Function(Int32, Int32), Pointer<Utf8> Function(int, int)>('halo_audio_device_id');
 final _deviceName = _lib.lookupFunction<Pointer<Utf8> Function(Int32, Int32), Pointer<Utf8> Function(int, int)>('halo_audio_device_name');
 final _deviceIsDefault = _lib.lookupFunction<Int32 Function(Int32, Int32), int Function(int, int)>('halo_audio_device_is_default');
+final _deviceChannels = _lib.lookupFunction<Int32 Function(Int32, Int32), int Function(int, int)>('halo_audio_device_channels');
 final _fileLengthMs = _lib.lookupFunction<Int64 Function(Pointer<Utf8>), int Function(Pointer<Utf8>)>('halo_audio_file_length_ms');
 final _decode = _lib
     .lookupFunction<
@@ -158,17 +159,25 @@ abstract final class HaloAudio {
     if (_useNullBackend() != 0) throw StateError('halo_audio: the null backend must be chosen before the first device call');
   }
 
-  static List<AudioDevice> playbackDevices() => _devices(capture: false);
+  /// [channels] asks each device how many it has ([AudioDevice.channels]),
+  /// which probes it: far slower than the list alone, so only where the
+  /// count is wanted.
+  static List<AudioDevice> playbackDevices({bool channels = false}) => _devices(capture: false, channels: channels);
 
-  static List<AudioDevice> captureDevices() => _devices(capture: true);
+  static List<AudioDevice> captureDevices({bool channels = false}) => _devices(capture: true, channels: channels);
 
-  static List<AudioDevice> _devices({required bool capture}) {
+  static List<AudioDevice> _devices({required bool capture, required bool channels}) {
     final which = capture ? 1 : 0;
     final count = _enumerate(which);
     if (count < 0) throw HaloAudioException('no audio backend could be opened');
     return [
       for (var i = 0; i < count; i++)
-        AudioDevice(id: _deviceId(which, i).toDartString(), name: _deviceName(which, i).toDartString(), isDefault: _deviceIsDefault(which, i) != 0),
+        AudioDevice(
+          id: _deviceId(which, i).toDartString(),
+          name: _deviceName(which, i).toDartString(),
+          isDefault: _deviceIsDefault(which, i) != 0,
+          channels: channels ? _deviceChannels(which, i) : 0,
+        ),
     ];
   }
 

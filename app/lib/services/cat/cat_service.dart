@@ -61,6 +61,7 @@ import 'drivers/flexradio_driver.dart'
         flexClientIdConfigKey,
         flexGuiConfigKey,
         flexOwnSliceConfigKey,
+        flexOwnSliceOf,
         flexOwnSlicePrefix,
         flexProgramName,
         flexStationNameConfigKey,
@@ -436,6 +437,12 @@ class CatService extends ChangeNotifier
   /// The audio engine, made the first time a radio's audio is wanted
   /// (cat_radio_audio.dart).
   RadioAudio? _radioAudio;
+
+  @override
+  bool get _audioOffered => radioAudioAvailable(_settings);
+
+  @override
+  List<Capability> get _computerOffered => _computerOffers();
 
   /// The mix while its sliders move ([CatRadioAudioChoices.setMixVolume]).
   double? _mixVolume;

@@ -89,6 +89,14 @@ const flexProgramName = 'Ham2K';
 /// holds its letter, the receiver it attaches as is `own-<letter>`, and
 /// its connection is HaLo's station, not bound to another.
 const flexOwnSliceConfigKey = 'flexOwnSlice';
+
+/// The letter of HaLo's own slice a node configured like [config] is, on
+/// HaLo's station on the radio; null for a slice another station holds,
+/// which its connection follows bound to that station.
+String? flexOwnSliceOf(Map<String, dynamic> config) => switch (config[flexOwnSliceConfigKey]) {
+  final String letter when letter.isNotEmpty => letter,
+  _ => null,
+};
 const flexOwnSlicePrefix = 'own-';
 
 /// Whether a connection is HaLo's station; and, on the radio's entry, the
@@ -154,14 +162,21 @@ class FlexRadioDriver extends EquipmentDriver with AlwaysOffersScope {
   @override
   bool get canKeyCw => true;
 
-  /// A slice's DAX receive audio, through the engine (flex_dax_rx.dart).
+  /// A slice's DAX receive audio, in stereo, through the engine
+  /// (flex_dax_rx.dart).
   @override
-  bool get carriesReceiveAudio => true;
+  int get receiveAudioChannels => 2;
 
-  /// The station's microphone to the transmitter, through the engine
-  /// (flex_dax_talk.dart).
+  /// The station's microphone to the transmitter, on a stereo `dax_tx`
+  /// stream, through the engine (flex_dax_talk.dart).
   @override
-  bool get carriesTalkAudio => true;
+  int get talkAudioChannels => 2;
+
+  /// DAX IQ for the panadapter of a slice followed on another station's
+  /// binding. A slice on HaLo's own station draws the radio's FFT of its pan
+  /// instead, and its session asks for no IQ ([FlexRadioSession]'s scope).
+  @override
+  bool offersIqWith(Map<String, dynamic> config) => flexOwnSliceOf(config) == null;
 
   /// The DVK holds twelve; the app offers one per function key. Whether the
   /// radio's licence lets it play any is known only once connected, when

@@ -6,6 +6,8 @@ import 'dart:typed_data';
 import '../error_reporting_service.dart';
 import '../settings_service.dart';
 import '../status_bar_service.dart';
+import 'capability.dart';
+import 'capability_offers.dart';
 import 'cat_service.dart';
 import 'cat_traffic_log.dart';
 import 'equipment_details.dart';
@@ -112,6 +114,13 @@ class CatTrafficRecording {
     }
   }
 
+  /// What this computer offers, the device no entry is for: what a radio's
+  /// audio could be routed through here.
+  String? _computerLine(CatService cat) => switch (cat.capabilitiesOf(kComputerDevice)) {
+    final offered when offered.isNotEmpty => '- This computer offers: ${describeOffers(offered)}',
+    _ => null,
+  };
+
   /// Uploads a finished recording with the setup of every radio it may have
   /// talked to, and says where the file is either way — the copy on disk is
   /// the fallback when the upload never lands.
@@ -123,6 +132,7 @@ class CatTrafficRecording {
           ...equipmentSetupLines(node: node, type: type, state: cat.stateFor(node.uuid), registry: cat.registry),
           '',
         ],
+      ?_computerLine(cat),
     ];
     final filename = path.split(RegExp(r'[\\/]')).last;
     final uploaded = ErrorReportingService.diagnostic(

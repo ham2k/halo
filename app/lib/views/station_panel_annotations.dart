@@ -20,7 +20,9 @@ extension _EditorAnnotations on StationPanel {
     final names = <String>{
       for (final capability in _cat.capabilitiesOf(node.uuid))
         ?switch (capability.kind) {
-          kCapabilityReceiver || kCapabilityTransmitter => null,
+          // An audio and an IQ stream are what a radio is heard and a scope
+          // drawn through, not things it does for the operator.
+          kCapabilityReceiver || kCapabilityTransmitter || kCapabilityAudio || kCapabilityIq => null,
           kCapabilityScope => st.providesScope,
           kCapabilityKeyer => st.providesKeyer,
           kCapabilityVoice => st.providesVoice,

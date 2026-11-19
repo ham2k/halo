@@ -70,6 +70,15 @@ card is not a device of its own: the operator never says how to reach one, which
 is for. A card that is unplugged is a capability its device says it does not have (§ 4.3), and a
 slot pointing at it keeps its pick.
 
+A card's key is the audio engine's id for it (CoreAudio's device UID, WASAPI's endpoint id), with
+its name beside, and a stored pick is matched by the id, then by a name no two cards share, as the
+station's microphone is (audio.md § 7). The id survives a replug and a reboot on macOS and Windows
+and tells two cards of one model apart. On Linux, where it may not survive a reboot, the name is
+the fallback, and two identical cards there are left unmatched rather than guessed between. A card
+that records and plays under one id is one capability with both directions; WASAPI lists the two
+directions under two ids, and so as two. Its channels are the most its native formats have, and
+where the system does not say, what the engine opens it at: one in, two out.
+
 What changes is that a device is no longer also "the radio". A FlexRadio is one device however
 many of its slices the station uses, an Everyware server is one device however many rotators hang
 off it, and a K4 is one device with two receivers.
@@ -578,6 +587,14 @@ Each is a full task. Nothing is visible to the operator before phase 3.
 7. **Audio and IQ as capabilities, and mixers.** A receiver's audio channels, the mixer that routes
    them (§ 6.1), and the computer's own. After the audio engine work (HALO-932) has settled what an
    audio channel is.
+   *Status: the first stage is built. Drivers declare `iq` where the scope is an FFT of it (DAX IQ
+   for a Flex slice followed on another station's binding, TCI, an SDR that sends its samples
+   rather than its own spectrum) and `audio` where the app carries the radio's audio itself,
+   with the channels it carries each way (a Flex slice's DAX pair). The computer is a device
+   (`computer`) offering its voice recordings, and, under the `audio` experiment, its mixer and
+   a sound card per id the system lists (§ 3). A radio's `audio` is offered
+   only under the experiment too. Nothing picks them yet: audio slots on a position, and the
+   hearing rule carried out by the computer's mixer, are the stages after.*
 8. **An SO2R controller's transmit side**: routing the key, the PTT and the microphone (§ 6.1).
 9. **The antenna graph and its solver** (§ 7).
 10. **Extension surface** for capabilities, positions and sets, and logical addresses wherever an
@@ -593,9 +610,6 @@ Phases 5 to 10 do not depend on each other and can be reordered.
 - **Whether SO2V needs anything SO2R on one radio does not.** Two slices of one Flex migrate as
   SO2R (§ 9). SO2V as its own arrangement can wait until something needs antennas, key and audio
   shared between the two sets.
-- **What names a sound card.** A slot stores a capability's key (§ 4.2), and a sound card's has to
-  survive a replug, a reboot and a second card of the same model. What each platform offers for
-  that is phase 7's to settle, with the audio engine's device list in hand.
 - **Whether an extension declares the tags it looks for.** Named in its manifest with a line of
   description each, Station Configuration could offer them beside a capability instead of the
   owner copying them from a page. It is new manifest surface, and can wait for an extension that
