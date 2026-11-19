@@ -9271,6 +9271,33 @@ class Translations$operation$layout$panels$en {
 	/// en: 'What we know about the station being worked'
 	String get infoDescription => 'What we know about the station being worked';
 
+	/// en: 'Theme'
+	String get infoTheme => 'Theme';
+
+	/// en: 'Automatic'
+	String get infoThemeApp => 'Automatic';
+
+	/// en: 'Gray'
+	String get infoThemeGray => 'Gray';
+
+	/// en: 'Muted'
+	String get infoThemeMuted => 'Muted';
+
+	/// en: 'Contrast'
+	String get infoThemeContrast => 'Contrast';
+
+	/// en: 'Teal'
+	String get infoThemeTeal => 'Teal';
+
+	/// en: 'Checklist Style'
+	String get infoChecklistStyle => 'Checklist Style';
+
+	/// en: 'Highlight pending'
+	String get infoHighlightPending => 'Highlight pending';
+
+	/// en: 'Highlight worked'
+	String get infoHighlightWorked => 'Highlight worked';
+
 	/// en: 'Spots from the clusters and activity programs'
 	String get spotsDescription => 'Spots from the clusters and activity programs';
 
@@ -9286,8 +9313,8 @@ class Translations$operation$layout$panels$en {
 	/// en: 'Each day'
 	String get summariesDays => 'Each day';
 
-	/// en: 'Show all'
-	String get summariesReset => 'Show all';
+	/// en: 'Reset list'
+	String get summariesReset => 'Reset list';
 
 	/// en: 'Every section is hidden. Pick the ones to show in this panel's settings.'
 	String get summariesAllHidden => 'Every section is hidden. Pick the ones to show in this panel\'s settings.';
@@ -12526,12 +12553,21 @@ extension on Translations {
 			'operation.layout.panelActionFailed' => 'That panel action failed. Try again.',
 			'operation.layout.panels.loggingDescription' => 'The log and the entry fields',
 			'operation.layout.panels.infoDescription' => 'What we know about the station being worked',
+			'operation.layout.panels.infoTheme' => 'Theme',
+			'operation.layout.panels.infoThemeApp' => 'Automatic',
+			'operation.layout.panels.infoThemeGray' => 'Gray',
+			'operation.layout.panels.infoThemeMuted' => 'Muted',
+			'operation.layout.panels.infoThemeContrast' => 'Contrast',
+			'operation.layout.panels.infoThemeTeal' => 'Teal',
+			'operation.layout.panels.infoChecklistStyle' => 'Checklist Style',
+			'operation.layout.panels.infoHighlightPending' => 'Highlight pending',
+			'operation.layout.panels.infoHighlightWorked' => 'Highlight worked',
 			'operation.layout.panels.spotsDescription' => 'Spots from the clusters and activity programs',
 			'operation.layout.panels.mapDescription' => 'Where the contacts are',
 			'operation.layout.panels.summariesDescription' => 'The operation\'s stats and scores, in the sections and order you pick',
 			'operation.layout.panels.summariesSections' => 'Sections and Order',
 			'operation.layout.panels.summariesDays' => 'Each day',
-			'operation.layout.panels.summariesReset' => 'Show all',
+			'operation.layout.panels.summariesReset' => 'Reset list',
 			'operation.layout.panels.summariesAllHidden' => 'Every section is hidden. Pick the ones to show in this panel\'s settings.',
 			'operation.layout.panels.clockDescription' => 'A clock face, in any time zone',
 			'operation.layout.panels.clockFace' => 'Face',
@@ -12978,6 +13014,8 @@ extension on Translations {
 			'activitiesView.noNearbyReason' => 'Cannot determine nearby references',
 			'activitiesView.locationManualHint' => ({required Object icon}) => 'Tap ${icon} to manually enter your location,\nor just search for references by name',
 			'activitiesView.locationGrantAction' => 'Allow location access',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.locationSettingsAction' => 'Open Settings',
 			'activitiesView.locationSettingsUnavailable' => 'Allow location access in your system settings',
 			'activitiesView.locationGrantRefused' => 'Still no location — the system said no again',
@@ -12987,8 +13025,6 @@ extension on Translations {
 			'activitiesView.exports' => 'Exports',
 			'activitiesView.exportLogs' => 'Export Logs',
 			'activitiesView.tools' => 'Tools',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.toolsTitle' => 'Operation Tools',
 			'activitiesView.operationDetails' => 'Operation Details',
 			'activitiesView.share' => 'Share',
@@ -13492,6 +13528,8 @@ extension on Translations {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'Suggested F3 for // stacks: it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU',
 			'settings.radio.keyerControl.label' => 'Keyer',
 			'settings.radio.keyerControl.cw' => 'WPM',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} WPM',
 			'settings.radio.keyerControl.voice' => 'Voice',
 			'settings.radio.voiceMessages.title' => 'Phone Keyer Messages',
@@ -13501,8 +13539,6 @@ extension on Translations {
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Voice memory ${n}',
 			'settings.radio.voiceMessages.labelField' => 'Label',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Voice memory ${n} label',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
 			'settings.radio.voiceMessages.emptyOnRadio' => 'Empty',
 			'settings.radio.voiceMessages.notMeasured' => 'Unknown length',
@@ -14006,6 +14042,8 @@ extension on Translations {
 			'settings.station.civScopeAdjustApp' => 'Let this app adjust the bandscope',
 			'settings.station.civScopeAdjustRadio' => 'Use the radio\'s bandscope settings as-is',
 			'settings.station.spectrumSdrNoRadio' => 'Waiting for the linked radio\'s frequency…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.spectrumSdrNotConnected' => 'The SDR is not connected',
 			'settings.station.spectrumSdrNoIf' => 'Set the radio\'s IF frequency in this SDR\'s settings',
 			'settings.station.spectrumSdrUnreachable' => 'The SDR cannot tune to where the radio is, or another program has it tuned elsewhere',
@@ -14015,8 +14053,6 @@ extension on Translations {
 			'settings.station.sdrTuningIndependent' => 'Its own antenna',
 			'settings.station.sdrTuningIfTap' => 'The radio\'s IF output',
 			'settings.station.sdrIfHz' => 'IF frequency (Hz)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.sdrIfHzDescription' => 'For an IF output only: the frequency the radio\'s dial sits at on its IF, such as 68330000 on an FT-817.',
 			'settings.station.sdrIfInverted' => 'IF is inverted',
 			'settings.station.sdrGainDb' => 'Gain (dB)',
@@ -14520,6 +14556,8 @@ extension on Translations {
 			'settings.station.rotatorElevationMax' => 'Highest elevation',
 			'settings.station.rotatorElevationMaxDescription' => 'In the controller\'s own degrees. Above 90 for a rotator that flips over.',
 			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'Whole degrees, ${min} to ${max}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorLimitsInvalid' => 'The lowest limit has to be below the highest',
 			'settings.station.rotatorPollInterval' => 'Polling interval (ms)',
 			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'How often to ask the rotator where it points. Leave blank for ${fallback} ms.',
@@ -14529,8 +14567,6 @@ extension on Translations {
 			'settings.station.buddihexCompassMissing' => 'The rotator\'s controller cannot find its compass. Check the compass\'s wiring to the controller board.',
 			'settings.station.buddihexCompassNotReady' => 'The rotator\'s compass is not ready yet. Power the controller off and on if this does not clear.',
 			'settings.station.buddihexCompassCalibration' => 'The rotator\'s compass failed its calibration check when the controller started. Power the controller off and on to check it again.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.buddihexFault' => 'The rotator\'s controller reports a fault with its compass.',
 			'settings.station.buddihexTroubleshooting' => 'The BuddiHex rotator\'s controller answers over WiFi, on UDP port 4210:\n\n- **On its own WiFi network**, the one it makes until it is set up (named ESP- and six letters and digits), its address is 192.168.4.1. Join that network on this device first.\n- **On your WiFi**, once you have entered it on the controller\'s web page, use the address your router gave it: its list of devices names the controller ESP- and the same six letters and digits.\n- **Calibrate its heading after every power-up**: point the antenna at true north, then press Calibrate North on the controller\'s web page. It forgets the calibration when it is switched off, and reports the compass\'s magnetic heading until then.\n- **On a Mac, iPhone or iPad**, Ham2K Logger needs Local Network access (Settings → Privacy & Security → Local Network).',
 			'settings.station.rotctldRefused' => ({required Object code}) => 'rotctld refused the command (Hamlib error ${code}).',
@@ -15034,6 +15070,8 @@ extension on Translations {
 			'operationLocationScreen.deviceGps' => 'Device GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS from ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => 'GPS from ${receiver}',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.locating' => 'Locating…',
 			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',
@@ -15043,8 +15081,6 @@ extension on Translations {
 			'operationLocationScreen.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'operationLocationScreen.controlsUnavailableReason' => 'These references are still usable; their activities just could not be reached.',
 			'operationLocationScreen.controlsUnavailableRetry' => 'Retry',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.county' => 'County (optional)',
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'Patch ${patch}',

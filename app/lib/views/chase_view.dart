@@ -35,6 +35,7 @@ import 'home_navigation_rail.dart';
 import 'chase_import_flow.dart';
 import 'file_open/file_router.dart';
 import 'operation/information_panel.dart';
+import 'operation/information_panel_settings.dart';
 import 'operation/log_find_bar.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
@@ -225,6 +226,19 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
   WidgetBuilder? nativePanelSettingsForm(BuildContext context, String id) => switch (id) {
     ChaseView.loggingPanelId => (builderContext) => settingsFormForTarget(services: widget.services, target: 'logging', groupOverrides: _loggingSettings),
     ChaseView.mapPanelId => (builderContext) => settingsFormForTarget(services: widget.services, target: 'map'),
+    ChaseView.infoPanelId => (builderContext) => InformationPanelSettings(
+      panelId: id,
+      panels: widget.services.panels,
+      sections: informationSections(
+        builderContext,
+        operation: _operation,
+        qsos: _filtered?.qsos ?? const [],
+        services: widget.services,
+        activityControls: chaseLoggingControls(_runtime.loggingControls),
+        statsTitle: _period.statsTitle(builderContext),
+        chaseSummaries: _summaries,
+      ),
+    ),
     _ => null,
   };
 
@@ -269,6 +283,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
           source: PanelSource.native,
           views: const {PanelViews.chase},
           settingsTarget: id == ChaseView.loggingPanelId ? 'logging' : null,
+          formFields: id == ChaseView.infoPanelId ? informationPanelFields : const [],
         ),
       );
     }
@@ -720,6 +735,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
       activityControls: loggingControls,
       statsTitle: _period.statsTitle(context),
       chaseSummaries: _summaries,
+      panelId: ChaseView.infoPanelId,
     );
     final mapPanel = MapPanel(
       operation: operation,

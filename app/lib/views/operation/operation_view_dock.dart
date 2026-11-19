@@ -247,6 +247,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
         icon: 'informationOutline',
         source: PanelSource.native,
         views: const {PanelViews.operation},
+        formFields: informationPanelFields,
       ),
     );
     // Registered only with the experiment on, exactly as Remote Screen is: a
@@ -295,7 +296,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
         // Several, each with its own picks: a contest's score in one pane
         // and the states grid in another.
         multiple: true,
-        formFields: operationSummariesFields,
+        formFields: informationPanelFields,
       ),
     );
     registerSharedDashboardPanels();
@@ -361,15 +362,14 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
       extraChildren: (inLayout) => {
         for (final id in inLayout)
           if (PanelDefinition.descriptorIdOf(id) == operationSummariesPanelId)
-            id: OperationSummariesPanel(
+            // The Info pane, less its Call Info: no call is handed to it.
+            id: InformationPanel(
               key: ValueKey('panel-$id'),
               panelId: id,
-              panels: widget.services.panels,
               operation: operation,
               qsos: qsos,
+              services: widget.services,
               activityControls: _runtime.loggingControls,
-              write: summariesConfigWriter(widget.services, id),
-              extensions: widget.services.extensions,
             ),
         ...sharedDashboardPanes(
           inLayout,
@@ -403,15 +403,23 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
   WidgetBuilder? nativePanelSettingsForm(BuildContext context, String id) => switch (id) {
     'logging' => (builderContext) => settingsFormForTarget(services: widget.services, target: 'logging', groupOverrides: _loggingSettingsGroups),
     'map' => (builderContext) => settingsFormForTarget(services: widget.services, target: 'map'),
-    _ when PanelDefinition.descriptorIdOf(id) == operationSummariesPanelId => switch (_operationForPanels) {
-      final operation? => (builderContext) => OperationSummariesSettings(
-        panelId: id,
-        panels: widget.services.panels,
-        sections: operationSummarySections(builderContext, operation: operation, qsos: _logForPanels ?? const [], activityControls: _runtime.loggingControls),
-        write: summariesConfigWriter(widget.services, id),
-      ),
-      null => null,
-    },
+    // Its own form even before the operation has loaded, with no sections to
+    // list yet: a null here would fall back to the declared fields, raw.
+    // The Summaries pane's are the Info pane's: it is that pane, placed.
+    _ when id == 'info' || PanelDefinition.descriptorIdOf(id) == operationSummariesPanelId => (builderContext) => InformationPanelSettings(
+      panelId: id,
+      panels: widget.services.panels,
+      sections: switch (_operationForPanels) {
+        final operation? => informationSections(
+          builderContext,
+          operation: operation,
+          qsos: _logForPanels ?? const [],
+          services: widget.services,
+          activityControls: _runtime.loggingControls,
+        ),
+        null => const [],
+      },
+    ),
     _ => null,
   };
 }

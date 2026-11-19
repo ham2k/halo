@@ -4087,12 +4087,21 @@ class _Translations$operation$layout$panels$qro extends Translations$operation$l
 	// Translations
 	@override String get loggingDescription => 'THE LOG AND THE ENTRY FIELDS';
 	@override String get infoDescription => 'WHAT WE KNOW ABOUT THE STATION BEING WORKED';
+	@override String get infoTheme => 'THEME';
+	@override String get infoThemeApp => 'AUTOMATIC';
+	@override String get infoThemeGray => 'GRAY';
+	@override String get infoThemeMuted => 'MUTED';
+	@override String get infoThemeContrast => 'CONTRAST';
+	@override String get infoThemeTeal => 'TEAL';
+	@override String get infoChecklistStyle => 'CHECKLIST STYLE';
+	@override String get infoHighlightPending => 'HIGHLIGHT PENDING';
+	@override String get infoHighlightWorked => 'HIGHLIGHT WORKED';
 	@override String get spotsDescription => 'SPOTS FROM THE CLUSTERS AND ACTIVITY PROGRAMS';
 	@override String get mapDescription => 'WHERE THE CONTACTS ARE';
 	@override String get summariesDescription => 'THE OPERATION\'S STATS AND SCORES, IN THE SECTIONS AND ORDER YOU PICK';
 	@override String get summariesSections => 'SECTIONS AND ORDER';
 	@override String get summariesDays => 'EACH DAY';
-	@override String get summariesReset => 'SHOW ALL';
+	@override String get summariesReset => 'RESET LIST';
 	@override String get summariesAllHidden => 'EVERY SECTION IS HIDDEN. PICK THE ONES TO SHOW IN THIS PANEL\'S SETTINGS.';
 	@override String get clockDescription => 'A CLOCK FACE, IN ANY TIME ZONE';
 	@override String get clockFace => 'FACE';
@@ -5941,12 +5950,21 @@ extension on TranslationsQro {
 			'operation.layout.panelActionFailed' => 'THAT PANEL ACTION FAILED. TRY AGAIN.',
 			'operation.layout.panels.loggingDescription' => 'THE LOG AND THE ENTRY FIELDS',
 			'operation.layout.panels.infoDescription' => 'WHAT WE KNOW ABOUT THE STATION BEING WORKED',
+			'operation.layout.panels.infoTheme' => 'THEME',
+			'operation.layout.panels.infoThemeApp' => 'AUTOMATIC',
+			'operation.layout.panels.infoThemeGray' => 'GRAY',
+			'operation.layout.panels.infoThemeMuted' => 'MUTED',
+			'operation.layout.panels.infoThemeContrast' => 'CONTRAST',
+			'operation.layout.panels.infoThemeTeal' => 'TEAL',
+			'operation.layout.panels.infoChecklistStyle' => 'CHECKLIST STYLE',
+			'operation.layout.panels.infoHighlightPending' => 'HIGHLIGHT PENDING',
+			'operation.layout.panels.infoHighlightWorked' => 'HIGHLIGHT WORKED',
 			'operation.layout.panels.spotsDescription' => 'SPOTS FROM THE CLUSTERS AND ACTIVITY PROGRAMS',
 			'operation.layout.panels.mapDescription' => 'WHERE THE CONTACTS ARE',
 			'operation.layout.panels.summariesDescription' => 'THE OPERATION\'S STATS AND SCORES, IN THE SECTIONS AND ORDER YOU PICK',
 			'operation.layout.panels.summariesSections' => 'SECTIONS AND ORDER',
 			'operation.layout.panels.summariesDays' => 'EACH DAY',
-			'operation.layout.panels.summariesReset' => 'SHOW ALL',
+			'operation.layout.panels.summariesReset' => 'RESET LIST',
 			'operation.layout.panels.summariesAllHidden' => 'EVERY SECTION IS HIDDEN. PICK THE ONES TO SHOW IN THIS PANEL\'S SETTINGS.',
 			'operation.layout.panels.clockDescription' => 'A CLOCK FACE, IN ANY TIME ZONE',
 			'operation.layout.panels.clockFace' => 'FACE',
@@ -6393,6 +6411,8 @@ extension on TranslationsQro {
 			'activitiesView.noNearbyReason' => 'CANNOT DETERMINE NEARBY REFERENCES',
 			'activitiesView.locationManualHint' => ({required Object icon}) => 'TAP ${icon} TO MANUALLY ENTER YOUR LOCATION,\nOR JUST SEARCH FOR REFERENCES BY NAME',
 			'activitiesView.locationGrantAction' => 'ALLOW LOCATION ACCESS',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.locationSettingsAction' => 'OPEN SETTINGS',
 			'activitiesView.locationSettingsUnavailable' => 'ALLOW LOCATION ACCESS IN YOUR SYSTEM SETTINGS',
 			'activitiesView.locationGrantRefused' => 'STILL NO LOCATION — THE SYSTEM SAID NO AGAIN',
@@ -6402,8 +6422,6 @@ extension on TranslationsQro {
 			'activitiesView.exports' => 'EXPORTS',
 			'activitiesView.exportLogs' => 'EXPORT LOGS',
 			'activitiesView.tools' => 'TOOLS',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.toolsTitle' => 'OPERATION TOOLS',
 			'activitiesView.operationDetails' => 'OPERATION DETAILS',
 			'activitiesView.share' => 'SHARE',
@@ -6907,6 +6925,8 @@ extension on TranslationsQro {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'SUGGESTED F3 FOR // STACKS: IT THANKS, THEN CALLS THE NEXT STACKED STATION AND SENDS YOUR EXCHANGE, OR ASKS A PARTIAL BACK (TU KR?); WITH NOTHING LEFT, JUST TU',
 			'settings.radio.keyerControl.label' => 'KEYER',
 			'settings.radio.keyerControl.cw' => 'WPM',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} WPM',
 			'settings.radio.keyerControl.voice' => 'VOICE',
 			'settings.radio.voiceMessages.title' => 'PHONE KEYER MESSAGES',
@@ -6916,8 +6936,6 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'VOICE MEMORY ${n}',
 			'settings.radio.voiceMessages.labelField' => 'LABEL',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'VOICE MEMORY ${n} LABEL',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} S',
 			'settings.radio.voiceMessages.emptyOnRadio' => 'EMPTY',
 			'settings.radio.voiceMessages.notMeasured' => 'UNKNOWN LENGTH',
@@ -7421,6 +7439,8 @@ extension on TranslationsQro {
 			'settings.station.civScopeAdjustApp' => 'LET THIS APP ADJUST THE BANDSCOPE',
 			'settings.station.civScopeAdjustRadio' => 'USE THE RADIO\'S BANDSCOPE SETTINGS AS-IS',
 			'settings.station.spectrumSdrNoRadio' => 'WAITING FOR THE LINKED RADIO\'S FREQUENCY…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.spectrumSdrNotConnected' => 'THE SDR IS NOT CONNECTED',
 			'settings.station.spectrumSdrNoIf' => 'SET THE RADIO\'S IF FREQUENCY IN THIS SDR\'S SETTINGS',
 			'settings.station.spectrumSdrUnreachable' => 'THE SDR CANNOT TUNE TO WHERE THE RADIO IS, OR ANOTHER PROGRAM HAS IT TUNED ELSEWHERE',
@@ -7430,8 +7450,6 @@ extension on TranslationsQro {
 			'settings.station.sdrTuningIndependent' => 'ITS OWN ANTENNA',
 			'settings.station.sdrTuningIfTap' => 'THE RADIO\'S IF OUTPUT',
 			'settings.station.sdrIfHz' => 'IF FREQUENCY (HZ)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.sdrIfHzDescription' => 'FOR AN IF OUTPUT ONLY: THE FREQUENCY THE RADIO\'S DIAL SITS AT ON ITS IF, SUCH AS 68330000 ON AN FT-817.',
 			'settings.station.sdrIfInverted' => 'IF IS INVERTED',
 			'settings.station.sdrGainDb' => 'GAIN (DB)',
@@ -7935,6 +7953,8 @@ extension on TranslationsQro {
 			'settings.station.rotatorElevationMax' => 'HIGHEST ELEVATION',
 			'settings.station.rotatorElevationMaxDescription' => 'IN THE CONTROLLER\'S OWN DEGREES. ABOVE 90 FOR A ROTATOR THAT FLIPS OVER.',
 			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'WHOLE DEGREES, ${min} TO ${max}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorLimitsInvalid' => 'THE LOWEST LIMIT HAS TO BE BELOW THE HIGHEST',
 			'settings.station.rotatorPollInterval' => 'POLLING INTERVAL (MS)',
 			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'HOW OFTEN TO ASK THE ROTATOR WHERE IT POINTS. LEAVE BLANK FOR ${fallback} MS.',
@@ -7944,8 +7964,6 @@ extension on TranslationsQro {
 			'settings.station.buddihexCompassMissing' => 'THE ROTATOR\'S CONTROLLER CANNOT FIND ITS COMPASS. CHECK THE COMPASS\'S WIRING TO THE CONTROLLER BOARD.',
 			'settings.station.buddihexCompassNotReady' => 'THE ROTATOR\'S COMPASS IS NOT READY YET. POWER THE CONTROLLER OFF AND ON IF THIS DOES NOT CLEAR.',
 			'settings.station.buddihexCompassCalibration' => 'THE ROTATOR\'S COMPASS FAILED ITS CALIBRATION CHECK WHEN THE CONTROLLER STARTED. POWER THE CONTROLLER OFF AND ON TO CHECK IT AGAIN.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.buddihexFault' => 'THE ROTATOR\'S CONTROLLER REPORTS A FAULT WITH ITS COMPASS.',
 			'settings.station.buddihexTroubleshooting' => 'THE BUDDIHEX ROTATOR\'S CONTROLLER ANSWERS OVER WIFI, ON UDP PORT 4210:\n\n- **ON ITS OWN WIFI NETWORK**, THE ONE IT MAKES UNTIL IT IS SET UP (NAMED ESP- AND SIX LETTERS AND DIGITS), ITS ADDRESS IS 192.168.4.1. JOIN THAT NETWORK ON THIS DEVICE FIRST.\n- **ON YOUR WIFI**, ONCE YOU HAVE ENTERED IT ON THE CONTROLLER\'S WEB PAGE, USE THE ADDRESS YOUR ROUTER GAVE IT: ITS LIST OF DEVICES NAMES THE CONTROLLER ESP- AND THE SAME SIX LETTERS AND DIGITS.\n- **CALIBRATE ITS HEADING AFTER EVERY POWER-UP**: POINT THE ANTENNA AT TRUE NORTH, THEN PRESS CALIBRATE NORTH ON THE CONTROLLER\'S WEB PAGE. IT FORGETS THE CALIBRATION WHEN IT IS SWITCHED OFF, AND REPORTS THE COMPASS\'S MAGNETIC HEADING UNTIL THEN.\n- **ON A MAC, IPHONE OR IPAD**, HAM2K LOGGER NEEDS LOCAL NETWORK ACCESS (SETTINGS → PRIVACY & SECURITY → LOCAL NETWORK).',
 			'settings.station.rotctldRefused' => ({required Object code}) => 'ROTCTLD REFUSED THE COMMAND (HAMLIB ERROR ${code}).',
@@ -8449,6 +8467,8 @@ extension on TranslationsQro {
 			'operationLocationScreen.deviceGps' => 'DEVICE GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS FROM ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => 'GPS FROM ${receiver}',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.locating' => 'LOCATING…',
 			'operationLocationScreen.gpsUnavailable' => 'LOCATION UNAVAILABLE',
 			'operationLocationScreen.permissionDenied' => 'LOCATION PERMISSION DENIED',
@@ -8458,8 +8478,6 @@ extension on TranslationsQro {
 			'operationLocationScreen.controlsUnavailableTitle' => 'ACTIVITY CONTROLS UNAVAILABLE',
 			'operationLocationScreen.controlsUnavailableReason' => 'THESE REFERENCES ARE STILL USABLE; THEIR ACTIVITIES JUST COULD NOT BE REACHED.',
 			'operationLocationScreen.controlsUnavailableRetry' => 'RETRY',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.county' => 'COUNTY (OPTIONAL)',
 			'versionLabel.version' => ({required Object version}) => 'VERSION ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'PATCH ${patch}',

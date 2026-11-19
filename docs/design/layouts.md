@@ -728,10 +728,11 @@ nowhere else — outside edit mode there is no layout to have options about.
   strips every `type: 'action'` element (an action here has no route of its
   own to close on), which would otherwise leave such a panel showing
   nothing but its stored value with no way to change it — and for one whose
-  settings are no form at all: Operation Summaries' sections are a
-  drag-to-reorder list with a tick per section, saved per placement under
-  declared but never-rendered fields so `forgetInstanceConfig` still clears
-  them. Serving both routes
+  settings are mostly no form at all: the Info and Operation Summaries
+  panes' sections (one pane, the Summaries one never handed a call) are a
+  drag-to-reorder list with a tick per section, under their theme and
+  checklist fields, saved per placement under declared but never-rendered
+  fields so `forgetInstanceConfig` still clears them. Serving both routes
   from one widget is the point — the same panel offering two different
   settings surfaces depending on which way in the operator took is worse
   than either.

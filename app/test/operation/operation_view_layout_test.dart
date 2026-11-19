@@ -1063,10 +1063,15 @@ void main() {
       reason: 'no longer a global AppBar action',
     );
     // Exactly one — the logging pane stands alone in its group, with no
-    // other tab to hide behind, unlike the narrow case.
-    expect(find.byIcon(MdiIcons.tune), findsOneWidget);
+    // other tab to hide behind, unlike the narrow case. The Info pane's, for
+    // its own settings, is not it.
+    final loggingSettings = find.byWidgetPredicate(
+      (widget) =>
+          widget is Icon && widget.icon == MdiIcons.tune && !(widget.semanticLabel?.toLowerCase().startsWith(t.operation.tabs.info.toLowerCase()) ?? false),
+    );
+    expect(loggingSettings, findsOneWidget);
 
-    await tester.tap(find.byIcon(MdiIcons.tune));
+    await tester.tap(loggingSettings);
     await tester.pumpAndSettle();
     expect(find.text('Show RST fields'), findsOneWidget);
 

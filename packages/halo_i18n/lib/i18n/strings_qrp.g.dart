@@ -4087,12 +4087,21 @@ class _Translations$operation$layout$panels$qrp extends Translations$operation$l
 	// Translations
 	@override String get loggingDescription => 'the log and the entry fields';
 	@override String get infoDescription => 'what we know about the station being worked';
+	@override String get infoTheme => 'theme';
+	@override String get infoThemeApp => 'automatic';
+	@override String get infoThemeGray => 'gray';
+	@override String get infoThemeMuted => 'muted';
+	@override String get infoThemeContrast => 'contrast';
+	@override String get infoThemeTeal => 'teal';
+	@override String get infoChecklistStyle => 'checklist style';
+	@override String get infoHighlightPending => 'highlight pending';
+	@override String get infoHighlightWorked => 'highlight worked';
 	@override String get spotsDescription => 'spots from the clusters and activity programs';
 	@override String get mapDescription => 'where the contacts are';
 	@override String get summariesDescription => 'the operation\'s stats and scores, in the sections and order you pick';
 	@override String get summariesSections => 'sections and order';
 	@override String get summariesDays => 'each day';
-	@override String get summariesReset => 'show all';
+	@override String get summariesReset => 'reset list';
 	@override String get summariesAllHidden => 'every section is hidden. pick the ones to show in this panel\'s settings.';
 	@override String get clockDescription => 'a clock face, in any time zone';
 	@override String get clockFace => 'face';
@@ -5941,12 +5950,21 @@ extension on TranslationsQrp {
 			'operation.layout.panelActionFailed' => 'that panel action failed. try again.',
 			'operation.layout.panels.loggingDescription' => 'the log and the entry fields',
 			'operation.layout.panels.infoDescription' => 'what we know about the station being worked',
+			'operation.layout.panels.infoTheme' => 'theme',
+			'operation.layout.panels.infoThemeApp' => 'automatic',
+			'operation.layout.panels.infoThemeGray' => 'gray',
+			'operation.layout.panels.infoThemeMuted' => 'muted',
+			'operation.layout.panels.infoThemeContrast' => 'contrast',
+			'operation.layout.panels.infoThemeTeal' => 'teal',
+			'operation.layout.panels.infoChecklistStyle' => 'checklist style',
+			'operation.layout.panels.infoHighlightPending' => 'highlight pending',
+			'operation.layout.panels.infoHighlightWorked' => 'highlight worked',
 			'operation.layout.panels.spotsDescription' => 'spots from the clusters and activity programs',
 			'operation.layout.panels.mapDescription' => 'where the contacts are',
 			'operation.layout.panels.summariesDescription' => 'the operation\'s stats and scores, in the sections and order you pick',
 			'operation.layout.panels.summariesSections' => 'sections and order',
 			'operation.layout.panels.summariesDays' => 'each day',
-			'operation.layout.panels.summariesReset' => 'show all',
+			'operation.layout.panels.summariesReset' => 'reset list',
 			'operation.layout.panels.summariesAllHidden' => 'every section is hidden. pick the ones to show in this panel\'s settings.',
 			'operation.layout.panels.clockDescription' => 'a clock face, in any time zone',
 			'operation.layout.panels.clockFace' => 'face',
@@ -6393,6 +6411,8 @@ extension on TranslationsQrp {
 			'activitiesView.noNearbyReason' => 'cannot determine nearby references',
 			'activitiesView.locationManualHint' => ({required Object icon}) => 'tap ${icon} to manually enter your location,\nor just search for references by name',
 			'activitiesView.locationGrantAction' => 'allow location access',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.locationSettingsAction' => 'open settings',
 			'activitiesView.locationSettingsUnavailable' => 'allow location access in your system settings',
 			'activitiesView.locationGrantRefused' => 'still no location — the system said no again',
@@ -6402,8 +6422,6 @@ extension on TranslationsQrp {
 			'activitiesView.exports' => 'exports',
 			'activitiesView.exportLogs' => 'export logs',
 			'activitiesView.tools' => 'tools',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.toolsTitle' => 'operation tools',
 			'activitiesView.operationDetails' => 'operation details',
 			'activitiesView.share' => 'share',
@@ -6907,6 +6925,8 @@ extension on TranslationsQrp {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'suggested f3 for // stacks: it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (tu kr?); with nothing left, just tu',
 			'settings.radio.keyerControl.label' => 'keyer',
 			'settings.radio.keyerControl.cw' => 'wpm',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} wpm',
 			'settings.radio.keyerControl.voice' => 'voice',
 			'settings.radio.voiceMessages.title' => 'phone keyer messages',
@@ -6916,8 +6936,6 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'voice memory ${n}',
 			'settings.radio.voiceMessages.labelField' => 'label',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'voice memory ${n} label',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
 			'settings.radio.voiceMessages.emptyOnRadio' => 'empty',
 			'settings.radio.voiceMessages.notMeasured' => 'unknown length',
@@ -7421,6 +7439,8 @@ extension on TranslationsQrp {
 			'settings.station.civScopeAdjustApp' => 'let this app adjust the bandscope',
 			'settings.station.civScopeAdjustRadio' => 'use the radio\'s bandscope settings as-is',
 			'settings.station.spectrumSdrNoRadio' => 'waiting for the linked radio\'s frequency…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.spectrumSdrNotConnected' => 'the sdr is not connected',
 			'settings.station.spectrumSdrNoIf' => 'set the radio\'s if frequency in this sdr\'s settings',
 			'settings.station.spectrumSdrUnreachable' => 'the sdr cannot tune to where the radio is, or another program has it tuned elsewhere',
@@ -7430,8 +7450,6 @@ extension on TranslationsQrp {
 			'settings.station.sdrTuningIndependent' => 'its own antenna',
 			'settings.station.sdrTuningIfTap' => 'the radio\'s if output',
 			'settings.station.sdrIfHz' => 'if frequency (hz)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.sdrIfHzDescription' => 'for an if output only: the frequency the radio\'s dial sits at on its if, such as 68330000 on an ft-817.',
 			'settings.station.sdrIfInverted' => 'if is inverted',
 			'settings.station.sdrGainDb' => 'gain (db)',
@@ -7935,6 +7953,8 @@ extension on TranslationsQrp {
 			'settings.station.rotatorElevationMax' => 'highest elevation',
 			'settings.station.rotatorElevationMaxDescription' => 'in the controller\'s own degrees. above 90 for a rotator that flips over.',
 			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'whole degrees, ${min} to ${max}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorLimitsInvalid' => 'the lowest limit has to be below the highest',
 			'settings.station.rotatorPollInterval' => 'polling interval (ms)',
 			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'how often to ask the rotator where it points. leave blank for ${fallback} ms.',
@@ -7944,8 +7964,6 @@ extension on TranslationsQrp {
 			'settings.station.buddihexCompassMissing' => 'the rotator\'s controller cannot find its compass. check the compass\'s wiring to the controller board.',
 			'settings.station.buddihexCompassNotReady' => 'the rotator\'s compass is not ready yet. power the controller off and on if this does not clear.',
 			'settings.station.buddihexCompassCalibration' => 'the rotator\'s compass failed its calibration check when the controller started. power the controller off and on to check it again.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.buddihexFault' => 'the rotator\'s controller reports a fault with its compass.',
 			'settings.station.buddihexTroubleshooting' => 'the buddihex rotator\'s controller answers over wifi, on udp port 4210:\n\n- **on its own wifi network**, the one it makes until it is set up (named esp- and six letters and digits), its address is 192.168.4.1. join that network on this device first.\n- **on your wifi**, once you have entered it on the controller\'s web page, use the address your router gave it: its list of devices names the controller esp- and the same six letters and digits.\n- **calibrate its heading after every power-up**: point the antenna at true north, then press calibrate north on the controller\'s web page. it forgets the calibration when it is switched off, and reports the compass\'s magnetic heading until then.\n- **on a mac, iphone or ipad**, ham2k logger needs local network access (settings → privacy & security → local network).',
 			'settings.station.rotctldRefused' => ({required Object code}) => 'rotctld refused the command (hamlib error ${code}).',
@@ -8449,6 +8467,8 @@ extension on TranslationsQrp {
 			'operationLocationScreen.deviceGps' => 'device gps',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'gps from ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => 'gps from ${receiver}',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.locating' => 'locating…',
 			'operationLocationScreen.gpsUnavailable' => 'location unavailable',
 			'operationLocationScreen.permissionDenied' => 'location permission denied',
@@ -8458,8 +8478,6 @@ extension on TranslationsQrp {
 			'operationLocationScreen.controlsUnavailableTitle' => 'activity controls unavailable',
 			'operationLocationScreen.controlsUnavailableReason' => 'these references are still usable; their activities just could not be reached.',
 			'operationLocationScreen.controlsUnavailableRetry' => 'retry',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.county' => 'county (optional)',
 			'versionLabel.version' => ({required Object version}) => 'version ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'patch ${patch}',

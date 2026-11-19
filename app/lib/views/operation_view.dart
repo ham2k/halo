@@ -46,6 +46,7 @@ import 'file_open/file_router.dart';
 import 'operation/activities_view.dart';
 import 'operation/call_info_panel.dart';
 import 'operation/information_panel.dart';
+import 'operation/information_panel_settings.dart';
 import 'operation/log_find_bar.dart';
 import 'operation/logging_panel.dart';
 import 'operation/assistant_feed_port.dart';
@@ -55,7 +56,6 @@ import 'operation/operation_import_panel.dart';
 import 'operation/operation_runtime_state.dart';
 import 'operation/spots_panel.dart';
 import 'operation/summaries/operation_summaries_panel.dart';
-import 'operation/summaries/operation_summaries_settings.dart';
 import 'tester_overlay.dart' show testerOverlayCovering;
 import 'app_shell/system_back.dart';
 import 'voice_messages_dialog.dart' show computerVoiceProblemText;
@@ -910,12 +910,14 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
       closeLabel: context.t.common.close,
       // See the Call Info modal above — InformationPanel is a ListView too.
       scrollable: false,
+      // The Info pane's own picks: the same theme and sections.
       builder: (_) => InformationPanel(
         operation: operation,
         qsos: qsos,
         services: widget.services,
         ourEntityPrefix: _runtime.ourEntityPrefix,
         activityControls: _runtime.loggingControls,
+        panelId: 'info',
       ),
     );
   }
@@ -1150,6 +1152,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
             callInfo: _callInfo,
             ourEntityPrefix: _runtime.ourEntityPrefix,
             activityControls: _runtime.loggingControls,
+            panelId: 'info',
           ),
         );
         // Observes only: a pointer press or a scroll anywhere on the view is

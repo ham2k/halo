@@ -254,8 +254,8 @@ void main() {
 
   testWidgets('the pane scrolls, so a long contest table cannot push content out of reach', (tester) async {
     await _pump(tester, _operation());
-    expect(find.byType(ListView), findsOneWidget);
-    expect(tester.widget<ListView>(find.byType(ListView)).physics, isNot(isA<NeverScrollableScrollPhysics>()));
+    expect(find.byType(ReorderableListView), findsOneWidget);
+    expect(tester.widget<ReorderableListView>(find.byType(ReorderableListView)).physics, isNot(isA<NeverScrollableScrollPhysics>()));
   });
 
   testWidgets('never shows the station callsign — the pane is stats and scoring, not identity', (tester) async {

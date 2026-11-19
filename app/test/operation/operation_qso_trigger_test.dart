@@ -353,9 +353,8 @@ void main() {
         ],
         'panel:notes:render': {'kind': 'markdown', 'content': 'ok'},
       },
-      // 'info' rather than 'logging' or 'spots' as the other pane: both carry
-      // a tune button of their own, and two would leave the assertion below
-      // unable to say which pane's it found.
+      // Info, whose own settings button sits on its own tab: the assertions
+      // below find the extension pane's by its label.
       layout: const ['info', 'ext:notes:text#1'],
     );
     await pumpOperation(tester, services);
@@ -364,13 +363,16 @@ void main() {
     // else to be reached from, so its own tab is the only route to it — and
     // it is a control for USING the panel, not for arranging it, which is
     // why it lives on the tab rather than beside the layout options.
-    expect(find.widgetWithIcon(IconButton, MdiIcons.tune), findsOneWidget);
+    final notesSettings = find.byWidgetPredicate(
+      (widget) => widget is Icon && widget.icon == MdiIcons.tune && (widget.semanticLabel?.toLowerCase().startsWith('custom text') ?? false),
+    );
+    expect(notesSettings, findsOneWidget);
 
     // Gone while editing: the tab is a grab handle then, and a control on one
     // competes with the drag for the same pointer.
     await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.viewDashboard));
     await tester.pumpAndSettle();
-    expect(find.widgetWithIcon(IconButton, MdiIcons.tune), findsNothing);
+    expect(notesSettings, findsNothing);
     // One per pane, plus the VIEW's own in the header — the same glyph at
     // two scopes, told apart by where it sits.
     expect(find.widgetWithIcon(IconButton, MdiIcons.viewDashboardEdit), findsNWidgets(3));
