@@ -1199,39 +1199,53 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 6, offset: const Offset(0, 3))],
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () => _newOperation(context),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: Space.xl),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(MdiIcons.plus, color: theme.colorScheme.onPrimary),
-                                AnimatedSize(
-                                  duration: _fabTransitionDuration,
-                                  curve: Curves.easeInOut,
-                                  child: SizedBox(
-                                    width: _isFabExtended ? null : 0,
-                                    child: AnimatedOpacity(
-                                      duration: _fabTransitionDuration,
-                                      curve: Curves.easeInOut,
-                                      opacity: _isFabExtended ? 1.0 : 0.0,
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(left: Space.md),
-                                        child: Text(
-                                          context.t.home.newOperation,
-                                          maxLines: 1,
-                                          softWrap: false,
-                                          style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold),
+                      // A node of its own. An InkWell is no semantics
+                      // boundary, so without this its tap merges into the
+                      // pane's node, whose children are the list's rows: on
+                      // web, with the accessibility DOM on, a click on the
+                      // FAB lands on whichever row lies underneath it.
+                      child: Semantics(
+                        container: true,
+                        button: true,
+                        // Its own, not the Text's: collapsed, that Text is at
+                        // zero opacity, which drops it from the semantics tree.
+                        label: context.t.home.newOperation,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => _newOperation(context),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: Space.xl),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(MdiIcons.plus, color: theme.colorScheme.onPrimary),
+                                  AnimatedSize(
+                                    duration: _fabTransitionDuration,
+                                    curve: Curves.easeInOut,
+                                    child: SizedBox(
+                                      width: _isFabExtended ? null : 0,
+                                      child: AnimatedOpacity(
+                                        duration: _fabTransitionDuration,
+                                        curve: Curves.easeInOut,
+                                        opacity: _isFabExtended ? 1.0 : 0.0,
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(left: Space.md),
+                                          child: ExcludeSemantics(
+                                            child: Text(
+                                              context.t.home.newOperation,
+                                              maxLines: 1,
+                                              softWrap: false,
+                                              style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
