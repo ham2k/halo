@@ -192,6 +192,7 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 	@override String get categoryLookup => 'CALLSIGN LOOKUPS';
 	@override String get categorySpots => 'SPOT SOURCES';
 	@override String get categoryDashboard => 'DASHBOARD PANELS';
+	@override String get categoryIntegration => 'INTEGRATIONS';
 	@override String get categoryOther => 'OTHER EXTENSIONS';
 	@override String get searchHint => 'SEARCH EXTENSIONS';
 	@override String get applying => 'ACTIVATING EXTENSION CHANGES, THIS MAY TAKE A MOMENT…';
@@ -579,7 +580,7 @@ class _Translations$activitiesView$qro extends Translations$activitiesView$en {
 	@override String get addToOperationShort => 'ADD TO OP.';
 	@override String get mapEmptyState => 'NO RESULTS TO SHOW ON THE MAP';
 	@override String get mapEmptyStateHint => 'SWITCH BACK TO THE LIST, OR SEARCH FOR SOMETHING ELSE';
-	@override String get imports => 'IMPORTS';
+	@override String get integrations => 'INTEGRATIONS';
 }
 
 // Path: loggingControls
@@ -2186,7 +2187,9 @@ class _Translations$operation$import$qro extends Translations$operation$import$e
 	final TranslationsQro _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'IMPORT DATA INTO OPERATION';
+	@override String get integrationsTitle => 'INTEGRATIONS';
+	@override String integrationSettingsButton({required Object title}) => '${title} SETTINGS';
+	@override String get manageIntegrationExtensions => 'MANAGE YOUR INTEGRATION EXTENSIONS…';
 	@override String get importAdifAction => 'IMPORT QSOS FROM ADIF';
 	@override String get settingsButton => 'LISTEN SETTINGS';
 	@override String get settingsTitle => 'LISTEN FOR OTHER APPS';
@@ -5469,6 +5472,7 @@ extension on TranslationsQro {
 			'extensionsPanel.categoryLookup' => 'CALLSIGN LOOKUPS',
 			'extensionsPanel.categorySpots' => 'SPOT SOURCES',
 			'extensionsPanel.categoryDashboard' => 'DASHBOARD PANELS',
+			'extensionsPanel.categoryIntegration' => 'INTEGRATIONS',
 			'extensionsPanel.categoryOther' => 'OTHER EXTENSIONS',
 			'extensionsPanel.searchHint' => 'SEARCH EXTENSIONS',
 			'extensionsPanel.applying' => 'ACTIVATING EXTENSION CHANGES, THIS MAY TAKE A MOMENT…',
@@ -5915,9 +5919,9 @@ extension on TranslationsQro {
 			'operation.layout.layouts.exportFailed' => ({required Object error}) => 'COULDN\'T EXPORT THE LAYOUT: ${error}',
 			'operation.layout.layouts.importTitle' => 'IMPORT LAYOUT',
 			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'MADE FOR THE ${view} VIEW: PANELS ONLY THAT VIEW HAS ARE LEFT OUT.',
-			'operation.layout.layouts.viewHome' => 'HOME',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.viewHome' => 'HOME',
 			'operation.layout.layouts.viewOperation' => 'OPERATION',
 			'operation.layout.layouts.viewLogs' => 'LOGS',
 			'operation.layout.layouts.viewChase' => 'CHASING',
@@ -6278,7 +6282,9 @@ extension on TranslationsQro {
 			'operation.spots.logConflict.composingBody' => 'YOU\'VE STARTED ENTERING A CONTACT. LOG THIS SPOT INSTEAD, OR GO BACK AND FINISH WHAT YOU WERE TYPING?',
 			'operation.spots.logConflict.goBack' => 'GO BACK',
 			'operation.spots.logConflict.clearAndLog' => 'CLEAR AND LOG SPOT',
-			'operation.import.title' => 'IMPORT DATA INTO OPERATION',
+			'operation.import.integrationsTitle' => 'INTEGRATIONS',
+			'operation.import.integrationSettingsButton' => ({required Object title}) => '${title} SETTINGS',
+			'operation.import.manageIntegrationExtensions' => 'MANAGE YOUR INTEGRATION EXTENSIONS…',
 			'operation.import.importAdifAction' => 'IMPORT QSOS FROM ADIF',
 			'operation.import.settingsButton' => 'LISTEN SETTINGS',
 			'operation.import.settingsTitle' => 'LISTEN FOR OTHER APPS',
@@ -6427,11 +6433,11 @@ extension on TranslationsQro {
 			'activitiesView.noSuggestionsExample' => '(FOR EXAMPLE \'TRAIL\' OR \'4556\')',
 			'activitiesView.allOptions' => 'ACTIVITY TYPES',
 			'activitiesView.determiningLocation' => 'DETERMINING CURRENT LOCATION…\nWAITING FOR GPS FIX TO FIND NEARBY REFERENCES',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.locationUnavailableTitle' => 'LOCATION DATA NOT AVAILABLE',
 			'activitiesView.locationDeniedTitle' => 'LOCATION PERMISSION DENIED',
 			'activitiesView.locationBlockedTitle' => 'LOCATION PERMISSION BLOCKED',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.noNearbyReason' => 'CANNOT DETERMINE NEARBY REFERENCES',
 			'activitiesView.locationManualHint' => ({required Object icon}) => 'TAP ${icon} TO MANUALLY ENTER YOUR LOCATION,\nOR JUST SEARCH FOR REFERENCES BY NAME',
 			'activitiesView.locationGrantAction' => 'ALLOW LOCATION ACCESS',
@@ -6476,7 +6482,7 @@ extension on TranslationsQro {
 			'activitiesView.addToOperationShort' => 'ADD TO OP.',
 			'activitiesView.mapEmptyState' => 'NO RESULTS TO SHOW ON THE MAP',
 			'activitiesView.mapEmptyStateHint' => 'SWITCH BACK TO THE LIST, OR SEARCH FOR SOMETHING ELSE',
-			'activitiesView.imports' => 'IMPORTS',
+			'activitiesView.integrations' => 'INTEGRATIONS',
 			'loggingControls.timeUtc' => 'TIME (UTC)',
 			'loggingControls.date' => 'DATE',
 			'loggingControls.now' => 'NOW',
@@ -6941,11 +6947,11 @@ extension on TranslationsQro {
 			'settings.radio.cwMessages.helpEsmCq' => 'RUNNING, ENTER WITH THE CALL FIELD EMPTY CALLS CQ',
 			'settings.radio.cwMessages.helpEsmExchange' => 'YOUR EXCHANGE: AFTER THEIR CALL WHEN RUNNING, AFTER THEY ANSWER IN S&P',
 			'settings.radio.cwMessages.helpEsmThanks' => 'THANKS, ONCE THE CONTACT HAS LOGGED: QSO IS THE CONTACT AS LOGGED, NEXT THE ONE UP NEXT',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmMyCall' => 'IN S&P, YOUR CALL TO THE STATION YOU ARE ANSWERING',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'RUNNING, THEIR CALL AHEAD OF YOUR EXCHANGE',
 			'settings.radio.cwMessages.helpEsmAgain' => 'ASKS AGAIN WHEN NOTHING OF THEIR EXCHANGE WAS COPIED',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'SUGGESTED F3 FOR // STACKS: IT THANKS, THEN CALLS THE NEXT STACKED STATION AND SENDS YOUR EXCHANGE, OR ASKS A PARTIAL BACK (TU KR?); WITH NOTHING LEFT, JUST TU',
 			'settings.radio.keyerControl.label' => 'KEYER',
 			'settings.radio.keyerControl.cw' => 'WPM',
@@ -7455,11 +7461,11 @@ extension on TranslationsQro {
 			'settings.station.spectrumK4Unavailable' => 'CANNOT RECEIVE THE K4’S LAN SPECTRUM. RETRYING…',
 			'settings.station.spectrumK4RemoteUnavailable' => 'CANNOT RECEIVE THE K4’S REMOTE SPECTRUM',
 			'settings.station.spectrumScopeRefused' => 'THE RADIO REFUSED ITS SCOPE COMMANDS',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.spectrumOutOfRange' => 'THE RADIO\'S SCOPE IS SET OUTSIDE THE RANGE IT CAN SHOW',
 			'settings.station.spectrumBandUnsupported' => 'THE RADIO\'S SCOPE CANNOT BE SHOWN ON THIS BAND',
 			'settings.station.spectrumCropped' => ({required Object why}) => 'CROPPED FROM A WIDER SWEEP. ${why}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumCroppedCap' => ({required Object max}) => '${max} NARROWER SWEEPS OF THIS RADIO ARE ALREADY RUNNING',
 			'settings.station.spectrumNoSweepToSpare' => 'THE RADIO HAS NO OTHER SWEEP TO SPARE',
 			'settings.station.civScopeAdjust' => 'AUTOMATICALLY ADJUST BANDSCOPE',
@@ -7969,11 +7975,11 @@ extension on TranslationsQro {
 			'settings.station.rotatorAxesAzimuth' => 'AZIMUTH ONLY',
 			'settings.station.rotatorAxesAzimuthElevation' => 'AZIMUTH AND ELEVATION',
 			'settings.station.rotatorAzimuthOffset' => 'AZIMUTH OFFSET',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorAzimuthOffsetDescription' => 'DEGREES TO ADD TO WHAT THE CONTROLLER READS, WHEN ITS ZERO IS NOT TRUE NORTH. TURNS ARE CORRECTED TO MATCH.',
 			'settings.station.rotatorElevationOffset' => 'ELEVATION OFFSET',
 			'settings.station.rotatorAzimuthMin' => 'LOWEST AZIMUTH',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorAzimuthMax' => 'HIGHEST AZIMUTH',
 			'settings.station.rotatorAzimuthMaxDescription' => 'IN THE CONTROLLER\'S OWN DEGREES. ABOVE 360 FOR A ROTATOR WITH OVERLAP, WHICH THEN TAKES THE SHORTER TURN.',
 			'settings.station.rotatorElevationMin' => 'LOWEST ELEVATION',
@@ -8483,11 +8489,11 @@ extension on TranslationsQro {
 			'extensionService.activitySearchSomeSourcesFailed' => 'SOME ACTIVITY EXTENSIONS DIDN\'T ANSWER THE SEARCH, SO SOME RESULTS MAY BE MISSING.',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} SPENT TOO MUCH TIME IN ITS TIMERS. THEY\'RE STOPPED UNTIL THE EXTENSIONS RESTART.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name}\'S TIMERS KEPT FAILING. THEY\'RE STOPPED UNTIL THE EXTENSIONS RESTART.',
+			_ => null,
+		} ?? switch (path) {
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} GOT STUCK IN A TIMER. ITS TIMERS ARE STOPPED UNTIL THE EXTENSIONS RESTART.',
 			'operationLocationScreen.title' => 'OPERATION LOCATION',
 			'operationLocationScreen.selectedLocation' => 'SELECTED LOCATION',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.gridSquare' => 'MAIDENHEAD GRID SQUARE LOCATOR',
 			'operationLocationScreen.gridInvalid' => 'NEEDS 4, 6, 8 OR 10 CHARACTERS, LIKE FN31PR',
 			'operationLocationScreen.suggestedLocations' => 'SUGGESTED LOCATIONS',

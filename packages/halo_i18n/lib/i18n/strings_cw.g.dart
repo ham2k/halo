@@ -192,6 +192,7 @@ class _Translations$extensionsPanel$cw extends Translations$extensionsPanel$en {
 	@override String get categoryLookup => '—·—· ·— ·—·· ·—·· ··· ·· ——· —· / ·—·· ——— ——— —·— ··— ·——· ···';
 	@override String get categorySpots => '··· ·——· ——— — / ··· ——— ··— ·—· —·—· · ···';
 	@override String get categoryDashboard => '—·· ·— ··· ···· —··· ——— ·— ·—· —·· / ·——· ·— —· · ·—·· ···';
+	@override String get categoryIntegration => '·· —· — · ——· ·—· ·— — ·· ——— —· ···';
 	@override String get categoryOther => '——— — ···· · ·—· / · —··— — · —· ··· ·· ——— —· ···';
 	@override String get searchHint => '··· · ·— ·—· —·—· ···· / · —··— — · —· ··· ·· ——— —· ···';
 	@override String get applying => '·— —·—· — ·· ···— ·— — ·· —· ——· / · —··— — · —· ··· ·· ——— —· / —·—· ···· ·— —· ——· · ··· ——··—— / — ···· ·· ··· / —— ·— —·—— / — ·— —·— · / ·— / —— ——— —— · —· — …';
@@ -579,7 +580,7 @@ class _Translations$activitiesView$cw extends Translations$activitiesView$en {
 	@override String get addToOperationShort => '·— —·· —·· / — ——— / ——— ·——· ·—·—·—';
 	@override String get mapEmptyState => '—· ——— / ·—· · ··· ··— ·—·· — ··· / — ——— / ··· ···· ——— ·—— / ——— —· / — ···· · / —— ·— ·——·';
 	@override String get mapEmptyStateHint => '··· ·—— ·· — —·—· ···· / —··· ·— —·—· —·— / — ——— / — ···· · / ·—·· ·· ··· — ——··—— / ——— ·—· / ··· · ·— ·—· —·—· ···· / ··—· ——— ·—· / ··· ——— —— · — ···· ·· —· ——· / · ·—·· ··· ·';
-	@override String get imports => '·· —— ·——· ——— ·—· — ···';
+	@override String get integrations => '·· —· — · ——· ·—· ·— — ·· ——— —· ···';
 }
 
 // Path: loggingControls
@@ -2186,7 +2187,9 @@ class _Translations$operation$import$cw extends Translations$operation$import$en
 	final TranslationsCw _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '·· —— ·——· ——— ·—· — / —·· ·— — ·— / ·· —· — ——— / ——— ·——· · ·—· ·— — ·· ——— —·';
+	@override String get integrationsTitle => '·· —· — · ——· ·—· ·— — ·· ——— —· ···';
+	@override String integrationSettingsButton({required Object title}) => '${title} / ··· · — — ·· —· ——· ···';
+	@override String get manageIntegrationExtensions => '—— ·— —· ·— ——· · / —·—— ——— ··— ·—· / ·· —· — · ——· ·—· ·— — ·· ——— —· / · —··— — · —· ··· ·· ——— —· ··· …';
 	@override String get importAdifAction => '·· —— ·——· ——— ·—· — / ——·— ··· ——— ··· / ··—· ·—· ——— —— / ·— —·· ·· ··—·';
 	@override String get settingsButton => '·—·· ·· ··· — · —· / ··· · — — ·· —· ——· ···';
 	@override String get settingsTitle => '·—·· ·· ··· — · —· / ··—· ——— ·—· / ——— — ···· · ·—· / ·— ·——· ·——· ···';
@@ -5469,6 +5472,7 @@ extension on TranslationsCw {
 			'extensionsPanel.categoryLookup' => '—·—· ·— ·—·· ·—·· ··· ·· ——· —· / ·—·· ——— ——— —·— ··— ·——· ···',
 			'extensionsPanel.categorySpots' => '··· ·——· ——— — / ··· ——— ··— ·—· —·—· · ···',
 			'extensionsPanel.categoryDashboard' => '—·· ·— ··· ···· —··· ——— ·— ·—· —·· / ·——· ·— —· · ·—·· ···',
+			'extensionsPanel.categoryIntegration' => '·· —· — · ——· ·—· ·— — ·· ——— —· ···',
 			'extensionsPanel.categoryOther' => '——— — ···· · ·—· / · —··— — · —· ··· ·· ——— —· ···',
 			'extensionsPanel.searchHint' => '··· · ·— ·—· —·—· ···· / · —··— — · —· ··· ·· ——— —· ···',
 			'extensionsPanel.applying' => '·— —·—· — ·· ···— ·— — ·· —· ——· / · —··— — · —· ··· ·· ——— —· / —·—· ···· ·— —· ——· · ··· ——··—— / — ···· ·· ··· / —— ·— —·—— / — ·— —·— · / ·— / —— ——— —— · —· — …',
@@ -5915,9 +5919,9 @@ extension on TranslationsCw {
 			'operation.layout.layouts.exportFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / · —··— ·——· ——— ·—· — / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}',
 			'operation.layout.layouts.importTitle' => '·· —— ·——· ——— ·—· — / ·—·· ·— —·—— ——— ··— —',
 			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => '—— ·— —·· · / ··—· ——— ·—· / — ···· · / ${view} / ···— ·· · ·—— ———··· / ·——· ·— —· · ·—·· ··· / ——— —· ·—·· —·—— / — ···· ·— — / ···— ·· · ·—— / ···· ·— ··· / ·— ·—· · / ·—·· · ··—· — / ——— ··— — ·—·—·—',
-			'operation.layout.layouts.viewHome' => '···· ——— —— ·',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.viewHome' => '···· ——— —— ·',
 			'operation.layout.layouts.viewOperation' => '——— ·——· · ·—· ·— — ·· ——— —·',
 			'operation.layout.layouts.viewLogs' => '·—·· ——— ——· ···',
 			'operation.layout.layouts.viewChase' => '—·—· ···· ·— ··· ·· —· ——·',
@@ -6278,7 +6282,9 @@ extension on TranslationsCw {
 			'operation.spots.logConflict.composingBody' => '—·—— ——— ··— ·————· ···— · / ··· — ·— ·—· — · —·· / · —· — · ·—· ·· —· ——· / ·— / —·—· ——— —· — ·— —·—· — ·—·—·— / ·—·· ——— ——· / — ···· ·· ··· / ··· ·——· ——— — / ·· —· ··· — · ·— —·· ——··—— / ——— ·—· / ——· ——— / —··· ·— —·—· —·— / ·— —· —·· / ··—· ·· —· ·· ··· ···· / ·—— ···· ·— — / —·—— ——— ··— / ·—— · ·—· · / — —·—— ·——· ·· —· ——· ··——··',
 			'operation.spots.logConflict.goBack' => '——· ——— / —··· ·— —·—· —·—',
 			'operation.spots.logConflict.clearAndLog' => '—·—· ·—·· · ·— ·—· / ·— —· —·· / ·—·· ——— ——· / ··· ·——· ——— —',
-			'operation.import.title' => '·· —— ·——· ——— ·—· — / —·· ·— — ·— / ·· —· — ——— / ——— ·——· · ·—· ·— — ·· ——— —·',
+			'operation.import.integrationsTitle' => '·· —· — · ——· ·—· ·— — ·· ——— —· ···',
+			'operation.import.integrationSettingsButton' => ({required Object title}) => '${title} / ··· · — — ·· —· ——· ···',
+			'operation.import.manageIntegrationExtensions' => '—— ·— —· ·— ——· · / —·—— ——— ··— ·—· / ·· —· — · ——· ·—· ·— — ·· ——— —· / · —··— — · —· ··· ·· ——— —· ··· …',
 			'operation.import.importAdifAction' => '·· —— ·——· ——— ·—· — / ——·— ··· ——— ··· / ··—· ·—· ——— —— / ·— —·· ·· ··—·',
 			'operation.import.settingsButton' => '·—·· ·· ··· — · —· / ··· · — — ·· —· ——· ···',
 			'operation.import.settingsTitle' => '·—·· ·· ··· — · —· / ··—· ——— ·—· / ——— — ···· · ·—· / ·— ·——· ·——· ···',
@@ -6427,11 +6433,11 @@ extension on TranslationsCw {
 			'activitiesView.noSuggestionsExample' => '—·——· ··—· ——— ·—· / · —··— ·— —— ·——· ·—·· · / ·————· — ·—· ·— ·· ·—·· ·————· / ——— ·—· / ·————· ····— ····· ····· —···· ·————· —·——·—',
 			'activitiesView.allOptions' => '·— —·—· — ·· ···— ·· — —·—— / — —·—— ·——· · ···',
 			'activitiesView.determiningLocation' => '—·· · — · ·—· —— ·· —· ·· —· ——· / —·—· ··— ·—· ·—· · —· — / ·—·· ——— —·—· ·— — ·· ——— —· …\n·—— ·— ·· — ·· —· ——· / ··—· ——— ·—· / ——· ·——· ··· / ··—· ·· —··— / — ——— / ··—· ·· —· —·· / —· · ·— ·—· —··· —·—— / ·—· · ··—· · ·—· · —· —·—· · ···',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.locationUnavailableTitle' => '·—·· ——— —·—· ·— — ·· ——— —· / —·· ·— — ·— / —· ——— — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'activitiesView.locationDeniedTitle' => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —·· · —· ·· · —··',
 			'activitiesView.locationBlockedTitle' => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —··· ·—·· ——— —·—· —·— · —··',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.noNearbyReason' => '—·—· ·— —· —· ——— — / —·· · — · ·—· —— ·· —· · / —· · ·— ·—· —··· —·—— / ·—· · ··—· · ·—· · —· —·—· · ···',
 			'activitiesView.locationManualHint' => ({required Object icon}) => '— ·— ·——· / ${icon} / — ——— / —— ·— —· ··— ·— ·—·· ·—·· —·—— / · —· — · ·—· / —·—— ——— ··— ·—· / ·—·· ——— —·—· ·— — ·· ——— —· ——··——\n——— ·—· / ·——— ··— ··· — / ··· · ·— ·—· —·—· ···· / ··—· ——— ·—· / ·—· · ··—· · ·—· · —· —·—· · ··· / —··· —·—— / —· ·— —— ·',
 			'activitiesView.locationGrantAction' => '·— ·—·· ·—·· ——— ·—— / ·—·· ——— —·—· ·— — ·· ——— —· / ·— —·—· —·—· · ··· ···',
@@ -6476,7 +6482,7 @@ extension on TranslationsCw {
 			'activitiesView.addToOperationShort' => '·— —·· —·· / — ——— / ——— ·——· ·—·—·—',
 			'activitiesView.mapEmptyState' => '—· ——— / ·—· · ··· ··— ·—·· — ··· / — ——— / ··· ···· ——— ·—— / ——— —· / — ···· · / —— ·— ·——·',
 			'activitiesView.mapEmptyStateHint' => '··· ·—— ·· — —·—· ···· / —··· ·— —·—· —·— / — ——— / — ···· · / ·—·· ·· ··· — ——··—— / ——— ·—· / ··· · ·— ·—· —·—· ···· / ··—· ——— ·—· / ··· ——— —— · — ···· ·· —· ——· / · ·—·· ··· ·',
-			'activitiesView.imports' => '·· —— ·——· ——— ·—· — ···',
+			'activitiesView.integrations' => '·· —· — · ——· ·—· ·— — ·· ——— —· ···',
 			'loggingControls.timeUtc' => '— ·· —— · / —·——· ··— — —·—· —·——·—',
 			'loggingControls.date' => '—·· ·— — ·',
 			'loggingControls.now' => '—· ——— ·——',
@@ -6941,11 +6947,11 @@ extension on TranslationsCw {
 			'settings.radio.cwMessages.helpEsmCq' => '·—· ··— —· —· ·· —· ——· ——··—— / · —· — · ·—· / ·—— ·· — ···· / — ···· · / —·—· ·— ·—·· ·—·· / ··—· ·· · ·—·· —·· / · —— ·——· — —·—— / —·—· ·— ·—·· ·—·· ··· / —·—· ——·—',
 			'settings.radio.cwMessages.helpEsmExchange' => '—·—— ——— ··— ·—· / · —··— —·—· ···· ·— —· ——· · ———··· / ·— ··—· — · ·—· / — ···· · ·· ·—· / —·—· ·— ·—·· ·—·· / ·—— ···· · —· / ·—· ··— —· —· ·· —· ——· ——··—— / ·— ··—· — · ·—· / — ···· · —·—— / ·— —· ··· ·—— · ·—· / ·· —· / ··· ·—··· ·——·',
 			'settings.radio.cwMessages.helpEsmThanks' => '— ···· ·— —· —·— ··· ——··—— / ——— —· —·—· · / — ···· · / —·—· ——— —· — ·— —·—· — / ···· ·— ··· / ·—·· ——— ——· ——· · —·· ———··· / ——·— ··· ——— / ·· ··· / — ···· · / —·—· ——— —· — ·— —·—· — / ·— ··· / ·—·· ——— ——· ——· · —·· ——··—— / —· · —··— — / — ···· · / ——— —· · / ··— ·——· / —· · —··— —',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmMyCall' => '·· —· / ··· ·—··· ·——· ——··—— / —·—— ——— ··— ·—· / —·—· ·— ·—·· ·—·· / — ——— / — ···· · / ··· — ·— — ·· ——— —· / —·—— ——— ··— / ·— ·—· · / ·— —· ··· ·—— · ·—· ·· —· ——·',
 			'settings.radio.cwMessages.helpEsmHisCall' => '·—· ··— —· —· ·· —· ——· ——··—— / — ···· · ·· ·—· / —·—· ·— ·—·· ·—·· / ·— ···· · ·— —·· / ——— ··—· / —·—— ——— ··— ·—· / · —··— —·—· ···· ·— —· ——· ·',
 			'settings.radio.cwMessages.helpEsmAgain' => '·— ··· —·— ··· / ·— ——· ·— ·· —· / ·—— ···· · —· / —· ——— — ···· ·· —· ——· / ——— ··—· / — ···· · ·· ·—· / · —··— —·—· ···· ·— —· ——· · / ·—— ·— ··· / —·—· ——— ·——· ·· · —··',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmStackThanks' => '··· ··— ——· ——· · ··· — · —·· / ··—· ···—— / ··—· ——— ·—· / —··—· —··—· / ··· — ·— —·—· —·— ··· ———··· / ·· — / — ···· ·— —· —·— ··· ——··—— / — ···· · —· / —·—· ·— ·—·· ·—·· ··· / — ···· · / —· · —··— — / ··· — ·— —·—· —·— · —·· / ··· — ·— — ·· ——— —· / ·— —· —·· / ··· · —· —·· ··· / —·—— ——— ··— ·—· / · —··— —·—· ···· ·— —· ——· · ——··—— / ——— ·—· / ·— ··· —·— ··· / ·— / ·——· ·— ·—· — ·· ·— ·—·· / —··· ·— —·—· —·— / —·——· — ··— / —·— ·—· ··——·· —·——·— —·—·—· / ·—— ·· — ···· / —· ——— — ···· ·· —· ——· / ·—·· · ··—· — ——··—— / ·——— ··— ··· — / — ··—',
 			'settings.radio.keyerControl.label' => '—·— · —·—— · ·—·',
 			'settings.radio.keyerControl.cw' => '·—— ·——· ——',
@@ -7455,11 +7461,11 @@ extension on TranslationsCw {
 			'settings.station.spectrumK4Unavailable' => '—·—· ·— —· —· ——— — / ·—· · —·—· · ·· ···— · / — ···· · / —·— ····— ’ ··· / ·—·· ·— —· / ··· ·——· · —·—· — ·—· ··— —— ·—·—·— / ·—· · — ·—· —·—— ·· —· ——· …',
 			'settings.station.spectrumK4RemoteUnavailable' => '—·—· ·— —· —· ——— — / ·—· · —·—· · ·· ···— · / — ···· · / —·— ····— ’ ··· / ·—· · —— ——— — · / ··· ·——· · —·—· — ·—· ··— ——',
 			'settings.station.spectrumScopeRefused' => '— ···· · / ·—· ·— —·· ·· ——— / ·—· · ··—· ··— ··· · —·· / ·· — ··· / ··· —·—· ——— ·——· · / —·—· ——— —— —— ·— —· —·· ···',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.spectrumOutOfRange' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ··· —·—· ——— ·——· · / ·· ··· / ··· · — / ——— ··— — ··· ·· —·· · / — ···· · / ·—· ·— —· ——· · / ·· — / —·—· ·— —· / ··· ···· ——— ·——',
 			'settings.station.spectrumBandUnsupported' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ··· —·—· ——— ·——· · / —·—· ·— —· —· ——— — / —··· · / ··· ···· ——— ·—— —· / ——— —· / — ···· ·· ··· / —··· ·— —· —··',
 			'settings.station.spectrumCropped' => ({required Object why}) => '—·—· ·—· ——— ·——· ·——· · —·· / ··—· ·—· ——— —— / ·— / ·—— ·· —·· · ·—· / ··· ·—— · · ·——· ·—·—·— / ${why}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumCroppedCap' => ({required Object max}) => '${max} / —· ·— ·—· ·—· ——— ·—— · ·—· / ··· ·—— · · ·——· ··· / ——— ··—· / — ···· ·· ··· / ·—· ·— —·· ·· ——— / ·— ·—· · / ·— ·—·· ·—· · ·— —·· —·—— / ·—· ··— —· —· ·· —· ——·',
 			'settings.station.spectrumNoSweepToSpare' => '— ···· · / ·—· ·— —·· ·· ——— / ···· ·— ··· / —· ——— / ——— — ···· · ·—· / ··· ·—— · · ·——· / — ——— / ··· ·——· ·— ·—· ·',
 			'settings.station.civScopeAdjust' => '·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·—— / ·— —·· ·——— ··— ··· — / —··· ·— —· —·· ··· —·—· ——— ·——· ·',
@@ -7969,11 +7975,11 @@ extension on TranslationsCw {
 			'settings.station.rotatorAxesAzimuth' => '·— ——·· ·· —— ··— — ···· / ——— —· ·—·· —·——',
 			'settings.station.rotatorAxesAzimuthElevation' => '·— ——·· ·· —— ··— — ···· / ·— —· —·· / · ·—·· · ···— ·— — ·· ——— —·',
 			'settings.station.rotatorAzimuthOffset' => '·— ——·· ·· —— ··— — ···· / ——— ··—· ··—· ··· · —',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorAzimuthOffsetDescription' => '—·· · ——· ·—· · · ··· / — ——— / ·— —·· —·· / — ——— / ·—— ···· ·— — / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·—· · ·— —·· ··· ——··—— / ·—— ···· · —· / ·· — ··· / ——·· · ·—· ——— / ·· ··· / —· ——— — / — ·—· ··— · / —· ——— ·—· — ···· ·—·—·— / — ··— ·—· —· ··· / ·— ·—· · / —·—· ——— ·—· ·—· · —·—· — · —·· / — ——— / —— ·— — —·—· ···· ·—·—·—',
 			'settings.station.rotatorElevationOffset' => '· ·—·· · ···— ·— — ·· ——— —· / ——— ··—· ··—· ··· · —',
 			'settings.station.rotatorAzimuthMin' => '·—·· ——— ·—— · ··· — / ·— ——·· ·· —— ··— — ····',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorAzimuthMax' => '···· ·· ——· ···· · ··· — / ·— ——·· ·· —— ··— — ····',
 			'settings.station.rotatorAzimuthMaxDescription' => '·· —· / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· ·————· ··· / ——— ·—— —· / —·· · ——· ·—· · · ··· ·—·—·— / ·— —··· ——— ···— · / ···—— —···· ————— / ··—· ——— ·—· / ·— / ·—· ——— — ·— — ——— ·—· / ·—— ·· — ···· / ——— ···— · ·—· ·—·· ·— ·——· ——··—— / ·—— ···· ·· —·—· ···· / — ···· · —· / — ·— —·— · ··· / — ···· · / ··· ···· ——— ·—· — · ·—· / — ··— ·—· —· ·—·—·—',
 			'settings.station.rotatorElevationMin' => '·—·· ——— ·—— · ··· — / · ·—·· · ···— ·— — ·· ——— —·',
@@ -8483,11 +8489,11 @@ extension on TranslationsCw {
 			'extensionService.activitySearchSomeSourcesFailed' => '··· ——— —— · / ·— —·—· — ·· ···— ·· — —·—— / · —··— — · —· ··· ·· ——— —· ··· / —·· ·· —·· —· ·————· — / ·— —· ··· ·—— · ·—· / — ···· · / ··· · ·— ·—· —·—· ···· ——··—— / ··· ——— / ··· ——— —— · / ·—· · ··· ··— ·—·· — ··· / —— ·— —·—— / —··· · / —— ·· ··· ··· ·· —· ——· ·—·—·—',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} / ··· ·——· · —· — / — ——— ——— / —— ··— —·—· ···· / — ·· —— · / ·· —· / ·· — ··· / — ·· —— · ·—· ··· ·—·—·— / — ···· · —·—— ·————· ·—· · / ··· — ——— ·——· ·——· · —·· / ··— —· — ·· ·—·· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·—· · ··· — ·— ·—· — ·—·—·—',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name} ·————· ··· / — ·· —— · ·—· ··· / —·— · ·——· — / ··—· ·— ·· ·—·· ·· —· ——· ·—·—·— / — ···· · —·—— ·————· ·—· · / ··· — ——— ·——· ·——· · —·· / ··— —· — ·· ·—·· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·—· · ··· — ·— ·—· — ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} / ——· ——— — / ··· — ··— —·—· —·— / ·· —· / ·— / — ·· —— · ·—· ·—·—·— / ·· — ··· / — ·· —— · ·—· ··· / ·— ·—· · / ··· — ——— ·——· ·——· · —·· / ··— —· — ·· ·—·· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·—· · ··· — ·— ·—· — ·—·—·—',
 			'operationLocationScreen.title' => '——— ·——· · ·—· ·— — ·· ——— —· / ·—·· ——— —·—· ·— — ·· ——— —·',
 			'operationLocationScreen.selectedLocation' => '··· · ·—·· · —·—· — · —·· / ·—·· ——— —·—· ·— — ·· ——— —·',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.gridSquare' => '—— ·— ·· —·· · —· ···· · ·— —·· / ——· ·—· ·· —·· / ··· ——·— ··— ·— ·—· · / ·—·· ——— —·—· ·— — ——— ·—·',
 			'operationLocationScreen.gridInvalid' => '—· · · —·· ··· / ····— ——··—— / —···· ——··—— / ———·· / ——— ·—· / ·———— ————— / —·—· ···· ·— ·—· ·— —·—· — · ·—· ··· ——··—— / ·—·· ·· —·— · / ··—· —· ···—— ·———— ·——· ·—·',
 			'operationLocationScreen.suggestedLocations' => '··· ··— ——· ——· · ··· — · —·· / ·—·· ——— —·—· ·— — ·· ——— —· ···',

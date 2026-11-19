@@ -935,7 +935,6 @@
       }
     },
     "import": {
-      "title": "Operasyona Veri İçe Aktar",
       "importAdifAction": "ADIF'ten QSO İçe Aktar",
       "settingsButton": "Dinleme ayarları",
       "settingsTitle": "Diğer Uygulamaları Dinle",
@@ -1130,8 +1129,7 @@
     "addToOperation": "Operasyona Ekle",
     "addToOperationShort": "Op.'a Ekle",
     "mapEmptyState": "Haritada gösterilecek sonuç yok",
-    "mapEmptyStateHint": "Listeye geri dönün veya başka bir şey arayın",
-    "imports": "İçe Aktarımlar"
+    "mapEmptyStateHint": "Listeye geri dönün veya başka bir şey arayın"
   },
   "loggingControls": {
     "timeUtc": "Zaman (UTC)",

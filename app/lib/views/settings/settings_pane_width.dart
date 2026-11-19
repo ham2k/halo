@@ -24,6 +24,7 @@ class SettingsPaneWidth extends InheritedWidget {
   bool updateShouldNotify(SettingsPaneWidth old) => old.width != width;
 }
 
-/// The width `_buildPanelContent` (settings_view.dart) published, or the window's where a panel is
-/// rendered outside it (a test pumping one directly).
-double settingsPaneWidth(BuildContext context) => context.dependOnInheritedWidgetOfExactType<SettingsPaneWidth>()?.width ?? MediaQuery.sizeOf(context).width;
+/// The width `_buildPanelContent` (settings_view.dart) published. Null where a
+/// panel is shown outside Settings (a modal pane, a test pumping one), which
+/// centres its rows nowhere.
+double? settingsPaneWidth(BuildContext context) => context.dependOnInheritedWidgetOfExactType<SettingsPaneWidth>()?.width;

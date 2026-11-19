@@ -935,7 +935,6 @@
       }
     },
     "import": {
-      "title": "Daten in Betrieb importieren",
       "importAdifAction": "QSOs aus ADIF importieren",
       "settingsButton": "Empfangseinstellungen",
       "settingsTitle": "Auf andere Apps lauschen",
@@ -1130,8 +1129,7 @@
     "addToOperation": "Zum Betrieb hinzufügen",
     "addToOperationShort": "Hinzufügen",
     "mapEmptyState": "Keine Ergebnisse für die Karte",
-    "mapEmptyStateHint": "Wechsle zurück zur Liste oder suche nach etwas anderem",
-    "imports": "Importe"
+    "mapEmptyStateHint": "Wechsle zurück zur Liste oder suche nach etwas anderem"
   },
   "loggingControls": {
     "timeUtc": "Zeit (UTC)",

@@ -963,7 +963,7 @@ which `ensureDockSpec` resolves there rather than snapshotting a null, since
 `build` only ever draws one of them.
 
 **Narrow gives the way IN to the operation's Tools menu**, after Export Logs
-and Imports, rather than to the header: a narrow header has room for the title
+and Integrations, rather than to the header: a narrow header has room for the title
 and one control, and the operation's own title has the better claim on it.
 Once editing, the plus, Discard and Save come back to the header at every
 width — a menu is not somewhere to hide the only way out of a mode.
@@ -1499,7 +1499,7 @@ Two distinct surfaces; pick deliberately:
 number in a view, stop — either it's a shirt-size decision, or the constant
 belongs in `layout.dart` with a name. (Internal component reflow like the
 form renderer's icon-row stacking, or the operation header weighing its
-Exports/Imports/Tools labels against the width its title wants, is exempt:
+Exports/Integrations/Tools labels against the width its title wants, is exempt:
 that's content fitting, not layout mode. Fitting measures what the content
 actually needs — a shirt size cannot, since the title is as long as the
 operator's callsign and refs happen to make it.)

@@ -935,7 +935,6 @@
       }
     },
     "import": {
-      "title": "Importer data til operasjonen",
       "importAdifAction": "Importer QSOer fra ADIF",
       "settingsButton": "Lytteinnstillinger",
       "settingsTitle": "Lytt etter andre apper",
@@ -1130,8 +1129,7 @@
     "addToOperation": "Legg til i operasjonen",
     "addToOperationShort": "Legg til",
     "mapEmptyState": "Ingen resultater å vise på kartet",
-    "mapEmptyStateHint": "Gå tilbake til listen, eller søk etter noe annet",
-    "imports": "Importer"
+    "mapEmptyStateHint": "Gå tilbake til listen, eller søk etter noe annet"
   },
   "loggingControls": {
     "timeUtc": "Tid (UTC)",

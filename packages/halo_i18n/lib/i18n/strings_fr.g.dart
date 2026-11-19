@@ -559,7 +559,6 @@ class _Translations$activitiesView$fr extends Translations$activitiesView$en {
 	@override String get addToOperationShort => 'Ajouter à l\'op.';
 	@override String get mapEmptyState => 'Aucun résultat à afficher sur la carte';
 	@override String get mapEmptyStateHint => 'Revenez à la liste, ou lancez une autre recherche';
-	@override String get imports => 'Imports';
 }
 
 // Path: loggingControls
@@ -1886,7 +1885,6 @@ class _Translations$operation$import$fr extends Translations$operation$import$en
 	final TranslationsFr _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Importer des données dans l\'opération';
 	@override String get importAdifAction => 'Importer des QSOs depuis ADIF';
 	@override String get settingsButton => 'Paramètres d\'écoute';
 	@override String get settingsTitle => 'Écouter d\'autres applications';
@@ -5211,7 +5209,6 @@ extension on TranslationsFr {
 			'operation.spots.logConflict.composingBody' => 'Vous avez commencé à saisir un contact. Saisir plutôt ce spot, ou revenir terminer votre saisie ?',
 			'operation.spots.logConflict.goBack' => 'Revenir',
 			'operation.spots.logConflict.clearAndLog' => 'Effacer et saisir le spot',
-			'operation.import.title' => 'Importer des données dans l\'opération',
 			'operation.import.importAdifAction' => 'Importer des QSOs depuis ADIF',
 			'operation.import.settingsButton' => 'Paramètres d\'écoute',
 			'operation.import.settingsTitle' => 'Écouter d\'autres applications',
@@ -5390,7 +5387,6 @@ extension on TranslationsFr {
 			'activitiesView.addToOperationShort' => 'Ajouter à l\'op.',
 			'activitiesView.mapEmptyState' => 'Aucun résultat à afficher sur la carte',
 			'activitiesView.mapEmptyStateHint' => 'Revenez à la liste, ou lancez une autre recherche',
-			'activitiesView.imports' => 'Imports',
 			'loggingControls.timeUtc' => 'Heure (UTC)',
 			'loggingControls.date' => 'Date',
 			'loggingControls.now' => 'Maintenant',
@@ -5466,10 +5462,10 @@ extension on TranslationsFr {
 			'loggingControls.info.noticeDupe' => 'Doublon !',
 			'loggingControls.info.noticeNewBand' => 'Nouvelle bande',
 			'loggingControls.info.noticeNewMode' => 'Nouveau mode',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewDXCC' => 'Nouveau DXCC',
 			'loggingControls.info.noticeNewState' => 'Nouvel état',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewProvince' => 'Nouvelle province',
 			'loggingControls.info.noticeNewDay' => 'Nouveau jour',
 			'loggingControls.info.noticeNewRef' => 'Nouvelle réf',
@@ -5980,10 +5976,10 @@ extension on TranslationsFr {
 			'settings.peers.viaBluetooth' => 'via Bluetooth',
 			'settings.peers.connecting' => 'Connexion…',
 			'settings.peers.syncing' => 'Synchronisation…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.waitingForThem' => 'En attente de l\'autre appareil',
 			'settings.peers.notConnected' => 'Non connecté',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.wantsToPair' => 'veut partager cette opération',
 			'settings.peers.allow' => 'Autoriser',
 			'settings.peers.link' => 'Lier',
@@ -6494,10 +6490,10 @@ extension on TranslationsFr {
 			'settings.station.placeholderSwr' => 'Valeur de ROS',
 			'settings.station.placeholderSwrDescription' => 'Ce que cette radio indique sur son ROS-mètre pendant l\'émission. Au-dessus de 1,8 le panneau avertit.',
 			'settings.station.placeholderSwrInvalid' => 'Un nombre, 1 ou plus',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyerNone' => 'Aucun',
 			'settings.station.cwDialect' => 'Dialecte de manipulation CW',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.cwDialectDescription' => 'Quelle forme de la commande KY cette radio accepte. Aucun signifie pas de manipulation CW via CAT.',
 			'settings.station.cwDialectKenwood' => 'Kenwood (KY, complété à 24)',
 			'settings.station.cwDialectElecraft' => 'Elecraft (texte KY)',
@@ -7008,10 +7004,10 @@ extension on TranslationsFr {
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} n\'a pas de date et ne peut pas être importé', other: '${formatted} n\'ont pas de date et ne peuvent pas être importés', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Ce fichier contient une activation de ${refs}.',
 			'adifImport.addActivation' => 'L\'ajouter à cette opération',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Seuls ${written} sur ${planned} ont pu être appliqués — le journal a changé pendant que vous décidiez.',
 			'adifImport.busy' => 'Une importation est déjà en cours. Attendez qu\'elle se termine avant d\'en lancer une autre.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} contient plus de ${limit} QSOs, le maximum qu\'une opération peut importer à la fois.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} contient plus de ${limit} QSOs. Importer un ADIF dans une opération sert à ajouter quelques QSOs, pas à récupérer un gros journal — utilisez la vue Journaux pour cela. Le mode développeur permet de l\'importer quand même, si vous êtes sûr.',
 			'adifImport.importAnyway' => 'Importer quand même',

@@ -174,11 +174,13 @@ release it can run. The SDK's minor version is the level it describes
 | 26 | the `globe` projection of a scene's `map` control: the Earth as a globe turned by a drag with north kept up, shaded by its `depth`, with its `atmosphere` round it |
 | 27 | a panel's `expandable`, which keeps a double tap on its title from showing it full size |
 | 28 | a scene `map`'s `dwell`: a pointer resting on the map sends the place under it; the system list `$core.radioChoices`, and system lists in a panel's own `form`; the band scope's `secondary`; `ctx.getScores`, the operation's score as the app holds it; the `transfer` hook category: pushing contacts to a service, with suggestions per scope, a destination per station callsign, and what the service said written back on each contact |
+| 29 | the `integration` hook category |
 
 The packer enforces the levels it can tell from the manifest alone:
 `webSockets` needs 2, `chasing` needs 9, a cluster grant or a `cluster` hook
 needs 10, `requiresRadioRaw` needs 11, an `assistant` hook 21, and
-`requiresDraftWrite` 22, and `requiresLayoutControl` 23. The rest is on you: a bundle that calls
+`requiresDraftWrite` 22, `requiresLayoutControl` 23, and an `integration`
+hook 29. The rest is on you: a bundle that calls
 `host.setRadio` under `api: 5` installs on an app that has no such call and
 fails there.
 

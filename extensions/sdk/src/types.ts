@@ -3042,6 +3042,7 @@ export type Hook =
   | SettingsPanelHook
   | PanelHook
   | AssistantHook
+  | IntegrationHook
   | AgentLinkHook
   | Record<string, unknown>
 
@@ -4698,6 +4699,71 @@ export interface ObserveArgs {
 export interface AssistantHook {
   getAssistants(args: Record<string, never>, ctx: HookContext): Promise<AssistantDescriptor[]>
   observe(args: ObserveArgs, ctx: HookContext): Promise<void>
+}
+
+/// What wakes an integration: a panel's triggers, less the draft (`qso`,
+/// `lookup`), which an integration is never handed. Extension API 29.
+export type IntegrationTrigger = Exclude<PanelTrigger, "qso" | "lookup">
+
+/// One integration an extension offers. The operator switches it on per
+/// operation, on that device, in the operation's Integrations dialog; every
+/// integration starts off. Its settings are the app's to keep, under
+/// `integration:<hookKey>:<key>`, so renaming `key` loses them.
+export interface IntegrationDescriptor {
+  /// Unique within the extension.
+  key: string
+  /// Its name in the Integrations dialog and in Settings.
+  title: string
+  /// One line under the name: what it sends, or what it listens for.
+  description?: string
+  /// MDI icon name.
+  icon?: string
+  /// What wakes it. Without any, it is called once for each operation it is
+  /// on in, as it opens, and again only when its settings change.
+  on?: IntegrationTrigger[]
+  /// Its own settings, in the field schema a settings panel uses, handed back
+  /// as `IntegrationObserveArgs.config`. The same values in every operation.
+  form?: (SettingsField | FormHeader)[]
+}
+
+/// The contacts that changed in an operation since an integration's previous
+/// call about it. Event markers are never among them.
+export interface IntegrationChanges {
+  /// Contacts that joined the log, as `ctx.getQsos` hands each one.
+  logged: Record<string, JSONValue>[]
+  /// Contacts already in the log whose content changed.
+  updated: Record<string, JSONValue>[]
+  /// The `uuid` of each contact that left the log: deleted, or moved to
+  /// another operation.
+  deleted: string[]
+}
+
+/// What an integration is called with: one open operation it is on in, and
+/// what changed there.
+export interface IntegrationObserveArgs {
+  integrationKey: string
+  /// The operation this call is about, with its `uuid`. With several open,
+  /// each is a call of its own.
+  operation: Record<string, JSONValue>
+  /// How many real QSOs the operation holds, event markers excluded.
+  qsoCount: number
+  /// The integration's own settings, keyed by field.
+  config: Record<string, JSONValue>
+  /// Every trigger that fired since the last call, in no order, or `open`
+  /// for the first call about an operation.
+  reasons: string[]
+  clock: { nowMillis: number; realNowMillis: number }
+  /// What changed in the log since the previous call; all three empty on
+  /// `open`.
+  changes: IntegrationChanges
+}
+
+/// Registered under category 'integration'. Connects one operation, where
+/// the operator switched it on, to a service or program outside the app:
+/// it reads what is logged and sends it on, and answers through the host.
+export interface IntegrationHook {
+  getIntegrations(args: Record<string, never>, ctx: HookContext): Promise<IntegrationDescriptor[]>
+  observe(args: IntegrationObserveArgs, ctx: HookContext): Promise<void>
 }
 
 /// Who an agent link's message came from, and what the operator let it do.

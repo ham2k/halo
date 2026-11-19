@@ -72,7 +72,9 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
   int _realQsoCountForTabs = 0;
 
   /// The log stream's latest list, for the panels' `qsoLogged` trigger
-  /// (`PanelRenderContext.log`).
+  /// (`PanelRenderContext.log`). Null until the stream's first list: an
+  /// empty one reads as a log with nothing in it, and an integration then
+  /// takes every contact in the next as newly logged.
   List<Qso>? _logForPanels;
 
   /// Surface the logging panel wherever this layout keeps it.
@@ -90,12 +92,13 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
   /// necessarily happens before it: the panel is answered with no draft,
   /// then woken by the next change to one.
   bool _anyPanelWants(String trigger) {
-    if (widget.services.assistants.wants(trigger)) return true;
+    if (widget.services.assistants.wants(trigger) || widget.services.integrations.wants(trigger)) return true;
     return dockSpec?.collectModules().any((id) => widget.services.panels.triggersFor(id).contains(trigger)) ?? false;
   }
 
-  /// This operation, as the extensions' assistants watch it.
-  late final AssistantFeed _assistantFeed = widget.services.assistants.openFeed();
+  /// This operation, as the extensions' assistants and integrations watch it.
+  late final WatcherFeed _assistantFeed = widget.services.assistants.openFeed();
+  late final WatcherFeed _integrationFeed = widget.services.integrations.openFeed();
 
   /// Where the Info pane is in the layout, surface it and let it show
   /// whatever it shows. Answers whether it actually did: a custom
@@ -313,10 +316,11 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
     required Widget mapPanel,
     required int realQsoCount,
     required List<Qso> qsos,
+    required bool logLoaded,
     required Operation operation,
   }) {
     _realQsoCountForTabs = realQsoCount;
-    _logForPanels = qsos;
+    _logForPanels = logLoaded ? qsos : null;
     _operationForPanels = operation;
     // A local_data write rebuilds this view, which is the only signal a
     // POSITION or OPER change gives — see [_republishPeerHeaderIfChanged].
@@ -387,7 +391,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
         ),
       },
     );
-    return AssistantFeedPort(feed: _assistantFeed, renderContext: panelRenderContext, child: dock);
+    return WatcherFeedPort(feeds: [_assistantFeed, _integrationFeed], renderContext: panelRenderContext, child: dock);
   }
 
   /// The operation an extension panel renders against, kept as a field because

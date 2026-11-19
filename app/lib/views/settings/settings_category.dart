@@ -128,4 +128,7 @@ Color _accent(BuildContext context) => SectionHeader.titleStyle(context).color ?
 /// The centring only: the band runs to the pane's edges like every row does,
 /// while the chevron and title follow the pane's centring so they land
 /// beside the rows below rather than out in the gutter of a wide window.
-EdgeInsetsGeometry _headerInset(BuildContext context) => EdgeInsets.symmetric(horizontal: settingsRowCentering(settingsPaneWidth(context)));
+/// None outside Settings, whose rows are not centred either: centred on the
+/// window instead, a band in a narrower modal pane squeezes its title into
+/// what is left of the pane after a margin sized for the window.
+EdgeInsetsGeometry _headerInset(BuildContext context) => EdgeInsets.symmetric(horizontal: settingsRowCentering(settingsPaneWidth(context) ?? 0));

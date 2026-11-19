@@ -42,7 +42,7 @@ class InboundQsoListenerService extends ChangeNotifier {
   final LookupQueueService lookupQueue;
 
   /// Where a capture failure gets ANNOUNCED. Listening runs app-wide off a
-  /// setting, usually with the Imports panel closed — a warning that only
+  /// setting, usually with the Integrations panel closed — a warning that only
   /// renders inside that panel is invisible exactly when it matters, and
   /// the queued QSOs are unreplayable. Optional only for tests.
   final StatusBarService? statusBar;
@@ -100,7 +100,7 @@ class InboundQsoListenerService extends ChangeNotifier {
   /// that fails to write is a QSO the source program will never resend —
   /// without this (and the retry queue behind it) a database error at the
   /// moment a datagram arrives loses the QSO invisibly. Rendered by the
-  /// Imports panel AND pushed to the status bar ([_setCaptureError]) — the
+  /// Integrations panel AND pushed to the status bar ([_setCaptureError]) — the
   /// panel is usually closed while listening runs.
   String? captureError;
 
@@ -118,7 +118,7 @@ class InboundQsoListenerService extends ChangeNotifier {
   bool _disposed = false;
 
   /// The operation currently receiving captures as they arrive, or null if
-  /// none is. Set by the Imports panel when the operator turns "add to this
+  /// none is. Set by the Integrations panel when the operator turns "add to this
   /// operation" on, cleared when they turn it off or the operation view
   /// closes. Only one operation can receive at a time: the ask is "if the
   /// operator switches operations, we stop adding QSOs", which a single slot
@@ -214,7 +214,7 @@ class InboundQsoListenerService extends ChangeNotifier {
 
   void _onN1mmDatagram(UdpDatagram datagram) {
     // Not `notifyListeners()`: WSJT-X's sibling handler below can fire many
-    // times a second during heavy decode traffic, and the Imports panel
+    // times a second during heavy decode traffic, and the Integrations panel
     // rebuilding on every one of those (nobody displays this field there)
     // would be pure waste. The settings dialog's status light polls this
     // field on its own timer instead of listening for it.
@@ -319,7 +319,7 @@ class InboundQsoListenerService extends ChangeNotifier {
   /// Whether a contact [sender] sent is added to the receiving operation as
   /// it arrives: this device's own, or another the operator allowed. Neither
   /// protocol says who sent a datagram, and anyone on the network can send
-  /// one, so any other's waits in the Imports panel.
+  /// one, so any other's waits in the Integrations panel.
   Future<bool> addsOnItsOwn(String sender) async => settings.inboundSendersAllowed.contains(sender) || await isOwnAddress(sender);
 
   /// Adds [sender]'s contacts as they arrive, from now on.
@@ -343,7 +343,7 @@ class InboundQsoListenerService extends ChangeNotifier {
   static const _captureNoticeKey = 'inboundQsos:captureFailed';
 
   /// The failure is announced on the status bar as well as the panel field:
-  /// listening runs app-wide with the Imports panel usually closed, and a
+  /// listening runs app-wide with the Integrations panel usually closed, and a
   /// warning only that panel renders is invisible exactly when the queued,
   /// unreplayable QSOs are at risk.
   void _setCaptureError(String? error) {
@@ -409,7 +409,7 @@ class InboundQsoListenerService extends ChangeNotifier {
   /// re-adding (duplicating) every row that already landed the next time
   /// this runs. One batched `markAdded`/`enqueueAll` call for the whole
   /// batch, not one per row — a large backlog would otherwise trigger a
-  /// reactive `watchPending` re-run (and an Imports panel rebuild) for
+  /// reactive `watchPending` re-run (and an Integrations panel rebuild) for
   /// every single row.
   Future<List<Qso>> addToOperation(String operationUuid, List<InboundCaptureRow> rows) async {
     final pending = rows.where((r) => r.addedToOperation == null && !_claimed.contains(r.uuid)).toList();
@@ -431,7 +431,7 @@ class InboundQsoListenerService extends ChangeNotifier {
         // A travelled clock may not log into a real operation. The capture
         // stays in `inbound_captures` unmarked — dropping it would lose a
         // contact another program already believes it logged — and shows in
-        // the operation's Imports panel, which is where the operator picks it
+        // the operation's Integrations panel, which is where the operator picks it
         // up. Nothing re-drives the backlog on its own: a later datagram
         // carries only its own row, so the panel is the recovery path.
         //
@@ -464,7 +464,7 @@ class InboundQsoListenerService extends ChangeNotifier {
   }
 
   /// The app is quitting: lets both ports go, and stops following the
-  /// settings, so nothing binds them again. Not [dispose]: the Imports panel
+  /// settings, so nothing binds them again. Not [dispose]: the Integrations panel
   /// may still be listening as the window goes.
   void closeForExit() {
     settings.removeListener(_onSettingsChanged);

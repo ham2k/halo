@@ -1,7 +1,9 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Imports Panel: Import ADIF, and "Listen for other apps" (HALO-306) — N1MM
+// Integrations Panel: Import ADIF; the extensions' integrations
+// (docs/extensions/integrations.md), each switched on or off for this
+// operation on this device; and "Listen for other apps" (HALO-306) — N1MM
 // and WSJT-X UDP listeners that buffer captured QSOs until the operator
 // decides whether to add them to this operation.
 //
@@ -18,6 +20,11 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/halo_services.dart';
+import '../../services/integration_service.dart';
+import '../../services/watcher_service.dart';
+import '../../settings/settings_target_dialog.dart' show showSettingsForKeys;
+import '../../settings/watcher_settings_rows.dart';
+import '../extensions_panel.dart';
 import 'adif_import_flow.dart';
 
 /// How long a gap between two captures has to be before the operator is
@@ -26,39 +33,48 @@ import 'adif_import_flow.dart';
 /// read as "since I started the other program".
 const _captureGapThreshold = Duration(minutes: 30);
 
-Future<void> showOperationImportPanel(BuildContext context, {required HaLoServices services, required Operation operation}) {
+Future<void> showOperationIntegrationsPanel(BuildContext context, {required HaLoServices services, required Operation operation}) {
   final t = context.t;
   return showModalPane<void>(
     context,
-    title: t.operation.import.title,
+    title: t.operation.import.integrationsTitle,
     closeLabel: t.common.close,
     // The rows scroll; the footer stays pinned under them, and its Done is
     // the way out — so no X in the header (see haloDialogFooterBand).
     scrollable: false,
     closeButton: false,
-    builder: (_) => OperationImportPanel(services: services, operation: operation),
+    builder: (_) => OperationIntegrationsPanel(services: services, operation: operation),
   );
 }
 
-class OperationImportPanel extends StatefulWidget {
+class OperationIntegrationsPanel extends StatefulWidget {
   final HaLoServices services;
   final Operation operation;
 
-  const OperationImportPanel({super.key, required this.services, required this.operation});
+  const OperationIntegrationsPanel({super.key, required this.services, required this.operation});
 
   @override
-  State<OperationImportPanel> createState() => _OperationImportPanelState();
+  State<OperationIntegrationsPanel> createState() => _OperationIntegrationsPanelState();
 }
 
-class _OperationImportPanelState extends State<OperationImportPanel> {
+class _OperationIntegrationsPanelState extends State<OperationIntegrationsPanel> {
   /// The `StreamBuilder`'s latest snapshot, kept here because [_setReceiving]
   /// needs it synchronously when the switch is flipped — waiting on the next
   /// build would race the operator's own tap.
   List<InboundCaptureRow> _pending = const [];
 
+  /// The operation as it stands: the integrations' switches are its
+  /// `localData`, which each flip writes.
+  late Operation _operation = widget.operation;
+  StreamSubscription<Operation?>? _operationSub;
+
   @override
   void initState() {
     super.initState();
+    _operationSub = widget.services.operations.watchOperation(widget.operation.uuid).listen((operation) {
+      if (operation != null && mounted) setState(() => _operation = operation);
+    });
+    widget.services.integrations.addListener(_onChanged);
     // Web has no UDP sockets, so the listen feature is hidden there
     // entirely — nothing to react to.
     if (!isWebPlatform) {
@@ -69,6 +85,8 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
 
   @override
   void dispose() {
+    unawaited(_operationSub?.cancel());
+    widget.services.integrations.removeListener(_onChanged);
     if (!isWebPlatform) {
       widget.services.settings.removeListener(_onChanged);
       widget.services.inboundQsos.removeListener(_onChanged);
@@ -184,14 +202,51 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
           ),
         ),
         // Nothing here waits to be confirmed — every row acts as it is
-        // worked — so the footer holds one way out, in the cancel slot.
+        // worked — so the footer holds one way out, in the cancel slot. The
+        // extensions behind the integrations sit at its leading edge, below
+        // however many captures the list runs to.
         haloDialogFooterBand(
           context,
+          // The tools slot is Expanded: unaligned, a lone button sits in
+          // the middle of it.
+          tools: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              icon: const Icon(MdiIcons.puzzle),
+              label: Text(context.t.operation.import.manageIntegrationExtensions),
+              onPressed: () => unawaited(_manageIntegrationExtensions()),
+            ),
+          ),
           cancel: TextButton(onPressed: () => Navigator.of(context).maybePop(), child: Text(context.t.common.done)),
         ),
       ],
     );
   }
+
+  /// The installed extensions that offer integrations. Switching one on or
+  /// off restarts the runtime, which is what refreshes the rows here.
+  Future<void> _manageIntegrationExtensions() => showModalPane<void>(
+    context,
+    title: context.t.activitiesView.manageExtensions,
+    closeLabel: context.t.common.close,
+    // The list scrolls; the footer stays pinned under it and its Done is the
+    // way out — so no X in the header (see haloDialogFooterBand).
+    scrollable: false,
+    closeButton: false,
+    builder: (_) => ExtensionsPanel(services: widget.services, onlyHook: HookCategories.integration, footer: true),
+  );
+
+  /// [integration]'s own settings, the rows Settings › Integrations holds
+  /// for it: app-wide, though reached from one operation.
+  Future<void> _showIntegrationSettings(WatcherDefinition integration) => showSettingsForKeys(
+    context,
+    services: widget.services,
+    keys: [
+      for (final field in integration.formFields)
+        if (field['key'] case final String key) watcherFieldRowKey(integration, key),
+    ],
+    title: integration.title,
+  );
 
   List<Widget> _rows(BuildContext context) {
     final t = context.t.operation.import;
@@ -202,9 +257,20 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
       onTap: () => unawaited(pickAndImportAdif(context, services: widget.services, operation: widget.operation)),
     );
 
+    final integrationRows = [
+      for (final (_, offered) in watchersByExtension(widget.services.integrations.catalog, widget.services.extensions))
+        for (final integration in offered)
+          _IntegrationTile(
+            integration: integration,
+            on: IntegrationService.isOnIn(integration, _operation),
+            onChanged: (on) => unawaited(widget.services.integrations.setOn(integration, _operation.uuid, on)),
+            onSettings: integration.formFields.isEmpty ? null : () => unawaited(_showIntegrationSettings(integration)),
+          ),
+    ];
+
     // UDP sockets don't exist on web — there is nothing this feature could
     // ever do there, so it doesn't offer to.
-    if (isWebPlatform) return [importAdifRow];
+    if (isWebPlatform) return [importAdifRow, ...integrationRows];
 
     final settings = widget.services.settings;
     final theme = Theme.of(context);
@@ -212,6 +278,7 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
 
     return [
       importAdifRow,
+      ...integrationRows,
       ListTile(
         leading: Icon(settings.listenForOtherAppsEnabled ? MdiIcons.accessPointNetwork : MdiIcons.accessPointNetworkOff),
         title: Text(t.listenTitle),
@@ -300,6 +367,39 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
         ],
       ),
     ];
+  }
+}
+
+/// An extension's integration: its switch for this operation, and its
+/// settings when it has any.
+class _IntegrationTile extends StatelessWidget {
+  final WatcherDefinition integration;
+  final bool on;
+  final ValueChanged<bool> onChanged;
+  final VoidCallback? onSettings;
+
+  const _IntegrationTile({required this.integration, required this.on, required this.onChanged, required this.onSettings});
+
+  @override
+  Widget build(BuildContext context) {
+    final description = integration.description;
+    return ListTile(
+      leading: Icon(resolveIconName(integration.icon, fallback: MdiIcons.connection)),
+      title: Text(integration.title),
+      subtitle: description == null ? null : Text(description),
+      onTap: () => onChanged(!on),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Switch(value: on, onChanged: onChanged),
+          if (onSettings != null)
+            IconButton(
+              icon: Icon(MdiIcons.tune, semanticLabel: context.t.operation.import.integrationSettingsButton(title: integration.title)),
+              onPressed: onSettings,
+            ),
+        ],
+      ),
+    );
   }
 }
 

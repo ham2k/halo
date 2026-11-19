@@ -935,7 +935,6 @@
       }
     },
     "import": {
-      "title": "Importă date în operațiune",
       "importAdifAction": "Importă QSO-uri din ADIF",
       "settingsButton": "Setări de ascultare",
       "settingsTitle": "Ascultare pentru alte aplicații",
@@ -1130,8 +1129,7 @@
     "addToOperation": "Adaugă la operațiune",
     "addToOperationShort": "Adaugă la op.",
     "mapEmptyState": "Niciun rezultat de afișat pe hartă",
-    "mapEmptyStateHint": "Reveniți la listă sau căutați altceva",
-    "imports": "Importuri"
+    "mapEmptyStateHint": "Reveniți la listă sau căutați altceva"
   },
   "loggingControls": {
     "timeUtc": "Ora (UTC)",

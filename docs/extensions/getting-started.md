@@ -240,6 +240,7 @@ The samples are in `node_modules/@ham2k/extension-sdk/samples/`:
 | An award program with references | `k2hrc-llota` | [Activities](activities.md), [Import & export](import-export.md) |
 | A contest | `k2hrc-cqww` | [Activities](activities.md), [Scoring & chasing](scoring.md) |
 | An award checklist | `k2hrc-dxcc` | [Scoring & chasing](scoring.md) |
+| A connection to a service, switched on per operation | `k2hrc-tally` | [Integrations](integrations.md) |
 
 Copy the sample's `manifest.json` and `src/` over the scaffolded ones, set
 the `key` back to yours, build and pack. The `k2hrc-` keys belong to the

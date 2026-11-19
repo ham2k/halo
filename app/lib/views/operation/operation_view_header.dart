@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The Operation view's header: the title control and its hand-off to the
-// setup sheet, the operation's Exports/Imports/Tools, and the Tools menu.
+// setup sheet, the operation's Exports/Integrations/Tools, and the Tools menu.
 
 part of '../operation_view.dart';
 
@@ -142,7 +142,7 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
   /// operation's setup sheet is up, on the same curve everything else in the
   /// header uses.
   ///
-  /// Only those. The operation's own Exports/Imports/Tools stay at full
+  /// Only those. The operation's own Exports/Integrations/Tools stay at full
   /// strength and stay pressable (see [_headerTrailingControls]) — what the
   /// sheet edits is the operation, and reaching for its exports mid-edit is
   /// a reasonable thing to do. Rearranging the view is not, so those go
@@ -157,9 +157,9 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
 
   Future<void> _export(Operation operation) => showOperationExportPanel(context, services: widget.services, operation: operation);
 
-  Future<void> _import(Operation operation) async {
+  Future<void> _integrations(Operation operation) async {
     if (operation.deleted) return;
-    await showOperationImportPanel(context, services: widget.services, operation: operation);
+    await showOperationIntegrationsPanel(context, services: widget.services, operation: operation);
   }
 
   /// Counted only once it has happened: a refusal throws past the `then`,
@@ -172,7 +172,7 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
     );
   }
 
-  /// The header's trailing controls: the operation's own Exports/Imports/
+  /// The header's trailing controls: the operation's own Exports/Integrations/
   /// Tools, and the view's layout controls beside them where the dock layout
   /// is live.
   ///
@@ -203,7 +203,7 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
     required double layoutControlsOpacity,
     required VoidCallback onOptions,
     required VoidCallback onExport,
-    required VoidCallback onImport,
+    required VoidCallback onIntegrations,
   }) => [
     // Operation-level actions, not scoped to the setup sheet: an operator
     // reaches for Options/Export without necessarily opening it. Gone
@@ -220,7 +220,7 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
         headerSubtitle: lines.subtitle,
         onOptions: onOptions,
         onExport: onExport,
-        onImport: onImport,
+        onIntegrations: onIntegrations,
       ),
     // Narrow gives the way IN to the Tools menu (see
     // [_showOperationOptions]) — the header there has room for the title
@@ -312,7 +312,7 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
   /// drops the left inset, as the title control itself does.
   double _headerTitleChrome(bool isTwoPane) => (isTwoPane ? Space.xs : 0) + _headerDotsWidth + Space.xs + Space.lg;
 
-  /// Whether the header's Exports/Imports/Tools group can afford to carry
+  /// Whether the header's Exports/Integrations/Tools group can afford to carry
   /// its labels.
   ///
   /// The group and the operation's own title share one header, so what the
@@ -345,7 +345,7 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
     // null between opens besides.
     final acceptButtonReserve = kMinInteractiveDimension + _acceptButtonChrome + textWidth(context, context.t.common.ok, labelStyle);
 
-    final labels = isTwoPane ? [t.exports, t.imports, t.tools] : [t.tools];
+    final labels = isTwoPane ? [t.exports, t.integrations, t.tools] : [t.tools];
     final labelsCost = labels.fold<double>(0.0, (sum, label) => sum + _headerLabelChrome + textWidth(context, label, labelStyle));
 
     final titleWanted = math.max(textWidth(context, title, titleStyle), subtitle.isEmpty ? 0.0 : textWidth(context, subtitle, subtitleStyle));
@@ -386,9 +386,9 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
   /// instead of shifting position as Export appears and disappears across
   /// the width breakpoint.
   ///
-  /// Which of the three show at all is L's breakpoint: Exports and Imports
+  /// Which of the three show at all is L's breakpoint: Exports and Integrations
   /// are dropped on S, where their only way in is Tools' own menu (see
-  /// [_showOperationOptions]'s `includeExport`/`includeImport`).
+  /// [_showOperationOptions]'s `includeExport`/`includeIntegrations`).
   ///
   /// Whether they carry LABELS is not a breakpoint at all — see
   /// [_headerActionsFitLabels], which weighs them against the title they
@@ -400,7 +400,7 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
     required String headerSubtitle,
     required VoidCallback onOptions,
     required VoidCallback onExport,
-    required VoidCallback onImport,
+    required VoidCallback onIntegrations,
   }) {
     final t = context.t.activitiesView;
     final labeled = _headerActionsFitLabels(context, isTwoPane: isTwoPane, title: headerTitle, subtitle: headerSubtitle);
@@ -410,7 +410,7 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (isTwoPane) headerButton(icon: MdiIcons.export, label: t.exports, onPressed: onExport),
-        if (isTwoPane) headerButton(icon: MdiIcons.import, label: t.imports, onPressed: onImport),
+        if (isTwoPane) headerButton(icon: MdiIcons.connection, label: t.integrations, onPressed: onIntegrations),
         headerButton(icon: MdiIcons.tools, label: t.tools, onPressed: onOptions),
       ],
     );
@@ -427,9 +427,9 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
   /// this actually shows. Editing details here saves directly either way
   /// (editOperationDetails' own `save: true` default), not through a draft.
   ///
-  /// [includeExport] and [includeImport] add Export Logs and Imports as the
+  /// [includeExport] and [includeIntegrations] add Export Logs and Integrations as the
   /// top two rows, in that order — the header's own group reads
-  /// Exports/Imports left to right, and a menu standing in for it keeps that
+  /// Exports/Integrations left to right, and a menu standing in for it keeps that
   /// order rather than inventing a second one. Narrow layouts drop those
   /// icons from the header for lack of room beside the title, so this menu
   /// is their only way in there; wide layouts keep the icons and leave them
@@ -441,7 +441,12 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
   /// controls the edit ITSELF needs — the plus, Discard, Save — stay in the
   /// header at every width, because a menu is not somewhere an operator can
   /// be expected to find the way out of a mode.
-  Future<void> _showOperationOptions(Operation operation, {bool includeExport = false, bool includeImport = false, bool includeEditLayout = false}) async {
+  Future<void> _showOperationOptions(
+    Operation operation, {
+    bool includeExport = false,
+    bool includeIntegrations = false,
+    bool includeEditLayout = false,
+  }) async {
     final t = context.t.activitiesView;
     final theme = Theme.of(context);
     await showHaloDialog<void>(
@@ -468,13 +473,13 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
                   unawaited(_export(operation));
                 },
               ),
-            if (includeImport && !operation.deleted)
+            if (includeIntegrations && !operation.deleted)
               ListTile(
-                leading: const Icon(MdiIcons.import),
-                title: Text(t.imports),
+                leading: const Icon(MdiIcons.connection),
+                title: Text(t.integrations),
                 onTap: () {
                   Navigator.of(dialogContext).pop();
-                  unawaited(_import(operation));
+                  unawaited(_integrations(operation));
                 },
               ),
             if (includeEditLayout)
@@ -627,12 +632,12 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
                 _showOperationOptions(
                   _draftOperation ?? operation,
                   includeExport: !isTwoPane,
-                  includeImport: !isTwoPane,
+                  includeIntegrations: !isTwoPane,
                   includeEditLayout: !isTwoPane && !layoutEditing,
                 ),
               ),
               onExport: () => unawaited(_export(_draftOperation ?? operation)),
-              onImport: () => unawaited(_import(_draftOperation ?? operation)),
+              onIntegrations: () => unawaited(_integrations(_draftOperation ?? operation)),
             ),
           ),
         ),

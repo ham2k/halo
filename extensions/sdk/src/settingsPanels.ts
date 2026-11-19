@@ -52,7 +52,7 @@ export function isValidHookKey(category: string, extensionKey: string, resolvedK
       (resolvedKey === extensionKey || hasPrefix(resolvedKey, extensionKey + "-") || hasPrefix(resolvedKey, extensionKey + "_"))
     )
   }
-  if (category !== "settingsPanel" && category !== "account" && category !== "assistant") return true
+  if (category !== "settingsPanel" && category !== "account" && category !== "assistant" && category !== "integration") return true
   return resolvedKey === extensionKey || hasPrefix(resolvedKey, extensionKey + "_")
 }
 

@@ -559,7 +559,6 @@ class _Translations$activitiesView$ko extends Translations$activitiesView$en {
 	@override String get addToOperationShort => '운용에 추가';
 	@override String get mapEmptyState => '지도에 표시할 결과가 없습니다';
 	@override String get mapEmptyStateHint => '목록으로 돌아가거나 다른 항목을 검색하세요';
-	@override String get imports => '가져오기';
 }
 
 // Path: loggingControls
@@ -1886,7 +1885,6 @@ class _Translations$operation$import$ko extends Translations$operation$import$en
 	final TranslationsKo _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '운용에 데이터 가져오기';
 	@override String get importAdifAction => 'ADIF에서 QSO 가져오기';
 	@override String get settingsButton => '수신 설정';
 	@override String get settingsTitle => '다른 앱 수신 대기';
@@ -5211,7 +5209,6 @@ extension on TranslationsKo {
 			'operation.spots.logConflict.composingBody' => '교신 입력을 시작했습니다. 대신 이 스팟을 로깅할까요, 아니면 돌아가서 입력을 마칠까요?',
 			'operation.spots.logConflict.goBack' => '돌아가기',
 			'operation.spots.logConflict.clearAndLog' => '지우고 스팟 로깅',
-			'operation.import.title' => '운용에 데이터 가져오기',
 			'operation.import.importAdifAction' => 'ADIF에서 QSO 가져오기',
 			'operation.import.settingsButton' => '수신 설정',
 			'operation.import.settingsTitle' => '다른 앱 수신 대기',
@@ -5390,7 +5387,6 @@ extension on TranslationsKo {
 			'activitiesView.addToOperationShort' => '운용에 추가',
 			'activitiesView.mapEmptyState' => '지도에 표시할 결과가 없습니다',
 			'activitiesView.mapEmptyStateHint' => '목록으로 돌아가거나 다른 항목을 검색하세요',
-			'activitiesView.imports' => '가져오기',
 			'loggingControls.timeUtc' => '시간 (UTC)',
 			'loggingControls.date' => '날짜',
 			'loggingControls.now' => '현재',
@@ -5466,10 +5462,10 @@ extension on TranslationsKo {
 			'loggingControls.info.noticeDupe' => '중복!',
 			'loggingControls.info.noticeNewBand' => '새로운 밴드',
 			'loggingControls.info.noticeNewMode' => '새로운 모드',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewDXCC' => '새로운 DXCC',
 			'loggingControls.info.noticeNewState' => '새로운 주',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewProvince' => '새로운 주/도',
 			'loggingControls.info.noticeNewDay' => '새로운 날짜',
 			'loggingControls.info.noticeNewRef' => '새로운 레퍼런스',
@@ -5980,10 +5976,10 @@ extension on TranslationsKo {
 			'settings.peers.viaBluetooth' => '블루투스 경유',
 			'settings.peers.connecting' => '연결 중…',
 			'settings.peers.syncing' => '동기화 중…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.waitingForThem' => '상대 기기 대기 중',
 			'settings.peers.notConnected' => '연결 안 됨',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.wantsToPair' => '이 운용을 공유하려고 합니다',
 			'settings.peers.allow' => '허용',
 			'settings.peers.link' => '연결',
@@ -6494,10 +6490,10 @@ extension on TranslationsKo {
 			'settings.station.placeholderSwr' => 'SWR 값',
 			'settings.station.placeholderSwrDescription' => '송신 중 이 무전기가 SWR 미터에 보고하는 값. 1.8을 넘으면 패널이 경고합니다.',
 			'settings.station.placeholderSwrInvalid' => '1 이상의 숫자',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyerNone' => '없음',
 			'settings.station.cwDialect' => 'CW 키잉 방식',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.cwDialectDescription' => '이 무전기가 받는 KY 명령의 형태. 없음은 CAT을 통한 CW 키잉이 없음을 뜻합니다.',
 			'settings.station.cwDialectKenwood' => 'Kenwood (KY, 24자로 채움)',
 			'settings.station.cwDialectElecraft' => 'Elecraft (KY 텍스트)',
@@ -7008,10 +7004,10 @@ extension on TranslationsKo {
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count}개는 날짜가 없어 가져올 수 없습니다', other: '${formatted}개는 날짜가 없어 가져올 수 없습니다', ), 
 			'adifImport.activationFound' => ({required Object refs}) => '이 파일에는 ${refs}의 활성화 기록이 있습니다.',
 			'adifImport.addActivation' => '이 운용에 추가',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned}개 중 ${written}개만 적용할 수 있었습니다. 결정하는 동안 로그가 변경되었습니다.',
 			'adifImport.busy' => '이미 가져오기가 진행 중입니다. 완료될 때까지 기다린 후 시작하세요.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename}에 QSO가 ${limit}개를 넘게 있습니다. 운용 하나에 한 번에 가져올 수 있는 최대치입니다.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename}에 QSO가 ${limit}개를 넘게 있습니다. 운용에 ADIF를 가져오는 기능은 QSO 몇 개를 추가하기 위한 것이지 큰 로그를 들여오기 위한 것이 아닙니다. 큰 로그는 로그 화면에서 가져오세요. 확실하다면 개발자 모드에서는 그래도 가져올 수 있습니다.',
 			'adifImport.importAnyway' => '어쨌든 가져오기',

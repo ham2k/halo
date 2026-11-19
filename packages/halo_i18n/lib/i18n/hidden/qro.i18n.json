@@ -73,6 +73,7 @@
     "categoryLookup": "CALLSIGN LOOKUPS",
     "categorySpots": "SPOT SOURCES",
     "categoryDashboard": "DASHBOARD PANELS",
+    "categoryIntegration": "INTEGRATIONS",
     "categoryOther": "OTHER EXTENSIONS",
     "searchHint": "SEARCH EXTENSIONS",
     "applying": "ACTIVATING EXTENSION CHANGES, THIS MAY TAKE A MOMENT…",
@@ -1093,7 +1094,9 @@
       }
     },
     "import": {
-      "title": "IMPORT DATA INTO OPERATION",
+      "integrationsTitle": "INTEGRATIONS",
+      "integrationSettingsButton": "${title} SETTINGS",
+      "manageIntegrationExtensions": "MANAGE YOUR INTEGRATION EXTENSIONS…",
       "importAdifAction": "IMPORT QSOS FROM ADIF",
       "settingsButton": "LISTEN SETTINGS",
       "settingsTitle": "LISTEN FOR OTHER APPS",
@@ -1309,7 +1312,7 @@
     "addToOperationShort": "ADD TO OP.",
     "mapEmptyState": "NO RESULTS TO SHOW ON THE MAP",
     "mapEmptyStateHint": "SWITCH BACK TO THE LIST, OR SEARCH FOR SOMETHING ELSE",
-    "imports": "IMPORTS"
+    "integrations": "INTEGRATIONS"
   },
   "loggingControls": {
     "timeUtc": "TIME (UTC)",

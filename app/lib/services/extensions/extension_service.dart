@@ -45,6 +45,7 @@ import 'preloaded_extensions.dart';
 import '../local_spots.dart' show localSpotSource;
 import '../location_service.dart';
 import '../assistant_service.dart';
+import '../integration_service.dart';
 import '../agent_link/agent_link_model.dart';
 import '../agent_link/agent_link_service.dart';
 import '../panel_service.dart';
@@ -97,6 +98,7 @@ part 'extension_activity_calls.dart';
 part 'extension_sync_calls.dart';
 part 'extension_panels.dart';
 part 'extension_assistants.dart';
+part 'extension_integrations.dart';
 part 'extension_agent_link.dart';
 part 'extension_accounts.dart';
 part 'extension_installs.dart';
@@ -145,6 +147,7 @@ class ExtensionService
         _ExtensionSyncCalls,
         _ExtensionPanels,
         _ExtensionAssistants,
+        _ExtensionIntegrations,
         _ExtensionAgentLink,
         _ExtensionAccounts,
         _ExtensionInstalls,

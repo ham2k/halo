@@ -559,7 +559,6 @@ class _Translations$activitiesView$ca extends Translations$activitiesView$en {
 	@override String get addToOperationShort => 'Afegeix a l\'op.';
 	@override String get mapEmptyState => 'No hi ha resultats per mostrar al mapa';
 	@override String get mapEmptyStateHint => 'Torna a la llista, o cerca una altra cosa';
-	@override String get imports => 'Importacions';
 }
 
 // Path: loggingControls
@@ -1886,7 +1885,6 @@ class _Translations$operation$import$ca extends Translations$operation$import$en
 	final TranslationsCa _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Importa dades a l\'operació';
 	@override String get importAdifAction => 'Importa QSOs des d\'ADIF';
 	@override String get settingsButton => 'Configuració d\'escolta';
 	@override String get settingsTitle => 'Escolta altres aplicacions';
@@ -5211,7 +5209,6 @@ extension on TranslationsCa {
 			'operation.spots.logConflict.composingBody' => 'Has començat a introduir un contacte. Vols registrar aquest anunci, o tornar enrere i acabar el que estaves escrivint?',
 			'operation.spots.logConflict.goBack' => 'Torna enrere',
 			'operation.spots.logConflict.clearAndLog' => 'Neteja i registra l\'anunci',
-			'operation.import.title' => 'Importa dades a l\'operació',
 			'operation.import.importAdifAction' => 'Importa QSOs des d\'ADIF',
 			'operation.import.settingsButton' => 'Configuració d\'escolta',
 			'operation.import.settingsTitle' => 'Escolta altres aplicacions',
@@ -5390,7 +5387,6 @@ extension on TranslationsCa {
 			'activitiesView.addToOperationShort' => 'Afegeix a l\'op.',
 			'activitiesView.mapEmptyState' => 'No hi ha resultats per mostrar al mapa',
 			'activitiesView.mapEmptyStateHint' => 'Torna a la llista, o cerca una altra cosa',
-			'activitiesView.imports' => 'Importacions',
 			'loggingControls.timeUtc' => 'Hora (UTC)',
 			'loggingControls.date' => 'Data',
 			'loggingControls.now' => 'Ara',
@@ -5466,10 +5462,10 @@ extension on TranslationsCa {
 			'loggingControls.info.noticeDupe' => 'Duplicat!',
 			'loggingControls.info.noticeNewBand' => 'Banda Nova',
 			'loggingControls.info.noticeNewMode' => 'Mode Nou',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewDXCC' => 'DXCC Nou',
 			'loggingControls.info.noticeNewState' => 'Estat Nou',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewProvince' => 'Província Nova',
 			'loggingControls.info.noticeNewDay' => 'Dia Nou',
 			'loggingControls.info.noticeNewRef' => 'Ref. Nova',
@@ -5980,10 +5976,10 @@ extension on TranslationsCa {
 			'settings.peers.viaBluetooth' => 'per Bluetooth',
 			'settings.peers.connecting' => 'Connectant…',
 			'settings.peers.syncing' => 'Sincronitzant…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.waitingForThem' => 'Esperant l\'altre dispositiu',
 			'settings.peers.notConnected' => 'No connectat',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.wantsToPair' => 'vol compartir aquesta operació',
 			'settings.peers.allow' => 'Permet',
 			'settings.peers.link' => 'Vincula',
@@ -6494,10 +6490,10 @@ extension on TranslationsCa {
 			'settings.station.placeholderSwr' => 'Lectura de ROE',
 			'settings.station.placeholderSwrDescription' => 'El que indica el mesurador de ROE d\'aquesta ràdio mentre transmet. Per sobre d\'1,8 el panell avisa.',
 			'settings.station.placeholderSwrInvalid' => 'Un nombre, 1 o més',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyerNone' => 'Cap',
 			'settings.station.cwDialect' => 'Dialecte de manipulació CW',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.cwDialectDescription' => 'Quina forma de l\'ordre KY accepta aquesta ràdio. Cap vol dir sense manipulació CW per CAT.',
 			'settings.station.cwDialectKenwood' => 'Kenwood (KY, omplert fins a 24)',
 			'settings.station.cwDialectElecraft' => 'Elecraft (text KY)',
@@ -7008,10 +7004,10 @@ extension on TranslationsCa {
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} no té data i no es pot importar', other: '${formatted} no tenen data i no es poden importar', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Aquest fitxer registra una activació de ${refs}.',
 			'adifImport.addActivation' => 'Afegeix-la a aquesta operació',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Només s\'han pogut aplicar ${written} de ${planned} — el registre ha canviat mentre decidies.',
 			'adifImport.busy' => 'Ja hi ha una importació en curs. Espera que acabi abans de començar-ne una altra.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} té més de ${limit} QSOs, el màxim que una operació pot importar alhora.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} té més de ${limit} QSOs. Importar un ADIF a una operació serveix per afegir uns quants QSOs, no per carregar un registre gran — per a això, fes servir la vista Registres. El mode de desenvolupador et permet importar-lo igualment, si n\'estàs segur.',
 			'adifImport.importAnyway' => 'Importa igualment',

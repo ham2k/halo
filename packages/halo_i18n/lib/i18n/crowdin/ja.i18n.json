@@ -935,7 +935,6 @@
       }
     },
     "import": {
-      "title": "オペレーションにデータをインポート",
       "importAdifAction": "ADIFからQSOをインポート",
       "settingsButton": "受信設定",
       "settingsTitle": "他のアプリから受信",
@@ -1130,8 +1129,7 @@
     "addToOperation": "オペレーションに追加",
     "addToOperationShort": "追加",
     "mapEmptyState": "地図に表示する結果がありません",
-    "mapEmptyStateHint": "リストに戻るか、別のものを検索してください",
-    "imports": "インポート"
+    "mapEmptyStateHint": "リストに戻るか、別のものを検索してください"
   },
   "loggingControls": {
     "timeUtc": "時刻（UTC）",

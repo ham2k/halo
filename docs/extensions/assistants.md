@@ -8,6 +8,9 @@ front. A coach is the usual shape: it notices the rate dropping, a needed
 multiplier on the band, a contact logged without its exchange, and says so.
 [How hooks work](hooks.md) covers registration, keys and `ctx`.
 
+Sending the log to a service or program outside the app, in the operations
+the operator picks, is an [integration](integrations.md)'s job instead.
+
 ## `assistant`
 
 **For:** reacting to the operator's activity whether or not any panel is

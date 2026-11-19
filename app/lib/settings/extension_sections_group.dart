@@ -6,6 +6,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 import '../services/extensions/extension_service.dart';
 import '../services/assistant_service.dart';
+import 'watcher_settings_rows.dart';
 import 'settings_registry.dart';
 
 /// A section with no settings of the app's own, there for extensions to
@@ -52,10 +53,6 @@ class AssistantsSettingsGroup extends SettingsGroup {
 
   AssistantsSettingsGroup(this.assistants, this.extensions);
 
-  /// An assistant's own field, as a row of this section: its id, then the
-  /// field's key. The id holds `:` but never `/`.
-  static String fieldRowKey(AssistantDefinition assistant, String fieldKey) => '${assistant.id}/$fieldKey';
-
   @override
   String get key => 'assistants';
   @override
@@ -66,38 +63,14 @@ class AssistantsSettingsGroup extends SettingsGroup {
   @override
   late final Listenable listenable = Listenable.merge([assistants, extensions.settingsGeneration]);
 
-  /// The name of the extension that offers [assistant], for the band its
-  /// assistants sit under: the bundle's, when a bundle registers it under a
-  /// sub-key.
-  String _extensionName(AssistantDefinition assistant) {
-    final owner = CapabilityGrant.among(extensions.availableExtensions, (_) => false).ownerOf(assistant.hookKey);
-    final info = owner == null ? null : extensions.extensionInfo(owner);
-    return info?.nameFor(LocaleSettings.currentLocale.languageCode) ?? assistant.hookKey;
-  }
-
-  /// A `visibleWhen` naming the assistant's own fields, renamed to the rows
-  /// they became here: the bare name matches no value in this section.
-  static Object? _ownCondition(AssistantDefinition assistant, Object? when) => switch (when) {
-    List<dynamic> all => [for (final one in all) _ownCondition(assistant, one)],
-    Map<dynamic, dynamic> one when one['field'] is String => {...one, 'field': fieldRowKey(assistant, one['field'] as String)},
-    _ => when,
-  };
-
   @override
   Future<List<Map<String, dynamic>>> buildElements() async {
     final elements = <Map<String, dynamic>>[];
     // One band per extension, holding a switch for each assistant it offers
-    // and the settings of each one that is on: the operator reads an
-    // extension's assistants as one thing, however many it registers.
-    final byExtension = <String, List<AssistantDefinition>>{};
-    for (final assistant in assistants.catalog) {
-      byExtension.putIfAbsent(_extensionName(assistant), () => []).add(assistant);
-    }
-    final extensionNames = byExtension.keys.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-    for (final name in extensionNames) {
+    // and the settings of each one that is on.
+    for (final (name, offered) in watchersByExtension(assistants.catalog, extensions)) {
       elements.add({'type': 'header', 'style': 'section', 'key': 'extension:$name', 'title': name});
-      final sorted = byExtension[name]!..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-      for (final assistant in sorted) {
+      for (final assistant in offered) {
         final enabled = assistants.isEnabled(assistant);
         elements.add({
           'type': 'field',
@@ -108,24 +81,7 @@ class AssistantsSettingsGroup extends SettingsGroup {
           'description': assistant.description ?? (enabled ? t.settings.assistants.on : t.settings.assistants.off),
           'value': enabled,
         });
-        if (!enabled || assistant.formFields.isEmpty) continue;
-        final config = await extensions.readPanelConfig(panelKey: assistant.id, fields: assistant.formFields);
-        for (final field in assistant.formFields) {
-          final fieldKey = field['key'];
-          // A header has no key and no value of its own: it is kept as
-          // declared, minus any band style — a band of its own would read as
-          // another extension's.
-          if (fieldKey is! String) {
-            elements.add({...field, if (field['visibleWhen'] != null) 'visibleWhen': _ownCondition(assistant, field['visibleWhen'])}..remove('style'));
-            continue;
-          }
-          elements.add({
-            ...field,
-            'key': fieldRowKey(assistant, fieldKey),
-            if (field['visibleWhen'] != null) 'visibleWhen': _ownCondition(assistant, field['visibleWhen']),
-            if (config.containsKey(fieldKey)) 'value': config[fieldKey],
-          });
-        }
+        if (enabled) elements.addAll(await watcherFormRows(assistant, extensions));
       }
     }
     return elements;
@@ -133,31 +89,9 @@ class AssistantsSettingsGroup extends SettingsGroup {
 
   @override
   Future<void> commit(String fieldKey, dynamic value) async {
-    for (final assistant in assistants.catalog) {
-      if (fieldKey == assistant.id) {
-        await assistants.setEnabled(assistant, value == true);
-        return;
-      }
-      final prefix = '${assistant.id}/';
-      if (!fieldKey.startsWith(prefix)) continue;
-      final own = fieldKey.substring(prefix.length);
-      final field = assistant.formFields.where((f) => f['key'] == own).firstOrNull;
-      if (field == null) {
-        debugPrint('[assistants] ${assistant.id} has no field "$own"; the setting is not kept');
-        return;
-      }
-      await extensions.commitSettingsFieldValue(
-        kind: 'simple',
-        hookKey: assistant.hookKey,
-        panelKey: assistant.id,
-        fieldKey: own,
-        value: value,
-        state: const {},
-        isSecret: field['fieldType'] == 'secret',
-      );
-      assistants.configChanged(assistant);
-      return;
-    }
+    final assistant = assistants.catalog.where((assistant) => assistant.id == fieldKey).firstOrNull;
+    if (assistant != null) return assistants.setEnabled(assistant, value == true);
+    if (await commitWatcherField(assistants.catalog, assistants, extensions, fieldKey, value)) return;
     debugPrint('[assistants] no assistant owns the setting "$fieldKey"');
   }
 }

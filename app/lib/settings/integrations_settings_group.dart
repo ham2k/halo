@@ -1,7 +1,11 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Integrations category: how other apps on this device reach this one.
+// The Integrations category: what the log is carried to and from, and how
+// other apps on this device reach this one. Each extension integration with
+// settings of its own shows them here, in a band named after its extension,
+// as it does under its switch in an operation's Integrations dialog
+// (docs/extensions/integrations.md); the switch itself is the operation's.
 // Connected Apps says how to set an agent app up and lists the ones the
 // operator allowed, when the agent link is wired in
 // (connected_apps_settings_group.dart). Links from Other
@@ -11,20 +15,27 @@
 //
 // Nothing here is an extension's to change: SET refuses the whole category
 // (settings_command.dart), since an extension could otherwise allow a link
-// sender or an agent app for itself.
+// sender or an agent app for itself — or change another's integration.
 
 import 'package:flutter/widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
+import '../services/extensions/extension_service.dart';
+import '../services/integration_service.dart';
 import '../services/settings_service.dart';
 import '../views/deep_link_approval.dart' show unnamedLinkSender;
 import 'connected_apps_settings_group.dart';
 import 'settings_registry.dart';
+import 'watcher_settings_rows.dart';
 
 class IntegrationsSettingsGroup extends SettingsGroup {
   final SettingsService settings;
 
-  IntegrationsSettingsGroup(this.settings);
+  /// Null where nothing offers integrations: tests of the other sections.
+  final IntegrationService? integrations;
+  final ExtensionService? extensions;
+
+  IntegrationsSettingsGroup(this.settings, [this.integrations, this.extensions]);
 
   ConnectedAppsSettingsGroup? _connectedApps;
 
@@ -56,7 +67,7 @@ class IntegrationsSettingsGroup extends SettingsGroup {
   int get order => 26;
 
   @override
-  late final Listenable listenable = Listenable.merge([settings, _changes]);
+  late final Listenable listenable = Listenable.merge([settings, _changes, ?integrations, ?extensions?.settingsGeneration]);
 
   String _label(String id, String label) => id == unnamedLinkSender ? t.settings.linkSenders.unknownSender : label;
 
@@ -67,11 +78,29 @@ class IntegrationsSettingsGroup extends SettingsGroup {
   Future<List<Map<String, dynamic>>> buildElements() async {
     final connected = await _connectedApps?.buildElements() ?? const [];
     return [
+      ...await _integrationRows(),
       if (connected.isNotEmpty) ...[
         {'type': 'header', 'style': 'section', 'key': 'connectedApps', 'title': t.settings.assistants.connectedApps},
         ...connected,
       ],
       ..._linkSenderRows(),
+    ];
+  }
+
+  /// A band per extension whose integrations have settings, each one's under
+  /// its name. One without settings has nothing to show here.
+  Future<List<Map<String, dynamic>>> _integrationRows() async {
+    final integrations = this.integrations, extensions = this.extensions;
+    if (integrations == null || extensions == null) return const [];
+    final withForms = integrations.catalog.where((integration) => integration.formFields.isNotEmpty);
+    return [
+      for (final (name, offered) in watchersByExtension(withForms, extensions)) ...[
+        {'type': 'header', 'style': 'section', 'key': 'integrations:$name', 'title': name},
+        for (final integration in offered) ...[
+          {'type': 'header', 'key': integration.id, 'title': integration.title, 'subtitle': ?integration.description},
+          ...await watcherFormRows(integration, extensions),
+        ],
+      ],
     ];
   }
 
@@ -116,6 +145,10 @@ class IntegrationsSettingsGroup extends SettingsGroup {
 
   @override
   Future<void> commit(String fieldKey, dynamic value) async {
+    final integrations = this.integrations, extensions = this.extensions;
+    if (integrations != null && extensions != null) {
+      if (await commitWatcherField(integrations.catalog, integrations, extensions, fieldKey, value)) return;
+    }
     if (!fieldKey.startsWith(_senderPrefix)) return _connectedApps?.commit(fieldKey, value);
     final id = fieldKey.substring(_senderPrefix.length);
     final decided = settings.linkSenderDecisions[id];

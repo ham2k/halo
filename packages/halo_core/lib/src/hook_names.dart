@@ -28,6 +28,7 @@ abstract final class HookCategories {
   static const dataFile = 'dataFile';
   static const export = 'export';
   static const form = 'form';
+  static const integration = 'integration';
   static const keyerSets = 'keyerSets';
   static const lookup = 'lookup';
   static const lookupService = 'lookupService';
@@ -84,6 +85,9 @@ abstract final class Hooks {
 
   static const assistantGetAssistants = HookRef(HookCategories.assistant, 'getAssistants');
   static const assistantObserve = HookRef(HookCategories.assistant, 'observe');
+
+  static const integrationGetIntegrations = HookRef(HookCategories.integration, 'getIntegrations');
+  static const integrationObserve = HookRef(HookCategories.integration, 'observe');
 
   static const chasingProgram = HookRef(HookCategories.chasing, 'program');
   static const chasingClaimsForQsos = HookRef(HookCategories.chasing, 'claimsForQsos');

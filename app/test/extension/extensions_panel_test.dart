@@ -14,6 +14,7 @@ import 'dart:io' show File;
 import 'package:archive/archive.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -254,6 +255,33 @@ void main() {
     expect(settings.extensionOverrides, {'sota': false, 'ham2k-sota': false});
     expect(settings.extensionSettingsGroups(), isEmpty);
     expect(switchValue('sota'), isFalse);
+  });
+
+  // A modal pane is narrower than the window and publishes no pane width.
+  // Centred on the window's width instead, a category's band keeps a right
+  // margin sized for the window, and its title wraps a word to a line.
+  testWidgets("a category's band in a pane narrower than the window keeps its title on one line", (tester) async {
+    tester.view.physicalSize = const Size(2000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final HaLoHarness(:services, :extensions) = await makeHaLoServices(catalog: _emptyCatalog());
+    extensions.debugSetAvailableExtensions(_testExtensions);
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(width: 600, child: ExtensionsPanel(services: services, footer: true)),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final title = tester.renderObject<RenderParagraph>(find.text('Activities'));
+    expect(title.size.width, greaterThanOrEqualTo(title.getMaxIntrinsicWidth(double.infinity) - 0.5));
   });
 
   testWidgets('a search ranks by how well it matched, and opens on the category holding the best match', (tester) async {

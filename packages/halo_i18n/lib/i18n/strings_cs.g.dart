@@ -559,7 +559,6 @@ class _Translations$activitiesView$cs extends Translations$activitiesView$en {
 	@override String get addToOperationShort => 'Přidat';
 	@override String get mapEmptyState => 'Žádné výsledky k zobrazení na mapě';
 	@override String get mapEmptyStateHint => 'Přepněte zpět na seznam, nebo hledejte něco jiného';
-	@override String get imports => 'Importy';
 }
 
 // Path: loggingControls
@@ -1886,7 +1885,6 @@ class _Translations$operation$import$cs extends Translations$operation$import$en
 	final TranslationsCs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Import dat do aktivity';
 	@override String get importAdifAction => 'Importovat QSO z ADIF';
 	@override String get settingsButton => 'Nastavení naslouchání';
 	@override String get settingsTitle => 'Naslouchat jiným aplikacím';
@@ -5211,7 +5209,6 @@ extension on TranslationsCs {
 			'operation.spots.logConflict.composingBody' => 'Začali jste zadávat spojení. Zalogovat místo toho tento spot, nebo se vrátit a dokončit, co jste psali?',
 			'operation.spots.logConflict.goBack' => 'Vrátit se',
 			'operation.spots.logConflict.clearAndLog' => 'Vymazat a zalogovat spot',
-			'operation.import.title' => 'Import dat do aktivity',
 			'operation.import.importAdifAction' => 'Importovat QSO z ADIF',
 			'operation.import.settingsButton' => 'Nastavení naslouchání',
 			'operation.import.settingsTitle' => 'Naslouchat jiným aplikacím',
@@ -5390,7 +5387,6 @@ extension on TranslationsCs {
 			'activitiesView.addToOperationShort' => 'Přidat',
 			'activitiesView.mapEmptyState' => 'Žádné výsledky k zobrazení na mapě',
 			'activitiesView.mapEmptyStateHint' => 'Přepněte zpět na seznam, nebo hledejte něco jiného',
-			'activitiesView.imports' => 'Importy',
 			'loggingControls.timeUtc' => 'Čas (UTC)',
 			'loggingControls.date' => 'Datum',
 			'loggingControls.now' => 'Nyní',
@@ -5466,10 +5462,10 @@ extension on TranslationsCs {
 			'loggingControls.info.noticeDupe' => 'Duplicita!',
 			'loggingControls.info.noticeNewBand' => 'Nové pásmo',
 			'loggingControls.info.noticeNewMode' => 'Nový mód',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewDXCC' => 'Nové DXCC',
 			'loggingControls.info.noticeNewState' => 'Nový stát',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewProvince' => 'Nová provincie',
 			'loggingControls.info.noticeNewDay' => 'Nový den',
 			'loggingControls.info.noticeNewRef' => 'Nová ref.',
@@ -5980,10 +5976,10 @@ extension on TranslationsCs {
 			'settings.peers.viaBluetooth' => 'přes Bluetooth',
 			'settings.peers.connecting' => 'Připojování…',
 			'settings.peers.syncing' => 'Synchronizace…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.waitingForThem' => 'Čeká se na druhé zařízení',
 			'settings.peers.notConnected' => 'Nepřipojeno',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.wantsToPair' => 'chce sdílet tuto aktivitu',
 			'settings.peers.allow' => 'Povolit',
 			'settings.peers.link' => 'Propojit',
@@ -6494,10 +6490,10 @@ extension on TranslationsCs {
 			'settings.station.placeholderSwr' => 'Hodnota PSV',
 			'settings.station.placeholderSwrDescription' => 'Co toto rádio hlásí na měřidle PSV během vysílání. Nad 1,8 panel varuje.',
 			'settings.station.placeholderSwrInvalid' => 'Číslo, 1 nebo více',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyerNone' => 'Žádný',
 			'settings.station.cwDialect' => 'Dialekt klíčování CW',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.cwDialectDescription' => 'Jakou podobu příkazu KY toto rádio přijímá. Žádný znamená bez klíčování CW přes CAT.',
 			'settings.station.cwDialectKenwood' => 'Kenwood (KY, doplněno na 24)',
 			'settings.station.cwDialectElecraft' => 'Elecraft (KY text)',
@@ -7008,10 +7004,10 @@ extension on TranslationsCs {
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} nemá datum a nelze ho importovat', other: '${formatted} nemá datum a nelze je importovat', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Tento soubor zaznamenává aktivaci ${refs}.',
 			'adifImport.addActivation' => 'Přidat ji do této aktivity',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Použít se podařilo jen ${written} z ${planned} — log se změnil, zatímco jste se rozhodovali.',
 			'adifImport.busy' => 'Import už probíhá. Než spustíte další, počkejte, až skončí.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} má více než ${limit} QSO, což je maximum, které aktivita může importovat najednou.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} má více než ${limit} QSO. Import ADIF do aktivity je určen k přidání několika QSO, ne k nahrání velkého logu — na to použijte zobrazení Logy. Režim vývojáře vám ho přesto dovolí importovat, pokud jste si jistí.',
 			'adifImport.importAnyway' => 'Přesto importovat',

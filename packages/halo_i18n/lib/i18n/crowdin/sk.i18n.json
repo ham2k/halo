@@ -935,7 +935,6 @@
       }
     },
     "import": {
-      "title": "Importovať údaje do prevádzky",
       "importAdifAction": "Importovať QSO z ADIF",
       "settingsButton": "Nastavenia počúvania",
       "settingsTitle": "Počúvať iné aplikácie",
@@ -1130,8 +1129,7 @@
     "addToOperation": "Pridať do prevádzky",
     "addToOperationShort": "Pridať",
     "mapEmptyState": "Žiadne výsledky na zobrazenie na mape",
-    "mapEmptyStateHint": "Prepnite späť na zoznam alebo hľadajte niečo iné",
-    "imports": "Importy"
+    "mapEmptyStateHint": "Prepnite späť na zoznam alebo hľadajte niečo iné"
   },
   "loggingControls": {
     "timeUtc": "Čas (UTC)",

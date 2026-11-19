@@ -87,8 +87,9 @@ import yazl from "yazl"
 /// a scene's `map` control, scene patches (an event answer's `patch` and
 /// `host.updateScene`), and scene images; 26 adds the map's `globe`
 /// projection, with its `depth` and `atmosphere`; 27 adds a panel's
-/// `expandable`; 28 the map's `dwell`, and `ctx.getScores`.
-export const H2KEXT_API_VERSION = 28
+/// `expandable`; 28 the map's `dwell`, and `ctx.getScores`; 29 the
+/// `integration` hook category.
+export const H2KEXT_API_VERSION = 29
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -104,6 +105,10 @@ export const CHASING_API_VERSION = 9
 /// The first API that calls `assistant` hooks. Refused under an older one for
 /// the same reason as `chasing`: the app would install it and never call it.
 export const ASSISTANT_API_VERSION = 21
+
+/// The first API that calls `integration` hooks, refused under an older one
+/// for the same reason.
+export const INTEGRATION_API_VERSION = 29
 
 /// The first API with `host.updateDraft`. Refused under an older one for the
 /// same reason as `requiresRadioRaw`: the app would install it and refuse
@@ -285,6 +290,7 @@ SHARED_MODULES_BY_API[25] = SHARED_MODULES_BY_API[24]
 SHARED_MODULES_BY_API[26] = SHARED_MODULES_BY_API[25]
 SHARED_MODULES_BY_API[27] = SHARED_MODULES_BY_API[26]
 SHARED_MODULES_BY_API[28] = SHARED_MODULES_BY_API[27]
+SHARED_MODULES_BY_API[29] = SHARED_MODULES_BY_API[28]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still
@@ -537,6 +543,10 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
 
   if (Array.isArray(manifest.hooks) && manifest.hooks.includes("assistant") && Number.isInteger(manifest.api) && manifest.api < ASSISTANT_API_VERSION) {
     say(`'assistant' needs 'api' ${ASSISTANT_API_VERSION} or later — an app older than that would install this and never call it`)
+  }
+
+  if (Array.isArray(manifest.hooks) && manifest.hooks.includes("integration") && Number.isInteger(manifest.api) && manifest.api < INTEGRATION_API_VERSION) {
+    say(`'integration' needs 'api' ${INTEGRATION_API_VERSION} or later — an app older than that would install this and never call it`)
   }
 
   const clusterGrant = ["requiresClusterRead", "requiresClusterSpot", "requiresClusterCommand"].find((grant) => manifest[grant] === true)

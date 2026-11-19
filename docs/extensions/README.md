@@ -27,6 +27,7 @@ the catalog reads before deciding where to list it.
 | A spot source or destination | spots in, spots out, the DX cluster | [Spots](spots.md) |
 | A dashboard panel | a document the app draws, or a scene it keeps live | [Panels](panels.md), [Panel scenes](scenes.md) |
 | An assistant, a coach | what it notices as the operator logs, tunes and types, said on the FYI line, in a notice or on the band | [Assistants](assistants.md) |
+| An integration | an operation's contacts sent on as they are logged: a log service, an online scoreboard, another program | [Integrations](integrations.md) |
 | A radio panel | reading and commanding the operator's transceiver | [Radio control](radio.md) |
 | A command | text the operator types in the call field | [Commands & templates](commands.md) |
 | An account, a settings panel | credentials in the keychain, preferences in Settings | [Accounts & sync](accounts.md), [Settings panels](settings.md) |
@@ -150,6 +151,7 @@ anything.
 | [Panels](panels.md) | `panel`: documents, triggers, config, previews, budgets |
 | [Panel scenes](scenes.md) | Scenes: layers, bindings, controls, layout, spectrum, radio values |
 | [Assistants](assistants.md) | `assistant`: watching every open operation, triggers, pacing |
+| [Integrations](integrations.md) | `integration`: an operation's changes sent outside the app, switched on per operation |
 | [Radio control](radio.md) | Reading, setting, keying and commanding radios |
 | [Accounts & sync](accounts.md) | `account`, `syncTransport` |
 | [Settings panels](settings.md) | `settingsPanel`, placement, field types, reading and writing settings |
@@ -163,11 +165,11 @@ anything.
 
 ## Examples
 
-Seven worked samples ship inside `@ham2k/extension-sdk`, under `samples/`
+Nine worked samples ship inside `@ham2k/extension-sdk`, under `samples/`
 once it is installed, and in the repository under
 [`extensions/samples`](../../extensions/samples): the smallest panel, a
 lookup behind an account, an award program, a contest, a chasing program, an
-HTML panel, and every scene control. Each builds, each packs,
+HTML panel, every scene control, an assistant and an integration. Each builds, each packs,
 and the header comment in each `src/index.ts` says what it leaves out.
 
 Every extension Ham2K publishes lives in
@@ -181,7 +183,7 @@ it.
 The extension API is a number. Each level adds calls, hook methods or
 manifest fields, and a bundle declares in its manifest the lowest level that
 has what it uses, so every app that can run it is offered it. The SDK and the
-tools follow the same numbering: SDK 1.28 describes API 28 and exports it as
+tools follow the same numbering: SDK 1.29 describes API 29 and exports it as
 `API_VERSION`. [Packaging](packaging.md#api-levels) lists what each level
 added.
 

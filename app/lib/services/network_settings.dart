@@ -177,7 +177,7 @@ mixin NetworkSettings on ChangeNotifier {
 
   /// The other devices on the network whose contacts are added to the
   /// receiving operation as they arrive, by address. This device's own always
-  /// are; any other's wait in the Imports panel for the operator, since
+  /// are; any other's wait in the Integrations panel for the operator, since
   /// neither protocol says who sent a datagram and anyone on the network can
   /// send one.
   List<String> get inboundSendersAllowed => prefs.getStringList(_inboundSendersAllowedKey) ?? const [];

@@ -559,7 +559,6 @@ class _Translations$activitiesView$ro extends Translations$activitiesView$en {
 	@override String get addToOperationShort => 'Adaugă la op.';
 	@override String get mapEmptyState => 'Niciun rezultat de afișat pe hartă';
 	@override String get mapEmptyStateHint => 'Reveniți la listă sau căutați altceva';
-	@override String get imports => 'Importuri';
 }
 
 // Path: loggingControls
@@ -1886,7 +1885,6 @@ class _Translations$operation$import$ro extends Translations$operation$import$en
 	final TranslationsRo _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Importă date în operațiune';
 	@override String get importAdifAction => 'Importă QSO-uri din ADIF';
 	@override String get settingsButton => 'Setări de ascultare';
 	@override String get settingsTitle => 'Ascultare pentru alte aplicații';
@@ -5211,7 +5209,6 @@ extension on TranslationsRo {
 			'operation.spots.logConflict.composingBody' => 'Ați început să introduceți un contact. Înregistrați acest spot în schimb sau reveniți și terminați ce scriați?',
 			'operation.spots.logConflict.goBack' => 'Înapoi',
 			'operation.spots.logConflict.clearAndLog' => 'Golește și înregistrează spotul',
-			'operation.import.title' => 'Importă date în operațiune',
 			'operation.import.importAdifAction' => 'Importă QSO-uri din ADIF',
 			'operation.import.settingsButton' => 'Setări de ascultare',
 			'operation.import.settingsTitle' => 'Ascultare pentru alte aplicații',
@@ -5390,7 +5387,6 @@ extension on TranslationsRo {
 			'activitiesView.addToOperationShort' => 'Adaugă la op.',
 			'activitiesView.mapEmptyState' => 'Niciun rezultat de afișat pe hartă',
 			'activitiesView.mapEmptyStateHint' => 'Reveniți la listă sau căutați altceva',
-			'activitiesView.imports' => 'Importuri',
 			'loggingControls.timeUtc' => 'Ora (UTC)',
 			'loggingControls.date' => 'Dată',
 			'loggingControls.now' => 'Acum',
@@ -5466,10 +5462,10 @@ extension on TranslationsRo {
 			'loggingControls.info.noticeDupe' => 'Duplicat!',
 			'loggingControls.info.noticeNewBand' => 'Bandă nouă',
 			'loggingControls.info.noticeNewMode' => 'Mod nou',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewDXCC' => 'DXCC nou',
 			'loggingControls.info.noticeNewState' => 'Stat nou',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewProvince' => 'Provincie nouă',
 			'loggingControls.info.noticeNewDay' => 'Zi nouă',
 			'loggingControls.info.noticeNewRef' => 'Ref. nouă',
@@ -5980,10 +5976,10 @@ extension on TranslationsRo {
 			'settings.peers.viaBluetooth' => 'prin Bluetooth',
 			'settings.peers.connecting' => 'Se conectează…',
 			'settings.peers.syncing' => 'Se sincronizează…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.waitingForThem' => 'Se așteaptă celălalt dispozitiv',
 			'settings.peers.notConnected' => 'Neconectat',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.wantsToPair' => 'vrea să partajeze această operațiune',
 			'settings.peers.allow' => 'Permite',
 			'settings.peers.link' => 'Asociază',
@@ -6494,10 +6490,10 @@ extension on TranslationsRo {
 			'settings.station.placeholderSwr' => 'Valoare SWR',
 			'settings.station.placeholderSwrDescription' => 'Ce raportează această stație pe instrumentul SWR în timpul emisiei. Peste 1.8 panoul avertizează.',
 			'settings.station.placeholderSwrInvalid' => 'Un număr, 1 sau mai mare',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyerNone' => 'Niciunul',
 			'settings.station.cwDialect' => 'Dialect de manipulare CW',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.cwDialectDescription' => 'Ce formă a comenzii KY acceptă această stație. Niciunul înseamnă fără manipulare CW prin CAT.',
 			'settings.station.cwDialectKenwood' => 'Kenwood (KY, completat la 24)',
 			'settings.station.cwDialectElecraft' => 'Elecraft (text KY)',
@@ -7008,10 +7004,10 @@ extension on TranslationsRo {
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} nu are dată și nu poate fi importat', other: '${formatted} nu au dată și nu pot fi importate', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Acest fișier înregistrează o activare a ${refs}.',
 			'adifImport.addActivation' => 'Adaugă la această operațiune',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Doar ${written} din ${planned} au putut fi aplicate — jurnalul s-a schimbat cât timp decideați.',
 			'adifImport.busy' => 'Un import rulează deja. Așteptați să se termine înainte de a porni altul.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} are mai mult de ${limit} QSO-uri, maximul pe care o operațiune îl poate importa deodată.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} are mai mult de ${limit} QSO-uri. Importul unui ADIF într-o operațiune este menit să adauge câteva QSO-uri, nu să aducă un jurnal mare — folosiți pentru asta vizualizarea Jurnale. Modul dezvoltator vă permite totuși să îl importați, dacă sunteți sigur.',
 			'adifImport.importAnyway' => 'Importă oricum',

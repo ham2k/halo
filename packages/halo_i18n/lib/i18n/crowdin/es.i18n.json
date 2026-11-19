@@ -935,7 +935,6 @@
       }
     },
     "import": {
-      "title": "Importar datos a la operación",
       "importAdifAction": "Importar QSOs desde ADIF",
       "settingsButton": "Configuración de escucha",
       "settingsTitle": "Escuchar otras apps",
@@ -1130,8 +1129,7 @@
     "addToOperation": "Agregar a la operación",
     "addToOperationShort": "Agregar a op.",
     "mapEmptyState": "No hay resultados que mostrar en el mapa",
-    "mapEmptyStateHint": "Vuelve a la lista o busca otra cosa",
-    "imports": "Importaciones"
+    "mapEmptyStateHint": "Vuelve a la lista o busca otra cosa"
   },
   "loggingControls": {
     "timeUtc": "Hora (UTC)",

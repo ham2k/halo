@@ -89,6 +89,7 @@ import 'lookup_queue_service.dart';
 import 'operation_lifecycle_commands.dart';
 import 'metrics_service.dart';
 import 'assistant_service.dart';
+import 'integration_service.dart';
 import 'panel_service.dart';
 import 'purchase_service.dart';
 import 'push_service.dart';
@@ -379,6 +380,7 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
   /// that can hold one is actually built.
   late final PanelService panels = PanelService(extensions);
   late final AssistantService assistants = AssistantService.forApp(extensions, settings: settings, cat: cat);
+  late final IntegrationService integrations = IntegrationService.forApp(extensions, operations: operations, settings: settings, cat: cat);
   late final OperationTitleService operationTitles = OperationTitleService(extensions: extensions, operations: operations);
 
   /// Deletes a Test Operation for real, QSOs included — see
@@ -652,7 +654,7 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
 
   /// Touches [inboundQsos] if listening is already enabled, so a setting
   /// left on from a previous session resumes without the operator having to
-  /// open the Imports panel first. A no-op otherwise: nothing should bind a
+  /// open the Integrations panel first. A no-op otherwise: nothing should bind a
   /// UDP port on every boot for a feature nobody turned on.
   void maybeStartInboundQsoListener() {
     if (settings.listenForOtherAppsEnabled) inboundQsos;
@@ -808,7 +810,7 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
     // Empty until an extension places a panel in one (docs/extensions/settings.md).
     ..registerAll(ExtensionSectionGroup.all())
     ..register(AssistantsSettingsGroup(assistants, extensions))
-    ..registerAll([IntegrationsSettingsGroup(settings), PrivacySettingsGroup(settings)])
+    ..registerAll([IntegrationsSettingsGroup(settings, integrations, extensions), PrivacySettingsGroup(settings)])
     ..register(ExportsSettingsGroup(settings, extensions))
     ..register(SyncSettingsGroup(settings, onToggle: setSyncEnabled));
 

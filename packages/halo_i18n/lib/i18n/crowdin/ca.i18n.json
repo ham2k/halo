@@ -935,7 +935,6 @@
       }
     },
     "import": {
-      "title": "Importa dades a l'operació",
       "importAdifAction": "Importa QSOs des d'ADIF",
       "settingsButton": "Configuració d'escolta",
       "settingsTitle": "Escolta altres aplicacions",
@@ -1130,8 +1129,7 @@
     "addToOperation": "Afegeix a l'operació",
     "addToOperationShort": "Afegeix a l'op.",
     "mapEmptyState": "No hi ha resultats per mostrar al mapa",
-    "mapEmptyStateHint": "Torna a la llista, o cerca una altra cosa",
-    "imports": "Importacions"
+    "mapEmptyStateHint": "Torna a la llista, o cerca una altra cosa"
   },
   "loggingControls": {
     "timeUtc": "Hora (UTC)",

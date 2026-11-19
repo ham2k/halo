@@ -559,7 +559,6 @@ class _Translations$activitiesView$nb extends Translations$activitiesView$en {
 	@override String get addToOperationShort => 'Legg til';
 	@override String get mapEmptyState => 'Ingen resultater å vise på kartet';
 	@override String get mapEmptyStateHint => 'Gå tilbake til listen, eller søk etter noe annet';
-	@override String get imports => 'Importer';
 }
 
 // Path: loggingControls
@@ -1886,7 +1885,6 @@ class _Translations$operation$import$nb extends Translations$operation$import$en
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Importer data til operasjonen';
 	@override String get importAdifAction => 'Importer QSOer fra ADIF';
 	@override String get settingsButton => 'Lytteinnstillinger';
 	@override String get settingsTitle => 'Lytt etter andre apper';
@@ -5211,7 +5209,6 @@ extension on TranslationsNb {
 			'operation.spots.logConflict.composingBody' => 'Du har begynt å registrere en kontakt. Logge denne spoten i stedet, eller gå tilbake og fullføre det du skrev?',
 			'operation.spots.logConflict.goBack' => 'Gå tilbake',
 			'operation.spots.logConflict.clearAndLog' => 'Tøm og logg spot',
-			'operation.import.title' => 'Importer data til operasjonen',
 			'operation.import.importAdifAction' => 'Importer QSOer fra ADIF',
 			'operation.import.settingsButton' => 'Lytteinnstillinger',
 			'operation.import.settingsTitle' => 'Lytt etter andre apper',
@@ -5390,7 +5387,6 @@ extension on TranslationsNb {
 			'activitiesView.addToOperationShort' => 'Legg til',
 			'activitiesView.mapEmptyState' => 'Ingen resultater å vise på kartet',
 			'activitiesView.mapEmptyStateHint' => 'Gå tilbake til listen, eller søk etter noe annet',
-			'activitiesView.imports' => 'Importer',
 			'loggingControls.timeUtc' => 'Tid (UTC)',
 			'loggingControls.date' => 'Dato',
 			'loggingControls.now' => 'Nå',
@@ -5466,10 +5462,10 @@ extension on TranslationsNb {
 			'loggingControls.info.noticeDupe' => 'Duplikat!',
 			'loggingControls.info.noticeNewBand' => 'Nytt bånd',
 			'loggingControls.info.noticeNewMode' => 'Ny modus',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewDXCC' => 'Ny DXCC',
 			'loggingControls.info.noticeNewState' => 'Ny stat',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewProvince' => 'Ny provins',
 			'loggingControls.info.noticeNewDay' => 'Ny dag',
 			'loggingControls.info.noticeNewRef' => 'Ny ref.',
@@ -5980,10 +5976,10 @@ extension on TranslationsNb {
 			'settings.peers.viaBluetooth' => 'via Bluetooth',
 			'settings.peers.connecting' => 'Kobler til…',
 			'settings.peers.syncing' => 'Synkroniserer…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.waitingForThem' => 'Venter på den andre enheten',
 			'settings.peers.notConnected' => 'Ikke tilkoblet',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.wantsToPair' => 'vil dele denne operasjonen',
 			'settings.peers.allow' => 'Tillat',
 			'settings.peers.link' => 'Koble',
@@ -6494,10 +6490,10 @@ extension on TranslationsNb {
 			'settings.station.placeholderSwr' => 'SWR-verdi',
 			'settings.station.placeholderSwrDescription' => 'Hva denne radioen rapporterer på SWR-måleren under sending. Over 1,8 gir panelet en advarsel.',
 			'settings.station.placeholderSwrInvalid' => 'Et tall, 1 eller mer',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyerNone' => 'Ingen',
 			'settings.station.cwDialect' => 'Dialekt for CW-nøkling',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.cwDialectDescription' => 'Hvilken form av KY-kommandoen denne radioen tar. Ingen betyr ingen CW-nøkling over CAT.',
 			'settings.station.cwDialectKenwood' => 'Kenwood (KY, fylt ut til 24)',
 			'settings.station.cwDialectElecraft' => 'Elecraft (KY-tekst)',
@@ -7008,10 +7004,10 @@ extension on TranslationsNb {
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} mangler dato og kan ikke importeres', other: '${formatted} mangler dato og kan ikke importeres', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Denne filen registrerer en aktivering av ${refs}.',
 			'adifImport.addActivation' => 'Legg den til i denne operasjonen',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Bare ${written} av ${planned} kunne tas i bruk — loggen ble endret mens du bestemte deg.',
 			'adifImport.busy' => 'En import pågår allerede. Vent til den er ferdig før du starter en ny.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} har mer enn ${limit} QSOer, som er det meste en operasjon kan importere om gangen.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} har mer enn ${limit} QSOer. Import av en ADIF til en operasjon er ment for å legge til noen få QSOer, ikke for å hente inn en stor logg — bruk Logger-visningen til det. Utviklermodus lar deg importere den likevel, hvis du er sikker.',
 			'adifImport.importAnyway' => 'Importer likevel',

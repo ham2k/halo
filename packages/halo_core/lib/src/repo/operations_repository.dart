@@ -1184,10 +1184,19 @@ class OperationsRepository {
   /// Merges [patch] into this operation's device-local, never-synced state
   /// (e.g. `ScoringService` writing its `scoring` summary blob under that
   /// key). Never touches `synced` — `localData` isn't part of what syncs.
-  Future<void> updateLocalData(String uuid, Map<String, dynamic> patch) async {
+  Future<void> updateLocalData(String uuid, Map<String, dynamic> patch) => updateLocalDataWith(uuid, (_) => patch);
+
+  /// [updateLocalData] with a patch made from the local data as it stands
+  /// inside the write's own transaction, for a value built on what is
+  /// already there: built from a copy read earlier, two writes in quick
+  /// succession each start from the same copy, and the second undoes the
+  /// first. A null patch writes nothing.
+  Future<void> updateLocalDataWith(String uuid, Map<String, dynamic>? Function(Map<String, dynamic> localData) patchFor) async {
     await db.transaction(() async {
       final operation = await get(uuid);
       if (operation == null) return;
+      final patch = patchFor(operation.localData);
+      if (patch == null) return;
       final merged = {...operation.localData, ...patch};
       await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(OperationsCompanion(localData: Value(jsonEncode(merged))));
     });

@@ -559,7 +559,6 @@ class _Translations$activitiesView$de extends Translations$activitiesView$en {
 	@override String get addToOperationShort => 'Hinzufügen';
 	@override String get mapEmptyState => 'Keine Ergebnisse für die Karte';
 	@override String get mapEmptyStateHint => 'Wechsle zurück zur Liste oder suche nach etwas anderem';
-	@override String get imports => 'Importe';
 }
 
 // Path: loggingControls
@@ -1886,7 +1885,6 @@ class _Translations$operation$import$de extends Translations$operation$import$en
 	final TranslationsDe _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Daten in Betrieb importieren';
 	@override String get importAdifAction => 'QSOs aus ADIF importieren';
 	@override String get settingsButton => 'Empfangseinstellungen';
 	@override String get settingsTitle => 'Auf andere Apps lauschen';
@@ -5211,7 +5209,6 @@ extension on TranslationsDe {
 			'operation.spots.logConflict.composingBody' => 'Du hast begonnen, einen Kontakt einzugeben. Stattdessen diesen Spot loggen oder zurückgehen und die Eingabe abschließen?',
 			'operation.spots.logConflict.goBack' => 'Zurück',
 			'operation.spots.logConflict.clearAndLog' => 'Leeren und Spot loggen',
-			'operation.import.title' => 'Daten in Betrieb importieren',
 			'operation.import.importAdifAction' => 'QSOs aus ADIF importieren',
 			'operation.import.settingsButton' => 'Empfangseinstellungen',
 			'operation.import.settingsTitle' => 'Auf andere Apps lauschen',
@@ -5390,7 +5387,6 @@ extension on TranslationsDe {
 			'activitiesView.addToOperationShort' => 'Hinzufügen',
 			'activitiesView.mapEmptyState' => 'Keine Ergebnisse für die Karte',
 			'activitiesView.mapEmptyStateHint' => 'Wechsle zurück zur Liste oder suche nach etwas anderem',
-			'activitiesView.imports' => 'Importe',
 			'loggingControls.timeUtc' => 'Zeit (UTC)',
 			'loggingControls.date' => 'Datum',
 			'loggingControls.now' => 'Jetzt',
@@ -5466,10 +5462,10 @@ extension on TranslationsDe {
 			'loggingControls.info.noticeDupe' => 'Dupe!',
 			'loggingControls.info.noticeNewBand' => 'Neues Band',
 			'loggingControls.info.noticeNewMode' => 'Neuer Modus',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewDXCC' => 'Neues DXCC',
 			'loggingControls.info.noticeNewState' => 'Neuer Staat',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewProvince' => 'Neue Provinz',
 			'loggingControls.info.noticeNewDay' => 'Neuer Tag',
 			'loggingControls.info.noticeNewRef' => 'Neue Ref',
@@ -5980,10 +5976,10 @@ extension on TranslationsDe {
 			'settings.peers.viaBluetooth' => 'über Bluetooth',
 			'settings.peers.connecting' => 'Verbinde…',
 			'settings.peers.syncing' => 'Synchronisiere…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.waitingForThem' => 'Warte auf das andere Gerät',
 			'settings.peers.notConnected' => 'Nicht verbunden',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.wantsToPair' => 'möchte diesen Betrieb teilen',
 			'settings.peers.allow' => 'Erlauben',
 			'settings.peers.link' => 'Verknüpfen',
@@ -6494,10 +6490,10 @@ extension on TranslationsDe {
 			'settings.station.placeholderSwr' => 'SWR-Wert',
 			'settings.station.placeholderSwrDescription' => 'Was dieses Funkgerät beim Senden auf seinem SWR-Meter meldet. Über 1,8 warnt das Panel.',
 			'settings.station.placeholderSwrInvalid' => 'Eine Zahl, 1 oder mehr',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyerNone' => 'Keiner',
 			'settings.station.cwDialect' => 'CW-Tastungsdialekt',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.cwDialectDescription' => 'Welche Form des KY-Befehls dieses Funkgerät erwartet. Keiner bedeutet keine CW-Tastung über CAT.',
 			'settings.station.cwDialectKenwood' => 'Kenwood (KY, auf 24 aufgefüllt)',
 			'settings.station.cwDialectElecraft' => 'Elecraft (KY-Text)',
@@ -7008,10 +7004,10 @@ extension on TranslationsDe {
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} hat kein Datum und kann nicht importiert werden', other: '${formatted} haben kein Datum und können nicht importiert werden', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Diese Datei enthält eine Aktivierung von ${refs}.',
 			'adifImport.addActivation' => 'Zu diesem Betrieb hinzufügen',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Nur ${written} von ${planned} konnten übernommen werden — das Log hat sich geändert, während du entschieden hast.',
 			'adifImport.busy' => 'Ein Import läuft bereits. Warte, bis er fertig ist, bevor du einen weiteren startest.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} hat mehr als ${limit} QSOs, das Maximum, das ein Betrieb auf einmal importieren kann.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} hat mehr als ${limit} QSOs. Der ADIF-Import in einen Betrieb ist dafür gedacht, ein paar QSOs hinzuzufügen, nicht ein großes Log einzulesen — nutze dafür die Logs-Ansicht. Im Entwicklermodus kannst du es trotzdem importieren, wenn du sicher bist.',
 			'adifImport.importAnyway' => 'Trotzdem importieren',

@@ -935,7 +935,6 @@
       }
     },
     "import": {
-      "title": "将数据导入操作",
       "importAdifAction": "从 ADIF 导入 QSO",
       "settingsButton": "监听设置",
       "settingsTitle": "监听其他应用",
@@ -1130,8 +1129,7 @@
     "addToOperation": "添加到操作",
     "addToOperationShort": "添加",
     "mapEmptyState": "没有可在地图上显示的结果",
-    "mapEmptyStateHint": "切换回列表，或搜索其他内容",
-    "imports": "导入"
+    "mapEmptyStateHint": "切换回列表，或搜索其他内容"
   },
   "loggingControls": {
     "timeUtc": "时间（UTC）",

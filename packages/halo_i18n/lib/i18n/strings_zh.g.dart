@@ -559,7 +559,6 @@ class _Translations$activitiesView$zh extends Translations$activitiesView$en {
 	@override String get addToOperationShort => '添加';
 	@override String get mapEmptyState => '没有可在地图上显示的结果';
 	@override String get mapEmptyStateHint => '切换回列表，或搜索其他内容';
-	@override String get imports => '导入';
 }
 
 // Path: loggingControls
@@ -1886,7 +1885,6 @@ class _Translations$operation$import$zh extends Translations$operation$import$en
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '将数据导入操作';
 	@override String get importAdifAction => '从 ADIF 导入 QSO';
 	@override String get settingsButton => '监听设置';
 	@override String get settingsTitle => '监听其他应用';
@@ -5211,7 +5209,6 @@ extension on TranslationsZh {
 			'operation.spots.logConflict.composingBody' => '您已开始输入一条通联。改为记录此信号，还是返回完成输入？',
 			'operation.spots.logConflict.goBack' => '返回',
 			'operation.spots.logConflict.clearAndLog' => '清除并记录信号',
-			'operation.import.title' => '将数据导入操作',
 			'operation.import.importAdifAction' => '从 ADIF 导入 QSO',
 			'operation.import.settingsButton' => '监听设置',
 			'operation.import.settingsTitle' => '监听其他应用',
@@ -5390,7 +5387,6 @@ extension on TranslationsZh {
 			'activitiesView.addToOperationShort' => '添加',
 			'activitiesView.mapEmptyState' => '没有可在地图上显示的结果',
 			'activitiesView.mapEmptyStateHint' => '切换回列表，或搜索其他内容',
-			'activitiesView.imports' => '导入',
 			'loggingControls.timeUtc' => '时间（UTC）',
 			'loggingControls.date' => '日期',
 			'loggingControls.now' => '现在',
@@ -5466,10 +5462,10 @@ extension on TranslationsZh {
 			'loggingControls.info.noticeDupe' => '重复！',
 			'loggingControls.info.noticeNewBand' => '新频段',
 			'loggingControls.info.noticeNewMode' => '新模式',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewDXCC' => '新 DXCC',
 			'loggingControls.info.noticeNewState' => '新州',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewProvince' => '新省',
 			'loggingControls.info.noticeNewDay' => '新的一天',
 			'loggingControls.info.noticeNewRef' => '新参考',
@@ -5980,10 +5976,10 @@ extension on TranslationsZh {
 			'settings.peers.viaBluetooth' => '通过蓝牙',
 			'settings.peers.connecting' => '连接中…',
 			'settings.peers.syncing' => '同步中…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.waitingForThem' => '等待另一台设备',
 			'settings.peers.notConnected' => '未连接',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.wantsToPair' => '想要共享此操作',
 			'settings.peers.allow' => '允许',
 			'settings.peers.link' => '链接',
@@ -6494,10 +6490,10 @@ extension on TranslationsZh {
 			'settings.station.placeholderSwr' => 'SWR 读数',
 			'settings.station.placeholderSwrDescription' => '此电台在发射时 SWR 表上报告的数值。高于 1.8 时面板会警告。',
 			'settings.station.placeholderSwrInvalid' => '数字，1 或更大',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyerNone' => '无',
 			'settings.station.cwDialect' => 'CW 键控方言',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.cwDialectDescription' => '此电台接受哪种格式的 KY 命令。“无”表示不通过 CAT 进行 CW 键控。',
 			'settings.station.cwDialectKenwood' => 'Kenwood（KY，补齐到 24）',
 			'settings.station.cwDialectElecraft' => 'Elecraft（KY 文本）',
@@ -7008,10 +7004,10 @@ extension on TranslationsZh {
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个没有日期，无法导入', other: '${formatted} 个没有日期，无法导入', ), 
 			'adifImport.activationFound' => ({required Object refs}) => '此文件记录了 ${refs} 的一次激活。',
 			'adifImport.addActivation' => '将其添加到此操作',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => '只有 ${written} / ${planned} 个得以应用——在您决定期间日志发生了变化。',
 			'adifImport.busy' => '已有导入正在进行。请等待其完成后再开始新的导入。',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} 中的 QSO 超过 ${limit} 个，这是一个操作一次能导入的上限。',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} 中的 QSO 超过 ${limit} 个。向操作中导入 ADIF 是为了添加少量 QSO，而不是导入大型日志——后者请使用日志视图。如果您确定，开发者模式允许您仍然导入。',
 			'adifImport.importAnyway' => '仍然导入',

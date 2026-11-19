@@ -935,7 +935,6 @@
       }
     },
     "import": {
-      "title": "운용에 데이터 가져오기",
       "importAdifAction": "ADIF에서 QSO 가져오기",
       "settingsButton": "수신 설정",
       "settingsTitle": "다른 앱 수신 대기",
@@ -1130,8 +1129,7 @@
     "addToOperation": "운용에 추가",
     "addToOperationShort": "운용에 추가",
     "mapEmptyState": "지도에 표시할 결과가 없습니다",
-    "mapEmptyStateHint": "목록으로 돌아가거나 다른 항목을 검색하세요",
-    "imports": "가져오기"
+    "mapEmptyStateHint": "목록으로 돌아가거나 다른 항목을 검색하세요"
   },
   "loggingControls": {
     "timeUtc": "시간 (UTC)",

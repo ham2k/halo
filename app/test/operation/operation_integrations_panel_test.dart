@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Imports panel. The Captured QSOs band is built inside the StreamBuilder
+// The Integrations panel. The Captured QSOs band is built inside the StreamBuilder
 // that watches the captures, where the SectionedListView around it cannot
 // see it — so the panel must cut that section itself. Handed over as a plain
 // row instead, the band trips SectionHeader's debug assertion and the panel
@@ -13,7 +13,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/inbound_qso_listener_service.dart';
-import 'package:ham2k_logger/views/operation/operation_import_panel.dart';
+import 'package:ham2k_logger/views/operation/operation_integrations_panel.dart';
 
 import '../support/halo_test_support.dart';
 
@@ -23,7 +23,7 @@ void main() {
     await pumpHaLo(
       tester,
       (services) => Scaffold(
-        body: OperationImportPanel(services: services, operation: operation),
+        body: OperationIntegrationsPanel(services: services, operation: operation),
       ),
     );
     await tester.pump(const Duration(milliseconds: 50));
@@ -65,7 +65,7 @@ void main() {
     await pumpHaLo(
       tester,
       (services) => Scaffold(
-        body: OperationImportPanel(services: services, operation: operation),
+        body: OperationIntegrationsPanel(services: services, operation: operation),
       ),
       harness: h,
     );
@@ -124,7 +124,7 @@ void main() {
     await pumpHaLo(
       tester,
       (services) => Scaffold(
-        body: OperationImportPanel(services: services, operation: operation),
+        body: OperationIntegrationsPanel(services: services, operation: operation),
       ),
       harness: h,
     );

@@ -935,7 +935,6 @@
       }
     },
     "import": {
-      "title": "Gegevens importeren in activatie",
       "importAdifAction": "QSO's importeren uit ADIF",
       "settingsButton": "Luisterinstellingen",
       "settingsTitle": "Luisteren naar andere apps",
@@ -1130,8 +1129,7 @@
     "addToOperation": "Toevoegen aan activatie",
     "addToOperationShort": "Toevoegen",
     "mapEmptyState": "Geen resultaten om op de kaart te tonen",
-    "mapEmptyStateHint": "Ga terug naar de lijst, of zoek iets anders",
-    "imports": "Importeren"
+    "mapEmptyStateHint": "Ga terug naar de lijst, of zoek iets anders"
   },
   "loggingControls": {
     "timeUtc": "Tijd (UTC)",

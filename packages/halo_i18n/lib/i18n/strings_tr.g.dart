@@ -559,7 +559,6 @@ class _Translations$activitiesView$tr extends Translations$activitiesView$en {
 	@override String get addToOperationShort => 'Op.\'a Ekle';
 	@override String get mapEmptyState => 'Haritada gösterilecek sonuç yok';
 	@override String get mapEmptyStateHint => 'Listeye geri dönün veya başka bir şey arayın';
-	@override String get imports => 'İçe Aktarımlar';
 }
 
 // Path: loggingControls
@@ -1886,7 +1885,6 @@ class _Translations$operation$import$tr extends Translations$operation$import$en
 	final TranslationsTr _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Operasyona Veri İçe Aktar';
 	@override String get importAdifAction => 'ADIF\'ten QSO İçe Aktar';
 	@override String get settingsButton => 'Dinleme ayarları';
 	@override String get settingsTitle => 'Diğer Uygulamaları Dinle';
@@ -5211,7 +5209,6 @@ extension on TranslationsTr {
 			'operation.spots.logConflict.composingBody' => 'Bir QSO girmeye başladınız. Bunun yerine bu spotu mu kaydedelim, yoksa geri dönüp yazdığınızı mı bitireceksiniz?',
 			'operation.spots.logConflict.goBack' => 'Geri dön',
 			'operation.spots.logConflict.clearAndLog' => 'Temizle ve spotu kaydet',
-			'operation.import.title' => 'Operasyona Veri İçe Aktar',
 			'operation.import.importAdifAction' => 'ADIF\'ten QSO İçe Aktar',
 			'operation.import.settingsButton' => 'Dinleme ayarları',
 			'operation.import.settingsTitle' => 'Diğer Uygulamaları Dinle',
@@ -5390,7 +5387,6 @@ extension on TranslationsTr {
 			'activitiesView.addToOperationShort' => 'Op.\'a Ekle',
 			'activitiesView.mapEmptyState' => 'Haritada gösterilecek sonuç yok',
 			'activitiesView.mapEmptyStateHint' => 'Listeye geri dönün veya başka bir şey arayın',
-			'activitiesView.imports' => 'İçe Aktarımlar',
 			'loggingControls.timeUtc' => 'Zaman (UTC)',
 			'loggingControls.date' => 'Tarih',
 			'loggingControls.now' => 'Şimdi',
@@ -5466,10 +5462,10 @@ extension on TranslationsTr {
 			'loggingControls.info.noticeDupe' => 'Çift!',
 			'loggingControls.info.noticeNewBand' => 'Yeni Bant',
 			'loggingControls.info.noticeNewMode' => 'Yeni Mod',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewDXCC' => 'Yeni DXCC',
 			'loggingControls.info.noticeNewState' => 'Yeni Eyalet',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewProvince' => 'Yeni İl',
 			'loggingControls.info.noticeNewDay' => 'Yeni Gün',
 			'loggingControls.info.noticeNewRef' => 'Yeni Ref',
@@ -5980,10 +5976,10 @@ extension on TranslationsTr {
 			'settings.peers.viaBluetooth' => 'Bluetooth üzerinden',
 			'settings.peers.connecting' => 'Bağlanıyor…',
 			'settings.peers.syncing' => 'Senkronize ediliyor…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.waitingForThem' => 'Diğer cihaz bekleniyor',
 			'settings.peers.notConnected' => 'Bağlı değil',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.wantsToPair' => 'bu operasyonu paylaşmak istiyor',
 			'settings.peers.allow' => 'İzin ver',
 			'settings.peers.link' => 'Eşleştir',
@@ -6494,10 +6490,10 @@ extension on TranslationsTr {
 			'settings.station.placeholderSwr' => 'SWR değeri',
 			'settings.station.placeholderSwrDescription' => 'Bu radyonun yayın sırasında SWR ölçerinde bildirdiği değer. 1.8\'in üzerinde panel uyarır.',
 			'settings.station.placeholderSwrInvalid' => '1 veya daha büyük bir sayı',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyerNone' => 'Yok',
 			'settings.station.cwDialect' => 'CW manipülasyon lehçesi',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.cwDialectDescription' => 'Bu radyonun KY komutunun hangi biçimini aldığı. Yok, CAT üzerinden CW manipülasyonu olmadığı anlamına gelir.',
 			'settings.station.cwDialectKenwood' => 'Kenwood (KY, 24\'e tamamlanmış)',
 			'settings.station.cwDialectElecraft' => 'Elecraft (KY metni)',
@@ -7008,10 +7004,10 @@ extension on TranslationsTr {
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} tanesinin tarihi yok ve içe aktarılamaz', other: '${formatted} tanesinin tarihi yok ve içe aktarılamaz', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Bu dosya ${refs} aktivasyonunu kaydediyor.',
 			'adifImport.addActivation' => 'Bu operasyona ekle',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned} kayıttan yalnızca ${written} tanesi uygulanabildi — siz karar verirken günlük değişti.',
 			'adifImport.busy' => 'Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} dosyasında ${limit} QSO\'dan fazla var; bir operasyon tek seferde en fazla bu kadarını içe aktarabilir.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} dosyasında ${limit} QSO\'dan fazla var. Bir operasyona ADIF içe aktarmak, büyük bir günlüğü getirmek için değil, birkaç QSO eklemek içindir — bunun için Günlükler görünümünü kullanın. Eminseniz, geliştirici modu yine de içe aktarmanıza izin verir.',
 			'adifImport.importAnyway' => 'Yine de içe aktar',

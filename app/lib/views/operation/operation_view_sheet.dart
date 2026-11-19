@@ -234,7 +234,7 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
         // `SizedBox` sizes this to the full header width so each can
         // `Positioned` itself within it independently.
         // Only the chevron has a copy up here. The operation's own
-        // Exports/Imports/Tools group — and the layout controls beside it —
+        // Exports/Integrations/Tools group — and the layout controls beside it —
         // stay exactly where they are in the AppBar below, untouched and
         // merely disabled while the sheet is up (see the AppBar's own
         // `actions`), so nothing about that end of the header moves,
@@ -291,7 +291,7 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
                         // The trailing row, live, standing exactly over the
                         // inert one in the AppBar — same builder, same children,
                         // so it lines up without measuring anything. This is the
-                        // copy that makes Exports/Imports/Tools pressable at
+                        // copy that makes Exports/Integrations/Tools pressable at
                         // all while the sheet is up; the layout controls come
                         // along disabled, both to match what is underneath and
                         // because they occupy width the actions must clear.
@@ -331,7 +331,7 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
                                         _showOperationOptions(
                                           op,
                                           includeExport: !isTwoPane,
-                                          includeImport: !isTwoPane,
+                                          includeIntegrations: !isTwoPane,
                                           includeEditLayout: !isTwoPane && !layoutEditing,
                                         ),
                                       );
@@ -342,10 +342,10 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
                                     await sheetKey.currentState?.saveAndClose();
                                     if (mounted) unawaited(_export(op));
                                   },
-                                  onImport: () async {
+                                  onIntegrations: () async {
                                     final op = _draftOperation ?? operation;
                                     await sheetKey.currentState?.saveAndClose();
-                                    if (mounted) unawaited(_import(op));
+                                    if (mounted) unawaited(_integrations(op));
                                   },
                                 ),
                               ),

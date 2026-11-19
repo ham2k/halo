@@ -40,7 +40,7 @@ import '../services/halo_services.dart';
 /// Category display order; anything unrecognized lands in "other". Public
 /// because the Accounts panel groups by the same categories, and two lists in
 /// two orders would present the same extensions differently in each.
-const extensionCategoryOrder = ['activity', 'award', 'contest', 'lookup', 'spots', 'dashboard'];
+const extensionCategoryOrder = ['activity', 'award', 'contest', 'lookup', 'spots', 'dashboard', 'integration'];
 
 String extensionCategoryTitle(String category) => switch (category) {
   'activity' => t.extensionsPanel.categoryActivity,
@@ -49,6 +49,7 @@ String extensionCategoryTitle(String category) => switch (category) {
   'lookup' => t.extensionsPanel.categoryLookup,
   'spots' => t.extensionsPanel.categorySpots,
   'dashboard' => t.extensionsPanel.categoryDashboard,
+  'integration' => t.extensionsPanel.categoryIntegration,
   _ => t.extensionsPanel.categoryOther,
 };
 
@@ -59,6 +60,7 @@ IconData extensionCategoryIcon(String? category) => switch (category) {
   'lookup' => MdiIcons.accountSearch,
   'spots' => MdiIcons.radioTower,
   'dashboard' => MdiIcons.viewDashboard,
+  'integration' => MdiIcons.connection,
   _ => MdiIcons.toyBrick,
 };
 

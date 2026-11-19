@@ -559,7 +559,6 @@ class _Translations$activitiesView$nl extends Translations$activitiesView$en {
 	@override String get addToOperationShort => 'Toevoegen';
 	@override String get mapEmptyState => 'Geen resultaten om op de kaart te tonen';
 	@override String get mapEmptyStateHint => 'Ga terug naar de lijst, of zoek iets anders';
-	@override String get imports => 'Importeren';
 }
 
 // Path: loggingControls
@@ -1886,7 +1885,6 @@ class _Translations$operation$import$nl extends Translations$operation$import$en
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Gegevens importeren in activatie';
 	@override String get importAdifAction => 'QSO\'s importeren uit ADIF';
 	@override String get settingsButton => 'Luisterinstellingen';
 	@override String get settingsTitle => 'Luisteren naar andere apps';
@@ -5211,7 +5209,6 @@ extension on TranslationsNl {
 			'operation.spots.logConflict.composingBody' => 'Je bent begonnen met het invoeren van een QSO. Deze spot in plaats daarvan loggen, of teruggaan en afmaken wat je aan het typen was?',
 			'operation.spots.logConflict.goBack' => 'Teruggaan',
 			'operation.spots.logConflict.clearAndLog' => 'Wissen en spot loggen',
-			'operation.import.title' => 'Gegevens importeren in activatie',
 			'operation.import.importAdifAction' => 'QSO\'s importeren uit ADIF',
 			'operation.import.settingsButton' => 'Luisterinstellingen',
 			'operation.import.settingsTitle' => 'Luisteren naar andere apps',
@@ -5390,7 +5387,6 @@ extension on TranslationsNl {
 			'activitiesView.addToOperationShort' => 'Toevoegen',
 			'activitiesView.mapEmptyState' => 'Geen resultaten om op de kaart te tonen',
 			'activitiesView.mapEmptyStateHint' => 'Ga terug naar de lijst, of zoek iets anders',
-			'activitiesView.imports' => 'Importeren',
 			'loggingControls.timeUtc' => 'Tijd (UTC)',
 			'loggingControls.date' => 'Datum',
 			'loggingControls.now' => 'Nu',
@@ -5466,10 +5462,10 @@ extension on TranslationsNl {
 			'loggingControls.info.noticeDupe' => 'Dupe!',
 			'loggingControls.info.noticeNewBand' => 'Nieuwe band',
 			'loggingControls.info.noticeNewMode' => 'Nieuwe mode',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewDXCC' => 'Nieuwe DXCC',
 			'loggingControls.info.noticeNewState' => 'Nieuwe staat',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewProvince' => 'Nieuwe provincie',
 			'loggingControls.info.noticeNewDay' => 'Nieuwe dag',
 			'loggingControls.info.noticeNewRef' => 'Nieuwe ref',
@@ -5980,10 +5976,10 @@ extension on TranslationsNl {
 			'settings.peers.viaBluetooth' => 'via Bluetooth',
 			'settings.peers.connecting' => 'Verbinden…',
 			'settings.peers.syncing' => 'Synchroniseren…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.waitingForThem' => 'Wachten op het andere apparaat',
 			'settings.peers.notConnected' => 'Niet verbonden',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.wantsToPair' => 'wil deze activatie delen',
 			'settings.peers.allow' => 'Toestaan',
 			'settings.peers.link' => 'Koppelen',
@@ -6494,10 +6490,10 @@ extension on TranslationsNl {
 			'settings.station.placeholderSwr' => 'SWR-waarde',
 			'settings.station.placeholderSwrDescription' => 'Wat deze radio tijdens het zenden op zijn SWR-meter meldt. Boven 1,8 waarschuwt het paneel.',
 			'settings.station.placeholderSwrInvalid' => 'Een getal, 1 of meer',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyerNone' => 'Geen',
 			'settings.station.cwDialect' => 'CW-keyingdialect',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.cwDialectDescription' => 'Welke vorm van het KY-commando deze radio gebruikt. Geen betekent geen CW-keying via CAT.',
 			'settings.station.cwDialectKenwood' => 'Kenwood (KY, aangevuld tot 24)',
 			'settings.station.cwDialectElecraft' => 'Elecraft (KY-tekst)',
@@ -7008,10 +7004,10 @@ extension on TranslationsNl {
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} heeft geen datum en kan niet worden geïmporteerd', other: '${formatted} hebben geen datum en kunnen niet worden geïmporteerd', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Dit bestand bevat een activatie van ${refs}.',
 			'adifImport.addActivation' => 'Toevoegen aan deze activatie',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Slechts ${written} van ${planned} konden worden toegepast — het logboek veranderde terwijl je besliste.',
 			'adifImport.busy' => 'Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} heeft meer dan ${limit} QSO\'s, het maximum dat een activatie in één keer kan importeren.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} heeft meer dan ${limit} QSO\'s. Een ADIF in een activatie importeren is bedoeld om een paar QSO\'s toe te voegen, niet om een groot logboek binnen te halen — gebruik daarvoor de weergave Logboeken. In ontwikkelaarsmodus kun je het toch importeren, als je het zeker weet.',
 			'adifImport.importAnyway' => 'Toch importeren',

@@ -181,6 +181,7 @@ const shippedDocs = [
   "commands.md",
   "panels.md",
   "assistants.md",
+  "integrations.md",
   "scenes.md",
   "radio.md",
   "accounts.md",
@@ -269,6 +270,7 @@ building — the header comment in each \`src/index.ts\` says what it leaves out
 | \`k2hrc-radio\` | An HTML panel, and why you should probably write markdown instead |
 | \`k2hrc-panel-scenes\` | Experimental panel scenes: SVG artwork, controls and animations, with simulated radio and weather panels |
 | \`k2hrc-coach\` | An assistant: watches the rate in every open operation and says when it drops, with no pane of its own (extension API 20) |
+| \`k2hrc-tally\` | An integration: switched on per operation, keeps a tally of the contacts logged, edited and deleted there (extension API 29) |
 
 ## Running one
 
@@ -303,7 +305,17 @@ See \`../AGENTS.md\` for the map, and \`../docs/\` for the references.
 /// SDK and the tools through workspace paths; an author's copy reaches them
 /// through npm, and shipping the workspace form would hand every reader a
 /// build script that cannot resolve its own imports.
-const shippedSamples = ["k2hrc-hello-world", "k2hrc-hamqth", "k2hrc-llota", "k2hrc-cqww", "k2hrc-dxcc", "k2hrc-radio", "k2hrc-panel-scenes", "k2hrc-coach"]
+const shippedSamples = [
+  "k2hrc-hello-world",
+  "k2hrc-hamqth",
+  "k2hrc-llota",
+  "k2hrc-cqww",
+  "k2hrc-dxcc",
+  "k2hrc-radio",
+  "k2hrc-panel-scenes",
+  "k2hrc-coach",
+  "k2hrc-tally",
+]
 
 const samplesOut = join(here, "samples")
 await rm(samplesOut, { recursive: true, force: true })

@@ -325,6 +325,9 @@ class Translations$extensionsPanel$en {
 	/// en: 'Dashboard Panels'
 	String get categoryDashboard => 'Dashboard Panels';
 
+	/// en: 'Integrations'
+	String get categoryIntegration => 'Integrations';
+
 	/// en: 'Other Extensions'
 	String get categoryOther => 'Other Extensions';
 
@@ -1296,8 +1299,8 @@ class Translations$activitiesView$en {
 	/// en: 'Switch back to the list, or search for something else'
 	String get mapEmptyStateHint => 'Switch back to the list, or search for something else';
 
-	/// en: 'Imports'
-	String get imports => 'Imports';
+	/// en: 'Integrations'
+	String get integrations => 'Integrations';
 }
 
 // Path: loggingControls
@@ -4737,8 +4740,14 @@ class Translations$operation$import$en {
 
 	// Translations
 
-	/// en: 'Import Data into Operation'
-	String get title => 'Import Data into Operation';
+	/// en: 'Integrations'
+	String get integrationsTitle => 'Integrations';
+
+	/// en: '${title} settings'
+	String integrationSettingsButton({required Object title}) => '${title} settings';
+
+	/// en: 'Manage your Integration extensions…'
+	String get manageIntegrationExtensions => 'Manage your Integration extensions…';
 
 	/// en: 'Import QSOs from ADIF'
 	String get importAdifAction => 'Import QSOs from ADIF';
@@ -12084,6 +12093,7 @@ extension on Translations {
 			'extensionsPanel.categoryLookup' => 'Callsign Lookups',
 			'extensionsPanel.categorySpots' => 'Spot Sources',
 			'extensionsPanel.categoryDashboard' => 'Dashboard Panels',
+			'extensionsPanel.categoryIntegration' => 'Integrations',
 			'extensionsPanel.categoryOther' => 'Other Extensions',
 			'extensionsPanel.searchHint' => 'Search extensions',
 			'extensionsPanel.applying' => 'Activating extension changes, this may take a moment…',
@@ -12530,9 +12540,9 @@ extension on Translations {
 			'operation.layout.layouts.exportFailed' => ({required Object error}) => 'Couldn\'t export the layout: ${error}',
 			'operation.layout.layouts.importTitle' => 'Import Layout',
 			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'Made for the ${view} view: panels only that view has are left out.',
-			'operation.layout.layouts.viewHome' => 'Home',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.viewHome' => 'Home',
 			'operation.layout.layouts.viewOperation' => 'Operation',
 			'operation.layout.layouts.viewLogs' => 'Logs',
 			'operation.layout.layouts.viewChase' => 'Chasing',
@@ -12893,7 +12903,9 @@ extension on Translations {
 			'operation.spots.logConflict.composingBody' => 'You\'ve started entering a contact. Log this spot instead, or go back and finish what you were typing?',
 			'operation.spots.logConflict.goBack' => 'Go back',
 			'operation.spots.logConflict.clearAndLog' => 'Clear and log spot',
-			'operation.import.title' => 'Import Data into Operation',
+			'operation.import.integrationsTitle' => 'Integrations',
+			'operation.import.integrationSettingsButton' => ({required Object title}) => '${title} settings',
+			'operation.import.manageIntegrationExtensions' => 'Manage your Integration extensions…',
 			'operation.import.importAdifAction' => 'Import QSOs from ADIF',
 			'operation.import.settingsButton' => 'Listen settings',
 			'operation.import.settingsTitle' => 'Listen for Other Apps',
@@ -13042,11 +13054,11 @@ extension on Translations {
 			'activitiesView.noSuggestionsExample' => '(for example \'trail\' or \'4556\')',
 			'activitiesView.allOptions' => 'Activity Types',
 			'activitiesView.determiningLocation' => 'Determining current location…\nWaiting for GPS fix to find nearby references',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.locationUnavailableTitle' => 'Location data not available',
 			'activitiesView.locationDeniedTitle' => 'Location permission denied',
 			'activitiesView.locationBlockedTitle' => 'Location permission blocked',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.noNearbyReason' => 'Cannot determine nearby references',
 			'activitiesView.locationManualHint' => ({required Object icon}) => 'Tap ${icon} to manually enter your location,\nor just search for references by name',
 			'activitiesView.locationGrantAction' => 'Allow location access',
@@ -13091,7 +13103,7 @@ extension on Translations {
 			'activitiesView.addToOperationShort' => 'Add to Op.',
 			'activitiesView.mapEmptyState' => 'No results to show on the map',
 			'activitiesView.mapEmptyStateHint' => 'Switch back to the list, or search for something else',
-			'activitiesView.imports' => 'Imports',
+			'activitiesView.integrations' => 'Integrations',
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
 			'loggingControls.now' => 'Now',
@@ -13556,11 +13568,11 @@ extension on Translations {
 			'settings.radio.cwMessages.helpEsmCq' => 'Running, Enter with the call field empty calls CQ',
 			'settings.radio.cwMessages.helpEsmExchange' => 'Your exchange: after their call when running, after they answer in S&P',
 			'settings.radio.cwMessages.helpEsmThanks' => 'Thanks, once the contact has logged: qso is the contact as logged, next the one up next',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmMyCall' => 'In S&P, your call to the station you are answering',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'Running, their call ahead of your exchange',
 			'settings.radio.cwMessages.helpEsmAgain' => 'Asks again when nothing of their exchange was copied',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'Suggested F3 for // stacks: it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU',
 			'settings.radio.keyerControl.label' => 'Keyer',
 			'settings.radio.keyerControl.cw' => 'WPM',
@@ -14070,11 +14082,11 @@ extension on Translations {
 			'settings.station.spectrumK4Unavailable' => 'Cannot receive the K4’s LAN spectrum. Retrying…',
 			'settings.station.spectrumK4RemoteUnavailable' => 'Cannot receive the K4’s remote spectrum',
 			'settings.station.spectrumScopeRefused' => 'The radio refused its scope commands',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.spectrumOutOfRange' => 'The radio\'s scope is set outside the range it can show',
 			'settings.station.spectrumBandUnsupported' => 'The radio\'s scope cannot be shown on this band',
 			'settings.station.spectrumCropped' => ({required Object why}) => 'Cropped from a wider sweep. ${why}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumCroppedCap' => ({required Object max}) => '${max} narrower sweeps of this radio are already running',
 			'settings.station.spectrumNoSweepToSpare' => 'The radio has no other sweep to spare',
 			'settings.station.civScopeAdjust' => 'Automatically adjust bandscope',
@@ -14584,11 +14596,11 @@ extension on Translations {
 			'settings.station.rotatorAxesAzimuth' => 'Azimuth only',
 			'settings.station.rotatorAxesAzimuthElevation' => 'Azimuth and elevation',
 			'settings.station.rotatorAzimuthOffset' => 'Azimuth offset',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorAzimuthOffsetDescription' => 'Degrees to add to what the controller reads, when its zero is not true north. Turns are corrected to match.',
 			'settings.station.rotatorElevationOffset' => 'Elevation offset',
 			'settings.station.rotatorAzimuthMin' => 'Lowest azimuth',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorAzimuthMax' => 'Highest azimuth',
 			'settings.station.rotatorAzimuthMaxDescription' => 'In the controller\'s own degrees. Above 360 for a rotator with overlap, which then takes the shorter turn.',
 			'settings.station.rotatorElevationMin' => 'Lowest elevation',
@@ -15098,11 +15110,11 @@ extension on Translations {
 			'extensionService.activitySearchSomeSourcesFailed' => 'Some activity extensions didn\'t answer the search, so some results may be missing.',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} spent too much time in its timers. They\'re stopped until the extensions restart.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name}\'s timers kept failing. They\'re stopped until the extensions restart.',
+			_ => null,
+		} ?? switch (path) {
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} got stuck in a timer. Its timers are stopped until the extensions restart.',
 			'operationLocationScreen.title' => 'Operation Location',
 			'operationLocationScreen.selectedLocation' => 'Selected Location',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.gridSquare' => 'Maidenhead Grid Square Locator',
 			'operationLocationScreen.gridInvalid' => 'Needs 4, 6, 8 or 10 characters, like FN31pr',
 			'operationLocationScreen.suggestedLocations' => 'Suggested Locations',

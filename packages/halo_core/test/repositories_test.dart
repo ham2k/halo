@@ -245,6 +245,30 @@ void main() {
     await sub.cancel();
   });
 
+  // Two writes made from one copy each start from it, and the second undoes
+  // the first: a patch made from the row inside the transaction cannot.
+  test('updateLocalDataWith makes its patch from the local data as it stands', () async {
+    final op = await operations.create(stationCall: 'KI2D');
+    List<String> listed(Map<String, dynamic> localData) => [...?(localData['on'] as List?)?.cast<String>()];
+    await Future.wait([
+      operations.updateLocalDataWith(
+        op.uuid,
+        (localData) => {
+          'on': [...listed(localData), 'a'],
+        },
+      ),
+      operations.updateLocalDataWith(
+        op.uuid,
+        (localData) => {
+          'on': [...listed(localData), 'b'],
+        },
+      ),
+    ]);
+    await operations.updateLocalDataWith(op.uuid, (_) => null);
+
+    expect((await operations.get(op.uuid))?.localData['on'], ['a', 'b']);
+  });
+
   test('watchOperation emits null once the operation is hard-deleted', () async {
     final op = await operations.create(stationCall: 'KI2D');
     final emissions = <Operation?>[];

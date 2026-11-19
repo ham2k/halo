@@ -559,7 +559,6 @@ class _Translations$activitiesView$ja extends Translations$activitiesView$en {
 	@override String get addToOperationShort => '追加';
 	@override String get mapEmptyState => '地図に表示する結果がありません';
 	@override String get mapEmptyStateHint => 'リストに戻るか、別のものを検索してください';
-	@override String get imports => 'インポート';
 }
 
 // Path: loggingControls
@@ -1886,7 +1885,6 @@ class _Translations$operation$import$ja extends Translations$operation$import$en
 	final TranslationsJa _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'オペレーションにデータをインポート';
 	@override String get importAdifAction => 'ADIFからQSOをインポート';
 	@override String get settingsButton => '受信設定';
 	@override String get settingsTitle => '他のアプリから受信';
@@ -5211,7 +5209,6 @@ extension on TranslationsJa {
 			'operation.spots.logConflict.composingBody' => 'コンタクトの入力を始めています。代わりにこのスポットを記録しますか？それとも戻って入力を完了しますか？',
 			'operation.spots.logConflict.goBack' => '戻る',
 			'operation.spots.logConflict.clearAndLog' => 'クリアしてスポットを記録',
-			'operation.import.title' => 'オペレーションにデータをインポート',
 			'operation.import.importAdifAction' => 'ADIFからQSOをインポート',
 			'operation.import.settingsButton' => '受信設定',
 			'operation.import.settingsTitle' => '他のアプリから受信',
@@ -5390,7 +5387,6 @@ extension on TranslationsJa {
 			'activitiesView.addToOperationShort' => '追加',
 			'activitiesView.mapEmptyState' => '地図に表示する結果がありません',
 			'activitiesView.mapEmptyStateHint' => 'リストに戻るか、別のものを検索してください',
-			'activitiesView.imports' => 'インポート',
 			'loggingControls.timeUtc' => '時刻（UTC）',
 			'loggingControls.date' => '日付',
 			'loggingControls.now' => '現在',
@@ -5466,10 +5462,10 @@ extension on TranslationsJa {
 			'loggingControls.info.noticeDupe' => '重複！',
 			'loggingControls.info.noticeNewBand' => '新しいバンド',
 			'loggingControls.info.noticeNewMode' => '新しいモード',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewDXCC' => '新しいDXCC',
 			'loggingControls.info.noticeNewState' => '新しい州',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewProvince' => '新しい州/県',
 			'loggingControls.info.noticeNewDay' => '新しい日',
 			'loggingControls.info.noticeNewRef' => '新しいリファレンス',
@@ -5980,10 +5976,10 @@ extension on TranslationsJa {
 			'settings.peers.viaBluetooth' => 'Bluetooth経由',
 			'settings.peers.connecting' => '接続中…',
 			'settings.peers.syncing' => '同期中…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.waitingForThem' => '相手のデバイスを待っています',
 			'settings.peers.notConnected' => '未接続',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.wantsToPair' => 'がこのオペレーションの共有を求めています',
 			'settings.peers.allow' => '許可',
 			'settings.peers.link' => 'リンク',
@@ -6494,10 +6490,10 @@ extension on TranslationsJa {
 			'settings.station.placeholderSwr' => 'SWRの値',
 			'settings.station.placeholderSwrDescription' => '送信中にこの無線機がSWRメーターで報告する値。1.8を超えるとパネルが警告します。',
 			'settings.station.placeholderSwrInvalid' => '1以上の数値',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyerNone' => 'なし',
 			'settings.station.cwDialect' => 'CWキーイングの方式',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.cwDialectDescription' => 'この無線機が受け付けるKYコマンドの形式。なしの場合、CAT経由のCWキーイングは行いません。',
 			'settings.station.cwDialectKenwood' => 'Kenwood（KY、24文字にパディング）',
 			'settings.station.cwDialectElecraft' => 'Elecraft（KYテキスト）',
@@ -7008,10 +7004,10 @@ extension on TranslationsJa {
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件は日付がないためインポートできません', other: '${formatted}件は日付がないためインポートできません', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'このファイルには${refs}のアクティベーションが記録されています。',
 			'adifImport.addActivation' => 'このオペレーションに追加',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned}件中${written}件しか適用できませんでした。判断している間にログが変更されました。',
 			'adifImport.busy' => 'すでにインポートを実行中です。完了してから次のインポートを開始してください。',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename}のQSOは${limit}件を超えています。これは1つのオペレーションで一度にインポートできる上限です。',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename}のQSOは${limit}件を超えています。オペレーションへのADIFインポートは少数のQSOを追加するためのもので、大きなログを取り込むためのものではありません。それにはログビューを使ってください。確信がある場合は、開発者モードでそのままインポートできます。',
 			'adifImport.importAnyway' => 'それでもインポート',

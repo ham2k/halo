@@ -935,7 +935,6 @@
       }
     },
     "import": {
-      "title": "Import dat do aktivity",
       "importAdifAction": "Importovat QSO z ADIF",
       "settingsButton": "Nastavení naslouchání",
       "settingsTitle": "Naslouchat jiným aplikacím",
@@ -1130,8 +1129,7 @@
     "addToOperation": "Přidat do aktivity",
     "addToOperationShort": "Přidat",
     "mapEmptyState": "Žádné výsledky k zobrazení na mapě",
-    "mapEmptyStateHint": "Přepněte zpět na seznam, nebo hledejte něco jiného",
-    "imports": "Importy"
+    "mapEmptyStateHint": "Přepněte zpět na seznam, nebo hledejte něco jiného"
   },
   "loggingControls": {
     "timeUtc": "Čas (UTC)",

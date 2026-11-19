@@ -73,6 +73,7 @@
     "categoryLookup": "callsign lookups",
     "categorySpots": "spot sources",
     "categoryDashboard": "dashboard panels",
+    "categoryIntegration": "integrations",
     "categoryOther": "other extensions",
     "searchHint": "search extensions",
     "applying": "activating extension changes, this may take a moment…",
@@ -1093,7 +1094,9 @@
       }
     },
     "import": {
-      "title": "import data into operation",
+      "integrationsTitle": "integrations",
+      "integrationSettingsButton": "${title} settings",
+      "manageIntegrationExtensions": "manage your integration extensions…",
       "importAdifAction": "import qsos from adif",
       "settingsButton": "listen settings",
       "settingsTitle": "listen for other apps",
@@ -1309,7 +1312,7 @@
     "addToOperationShort": "add to op.",
     "mapEmptyState": "no results to show on the map",
     "mapEmptyStateHint": "switch back to the list, or search for something else",
-    "imports": "imports"
+    "integrations": "integrations"
   },
   "loggingControls": {
     "timeUtc": "time (utc)",
