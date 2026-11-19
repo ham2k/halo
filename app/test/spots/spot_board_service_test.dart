@@ -48,6 +48,12 @@ class _FakeExtensions extends ExtensionService {
   /// Each call's whole lookup guess, replacing the [states] one.
   Map<String, Object?> guesses = const {};
 
+  /// A guess that depends on the operation asked as, ahead of [guesses].
+  Map<String, dynamic>? Function(String call, Map<String, dynamic> operation)? answer;
+
+  /// Lookups fail outright, as a runtime that cannot cross does.
+  bool lookupsThrow = false;
+
   /// The failure streaks the lookups were counted toward.
   final Set<String?> streakKeys = {};
 
@@ -115,6 +121,7 @@ class _FakeExtensions extends ExtensionService {
     lookedUp.add(call);
     streakKeys.add(streakKey);
     if (unanswered.contains(call)) return null;
+    if (answer?.call(call, operation) case final guess?) return {'guess': guess};
     if (guesses.containsKey(call)) return {'guess': guesses[call]};
     return {
       'guess': <String, dynamic>{'state': ?states[call]},
@@ -136,6 +143,7 @@ class _FakeExtensions extends ExtensionService {
   }) async {
     lookupBatches.add([for (final request in requests) request.call]);
     await lookupHold?.future;
+    if (lookupsThrow) throw StateError('the runtime could not be reached');
     return [for (final request in requests) await lookupCall(request.call, qso: request.qso, operation: operation, online: online, streakKey: streakKey)];
   }
 }
@@ -471,6 +479,190 @@ void main() {
     }),
   );
 
+  // A spot is a call and a frequency. What the offline lookups know of the
+  // station is what lets a contest's scorer tell its section and a panel
+  // place it — but only what the lookup really knows: the country file's
+  // centroid for a whole entity is no station's place.
+  group('guesses', () {
+    Map<String, dynamic>? guessOn(Map<String, Map<String, dynamic>> pass, String call) =>
+        (pass[spotCandidateKey(call, _spot(call, hookKey: call == 'W1AW' ? 'sota' : 'pota'))]!['their'] as Map)['guess'] as Map<String, dynamic>?;
+
+    test(
+      "the scorers judge each spot with what the board's lookups guess of its station, judging again once they answer",
+      () => runOnFakeClock((_) async {
+        await openBoard(
+          fetch: false,
+          guesses: {
+            'K1ABC': <String, dynamic>{
+              'state': 'CT',
+              'arrlSection': 'CT',
+              'grid': 'FN31pr',
+              'lat': 41.7,
+              'lon': -72.7,
+              'locSource': 'Call History',
+              'name': 'Al',
+            },
+            'W1AW': <String, dynamic>{'state': 'CT', 'grid': 'FN31', 'lat': 39.8, 'lon': -98.5, 'locSource': 'prefix'},
+          },
+        );
+        // Answered only as each lookup lands: the first pass must not wait.
+        extensions.lookupHold = Completer<void>();
+        await services.spots.refresh();
+        await show();
+        expect(extensions.passes, isNotEmpty);
+        expect(guessOn(extensions.passes.last, 'K1ABC'), isNull, reason: 'nothing guessed yet');
+
+        extensions.lookupHold!.complete();
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(guessOn(extensions.passes.last, 'K1ABC'), {'state': 'CT', 'arrlSection': 'CT', 'grid': 'FN31pr', 'lat': 41.7, 'lon': -72.7});
+        expect(guessOn(extensions.passes.last, 'W1AW'), {'state': 'CT'}, reason: "a centroid's grid and coordinates are the entity's, not the station's");
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota'))?['arrlSection'], 'CT');
+      }),
+    );
+
+    // The call-info pass looks up every spotted call already; a spot with no
+    // references takes its guess from that answer rather than a second one.
+    test(
+      'a spot without references costs no lookup beyond its call info',
+      () => runOnFakeClock((_) async {
+        await openBoard(
+          fetch: false,
+          guesses: {
+            'K1ABC': <String, dynamic>{'state': 'CT'},
+          },
+        );
+        await show();
+        await services.spots.refresh();
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(extensions.lookedUp..sort(), ['K1ABC', 'W1AW']);
+        expect(guessOn(extensions.passes.last, 'K1ABC'), {'state': 'CT'});
+      }),
+    );
+
+    // A contest's lookups answer for an operation running it alone: a section
+    // guessed under Sweepstakes is no guess under the next operation shown.
+    test(
+      "another operation shown forgets what the board guessed under the last one",
+      () => runOnFakeClock((_) async {
+        await openBoard(
+          guesses: {
+            'K1ABC': <String, dynamic>{'arrlSection': 'CT'},
+          },
+        );
+        await show();
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), {'arrlSection': 'CT'});
+        extensions.guesses = {
+          'K1ABC': <String, dynamic>{'state': 'CT'},
+        };
+        await show();
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), {'state': 'CT'});
+      }),
+    );
+
+    // A pass still asking when the operator switches answers for the
+    // operation switched away from: written, its sections would stand under
+    // the new one for the rest of the session.
+    test(
+      'a lookup still out when another operation is shown leaves no guess behind for it',
+      () => runOnFakeClock((_) async {
+        await openBoard(fetch: false);
+        extensions.answer = (call, operation) => call == 'K1ABC' ? {'arrlSection': operation['stationCall'] == 'N0AAA' ? 'CT' : 'EMA'} : null;
+        final first = await services.operations.create(stationCall: 'N0AAA');
+        final second = await services.operations.create(stationCall: 'N0BBB');
+        extensions.lookupHold = Completer<void>();
+        view.show(first, const [], logRevision: 'r0');
+        await services.spots.refresh();
+        await Future<void>.delayed(_debounce);
+        view.show(second, const [], logRevision: 'r0');
+        await pumpEventQueue();
+        extensions.lookupHold!.complete();
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), {'arrlSection': 'EMA'});
+      }),
+    );
+
+    // A contest's lookups answer only for an operation running it: one that
+    // starts running it is asked again, not left with the guesses from before.
+    test(
+      'an operation whose activities change is asked about its spots again',
+      () => runOnFakeClock((_) async {
+        await openBoard(fetch: false);
+        extensions.answer = (call, operation) => call != 'K1ABC'
+            ? null
+            : {'state': 'CT', if (((operation['refs'] as List?) ?? const []).any((ref) => ref is Map && ref['type'] == 'arrl-ss')) 'arrlSection': 'CT'};
+        final operation = await services.operations.create(stationCall: 'N0DEV');
+        view.show(operation, const [], logRevision: 'r0');
+        await services.spots.refresh();
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), {'state': 'CT'});
+        final running = Operation(
+          uuid: operation.uuid,
+          data: {
+            ...operation.data,
+            'refs': [
+              {'type': 'arrl-ss', 'mode': 'CW'},
+            ],
+          },
+        );
+        view.show(running, const [], logRevision: 'r1');
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), {'state': 'CT', 'arrlSection': 'CT'});
+      }),
+    );
+
+    // What a source sends for "unknown" is no place and no state, and a panel
+    // would put the station at Null Island.
+    test(
+      'a placeholder position, a centroid, an empty state or section is no guess',
+      () => runOnFakeClock((_) async {
+        await openBoard(
+          fetch: false,
+          guesses: {
+            'K1ABC': <String, dynamic>{'state': '', 'arrlSection': ' ', 'grid': 'AA00aa', 'lat': 0, 'lon': 0},
+            'W1AW': <String, dynamic>{'grid': 'FN31', 'lat': 39.8, 'lon': -98.5, 'locSource': 'prefix'},
+          },
+        );
+        await show();
+        await services.spots.refresh();
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), isNull);
+        expect(services.spotBoard.guessFor(_spot('W1AW', hookKey: 'sota')), isNull);
+      }),
+    );
+
+    test(
+      'lookups failing outright leave the spots scored, and are asked again',
+      () => runOnFakeClock((_) async {
+        await openBoard(
+          fetch: false,
+          guesses: {
+            'K1ABC': <String, dynamic>{'state': 'CT'},
+          },
+        );
+        extensions.lookupsThrow = true;
+        final operation = await show();
+        await expectLater(services.spots.refresh(), completes);
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(services.spotBoard.scoresFor(operation.uuid), isNotEmpty);
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), isNull);
+        extensions.lookupsThrow = false;
+        view.show(operation, const [], logRevision: 'r1');
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), {'state': 'CT'});
+      }),
+    );
+  });
+
   // A contest cluster changes the board several times a second, and each
   // call's lookup reads the database. Asked once per change, per call and all
   // at once, those reads queue for seconds — long enough that every other
@@ -667,7 +859,9 @@ void main() {
         await openBoard();
         extensions.programs = callsProgram;
         extensions.runtimeGeneration.value++;
-        extensions.states = {'K1ABC': 'CT'};
+        extensions.guesses = {
+          'K1ABC': <String, dynamic>{'state': 'CT', 'arrlSection': 'CT', 'grid': 'FN31pr', 'lat': 41.7, 'lon': -72.7},
+        };
         view.show(
           Operation(uuid: '', data: const {'stationCall': 'ME, YOU', 'grid': 'FN31pr'}),
           const [],
@@ -677,6 +871,8 @@ void main() {
         await Future<void>.delayed(_debounce);
         await pumpEventQueue();
         Map<String, dynamic> askedAbout(String call) => extensions.claimed.lastWhere((qso) => (qso['their'] as Map)['call'] == call);
+        // The state alone: a program handed the rest would claim a place no
+        // one reported.
         expect((askedAbout('K1ABC')['their'] as Map)['guess'], {'state': 'CT'});
         expect((askedAbout('W1AW')['their'] as Map).containsKey('guess'), isFalse, reason: 'a lookup that knew no state adds none');
         expect(askedAbout('K1ABC')['our'], {'call': 'ME', 'grid': 'FN31pr'});

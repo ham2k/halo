@@ -151,6 +151,9 @@ class ExtensionSpotsReader {
           if (marking != null && marking.hiddenBy.isNotEmpty) 'hidden': true,
         },
         if (flags != null) 'annotations': {'worked': flags.worked, 'isSelf': flags.isSelf, 'notices': flags.notices.toList()..sort()},
+        // Guessed as the operation on screen runs, so only where the spots are
+        // judged against it.
+        if (judged != null) 'guess': ?board.guessFor(spot),
       };
     }
 

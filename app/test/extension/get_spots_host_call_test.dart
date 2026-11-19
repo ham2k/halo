@@ -39,6 +39,9 @@ class _FakeExtensions extends ExtensionService with LookupCallsOneByOne {
 
   final Map<String, String> continents = {};
   final Map<String, String> emojis = {};
+
+  /// The rest of each call's lookup guess.
+  final Map<String, Map<String, dynamic>> guesses = {};
   final List<String> lookedUp = [];
 
   /// The activities' hunting controls, which name each ref type's icon and tint.
@@ -89,7 +92,7 @@ class _FakeExtensions extends ExtensionService with LookupCallsOneByOne {
   }) async {
     lookedUp.add(call);
     return {
-      'guess': {'continent': continents[call], 'emoji': ?emojis[call]},
+      'guess': {'continent': continents[call], 'emoji': ?emojis[call], ...?guesses[call]},
     };
   }
 }
@@ -394,6 +397,28 @@ void main() {
         expect((spots.single as Map).containsKey('annotations'), isFalse, reason: '$params');
       }
     });
+  });
+
+  // A spot is a call and a frequency; a panel placing stations on a map, or
+  // lighting up a contest's sections, needs what the lookups know of each.
+  test("each spot carries what the board's lookups guess of its station, never the caller's own lookup", () async {
+    await boot([_spot('K1ABC', band: '20m', mode: 'SSB', freq: 14250.0), _spot('W1AW', band: '40m', mode: 'CW', freq: 7030.0)]);
+    extensions.guesses['K1ABC'] = {'state': 'CT', 'arrlSection': 'CT', 'grid': 'FN31pr', 'lat': 41.7, 'lon': -72.7, 'name': 'Al'};
+    final operation = await showOperation();
+    await pumpEventQueue();
+    final asked = extensions.lookedUp.length;
+    final spots = {
+      for (final spot in (await getSpots({'operationUuid': operation.uuid}) as List).cast<Map>()) (spot['their'] as Map)['call']: spot,
+    };
+    expect(spots['K1ABC']!['guess'], {'state': 'CT', 'arrlSection': 'CT', 'grid': 'FN31pr', 'lat': 41.7, 'lon': -72.7});
+    expect(spots['W1AW']!.containsKey('guess'), isFalse, reason: 'a lookup that knew nothing adds nothing');
+    expect(extensions.lookedUp, hasLength(asked), reason: 'read from the board, not looked up');
+    final plain = (await getSpots({'operationUuid': operation.uuid, 'annotate': false}) as List).cast<Map>();
+    expect(plain.any((spot) => spot.containsKey('guess')), isFalse, reason: 'as the sources gave them');
+    // Guessed as the operation on screen runs: another's spots carry none.
+    final other = await services.operations.create(stationCall: 'N0DEV');
+    final elsewhere = (await getSpots({'operationUuid': other.uuid}) as List).cast<Map>();
+    expect(elsewhere.any((spot) => spot.containsKey('guess')), isFalse);
   });
 
   // A panel drawing spots its own way would otherwise guess at the activity

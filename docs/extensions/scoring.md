@@ -84,7 +84,13 @@ registerHook("scoring", {
   Icons or `fa-`) and a `color` to mark its spot, before the chasing
   programs' and the references' icons, in the order the scorers run, each
   name once. Name one only where the spot is worth the operator's eye: a
-  multiplier, a station the contest is after. `contestScorer()` passes on
+  multiplier, a station the contest is after. A candidate's `their.guess`
+  holds what the app's offline lookups guess of the station, as for
+  `getSpots` (extension API 28): `state`, `arrlSection`, and `grid` and
+  `lat`/`lon` where a lookup placed it. The board looks each spotted call up
+  as it arrives rather than holding verdicts back for it, so a spot is first
+  judged without a guess and judged again once one lands.
+  `contestScorer()` passes on
   the `icon` and `color` a `scoreQso` verdict carries to the candidates and
   leaves them out of the logged contacts' cached verdicts. An `'always'`
   scorer's icon goes with a verdict that said only worked-before things
@@ -203,7 +209,9 @@ registerHook("chasing", {
   whose placeholder call is not a station. A contact's `our` carries the
   place it was made from (`grid`, `lat`/`lon`; its own, or its operation's),
   for a program that keeps a checklist per place; a spot candidate's `their`
-  carries the lookup's `guess.state` when an offline lookup knows one.
+  carries the lookup's `guess.state` when an offline lookup knows one, and
+  nothing else of the guess, which would have a program claim a place no
+  one reported.
 - **`holdersFor`** lists the holders a station claims as, the opaque strings
   you put on claims, so the app knows whose checklist to show: the first, in
   the current edition. `station` carries its call and, when it has one, its

@@ -20,6 +20,7 @@ import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 
 import 'chase_service.dart';
+import 'error_reporting_service.dart';
 import 'extensions/extension_service.dart';
 import 'hook_payloads.dart';
 import 'radio_service.dart';
@@ -253,7 +254,7 @@ class SpotBoardService extends ChangeNotifier {
     _judgements = {};
     _withChase = {};
     _callInfo.clear();
-    _candidateStates.clear();
+    _resetGuesses();
     _activityControls = const [];
     _controlsFor = null;
   }
@@ -281,6 +282,9 @@ class SpotBoardService extends ChangeNotifier {
       // new scores, they would show its verdicts until the next judging.
       _judgements = {};
       _chaseCandidates = {};
+      // Looked up as the operation switched away from runs, whose activities
+      // answer for it alone (a contest's sections).
+      _resetGuesses();
       _judgeSerial++;
       _mergeChase();
       // The pass made now answers whatever a pending debounce was waiting to.
@@ -396,7 +400,9 @@ class SpotBoardService extends ChangeNotifier {
     for (final call in calls) {
       _callInfoAsking[call] = done.future;
     }
-    final operationData = operation?.data ?? const <String, dynamic>{};
+    final operationData = _lookupOperation;
+    final round = _currentGuesses(operationData);
+    final generation = extensions.runtimeGeneration.value;
     try {
       for (final batch in _batches(calls)) {
         final results = await extensions.lookupCalls(
@@ -418,8 +424,29 @@ class SpotBoardService extends ChangeNotifier {
           for (final (i, result) in results.indexed)
             if (result != null) MapEntry(batch[i], _spotCallInfoFrom(result)),
         ]);
+        // The same answer is the guess for a spot of the call with no
+        // references, most of a cluster's: asked again for it, every call on
+        // the board would cost two lookups. Not once the board has turned to
+        // another operation, or its activities have changed, meanwhile.
+        if (round != _guessesRound || generation != extensions.runtimeGeneration.value) {
+          _bump();
+          continue;
+        }
+        final now = realNowMillis();
+        var learned = false;
+        for (final (i, result) in results.indexed) {
+          if (result == null) continue;
+          final guess = _spotGuessFrom(result);
+          learned |= guess != null;
+          _candidateGuesses['${batch[i].toUpperCase()}|'] = (guess: guess, atMillis: now);
+        }
+        if (learned && _shown != null) _scheduleScores();
         _bump();
       }
+    } catch (error, stack) {
+      // The crossing failed outright, which no answer says: reported once it
+      // keeps happening, and the calls asked again on the next refresh.
+      ErrorReportingService.reportIfRepeated(_lookupStreakKey, error, stack, context: 'Looking up spotted calls');
     } finally {
       _callInfoAsking.removeWhere((_, pass) => pass == done.future);
       done.complete();
@@ -538,10 +565,23 @@ class SpotBoardService extends ChangeNotifier {
         }
 
         final segmented = SegmentedOperation.from(operation: operation.data, qsos: qsos);
+        // Judged with what the board already guesses of each station, and
+        // looked up meanwhile for the rest, not waited on: a busy board's
+        // lookups would hold back every verdict, and every pass after this
+        // one, behind them. Ones that learn something judge the board again,
+        // and change what `getSpots` hands out.
+        _currentGuesses(segmented.current);
+        unawaited(
+          _lookUpGuesses(candidates.values, segmented.current).then((learned) {
+            if (!learned || operation.uuid != _shown?.operation.uuid) return;
+            _bump();
+            _scheduleScores();
+          }),
+        );
         final scored = await extensions.scoreCandidates(
           operation: segmented.current,
           operationUuid: operation.uuid,
-          candidates: candidates,
+          candidates: _withGuesses(candidates),
           segments: segmented.isSegmented ? segmented.payload : null,
           resume: scoring.liveResumeFor(operation, qsos),
           resumesFor: (scorers) => scoring.candidateResumesFor(operation, qsos, scorers),
@@ -598,8 +638,11 @@ class SpotBoardService extends ChangeNotifier {
     final serial = ++_judgeSerial;
     final judging = shown.chasing || chase.enabled;
     final guessing = judging && chase.goals.any((goal) => goal.on);
-    final candidates = guessing ? await _withGuessedStates(_chaseCandidates, shown.operation.data) : _chaseCandidates;
+    if (guessing) await _lookUpGuesses(_chaseCandidates.values, _lookupOperation);
     if (serial != _judgeSerial || _subscribers == 0) return;
+    // The state alone: what the programs chase by. The rest of the guess
+    // would have them claim a grid or a place no one reported.
+    final candidates = guessing ? _withGuesses(_chaseCandidates, only: const {'state'}) : _chaseCandidates;
     final judged = judging ? await chase.judge(candidates) : const <String, List<ChaseJudgement>>{};
     if (serial != _judgeSerial || _subscribers == 0) return;
     // Nothing judged before or now, as on every pass with chasing off: no
@@ -610,29 +653,40 @@ class SpotBoardService extends ChangeNotifier {
     _bump();
   }
 
-  /// The state an offline lookup gives each chase candidate, by its call and
-  /// refs ([_stateKey]): from call history for a station worked before, from
-  /// its park for a park spot. A spot carries no state of its own, so without
-  /// this a program that chases states judges no spot at all. A null state:
-  /// the lookup knew none, asked again once [_noStateRetry] has passed, since
-  /// the data the lookup reads (a parks list still downloading, a hook that
-  /// failed once) may have arrived since — but not on every pass, as most
-  /// such calls are stations no lookup will ever place, a DX station with no
-  /// state at all, and the board can hold hundreds. All of it is dropped
-  /// when the extensions runtime restarts ([_statesGeneration]).
-  final Map<String, ({String? state, int atMillis})> _candidateStates = {};
-  int? _statesGeneration;
+  /// What an offline lookup guesses of each candidate's station, by its call
+  /// and refs ([_guessKey]): from call history for a station worked before,
+  /// from its park for a park spot, from a contest's own data for its
+  /// stations ([_spotGuessFrom] keeps which parts). A spot carries none of
+  /// it, so without this a program that chases states judges no spot at all,
+  /// a scorer cannot tell a spot's section, and a panel cannot place it. A
+  /// null guess: the lookup knew nothing, asked again once [_noGuessRetry]
+  /// has passed, since the data the lookup reads (a parks list still
+  /// downloading, a hook that failed once) may have arrived since — but not
+  /// on every pass, as most such calls are stations no lookup will ever
+  /// place, a DX station with no state at all, and the board can hold
+  /// hundreds. All of it is dropped when the extensions runtime restarts,
+  /// when the board turns to another operation, and when the activities the
+  /// shown one runs change ([_currentGuesses]): a contest's lookups answer
+  /// for an operation running it alone.
+  final Map<String, ({Map<String, dynamic>? guess, int atMillis})> _candidateGuesses = {};
+  int? _guessesGeneration;
+  String? _guessesContext;
 
-  /// The [_stateKey]s a pass is still asking about, each to the pass's
+  /// Counts the times [_candidateGuesses] was emptied. A pass asking keeps
+  /// the round it began in, and writes nothing once it has moved on: its
+  /// answers are for an operation, or a runtime, no longer there.
+  int _guessesRound = 0;
+
+  /// The [_guessKey]s a pass is still asking about, each to the pass's
   /// completion. A pass starting meanwhile waits on it rather than asking
   /// again — the same reason as [_callInfoAsking] — and rather than judging
-  /// without the state, which the pass asking would land too late to show.
-  final Map<String, Future<void>> _statesAsking = {};
-  static const _noStateRetry = Duration(minutes: 5);
+  /// without the guess, which the pass asking would land too late to show.
+  final Map<String, Future<void>> _guessesAsking = {};
+  static const _noGuessRetry = Duration(minutes: 5);
 
   /// What an offline lookup's answer depends on: the call and the refs, not
   /// the band or mode a spot was on.
-  static String _stateKey(Map<String, dynamic> candidate) {
+  static String _guessKey(Map<String, dynamic> candidate) {
     final refs = [
       for (final ref in (candidate['refs'] as List?) ?? const [])
         if (ref is Map) '${ref['type']}:${ref['ref']}',
@@ -642,76 +696,171 @@ class SpotBoardService extends ChangeNotifier {
 
   static String _candidateCall(Map<String, dynamic> candidate) => asQsonString(asQsonMap(candidate['their'])?['call']) ?? '';
 
-  /// [candidates], each carrying its looked-up state as the lookup's guess
-  /// (`their.guess.state`), as a contact typed in the logging panel does.
-  Future<Map<String, Map<String, dynamic>>> _withGuessedStates(Map<String, Map<String, dynamic>> candidates, Map<String, dynamic> operationData) async {
-    final generation = extensions.runtimeGeneration.value;
-    if (generation != _statesGeneration) {
-      _candidateStates.clear();
-      // A pass still asking the old runtime drops its answers, so a pass
-      // waiting on it would come back without the states it was owed.
-      _statesAsking.clear();
-      _statesGeneration = generation;
+  /// What the board keeps of one call's offline guess, or null for nothing:
+  /// its state, its ARRL section, and where it is — a grid and coordinates
+  /// only where a lookup placed the station, never the country file's
+  /// centroid for its whole entity (`locSource: 'prefix'`). Probed, not cast,
+  /// as [_spotCallInfoFrom] is.
+  static Map<String, dynamic>? _spotGuessFrom(Map<String, dynamic> result) {
+    final guess = asQsonMap(result['guess']);
+    if (guess == null) return null;
+    String? text(Object? value) => switch (asQsonString(value)?.trim()) {
+      final text? when text.isNotEmpty => text,
+      _ => null,
+    };
+    // Placed as the app's own readers place a station: no centroid, no
+    // coordinate out of range, no placeholder a source sends for "unknown".
+    final location = locationFromGuess(guess);
+    final grid = guess['locSource'] == 'prefix' ? null : text(guess['grid']);
+    final kept = <String, dynamic>{
+      'state': ?text(guess['state']),
+      'arrlSection': ?text(guess['arrlSection']),
+      if (grid != null && !isPlaceholderGrid(grid)) 'grid': grid,
+      if (location != null) ...{'lat': location.latitude, 'lon': location.longitude},
+    };
+    return kept.isEmpty ? null : kept;
+  }
+
+  /// The offline guess for [spot]'s station, for `getSpots`: its first
+  /// operator's that the board has one for. Null until the board's lookups
+  /// have answered for it, and where they found nothing.
+  Map<String, dynamic>? guessFor(Map<String, dynamic> spot) {
+    for (final call in spotOperatorCalls(spot)) {
+      if (_candidateGuesses[_guessKey(spotCandidateQso(call, spot, now: 0))]?.guess case final guess?) return guess;
     }
+    return null;
+  }
+
+  /// What the board's lookups ask as: the current segment of the operation
+  /// shown, as the scorers judge it, so a contest started at a `start` event
+  /// is asked about as running. Empty with nothing shown.
+  Map<String, dynamic> get _lookupOperation {
+    final shown = _shown;
+    if (shown == null) return const {};
+    return SegmentedOperation.from(operation: shown.operation.data, qsos: shown.qsos).current;
+  }
+
+  /// The round [_candidateGuesses] answers for, as asked as [operation]:
+  /// begun anew first if the runtime has restarted, or the operation or the
+  /// activities it runs are not the ones it was filled for.
+  int _currentGuesses(Map<String, dynamic> operation) {
+    final generation = extensions.runtimeGeneration.value;
+    final context = jsonEncode([operation['uuid'], operation['refs']]);
+    if (generation != _guessesGeneration || context != _guessesContext) {
+      _resetGuesses();
+      _guessesGeneration = generation;
+      _guessesContext = context;
+    }
+    return _guessesRound;
+  }
+
+  /// Empties [_candidateGuesses] and begins a new round. The passes still
+  /// asking are forgotten too, so a pass starting now asks rather than waits
+  /// on answers that will be dropped.
+  void _resetGuesses() {
+    _candidateGuesses.clear();
+    _guessesAsking.clear();
+    _guessesContext = null;
+    _guessesRound++;
+  }
+
+  /// Asks the offline lookups about every one of [candidates] the board holds
+  /// no current guess for, as the [operation] at hand runs: a contest's own
+  /// lookups answer only for an operation running it. Whether any of them
+  /// came back knowing something new, which is worth judging the board again.
+  Future<bool> _lookUpGuesses(Iterable<Map<String, dynamic>> candidates, Map<String, dynamic> operation) async {
+    final round = _currentGuesses(operation);
+    final generation = extensions.runtimeGeneration.value;
+    bool stale() => _subscribers == 0 || round != _guessesRound || generation != extensions.runtimeGeneration.value;
     final now = realNowMillis();
-    bool known(String key) => switch (_candidateStates[key]) {
+    bool known(String key) => switch (_candidateGuesses[key]) {
       null => false,
-      (state: null, :final atMillis) => now - atMillis < _noStateRetry.inMilliseconds,
+      (guess: null, :final atMillis) => now - atMillis < _noGuessRetry.inMilliseconds,
       _ => true,
     };
-    final unknown = {
-      for (final candidate in candidates.values)
+    Map<String, Map<String, dynamic>> stillUnknown() => {
+      for (final candidate in candidates)
         // As in [refreshCallInfo]: a call too short to be asked stops a pass.
-        if (!known(_stateKey(candidate)) && _candidateCall(candidate).length >= 3) _stateKey(candidate): candidate,
+        if (!known(_guessKey(candidate)) && _candidateCall(candidate).length >= 3) _guessKey(candidate): candidate,
     };
-    final elsewhere = {for (final key in unknown.keys) ?_statesAsking[key]};
+    var unknown = stillUnknown();
+    // A spot with no references takes its guess from the call-info lookup
+    // ([refreshCallInfo]): one still out for the call is waited on rather
+    // than asked again beside it, and only what it did not answer for this
+    // round is asked after.
+    final fromCallInfo = {
+      for (final MapEntry(:key, value: candidate) in unknown.entries)
+        if (key.endsWith('|')) ?_callInfoAsking[_candidateCall(candidate)],
+    };
+    if (fromCallInfo.isNotEmpty) {
+      await Future.wait(fromCallInfo);
+      if (stale()) return false;
+      unknown = stillUnknown();
+    }
+    final elsewhere = {for (final key in unknown.keys) ?_guessesAsking[key]};
     final asking = [
       for (final entry in unknown.entries)
-        if (!_statesAsking.containsKey(entry.key)) entry,
+        if (!_guessesAsking.containsKey(entry.key)) entry,
     ];
     final done = Completer<void>();
     for (final entry in asking) {
-      _statesAsking[entry.key] = done.future;
+      _guessesAsking[entry.key] = done.future;
     }
+    var learned = false;
     try {
       for (final batch in _batches(asking)) {
         final results = await extensions.lookupCalls(
           [for (final entry in batch) (call: _candidateCall(entry.value), qso: entry.value)],
-          operation: operationData,
+          operation: operation,
           online: false,
           streakKey: _lookupStreakKey,
         );
         // Released while asking: what was found describes a board nobody
         // reads, and would outlive the release that cleared the cache.
-        if (_subscribers == 0 || generation != _statesGeneration) return candidates;
+        if (stale()) return false;
         if (results.every((result) => result == null)) break;
         // Null is no answer at all, as in [refreshCallInfo]: asked again
         // on the next pass rather than cached as knowing nothing.
-        _candidateStates.addEntries([
-          for (final (i, result) in results.indexed)
-            if (result != null) MapEntry(batch[i].key, (state: asQsonString(asQsonMap(result['guess'])?['state']), atMillis: now)),
-        ]);
+        for (final (i, result) in results.indexed) {
+          if (result == null) continue;
+          final guess = _spotGuessFrom(result);
+          learned |= guess != null;
+          _candidateGuesses[batch[i].key] = (guess: guess, atMillis: now);
+        }
       }
+    } catch (error, stack) {
+      // The crossing failed outright, which no answer says: reported once it
+      // keeps happening, and the calls asked again on the next pass.
+      ErrorReportingService.reportIfRepeated(_lookupStreakKey, error, stack, context: 'Looking up spotted stations');
+      return false;
     } finally {
-      _statesAsking.removeWhere((_, pass) => pass == done.future);
+      _guessesAsking.removeWhere((_, pass) => pass == done.future);
       done.complete();
     }
     await Future.wait(elsewhere);
-    if (_subscribers == 0 || generation != _statesGeneration) return candidates;
-    return {
-      for (final MapEntry(:key, :value) in candidates.entries)
-        key: switch (_candidateStates[_stateKey(value)]?.state) {
-          final state? => {
-            ...value,
-            'their': {
-              ...?asQsonMap(value['their']),
-              'guess': {...?asQsonMap(asQsonMap(value['their'])?['guess']), 'state': state},
+    return learned && !stale();
+  }
+
+  /// [candidates], each carrying what the board guesses of its station as
+  /// the lookup's guess (`their.guess`), as a contact typed in the logging
+  /// panel does: [only] those parts of it, where named.
+  Map<String, Map<String, dynamic>> _withGuesses(Map<String, Map<String, dynamic>> candidates, {Set<String>? only}) => {
+    for (final MapEntry(:key, :value) in candidates.entries)
+      key: switch (_candidateGuesses[_guessKey(value)]?.guess) {
+        final guess? when only == null || guess.keys.any(only.contains) => {
+          ...value,
+          'their': {
+            ...?asQsonMap(value['their']),
+            'guess': {
+              ...?asQsonMap(asQsonMap(value['their'])?['guess']),
+              for (final MapEntry(:key, :value) in guess.entries)
+                if (only == null || only.contains(key)) key: value,
             },
           },
-          null => value,
         },
-    };
-  }
+        _ => value,
+      },
+  };
 
   /// Folds [_judgements] into [_scores] ([ChaseService.withNotices]).
   void _mergeChase() {

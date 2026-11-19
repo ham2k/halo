@@ -596,6 +596,25 @@ export interface BoardSpot extends Spot {
   }
   /// Present when the spots were judged against an operation.
   annotations?: SpotAnnotations
+  /// What the app's offline lookups guess of the spotted station, as the
+  /// operation on screen runs (a contest's own lookups answer only for an
+  /// operation running it): its `state`, its `arrlSection`, and where it is,
+  /// `grid` and `lat`/`lon`, only where a lookup placed the station, never
+  /// its country's centroid. The parts nothing knows are absent, and so is
+  /// the whole where nothing is known yet: the board looks each call up as
+  /// it arrives, and a panel's `spots` trigger fires when an answer lands.
+  /// For a spot of several stations, the first one guessed. Absent with
+  /// `annotate: false`, and wherever `annotations` is. Extension API 28.
+  guess?: SpotGuess
+}
+
+/// What `BoardSpot.guess` holds. Extension API 28.
+export interface SpotGuess {
+  state?: string
+  arrlSection?: string
+  grid?: string
+  lat?: number
+  lon?: number
 }
 
 /// One of the icons a spot's `display` lists: an MDI or `fa-` name, the tint
