@@ -84,13 +84,26 @@ const spotLookupBatchSize = 20;
 const spotLookupCoalesce = Duration(milliseconds: 1500);
 
 class SpotBoardService extends ChangeNotifier {
-  SpotBoardService({required this.extensions, required this.spots, required this.settings, required this.radio, required this.scoring, this.chase});
+  SpotBoardService({
+    required this.extensions,
+    required this.spots,
+    required this.settings,
+    required this.radio,
+    required this.scoring,
+    required this.dataRevision,
+    this.chase,
+  });
 
   final ExtensionService extensions;
   final SpotsService spots;
   final SettingsService settings;
   final RadioService radio;
   final ScoringService scoring;
+
+  /// Ticks when the data files the offline lookups read have changed
+  /// ([DataFileManager.dataRevision]): every guess the board holds was asked
+  /// of the data before, and is asked again.
+  final ValueListenable<int> dataRevision;
 
   /// Where the chasing verdicts come from; none, and spots carry scoring
   /// alone.
@@ -205,6 +218,7 @@ class SpotBoardService extends ChangeNotifier {
       settings.addListener(_onSettingsChanged);
       radio.addListener(_onRadioChanged);
       chase?.addListener(_onChaseChanged);
+      dataRevision.addListener(_onDataChanged);
       _filtersKey = _currentFiltersKey;
       _disabledSources = settings.disabledSpotSources;
       _vfoKey = _currentVfoKey;
@@ -240,6 +254,7 @@ class SpotBoardService extends ChangeNotifier {
     settings.removeListener(_onSettingsChanged);
     radio.removeListener(_onRadioChanged);
     chase?.removeListener(_onChaseChanged);
+    dataRevision.removeListener(_onDataChanged);
     _unsubscribeSpots?.call();
     _unsubscribeSpots = null;
     _scoreDebounce?.cancel();
@@ -255,6 +270,7 @@ class SpotBoardService extends ChangeNotifier {
     _withChase = {};
     _callInfo.clear();
     _resetGuesses();
+    _loggedPlaces = const {};
     _activityControls = const [];
     _controlsFor = null;
   }
@@ -285,6 +301,7 @@ class SpotBoardService extends ChangeNotifier {
       // Looked up as the operation switched away from runs, whose activities
       // answer for it alone (a contest's sections).
       _resetGuesses();
+      _loggedPlaces = _placesOf(shown.qsos);
       _judgeSerial++;
       _mergeChase();
       // The pass made now answers whatever a pending debounce was waiting to.
@@ -293,8 +310,43 @@ class SpotBoardService extends ChangeNotifier {
       _activityControls = const [];
       _controlsFor = null;
     } else if (moved) {
+      _askAgainWhereLogged(shown.qsos);
       _scheduleScores();
     }
+  }
+
+  /// What the shown log says of each station's place, by call. The offline
+  /// lookups read the log too (call history), so a contact that changes it
+  /// changes what they would guess of that station.
+  Map<String, String> _loggedPlaces = const {};
+
+  static const _placeFields = ['state', 'grid', 'arrlSection', 'lat', 'lon', 'city', 'country'];
+
+  static Map<String, String> _placesOf(List<Qso> qsos) {
+    final places = <String, String>{};
+    for (final qso in qsos) {
+      if (qso.deleted) continue;
+      final their = asQsonMap(qso.data['their']);
+      final call = asQsonString(their?['call'])?.trim().toUpperCase();
+      if (their == null || call == null || call.isEmpty) continue;
+      places[call] = '${places[call] ?? ''}${jsonEncode([for (final field in _placeFields) their[field]])}';
+    }
+    return places;
+  }
+
+  /// Marks the guesses for each station whose place in [qsos] is not what it
+  /// was to be asked again on the next pass, each keeping its guess until
+  /// then: logged, edited, deleted or synced in, a contact can place a
+  /// station no other offline source could.
+  void _askAgainWhereLogged(List<Qso> qsos) {
+    final places = _placesOf(qsos);
+    final changed = {
+      for (final call in {...places.keys, ..._loggedPlaces.keys})
+        if (places[call] != _loggedPlaces[call]) call,
+    };
+    _loggedPlaces = places;
+    if (changed.isEmpty) return;
+    _candidateGuesses.updateAll((key, entry) => changed.contains(key.substring(0, key.indexOf('|'))) ? (guess: entry.guess, revision: -1) : entry);
   }
 
   void _onSpotsChanged() {
@@ -403,6 +455,7 @@ class SpotBoardService extends ChangeNotifier {
     final operationData = _lookupOperation;
     final round = _currentGuesses(operationData);
     final generation = extensions.runtimeGeneration.value;
+    final revision = dataRevision.value;
     try {
       for (final batch in _batches(calls)) {
         final results = await extensions.lookupCalls(
@@ -432,13 +485,10 @@ class SpotBoardService extends ChangeNotifier {
           _bump();
           continue;
         }
-        final now = realNowMillis();
         var learned = false;
         for (final (i, result) in results.indexed) {
           if (result == null) continue;
-          final guess = _spotGuessFrom(result);
-          learned |= guess != null;
-          _candidateGuesses['${batch[i].toUpperCase()}|'] = (guess: guess, atMillis: now);
+          learned |= _keepGuess('${batch[i].toUpperCase()}|', result, revision);
         }
         if (learned && _shown != null) _scheduleScores();
         _bump();
@@ -627,6 +677,13 @@ class SpotBoardService extends ChangeNotifier {
 
   void _onChaseChanged() => unawaited(_judge());
 
+  /// The data the lookups read has changed: a scoring pass asks again about
+  /// every spot ([_lookUpGuesses]), each keeping the guess it has until its
+  /// new one lands.
+  void _onDataChanged() {
+    if (_shown != null) _scheduleScores();
+  }
+
   /// Judges [_chaseCandidates] under every goal that is on. Asks the programs
   /// only about candidates they have not seen ([ChaseService.judge] keeps
   /// their claims), so a checklist changing costs a reread of the table, not
@@ -659,16 +716,20 @@ class SpotBoardService extends ChangeNotifier {
   /// stations ([_spotGuessFrom] keeps which parts). A spot carries none of
   /// it, so without this a program that chases states judges no spot at all,
   /// a scorer cannot tell a spot's section, and a panel cannot place it. A
-  /// null guess: the lookup knew nothing, asked again once [_noGuessRetry]
-  /// has passed, since the data the lookup reads (a parks list still
-  /// downloading, a hook that failed once) may have arrived since — but not
-  /// on every pass, as most such calls are stations no lookup will ever
-  /// place, a DX station with no state at all, and the board can hold
-  /// hundreds. All of it is dropped when the extensions runtime restarts,
+  /// null guess: the lookup knew nothing.
+  ///
+  /// Each is kept with the [dataRevision] it was asked at, and asked again
+  /// once that has ticked (a parks list or a contest's call history that was
+  /// still downloading may know the station now), once a contact changes
+  /// what the log says of the station ([_askAgainWhereLogged]), and a while
+  /// after a lookup source failed answering ([_guessesFailedAt]). Not
+  /// otherwise, as most of a board's stations no offline lookup will ever
+  /// place better (a DX station, known by its country alone), and a board
+  /// can hold hundreds. All of it is dropped when the extensions runtime restarts,
   /// when the board turns to another operation, and when the activities the
   /// shown one runs change ([_currentGuesses]): a contest's lookups answer
   /// for an operation running it alone.
-  final Map<String, ({Map<String, dynamic>? guess, int atMillis})> _candidateGuesses = {};
+  final Map<String, ({Map<String, dynamic>? guess, int revision})> _candidateGuesses = {};
   int? _guessesGeneration;
   String? _guessesContext;
 
@@ -682,7 +743,29 @@ class SpotBoardService extends ChangeNotifier {
   /// again — the same reason as [_callInfoAsking] — and rather than judging
   /// without the guess, which the pass asking would land too late to show.
   final Map<String, Future<void>> _guessesAsking = {};
-  static const _noGuessRetry = Duration(minutes: 5);
+
+  /// The [_candidateGuesses] whose last answer had a lookup source fail, each
+  /// to when: asked again once [_failedRetry] has passed rather than when
+  /// the data changes, since the source may answer next time.
+  final Map<String, int> _guessesFailedAt = {};
+  static const _failedRetry = Duration(minutes: 5);
+
+  /// Keeps [result] as what the board guesses of [key]'s station, asked at
+  /// [revision]. Whether it knows something.
+  ///
+  /// A result with a source that threw (`failed`) may know less than the
+  /// sources do, so it replaces no guess the board already has.
+  bool _keepGuess(String key, Map<String, dynamic> result, int revision) {
+    final guess = _spotGuessFrom(result);
+    if (result['failed'] case final List<dynamic> failed when failed.isNotEmpty) {
+      _guessesFailedAt[key] = realNowMillis();
+      _candidateGuesses[key] = (guess: guess ?? _candidateGuesses[key]?.guess, revision: revision);
+    } else {
+      _guessesFailedAt.remove(key);
+      _candidateGuesses[key] = (guess: guess, revision: revision);
+    }
+    return guess != null;
+  }
 
   /// What an offline lookup's answer depends on: the call and the refs, not
   /// the band or mode a spot was on.
@@ -759,6 +842,7 @@ class SpotBoardService extends ChangeNotifier {
   /// on answers that will be dropped.
   void _resetGuesses() {
     _candidateGuesses.clear();
+    _guessesFailedAt.clear();
     _guessesAsking.clear();
     _guessesContext = null;
     _guessesRound++;
@@ -767,17 +851,20 @@ class SpotBoardService extends ChangeNotifier {
   /// Asks the offline lookups about every one of [candidates] the board holds
   /// no current guess for, as the [operation] at hand runs: a contest's own
   /// lookups answer only for an operation running it. Whether any of them
-  /// came back knowing something new, which is worth judging the board again.
+  /// came back knowing something new, or the data changed while it asked,
+  /// either of which is worth judging (and asking) the board again.
   Future<bool> _lookUpGuesses(Iterable<Map<String, dynamic>> candidates, Map<String, dynamic> operation) async {
     final round = _currentGuesses(operation);
     final generation = extensions.runtimeGeneration.value;
     bool stale() => _subscribers == 0 || round != _guessesRound || generation != extensions.runtimeGeneration.value;
+    final revision = dataRevision.value;
     final now = realNowMillis();
-    bool known(String key) => switch (_candidateGuesses[key]) {
-      null => false,
-      (guess: null, :final atMillis) => now - atMillis < _noGuessRetry.inMilliseconds,
-      _ => true,
-    };
+    bool known(String key) =>
+        _candidateGuesses[key]?.revision == revision &&
+        switch (_guessesFailedAt[key]) {
+          null => true,
+          final at => now - at < _failedRetry.inMilliseconds,
+        };
     Map<String, Map<String, dynamic>> stillUnknown() => {
       for (final candidate in candidates)
         // As in [refreshCallInfo]: a call too short to be asked stops a pass.
@@ -823,9 +910,7 @@ class SpotBoardService extends ChangeNotifier {
         // on the next pass rather than cached as knowing nothing.
         for (final (i, result) in results.indexed) {
           if (result == null) continue;
-          final guess = _spotGuessFrom(result);
-          learned |= guess != null;
-          _candidateGuesses[batch[i].key] = (guess: guess, atMillis: now);
+          learned |= _keepGuess(batch[i].key, result, revision);
         }
       }
     } catch (error, stack) {
@@ -838,7 +923,7 @@ class SpotBoardService extends ChangeNotifier {
       done.complete();
     }
     await Future.wait(elsewhere);
-    return learned && !stale();
+    return (learned || revision != dataRevision.value) && !stale();
   }
 
   /// [candidates], each carrying what the board guesses of its station as
@@ -889,6 +974,7 @@ class SpotBoardService extends ChangeNotifier {
       settings.removeListener(_onSettingsChanged);
       radio.removeListener(_onRadioChanged);
       chase?.removeListener(_onChaseChanged);
+      dataRevision.removeListener(_onDataChanged);
       _unsubscribeSpots?.call();
     }
     super.dispose();

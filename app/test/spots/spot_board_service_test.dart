@@ -54,6 +54,10 @@ class _FakeExtensions extends ExtensionService {
   /// Lookups fail outright, as a runtime that cannot cross does.
   bool lookupsThrow = false;
 
+  /// Calls whose lookup answers with a source that threw: nothing known,
+  /// and that source named under `failed`.
+  final Set<String> failing = {};
+
   /// The failure streaks the lookups were counted toward.
   final Set<String?> streakKeys = {};
 
@@ -121,6 +125,12 @@ class _FakeExtensions extends ExtensionService {
     lookedUp.add(call);
     streakKeys.add(streakKey);
     if (unanswered.contains(call)) return null;
+    if (failing.contains(call)) {
+      return {
+        'guess': <String, dynamic>{},
+        'failed': const ['ham2k-call-history'],
+      };
+    }
     if (answer?.call(call, operation) case final guess?) return {'guess': guess};
     if (guesses.containsKey(call)) return {'guess': guesses[call]};
     return {
@@ -661,6 +671,73 @@ void main() {
         expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), {'state': 'CT'});
       }),
     );
+
+    // The call history answers from the log, which no data file tick follows.
+    test(
+      'a contact that changes what the log says of a station has it asked again, and no other',
+      () => runOnFakeClock((_) async {
+        await openBoard(fetch: false);
+        final operation = await show();
+        await services.spots.refresh();
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), isNull);
+
+        extensions.states = {'K1ABC': 'CT', 'W1AW': 'CT'};
+        final logged = Qso(
+          uuid: 'q1',
+          operationUuid: operation.uuid,
+          data: const {
+            'their': {'call': 'K1ABC', 'state': 'CT'},
+          },
+        );
+        view.show(operation, [logged], logRevision: 'r1');
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), {'state': 'CT'});
+        expect(services.spotBoard.guessFor(_spot('W1AW', hookKey: 'sota')), isNull, reason: 'the log says nothing new of it');
+      }),
+    );
+
+    // A source that threw left the answer knowing less than the sources do:
+    // it is no "nothing known" to keep until the data changes.
+    test(
+      'an answer with a source that failed keeps the guess the board had, and is asked again in a while',
+      () => runOnFakeClock((async) async {
+        await openBoard(
+          fetch: false,
+          guesses: {
+            'K1ABC': <String, dynamic>{'state': 'CT'},
+          },
+        );
+        final operation = await show();
+        await services.spots.refresh();
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), {'state': 'CT'});
+
+        extensions.failing.add('K1ABC');
+        services.dataRevision.value++;
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), {'state': 'CT'}, reason: 'kept through the failed answer');
+
+        extensions.failing.clear();
+        extensions.guesses = {
+          'K1ABC': <String, dynamic>{'state': 'NY'},
+        };
+        view.show(operation, const [], logRevision: 'r1');
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), {'state': 'CT'}, reason: 'not asked again on every pass');
+
+        async.elapseBlocking(const Duration(minutes: 6));
+        view.show(operation, const [], logRevision: 'r2');
+        await Future<void>.delayed(_lookupWait);
+        await pumpEventQueue();
+        expect(services.spotBoard.guessFor(_spot('K1ABC', hookKey: 'pota')), {'state': 'NY'});
+      }),
+    );
   });
 
   // A contest cluster changes the board several times a second, and each
@@ -880,13 +957,13 @@ void main() {
     );
 
     // A lookup that knew no state may have answered before the parks list
-    // downloaded, or while a hook was failing: cached for the session, that
-    // spot would never be judged for a state. Asked on every refresh, each
-    // of a board's hundreds of DX stations, which no lookup will ever place,
-    // is a crossing into the runtime per pass. And a restarted runtime may
-    // answer differently from the one that filled the cache.
+    // downloaded: cached for the session, that spot would never be judged
+    // for a state. Asked on every refresh, or every few minutes, each of a
+    // board's hundreds of DX stations, which no lookup will ever place, is a
+    // crossing into the runtime per pass. And a restarted runtime may answer
+    // differently from the one that filled the cache.
     test(
-      'a lookup that knew no state is asked again after a while, not on every refresh, and a restarted runtime is asked about every spot',
+      'a lookup that knew no state is asked again once the data files change, not on every refresh or as time passes, and a restarted runtime is asked about every spot',
       () => runOnFakeClock((async) async {
         await openBoard();
         extensions.programs = callsProgram;
@@ -908,18 +985,29 @@ void main() {
         await pumpEventQueue();
         expect(guessFor('W1AW'), isNull, reason: 'a refresh right away does not ask again');
 
-        async.elapseBlocking(const Duration(minutes: 5));
+        async.elapseBlocking(const Duration(minutes: 6));
         await services.spots.refresh();
         await Future<void>.delayed(_debounce);
         await pumpEventQueue();
-        expect(guessFor('W1AW'), {'state': 'NY'});
+        expect(guessFor('W1AW'), isNull, reason: 'nor as time passes');
+
+        services.dataRevision.value++;
+        await Future<void>.delayed(_debounce);
+        await pumpEventQueue();
+        expect(guessFor('W1AW'), {'state': 'NY'}, reason: 'the data files changed, with no spot refresh');
 
         extensions.states = {'W1AW': 'NJ'};
+        services.dataRevision.value++;
+        await Future<void>.delayed(_debounce);
+        await pumpEventQueue();
+        expect(guessFor('W1AW'), {'state': 'NJ'}, reason: 'a guess found is asked again too');
+
+        extensions.states = {'W1AW': 'CT'};
         extensions.runtimeGeneration.value++;
         await services.spots.refresh();
         await Future<void>.delayed(_debounce);
         await pumpEventQueue();
-        expect(guessFor('W1AW'), {'state': 'NJ'}, reason: 'a state is kept across spot refreshes only until the runtime restarts');
+        expect(guessFor('W1AW'), {'state': 'CT'}, reason: 'a state is kept across spot refreshes only until the runtime restarts');
         expect(extensions.streakKeys, {'extensions:lookup-call:spot-board'}, reason: "the board's lookups are not the operator's");
       }),
     );

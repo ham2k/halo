@@ -605,6 +605,7 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
     settings: settings,
     radio: radio,
     scoring: scoring,
+    dataRevision: dataRevision,
     chase: chase,
   );
 

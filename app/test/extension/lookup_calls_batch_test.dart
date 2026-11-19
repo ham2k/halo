@@ -48,6 +48,21 @@ void main() {
     expect([for (final answer in answers) (answer?['guess'] as Map?)?['name']], ['Name of W1AW', null, 'Name of K1ABC']);
   });
 
+  // An answer whose sources partly failed says so, for a caller that keeps
+  // it: it may know less than the sources do.
+  test('an answer names the lookup sources that failed', () async {
+    final host = FakeExtensionHost({
+      'lookupService:core:lookupCallInfo': (Object? args) => {
+        'guess': <String, dynamic>{},
+        'failed': ['ham2k-call-history'],
+      },
+    });
+    final answers = await ExtensionServiceWithFakeHost(
+      host,
+    ).lookupCalls([(call: 'W1AW', qso: const {})], operation: const {}, online: false, streakKey: 'test:lookups');
+    expect(answers.single?['failed'], ['ham2k-call-history']);
+  });
+
   // The runtime refuses a call shorter than a callsign can be, as
   // `lookupCall` does — asked anyway, it would spend a slot in the batch.
   test('a call too short to be a callsign answers null without being asked', () async {

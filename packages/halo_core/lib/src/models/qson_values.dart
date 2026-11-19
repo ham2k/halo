@@ -245,7 +245,7 @@ final _lookupGuessFields = <String, QsonFieldType>{
   'ituRegion': QsonFieldType.number,
 };
 
-const _lookupResultFields = <String, QsonFieldType>{'guess': QsonFieldType.map, 'lookups': QsonFieldType.list};
+const _lookupResultFields = <String, QsonFieldType>{'guess': QsonFieldType.map, 'lookups': QsonFieldType.list, 'failed': QsonFieldType.list};
 final _lookupNested = <String, Map<String, QsonFieldType>>{'guess': _lookupGuessFields};
 
 /// `event`'s own kind, which [Qso.eventKind] reads.

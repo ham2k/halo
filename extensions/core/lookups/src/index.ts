@@ -53,16 +53,21 @@ async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Pro
 
   // A hook that threw has already been isolated (its entry carries the
   // error instead of poisoning the others) — but it must not be *silent*,
-  // or a broken lookup source just looks like "no data" in the field.
+  // or a broken lookup source just looks like "no data" in the field: it is
+  // logged, and named in `failed` for a caller that keeps the answer.
+  const failed: string[] = []
   for (const entry of entries) {
-    if (!entry.ok) host.log(`ERROR lookup hook '${entry.key}' failed for ${call}: ${entry.error}`)
+    if (entry.ok) continue
+    host.log(`ERROR lookup hook '${entry.key}' failed for ${call}: ${entry.error}`)
+    failed.push(entry.key)
   }
 
   // The running `guess` above is what each hook sees of the sources before
   // it. The answer is settled afresh from everything fetched, against the
   // contact's refs and what the operator entered — the same settling a saved
   // contact gets from `resolveCallInfo`.
-  return { lookups, guess: normalized(call, resolveGuess(call, lookups, args.qso as Record<string, unknown>)) }
+  const settled = normalized(call, resolveGuess(call, lookups, args.qso as Record<string, unknown>))
+  return failed.length > 0 ? { lookups, guess: settled, failed } : { lookups, guess: settled }
 }
 
 /// A saved contact's guess settled again from what is already stored on it,

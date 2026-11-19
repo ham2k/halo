@@ -393,6 +393,10 @@ export interface LookupServiceRequest {
 export interface LookupServiceResult {
   lookups: CallInfoLookup[]
   guess: CallInfo
+  /// The keys of the `lookup` hooks that threw, whose sources the guess is
+  /// missing: an answer that may know less than the sources do, not one
+  /// that found nothing. Absent when every hook answered.
+  failed?: string[]
 }
 
 /// Registered under category `lookupService`, key `core` — the single
