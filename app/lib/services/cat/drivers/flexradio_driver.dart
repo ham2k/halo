@@ -344,16 +344,30 @@ class FlexRadioSession
 
   /// Sweeps beyond the slice's own, each a pan HaLo makes on its own
   /// station, for a display at another span (docs/design/cat.md § Several
-  /// scopes). Bound to another station there is no pan to make: its slices'
-  /// scopes are DAX IQ, one stream a pan.
+  /// scopes). Bound to another station there is no pan to make: a slice's
+  /// sweeps beyond its own come from its pan's DAX IQ ([FlexDaxSpectrum.openSub]).
   final _extraScopes = <FlexPanSpectrum>[];
 
   /// What the connection says to this slice's scopes: its own and [_extraScopes].
   late final _scopes = _FlexScopes(this);
 
+  /// A sweep from DAX IQ takes any span; a pan of HaLo's own the spans a pan has.
+  @override
+  bool get scopesTakeAnySpan => !_radio.gui;
+
   @override
   SpectrumScope? openScope(SpectrumSink sink) {
-    if (!_radio.gui || !_spectrum.wanted) return null;
+    if (!_spectrum.wanted) return null;
+    // Bound to another station: from the pan's DAX IQ, which the slice's own scope receives already.
+    if (_spectrum case final FlexDaxSpectrum dax) {
+      return dax.openSub(
+        sink,
+        receiverHz: () => switch (_radio._slices[slice]?.freqKHz) {
+          final khz? => (khz * 1000).round(),
+          null => null,
+        },
+      );
+    }
     final scope = FlexPanSpectrum(
       send: _sendForSpectrum,
       sink: sink,

@@ -4289,8 +4289,23 @@ panadapter. A display's recentre moves its own sweep. An extension's
 speed and reference level, which are the receiver's look. A sweep the radio
 turns down, or that fails later, is closed, its displays crop the narrowest
 wider one, and no more are asked for until the scope starts again. HaLo's own
-Flex station runs one as a pan of its own (below); a radio with one scope
-(Icom, K4, TCI) crops as before.
+Flex station runs one as a pan of its own (below). A Flex followed on
+another station through DAX IQ, and a TCI server, transform the same IQ
+again for each narrower display (`iq_sub_scope.dart`,
+`MultiScopeSession.scopesTakeAnySpan`): at the display's own width rather
+than one of the IQ rates' spans, since a crop of a rounded-up span would
+spread it over few of its points, and with the smallest transform that gives
+the span between a thousand and two thousand points of its own, up to 16k
+points: finer is twice the work and smears keying across the waterfall's
+rows. It is centred on the receiver's frequency (the slice's, or the VFO)
+until a display moves it, never past the clear middle of the IQ; a display
+moved past that moves the session's IQ there, as a recentre of its own scope
+does, and a middle a display put is let go for the receiver's once the IQ
+has moved away from it. No more than three sweeps run beyond the widest
+(`spectrumExtraScopesMax`), each a pan of the radio's or a transform of
+every sample; a display past them crops the narrowest that covers it. An
+SDR's IQ, at up to 2.4 MS/s and not sized by the app, gets none yet, and a
+radio with one scope (Icom, K4) crops as before.
 
 A display beside the radio's own, such as a band map, is a **secondary** one
 (a scene band scope's `secondary`): it draws the session's own sweep, the

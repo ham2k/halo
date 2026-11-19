@@ -728,11 +728,26 @@ void main() {
         });
       });
 
-      // Bound to another station, the radio sends its pans' FFT to that station alone.
-      test('is not offered on a slice followed on another station', () {
+      // Bound to another station, the radio sends its pans' FFT to that station alone, and a pan
+      // made there would land in that station's window: the slice's own DAX IQ is what there is.
+      test("on a slice followed on another station, is transformed from the pan's DAX IQ, with no pan made", () {
         fakeAsync((async) {
           startOn(async, gui: false);
-          expect(ownA.openScope(_ScopeSink()), isNull);
+          answerPans(radio, sink.sent);
+          final create = sink.sent.lastWhere((line) => line.contains('stream create'));
+          say(radio, 'R${create.substring(1, create.indexOf('|'))}|0|20000000\n');
+          // The slice off the pan's middle: where the sweep sits says whose frequency it follows.
+          say(radio, 'S5AC2F980|slice 2 RF_frequency=14.080000\n');
+          final sweeps = _ScopeSink();
+          ownA.openScope(sweeps)!.setSpectrum(const SpectrumRequest(spanHz: 12000));
+          for (var p = 0; p < 20; p++) {
+            deliver!(_daxPacket(0x20000000, 512));
+          }
+          expect(commands(), isNot(contains('display pan create x=2048 y=400')));
+          expect(sweeps.frames, isNotEmpty);
+          final frame = sweeps.frames.last;
+          expect(frame.highHz - frame.lowHz, closeTo(24000, 100));
+          expect((frame.lowHz + frame.highHz) / 2, closeTo(14080000, 100), reason: "on the slice's frequency, not the pan's middle");
           finish(async);
         });
       });

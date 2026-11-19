@@ -3,6 +3,11 @@
 
 part of 'cat_service.dart';
 
+/// The most sweeps a session runs beyond its own: each is a panadapter of the
+/// radio's or a transform of every IQ sample here, and a display past them
+/// crops the narrowest sweep that covers it.
+const spectrumExtraScopesMax = 3;
+
 extension CatServiceSpectrum on CatService {
   /// Sweeps from [uuid]'s scope, for a display to draw.
   ///
@@ -339,16 +344,27 @@ extension CatServiceSpectrum on CatService {
   /// wider one.
   void _spectrumSpan(_NodeRuntime runtime, SpectrumSession session) {
     final capabilities = session.spectrumCapabilities;
-    final named = {
+    int snapped(int width) => capabilities.spansHz.firstWhere((s) => s * 2 >= width, orElse: () => capabilities.spansHz.last);
+    final widths = {
       for (final MapEntry(key: owner, value: width) in runtime.spectrumWidths.entries)
-        if (width > 0) owner: capabilities.spansHz.firstWhere((s) => s * 2 >= width, orElse: () => capabilities.spansHz.last),
+        if (width > 0) owner: width,
     };
-    if (!capabilities.autoSpan || capabilities.spansHz.isEmpty || named.isEmpty) {
+    if (!capabilities.autoSpan || capabilities.spansHz.isEmpty || widths.isEmpty) {
       _closeSpectrumScopes(runtime);
       return;
     }
-    final spans = named.values.toSet().toList()..sort((a, b) => b.compareTo(a));
-    final span = spans.first;
+    // The session's own at a span it has; a sweep beyond it at each narrower display's own width
+    // where it takes any, which a crop of a rounded-up span would spread over few of its points.
+    final anySpan = session is MultiScopeSession && session.scopesTakeAnySpan;
+    final span = snapped(widths.values.reduce((a, b) => a > b ? a : b));
+    final named = {
+      for (final MapEntry(key: owner, value: width) in widths.entries)
+        owner: switch (snapped(width)) {
+          final own when anySpan && own < span => (width + 1) ~/ 2,
+          final own => own,
+        },
+    };
+    final spans = [span, ...named.values.where((s) => s < span).toSet().toList()..sort((a, b) => b.compareTo(a))];
     if (runtime.spectrumSpanAsked != span) {
       try {
         if (session.setSpectrum(SpectrumRequest(spanHz: span))) runtime.spectrumSpanAsked = span;
@@ -356,7 +372,8 @@ extension CatServiceSpectrum on CatService {
         ErrorReportingService.report(e, st, context: 'cat:spectrum-span');
       }
     }
-    _spectrumScopes(runtime, session, spans.skip(1).take(runtime.spectrumScopeLimit ?? spans.length).toList());
+    final extras = (runtime.spectrumScopeLimit ?? spans.length).clamp(0, spectrumExtraScopesMax);
+    _spectrumScopes(runtime, session, spans.skip(1).take(extras).toList());
     // The narrowest scope at least as wide as each display's span: its own where one runs.
     final running = [(0, span), for (final MapEntry(:key, :value) in runtime.spectrumScopes.entries) (key, value.span ?? span)]
       ..sort((a, b) => a.$2.compareTo(b.$2));

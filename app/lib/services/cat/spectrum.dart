@@ -215,6 +215,12 @@ abstract class MultiScopeSession implements SpectrumSession {
   /// so through [SpectrumSink.reportSpectrumProblem], and is then closed by
   /// the caller.
   SpectrumScope? openScope(SpectrumSink sink);
+
+  /// Whether a sweep beyond the session's own takes any span, as one
+  /// transformed here from IQ does: each display narrower than the widest is
+  /// then given its own width, where otherwise it is rounded up to the
+  /// session's [SpectrumCapabilities.spansHz], as the session's own sweep is.
+  bool get scopesTakeAnySpan;
 }
 
 /// A sweep beyond a [MultiScopeSession]'s own, with that session's

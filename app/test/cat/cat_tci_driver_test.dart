@@ -299,6 +299,27 @@ void main() {
       expect(peakHz, closeTo(14080000, 100), reason: 'a sweep mirrored or off-centre puts every signal at the wrong frequency');
     });
 
+    // Cropped from the widest, a 6 kHz panel shows a sixteenth of a 48 kHz sweep's points; the
+    // IQ is the app's to transform as finely as the panel needs.
+    test('a narrower display gets a sweep of its own from the same IQ, on the VFO', () {
+      session.feed('dds:0,14074000;vfo:0,0,14080000;');
+      session.startSpectrum();
+      final narrow = _FakeSink();
+      session.openScope(narrow)!.setSpectrum(const SpectrumRequest(spanHz: 3000));
+      for (var i = 0; i < 4; i++) {
+        sink.iq.add(_iqFrame(_tone(4096, offsetHz: 6000)));
+      }
+      final frame = narrow.frames.last;
+      expect(frame.highHz - frame.lowHz, closeTo(6000, 50));
+      expect((frame.lowHz + frame.highHz) / 2, closeTo(14080000, 50), reason: "on the receiver's VFO, not the IQ's middle");
+      var peak = 0;
+      for (var i = 1; i < frame.levels.length; i++) {
+        if (frame.levels[i] > frame.levels[peak]) peak = i;
+      }
+      expect(frame.lowHz + peak * (frame.highHz - frame.lowHz) / (frame.levels.length - 1), closeTo(14080000, 20));
+      expect(sink.sent.where((c) => c.startsWith('IQ_START')), hasLength(1), reason: 'the same stream, not another');
+    });
+
     test("another receiver's IQ, or an audio stream, is not drawn", () {
       session.feed('dds:0,14074000;');
       session.startSpectrum();

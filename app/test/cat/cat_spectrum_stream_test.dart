@@ -72,6 +72,11 @@ class _Scope implements TransceiverSession, MultiScopeSession {
   /// How many sweeps beyond its own the radio runs: none unless a test gives it some.
   int spare = 0;
 
+  /// Whether those sweeps take any span, as one transformed from IQ does.
+  bool anySpan = false;
+  @override
+  bool get scopesTakeAnySpan => anySpan;
+
   /// A problem each sweep says as it is opened, as a Flex pan does with no UDP socket.
   String? failOnOpen;
   final extras = <_Extra>[];
@@ -542,6 +547,49 @@ void main() {
       expect(scope.extras, isEmpty);
       expect(scope.spans, isNot(contains(80000)), reason: "never sized for the map's width");
       expect(scope.spans.last, 10000);
+    });
+
+    // Each sweep is a pan of the radio's or a transform of every IQ sample: five panes at five
+    // spans would run five, where the narrowest two crop well enough what the next one shows.
+    test('no more than three sweeps run beyond the widest, the narrowest displays cropping the narrowest of them', () async {
+      final scope = driver.sessions.single
+        ..capabilities = const SpectrumCapabilities(spansHz: [5000, 10000, 20000, 40000, 80000], refMinDb: 0, refMaxDb: 1, refStepDb: 1, autoSpan: true)
+        ..running = true
+        ..spare = 5;
+      final drawing = cat.spectrumFrames(uuid).listen((_) {});
+      addTearDown(drawing.cancel);
+      final narrowest = Object(), drawn = <int>[];
+      final draws = cat.spectrumFrames(uuid, owner: narrowest).listen((f) => drawn.add(f.lowHz));
+      addTearDown(draws.cancel);
+      for (final width in [160000, 80000, 40000, 20000]) {
+        cat.wantSpectrumWidth(uuid, Object(), width);
+      }
+      cat.wantSpectrumWidth(uuid, narrowest, 10000);
+      await pumpEventQueue();
+      expect(scope.spans.last, 80000);
+      expect([for (final extra in scope.extras) extra.span], [40000, 20000, 10000]);
+      for (final (i, extra) in scope.extras.indexed) {
+        extra.sweep(i + 1);
+      }
+      await pumpEventQueue();
+      expect(drawn, [3], reason: 'the narrowest sweep that covers it');
+    });
+
+    // Rounded up to the IQ rate's spans, a 24 kHz panel's own sweep would be 40 kHz wide, and the
+    // panel would crop half its points away.
+    test("a sweep transformed from IQ is given the display's own width, the session's still a span it has", () async {
+      final scope = driver.sessions.single
+        ..capabilities = spans
+        ..running = true
+        ..spare = 1
+        ..anySpan = true;
+      final drawing = cat.spectrumFrames(uuid).listen((_) {});
+      addTearDown(drawing.cancel);
+      cat.wantSpectrumWidth(uuid, Object(), 150000);
+      cat.wantSpectrumWidth(uuid, Object(), 24000);
+      await pumpEventQueue();
+      expect(scope.spans.last, 80000);
+      expect(scope.extras.single.span, 12000);
     });
 
     test('with no sweep to spare, a narrower display crops the widest', () async {

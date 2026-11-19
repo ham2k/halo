@@ -60,7 +60,7 @@ class TciDriver extends EquipmentDriver with AlwaysOffersScope {
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => TciSession(sink, config: config);
 }
 
-class TciSession implements TransceiverSession, PttSession, CwKeyerSession, RawCommandSession, SpectrumSession {
+class TciSession implements TransceiverSession, PttSession, CwKeyerSession, RawCommandSession, MultiScopeSession {
   final EquipmentSink _sink;
 
   /// What `DRIVE`'s 0–100 is a share of.
@@ -144,7 +144,10 @@ class TciSession implements TransceiverSession, PttSession, CwKeyerSession, RawC
     bool ours(int index) => args.length > index && int.tryParse(args[0]) == tciReceiver;
     switch (command.name) {
       case 'vfo' when ours(2) && int.tryParse(args[1]) == tciChannel:
-        if (int.tryParse(args[2]) case final hz? when hz > 0) _sink.report(VfoReading(freqKHz: hz / 1000));
+        if (int.tryParse(args[2]) case final hz? when hz > 0) {
+          _vfoHz = hz;
+          _sink.report(VfoReading(freqKHz: hz / 1000));
+        }
       case 'modulation' when ours(1):
         // A mode with no app name (DSB, DRM) is reported as nothing, so the
         // mode last shown is not overwritten with a wrong one.
@@ -269,6 +272,17 @@ class TciSession implements TransceiverSession, PttSession, CwKeyerSession, RawC
 
   @override
   bool setSpectrum(SpectrumRequest request) => _spectrum.set(request);
+
+  /// The receiver's VFO in Hz, as the server last said: where a sweep beyond
+  /// the scope's own sits until a display moves it.
+  int? _vfoHz;
+
+  /// From the same IQ the scope receives already ([TciSpectrum.openSub]).
+  @override
+  SpectrumScope? openScope(SpectrumSink sink) => _spectrum.openSub(sink, receiverHz: () => _vfoHz);
+
+  @override
+  bool get scopesTakeAnySpan => true;
 
   // ------------------------------------------------------------ lifetime
 

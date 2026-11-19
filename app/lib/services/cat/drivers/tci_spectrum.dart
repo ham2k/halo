@@ -19,6 +19,7 @@ import 'package:halo_core/halo_core.dart' show nowMillis;
 import 'package:halo_i18n/halo_i18n.dart';
 
 import '../spectrum.dart';
+import '../iq_sub_scope.dart';
 import '../spectrum_fft.dart';
 import 'tci_codec.dart';
 
@@ -144,6 +145,29 @@ class TciSpectrum {
     if (samples.isEmpty) return;
     final fft = _fft ??= IqSpectrum(size: _sizeFor(_rate), hop: _rate ~/ _sweepsPerSecond[_settings.speed ?? SpectrumSpeed.mid]!);
     fft.add(samples, _emit);
+    final center = _centerHz;
+    if (center == null) return;
+    for (final sub in _subs.toList()) {
+      sub.feed(samples, rate: _rate, iqCenterHz: center, visibleHalfWidth: _visibleHalfWidth(_rate));
+    }
+  }
+
+  /// The sweeps beyond this one ([openSub]), each from the same IQ.
+  final _subs = <IqSubScope>{};
+
+  /// A sweep of its own for a narrower display, transformed from the IQ as it
+  /// arrives for this scope: on the VFO in Hz ([receiverHz]) until a display
+  /// moves it. Null while this scope is not running.
+  IqSubScope? openSub(SpectrumSink sink, {required int? Function() receiverHz}) {
+    if (!_wanted) return null;
+    final sub = IqSubScope(
+      sink: sink,
+      receiverHz: receiverHz,
+      closed: _subs.remove,
+      moveIq: (hz) => set(SpectrumRequest(centerHz: hz)),
+    );
+    _subs.add(sub);
+    return sub;
   }
 
   static int _sizeFor(int rate) {
@@ -195,5 +219,6 @@ class TciSpectrum {
   /// For the session's teardown, over a connection still open.
   void teardown() {
     if (_wanted) stop();
+    _subs.clear();
   }
 }
