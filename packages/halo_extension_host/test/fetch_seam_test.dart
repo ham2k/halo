@@ -337,6 +337,29 @@ var boundHostCall = null
       }
     });
 
+    test("sends LoTW's upload through the proxy on web, and nothing else of LoTW's", () {
+      // lotw.arrl.org answers no cross-origin request. Its download takes the
+      // operator's password in the query: routed by host, that would detour
+      // through Ham2K on web to meet a 404, where it failed at CORS before.
+      final upload = Uri.parse('https://lotw.arrl.org/lotw/upload');
+      final download = Uri.parse('https://lotw.arrl.org/lotwuser/lotwreport.adi?login=n0dev&password=secret');
+      expect(extensionFetchUri(upload, onWeb: true).toString(), 'https://services.ham2k.net/lotw.arrl.org/lotw/upload');
+      expect(extensionFetchUri(upload, onWeb: false), upload);
+      expect(extensionFetchUri(download, onWeb: true), download);
+      expect(fetchProxyHandsBackRedirects(upload, onWeb: true), isTrue);
+      expect(fetchProxyHandsBackRedirects(upload, onWeb: false), isFalse);
+      expect(fetchProxyHandsBackRedirects(download, onWeb: true), isFalse);
+    });
+
+    test('a request refusing redirects is refused only where the proxy would follow them', () {
+      // The upload's route hands redirects back, so the browser can refuse
+      // one; QRZ's on web, and an http-only host's everywhere, follow them.
+      expect(fetchCanRefuseRedirects(Uri.parse('https://lotw.arrl.org/lotw/upload'), onWeb: true), isTrue);
+      expect(fetchCanRefuseRedirects(Uri.parse('https://logbook.qrz.com/api'), onWeb: true), isFalse);
+      expect(fetchCanRefuseRedirects(Uri.parse('https://logbook.qrz.com/api'), onWeb: false), isTrue);
+      expect(fetchCanRefuseRedirects(Uri.parse('http://qsopartyhub.com/x'), onWeb: false), isFalse);
+    });
+
     test('leaves plain http to a web-proxied host unchanged on a native build', () {
       // Unchanged means refused by the https check — the web proxy list is
       // not a licence to reach those hosts over http.

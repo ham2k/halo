@@ -3324,9 +3324,9 @@ export interface FetchOptions {
    * Location or sending anything on. The server answering it may already
    * have acted on the request, so treat the outcome as unknown. A host the
    * app reaches through Ham2K's proxy (one that serves plain http, and on
-   * the web build the others it proxies) is refused outright, since the
-   * proxy follows redirects itself. `"follow"`, the default, follows up to
-   * five.
+   * the web build the others it proxies, except LoTW's upload) is refused
+   * outright, since the proxy follows redirects itself. `"follow"`, the
+   * default, follows up to five.
    * Extension API 29.
    */
   redirect?: "follow" | "error"

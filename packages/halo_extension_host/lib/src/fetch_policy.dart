@@ -37,6 +37,21 @@ const servicesProxiedHosts = {
   'mobiletracker.stateqso.com',
 };
 
+/// Single paths a WEB build reaches through services.ham2k.net, by host, on
+/// hosts whose other paths stay direct. Each route on the Worker hands an
+/// upstream redirect back (`redirect: manual` in its `config.yaml`) instead
+/// of following it, so a request refusing redirects still sees one and the
+/// browser refuses it. Same by-hand pact as [servicesProxiedHosts].
+///
+/// By path, not host: LoTW's other endpoints take the operator's password
+/// in the query, which has no business detouring through Ham2K, and the
+/// proxy routes none of them.
+const servicesProxiedPaths = {
+  'lotw.arrl.org': {'/lotw/upload'},
+};
+
+bool _proxiedPath(Uri uri) => servicesProxiedPaths[uri.host]?.contains(uri.path) ?? false;
+
 /// Hosts that serve plain http only, which EVERY build reaches through
 /// services.ham2k.net — the host fetches https only, and the proxy is their
 /// https front door. Same by-hand pact with the Worker's `config.yaml`.
@@ -47,6 +62,17 @@ const servicesProxiedHosts = {
 /// credentials the request carries.
 const servicesHttpOnlyHosts = {'qsopartyhub.com'};
 
+/// Whether a request refusing redirects (`redirect: "error"`) can go to [uri]
+/// on this build: not when the build reaches it through Ham2K's proxy and the
+/// proxy follows that host's redirects itself, before any reach the app.
+bool fetchCanRefuseRedirects(Uri uri, {required bool onWeb}) => extensionFetchUri(uri, onWeb: onWeb).host == uri.host || _proxiedPath(uri);
+
+/// Whether [uri] goes through a proxy route that hands redirects back, on
+/// this build: the browser then meets any redirect there itself, and fails
+/// it, as it fails a lost connection, when it refuses the redirect or
+/// follows it to a host answering no cross-origin request.
+bool fetchProxyHandsBackRedirects(Uri uri, {required bool onWeb}) => onWeb && _proxiedPath(uri);
+
 /// [uri] as this build must fetch it: through the proxy for an http-only
 /// host, and on web for a proxied one; unchanged everywhere else, for the
 /// https check to refuse if it is plain http.
@@ -55,7 +81,7 @@ const servicesHttpOnlyHosts = {'qsopartyhub.com'};
 /// halo_core's [ham2kSsoFetchUri] for why the rest of that host stays direct.
 Uri extensionFetchUri(Uri uri, {required bool onWeb}) {
   if (onWeb && uri.host == sotaSsoHost) return ham2kSsoFetchUri(uri, onWeb: true);
-  if (servicesHttpOnlyHosts.contains(uri.host) || (onWeb && servicesProxiedHosts.contains(uri.host))) {
+  if (servicesHttpOnlyHosts.contains(uri.host) || (onWeb && (servicesProxiedHosts.contains(uri.host) || _proxiedPath(uri)))) {
     return Uri.parse('https://$ham2kProxyHost/${uri.host}${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}');
   }
   return uri;

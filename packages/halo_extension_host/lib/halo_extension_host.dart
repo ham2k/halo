@@ -66,6 +66,8 @@ export 'src/fetch_policy.dart'
         allowlistNamesHost,
         extensionFetchUri,
         extensionUrlRefusal,
+        fetchCanRefuseRedirects,
+        fetchProxyHandsBackRedirects,
         fetchBodyTimeout,
         fetchHeaderTimeout,
         fetchHopGuarded,

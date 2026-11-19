@@ -60,7 +60,8 @@ build yourself.
   On the web build a refused redirect looks like a lost connection, and
   the call says it may have been either. A host the app reaches through
   Ham2K's proxy, which follows redirects itself, refuses `"error"` outright:
-  one that serves plain http, and on the web build the others it proxies.
+  one that serves plain http, and on the web build the others it proxies,
+  except LoTW's upload, whose redirects the proxy hands back.
 
 ### `host.webSocket(url, { protocols? })`
 

@@ -779,8 +779,7 @@ class _HostCore {
     final redirect = params['redirect'] ?? 'follow';
     if (redirect != 'follow' && redirect != 'error') throw ExtensionHostException("fetch refused: redirect must be 'follow' or 'error'");
     final refuseRedirects = redirect == 'error';
-    // Ham2K's proxy follows redirects itself, before any reach this host.
-    if (refuseRedirects && route.uri.host != target.host) {
+    if (refuseRedirects && !fetchCanRefuseRedirects(target, onWeb: runningOnWeb)) {
       throw ExtensionHostException("fetch refused: '${target.host}' is reached through Ham2K's proxy on this build, which follows redirects itself");
     }
 
@@ -815,11 +814,12 @@ class _HostCore {
       try {
         streamed = await _sendOnce(route.client, method, route.uri, hopHeaders, effectiveUA, body, headerBudget, followOnWeb: !refuseRedirects);
       } on http.ClientException {
-        if (!runningOnWeb || !refuseRedirects) rethrow;
-        // The browser refuses a redirect as it fails a lost connection, with
-        // nothing to tell them apart. Said as either, so a caller that would
-        // retry a network error does not send the upload twice; the URL,
-        // query and all, stays out of a message that reaches logs.
+        if (!runningOnWeb || !(refuseRedirects || fetchProxyHandsBackRedirects(target, onWeb: true))) rethrow;
+        // The browser refuses a redirect, or fails one it follows to a host
+        // answering no cross-origin request, as it fails a lost connection,
+        // with nothing to tell them apart. Said as either, so a caller that
+        // would retry a network error does not send the upload twice; the
+        // URL, query and all, stays out of a message that reaches logs.
         throw ExtensionHostException(
           "fetch failed: '${target.host}' gave no answer the browser would pass on, as when it refuses a redirect; it may have acted on the request",
         );
