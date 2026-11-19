@@ -441,6 +441,256 @@ void main() {
       final args = host.calls.single['args'] as Map;
       expect((args['operation'] as Map)['stationCall'], 'W1AW');
     });
+
+    test("contacts handed in without their operation go to the call each was logged under", () async {
+      // The Logs view over All callsigns: contacts of two stations, none
+      // listing its calls, under a stand-in naming one of them. Followed to
+      // the stand-in's call, K1ABC's contact would land in N0CALL's file
+      // rewritten as N0CALL's.
+      Qso loose(String uuid, String ourCall, String theirCall) => Qso(
+        uuid: uuid,
+        operationUuid: '',
+        data: {
+          'our': {'call': ourCall},
+          'their': {'call': theirCall},
+          'band': '20m',
+          'mode': 'SSB',
+          'startAtMillis': DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch,
+        },
+      );
+      final contacts = [loose('a', 'N0CALL', 'DL1ABC'), loose('b', 'K1ABC', 'JA1XYZ'), loose('c', 'N0CALL', 'G4ABC')];
+      final extensions = _ExtensionsWithHost(_CapturingHost());
+      await ExportService(extensions: extensions, qsos: qsos, settings: settings).getExportOptions(
+        Operation(uuid: '', data: {'stationCall': 'N0CALL'}),
+        contacts: contacts,
+      );
+
+      final byCall = {
+        for (final request in extensions.optionRequests)
+          ((request['operation'] as Map)['stationCall'] as String): [
+            for (final qso in request['qsos'] as List) '${((qso as Map)['our'] as Map)['call']}>${(qso['their'] as Map)['call']}',
+          ],
+      };
+      expect(byCall, {
+        'N0CALL': ['N0CALL>DL1ABC', 'N0CALL>G4ABC'],
+        'K1ABC': ['K1ABC>JA1XYZ'],
+      });
+    });
+
+    test("contacts from several operations are each written against their own operation", () async {
+      // The Logs view's ADIF: a park activation's contacts written against a
+      // stand-in would lose the park (MY_SIG_INFO and the rest come from the
+      // operation's refs), and a stand-in that took the activation's refs
+      // would stamp the park on contacts made elsewhere.
+      final park = await operations.create(stationCall: 'N0CALL');
+      await operations.saveData(
+        Operation(
+          uuid: park.uuid,
+          data: {
+            ...park.data,
+            'refs': [
+              {'type': 'potaActivation', 'ref': 'US-0001'},
+            ],
+          },
+        ),
+      );
+      final home = await operations.create(stationCall: 'N0CALL');
+      Future<Qso> add(String operationUuid, String theirCall, int hour) => qsos.add(operationUuid, {
+        'our': {'call': 'N0CALL'},
+        'their': {'call': theirCall},
+        'band': '20m',
+        'mode': 'SSB',
+        'startAtMillis': DateTime.utc(2026, 7, 15, hour).millisecondsSinceEpoch,
+      });
+
+      final contacts = [await add(home.uuid, 'G4HOME', 10), await add(park.uuid, 'DL1PARK', 12), await add(park.uuid, 'JA1PARK', 13)];
+      final host = _CapturingHost(content: 'ADIF\n<EOH>\n<CALL:3>ABC<EOR>\n');
+      final operationsByUuid = {
+        for (final op in await operations.byUuids([park.uuid, home.uuid])) op.uuid: op,
+      };
+      await ExportService(extensions: _ExtensionsWithHost(host), qsos: qsos, settings: settings).generateExports(
+        Operation(uuid: '', data: {'stationCall': 'N0CALL'}),
+        [
+          {'hookKey': 'adif', 'exportType': 'adif', 'format': 'adif', 'stationCall': 'N0CALL', 'filename': 'logs.adi'},
+        ],
+        contacts: contacts,
+        operations: operationsByUuid,
+      );
+
+      final written = {
+        for (final call in host.calls)
+          ((call['args'] as Map)['operation'] as Map)['uuid']: [
+            for (final qso in (call['args'] as Map)['qsos'] as List) ((qso as Map)['their'] as Map)['call'],
+          ],
+      };
+      expect(written, {
+        home.uuid: ['G4HOME'],
+        park.uuid: ['DL1PARK', 'JA1PARK'],
+      });
+      final parkArgs = host.calls.firstWhere((call) => ((call['args'] as Map)['operation'] as Map)['uuid'] == park.uuid)['args'] as Map;
+      expect((parkArgs['operation'] as Map)['refs'], [
+        {'type': 'potaActivation', 'ref': 'US-0001'},
+      ]);
+    });
+
+    test('a log of contacts from many operations offers the Full ADIF alone', () async {
+      // The Logs view: a program's hunter or activator file is that
+      // program's submission, and comes from the operation's own Exports.
+      // Asking every hook about thousands of contacts to keep one answer is
+      // a crossing per hook for nothing.
+      final extensions = _ExtensionsOfferingHunterLog(_CapturingHost());
+      final options = await ExportService(extensions: extensions, qsos: qsos, settings: settings).getExportOptions(
+        Operation(uuid: '', data: {'stationCall': 'N0CALL'}),
+        contacts: [
+          Qso(
+            uuid: 'a',
+            operationUuid: '',
+            data: {
+              'our': {'call': 'N0CALL'},
+              'their': {'call': 'DL1ABC'},
+              'startAtMillis': 1000,
+            },
+          ),
+        ],
+        fullAdifOnly: true,
+      );
+      expect(options.map((option) => option['exportType']), ['adif']);
+      expect(extensions.asked, ['adif']);
+    });
+
+    test("a contact logged under a call its operation does not list stays in that call's file", () async {
+      // An import into a two-call operation keeps its own N0DEV/P, unstamped
+      // (`qsoWithStationCalls`). The operation's own calls would hand it to
+      // N0DEV and KI2D, and so to none of the N0DEV/P file the Logs view
+      // offers for it.
+      final shared = await operations.create(stationCall: 'N0DEV, KI2D');
+      final contact = await qsos.add(shared.uuid, {
+        'our': {'call': 'N0DEV/P'},
+        'their': {'call': 'DL1ABC'},
+        'band': '20m',
+        'startAtMillis': 1000,
+      });
+      final host = _CapturingHost(content: 'ADIF\n<EOH>\n<CALL:6>DL1ABC<EOR>\n');
+      await ExportService(extensions: _ExtensionsWithHost(host), qsos: qsos, settings: settings).generateExports(
+        Operation(uuid: '', data: {'stationCall': 'N0DEV/P'}),
+        [
+          {'hookKey': 'adif', 'exportType': 'adif', 'format': 'adif', 'stationCall': 'N0DEV/P'},
+        ],
+        contacts: [contact],
+        operations: {shared.uuid: (await operations.get(shared.uuid))!},
+      );
+
+      final sent = (host.calls.single['args'] as Map)['qsos'] as List;
+      expect(sent.map((qso) => ((qso as Map)['our'] as Map)['call']), ['N0DEV/P']);
+    });
+
+    test("a contact made under several calls goes to the file of the call it was logged under, alone", () async {
+      // The Logs view filtered to K1A shows a two-op contact K1A logged and
+      // K1B shared. Followed to its list, it would offer a K1B file in K1A's
+      // view, holding none of K1B's own contacts.
+      final contact = Qso(
+        uuid: 'a',
+        operationUuid: 'op',
+        data: {
+          'our': {
+            'call': 'K1A',
+            ourStationCallsKey: ['K1A', 'K1B'],
+          },
+          'their': {'call': 'DL1ABC'},
+          'startAtMillis': 1000,
+        },
+      );
+      final extensions = _ExtensionsWithHost(_CapturingHost());
+      await ExportService(extensions: extensions, qsos: qsos, settings: settings).getExportOptions(
+        Operation(uuid: '', data: {'stationCall': 'K1A'}),
+        contacts: [contact],
+      );
+
+      expect(extensions.optionRequests.map((request) => (request['operation'] as Map)['stationCall']), ['K1A']);
+    });
+
+    test("each operation's share is headed with the file's call, not the stand-in's", () async {
+      final op = await operations.create(stationCall: 'K1B');
+      final contact = await qsos.add(op.uuid, {
+        'our': {'call': 'K1B'},
+        'their': {'call': 'DL1ABC'},
+        'startAtMillis': 1000,
+      });
+      final host = _CapturingHost(content: 'ADIF\n<EOH>\n<CALL:6>DL1ABC<EOR>\n');
+      await ExportService(extensions: _ExtensionsWithHost(host), qsos: qsos, settings: settings).generateExports(
+        Operation(uuid: '', data: {'stationCall': 'K1A'}),
+        [
+          {'hookKey': 'adif', 'exportType': 'adif', 'format': 'adif', 'stationCall': 'K1B'},
+        ],
+        contacts: [contact],
+        operations: {op.uuid: (await operations.get(op.uuid))!},
+      );
+
+      expect((host.calls.single['args'] as Map)['exportTitle'], 'K1B');
+    });
+
+    test("only the core's Full ADIF is written operation by operation", () async {
+      // Another hook's ADIF is scoped to its activity, which the
+      // per-operation path does not do: it is written over the stand-in.
+      final op = await operations.create(stationCall: 'N0CALL');
+      final contact = await qsos.add(op.uuid, {
+        'our': {'call': 'N0CALL'},
+        'their': {'call': 'DL1ABC'},
+        'startAtMillis': 1000,
+      });
+      final host = _CapturingHost(content: 'ADIF\n<EOH>\n');
+      await ExportService(extensions: _ExtensionsWithHost(host), qsos: qsos, settings: settings).generateExports(
+        Operation(uuid: '', data: {'stationCall': 'N0CALL'}),
+        [
+          {'hookKey': 'ham2k-sota-hunter', 'exportType': 'sota-hunter', 'format': 'adif', 'stationCall': 'N0CALL'},
+        ],
+        contacts: [contact],
+        operations: {op.uuid: (await operations.get(op.uuid))!},
+      );
+
+      expect(((host.calls.single['args'] as Map)['operation'] as Map)['uuid'], '');
+    });
+
+    test('a share the exporter wrote nothing for fails the export rather than leaving its contacts out', () async {
+      final op = await operations.create(stationCall: 'N0CALL');
+      final contact = await qsos.add(op.uuid, {
+        'our': {'call': 'N0CALL'},
+        'their': {'call': 'DL1ABC'},
+        'startAtMillis': 1000,
+      });
+      await expectLater(
+        ExportService(extensions: _ExtensionsWithHost(_CapturingHost()), qsos: qsos, settings: settings).generateExports(
+          Operation(uuid: '', data: {'stationCall': 'N0CALL'}),
+          [
+            {'hookKey': 'adif', 'exportType': 'adif', 'format': 'adif', 'stationCall': 'N0CALL'},
+          ],
+          contacts: [contact],
+          operations: {op.uuid: (await operations.get(op.uuid))!},
+        ),
+        throwsA(isA<ExportException>()),
+      );
+    });
+
+    test('ADIF files join under one header, without any one operation’s title or notes', () {
+      const a = 'ADIF export for N0CALL\n<ADIF_VER:5>3.1.5\n<APP_HAM2K_OP_TITLE:4>Park\n<APP_HAM2K_OP_NOTES:3>wet\n<EOH>\n\n<CALL:6>DL1ABC<EOR>\n';
+      const b = 'ADIF export for N0CALL\n<ADIF_VER:5>3.1.5\n<EOH>\n\n<CALL:6>JA1XYZ<EOR>\n';
+      final joined = joinAdifFiles([a, b]);
+      expect(joined, startsWith('ADIF export for N0CALL\n<ADIF_VER:5>3.1.5\n<EOH>'));
+      expect(joined, isNot(contains('APP_HAM2K_OP')));
+      expect(RegExp('<EOH>').allMatches(joined), hasLength(1));
+      expect(joined.indexOf('DL1ABC'), lessThan(joined.indexOf('JA1XYZ')));
+    });
+
+    test("an operation's notes over several lines leave the joined header whole", () {
+      // Cut line by line, the notes' second line would stay behind: one
+      // operation's private words in a file of many.
+      const notes = 'Rain\nGreat pileup';
+      // The writer puts a space after each value, as it does here.
+      const a = 'ADIF export for N0CALL\n<APP_HAM2K_OP_NOTES:${notes.length}>$notes \n<ADIF_VER:5>3.1.5\n<EOH>\n\n<CALL:6>DL1ABC<EOR>\n';
+      final joined = joinAdifFiles([a]);
+      expect(joined, isNot(contains('pileup')));
+      expect(joined, startsWith('ADIF export for N0CALL\n<ADIF_VER:5>3.1.5\n<EOH>'));
+    });
   });
 
   // "Use compact file names" is a setting the CORE owns but the EXTENSIONS
@@ -1584,14 +1834,46 @@ void main() {
 class _CapturingHost implements ExtensionHost {
   final List<Map<String, dynamic>> calls = [];
 
+  /// What every generated file holds.
+  final String content;
+  _CapturingHost({this.content = ''});
+
   @override
   Future<dynamic> invokeHook(String category, {String? key, required String method, Object? args, Duration timeout = const Duration(seconds: 10)}) async {
     calls.add({'key': key, 'method': method, 'args': args});
-    return {'filename': '$key.txt', 'mimeType': 'text/plain', 'content': ''};
+    return {'filename': '$key.txt', 'mimeType': 'text/plain', 'content': content};
   }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Offers the core's Full ADIF and a program's hunter log, and records
+/// which hooks were asked.
+class _ExtensionsOfferingHunterLog extends _ExtensionsWithHost {
+  _ExtensionsOfferingHunterLog(super.mock);
+
+  final asked = <String>[];
+
+  static const _offered = [
+    {'hookKey': 'adif', 'exportType': 'adif'},
+    {'hookKey': 'ham2k-sota-hunter', 'exportType': 'sota-hunter'},
+  ];
+
+  @override
+  Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) async {
+    asked.add('*');
+    return [..._offered];
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getExportOptionsFrom(String key, Map<String, dynamic> args) async {
+    asked.add(key);
+    return [
+      for (final option in _offered)
+        if (option['hookKey'] == key) option,
+    ];
+  }
 }
 
 class _ExtensionsWithHost extends ExtensionService {

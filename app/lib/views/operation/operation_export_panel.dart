@@ -141,19 +141,38 @@ IconData exportActionIcon(ExportAction action) => switch (action) {
 };
 
 /// Opens the Exports pane for [operation].
-Future<void> showOperationExportPanel(BuildContext context, {required HaLoServices services, required Operation operation}) async {
+///
+/// With [contacts], the pane exports them in place of [operation]'s own log:
+/// the Chasing view's, or the Logs view's. [operation] is then the stand-in
+/// the hooks are asked about (see `ExportService.getExportOptions`),
+/// [operations] those the contacts were logged in, by uuid, [title] names
+/// the pane after the view it opens from, [stashTitle] is what the stash
+/// files the upload under, and [fullAdifOnly] offers the Full ADIF alone.
+/// Files only: Cloud Sync and the pushes are an operation's (EXP PUSH), and
+/// nothing is marked exported, since there is no operation to mark.
+Future<void> showOperationExportPanel(
+  BuildContext context, {
+  required HaLoServices services,
+  required Operation operation,
+  List<Qso>? contacts,
+  Map<String, Operation> operations = const {},
+  String? title,
+  String? stashTitle,
+  bool fullAdifOnly = false,
+}) async {
   final t = context.t;
-  // With EXP PUSH the count leads the pane, in its title: the files and the
-  // pushes below are two sections of one operation, and neither owns it.
-  // The panel counts, so the title follows the same count its rows show.
-  final title = ValueNotifier(t.operation.export.title);
-  final counted = services.transfers.enabled;
+  // With EXP PUSH the count leads an operation's pane, in its title: the
+  // files and the pushes below are two sections of one operation, and
+  // neither owns it. The panel counts, so the title follows the same count
+  // its rows show.
+  final paneTitle = ValueNotifier(title ?? t.operation.export.title);
+  final counted = services.transfers.enabled && contacts == null;
   // The route stays mounted while it animates away, and a count landing then
   // must not reach the title disposed under it.
   var open = true;
   await showModalPane<void>(
     context,
-    liveTitle: title,
+    liveTitle: paneTitle,
     closeLabel: t.common.close,
     // The option list scrolls; the action row stays pinned under it.
     scrollable: false,
@@ -179,15 +198,19 @@ Future<void> showOperationExportPanel(BuildContext context, {required HaLoServic
     builder: (_) => OperationExportPanel(
       services: services,
       operation: operation,
+      contacts: contacts,
+      operations: operations,
+      stashTitle: stashTitle,
+      fullAdifOnly: fullAdifOnly,
       onContactCount: counted
           ? (count) {
-              if (open) title.value = t.operation.export.titleWithCount(count: count);
+              if (open) paneTitle.value = t.operation.export.titleWithCount(count: count);
             }
           : null,
     ),
   );
   open = false;
-  title.dispose();
+  paneTitle.dispose();
 }
 
 /// The gear's dialog. Also declared as a settings group
@@ -203,13 +226,41 @@ class OperationExportPanel extends StatefulWidget {
   /// The operation's contacts, each time the panel counts them.
   final ValueChanged<int>? onContactCount;
 
-  const OperationExportPanel({super.key, required this.services, required this.operation, this.onContactCount});
+  /// The contacts to export in place of [operation]'s own log, with
+  /// [operation] a stand-in (see [showOperationExportPanel]).
+  final List<Qso>? contacts;
+
+  /// The operations [contacts] were logged in, by uuid.
+  final Map<String, Operation> operations;
+
+  /// What the stash calls these files, callsign included, in place of the
+  /// files' calls and [operation]'s title.
+  final String? stashTitle;
+
+  /// Only the core's Full ADIF is offered.
+  final bool fullAdifOnly;
+
+  const OperationExportPanel({
+    super.key,
+    required this.services,
+    required this.operation,
+    this.onContactCount,
+    this.contacts,
+    this.operations = const {},
+    this.stashTitle,
+    this.fullAdifOnly = false,
+  });
 
   @override
   State<OperationExportPanel> createState() => _OperationExportPanelState();
 }
 
 class _OperationExportPanelState extends State<OperationExportPanel> {
+  /// Whether the pane exports an operation's own log, rather than contacts
+  /// under a stand-in with no uuid: Cloud Sync, the pushes, the operation's
+  /// counts and marking it exported are an operation's alone.
+  bool get _exportsOperation => widget.contacts == null;
+
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _options = const [];
@@ -260,7 +311,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   @override
   void initState() {
     super.initState();
-    if (widget.services.transfers.enabled) {
+    if (widget.services.transfers.enabled && _exportsOperation) {
       _pushes = PushServicesModel(widget.services, widget.operation.uuid, onPushed: _refreshSyncState, shown: () => mounted && _openSection == 'push')
         ..addListener(_onPushesChanged)
         ..load();
@@ -290,10 +341,13 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     final request = ++_loadRequest;
     // Kept apart from the options: the Cloud Sync row reads the counts, and
     // with none it says sync is pending whatever the operation holds.
-    final countsFuture = widget.services.qsos.syncCountsForOperation(widget.operation.uuid);
+    final contacts = widget.contacts;
+    final countsFuture = contacts == null
+        ? widget.services.qsos.syncCountsForOperation(widget.operation.uuid)
+        : Future.value((total: contacts.where((q) => !q.deleted && !q.isEvent).length, pending: 0, eventTotal: 0, eventPending: 0));
     try {
       final results = await Future.wait([
-        widget.services.exports.getExportOptions(widget.operation),
+        widget.services.exports.getExportOptions(widget.operation, contacts: contacts, operations: widget.operations, fullAdifOnly: widget.fullAdifOnly),
         countsFuture,
         // Presentation only — the accent AND the icon a row inherits from
         // its activity (`_optionIcon`). A runtime that can't answer must not
@@ -432,14 +486,16 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     String? failureTitle;
     ({int count, bool? freeAccount, List<String> failures})? stashed;
     // How the stash lists this group: the callsigns the files are for, then
-    // the operation's title. Read before the awaits, while the context is
-    // still this State's.
-    final stashTitle = action == ExportAction.stash
-        ? [
-            {for (final option in options) option['stationCall'] as String? ?? ''}.where((c) => c.isNotEmpty).join(', '),
-            displayTitleFor(context, widget.operation),
-          ].where((part) => part.isNotEmpty).join(' ')
-        : null;
+    // the operation's title, or a contacts pane's stash title, which names
+    // its calls itself. Read before the awaits, while the context is still this
+    // State's.
+    final stashTitle = action != ExportAction.stash
+        ? null
+        : widget.stashTitle ??
+              [
+                {for (final option in options) option['stationCall'] as String? ?? ''}.where((c) => c.isNotEmpty).join(', '),
+                displayTitleFor(context, widget.operation),
+              ].where((part) => part.isNotEmpty).join(' ');
     try {
       // The iPad share sheet is a popover and needs an anchor rect; the
       // panel's own bounds serve for every share trigger in it. Captured
@@ -469,7 +525,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
           setState(() => _busy = true);
         }
       }
-      final files = await exports.generateExports(widget.operation, options);
+      final files = await exports.generateExports(widget.operation, options, contacts: widget.contacts, operations: widget.operations);
       widget.services.track('operation_exported', {
         'formats': options.map((o) => o['format'] ?? o['key'] ?? '?').join(','),
         'files': files.length,
@@ -543,7 +599,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     // retract a fact that has already happened — the trap `adif_import_flow`
     // documents. A status that did not move is worth nothing next to an
     // export that did.
-    if (outcome != null) {
+    if (outcome != null && _exportsOperation) {
       try {
         await widget.services.operations.markExported(widget.operation.uuid);
       } catch (e, st) {
@@ -659,7 +715,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         // end of it: it is a standing fact about the operation, not one more
         // thing to scroll to, and a long list of formats would bury it.
         // With EXP PUSH on it is the first row of the sync and push section.
-        if (!_loading && _error == null && _pushes == null) ...[const Divider(height: 1), _buildSyncSummary(context, _syncCounts)],
+        if (!_loading && _error == null && _pushes == null && _exportsOperation) ...[const Divider(height: 1), _buildSyncSummary(context, _syncCounts)],
         _buildFooter(context),
       ],
     );
@@ -958,7 +1014,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     final count = counts == null || counts.total == 0
         ? null
         : Text(
-            context.t.operation.export.qsosInOperation(count: counts.total),
+            _exportsOperation ? context.t.operation.export.qsosInOperation(count: counts.total) : context.t.operation.export.qsosToExport(count: counts.total),
             // The band's accent and slab at the ROW face's size, not
             // SectionHeader.titleStyle: that is the HEADING face, a step up,
             // and a count is a sentence, which at that size takes two lines

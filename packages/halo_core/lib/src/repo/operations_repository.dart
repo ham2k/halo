@@ -776,12 +776,18 @@ class OperationsRepository {
   }
 
   /// Fetches specific operations by uuid (e.g. the parents of a QSO batch),
-  /// optionally narrowed to ones still unsynced.
+  /// optionally narrowed to ones still unsynced. In chunks of
+  /// [inClauseChunkSize]: the Logs view asks for every operation its table
+  /// spans, which can pass SQLite's bound-variable limit.
   Future<List<Operation>> byUuids(List<String> uuids, {bool onlyUnsynced = false}) async {
-    if (uuids.isEmpty) return const [];
-    final query = db.select(db.operations)..where((op) => op.uuid.isIn(uuids));
-    if (onlyUnsynced) query.where((op) => op.synced.equals(false));
-    return (await query.get()).map(_operationFromRow).toList();
+    final found = <Operation>[];
+    for (var start = 0; start < uuids.length; start += inClauseChunkSize) {
+      final chunk = uuids.skip(start).take(inClauseChunkSize).toList();
+      final query = db.select(db.operations)..where((op) => op.uuid.isIn(chunk));
+      if (onlyUnsynced) query.where((op) => op.synced.equals(false));
+      found.addAll((await query.get()).map(_operationFromRow));
+    }
+    return found;
   }
 
   Future<bool> hasUnsynced() async {

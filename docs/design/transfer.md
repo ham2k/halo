@@ -2,8 +2,9 @@
 
 *Status: in progress (HALO-948), behind `EXP PUSH`: with it off the app
 asks no `transfer` hook anything. Push (§2–§7) is built in the app and the
-SDK, at extension API 28, and offered from the Exports panel; the Logs and
-Chasing views do not offer it yet. The `import` hook
+SDK, at extension API 28, and offered from an operation's Exports panel.
+The Logs and Chasing views have Exports panels of their own, for files
+only, and do not offer it yet. The `import` hook
 (§9) builds on imports.md (HALO-841), and pull (§8) on both.*
 
 Operators keep copies of their log elsewhere: QRZ.com's logbook, Wavelog,

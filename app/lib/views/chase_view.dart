@@ -41,6 +41,8 @@ import 'operation/log_find_bar.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
 import 'operation/operation_location_pin.dart';
+import 'header_action_button.dart';
+import 'operation/operation_export_panel.dart' show showOperationExportPanel;
 import 'operation/operation_location_screen.dart';
 import 'operation/operation_runtime_state.dart';
 import 'operation/spots_panel.dart';
@@ -768,6 +770,18 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
               ? editingLayoutTitle(context)
               : AnimatedBuilder(animation: _sheetAnimation ?? kAlwaysDismissedAnimation, builder: (context, _) => _buildTitle(context, operation, goals)),
           actions: [
+            if (!layoutEditing) ...[
+              headerActionButton(
+                context,
+                icon: MdiIcons.export,
+                label: context.t.activitiesView.exports,
+                labeled: isTwoPane,
+                // What the pane counts: the list holds deleted contacts too
+                // while they are shown.
+                onPressed: qsos.any((qso) => !qso.deleted && !qso.isEvent) ? () => unawaited(_export(operation, qsos)) : null,
+              ),
+              const SizedBox(width: Space.md),
+            ],
             ?viewOptionsButton(context, editing: layoutEditing),
             ...layoutHeaderControls(context),
             windowsCaptionSpacer(context),
@@ -835,6 +849,18 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
       ),
     );
   }
+
+  /// The period's contacts, as the header counts them, under the station
+  /// they were logged as. The stash files them as the header reads, less the
+  /// goals: "KI2D chasing today".
+  Future<void> _export(Operation operation, List<Qso> qsos) => showOperationExportPanel(
+    context,
+    services: widget.services,
+    operation: operation,
+    contacts: qsos,
+    stashTitle: '${operation.stationCall} ${context.t.chase.chasing} ${_period.inlineLabel(context)}',
+    title: context.t.operation.export.chaseTitle,
+  );
 
   /// "**KI2D** chasing **POTA** today": who and what in bold, as one
   /// control that opens the sheet, where the goals and the period are set.

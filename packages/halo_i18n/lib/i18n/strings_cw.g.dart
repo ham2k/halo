@@ -2010,6 +2010,8 @@ class _Translations$operation$export$cw extends Translations$operation$export$en
 		one: '——— ·——· · ·—· ·— — ·· ——— —· / · —··— ·——· ——— ·—· — ··· ———··· / ${count} / ——·— ··· ———',
 		other: '——— ·——· · ·—· ·— — ·· ——— —· / · —··— ·——· ——— ·—· — ··· ———··· / ${count} / ——·— ··· ——— ···',
 	);
+	@override String get logTitle => '·—·· ——— ——· / · —··— ·——· ——— ·—· — ···';
+	@override String get chaseTitle => '—·—· ···· ·— ··· ·· —· ——· / · —··— ·——· ——— ·—· — ···';
 	@override String get filesTitle => '··—· ·· ·—·· · / · —··— ·——· ——— ·—· — ···';
 	@override String get cloudSync => '···· ·— —— ··——— —·— / —·—· ·—·· ——— ··— —·· / ··· —·—— —· —·—·';
 	@override String get syncNow => '··· —·—— —· —·—· / —· ——— ·——';
@@ -2021,6 +2023,10 @@ class _Translations$operation$export$cw extends Translations$operation$export$en
 	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
 		one: '${count} / ——·— ··· ——— / ·· —· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·',
 		other: '${count} / ——·— ··· ——— ··· / ·· —· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·',
+	);
+	@override String qsosToExport({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '${count} / ——·— ··· ——— / — ——— / —··· · / · —··— ·——· ——— ·—· — · —··',
+		other: '${count} / ——·— ··· ——— ··· / — ——— / —··· · / · —··— ·——· ——— ·—· — · —··',
 	);
 	@override String qsosSynced({required Object total}) => '·— ·—·· ·—·· / ${total} / ——·— ··· ——— ··· / ·— ·—· · / ··· —·—— —· —·—· · —··';
 	@override String qsosPending({required Object pending, required Object total}) => '${pending} / ——— ··—· / ${total} / ——·— ··· ——— ··· / ·——· · —· —·· ·· —· ——· / ··· —·—— —· —·—·';
@@ -6122,6 +6128,8 @@ extension on TranslationsCw {
 			'operation.layout.htmlPanelUnsupportedOnWeb' => '— ···· ·· ··· / ·——· ·— —· · ·—·· / —· · · —·· ··· / ·— / ··· ·— —· —·· —··· ——— —··— / — ···· · / ·—— · —··· / ···— · ·—· ··· ·· ——— —· / —·—· ·— —· —· ——— — / ·——· ·—· ——— ···— ·· —·· ·',
 			'operation.export.title' => '——— ·——· · ·—· ·— — ·· ——— —· / · —··— ·——· ——— ·—· — ···',
 			'operation.export.titleWithCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '——— ·——· · ·—· ·— — ·· ——— —· / · —··— ·——· ——— ·—· — ··· ———··· / ${count} / ——·— ··· ———', other: '——— ·——· · ·—· ·— — ·· ——— —· / · —··— ·——· ——— ·—· — ··· ———··· / ${count} / ——·— ··· ——— ···', ), 
+			'operation.export.logTitle' => '·—·· ——— ——· / · —··— ·——· ——— ·—· — ···',
+			'operation.export.chaseTitle' => '—·—· ···· ·— ··· ·· —· ——· / · —··— ·——· ——— ·—· — ···',
 			'operation.export.filesTitle' => '··—· ·· ·—·· · / · —··— ·——· ——— ·—· — ···',
 			'operation.export.cloudSync' => '···· ·— —— ··——— —·— / —·—· ·—·· ——— ··— —·· / ··· —·—— —· —·—·',
 			'operation.export.syncNow' => '··· —·—— —· —·—· / —· ——— ·——',
@@ -6131,6 +6139,7 @@ extension on TranslationsCw {
 			'operation.export.syncedOperation' => '——— ·——· · ·—· ·— — ·· ——— —· / ·· ··· / ··· —·—— —· —·—· · —··',
 			'operation.export.unsyncedOperation' => '——— ·——· · ·—· ·— — ·· ——— —· / ···· ·— ··· / ··— —· ··· —·—— —· —·—· · —·· / —·—· ···· ·— —· ——· · ···',
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ——·— ··· ——— / ·· —· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·', other: '${count} / ——·— ··· ——— ··· / ·· —· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·', ), 
+			'operation.export.qsosToExport' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ——·— ··· ——— / — ——— / —··· · / · —··— ·——· ——— ·—· — · —··', other: '${count} / ——·— ··· ——— ··· / — ——— / —··· · / · —··— ·——· ——— ·—· — · —··', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => '·— ·—·· ·—·· / ${total} / ——·— ··· ——— ··· / ·— ·—· · / ··· —·—— —· —·—· · —··',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} / ——— ··—· / ${total} / ——·— ··· ——— ··· / ·——· · —· —·· ·· —· ——· / ··· —·—— —· —·—·',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} / · ···— · —· — / —— ·— ·—· —·— · ·—· ··· / ··· —·—— —· —·—· · —··',
@@ -6421,11 +6430,11 @@ extension on TranslationsCw {
 			'activitiesView.locationUnavailableTitle' => '·—·· ——— —·—· ·— — ·· ——— —· / —·· ·— — ·— / —· ——— — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'activitiesView.locationDeniedTitle' => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —·· · —· ·· · —··',
 			'activitiesView.locationBlockedTitle' => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —··· ·—·· ——— —·—· —·— · —··',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.noNearbyReason' => '—·—· ·— —· —· ——— — / —·· · — · ·—· —— ·· —· · / —· · ·— ·—· —··· —·—— / ·—· · ··—· · ·—· · —· —·—· · ···',
 			'activitiesView.locationManualHint' => ({required Object icon}) => '— ·— ·——· / ${icon} / — ——— / —— ·— —· ··— ·— ·—·· ·—·· —·—— / · —· — · ·—· / —·—— ——— ··— ·—· / ·—·· ——— —·—· ·— — ·· ——— —· ——··——\n——— ·—· / ·——— ··— ··· — / ··· · ·— ·—· —·—· ···· / ··—· ——— ·—· / ·—· · ··—· · ·—· · —· —·—· · ··· / —··· —·—— / —· ·— —— ·',
 			'activitiesView.locationGrantAction' => '·— ·—·· ·—·· ——— ·—— / ·—·· ——— —·—· ·— — ·· ——— —· / ·— —·—· —·—· · ··· ···',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.locationSettingsAction' => '——— ·——· · —· / ··· · — — ·· —· ——· ···',
 			'activitiesView.locationSettingsUnavailable' => '·— ·—·· ·—·· ——— ·—— / ·—·· ——— —·—· ·— — ·· ——— —· / ·— —·—· —·—· · ··· ··· / ·· —· / —·—— ——— ··— ·—· / ··· —·—— ··· — · —— / ··· · — — ·· —· ——· ···',
 			'activitiesView.locationGrantRefused' => '··· — ·· ·—·· ·—·· / —· ——— / ·—·· ——— —·—· ·— — ·· ——— —· / — / — ···· · / ··· —·—— ··· — · —— / ··· ·— ·· —·· / —· ——— / ·— ——· ·— ·· —·',
@@ -6935,11 +6944,11 @@ extension on TranslationsCw {
 			'settings.radio.cwMessages.helpEsmMyCall' => '·· —· / ··· ·—··· ·——· ——··—— / —·—— ——— ··— ·—· / —·—· ·— ·—·· ·—·· / — ——— / — ···· · / ··· — ·— — ·· ——— —· / —·—— ——— ··— / ·— ·—· · / ·— —· ··· ·—— · ·—· ·· —· ——·',
 			'settings.radio.cwMessages.helpEsmHisCall' => '·—· ··— —· —· ·· —· ——· ——··—— / — ···· · ·· ·—· / —·—· ·— ·—·· ·—·· / ·— ···· · ·— —·· / ——— ··—· / —·—— ——— ··— ·—· / · —··— —·—· ···· ·— —· ——· ·',
 			'settings.radio.cwMessages.helpEsmAgain' => '·— ··· —·— ··· / ·— ——· ·— ·· —· / ·—— ···· · —· / —· ——— — ···· ·· —· ——· / ——— ··—· / — ···· · ·· ·—· / · —··— —·—· ···· ·— —· ——· · / ·—— ·— ··· / —·—· ——— ·——· ·· · —··',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmStackThanks' => '··· ··— ——· ——· · ··· — · —·· / ··—· ···—— / ··—· ——— ·—· / —··—· —··—· / ··· — ·— —·—· —·— ··· ———··· / ·· — / — ···· ·— —· —·— ··· ——··—— / — ···· · —· / —·—· ·— ·—·· ·—·· ··· / — ···· · / —· · —··— — / ··· — ·— —·—· —·— · —·· / ··· — ·— — ·· ——— —· / ·— —· —·· / ··· · —· —·· ··· / —·—— ——— ··— ·—· / · —··— —·—· ···· ·— —· ——· · ——··—— / ——— ·—· / ·— ··· —·— ··· / ·— / ·——· ·— ·—· — ·· ·— ·—·· / —··· ·— —·—· —·— / —·——· — ··— / —·— ·—· ··——·· —·——·— —·—·—· / ·—— ·· — ···· / —· ——— — ···· ·· —· ——· / ·—·· · ··—· — ——··—— / ·——— ··— ··· — / — ··—',
 			'settings.radio.keyerControl.label' => '—·— · —·—— · ·—·',
 			'settings.radio.keyerControl.cw' => '·—— ·——· ——',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} / ·—— ·——· ——',
 			'settings.radio.keyerControl.voice' => '···— ——— ·· —·—· ·',
 			'settings.radio.voiceMessages.title' => '·——· ···· ——— —· · / —·— · —·—— · ·—· / —— · ··· ··· ·— ——· · ···',
@@ -7449,11 +7458,11 @@ extension on TranslationsCw {
 			'settings.station.spectrumOutOfRange' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ··· —·—· ——— ·——· · / ·· ··· / ··· · — / ——— ··— — ··· ·· —·· · / — ···· · / ·—· ·— —· ——· · / ·· — / —·—· ·— —· / ··· ···· ——— ·——',
 			'settings.station.spectrumBandUnsupported' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ··· —·—· ——— ·——· · / —·—· ·— —· —· ——— — / —··· · / ··· ···· ——— ·—— —· / ——— —· / — ···· ·· ··· / —··· ·— —· —··',
 			'settings.station.spectrumCropped' => ({required Object why}) => '—·—· ·—· ——— ·——· ·——· · —·· / ··—· ·—· ——— —— / ·— / ·—— ·· —·· · ·—· / ··· ·—— · · ·——· ·—·—·— / ${why}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.spectrumCroppedCap' => ({required Object max}) => '${max} / —· ·— ·—· ·—· ——— ·—— · ·—· / ··· ·—— · · ·——· ··· / ——— ··—· / — ···· ·· ··· / ·—· ·— —·· ·· ——— / ·— ·—· · / ·— ·—·· ·—· · ·— —·· —·—— / ·—· ··— —· —· ·· —· ——·',
 			'settings.station.spectrumNoSweepToSpare' => '— ···· · / ·—· ·— —·· ·· ——— / ···· ·— ··· / —· ——— / ——— — ···· · ·—· / ··· ·—— · · ·——· / — ——— / ··· ·——· ·— ·—· ·',
 			'settings.station.civScopeAdjust' => '·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·—— / ·— —·· ·——— ··— ··· — / —··· ·— —· —·· ··· —·—· ——— ·——· ·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.civScopeAdjustApp' => '·—·· · — / — ···· ·· ··· / ·— ·——· ·——· / ·— —·· ·——— ··— ··· — / — ···· · / —··· ·— —· —·· ··· —·—· ——— ·——· ·',
 			'settings.station.civScopeAdjustRadio' => '··— ··· · / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / —··· ·— —· —·· ··· —·—· ——— ·——· · / ··· · — — ·· —· ——· ··· / ·— ··· —····— ·· ···',
 			'settings.station.spectrumSdrNoRadio' => '·—— ·— ·· — ·· —· ——· / ··—· ——— ·—· / — ···· · / ·—·· ·· —· —·— · —·· / ·—· ·— —·· ·· ——— ·————· ··· / ··—· ·—· · ——·— ··— · —· —·—· —·—— …',
@@ -7963,11 +7972,11 @@ extension on TranslationsCw {
 			'settings.station.rotatorAzimuthOffsetDescription' => '—·· · ——· ·—· · · ··· / — ——— / ·— —·· —·· / — ——— / ·—— ···· ·— — / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·—· · ·— —·· ··· ——··—— / ·—— ···· · —· / ·· — ··· / ——·· · ·—· ——— / ·· ··· / —· ——— — / — ·—· ··— · / —· ——— ·—· — ···· ·—·—·— / — ··— ·—· —· ··· / ·— ·—· · / —·—· ——— ·—· ·—· · —·—· — · —·· / — ——— / —— ·— — —·—· ···· ·—·—·—',
 			'settings.station.rotatorElevationOffset' => '· ·—·· · ···— ·— — ·· ——— —· / ——— ··—· ··—· ··· · —',
 			'settings.station.rotatorAzimuthMin' => '·—·· ——— ·—— · ··· — / ·— ——·· ·· —— ··— — ····',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorAzimuthMax' => '···· ·· ——· ···· · ··· — / ·— ——·· ·· —— ··— — ····',
 			'settings.station.rotatorAzimuthMaxDescription' => '·· —· / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· ·————· ··· / ——— ·—— —· / —·· · ——· ·—· · · ··· ·—·—·— / ·— —··· ——— ···— · / ···—— —···· ————— / ··—· ——— ·—· / ·— / ·—· ——— — ·— — ——— ·—· / ·—— ·· — ···· / ——— ···— · ·—· ·—·· ·— ·——· ——··—— / ·—— ···· ·· —·—· ···· / — ···· · —· / — ·— —·— · ··· / — ···· · / ··· ···· ——— ·—· — · ·—· / — ··— ·—· —· ·—·—·—',
 			'settings.station.rotatorElevationMin' => '·—·· ——— ·—— · ··· — / · ·—·· · ···— ·— — ·· ——— —·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorElevationMax' => '···· ·· ——· ···· · ··· — / · ·—·· · ···— ·— — ·· ——— —·',
 			'settings.station.rotatorElevationMaxDescription' => '·· —· / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· ·————· ··· / ——— ·—— —· / —·· · ——· ·—· · · ··· ·—·—·— / ·— —··· ——— ···— · / ————· ————— / ··—· ——— ·—· / ·— / ·—· ——— — ·— — ——— ·—· / — ···· ·— — / ··—· ·—·· ·· ·——· ··· / ——— ···— · ·—· ·—·—·—',
 			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => '·—— ···· ——— ·—·· · / —·· · ——· ·—· · · ··· ——··—— / ${min} / — ——— / ${max}',
@@ -8477,11 +8486,11 @@ extension on TranslationsCw {
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} / ——· ——— — / ··· — ··— —·—· —·— / ·· —· / ·— / — ·· —— · ·—· ·—·—·— / ·· — ··· / — ·· —— · ·—· ··· / ·— ·—· · / ··· — ——— ·——· ·——· · —·· / ··— —· — ·· ·—·· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·—· · ··· — ·— ·—· — ·—·—·—',
 			'operationLocationScreen.title' => '——— ·——· · ·—· ·— — ·· ——— —· / ·—·· ——— —·—· ·— — ·· ——— —·',
 			'operationLocationScreen.selectedLocation' => '··· · ·—·· · —·—· — · —·· / ·—·· ——— —·—· ·— — ·· ——— —·',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.gridSquare' => '—— ·— ·· —·· · —· ···· · ·— —·· / ——· ·—· ·· —·· / ··· ——·— ··— ·— ·—· · / ·—·· ——— —·—· ·— — ——— ·—·',
 			'operationLocationScreen.gridInvalid' => '—· · · —·· ··· / ····— ——··—— / —···· ——··—— / ———·· / ——— ·—· / ·———— ————— / —·—· ···· ·— ·—· ·— —·—· — · ·—· ··· ——··—— / ·—·· ·· —·— · / ··—· —· ···—— ·———— ·——· ·—·',
 			'operationLocationScreen.suggestedLocations' => '··· ··— ——· ——· · ··· — · —·· / ·—·· ——— —·—· ·— — ·· ——— —· ···',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.deviceGps' => '—·· · ···— ·· —·—· · / ——· ·——· ···',
 			'operationLocationScreen.peerGps' => ({required Object device}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${receiver}',

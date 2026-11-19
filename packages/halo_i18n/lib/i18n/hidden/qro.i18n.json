@@ -826,6 +826,8 @@
         "one": "OPERATION EXPORTS: ${count} QSO",
         "other": "OPERATION EXPORTS: ${count} QSOS"
       },
+      "logTitle": "LOG EXPORTS",
+      "chaseTitle": "CHASING EXPORTS",
       "filesTitle": "FILE EXPORTS",
       "cloudSync": "HAM2K CLOUD SYNC",
       "syncNow": "SYNC NOW",
@@ -837,6 +839,10 @@
       "qsosInOperation": {
         "one": "${count} QSO IN THIS OPERATION",
         "other": "${count} QSOS IN THIS OPERATION"
+      },
+      "qsosToExport": {
+        "one": "${count} QSO TO BE EXPORTED",
+        "other": "${count} QSOS TO BE EXPORTED"
       },
       "qsosSynced": "ALL ${total} QSOS ARE SYNCED",
       "qsosPending": "${pending} OF ${total} QSOS PENDING SYNC",

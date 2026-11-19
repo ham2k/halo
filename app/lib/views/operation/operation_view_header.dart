@@ -404,18 +404,8 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
   }) {
     final t = context.t.activitiesView;
     final labeled = _headerActionsFitLabels(context, isTwoPane: isTwoPane, title: headerTitle, subtitle: headerSubtitle);
-    final onHeader = Theme.of(context).appBarTheme.foregroundColor ?? Theme.of(context).colorScheme.onPrimary;
-    Widget headerButton({required IconData icon, required String label, required VoidCallback onPressed}) => labeled
-        ? TextButton.icon(
-            icon: Icon(icon),
-            label: Text(label),
-            style: TextButton.styleFrom(foregroundColor: onHeader),
-            onPressed: onPressed,
-          )
-        : IconButton(
-            icon: Icon(icon, semanticLabel: label),
-            onPressed: onPressed,
-          );
+    Widget headerButton({required IconData icon, required String label, required VoidCallback onPressed}) =>
+        headerActionButton(context, icon: icon, label: label, labeled: labeled, onPressed: onPressed);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

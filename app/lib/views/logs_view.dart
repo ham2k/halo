@@ -37,6 +37,8 @@ import 'file_open/file_router.dart';
 import 'operation/call_info_panel.dart';
 import 'operation/log_find_bar.dart' show isFindChord;
 import 'operation/map_panel.dart';
+import 'header_action_button.dart';
+import 'operation/operation_export_panel.dart' show showOperationExportPanel;
 import 'operation_view.dart';
 import 'sheet_header_dots.dart';
 import 'tester_overlay.dart' show testerOverlayCovering;
@@ -1132,6 +1134,16 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
                   builder: (context, _) => _buildTitle(context, filtered, includeSearch: isTwoPane),
                 ),
           actions: [
+            if (!layoutEditing) ...[
+              headerActionButton(
+                context,
+                icon: MdiIcons.export,
+                label: context.t.activitiesView.exports,
+                labeled: isTwoPane,
+                onPressed: filtered == null || filtered.isEmpty ? null : () => unawaited(_export(context, filtered)),
+              ),
+              const SizedBox(width: Space.md),
+            ],
             ?viewOptionsButton(context, editing: layoutEditing),
             ...layoutHeaderControls(context),
             windowsCaptionSpacer(context),
@@ -1195,6 +1207,56 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
           child: SizedBox(height: 36, child: _searchField(context)),
         ),
       ),
+    );
+  }
+
+  bool _exporting = false;
+
+  /// The table's contacts as it shows them (the callsign filter, the period
+  /// and the search) as one Full ADIF, each contact written as its own
+  /// operation writes it. The stash files them as the title reads them.
+  Future<void> _export(BuildContext context, List<Qso> shown) async {
+    // The lookup below takes a moment, and a second tap in it would open a
+    // second pane.
+    if (_exporting) return;
+    final t = context.t;
+    final call = _filter.stationCall;
+    final periodTitle = _period.titleLabel(context, nowUtc());
+    final stashTitle = [
+      call != null ? '${t.home.logs.titleFor} $call' : t.home.logs.titleAll,
+      if (periodTitle != null) t.home.logs.periodTitle.inSpan(span: periodTitle),
+    ].join(' ');
+    final uuids = {
+      for (final qso in shown)
+        if (qso.operationUuid.isNotEmpty) qso.operationUuid,
+    }.toList();
+    _exporting = true;
+    final Map<String, Operation> operations;
+    try {
+      operations = {for (final operation in await widget.services.operations.byUuids(uuids)) operation.uuid: operation};
+    } catch (e, st) {
+      ErrorReportingService.report(
+        e,
+        st,
+        context: 'logs:export',
+        notice: ErrorNotice(widget.services.statusBar, key: 'logsExport:failed', title: t.operation.export.resultFailedTitle),
+      );
+      return;
+    } finally {
+      _exporting = false;
+    }
+    if (!context.mounted) return;
+    await showOperationExportPanel(
+      context,
+      services: widget.services,
+      operation: Operation(uuid: '', data: {'stationCall': call ?? shown.first.ourCall}),
+      contacts: shown,
+      operations: operations,
+      stashTitle: stashTitle,
+      title: t.operation.export.logTitle,
+      // A log spanning operations is no program's submission: those come
+      // from each operation's own Exports.
+      fullAdifOnly: true,
     );
   }
 

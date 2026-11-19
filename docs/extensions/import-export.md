@@ -21,6 +21,11 @@ there. Then it calls `generateExport` only for the options the operator
 selected, passing back the chosen option's `exportType` and `exportKey`. The
 app owns file I/O and the save-or-share dialog; you produce content.
 
+The Chasing view has an Exports panel too. It asks about the contacts logged
+there, under an `operation` with no `uuid` and no activation, so a hunter
+log offers itself and an activator's file does not. A program that takes no
+hunter logs registers none.
+
 ```ts
 interface ExportHook {
   getExportTypes?(args: {}, ctx): Promise<ExportTypeDefinition[]>

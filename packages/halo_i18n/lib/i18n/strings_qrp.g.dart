@@ -2010,6 +2010,8 @@ class _Translations$operation$export$qrp extends Translations$operation$export$e
 		one: 'operation exports: ${count} qso',
 		other: 'operation exports: ${count} qsos',
 	);
+	@override String get logTitle => 'log exports';
+	@override String get chaseTitle => 'chasing exports';
 	@override String get filesTitle => 'file exports';
 	@override String get cloudSync => 'ham2k cloud sync';
 	@override String get syncNow => 'sync now';
@@ -2021,6 +2023,10 @@ class _Translations$operation$export$qrp extends Translations$operation$export$e
 	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
 		one: '${count} qso in this operation',
 		other: '${count} qsos in this operation',
+	);
+	@override String qsosToExport({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${count} qso to be exported',
+		other: '${count} qsos to be exported',
 	);
 	@override String qsosSynced({required Object total}) => 'all ${total} qsos are synced';
 	@override String qsosPending({required Object pending, required Object total}) => '${pending} of ${total} qsos pending sync';
@@ -6122,6 +6128,8 @@ extension on TranslationsQrp {
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'this panel needs a sandbox the web version cannot provide',
 			'operation.export.title' => 'operation exports',
 			'operation.export.titleWithCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'operation exports: ${count} qso', other: 'operation exports: ${count} qsos', ), 
+			'operation.export.logTitle' => 'log exports',
+			'operation.export.chaseTitle' => 'chasing exports',
 			'operation.export.filesTitle' => 'file exports',
 			'operation.export.cloudSync' => 'ham2k cloud sync',
 			'operation.export.syncNow' => 'sync now',
@@ -6131,6 +6139,7 @@ extension on TranslationsQrp {
 			'operation.export.syncedOperation' => 'operation is synced',
 			'operation.export.unsyncedOperation' => 'operation has unsynced changes',
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} qso in this operation', other: '${count} qsos in this operation', ), 
+			'operation.export.qsosToExport' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} qso to be exported', other: '${count} qsos to be exported', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => 'all ${total} qsos are synced',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} of ${total} qsos pending sync',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} event markers synced',
@@ -6421,11 +6430,11 @@ extension on TranslationsQrp {
 			'activitiesView.locationUnavailableTitle' => 'location data not available',
 			'activitiesView.locationDeniedTitle' => 'location permission denied',
 			'activitiesView.locationBlockedTitle' => 'location permission blocked',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.noNearbyReason' => 'cannot determine nearby references',
 			'activitiesView.locationManualHint' => ({required Object icon}) => 'tap ${icon} to manually enter your location,\nor just search for references by name',
 			'activitiesView.locationGrantAction' => 'allow location access',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.locationSettingsAction' => 'open settings',
 			'activitiesView.locationSettingsUnavailable' => 'allow location access in your system settings',
 			'activitiesView.locationGrantRefused' => 'still no location — the system said no again',
@@ -6935,11 +6944,11 @@ extension on TranslationsQrp {
 			'settings.radio.cwMessages.helpEsmMyCall' => 'in s&p, your call to the station you are answering',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'running, their call ahead of your exchange',
 			'settings.radio.cwMessages.helpEsmAgain' => 'asks again when nothing of their exchange was copied',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'suggested f3 for // stacks: it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (tu kr?); with nothing left, just tu',
 			'settings.radio.keyerControl.label' => 'keyer',
 			'settings.radio.keyerControl.cw' => 'wpm',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} wpm',
 			'settings.radio.keyerControl.voice' => 'voice',
 			'settings.radio.voiceMessages.title' => 'phone keyer messages',
@@ -7449,11 +7458,11 @@ extension on TranslationsQrp {
 			'settings.station.spectrumOutOfRange' => 'the radio\'s scope is set outside the range it can show',
 			'settings.station.spectrumBandUnsupported' => 'the radio\'s scope cannot be shown on this band',
 			'settings.station.spectrumCropped' => ({required Object why}) => 'cropped from a wider sweep. ${why}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.spectrumCroppedCap' => ({required Object max}) => '${max} narrower sweeps of this radio are already running',
 			'settings.station.spectrumNoSweepToSpare' => 'the radio has no other sweep to spare',
 			'settings.station.civScopeAdjust' => 'automatically adjust bandscope',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.civScopeAdjustApp' => 'let this app adjust the bandscope',
 			'settings.station.civScopeAdjustRadio' => 'use the radio\'s bandscope settings as-is',
 			'settings.station.spectrumSdrNoRadio' => 'waiting for the linked radio\'s frequency…',
@@ -7963,11 +7972,11 @@ extension on TranslationsQrp {
 			'settings.station.rotatorAzimuthOffsetDescription' => 'degrees to add to what the controller reads, when its zero is not true north. turns are corrected to match.',
 			'settings.station.rotatorElevationOffset' => 'elevation offset',
 			'settings.station.rotatorAzimuthMin' => 'lowest azimuth',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorAzimuthMax' => 'highest azimuth',
 			'settings.station.rotatorAzimuthMaxDescription' => 'in the controller\'s own degrees. above 360 for a rotator with overlap, which then takes the shorter turn.',
 			'settings.station.rotatorElevationMin' => 'lowest elevation',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorElevationMax' => 'highest elevation',
 			'settings.station.rotatorElevationMaxDescription' => 'in the controller\'s own degrees. above 90 for a rotator that flips over.',
 			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'whole degrees, ${min} to ${max}',
@@ -8477,11 +8486,11 @@ extension on TranslationsQrp {
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} got stuck in a timer. its timers are stopped until the extensions restart.',
 			'operationLocationScreen.title' => 'operation location',
 			'operationLocationScreen.selectedLocation' => 'selected location',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.gridSquare' => 'maidenhead grid square locator',
 			'operationLocationScreen.gridInvalid' => 'needs 4, 6, 8 or 10 characters, like fn31pr',
 			'operationLocationScreen.suggestedLocations' => 'suggested locations',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.deviceGps' => 'device gps',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'gps from ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => 'gps from ${receiver}',

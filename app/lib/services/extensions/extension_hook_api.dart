@@ -389,6 +389,19 @@ mixin _ExtensionHookApi {
   Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) async =>
       (await _collectHookResults(Hooks.exportSuggestExportOptions, args: args, debugLabel: 'getExportOptions')).items;
 
+  /// The export options of the `export` hook registered as [key] alone, each
+  /// tagged with it as [getExportOptions] tags them: for a pane that offers
+  /// one hook's files, without asking every other hook about its contacts.
+  Future<List<Map<String, dynamic>>> getExportOptionsFrom(String key, Map<String, dynamic> args) async {
+    final host = this.host;
+    if (host == null) return [];
+    final result = await host.invoke(Hooks.exportSuggestExportOptions, key: key, args: args, timeout: const Duration(seconds: 10));
+    return [
+      for (final option in result is List ? result : const [])
+        if (option is Map) {...option.cast<String, dynamic>(), 'hookKey': key},
+    ];
+  }
+
   /// A shared type is listed once, using the highest-priority registration.
   Future<List<Map<String, dynamic>>> getExportTypes() async {
     final host = this.host;

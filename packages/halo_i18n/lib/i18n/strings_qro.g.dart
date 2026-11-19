@@ -2010,6 +2010,8 @@ class _Translations$operation$export$qro extends Translations$operation$export$e
 		one: 'OPERATION EXPORTS: ${count} QSO',
 		other: 'OPERATION EXPORTS: ${count} QSOS',
 	);
+	@override String get logTitle => 'LOG EXPORTS';
+	@override String get chaseTitle => 'CHASING EXPORTS';
 	@override String get filesTitle => 'FILE EXPORTS';
 	@override String get cloudSync => 'HAM2K CLOUD SYNC';
 	@override String get syncNow => 'SYNC NOW';
@@ -2021,6 +2023,10 @@ class _Translations$operation$export$qro extends Translations$operation$export$e
 	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
 		one: '${count} QSO IN THIS OPERATION',
 		other: '${count} QSOS IN THIS OPERATION',
+	);
+	@override String qsosToExport({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} QSO TO BE EXPORTED',
+		other: '${count} QSOS TO BE EXPORTED',
 	);
 	@override String qsosSynced({required Object total}) => 'ALL ${total} QSOS ARE SYNCED';
 	@override String qsosPending({required Object pending, required Object total}) => '${pending} OF ${total} QSOS PENDING SYNC';
@@ -6122,6 +6128,8 @@ extension on TranslationsQro {
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'THIS PANEL NEEDS A SANDBOX THE WEB VERSION CANNOT PROVIDE',
 			'operation.export.title' => 'OPERATION EXPORTS',
 			'operation.export.titleWithCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'OPERATION EXPORTS: ${count} QSO', other: 'OPERATION EXPORTS: ${count} QSOS', ), 
+			'operation.export.logTitle' => 'LOG EXPORTS',
+			'operation.export.chaseTitle' => 'CHASING EXPORTS',
 			'operation.export.filesTitle' => 'FILE EXPORTS',
 			'operation.export.cloudSync' => 'HAM2K CLOUD SYNC',
 			'operation.export.syncNow' => 'SYNC NOW',
@@ -6131,6 +6139,7 @@ extension on TranslationsQro {
 			'operation.export.syncedOperation' => 'OPERATION IS SYNCED',
 			'operation.export.unsyncedOperation' => 'OPERATION HAS UNSYNCED CHANGES',
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} QSO IN THIS OPERATION', other: '${count} QSOS IN THIS OPERATION', ), 
+			'operation.export.qsosToExport' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} QSO TO BE EXPORTED', other: '${count} QSOS TO BE EXPORTED', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => 'ALL ${total} QSOS ARE SYNCED',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} OF ${total} QSOS PENDING SYNC',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} EVENT MARKERS SYNCED',
@@ -6421,11 +6430,11 @@ extension on TranslationsQro {
 			'activitiesView.locationUnavailableTitle' => 'LOCATION DATA NOT AVAILABLE',
 			'activitiesView.locationDeniedTitle' => 'LOCATION PERMISSION DENIED',
 			'activitiesView.locationBlockedTitle' => 'LOCATION PERMISSION BLOCKED',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.noNearbyReason' => 'CANNOT DETERMINE NEARBY REFERENCES',
 			'activitiesView.locationManualHint' => ({required Object icon}) => 'TAP ${icon} TO MANUALLY ENTER YOUR LOCATION,\nOR JUST SEARCH FOR REFERENCES BY NAME',
 			'activitiesView.locationGrantAction' => 'ALLOW LOCATION ACCESS',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.locationSettingsAction' => 'OPEN SETTINGS',
 			'activitiesView.locationSettingsUnavailable' => 'ALLOW LOCATION ACCESS IN YOUR SYSTEM SETTINGS',
 			'activitiesView.locationGrantRefused' => 'STILL NO LOCATION — THE SYSTEM SAID NO AGAIN',
@@ -6935,11 +6944,11 @@ extension on TranslationsQro {
 			'settings.radio.cwMessages.helpEsmMyCall' => 'IN S&P, YOUR CALL TO THE STATION YOU ARE ANSWERING',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'RUNNING, THEIR CALL AHEAD OF YOUR EXCHANGE',
 			'settings.radio.cwMessages.helpEsmAgain' => 'ASKS AGAIN WHEN NOTHING OF THEIR EXCHANGE WAS COPIED',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'SUGGESTED F3 FOR // STACKS: IT THANKS, THEN CALLS THE NEXT STACKED STATION AND SENDS YOUR EXCHANGE, OR ASKS A PARTIAL BACK (TU KR?); WITH NOTHING LEFT, JUST TU',
 			'settings.radio.keyerControl.label' => 'KEYER',
 			'settings.radio.keyerControl.cw' => 'WPM',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} WPM',
 			'settings.radio.keyerControl.voice' => 'VOICE',
 			'settings.radio.voiceMessages.title' => 'PHONE KEYER MESSAGES',
@@ -7449,11 +7458,11 @@ extension on TranslationsQro {
 			'settings.station.spectrumOutOfRange' => 'THE RADIO\'S SCOPE IS SET OUTSIDE THE RANGE IT CAN SHOW',
 			'settings.station.spectrumBandUnsupported' => 'THE RADIO\'S SCOPE CANNOT BE SHOWN ON THIS BAND',
 			'settings.station.spectrumCropped' => ({required Object why}) => 'CROPPED FROM A WIDER SWEEP. ${why}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.spectrumCroppedCap' => ({required Object max}) => '${max} NARROWER SWEEPS OF THIS RADIO ARE ALREADY RUNNING',
 			'settings.station.spectrumNoSweepToSpare' => 'THE RADIO HAS NO OTHER SWEEP TO SPARE',
 			'settings.station.civScopeAdjust' => 'AUTOMATICALLY ADJUST BANDSCOPE',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.civScopeAdjustApp' => 'LET THIS APP ADJUST THE BANDSCOPE',
 			'settings.station.civScopeAdjustRadio' => 'USE THE RADIO\'S BANDSCOPE SETTINGS AS-IS',
 			'settings.station.spectrumSdrNoRadio' => 'WAITING FOR THE LINKED RADIO\'S FREQUENCY…',
@@ -7963,11 +7972,11 @@ extension on TranslationsQro {
 			'settings.station.rotatorAzimuthOffsetDescription' => 'DEGREES TO ADD TO WHAT THE CONTROLLER READS, WHEN ITS ZERO IS NOT TRUE NORTH. TURNS ARE CORRECTED TO MATCH.',
 			'settings.station.rotatorElevationOffset' => 'ELEVATION OFFSET',
 			'settings.station.rotatorAzimuthMin' => 'LOWEST AZIMUTH',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorAzimuthMax' => 'HIGHEST AZIMUTH',
 			'settings.station.rotatorAzimuthMaxDescription' => 'IN THE CONTROLLER\'S OWN DEGREES. ABOVE 360 FOR A ROTATOR WITH OVERLAP, WHICH THEN TAKES THE SHORTER TURN.',
 			'settings.station.rotatorElevationMin' => 'LOWEST ELEVATION',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorElevationMax' => 'HIGHEST ELEVATION',
 			'settings.station.rotatorElevationMaxDescription' => 'IN THE CONTROLLER\'S OWN DEGREES. ABOVE 90 FOR A ROTATOR THAT FLIPS OVER.',
 			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'WHOLE DEGREES, ${min} TO ${max}',
@@ -8477,11 +8486,11 @@ extension on TranslationsQro {
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} GOT STUCK IN A TIMER. ITS TIMERS ARE STOPPED UNTIL THE EXTENSIONS RESTART.',
 			'operationLocationScreen.title' => 'OPERATION LOCATION',
 			'operationLocationScreen.selectedLocation' => 'SELECTED LOCATION',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.gridSquare' => 'MAIDENHEAD GRID SQUARE LOCATOR',
 			'operationLocationScreen.gridInvalid' => 'NEEDS 4, 6, 8 OR 10 CHARACTERS, LIKE FN31PR',
 			'operationLocationScreen.suggestedLocations' => 'SUGGESTED LOCATIONS',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.deviceGps' => 'DEVICE GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS FROM ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => 'GPS FROM ${receiver}',

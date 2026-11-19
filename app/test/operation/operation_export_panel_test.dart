@@ -812,6 +812,136 @@ void main() {
       expect(title, contains('Test Op'));
     });
 
+    group('over contacts that are not one operation\'s log', () {
+      // The Chasing and Logs views' pane. Cloud Sync, the pushes and the
+      // operation's own counts are an operation's: shown over a stand-in
+      // with no uuid, they would report on an operation that does not exist.
+      late Operation standIn;
+      late List<Qso> contacts;
+      late Operation logged;
+
+      setUp(() async {
+        standIn = Operation(uuid: '', data: {'stationCall': 'N0CALL'});
+        logged = await OperationsRepository(db).create(stationCall: 'N0CALL', userTitle: 'Park day');
+        Qso contact(String uuid, {String operationUuid = '', bool deleted = false}) => Qso(
+          uuid: uuid,
+          operationUuid: operationUuid,
+          deleted: deleted,
+          data: {
+            'our': {'call': 'N0CALL'},
+            'their': {'call': 'DL1ABC'},
+            'startAtMillis': 1000,
+          },
+        );
+        contacts = [contact('a'), contact('b', operationUuid: logged.uuid), contact('gone', deleted: true)];
+      });
+
+      Future<void> pumpContacts(WidgetTester tester) async {
+        tester.view.physicalSize = const Size(1000, 900);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(
+          TranslationProvider(
+            child: MaterialApp(
+              home: Scaffold(
+                body: OperationExportPanel(
+                  services: services,
+                  operation: standIn,
+                  contacts: contacts,
+                  operations: {logged.uuid: logged},
+                  stashTitle: 'Logs for N0CALL in 2026',
+                  fullAdifOnly: true,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('it counts the live contacts it exports, and reports no sync or pushes', (tester) async {
+        await settings.setExperimentEnabled(kPushExperiment, true);
+        await settings.setSyncEnabled(true);
+        await pumpContacts(tester);
+
+        expect(find.text('2 QSOs to be exported'), findsOneWidget, reason: 'the deleted contact is not exported');
+        expect(find.textContaining('in this operation'), findsNothing);
+        expect(find.textContaining('Sync & Push'), findsNothing);
+        expect(find.textContaining('unsynced'), findsNothing);
+        expect(find.text('Operation is synced'), findsNothing);
+      });
+
+      testWidgets('the service lists and writes the same contacts, against their operations', (tester) async {
+        await pumpContacts(tester);
+        expect(exports.listedFor?.contacts, same(contacts));
+        expect(exports.listedFor?.operations.keys, [logged.uuid]);
+        expect(exports.listedFor?.fullAdifOnly, isTrue);
+
+        await tester.tap(find.text('Save 1 file'));
+        await tester.pumpAndSettle();
+        expect(exports.generatedFrom?.contacts, same(contacts), reason: 'a file of other contacts than the ones listed');
+        expect(exports.generatedFrom?.operations.keys, [logged.uuid]);
+      });
+
+      testWidgets('the stash files the upload under the pane\'s own title, its call said once', (tester) async {
+        await settings.setSyncEnabled(true);
+        await pumpContacts(tester);
+
+        await tester.tap(find.text('Stash 1 file'));
+        await tester.pumpAndSettle();
+
+        expect(exports.stashed.single.groupTitle, 'Logs for N0CALL in 2026');
+      });
+
+      testWidgets('an export leaves the contacts\' operation as it was', (tester) async {
+        // Exporting an operation marks it processed; a log of many
+        // operations' contacts is not any one of them being sent.
+        await OperationsRepository(db).setStatus(logged.uuid, OperationStatus.completed);
+        await pumpContacts(tester);
+
+        await tester.tap(find.text('Save 1 file'));
+        await tester.pumpAndSettle();
+        await readAndDismissResult(tester);
+
+        expect((await OperationsRepository(db).get(logged.uuid))?.status, OperationStatus.completed);
+      });
+
+      testWidgets('the pane keeps its own title, never an operation\'s count', (tester) async {
+        // An operation's pane retitles itself with its contact count under
+        // EXP PUSH; "Operation Exports: 2 QSOs" over the Logs view's contacts
+        // names something that is not there.
+        await settings.setExperimentEnabled(kPushExperiment, true);
+        tester.view.physicalSize = const Size(1000, 900);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(
+          TranslationProvider(
+            child: MaterialApp(
+              home: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => showOperationExportPanel(
+                    context,
+                    services: services,
+                    operation: standIn,
+                    contacts: contacts,
+                    title: 'Log Exports',
+                    stashTitle: 'Logs for N0CALL',
+                    fullAdifOnly: true,
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('open'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Log Exports'), findsOneWidget);
+        expect(find.textContaining('Operation Exports'), findsNothing);
+      });
+    });
+
     testWidgets('a paid account is neither warned nor told about the free tier', (tester) async {
       await settings.setSyncEnabled(true);
       await pump(tester);
@@ -1146,7 +1276,12 @@ class _MultiCallExportService extends ExportService {
   final List<List<Map<String, dynamic>>> generated = [];
 
   @override
-  Future<List<Map<String, dynamic>>> getExportOptions(Operation operation) async => [
+  Future<List<Map<String, dynamic>>> getExportOptions(
+    Operation operation, {
+    List<Qso>? contacts,
+    Map<String, Operation> operations = const {},
+    bool fullAdifOnly = false,
+  }) async => [
     for (final call in operation.stationCalls)
       {
         'hookKey': 'adif',
@@ -1161,7 +1296,12 @@ class _MultiCallExportService extends ExportService {
   ];
 
   @override
-  Future<List<Map<String, dynamic>>> generateExports(Operation operation, List<Map<String, dynamic>> selectedOptions) async {
+  Future<List<Map<String, dynamic>>> generateExports(
+    Operation operation,
+    List<Map<String, dynamic>> selectedOptions, {
+    List<Qso>? contacts,
+    Map<String, Operation> operations = const {},
+  }) async {
     generated.add(selectedOptions);
     return [
       for (final option in selectedOptions) {'filename': option['filename'], 'mimeType': 'text/plain', 'content': 'x'},
@@ -1261,8 +1401,18 @@ class _FakeExportService extends ExportService {
   /// answering synchronously never reproduces.
   Completer<void>? holdOptions;
 
+  /// What the pane asked the options for, and generated them from.
+  ({List<Qso>? contacts, Map<String, Operation> operations, bool fullAdifOnly})? listedFor;
+  ({List<Qso>? contacts, Map<String, Operation> operations})? generatedFrom;
+
   @override
-  Future<List<Map<String, dynamic>>> getExportOptions(Operation operation) async {
+  Future<List<Map<String, dynamic>>> getExportOptions(
+    Operation operation, {
+    List<Qso>? contacts,
+    Map<String, Operation> operations = const {},
+    bool fullAdifOnly = false,
+  }) async {
+    listedFor = (contacts: contacts, operations: operations, fullAdifOnly: fullAdifOnly);
     if (holdOptions != null) await holdOptions!.future;
     final compact = _settings.useCompactFileNames;
     return [
@@ -1338,8 +1488,14 @@ class _FakeExportService extends ExportService {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> generateExports(Operation operation, List<Map<String, dynamic>> selectedOptions) async {
+  Future<List<Map<String, dynamic>>> generateExports(
+    Operation operation,
+    List<Map<String, dynamic>> selectedOptions, {
+    List<Qso>? contacts,
+    Map<String, Operation> operations = const {},
+  }) async {
     generated.add(selectedOptions);
+    generatedFrom = (contacts: contacts, operations: operations);
     if (generateThrows != null) throw generateThrows!;
     return [
       for (final option in selectedOptions) {'filename': option['filename'], 'mimeType': 'text/plain', 'content': 'x'},

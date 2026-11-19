@@ -35,6 +35,7 @@ import '../settings/core_settings_groups.dart' show LoggingSettingsGroup;
 import '../settings/settings_registry.dart' show SettingsGroup;
 import '../settings/settings_target_dialog.dart';
 import 'dock_host.dart';
+import 'header_action_button.dart';
 import 'operation/everyware_steering.dart';
 import 'keyer_area.dart' show cwKeyerOrSay, keyerOrSay;
 import 'dock_layouts/layout_menu.dart' show showLayoutsSheet;

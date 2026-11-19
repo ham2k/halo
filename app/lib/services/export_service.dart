@@ -9,6 +9,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' show Rect;
 
 import 'package:file_selector/file_selector.dart';
@@ -19,7 +20,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
-import 'package:halo_extension_host/halo_extension_host.dart' show HookCalls;
+import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHost, HookCalls;
 
 import 'android_file_save.dart';
 import 'export_preferences.dart';
@@ -107,6 +108,32 @@ class ExportException implements Exception {
   String toString() => message;
 }
 
+/// ADIF [files] as one: the first file's header, then every file's
+/// records in turn. The header loses the fields that describe one operation
+/// (`APP_HAM2K_OP_TITLE`, `APP_HAM2K_OP_NOTES`), since the file holds more
+/// than that operation's contacts. Each is cut by its stated length, not by
+/// line: an operator's notes run over several.
+@visibleForTesting
+String joinAdifFiles(List<String> files) {
+  final eoh = RegExp('<eoh>', caseSensitive: false);
+  String recordsOf(String file) {
+    final match = eoh.firstMatch(file);
+    return (match == null ? file : file.substring(match.end)).trimLeft();
+  }
+
+  final records = files.map(recordsOf).where((records) => records.isNotEmpty).join('\n');
+  final first = files.first;
+  final end = eoh.firstMatch(first)?.start;
+  if (end == null) return records;
+  var header = first.substring(0, end);
+  final opField = RegExp(r'<APP_HAM2K_OP_(?:TITLE|NOTES):(\d+)(?::[^>]*)?>', caseSensitive: false);
+  for (var field = opField.firstMatch(header); field != null; field = opField.firstMatch(header)) {
+    final valueEnd = math.min(header.length, field.end + int.parse(field.group(1)!));
+    header = header.substring(0, field.start) + header.substring(valueEnd).replaceFirst(RegExp(r'^[ \t]*\r?\n'), '');
+  }
+  return '$header<EOH>\n\n$records';
+}
+
 class ExportService {
   final ExtensionService extensions;
   final QsosRepository qsos;
@@ -127,6 +154,14 @@ class ExportService {
   /// Whether [option] is that dump. Public because the panel marks it in the
   /// dev-mode accent, which is a theme colour rather than the hex string an
   /// extension declares — so the option map can't carry it.
+  /// The core's whole-log ADIF, the one option a log spanning operations
+  /// offers ([getExportOptions]'s `fullAdifOnly`).
+  static const _fullAdifHookKey = 'adif';
+
+  /// How many operations' shares of one file are generated at once.
+  static const _sharesAtOnce = 8;
+  static bool _isFullAdif(Map<String, dynamic> option) => option['hookKey'] == _fullAdifHookKey && option['exportType'] == 'adif';
+
   bool isQsonOption(Map<String, dynamic> option) => option['hookKey'] == _qsonHookKey && option['exportType'] == _qsonExportType;
 
   Map<String, dynamic> _qsonOptionFor(Operation operation) {
@@ -200,8 +235,8 @@ class ExportService {
   /// event rows carrying the overrides are exactly what the contact list
   /// filters out (docs/design/contests.md §5.1.3) — the same trap
   /// `ScoringService.rescoreOperation` documents.
-  Future<({List<Qso> qsos, List<Qso> events, SegmentedOperation segmented})> _logFor(Operation operation) async {
-    final log = await _logOrNothing(operation);
+  Future<({List<Qso> qsos, List<Qso> events, SegmentedOperation segmented})> _logFor(Operation operation, List<Qso>? contacts) async {
+    final log = await _logOrNothing(operation, contacts);
     if (log == null) {
       throw ExportException('Nothing to export: this operation has no QSOs.');
     }
@@ -214,11 +249,48 @@ class ExportService {
   /// answers — with nothing — where actually exporting one is a request it
   /// has to refuse. Thrown for both, the panel greets an operator whose only
   /// mistake was opening it before their first contact with "Export failed".
-  Future<({List<Qso> qsos, List<Qso> events, SegmentedOperation segmented})?> _logOrNothing(Operation operation) async {
-    final all = await qsos.forOperation(operation.uuid);
+  ///
+  /// [contacts], when given, are the log instead of [operation]'s own
+  /// (see [getExportOptions]).
+  Future<({List<Qso> qsos, List<Qso> events, SegmentedOperation segmented})?> _logOrNothing(Operation operation, List<Qso>? contacts) async {
+    final all = contacts == null
+        ? await qsos.forOperation(operation.uuid)
+        : [
+            for (final qso in contacts)
+              if (!qso.deleted) _pinnedToItsCall(qso),
+          ];
     final qsoList = all.where((q) => !q.isEvent).toList();
     if (qsoList.isEmpty) return null;
     return (qsos: qsoList, events: all.where((q) => q.isEvent).toList(), segmented: SegmentedOperation.from(operation: operation.data, qsos: all));
+  }
+
+  /// [qso] listing the call it was logged under as its only station call.
+  ///
+  /// Contacts handed in without their operation (see [getExportOptions]) are
+  /// the ones the Logs view shows under `our.call`, and its files go by that
+  /// call alone. A contact listing no calls would follow its operation's
+  /// ([contactUsesStationCall]), every one landing in the stand-in's file;
+  /// one listing several would owe each of them a file the view never asked
+  /// for, holding none of their own contacts.
+  static Qso _pinnedToItsCall(Qso qso) {
+    final our = asQsonMap(qso.data['our']);
+    final call = qso.ourCall.toUpperCase();
+    if (qso.isEvent || call.isEmpty) return qso;
+    if (stationCallsOfOur(our) case [final only] when only == call) return qso;
+    return Qso(
+      uuid: qso.uuid,
+      operationUuid: qso.operationUuid,
+      data: {
+        ...qso.data,
+        'our': {
+          ...?our,
+          ourStationCallsKey: [call],
+        },
+      },
+      deleted: qso.deleted,
+      purged: qso.purged,
+      scoreCache: qso.scoreCache,
+    );
   }
 
   /// The QSOs one export is responsible for.
@@ -454,8 +526,24 @@ class ExportService {
   /// call owes its own set of files; every option is tagged with the call it
   /// belongs to so the panel can group them and `generateExports` can rebuild
   /// the same payload.
-  Future<List<Map<String, dynamic>>> getExportOptions(Operation operation) async {
-    final log = await _logOrNothing(operation);
+  ///
+  /// [contacts] stands in for the operation's own log where the contacts
+  /// are not one operation's: the Chasing view's, logged outside any, or
+  /// the Logs view's, from many. [operation] is then a stand-in with no
+  /// uuid, giving the hooks the station call and nothing to activate, so
+  /// they offer what a log of hunted contacts owes. [generateExports] must
+  /// be handed the same contacts. [operations] are the ones they were
+  /// logged in, by uuid, which [generateExports] writes them against.
+  ///
+  /// [fullAdifOnly] keeps the core's Full ADIF alone, for a log that is no
+  /// program's to submit.
+  Future<List<Map<String, dynamic>>> getExportOptions(
+    Operation operation, {
+    List<Qso>? contacts,
+    Map<String, Operation> operations = const {},
+    bool fullAdifOnly = false,
+  }) async {
+    final log = await _logOrNothing(operation, contacts);
     // GROWABLE, not `const []`: the panel sorts what it gets by priority, and
     // `sort` on an unmodifiable list throws whatever its length — turning the
     // empty answer this exists to give into a worse failure than the one it
@@ -488,7 +576,13 @@ class ExportService {
           (payload['operation'] as Map<String, dynamic>)['refs'] = log.segmented.allRefs;
         }
 
-        var options = await extensions.getExportOptions({...payload, 'compactFilenames': settings.useCompactFileNames});
+        final request = {...payload, 'compactFilenames': settings.useCompactFileNames};
+        var options = fullAdifOnly
+            ? [
+                for (final option in await extensions.getExportOptionsFrom(_fullAdifHookKey, request))
+                  if (_isFullAdif(option)) option,
+              ]
+            : await extensions.getExportOptions(request);
         final registered = [
           for (final option in options)
             if (settingsByType.containsKey(option['exportType']))
@@ -520,7 +614,8 @@ class ExportService {
     );
 
     final options = [for (final group in perCall) ...group];
-    if (settings.developerMode) {
+    // The dump is an operation's stored rows, and a stand-in has none.
+    if (settings.developerMode && contacts == null) {
       // ONE dump for the whole operation, not one per call: it is the
       // operation as stored, and the fan-out is a reading of it.
       return [...options, _qsonOptionFor(operation)];
@@ -593,13 +688,18 @@ class ExportService {
 
   /// Generates file content for the given (previously listed) options.
   /// Returns one `{filename, mimeType, content}` map per option, in the same
-  /// order.
-  Future<List<Map<String, dynamic>>> generateExports(Operation operation, List<Map<String, dynamic>> selectedOptions) async {
+  /// order. [contacts] and [operations] as [getExportOptions] took them.
+  Future<List<Map<String, dynamic>>> generateExports(
+    Operation operation,
+    List<Map<String, dynamic>> selectedOptions, {
+    List<Qso>? contacts,
+    Map<String, Operation> operations = const {},
+  }) async {
     final host = extensions.host;
     if (host == null && selectedOptions.any((o) => !isQsonOption(o))) {
       throw ExportException('Extension runtime is not ready yet — try again in a moment.');
     }
-    final log = await _logFor(operation);
+    final log = await _logFor(operation, contacts);
     final perCall = allStationCallsOf(log.segmented, log.qsos).length >= 2;
 
     // Independent per-option calls (each produces its own file) — no
@@ -609,6 +709,11 @@ class ExportService {
       selectedOptions.map((option) async {
         if (isQsonOption(option)) {
           return {'filename': _qsonOptionFor(operation)['filename'], 'mimeType': 'application/json', 'content': jsonEncode(await _qsonDumpFor(operation))};
+        }
+        if (contacts != null && operations.isNotEmpty && _isFullAdif(option)) {
+          final call = option['stationCall'] as String? ?? operation.stationCalls.first;
+          final mine = perCall ? log.qsos.where((qso) => contactUsesStationCall(qso, log.segmented, call)) : log.qsos;
+          return _generateAcrossOperations(host!, option, call, operation, mine.toList(), operations);
         }
         final scoped = _qsosForOption(option, log.qsos, log.segmented);
         // Rebuilt for the SAME call the option was listed under, so the file
@@ -644,28 +749,7 @@ class ExportService {
           }
           (args['operation'] as Map<String, dynamic>)['refs'] = refs;
         }
-        final result =
-            await host!.invoke(
-                  Hooks.exportGenerateExport,
-                  key: option['hookKey'] as String?,
-                  args: {
-                    ...args,
-                    'exportType': option['exportType'],
-                    'exportKey': option['exportKey'] ?? option['exportType'],
-                    'compactFilenames': settings.useCompactFileNames,
-                    'exportSettings': option['exportSettings'],
-                    'exportData': option['exportData'],
-                    'exportTitle': option['exportTitle'],
-                    if (option['format'] == null || option['format'] == 'adif') ...{
-                      'includeLookupData': (option['exportSettings'] as Map?)?['includeLookupData'] ?? true,
-                      'includePrivateData':
-                          (option['exportSettings'] as Map?)?['includePrivateData'] ??
-                          (option['alwaysIncludePrivateData'] == true || settings.includePrivateData),
-                    },
-                  },
-                  timeout: const Duration(seconds: 30),
-                )
-                as Map;
+        final result = await _generate(host!, option, args);
         final file = result.cast<String, dynamic>();
 
         // The panel already showed the operator a filename — the one the option
@@ -683,6 +767,99 @@ class ExportService {
       }),
     );
     return results;
+  }
+
+  /// One option's file, generated from [args] (the payload [_payloadAs]
+  /// builds) with the option's own settings.
+  Future<Map<dynamic, dynamic>> _generate(ExtensionHost host, Map<String, dynamic> option, Map<String, dynamic> args) async =>
+      await host.invoke(
+            Hooks.exportGenerateExport,
+            key: option['hookKey'] as String?,
+            args: {
+              ...args,
+              'exportType': option['exportType'],
+              'exportKey': option['exportKey'] ?? option['exportType'],
+              'compactFilenames': settings.useCompactFileNames,
+              'exportSettings': option['exportSettings'],
+              'exportData': option['exportData'],
+              'exportTitle': option['exportTitle'],
+              if (option['format'] == null || option['format'] == 'adif') ...{
+                'includeLookupData': (option['exportSettings'] as Map?)?['includeLookupData'] ?? true,
+                'includePrivateData':
+                    (option['exportSettings'] as Map?)?['includePrivateData'] ?? (option['alwaysIncludePrivateData'] == true || settings.includePrivateData),
+              },
+            },
+            timeout: const Duration(seconds: 30),
+          )
+          as Map<dynamic, dynamic>;
+
+  /// [option]'s ADIF over [contacts] logged in several operations: each
+  /// operation's share written against that operation, as its own export
+  /// writes it (the park it activated, its location, its segments), and
+  /// the shares joined into one file under the first one's header. Contacts
+  /// in no operation, or in one not in [operations], are written against
+  /// [standIn].
+  ///
+  /// [contacts] are already the call's ([_pinnedToItsCall]): an operation's
+  /// own calls would hand a contact logged under a call that is not one of
+  /// them to its other calls, and to none of this file.
+  ///
+  /// Without the operation's events: the file is these contacts, not the
+  /// operations' timelines. The header names [standIn]'s call, never one
+  /// operation's title or notes, which describe only part of the file.
+  Future<Map<String, dynamic>> _generateAcrossOperations(
+    ExtensionHost host,
+    Map<String, dynamic> option,
+    String stationCall,
+    Operation standIn,
+    List<Qso> contacts,
+    Map<String, Operation> operations,
+  ) async {
+    final byOperation = <String, List<Qso>>{};
+    for (final qso in contacts) {
+      byOperation.putIfAbsent(operations.containsKey(qso.operationUuid) ? qso.operationUuid : '', () => []).add(qso);
+    }
+    int startOf(Qso qso) => qso.startAtMillis ?? 0;
+    for (final group in byOperation.values) {
+      group.sort((a, b) => startOf(a).compareTo(startOf(b)));
+    }
+    final groups = byOperation.entries.toList()..sort((a, b) => startOf(a.value.first).compareTo(startOf(b.value.first)));
+    // Every share's header names the file's call, whichever operation it
+    // was written against.
+    final titled = {...option, 'exportTitle': option['exportTitle'] ?? stationCall};
+    Future<Map<dynamic, dynamic>> share(MapEntry<String, List<Qso>> group) async {
+      final own = operations[group.key];
+      if (own == null) {
+        final segmented = SegmentedOperation.from(operation: standIn.data, qsos: group.value);
+        return _generate(
+          host,
+          titled,
+          _payloadAs(stationCall, standIn, group.value, segmented, perCall: allStationCallsOf(segmented, group.value).length >= 2),
+        );
+      }
+      final rows = await qsos.forOperation(own.uuid);
+      final segmented = SegmentedOperation.from(operation: own.data, qsos: rows);
+      final perCall = allStationCallsOf(segmented, rows.where((qso) => !qso.isEvent)).length >= 2;
+      return _generate(host, titled, _payloadAs(stationCall, own, group.value, segmented, perCall: perCall));
+    }
+
+    // A few at a time: the runtime works through its calls one by one, and
+    // each call's timeout runs from when it was sent, so hundreds sent at
+    // once would time out the ones at the back of the queue.
+    final shares = <Map<dynamic, dynamic>>[];
+    for (var start = 0; start < groups.length; start += _sharesAtOnce) {
+      shares.addAll(await Future.wait(groups.skip(start).take(_sharesAtOnce).map(share)));
+    }
+    final contents = <String>[];
+    for (final share in shares) {
+      final content = share['content'];
+      // A share with nothing in it would leave its operation's contacts out
+      // of a file that saves without a word.
+      if (content is! String || content.trim().isEmpty) throw ExportException('The ADIF exporter wrote nothing for some of these contacts.');
+      contents.add(content);
+    }
+    final first = shares.first.cast<String, dynamic>();
+    return {...first, 'filename': option['filename'] ?? first['filename'], 'content': joinAdifFiles(contents)};
   }
 
   /// Save flow: on desktop a single file opens a save dialog for that file and
