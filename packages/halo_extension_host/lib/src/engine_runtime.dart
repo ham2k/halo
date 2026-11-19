@@ -35,6 +35,26 @@ String newBridgeToken() {
   return [for (var i = 0; i < 32; i++) random.nextInt(256).toRadixString(16).padLeft(2, '0')].join();
 }
 
+/// The most bytes one `host.randomBytes` call may ask for; the SDK checks the
+/// same bound (extensions/sdk/src/index.ts).
+const kMaxRandomBytes = 4096;
+
+/// `host.randomBytes`: [length] bytes from [source], Base64 for the bridge.
+/// Throws for a [length] that is not an int from 1 to [kMaxRandomBytes], and
+/// where the platform has no secure source (`Random.secure()` throws
+/// UnsupportedError): an extension asking for these is about to sign or key
+/// something, and a predictable fallback would answer it with bytes that
+/// look no different.
+String secureRandomBase64(Object? length, {Random Function() source = _secureRandom}) {
+  if (length is! int || length < 1 || length > kMaxRandomBytes) {
+    throw ArgumentError('randomBytes length must be an integer from 1 to $kMaxRandomBytes');
+  }
+  final random = source();
+  return base64Encode([for (var i = 0; i < length; i++) random.nextInt(256)]);
+}
+
+Random _secureRandom() => Random.secure();
+
 /// JS source calling the kernel's host-only [entry] through its bridge, with
 /// [args] as JSON literals.
 String bridgeCall(String token, String entry, [List<Object?> args = const []]) =>

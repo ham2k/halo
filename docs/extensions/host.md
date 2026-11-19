@@ -118,6 +118,24 @@ shared libraries run in the kernel and have no timers.
 - **A runtime restart cancels your timers.** Set them again from
   `onActivation`.
 
+## Randomness
+
+### `host.randomBytes(length)`
+
+```ts
+const entropy = await host.randomBytes(64)
+```
+
+Extension API 29. A `Uint8Array` of `length` bytes from the platform's
+secure random source, fresh for each call. The runtime has no `crypto` on
+any platform, so a library that signs or makes keys falls back to
+`Math.random()` unless you hand it these. Fetch them before running code
+that wants them synchronously, and seed the library's generator with them.
+
+- **1 to 4096 bytes a call.** Any other length rejects.
+- **No secure source, no answer.** Where the platform has none, the call
+  rejects; it never answers from a weaker one.
+
 ## Storage and settings
 
 ### `host.kvGet(key)` / `host.kvSet(key, value)`

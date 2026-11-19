@@ -100,9 +100,11 @@ self.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ kind: 'i
 overheard = 0
 // The network and the app's storage, by the ways deleting a global cannot
 // close: a module import of a URL, which only the sandbox's policy refuses,
-// and the origin's own file system, which only an opaque origin lacks.
+// and the origin's own file system, which only an opaque origin lacks. With
+// them, `crypto`: one instance every bundle shares, which one could replace
+// under another's signer.
 const ambient = ['fetch', 'XMLHttpRequest', 'WebSocket', 'WebSocketStream', 'WebTransport', 'EventSource', 'importScripts',
-  'indexedDB', 'caches', 'FontFace', 'fonts', 'Worker', 'SharedWorker', 'BroadcastChannel']
+  'indexedDB', 'caches', 'FontFace', 'fonts', 'Worker', 'SharedWorker', 'BroadcastChannel', 'crypto']
   .filter((name) => name in self)
 const imported = import('data:text/javascript,export default 1').then(() => 'loaded', () => 'refused')
 const files = Promise.resolve().then(() => navigator.storage.getDirectory()).then(() => 'opened', () => 'refused')

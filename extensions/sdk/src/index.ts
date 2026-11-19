@@ -179,6 +179,11 @@ export function defineExtension(def: ExtensionDefinition): void {
   })
 }
 
+/// The host's bound on one `host.randomBytes` call (`kMaxRandomBytes` in
+/// packages/halo_extension_host/lib/src/engine_runtime.dart), checked here
+/// too so a bad length throws at the caller.
+const MAX_RANDOM_BYTES = 4096
+
 /// The host's frame limit (`maxWebSocketFrameSize` in
 /// packages/halo_extension_host/lib/src/extension_sockets.dart), checked here
 /// too so an oversized send throws at the caller instead of failing into a log.
@@ -644,6 +649,23 @@ export const host = {
   /// gate the calls that use these, are follow-up work.
   async secret(name: string): Promise<string | null> {
     return (await hostCallFn()("secret", { name })) as string | null
+  },
+
+  /// [length] bytes, 1 to 4096, from the platform's secure random source,
+  /// fresh for each call. The runtime has no `crypto` on any platform, and a
+  /// library such as a signer falls back to `Math.random()` without one.
+  /// Fetch them before running synchronous code that needs them.
+  /// Rejects where the platform has no secure source, never answering from a
+  /// weaker one, and rejects any answer that is not exactly [length] bytes.
+  /// Extension API 29.
+  async randomBytes(length: number): Promise<Uint8Array> {
+    if (!Number.isInteger(length) || length < 1 || length > MAX_RANDOM_BYTES) {
+      throw new RangeError(`randomBytes length must be an integer from 1 to ${MAX_RANDOM_BYTES}`)
+    }
+    const answer = await hostCallFn()("randomBytes", { length })
+    const bytes = typeof answer === "string" ? base64ToBytes(answer) : null
+    if (bytes?.length !== length) throw new Error(`randomBytes asked for ${length} bytes and the host answered ${bytes?.length ?? "none"}`)
+    return bytes
   },
 
   async dbLookupSelectOne(category: string, key: string): Promise<LookupRow | null> {

@@ -123,8 +123,8 @@ in plain functions you can test with the project's own runner.
 
 ## What the sandbox is
 
-No Node, no DOM, no `fetch`, no `window`, no filesystem, no `Intl` on native
-builds. One ES2020 engine evaluating one script, with its built-ins and the
+No Node, no DOM, no `fetch`, no `window`, no `crypto`, no filesystem, no `Intl`
+on native builds. One ES2020 engine evaluating one script, with its built-ins and the
 shared libraries frozen: no polyfills, no patched prototypes. Everything in and
 out of a hook is JSON. Reach the outside world through `host`:
 
@@ -143,6 +143,7 @@ await host.showMessage({ … })        // tell them something
 host.statusBar.setMessage({ … })     // the footer
 host.fyi.post({ … })                 // the FYI line under the call info
 host.log("…")                        // the app's debug output
+await host.randomBytes(32)           // secure entropy; seed signers and key generators from this
 ```
 
 Every hook method is `async (args, ctx)`. `ctx` carries `online`, `locale`,

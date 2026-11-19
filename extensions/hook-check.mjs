@@ -49,13 +49,15 @@ import vm from "node:vm"
 ///
 /// A new extension that needs more than this fails the check rather than
 /// skipping it — teach the stub the shape, here.
-function hostCallStub(method) {
+function hostCallStub(method, params) {
   if (method === "getSettings") return {}
   if (method.startsWith("dbLookup")) return []
+  // The SDK refuses null for these, as it must in the app.
+  if (method === "randomBytes") return Buffer.alloc(params.length).toString("base64")
   return null
 }
 
-const hostCall = async (method) => hostCallStub(method)
+const hostCall = async (method, params) => hostCallStub(method, params)
 
 /// Enough HookContext for a control listing: the labels come from `ctx.locale`.
 const hookContext = { locale: "en", online: false, settings: {}, operation: {} }

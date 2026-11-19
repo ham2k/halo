@@ -77,6 +77,11 @@ for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'WebSocketStream', '
   // Some live on the global scope's prototypes rather than the global.
   for (let o = self; o !== null; o = Object.getPrototypeOf(o)) Reflect.deleteProperty(o, name);
 }
+// `crypto` too, though it reaches nothing: native builds have none, and here
+// every bundle shares one unfrozen instance, so one could replace
+// `getRandomValues` under another's signer. Entropy comes from
+// `host.randomBytes` on every platform.
+for (let o = self; o !== null; o = Object.getPrototypeOf(o)) Reflect.deleteProperty(o, 'crypto');
 // Settles only if this worker is in the sandbox the host built it in: an
 // opaque origin, and a policy under which even a `data:` fetch, which never
 // leaves the browser, is refused. Anywhere else no bundle evaluates.

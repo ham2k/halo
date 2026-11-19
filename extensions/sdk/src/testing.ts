@@ -29,6 +29,7 @@ import type { AppClockHandle } from "./appClock.ts"
 import { createTimerQueue } from "./timerQueue.ts"
 import { deepFreeze, FROZEN_QSOS_API } from "./logCopy.ts"
 import { requireComposable } from "./composable.ts"
+import { bytesToBase64 } from "./base64.ts"
 
 /// A host call's stand-in answer, by method name (`getSettings`,
 /// `dbLookupSelectAll`, `fetch`…). Anything unlisted answers null, which
@@ -235,6 +236,9 @@ function installKernel(hostCalls: HostCallStubs, timerRefusals: string[]) {
     if (stub) return stub(params ?? {})
     if (method === "getSettings") return {}
     if (method.startsWith("dbLookup")) return []
+    // The SDK refuses null here, as it must in the app. Fixed bytes, 00 01 02
+    // …, so a signer's test reproduces; pass `hostCalls.randomBytes` for others.
+    if (method === "randomBytes") return bytesToBase64(Uint8Array.from({ length: params.length as number }, (_, i) => i % 256))
     return null
   }
   ;(globalThis as Record<string, unknown>).__halo = {

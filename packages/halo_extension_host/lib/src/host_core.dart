@@ -570,6 +570,8 @@ class _HostCore {
           // one belonging to somebody else. Absent is null, not an error: a
           // build without the value is a normal build.
           result = secrets[params['extensionKey'] as String?]?[params['name'] as String?];
+        case 'randomBytes':
+          result = secureRandomBase64(params['length']);
         case 'webSocketOpen':
           _sockets.open(
             params,

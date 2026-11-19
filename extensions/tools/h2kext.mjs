@@ -88,7 +88,7 @@ import yazl from "yazl"
 /// `host.updateScene`), and scene images; 26 adds the map's `globe`
 /// projection, with its `depth` and `atmosphere`; 27 adds a panel's
 /// `expandable`; 28 the map's `dwell`, and `ctx.getScores`; 29 the
-/// `integration` hook category.
+/// `integration` hook category, and `host.randomBytes`.
 export const H2KEXT_API_VERSION = 29
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
