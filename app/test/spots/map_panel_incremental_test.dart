@@ -20,9 +20,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/geoshape_service.dart';
-import 'package:ham2k_logger/services/map_preferences.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/map/map_marker_data.dart';
+import 'package:ham2k_logger/views/map/map_pane_config.dart';
 import 'package:ham2k_logger/views/map/map_popup.dart' show MapPillMarker;
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
 import 'package:ham2k_logger/views/operation/map_panel.dart';
@@ -72,7 +72,7 @@ void main() {
     }
   }
 
-  Widget host(List<Qso> qsos, {Operation? operation, bool visible = true, String? selected}) => TranslationProvider(
+  Widget host(List<Qso> qsos, {Operation? operation, bool visible = true, String? selected, bool callsigns = false}) => TranslationProvider(
     child: MaterialApp(
       home: Scaffold(
         body: DockPaneVisibility(
@@ -84,6 +84,7 @@ void main() {
             geoshapes: geoshapes,
             activityControls: const [],
             selectedQsoUuid: selected,
+            options: MapPaneOptions(callsigns: callsigns),
           ),
         ),
       ),
@@ -158,18 +159,19 @@ void main() {
   testWidgets(
     'turning Show Callsigns on turns every cached contact into a pill with its call, and off again',
     (tester) => onLinux(() async {
-      await tester.pumpWidget(host([_contact('a', stamp: 1), _contact('b', stamp: 2, call: 'G4AAA')]));
+      final log = [_contact('a', stamp: 1), _contact('b', stamp: 2, call: 'G4AAA')];
+      await tester.pumpWidget(host(log));
       await tester.pumpAndSettle();
       expect(qsoMarkersOf(tester).map((m) => m.labelColor), everyElement(isNull));
 
-      await settings.setMapShowCallsigns(true);
+      await tester.pumpWidget(host(log, callsigns: true));
       await tester.pumpAndSettle();
       final pills = qsoMarkersOf(tester);
       expect(pills.map((m) => m.labelColor), everyElement(isNotNull));
       expect(pills.map((m) => m.label).toSet(), {'G0AAA', 'G4AAA'});
       expect(find.byType(MapPillMarker), findsNWidgets(2));
 
-      await settings.setMapShowCallsigns(false);
+      await tester.pumpWidget(host(log));
       await tester.pumpAndSettle();
       expect(qsoMarkersOf(tester).map((m) => m.labelColor), everyElement(isNull));
       expect(find.byType(MapPillMarker), findsNothing);

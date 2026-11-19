@@ -135,6 +135,7 @@ class _OsmMapViewState extends State<OsmMapView> {
       ?..onZoomIn = _zoomIn
       ..onZoomOut = _zoomOut
       ..onMoveTo = _moveTo
+      ..onPanTo = _panTo
       ..onFitTo = _fitTo
       ..onRefit = _fitCamera
       ..onCamera = _camera
@@ -179,6 +180,7 @@ class _OsmMapViewState extends State<OsmMapView> {
   }
 
   void _moveTo(double latitude, double longitude, double zoom) => _mapController.move(LatLng(latitude, longitude), zoom);
+  void _panTo(double latitude, double longitude) => _mapController.move(LatLng(latitude, longitude), _mapController.camera.zoom);
 
   void _fitTo(List<GridLocation> points) {
     if (points.isEmpty) return;
@@ -202,9 +204,9 @@ class _OsmMapViewState extends State<OsmMapView> {
       final oldFitted = _fitted(oldWidget.markers), newFitted = _fitted(widget.markers);
       final newKey = newFitted.map((m) => m.fitKey).nonNulls.firstOrNull;
       final baseChanged = newKey != null ? newKey != oldFitted.map((m) => m.fitKey).nonNulls.firstOrNull : !listEquals(oldFitted, newFitted);
-      // While the camera follows a QSO (MapZoomController.lastFit), the
+      // While the camera follows a QSO (MapZoomController.follows), the
       // markers' own fit stands aside, as in the GL script.
-      if (baseChanged && widget.frame == null && widget.zoomController?.lastFit == null) _fitCamera();
+      if (baseChanged && widget.frame == null && !(widget.zoomController?.follows ?? false)) _fitCamera();
     }
   }
 
@@ -242,6 +244,7 @@ class _OsmMapViewState extends State<OsmMapView> {
     if (controller?.onZoomIn == _zoomIn) controller?.onZoomIn = null;
     if (controller?.onZoomOut == _zoomOut) controller?.onZoomOut = null;
     if (controller?.onMoveTo == _moveTo) controller?.onMoveTo = null;
+    if (controller?.onPanTo == _panTo) controller?.onPanTo = null;
     if (controller?.onFitTo == _fitTo) controller?.onFitTo = null;
     if (controller?.onRefit == _fitCamera) controller?.onRefit = null;
     if (controller?.onCamera == _camera) controller?.onCamera = null;
@@ -294,9 +297,10 @@ class _OsmMapViewState extends State<OsmMapView> {
               // to the markers. Once the frame is over — flutter_map applies
               // that fit after this callback, in the same frame.
               onMapReady: () {
-                if (widget.zoomController?.lastFit == null) return;
+                if (!(widget.zoomController?.follows ?? false)) return;
                 _replayFit = Timer(Duration.zero, () {
                   if (widget.zoomController?.lastFit case final points?) _fitTo(points);
+                  if (widget.zoomController?.lastPan case final at?) _panTo(at.latitude, at.longitude);
                 });
               },
               onTap: (_, point) {

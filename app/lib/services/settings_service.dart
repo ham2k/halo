@@ -1436,7 +1436,8 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
 
   Future<void> setDensityPreference(DensityPreference preference) => setSettingValue(generalGroup, _layoutDensityKey, preference.name);
 
-  /// The MapLibre basemap choice (see map_panel.dart). [MapStyle.automatic]
+  /// The Maps view's MapLibre basemap, picked in its layers panel, and the
+  /// one a new map pane starts from (map_pane_config.dart). [MapStyle.automatic]
   /// by default, which keeps the existing light/dark-aware basemap; any
   /// other value pins one style regardless of the app's theme.
   MapStyle get mapStyle {

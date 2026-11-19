@@ -235,6 +235,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
       ?..onZoomIn = _zoomIn
       ..onZoomOut = _zoomOut
       ..onMoveTo = _moveTo
+      ..onPanTo = _panTo
       ..onFitTo = _fitTo
       ..onRefit = _refit
       ..onCamera = _camera
@@ -306,6 +307,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
       if (widget.graylineAt != null) _applyGrayline();
       _dataApplied = true;
       if (widget.zoomController?.lastFit case final points?) _fitTo(points);
+      if (widget.zoomController?.lastPan case final at?) _panTo(at.latitude, at.longitude);
     });
   }
 
@@ -406,6 +408,12 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
   }
 
   void _moveTo(double latitude, double longitude, double zoom) => _handle?.callMethod('moveTo'.toJS, latitude.toJS, longitude.toJS, zoom.toJS);
+  // Not before the first data apply either, which pans to the controller's
+  // lastPan itself.
+  void _panTo(double latitude, double longitude) {
+    if (_dataApplied) _handle?.callMethod('panTo'.toJS, latitude.toJS, longitude.toJS);
+  }
+
   // Not before the first data apply, which frames the controller's lastFit
   // itself: until then there is no map, or no container to size a fit by.
   void _fitTo(List<GridLocation> points) {
@@ -457,6 +465,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     if (controller?.onZoomIn == _zoomIn) controller?.onZoomIn = null;
     if (controller?.onZoomOut == _zoomOut) controller?.onZoomOut = null;
     if (controller?.onMoveTo == _moveTo) controller?.onMoveTo = null;
+    if (controller?.onPanTo == _panTo) controller?.onPanTo = null;
     if (controller?.onFitTo == _fitTo) controller?.onFitTo = null;
     if (controller?.onRefit == _refit) controller?.onRefit = null;
     if (controller?.onCamera == _camera) controller?.onCamera = null;

@@ -20,7 +20,6 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../services/cat_server/cat_server_service.dart';
 import '../services/extensions/extension_service.dart';
 import '../services/logging_scope.dart';
-import '../services/map_preferences.dart';
 import '../services/settings_service.dart';
 import '../tools/sync_account_identity.dart';
 import 'cat_server_dialog.dart';
@@ -1129,90 +1128,6 @@ class _RadioSectionChanges extends ChangeNotifier {
 /// A tuning value as its option string — `2.0` is offered as `'2'`, `0.25`
 /// as `'0.25'`, so a stored value matches the dropdown's own items.
 String _numText(double value) => value == value.roundToDouble() ? value.toInt().toString() : '$value';
-
-/// The Map tab's basemap picker (see map_panel.dart / map_gl_script.dart's
-/// `mapLibreStyleUrl`) — the OSM backend has no equivalent choice to offer,
-/// but that only matters on Linux, where this group still shows the field
-/// (it just goes unused there) — and its Show Callsigns and Show Grayline
-/// toggles, which every backend honors. `target: 'map'` is what the tab's own
-/// settings button (operation/operation_view_dock.dart) opens; the field is also reachable
-/// from Settings, same as every other target-scoped field.
-///
-/// Center on Current QSO is the pane's own: a view whose map is not the
-/// operation's overrides this group with its [scope] (as the Chasing view
-/// does its logging groups), and Settings shows the operation's.
-class MapSettingsGroup extends SettingsGroup {
-  final SettingsService settings;
-  final MapScope scope;
-
-  MapSettingsGroup(this.settings, {this.scope = MapScope.operation});
-
-  @override
-  String get key => 'map';
-
-  @override
-  String get title => t.settings.map.title;
-
-  @override
-  int get order => 17;
-
-  @override
-  Listenable? get listenable => settings;
-
-  @override
-  Future<List<Map<String, dynamic>>> buildElements() async {
-    final s = t.settings.map;
-    return [
-      _select(
-        key: 'mapStyle',
-        label: s.style.title,
-        icon: 'map-outline',
-        value: settings.mapStyle.name,
-        options: [for (final style in MapStyle.values) (label: t['settings.map.styleOpts.${style.name}'] as String, value: style.name)],
-        target: 'map',
-      ),
-      _toggle(
-        key: 'mapShowCallsigns',
-        label: s.showCallsigns.title,
-        description: s.showCallsigns.description,
-        icon: 'label-outline',
-        value: settings.mapShowCallsigns,
-        target: 'map',
-      ),
-      _toggle(
-        key: 'mapShowGrayline',
-        label: s.showGrayline.title,
-        description: s.showGrayline.description,
-        icon: 'weather-night',
-        value: settings.mapShowGrayline,
-        target: 'map',
-      ),
-      _toggle(
-        key: 'mapCenterOnQso',
-        label: s.centerOnQso.title,
-        description: settings.mapCenterOnQso(scope) ? s.centerOnQso.descriptionOn : s.centerOnQso.descriptionOff,
-        icon: 'crosshairs',
-        value: settings.mapCenterOnQso(scope),
-        target: 'map',
-      ),
-    ];
-  }
-
-  @override
-  Future<void> commit(String fieldKey, dynamic value) async {
-    switch (fieldKey) {
-      case 'mapStyle' when value is String:
-        final style = MapStyle.values.firstWhere((e) => e.name == value, orElse: () => MapStyle.automatic);
-        await settings.setMapStyle(style);
-      case 'mapShowCallsigns' when value is bool:
-        await settings.setMapShowCallsigns(value);
-      case 'mapShowGrayline' when value is bool:
-        await settings.setMapShowGrayline(value);
-      case 'mapCenterOnQso' when value is bool:
-        await settings.setMapCenterOnQso(scope, value);
-    }
-  }
-}
 
 /// Data-sharing consents (both opt-in, app-polo keys and wording) and the
 /// Ham2K policy links.

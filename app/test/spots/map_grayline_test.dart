@@ -21,9 +21,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/geoshape_service.dart';
-import 'package:ham2k_logger/services/map_preferences.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/map/map_grayline.dart';
+import 'package:ham2k_logger/views/map/map_pane_config.dart';
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
 import 'package:ham2k_logger/views/operation/map_panel.dart';
 
@@ -169,6 +169,8 @@ void main() {
     );
     final contacts = [contact('q1', DateTime.utc(2026, 9, 21, 1, 12, 5)), contact('q2', DateTime.utc(2026, 9, 21, 2, 55, 40))];
     final selected = ValueNotifier<String?>(null);
+    // The pane's Show Grayline (MapPaneOptions.grayline).
+    final grayline = ValueNotifier<bool>(false);
 
     /// On Linux the pane picks the OSM backend, which renders in a test.
     /// Restored inside the body: the binding checks the override before
@@ -181,14 +183,15 @@ void main() {
           TranslationProvider(
             child: MaterialApp(
               home: Scaffold(
-                body: ValueListenableBuilder(
-                  valueListenable: selected,
-                  builder: (context, uuid, _) => MapPanel(
+                body: ListenableBuilder(
+                  listenable: Listenable.merge([selected, grayline]),
+                  builder: (context, _) => MapPanel(
                     operation: Operation(uuid: 'op-map', data: const {'grid': 'FN20ab', 'refs': []}),
                     qsos: contacts,
                     settings: settings,
+                    options: MapPaneOptions(grayline: grayline.value),
                     geoshapes: geoshapes,
-                    selectedQsoUuid: uuid,
+                    selectedQsoUuid: selected.value,
                     graylineAtContact: graylineAtContact,
                   ),
                 ),
@@ -202,6 +205,7 @@ void main() {
         await tester.pumpWidget(const SizedBox());
       } finally {
         debugDefaultTargetPlatformOverride = null;
+        grayline.value = false;
       }
     }
 
@@ -212,14 +216,14 @@ void main() {
         expect(shading(tester), isNull);
         final map = tester.state(find.byType(OsmMapView));
 
-        await settings.setMapShowGrayline(true);
+        grayline.value = true;
         await tester.pump();
         // Within a minute rather than equal: the clock may pass a minute
         // between the build and this read.
         expect(nowUtc().difference(shading(tester)!).inMinutes, lessThanOrEqualTo(1));
         expect(tester.state(find.byType(OsmMapView)), same(map), reason: 'a new map for a shade is its tiles and camera thrown away');
 
-        await settings.setMapShowGrayline(false);
+        grayline.value = false;
         await tester.pump();
         expect(shading(tester), isNull);
       });
@@ -228,7 +232,7 @@ void main() {
     // Travel moves the app clock and tells the minute's listeners at once,
     // so this waits on no timer.
     testWidgets('moves on with the clock', (tester) async {
-      await settings.setMapShowGrayline(true);
+      grayline.value = true;
       await onLinux(tester, () async {
         final first = shading(tester)!;
         AppClock.instance.travel(delta: const Duration(hours: 3));
@@ -238,7 +242,7 @@ void main() {
     });
 
     testWidgets("an operation's map holds the night of its last contact, however late it is opened", (tester) async {
-      await settings.setMapShowGrayline(true);
+      grayline.value = true;
       await onLinux(tester, graylineAtContact: true, () async {
         expect(shading(tester), DateTime.utc(2026, 9, 21, 2, 55));
         AppClock.instance.travel(delta: const Duration(hours: 3));
@@ -248,7 +252,7 @@ void main() {
     });
 
     testWidgets('a contact picked out in the log brings its own night, and letting it go brings back the last', (tester) async {
-      await settings.setMapShowGrayline(true);
+      grayline.value = true;
       await onLinux(tester, graylineAtContact: true, () async {
         final map = tester.state(find.byType(OsmMapView));
         selected.value = 'q1';
@@ -264,7 +268,7 @@ void main() {
     // The Chase View's map picks out contacts too, and shades the night
     // outside: it is the band conditions now that the chaser is after.
     testWidgets('a map not following its contacts shades the night outside whatever is picked out', (tester) async {
-      await settings.setMapShowGrayline(true);
+      grayline.value = true;
       await onLinux(tester, () async {
         selected.value = 'q1';
         await tester.pump();

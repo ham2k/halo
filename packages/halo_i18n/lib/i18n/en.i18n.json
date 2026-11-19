@@ -2114,10 +2114,21 @@
         "title": "Show Grayline",
         "description": "Shades the night side of the Earth, with twilight as a gradient"
       },
-      "centerOnQso": {
-        "title": "Center on Current QSO",
-        "descriptionOn": "The map moves to the current QSO",
-        "descriptionOff": "The map does not recenter"
+      "movement": {
+        "title": "Map Movements",
+        "zoomLine": "Zoom on current QSO line",
+        "zoomLocation": "Zoom on current QSO location",
+        "centerLine": "Center on current QSO line",
+        "centerLocation": "Center on current QSO location",
+        "none": "Don't change the map view"
+      },
+      "framing": {
+        "title": "Map Framing",
+        "allQsos": "Frame to show all QSOs",
+        "country": "Frame to fit our country",
+        "continent": "Frame to fit our continent",
+        "world": "Frame the whole world",
+        "none": "Don't change the map view"
       },
       "styleOpts": {
         "automatic": "Automatic",

@@ -5936,7 +5936,8 @@ class Translations$settings$map$en {
 	late final Translations$settings$map$style$en style = Translations$settings$map$style$en.internal(_root);
 	late final Translations$settings$map$showCallsigns$en showCallsigns = Translations$settings$map$showCallsigns$en.internal(_root);
 	late final Translations$settings$map$showGrayline$en showGrayline = Translations$settings$map$showGrayline$en.internal(_root);
-	late final Translations$settings$map$centerOnQso$en centerOnQso = Translations$settings$map$centerOnQso$en.internal(_root);
+	late final Translations$settings$map$movement$en movement = Translations$settings$map$movement$en.internal(_root);
+	late final Translations$settings$map$framing$en framing = Translations$settings$map$framing$en.internal(_root);
 	late final Translations$settings$map$styleOpts$en styleOpts = Translations$settings$map$styleOpts$en.internal(_root);
 }
 
@@ -11147,22 +11148,58 @@ class Translations$settings$map$showGrayline$en {
 	String get description => 'Shades the night side of the Earth, with twilight as a gradient';
 }
 
-// Path: settings.map.centerOnQso
-class Translations$settings$map$centerOnQso$en {
-	Translations$settings$map$centerOnQso$en.internal(this._root);
+// Path: settings.map.movement
+class Translations$settings$map$movement$en {
+	Translations$settings$map$movement$en.internal(this._root);
 
 	final Translations _root; // ignore: unused_field
 
 	// Translations
 
-	/// en: 'Center on Current QSO'
-	String get title => 'Center on Current QSO';
+	/// en: 'Map Movements'
+	String get title => 'Map Movements';
 
-	/// en: 'The map moves to the current QSO'
-	String get descriptionOn => 'The map moves to the current QSO';
+	/// en: 'Zoom on current QSO line'
+	String get zoomLine => 'Zoom on current QSO line';
 
-	/// en: 'The map does not recenter'
-	String get descriptionOff => 'The map does not recenter';
+	/// en: 'Zoom on current QSO location'
+	String get zoomLocation => 'Zoom on current QSO location';
+
+	/// en: 'Center on current QSO line'
+	String get centerLine => 'Center on current QSO line';
+
+	/// en: 'Center on current QSO location'
+	String get centerLocation => 'Center on current QSO location';
+
+	/// en: 'Don't change the map view'
+	String get none => 'Don\'t change the map view';
+}
+
+// Path: settings.map.framing
+class Translations$settings$map$framing$en {
+	Translations$settings$map$framing$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Map Framing'
+	String get title => 'Map Framing';
+
+	/// en: 'Frame to show all QSOs'
+	String get allQsos => 'Frame to show all QSOs';
+
+	/// en: 'Frame to fit our country'
+	String get country => 'Frame to fit our country';
+
+	/// en: 'Frame to fit our continent'
+	String get continent => 'Frame to fit our continent';
+
+	/// en: 'Frame the whole world'
+	String get world => 'Frame the whole world';
+
+	/// en: 'Don't change the map view'
+	String get none => 'Don\'t change the map view';
 }
 
 // Path: settings.map.styleOpts
@@ -13774,9 +13811,18 @@ extension on Translations {
 			'settings.map.showCallsigns.description' => 'Each contact is a pill with its callsign, in its band\'s color',
 			'settings.map.showGrayline.title' => 'Show Grayline',
 			'settings.map.showGrayline.description' => 'Shades the night side of the Earth, with twilight as a gradient',
-			'settings.map.centerOnQso.title' => 'Center on Current QSO',
-			'settings.map.centerOnQso.descriptionOn' => 'The map moves to the current QSO',
-			'settings.map.centerOnQso.descriptionOff' => 'The map does not recenter',
+			'settings.map.movement.title' => 'Map Movements',
+			'settings.map.movement.zoomLine' => 'Zoom on current QSO line',
+			'settings.map.movement.zoomLocation' => 'Zoom on current QSO location',
+			'settings.map.movement.centerLine' => 'Center on current QSO line',
+			'settings.map.movement.centerLocation' => 'Center on current QSO location',
+			'settings.map.movement.none' => 'Don\'t change the map view',
+			'settings.map.framing.title' => 'Map Framing',
+			'settings.map.framing.allQsos' => 'Frame to show all QSOs',
+			'settings.map.framing.country' => 'Frame to fit our country',
+			'settings.map.framing.continent' => 'Frame to fit our continent',
+			'settings.map.framing.world' => 'Frame the whole world',
+			'settings.map.framing.none' => 'Don\'t change the map view',
 			'settings.map.styleOpts.automatic' => 'Automatic',
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
@@ -14085,6 +14131,8 @@ extension on Translations {
 			'settings.station.channelHeldByUnknown' => 'in use by another program',
 			'settings.station.flexNoSlices' => 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe',
 			'settings.station.spectrumUnsupported' => 'This radio sends no spectrum over CAT',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.spectrumRequiresBaud' => 'Requires CAT at 115200 bps',
 			'settings.station.spectrumNoRadio' => 'No radio connected',
 			'settings.station.spectrumWaiting' => 'Waiting for the radio\'s spectrum…',
@@ -14094,8 +14142,6 @@ extension on Translations {
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'The radio refused a DAX IQ stream (error ${code})',
 			'settings.station.spectrumNoUdp' => 'The radio\'s spectrum data cannot reach this device',
 			'settings.station.spectrumTciNoIq' => 'No IQ is coming from the TCI server. Thetis sends it from version 2.10.3.13 on.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumK4Unavailable' => 'Cannot receive the K4’s LAN spectrum. Retrying…',
 			'settings.station.spectrumK4RemoteUnavailable' => 'Cannot receive the K4’s remote spectrum',
 			'settings.station.spectrumScopeRefused' => 'The radio refused its scope commands',
@@ -14599,6 +14645,8 @@ extension on Translations {
 			'settings.station.switchPortLabel' => ({required Object port}) => 'Port ${port}',
 			'settings.station.switchPortAutoHint' => 'follows band data',
 			'settings.station.switchPortTransmittingHint' => 'transmitting — cannot change now',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.switchCurrentStateHeader' => 'Current State',
 			'settings.station.switchCurrentStateDescription' => 'Which antenna each radio port is on right now. Changes take effect immediately.',
 			'settings.station.switchWiringHeader' => 'Wiring',
@@ -14608,8 +14656,6 @@ extension on Translations {
 			'settings.station.switchPortInhibitedHint' => 'transmit inhibited',
 			'settings.station.rotatorAxes' => 'Axes',
 			'settings.station.rotatorAxesDescription' => 'Whether the rotator turns in azimuth only, or in elevation too (a G-5500 or similar).',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorAxesAzimuth' => 'Azimuth only',
 			'settings.station.rotatorAxesAzimuthElevation' => 'Azimuth and elevation',
 			'settings.station.rotatorAzimuthOffset' => 'Azimuth offset',
@@ -15113,6 +15159,8 @@ extension on Translations {
 			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} can’t run that: it’s one of the app’s own developer commands',
 			'extensionService.changedSetting' => ({required Object name, required Object setting, required Object value}) => '${name} set ${setting} to ${value}',
 			'extensionService.switchedLayout' => ({required Object name, required Object layout}) => '${name} switched to the ${layout} layout',
+			_ => null,
+		} ?? switch (path) {
 			'extensionService.addedLayout' => ({required Object name, required Object layout}) => '${name} added the ${layout} layout',
 			'extensionService.changedLayout' => ({required Object name, required Object layout}) => '${name} changed the ${layout} layout',
 			'extensionService.removedLayout' => ({required Object name, required Object layout}) => '${name} removed the ${layout} layout',
@@ -15122,8 +15170,6 @@ extension on Translations {
 			'extensionService.reportUnavailable' => 'Reports can\'t be sent right now',
 			'extensionService.stashUnavailable' => 'Ham2K’s File Stash can’t be reached right now',
 			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => '${names} didn\'t answer the activity search, so some results may be missing.',
-			_ => null,
-		} ?? switch (path) {
 			'extensionService.activitySearchSomeSourcesFailed' => 'Some activity extensions didn\'t answer the search, so some results may be missing.',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} spent too much time in its timers. They\'re stopped until the extensions restart.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name}\'s timers kept failing. They\'re stopped until the extensions restart.',

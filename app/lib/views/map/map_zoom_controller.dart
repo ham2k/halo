@@ -28,6 +28,9 @@ class MapZoomController {
   /// Set by every backend that can be pointed somewhere — see [moveTo].
   void Function(double latitude, double longitude, double zoom)? onMoveTo;
 
+  /// Set by every backend — see [panTo].
+  void Function(double latitude, double longitude)? onPanTo;
+
   /// Set by every backend — see [fitTo].
   void Function(List<GridLocation> points)? onFitTo;
 
@@ -100,6 +103,15 @@ class MapZoomController {
   /// frame before that backend's State has wired itself up.
   void moveTo(double latitude, double longitude, {double zoom = closeUpZoom}) => onMoveTo?.call(latitude, longitude, zoom);
 
+  /// Centers the map on one point at whatever zoom it is at, following a
+  /// QSO as [fitTo] does: the backend's own fit to its markers stands aside
+  /// until [refit].
+  void panTo(double latitude, double longitude) {
+    _lastFit = null;
+    _lastPan = GridLocation(latitude, longitude);
+    onPanTo?.call(latitude, longitude);
+  }
+
   /// Frames [points] the way the map frames its markers, capped at
   /// [fitMaxZoom]. Longitudes may run past ±180: an arc across the
   /// antimeridian is one continuous span only unwrapped. A camera move, like
@@ -107,6 +119,7 @@ class MapZoomController {
   /// [refit], however the markers change meanwhile.
   void fitTo(List<GridLocation> points) {
     _lastFit = points;
+    _lastPan = null;
     onFitTo?.call(points);
   }
 
@@ -114,6 +127,7 @@ class MapZoomController {
   /// last changed.
   void refit() {
     _lastFit = null;
+    _lastPan = null;
     onRefit?.call();
   }
 
@@ -123,6 +137,15 @@ class MapZoomController {
   /// own first fit.
   List<GridLocation>? get lastFit => _lastFit;
   List<GridLocation>? _lastFit;
+
+  /// Where [panTo] last centered, until [fitTo] or [refit]: replayed by a
+  /// backend that comes up after it, as [lastFit] is.
+  GridLocation? get lastPan => _lastPan;
+  GridLocation? _lastPan;
+
+  /// Whether the camera follows a QSO ([fitTo], [panTo]) rather than the
+  /// markers, until [refit].
+  bool get follows => _lastFit != null || _lastPan != null;
 
   /// Close enough to read one reference's surroundings — a summit's
   /// activation zone frames at roughly half the pane at this level, where

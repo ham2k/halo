@@ -52,6 +52,7 @@ import 'operation/log_find_bar.dart';
 import 'operation/logging_panel.dart';
 import 'operation/watcher_feed_port.dart';
 import 'operation/map_panel.dart';
+import 'map/map_pane_config.dart';
 import 'operation/operation_export_panel.dart';
 import 'operation/operation_integrations_panel.dart';
 import 'operation/operation_runtime_state.dart';
@@ -1132,17 +1133,23 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
               // Stretches to the split's very edge: the divider overlay's
               // near-invisible wash (see resizable_split_view.dart) is what
               // keeps the native map view from stealing drags on the strip.
-              child: MapPanel(
-                operation: operation,
-                qsos: qsos,
-                settings: widget.services.settings,
-                callInfo: _callInfo,
-                selectedQsoUuid: _selectedQsoUuid,
-                geoshapes: widget.services.geoshapes,
-                activityControls: _runtime.mapControls,
-                offersPostcard: true,
-                deviceGrid: widget.services.location.grid,
-                graylineAtContact: true,
+              child: MapPaneConfig(
+                panels: widget.services.panels,
+                panelId: 'map',
+                builder: (context, options) => MapPanel(
+                  operation: operation,
+                  qsos: qsos,
+                  settings: widget.services.settings,
+                  options: options,
+                  ourEntityPrefix: _runtime.ourEntityPrefix,
+                  callInfo: _callInfo,
+                  selectedQsoUuid: _selectedQsoUuid,
+                  geoshapes: widget.services.geoshapes,
+                  activityControls: _runtime.mapControls,
+                  offersPostcard: true,
+                  deviceGrid: widget.services.location.grid,
+                  graylineAtContact: true,
+                ),
               ),
             ),
           ),

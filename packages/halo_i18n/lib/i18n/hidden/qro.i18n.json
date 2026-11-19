@@ -2114,10 +2114,21 @@
         "title": "SHOW GRAYLINE",
         "description": "SHADES THE NIGHT SIDE OF THE EARTH, WITH TWILIGHT AS A GRADIENT"
       },
-      "centerOnQso": {
-        "title": "CENTER ON CURRENT QSO",
-        "descriptionOn": "THE MAP MOVES TO THE CURRENT QSO",
-        "descriptionOff": "THE MAP DOES NOT RECENTER"
+      "movement": {
+        "title": "MAP MOVEMENTS",
+        "zoomLine": "ZOOM ON CURRENT QSO LINE",
+        "zoomLocation": "ZOOM ON CURRENT QSO LOCATION",
+        "centerLine": "CENTER ON CURRENT QSO LINE",
+        "centerLocation": "CENTER ON CURRENT QSO LOCATION",
+        "none": "DON'T CHANGE THE MAP VIEW"
+      },
+      "framing": {
+        "title": "MAP FRAMING",
+        "allQsos": "FRAME TO SHOW ALL QSOS",
+        "country": "FRAME TO FIT OUR COUNTRY",
+        "continent": "FRAME TO FIT OUR CONTINENT",
+        "world": "FRAME THE WHOLE WORLD",
+        "none": "DON'T CHANGE THE MAP VIEW"
       },
       "styleOpts": {
         "automatic": "AUTOMATIC",

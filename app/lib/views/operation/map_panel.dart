@@ -31,9 +31,10 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/geoshape_service.dart';
-import '../../services/map_preferences.dart';
+import '../map/map_pane_config.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
+import '../map/map_frames.dart';
 import '../map/map_gl_script.dart';
 import '../map/map_grayline.dart';
 import '../map/map_marker_data.dart';
@@ -97,9 +98,13 @@ class MapPanel extends StatefulWidget {
   /// outside.
   final bool graylineAtContact;
 
-  /// Whose map this is, for the preferences each view's map pane keeps for
-  /// itself ([MapPreferences.mapCenterOnQso]).
-  final MapScope scope;
+  /// This pane's own settings: its basemap, callsigns, grayline, movements
+  /// and framing (map_pane_config.dart).
+  final MapPaneOptions options;
+
+  /// The operator's DXCC entity, for the framings that fit its country or
+  /// continent. Without one those frame the log instead.
+  final String? ourEntityPrefix;
 
   const MapPanel({
     super.key,
@@ -113,7 +118,8 @@ class MapPanel extends StatefulWidget {
     this.offersPostcard = false,
     this.deviceGrid,
     this.graylineAtContact = false,
-    this.scope = MapScope.operation,
+    this.options = const MapPaneOptions(),
+    this.ourEntityPrefix,
   });
 
   @override
@@ -180,12 +186,75 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
   /// built, so the buttons stay agnostic to which one is currently mounted.
   final _zoomController = MapZoomController();
 
-  late final _highlightCamera = MapHighlightCamera(_zoomController);
+  late final _highlightCamera = MapHighlightCamera(_zoomController, onFocus: _moveToFocus, onFrame: _frame);
 
   @override
   void initState() {
     super.initState();
     initWebviewSupportProbe();
+  }
+
+  @override
+  void didUpdateWidget(MapPanel old) {
+    super.didUpdateWidget(old);
+    // A movement or framing just picked shows at once, on the QSO or the
+    // view already on screen, as a pane coming into sight would — and so
+    // does a new entity, but only to a framing that fits one: under any
+    // other it would throw away the operator's own view, or skip a typed
+    // call's wait to hold still.
+    final entityFramed = widget.options.framing == MapFraming.country || widget.options.framing == MapFraming.continent;
+    if (old.options.movement != widget.options.movement ||
+        old.options.framing != widget.options.framing ||
+        (entityFramed && old.ourEntityPrefix != widget.ourEntityPrefix)) {
+      _highlightCamera.hidden();
+    }
+  }
+
+  void _moveToFocus(MapFocus focus) {
+    switch (widget.options.movement) {
+      case MapMovement.zoomLine:
+        _zoomController.fitTo(focus.line);
+      case MapMovement.zoomLocation:
+        final box = regionAround(focus.location);
+        _zoomController.fitTo([GridLocation(box.south, box.west), GridLocation(box.north, box.east)]);
+      case MapMovement.centerLine:
+        final box = boxAround(focus.line);
+        // The line's longitudes run on unwrapped across the antimeridian.
+        _zoomController.panTo((box.south + box.north) / 2, ((box.west + box.east) / 2 + 540) % 360 - 180);
+      case MapMovement.centerLocation:
+        _zoomController.panTo(focus.location.latitude, focus.location.longitude);
+      case MapMovement.none:
+        break;
+    }
+  }
+
+  /// The box [MapFraming.country] or [MapFraming.continent] fits, or the
+  /// world's; null for the framings that fit the log or hold still, and for
+  /// an entity there is no box for.
+  MapBox? get _frameBox => switch (widget.options.framing) {
+    MapFraming.country => entityBounds[widget.ourEntityPrefix],
+    MapFraming.continent => continentBoxes[entityContinents[widget.ourEntityPrefix]],
+    MapFraming.world => worldBox,
+    MapFraming.allQsos || MapFraming.none => null,
+  };
+
+  /// The framing in effect: a country or continent with no box to fit frames
+  /// the log.
+  MapFraming get _framing => switch (widget.options.framing) {
+    MapFraming.country || MapFraming.continent when _frameBox == null => MapFraming.allQsos,
+    final framing => framing,
+  };
+
+  void _frame() {
+    switch (_framing) {
+      case MapFraming.allQsos:
+        _zoomController.refit();
+      case MapFraming.country || MapFraming.continent || MapFraming.world:
+        final box = _frameBox!;
+        _zoomController.fitTo([GridLocation(box.south, box.west), GridLocation(box.north, box.east)]);
+      case MapFraming.none:
+        break;
+    }
   }
 
   @override
@@ -230,13 +299,14 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
   List<MapMarkerData> _withPlaces = const [];
   bool _withPlacesHeld = false;
 
-  /// The fit key every marker carries while Center on Current QSO is off
-  /// ([MapPreferences.mapCenterOnQso]) and the log has a contact on the map.
-  /// A key that never changes is a fit the backend makes once and never
-  /// again — so a contact logged leaves the camera where the operator put
-  /// it. Not before the first contact: a fit of the operation's own places
-  /// alone is a close-up of its QTH, and held there every contact after
-  /// would land off-screen.
+  /// The fit key every marker carries while the pane's framing is
+  /// [MapFraming.none] and the log has a contact on the map. A key that
+  /// never changes is a fit the backend makes once and never again — so a
+  /// contact logged leaves the camera where the operator put it. Not before
+  /// the first contact: a fit of the operation's own places alone is a
+  /// close-up of its QTH, and held there every contact after would land
+  /// off-screen. A box framing needs no key: its fit is the camera's
+  /// (MapZoomController.fitTo), which the markers' own fit stands aside for.
   static const _heldFitKey = 'held';
 
   /// The rasterized halves of the places' glyph markers.
@@ -331,7 +401,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     // app's theme is doing. Derived once — the markers, the highlight and the
     // backend all have to agree on it. Also what the OSM backend picks its
     // tile source by, so its map and its markers agree too.
-    final isDark = mapStyleIsDark(widget.settings.mapStyle, appIsDark: theme.brightness == Brightness.dark);
+    final isDark = mapStyleIsDark(widget.options.style, appIsDark: theme.brightness == Brightness.dark);
     // Nothing is derived while the pane is hidden, and the backend is handed
     // the very lists it already has — so neither a diff nor a bridge call
     // happens for it, not even for the keystroke-driven highlight. The dock
@@ -340,12 +410,11 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     // dependency this reads rebuilds it on reveal, and the identity check
     // then catches it up.
     final visible = DockPaneVisibility.of(context);
-    final follows = widget.settings.mapCenterOnQso(widget.scope);
     if (visible) {
       _ensureData(context, isDark: isDark);
       final places = _placeMarkers(theme, isDark: isDark);
       // The contacts lead [_markers] (_ensureData).
-      final held = !follows && _markers.firstOrNull?.kind == MapMarkerKind.qso;
+      final held = _framing == MapFraming.none && _markers.firstOrNull?.kind == MapMarkerKind.qso;
       if (!identical(_placesAppendedTo, _markers) || !listEquals(places, _places) || _withPlacesHeld != held) {
         _places = places;
         _placesAppendedTo = _markers;
@@ -362,12 +431,12 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     final highlight = visible ? _buildHighlight(theme, isDark: isDark) : null;
     final markers = highlight == null || highlight.markers.isEmpty ? _withPlaces : [..._withPlaces, ...highlight.markers];
     final lines = highlight == null || highlight.lines.isEmpty ? _lines : [..._lines, ...highlight.lines];
-    if (highlight != null && follows) {
+    if (highlight != null) {
       final picked = widget.selectedQsoUuid == null ? null : _contacts[widget.selectedQsoUuid];
       _highlightCamera.follow(
         picked: widget.selectedQsoUuid,
-        pickedPoints: picked?.marker == null ? null : highlightFitPoints((markers: [picked!.marker!], lines: picked.lines)),
-        typed: highlightFitPoints(highlight),
+        pickedFocus: picked?.marker == null ? null : highlightFocus((markers: [picked!.marker!], lines: picked.lines)),
+        typed: highlightFocus(highlight),
       );
     } else {
       _highlightCamera.hidden();
@@ -407,7 +476,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
         : const <MapShapeData>[];
 
     // The style picked in the map style menu on this tab's header button.
-    final styleUrls = mapLibreStyleUrls(widget.settings.mapStyle);
+    final styleUrls = mapLibreStyleUrls(widget.options.style);
     final backend = _backend;
     final hasGlobe = backend != _MapBackend.osm;
     // Nothing until the pane has actually been opened once. macOS/Windows
@@ -424,7 +493,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     // rebuilds the backend alone. Always under the same builder, on or off,
     // so turning it on keeps the map that is up rather than building a new
     // one.
-    final grayline = widget.settings.mapShowGrayline;
+    final grayline = widget.options.grayline;
     final lowerCorner = lowerCornerClearanceOf(context);
     final contactAt = grayline && widget.graylineAtContact ? graylineAtContact(widget.qsos, selected: widget.selectedQsoUuid) : null;
     final map = isMobilePlatform && !paneEverVisible
@@ -637,7 +706,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     final markers = _withPlaces;
     final lines = _lines;
     final projection = _projection;
-    final paneIsDark = mapStyleIsDark(widget.settings.mapStyle, appIsDark: appIsDark);
+    final paneIsDark = mapStyleIsDark(widget.options.style, appIsDark: appIsDark);
     // Once per tone, not per build of the postcard: every rebuild would hand
     // the backend a fresh list to compare against the last, contact by contact.
     ({List<MapMarkerData> markers, List<MapLineData> lines})? retonedData;
@@ -686,7 +755,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       colors: HaLoColors.of(context),
       locale: LocaleSettings.currentLocale,
       dark: isDark,
-      callsigns: widget.settings.mapShowCallsigns,
+      callsigns: widget.options.callsigns,
     );
     if (identical(_builtQsos, widget.qsos) && _builtWith == shared) return;
     if (_builtWith != shared) _contacts.clear();

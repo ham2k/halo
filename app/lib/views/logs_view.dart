@@ -21,12 +21,9 @@ import '../services/adif_import_plan.dart';
 import '../services/adif_import_service.dart';
 import '../services/error_reporting_service.dart';
 import '../services/panel_service.dart';
-import '../services/map_preferences.dart' show MapScope;
 import '../services/settings_service.dart';
-import '../settings/core_settings_groups.dart' show MapSettingsGroup;
 import '../services/status_bar_service.dart';
 import '../services/transfer_service.dart' show LogPushScope;
-import '../settings/settings_target_dialog.dart';
 import '../tools/log_find_query.dart';
 import '../tools/operation_title.dart';
 import 'dock_host.dart';
@@ -39,6 +36,7 @@ import 'operation/call_info_panel.dart';
 import 'operation/log_find_bar.dart' show isFindChord;
 import 'operation/map_panel.dart';
 import 'header_action_button.dart';
+import 'map/map_pane_config.dart';
 import 'operation/operation_export_panel.dart' show showOperationExportPanel;
 import 'operation_view.dart';
 import 'sheet_header_dots.dart';
@@ -141,13 +139,9 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   @override
   PanelRenderContext get panelRenderContext => const PanelRenderContext();
 
-  /// The map is reached through a target rather than through `formFields`,
-  /// so its settings embed as the same target-scoped widget
-  /// [_buildMapSettingsButton]'s dialog would show — see OperationView's own
-  /// copy of this override.
   @override
   WidgetBuilder? nativePanelSettingsForm(BuildContext context, String id) => switch (id) {
-    LogsView.mapPanelId => (builderContext) => settingsFormForTarget(services: widget.services, target: 'map', groupOverrides: _mapSettings),
+    LogsView.mapPanelId => (builderContext) => MapPaneSettings(panelId: id, panels: widget.services.panels),
     _ => null,
   };
 
@@ -208,6 +202,8 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
         icon: 'map',
         source: PanelSource.native,
         views: const {PanelViews.logs},
+        formFields: mapPaneFields,
+        initialConfig: mapPaneInitialConfig(widget.services.settings),
       ),
     );
     registerSharedDashboardPanels();
@@ -1172,7 +1168,6 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
                 LogsView.infoPanelId: _LogsInfoPanel(services: widget.services, totalCount: filtered?.length ?? 0, selected: selected),
                 LogsView.mapPanelId: _LogsMapPanel(services: widget.services, selected: selected),
               },
-              tabActions: {LogsView.mapPanelId: (context) => _buildMapSettingsButton(context)},
               extraChildren: sharedDashboardPanes,
             ),
           ),
@@ -1180,17 +1175,6 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
       ),
     );
   }
-
-  /// This view's map pane keeps its own Center on Current QSO.
-  late final _mapSettings = {'map': MapSettingsGroup(widget.services.settings, scope: MapScope.logs)};
-
-  /// The Map panel's basemap picker, same target-scoped dialog the
-  /// Operation view's own Map tab opens (see OperationView's own copy of
-  /// this button) — Map is native and reached through a target rather than
-  /// through `formFields`, so [LayoutControls.buildPanelSettingsButton] wouldn't
-  /// find it either.
-  Widget _buildMapSettingsButton(BuildContext context) =>
-      buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle, groupOverrides: _mapSettings);
 
   /// The search field's own row, shown only below the two-pane boundary —
   /// the title row (see [_buildTitle]) drops it there rather than shrinking

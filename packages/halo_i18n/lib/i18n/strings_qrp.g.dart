@@ -2749,7 +2749,8 @@ class _Translations$settings$map$qrp extends Translations$settings$map$en {
 	@override late final _Translations$settings$map$style$qrp style = _Translations$settings$map$style$qrp._(_root);
 	@override late final _Translations$settings$map$showCallsigns$qrp showCallsigns = _Translations$settings$map$showCallsigns$qrp._(_root);
 	@override late final _Translations$settings$map$showGrayline$qrp showGrayline = _Translations$settings$map$showGrayline$qrp._(_root);
-	@override late final _Translations$settings$map$centerOnQso$qrp centerOnQso = _Translations$settings$map$centerOnQso$qrp._(_root);
+	@override late final _Translations$settings$map$movement$qrp movement = _Translations$settings$map$movement$qrp._(_root);
+	@override late final _Translations$settings$map$framing$qrp framing = _Translations$settings$map$framing$qrp._(_root);
 	@override late final _Translations$settings$map$styleOpts$qrp styleOpts = _Translations$settings$map$styleOpts$qrp._(_root);
 }
 
@@ -5006,16 +5007,34 @@ class _Translations$settings$map$showGrayline$qrp extends Translations$settings$
 	@override String get description => 'shades the night side of the earth, with twilight as a gradient';
 }
 
-// Path: settings.map.centerOnQso
-class _Translations$settings$map$centerOnQso$qrp extends Translations$settings$map$centerOnQso$en {
-	_Translations$settings$map$centerOnQso$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+// Path: settings.map.movement
+class _Translations$settings$map$movement$qrp extends Translations$settings$map$movement$en {
+	_Translations$settings$map$movement$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
 
 	final TranslationsQrp _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'center on current qso';
-	@override String get descriptionOn => 'the map moves to the current qso';
-	@override String get descriptionOff => 'the map does not recenter';
+	@override String get title => 'map movements';
+	@override String get zoomLine => 'zoom on current qso line';
+	@override String get zoomLocation => 'zoom on current qso location';
+	@override String get centerLine => 'center on current qso line';
+	@override String get centerLocation => 'center on current qso location';
+	@override String get none => 'don\'t change the map view';
+}
+
+// Path: settings.map.framing
+class _Translations$settings$map$framing$qrp extends Translations$settings$map$framing$en {
+	_Translations$settings$map$framing$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'map framing';
+	@override String get allQsos => 'frame to show all qsos';
+	@override String get country => 'frame to fit our country';
+	@override String get continent => 'frame to fit our continent';
+	@override String get world => 'frame the whole world';
+	@override String get none => 'don\'t change the map view';
 }
 
 // Path: settings.map.styleOpts
@@ -7147,9 +7166,18 @@ extension on TranslationsQrp {
 			'settings.map.showCallsigns.description' => 'each contact is a pill with its callsign, in its band\'s color',
 			'settings.map.showGrayline.title' => 'show grayline',
 			'settings.map.showGrayline.description' => 'shades the night side of the earth, with twilight as a gradient',
-			'settings.map.centerOnQso.title' => 'center on current qso',
-			'settings.map.centerOnQso.descriptionOn' => 'the map moves to the current qso',
-			'settings.map.centerOnQso.descriptionOff' => 'the map does not recenter',
+			'settings.map.movement.title' => 'map movements',
+			'settings.map.movement.zoomLine' => 'zoom on current qso line',
+			'settings.map.movement.zoomLocation' => 'zoom on current qso location',
+			'settings.map.movement.centerLine' => 'center on current qso line',
+			'settings.map.movement.centerLocation' => 'center on current qso location',
+			'settings.map.movement.none' => 'don\'t change the map view',
+			'settings.map.framing.title' => 'map framing',
+			'settings.map.framing.allQsos' => 'frame to show all qsos',
+			'settings.map.framing.country' => 'frame to fit our country',
+			'settings.map.framing.continent' => 'frame to fit our continent',
+			'settings.map.framing.world' => 'frame the whole world',
+			'settings.map.framing.none' => 'don\'t change the map view',
 			'settings.map.styleOpts.automatic' => 'automatic',
 			'settings.map.styleOpts.liberty' => 'liberty',
 			'settings.map.styleOpts.bright' => 'bright',
@@ -7458,6 +7486,8 @@ extension on TranslationsQrp {
 			'settings.station.channelHeldByUnknown' => 'in use by another program',
 			'settings.station.flexNoSlices' => 'this radio has not reported any slices — check that smartsdr is running and that this client may subscribe',
 			'settings.station.spectrumUnsupported' => 'this radio sends no spectrum over cat',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.spectrumRequiresBaud' => 'requires cat at 115200 bps',
 			'settings.station.spectrumNoRadio' => 'no radio connected',
 			'settings.station.spectrumWaiting' => 'waiting for the radio\'s spectrum…',
@@ -7467,8 +7497,6 @@ extension on TranslationsQrp {
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'the radio refused a dax iq stream (error ${code})',
 			'settings.station.spectrumNoUdp' => 'the radio\'s spectrum data cannot reach this device',
 			'settings.station.spectrumTciNoIq' => 'no iq is coming from the tci server. thetis sends it from version 2.10.3.13 on.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumK4Unavailable' => 'cannot receive the k4’s lan spectrum. retrying…',
 			'settings.station.spectrumK4RemoteUnavailable' => 'cannot receive the k4’s remote spectrum',
 			'settings.station.spectrumScopeRefused' => 'the radio refused its scope commands',
@@ -7972,6 +8000,8 @@ extension on TranslationsQrp {
 			'settings.station.switchPortLabel' => ({required Object port}) => 'port ${port}',
 			'settings.station.switchPortAutoHint' => 'follows band data',
 			'settings.station.switchPortTransmittingHint' => 'transmitting — cannot change now',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.switchCurrentStateHeader' => 'current state',
 			'settings.station.switchCurrentStateDescription' => 'which antenna each radio port is on right now. changes take effect immediately.',
 			'settings.station.switchWiringHeader' => 'wiring',
@@ -7981,8 +8011,6 @@ extension on TranslationsQrp {
 			'settings.station.switchPortInhibitedHint' => 'transmit inhibited',
 			'settings.station.rotatorAxes' => 'axes',
 			'settings.station.rotatorAxesDescription' => 'whether the rotator turns in azimuth only, or in elevation too (a g-5500 or similar).',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorAxesAzimuth' => 'azimuth only',
 			'settings.station.rotatorAxesAzimuthElevation' => 'azimuth and elevation',
 			'settings.station.rotatorAzimuthOffset' => 'azimuth offset',
@@ -8486,6 +8514,8 @@ extension on TranslationsQrp {
 			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} can’t run that: it’s one of the app’s own developer commands',
 			'extensionService.changedSetting' => ({required Object name, required Object setting, required Object value}) => '${name} set ${setting} to ${value}',
 			'extensionService.switchedLayout' => ({required Object name, required Object layout}) => '${name} switched to the ${layout} layout',
+			_ => null,
+		} ?? switch (path) {
 			'extensionService.addedLayout' => ({required Object name, required Object layout}) => '${name} added the ${layout} layout',
 			'extensionService.changedLayout' => ({required Object name, required Object layout}) => '${name} changed the ${layout} layout',
 			'extensionService.removedLayout' => ({required Object name, required Object layout}) => '${name} removed the ${layout} layout',
@@ -8495,8 +8525,6 @@ extension on TranslationsQrp {
 			'extensionService.reportUnavailable' => 'reports can\'t be sent right now',
 			'extensionService.stashUnavailable' => 'ham2k’s file stash can’t be reached right now',
 			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => '${names} didn\'t answer the activity search, so some results may be missing.',
-			_ => null,
-		} ?? switch (path) {
 			'extensionService.activitySearchSomeSourcesFailed' => 'some activity extensions didn\'t answer the search, so some results may be missing.',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} spent too much time in its timers. they\'re stopped until the extensions restart.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name}\'s timers kept failing. they\'re stopped until the extensions restart.',

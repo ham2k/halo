@@ -146,7 +146,13 @@ class _LogsMapPanel extends StatelessWidget {
     return _QsoOperationBuilder(
       services: services,
       operationUuid: qso.operationUuid,
-      builder: (context, operation) => MapPanel(operation: operation, qsos: [qso], settings: services.settings, graylineAtContact: true, scope: MapScope.logs),
+      builder: (context, operation) => MapPaneConfig(
+        panels: services.panels,
+        panelId: LogsView.mapPanelId,
+        // The selection is the pane's current QSO, for its Map Movements.
+        builder: (context, options) =>
+            MapPanel(operation: operation, qsos: [qso], settings: services.settings, options: options, selectedQsoUuid: qso.uuid, graylineAtContact: true),
+      ),
     );
   }
 }

@@ -189,13 +189,6 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
     ),
   };
 
-  /// The Map tab's basemap picker (see MapSettingsGroup). Same shape as
-  /// [_buildLoggingSettingsButton]: the Map panel is native and reaches its
-  /// settings through a target, not `formFields`, so
-  /// [LayoutControls.buildPanelSettingsButton] wouldn't find it either.
-  Widget _buildMapSettingsButton({BuildContext? context}) =>
-      buildTargetSettingsButton(context ?? this.context, target: 'map', title: (context ?? this.context).t.operation.menu.mapSettingsTitle);
-
   /// The panes this view builds itself, arranged by a persisted,
   /// user-editable dock tree (drag a tab to move a pane; see
   /// dock_layout.dart). No 'operation' pane: its settings live in the
@@ -286,6 +279,8 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
         icon: 'map',
         source: PanelSource.native,
         views: const {PanelViews.operation},
+        formFields: mapPaneFields,
+        initialConfig: mapPaneInitialConfig(widget.services.settings),
       ),
     );
     service.registerNative(
@@ -360,7 +355,6 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
       callLocation: callInfoLocation(_callInfo),
       tabActions: {
         'logging': (context) => _buildLoggingSettingsButton(qsos, context: context),
-        'map': (context) => _buildMapSettingsButton(context: context),
         'spots': (context) => buildTuneButton(context, label: context.t.operation.spots.filters.title, onPressed: _spotsController.openFilters),
       },
       extraChildren: (inLayout) => {
@@ -399,14 +393,13 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
   /// the operation sheet is open, so a panel follows an edit in progress.
   Operation? _operationForPanels;
 
-  /// Logging and the map are reached through a target rather than through
-  /// `formFields`, so their settings embed as the same target-scoped widget a
-  /// standalone dialog would show — the host builds the extension-panel case
-  /// itself.
+  /// Logging is reached through a target rather than through `formFields`,
+  /// so its settings embed as the same target-scoped widget a standalone
+  /// dialog would show — the host builds the extension-panel case itself.
   @override
   WidgetBuilder? nativePanelSettingsForm(BuildContext context, String id) => switch (id) {
     'logging' => (builderContext) => settingsFormForTarget(services: widget.services, target: 'logging', groupOverrides: _loggingSettingsGroups),
-    'map' => (builderContext) => settingsFormForTarget(services: widget.services, target: 'map'),
+    'map' => (builderContext) => MapPaneSettings(panelId: id, panels: widget.services.panels),
     // Its own form even before the operation has loaded, with no sections to
     // list yet: a null here would fall back to the declared fields, raw.
     // The Summaries pane's are the Info pane's: it is that pane, placed.

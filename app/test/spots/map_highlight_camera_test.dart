@@ -29,8 +29,8 @@ class _RecordingCamera extends MapZoomController {
   void refit() => calls.add('refit');
 }
 
-const _here = [GridLocation(40, -74)];
-const _there = [GridLocation(51, 0)];
+const _here = (line: [GridLocation(40, -74)], location: GridLocation(40, -74));
+const _there = (line: [GridLocation(51, 0)], location: GridLocation(51, 0));
 
 void main() {
   group('MapHighlightCamera', () {
@@ -41,30 +41,30 @@ void main() {
         async.flushTimers();
         camera.calls.clear();
         // The live guess is still the call typed before the pick.
-        follower.follow(picked: 'qso-1', pickedPoints: _here, typed: _there);
+        follower.follow(picked: 'qso-1', pickedFocus: _here, typed: _there);
         async.flushTimers();
         expect(async.elapsed, Duration.zero, reason: 'no wait for a deliberate pick');
-        expect(camera.calls, [_here]);
+        expect(camera.calls, [_here.line]);
       });
     });
 
     test('each pick frames at once, back and forth', () {
       fakeAsync((async) {
         final camera = _RecordingCamera();
-        final follower = MapHighlightCamera(camera)..follow(picked: 'qso-1', pickedPoints: _here, typed: _here);
-        follower.follow(picked: 'qso-2', pickedPoints: _there);
+        final follower = MapHighlightCamera(camera)..follow(picked: 'qso-1', pickedFocus: _here, typed: _here);
+        follower.follow(picked: 'qso-2', pickedFocus: _there);
         async.flushTimers();
-        follower.follow(picked: 'qso-1', pickedPoints: _here, typed: _here);
+        follower.follow(picked: 'qso-1', pickedFocus: _here, typed: _here);
         async.flushTimers();
         expect(async.elapsed, Duration.zero);
-        expect(camera.calls, [_there, _here]);
+        expect(camera.calls, [_there.line, _here.line]);
       });
     });
 
     test('putting a pick down returns to the whole log at once', () {
       fakeAsync((async) {
         final camera = _RecordingCamera();
-        final follower = MapHighlightCamera(camera)..follow(picked: 'qso-1', pickedPoints: _here, typed: _here);
+        final follower = MapHighlightCamera(camera)..follow(picked: 'qso-1', pickedFocus: _here, typed: _here);
         follower.follow();
         async.flushTimers();
         expect(async.elapsed, Duration.zero);
@@ -77,7 +77,7 @@ void main() {
       // the previous QSO, with nothing highlighted there.
       fakeAsync((async) {
         final camera = _RecordingCamera();
-        final follower = MapHighlightCamera(camera)..follow(picked: 'qso-1', pickedPoints: _here, typed: _here);
+        final follower = MapHighlightCamera(camera)..follow(picked: 'qso-1', pickedFocus: _here, typed: _here);
         follower.follow(picked: 'qso-2');
         async.flushTimers();
         expect(camera.calls, ['refit']);
@@ -97,25 +97,25 @@ void main() {
         expect(camera.calls, isEmpty, reason: 'each new guess restarts the wait');
 
         async.elapse(MapHighlightCamera.composingDelay);
-        expect(camera.calls, [_there], reason: 'only the guess that held still is framed');
+        expect(camera.calls, [_there.line], reason: 'only the guess that held still is framed');
       });
     });
 
     test('typing into a picked QSO waits, and a call cut short falls back to the pick, not the whole log', () {
       fakeAsync((async) {
         final camera = _RecordingCamera();
-        final follower = MapHighlightCamera(camera)..follow(picked: 'qso-1', pickedPoints: _here, typed: _here);
+        final follower = MapHighlightCamera(camera)..follow(picked: 'qso-1', pickedFocus: _here, typed: _here);
         async.flushTimers();
         camera.calls.clear();
 
-        follower.follow(picked: 'qso-1', pickedPoints: _here, typed: _there);
+        follower.follow(picked: 'qso-1', pickedFocus: _here, typed: _there);
         async.elapse(const Duration(milliseconds: 1500));
         expect(camera.calls, isEmpty, reason: 'a keystroke, not a pick');
         // Under three letters there is no call-info at all.
-        follower.follow(picked: 'qso-1', pickedPoints: _here);
+        follower.follow(picked: 'qso-1', pickedFocus: _here);
         async.elapse(const Duration(seconds: 5));
         expect(camera.calls, isNot(contains('refit')), reason: 'the QSO is still picked');
-        expect(camera.calls.last, _here);
+        expect(camera.calls.last, _here.line);
       });
     });
 
@@ -129,13 +129,13 @@ void main() {
         async.elapse(const Duration(milliseconds: 1500));
         // A rebuild for anything else — a QSO logged elsewhere, a settings
         // change — hands over an equal list, not the same one.
-        follower.follow(typed: [..._here]);
+        follower.follow(typed: (line: [..._here.line], location: _here.location));
         async.elapse(const Duration(milliseconds: 500));
-        expect(camera.calls, [_here]);
+        expect(camera.calls, [_here.line]);
 
-        follower.follow(typed: [..._here]);
+        follower.follow(typed: (line: [..._here.line], location: _here.location));
         async.elapse(const Duration(seconds: 5));
-        expect(camera.calls, [_here]);
+        expect(camera.calls, [_here.line]);
       });
     });
 
@@ -164,7 +164,7 @@ void main() {
         follower.follow();
         async.flushTimers();
         expect(async.elapsed, Duration.zero);
-        expect(camera.calls, [_here, 'refit']);
+        expect(camera.calls, [_here.line, 'refit']);
       });
     });
 
@@ -173,13 +173,13 @@ void main() {
       // put it, and a camera on the logged spot would leave it off-screen.
       fakeAsync((async) {
         final camera = _RecordingCamera();
-        final follower = MapHighlightCamera(camera)..follow(picked: 'qso-1', pickedPoints: _here, typed: _here);
+        final follower = MapHighlightCamera(camera)..follow(picked: 'qso-1', pickedFocus: _here, typed: _here);
         async.flushTimers();
         follower.hidden();
-        follower.follow(picked: 'qso-1', pickedPoints: _here, typed: _there);
+        follower.follow(picked: 'qso-1', pickedFocus: _here, typed: _there);
         async.flushTimers();
         expect(async.elapsed, Duration.zero);
-        expect(camera.calls, [_here, _there]);
+        expect(camera.calls, [_here.line, _there.line]);
       });
     });
 
@@ -217,13 +217,31 @@ void main() {
   test('the controller remembers the last framing until a refit', () {
     final controller = MapZoomController();
     expect(controller.lastFit, isNull);
-    controller.fitTo(_here);
-    expect(controller.lastFit, _here, reason: 'remembered with no backend attached to take it');
+    controller.fitTo(_here.line);
+    expect(controller.lastFit, _here.line, reason: 'remembered with no backend attached to take it');
     controller.refit();
     expect(controller.lastFit, isNull, reason: 'a refit hands the camera back to the markers');
   });
 
-  group('highlightFitPoints', () {
+  // The same for a pan, and only the latest move: a backend coming up after a
+  // fit and then a pan that replayed the fit would put back a frame the
+  // operator has moved on from.
+  test('the controller remembers the last pan, in place of an earlier fit, until a refit', () {
+    final controller = MapZoomController();
+    controller.fitTo(_there.line);
+    controller.panTo(_here.location.latitude, _here.location.longitude);
+    expect(controller.lastPan, _here.location, reason: 'remembered with no backend attached to take it');
+    expect(controller.lastFit, isNull);
+    expect(controller.follows, isTrue);
+    controller.fitTo(_there.line);
+    expect(controller.lastPan, isNull);
+    controller.panTo(_here.location.latitude, _here.location.longitude);
+    controller.refit();
+    expect(controller.lastPan, isNull);
+    expect(controller.follows, isFalse, reason: 'a refit hands the camera back to the markers');
+  });
+
+  group('highlightFocus', () {
     MapMarkerData marker(GridLocation at) => MapMarkerData(
       id: 'current',
       latitude: at.latitude,
@@ -236,11 +254,13 @@ void main() {
     );
 
     test('nothing highlighted frames nothing', () {
-      expect(highlightFitPoints((markers: [], lines: [])), isNull);
+      expect(highlightFocus((markers: [], lines: [])), isNull);
     });
 
     test('with no line, the marker alone', () {
-      expect(highlightFitPoints((markers: [marker(_here.single)], lines: [])), _here);
+      final focus = highlightFocus((markers: [marker(_here.location)], lines: []))!;
+      expect(focus.line, _here.line);
+      expect(focus.location, _here.location);
     });
 
     // Japan to California crosses the antimeridian, so the arc arrives as two
@@ -251,10 +271,12 @@ void main() {
       final segments = greatCirclePoints(japan, california);
       expect(segments, hasLength(2), reason: 'the fixture must cross the antimeridian, or this test cannot fail');
 
-      final points = highlightFitPoints((
+      final focus = highlightFocus((
         markers: [marker(california)],
         lines: [for (var i = 0; i < segments.length; i++) MapLineData(id: 'current/$i', points: segments[i], color: Colors.red, highlight: true)],
       ))!;
+      expect(focus.location, GridLocation(california.latitude, california.longitude), reason: 'the QSO, not its QTH');
+      final points = focus.line;
       final longitudes = points.map((p) => p.longitude);
       final span = longitudes.reduce((a, b) => a > b ? a : b) - longitudes.reduce((a, b) => a < b ? a : b);
       expect(span, lessThan(180), reason: 'the Pacific, not the world');

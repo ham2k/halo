@@ -17,7 +17,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/settings/core_settings_groups.dart';
 import 'package:ham2k_logger/settings/settings_registry.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
-import 'package:ham2k_logger/services/map_preferences.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
 void main() {
@@ -504,67 +503,11 @@ void main() {
     });
   });
 
-  group('MapSettingsGroup', () {
-    Future<SettingsService> settingsWith() async {
-      SharedPreferences.setMockInitialValues({});
-      return SettingsService(await SharedPreferences.getInstance());
-    }
-
-    // Each view's map pane keeps its own: a Chasing view group that wrote,
-    // or showed, the operation's value would turn the operation's map off
-    // from the Chasing view's settings.
-    test('Center on Current QSO is per pane: a scoped group shows and commits its own pane alone', () async {
-      final settings = await settingsWith();
-      final chase = MapSettingsGroup(settings, scope: MapScope.chase);
-      final field = (await chase.buildElements()).firstWhere((e) => e['key'] == 'mapCenterOnQso');
-      expect(field['value'], isTrue);
-      expect(elementMatchesTarget(field, 'map'), isTrue);
-
-      await chase.commit('mapCenterOnQso', false);
-      expect(settings.mapCenterOnQso(MapScope.chase), isFalse);
-      expect(settings.mapCenterOnQso(MapScope.operation), isTrue);
-      expect(settings.mapCenterOnQso(MapScope.logs), isTrue);
-      expect((await chase.buildElements()).firstWhere((e) => e['key'] == 'mapCenterOnQso')['value'], isFalse);
-      expect((await MapSettingsGroup(settings).buildElements()).firstWhere((e) => e['key'] == 'mapCenterOnQso')['value'], isTrue);
-    });
-
-    test('offers every MapStyle value, target "map", defaulting to automatic', () async {
-      final elements = await MapSettingsGroup(await settingsWith()).buildElements();
-      final field = elements.firstWhere((e) => e['key'] == 'mapStyle');
-      expect(field['value'], 'automatic');
-      expect(elementMatchesTarget(field, 'map'), isTrue);
-      final offered = {for (final o in field['options'] as List) (o as Map)['value']};
-      expect(offered, MapStyle.values.map((e) => e.name).toSet());
-    });
-
-    test('commit round-trips through SettingsService.mapStyle', () async {
-      final settings = await settingsWith();
-      final group = MapSettingsGroup(settings);
-      expect(settings.mapStyle, MapStyle.automatic);
-      await group.commit('mapStyle', 'darkMatter');
-      expect(settings.mapStyle, MapStyle.darkMatter);
-    });
-
-    test('a stored value this build no longer offers falls back to automatic, not a crash', () async {
-      final settings = await settingsWith();
-      await settings.setSettingValue(SettingsService.generalGroup, 'mapStyle', 'retiredStyle');
-      expect(settings.mapStyle, MapStyle.automatic);
-    });
-
-    // In the map pane's own settings (target "map"), off until turned on:
-    // an operator who never asked for labels keeps the map of dots they had.
-    test('Show Callsigns is a toggle in the map pane, off by default, committed to SettingsService', () async {
-      final settings = await settingsWith();
-      final group = MapSettingsGroup(settings);
-      final field = (await group.buildElements()).firstWhere((e) => e['key'] == 'mapShowCallsigns');
-      expect(field['fieldType'], 'checkbox');
-      expect(field['value'], isFalse);
-      expect(elementMatchesTarget(field, 'map'), isTrue);
-      await group.commit('mapShowCallsigns', true);
-      expect(settings.mapShowCallsigns, isTrue);
-      await group.commit('mapShowCallsigns', false);
-      expect(settings.mapShowCallsigns, isFalse);
-    });
+  test("a stored map style this build no longer offers falls back to automatic, not a crash", () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    await settings.setSettingValue(SettingsService.generalGroup, 'mapStyle', 'retiredStyle');
+    expect(settings.mapStyle, MapStyle.automatic);
   });
 
   test('SyncSettingsGroup ends with a row that leads on to the Cloud Sync panel', () async {

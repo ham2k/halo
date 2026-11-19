@@ -16,6 +16,7 @@ export 'src/export_filename.dart';
 export 'src/format.dart';
 export 'src/ham/band_annotations.dart';
 export 'src/ham/dxcc_entities.dart';
+export 'src/ham/entity_bounds.dart';
 export 'src/ham/entity_locations.dart';
 export 'src/ham/geo.dart';
 export 'src/ham/grid.dart';

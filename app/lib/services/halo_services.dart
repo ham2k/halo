@@ -806,7 +806,6 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
         inventory: () => Listenable.merge([cat, peerRemoteRadios]),
       ),
     )
-    ..register(MapSettingsGroup(settings))
     // Empty until an extension places a panel in one (docs/extensions/settings.md).
     ..registerAll(ExtensionSectionGroup.all())
     ..register(AssistantsSettingsGroup(assistants, extensions))

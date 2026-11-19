@@ -240,6 +240,7 @@ class MapboxWebviewMapView extends StatefulWidget {
     window.poloSetZoomFades = handle.setZoomFades;
     window.poloSetProjection = handle.setProjection;
     window.poloMoveTo = handle.moveTo;
+    window.poloPanTo = handle.panTo;
     window.poloFitTo = handle.fitTo;
     window.poloRefit = handle.refit;
     window.poloZoomIn = handle.zoomIn;
@@ -376,6 +377,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
       ?..onZoomIn = _zoomIn
       ..onZoomOut = _zoomOut
       ..onMoveTo = _moveTo
+      ..onPanTo = _panTo
       ..onFitTo = _fitTo
       ..onRefit = _refit
       ..onCamera = _camera
@@ -428,6 +430,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
     if (controller?.onZoomIn == _zoomIn) controller?.onZoomIn = null;
     if (controller?.onZoomOut == _zoomOut) controller?.onZoomOut = null;
     if (controller?.onMoveTo == _moveTo) controller?.onMoveTo = null;
+    if (controller?.onPanTo == _panTo) controller?.onPanTo = null;
     if (controller?.onFitTo == _fitTo) controller?.onFitTo = null;
     if (controller?.onRefit == _refit) controller?.onRefit = null;
     if (controller?.onCamera == _camera) controller?.onCamera = null;
@@ -444,6 +447,12 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
   }
 
   void _moveTo(double latitude, double longitude, double zoom) => _controller?.evaluateJavascript(source: 'window.poloMoveTo($latitude, $longitude, $zoom);');
+  // Not before the page reports in either; the ready handler pans to the
+  // controller's lastPan itself.
+  void _panTo(double latitude, double longitude) {
+    if (_mapReady) _controller?.evaluateJavascript(source: 'window.poloPanTo($latitude, $longitude);');
+  }
+
   // Not before the page reports in: until then `poloFitTo` may not exist yet,
   // and the ready handler frames the controller's lastFit itself.
   void _fitTo(List<GridLocation> points) {
@@ -672,6 +681,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
             _applyOverlays();
             if (widget.graylineAt != null) _applyGrayline();
             if (widget.zoomController?.lastFit case final points?) _fitTo(points);
+            if (widget.zoomController?.lastPan case final at?) _panTo(at.latitude, at.longitude);
             return null;
           },
         );

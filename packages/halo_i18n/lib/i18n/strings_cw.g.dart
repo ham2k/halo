@@ -2749,7 +2749,8 @@ class _Translations$settings$map$cw extends Translations$settings$map$en {
 	@override late final _Translations$settings$map$style$cw style = _Translations$settings$map$style$cw._(_root);
 	@override late final _Translations$settings$map$showCallsigns$cw showCallsigns = _Translations$settings$map$showCallsigns$cw._(_root);
 	@override late final _Translations$settings$map$showGrayline$cw showGrayline = _Translations$settings$map$showGrayline$cw._(_root);
-	@override late final _Translations$settings$map$centerOnQso$cw centerOnQso = _Translations$settings$map$centerOnQso$cw._(_root);
+	@override late final _Translations$settings$map$movement$cw movement = _Translations$settings$map$movement$cw._(_root);
+	@override late final _Translations$settings$map$framing$cw framing = _Translations$settings$map$framing$cw._(_root);
 	@override late final _Translations$settings$map$styleOpts$cw styleOpts = _Translations$settings$map$styleOpts$cw._(_root);
 }
 
@@ -5006,16 +5007,34 @@ class _Translations$settings$map$showGrayline$cw extends Translations$settings$m
 	@override String get description => '··· ···· ·— —·· · ··· / — ···· · / —· ·· ——· ···· — / ··· ·· —·· · / ——— ··—· / — ···· · / · ·— ·—· — ···· ——··—— / ·—— ·· — ···· / — ·—— ·· ·—·· ·· ——· ···· — / ·— ··· / ·— / ——· ·—· ·— —·· ·· · —· —';
 }
 
-// Path: settings.map.centerOnQso
-class _Translations$settings$map$centerOnQso$cw extends Translations$settings$map$centerOnQso$en {
-	_Translations$settings$map$centerOnQso$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+// Path: settings.map.movement
+class _Translations$settings$map$movement$cw extends Translations$settings$map$movement$en {
+	_Translations$settings$map$movement$cw._(TranslationsCw root) : this._root = root, super.internal(root);
 
 	final TranslationsCw _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '—·—· · —· — · ·—· / ——— —· / —·—· ··— ·—· ·—· · —· — / ——·— ··· ———';
-	@override String get descriptionOn => '— ···· · / —— ·— ·——· / —— ——— ···— · ··· / — ——— / — ···· · / —·—· ··— ·—· ·—· · —· — / ——·— ··· ———';
-	@override String get descriptionOff => '— ···· · / —— ·— ·——· / —·· ——— · ··· / —· ——— — / ·—· · —·—· · —· — · ·—·';
+	@override String get title => '—— ·— ·——· / —— ——— ···— · —— · —· — ···';
+	@override String get zoomLine => '——·· ——— ——— —— / ——— —· / —·—· ··— ·—· ·—· · —· — / ——·— ··· ——— / ·—·· ·· —· ·';
+	@override String get zoomLocation => '——·· ——— ——— —— / ——— —· / —·—· ··— ·—· ·—· · —· — / ——·— ··· ——— / ·—·· ——— —·—· ·— — ·· ——— —·';
+	@override String get centerLine => '—·—· · —· — · ·—· / ——— —· / —·—· ··— ·—· ·—· · —· — / ——·— ··· ——— / ·—·· ·· —· ·';
+	@override String get centerLocation => '—·—· · —· — · ·—· / ——— —· / —·—· ··— ·—· ·—· · —· — / ——·— ··· ——— / ·—·· ——— —·—· ·— — ·· ——— —·';
+	@override String get none => '—·· ——— —· ·————· — / —·—· ···· ·— —· ——· · / — ···· · / —— ·— ·——· / ···— ·· · ·——';
+}
+
+// Path: settings.map.framing
+class _Translations$settings$map$framing$cw extends Translations$settings$map$framing$en {
+	_Translations$settings$map$framing$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '—— ·— ·——· / ··—· ·—· ·— —— ·· —· ——·';
+	@override String get allQsos => '··—· ·—· ·— —— · / — ——— / ··· ···· ——— ·—— / ·— ·—·· ·—·· / ——·— ··· ——— ···';
+	@override String get country => '··—· ·—· ·— —— · / — ——— / ··—· ·· — / ——— ··— ·—· / —·—· ——— ··— —· — ·—· —·——';
+	@override String get continent => '··—· ·—· ·— —— · / — ——— / ··—· ·· — / ——— ··— ·—· / —·—· ——— —· — ·· —· · —· —';
+	@override String get world => '··—· ·—· ·— —— · / — ···· · / ·—— ···· ——— ·—·· · / ·—— ——— ·—· ·—·· —··';
+	@override String get none => '—·· ——— —· ·————· — / —·—· ···· ·— —· ——· · / — ···· · / —— ·— ·——· / ···— ·· · ·——';
 }
 
 // Path: settings.map.styleOpts
@@ -7147,9 +7166,18 @@ extension on TranslationsCw {
 			'settings.map.showCallsigns.description' => '· ·— —·—· ···· / —·—· ——— —· — ·— —·—· — / ·· ··· / ·— / ·——· ·· ·—·· ·—·· / ·—— ·· — ···· / ·· — ··· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ——··—— / ·· —· / ·· — ··· / —··· ·— —· —·· ·————· ··· / —·—· ——— ·—·· ——— ·—·',
 			'settings.map.showGrayline.title' => '··· ···· ——— ·—— / ——· ·—· ·— —·—— ·—·· ·· —· ·',
 			'settings.map.showGrayline.description' => '··· ···· ·— —·· · ··· / — ···· · / —· ·· ——· ···· — / ··· ·· —·· · / ——— ··—· / — ···· · / · ·— ·—· — ···· ——··—— / ·—— ·· — ···· / — ·—— ·· ·—·· ·· ——· ···· — / ·— ··· / ·— / ——· ·—· ·— —·· ·· · —· —',
-			'settings.map.centerOnQso.title' => '—·—· · —· — · ·—· / ——— —· / —·—· ··— ·—· ·—· · —· — / ——·— ··· ———',
-			'settings.map.centerOnQso.descriptionOn' => '— ···· · / —— ·— ·——· / —— ——— ···— · ··· / — ——— / — ···· · / —·—· ··— ·—· ·—· · —· — / ——·— ··· ———',
-			'settings.map.centerOnQso.descriptionOff' => '— ···· · / —— ·— ·——· / —·· ——— · ··· / —· ——— — / ·—· · —·—· · —· — · ·—·',
+			'settings.map.movement.title' => '—— ·— ·——· / —— ——— ···— · —— · —· — ···',
+			'settings.map.movement.zoomLine' => '——·· ——— ——— —— / ——— —· / —·—· ··— ·—· ·—· · —· — / ——·— ··· ——— / ·—·· ·· —· ·',
+			'settings.map.movement.zoomLocation' => '——·· ——— ——— —— / ——— —· / —·—· ··— ·—· ·—· · —· — / ——·— ··· ——— / ·—·· ——— —·—· ·— — ·· ——— —·',
+			'settings.map.movement.centerLine' => '—·—· · —· — · ·—· / ——— —· / —·—· ··— ·—· ·—· · —· — / ——·— ··· ——— / ·—·· ·· —· ·',
+			'settings.map.movement.centerLocation' => '—·—· · —· — · ·—· / ——— —· / —·—· ··— ·—· ·—· · —· — / ——·— ··· ——— / ·—·· ——— —·—· ·— — ·· ——— —·',
+			'settings.map.movement.none' => '—·· ——— —· ·————· — / —·—· ···· ·— —· ——· · / — ···· · / —— ·— ·——· / ···— ·· · ·——',
+			'settings.map.framing.title' => '—— ·— ·——· / ··—· ·—· ·— —— ·· —· ——·',
+			'settings.map.framing.allQsos' => '··—· ·—· ·— —— · / — ——— / ··· ···· ——— ·—— / ·— ·—·· ·—·· / ——·— ··· ——— ···',
+			'settings.map.framing.country' => '··—· ·—· ·— —— · / — ——— / ··—· ·· — / ——— ··— ·—· / —·—· ——— ··— —· — ·—· —·——',
+			'settings.map.framing.continent' => '··—· ·—· ·— —— · / — ——— / ··—· ·· — / ——— ··— ·—· / —·—· ——— —· — ·· —· · —· —',
+			'settings.map.framing.world' => '··—· ·—· ·— —— · / — ···· · / ·—— ···· ——— ·—·· · / ·—— ——— ·—· ·—·· —··',
+			'settings.map.framing.none' => '—·· ——— —· ·————· — / —·—· ···· ·— —· ——· · / — ···· · / —— ·— ·——· / ···— ·· · ·——',
 			'settings.map.styleOpts.automatic' => '·— ··— — ——— —— ·— — ·· —·—·',
 			'settings.map.styleOpts.liberty' => '·—·· ·· —··· · ·—· — —·——',
 			'settings.map.styleOpts.bright' => '—··· ·—· ·· ——· ···· —',
@@ -7458,6 +7486,8 @@ extension on TranslationsCw {
 			'settings.station.channelHeldByUnknown' => '·· —· / ··— ··· · / —··· —·—— / ·— —· ——— — ···· · ·—· / ·——· ·—· ——— ——· ·—· ·— ——',
 			'settings.station.flexNoSlices' => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ···· ·— ··· / —· ——— — / ·—· · ·——· ——— ·—· — · —·· / ·— —· —·—— / ··· ·—·· ·· —·—· · ··· / — / —·—· ···· · —·—· —·— / — ···· ·— — / ··· —— ·— ·—· — ··· —·· ·—· / ·· ··· / ·—· ··— —· —· ·· —· ——· / ·— —· —·· / — ···· ·— — / — ···· ·· ··· / —·—· ·—·· ·· · —· — / —— ·— —·—— / ··· ··— —··· ··· —·—· ·—· ·· —··· ·',
 			'settings.station.spectrumUnsupported' => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ··· · —· —·· ··· / —· ——— / ··· ·——· · —·—· — ·—· ··— —— / ——— ···— · ·—· / —·—· ·— —',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.spectrumRequiresBaud' => '·—· · ——·— ··— ·· ·—· · ··· / —·—· ·— — / ·— — / ·———— ·———— ····· ··——— ————— ————— / —··· ·——· ···',
 			'settings.station.spectrumNoRadio' => '—· ——— / ·—· ·— —·· ·· ——— / —·—· ——— —· —· · —·—· — · —··',
 			'settings.station.spectrumWaiting' => '·—— ·— ·· — ·· —· ——· / ··—· ——— ·—· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ··· ·——· · —·—· — ·—· ··— —— …',
@@ -7467,8 +7497,6 @@ extension on TranslationsCw {
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => '— ···· · / ·—· ·— —·· ·· ——— / ·—· · ··—· ··— ··· · —·· / ·— / —·· ·— —··— / ·· ——·— / ··· — ·—· · ·— —— / —·——· · ·—· ·—· ——— ·—· / ${code} —·——·—',
 			'settings.station.spectrumNoUdp' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ··· ·——· · —·—· — ·—· ··— —— / —·· ·— — ·— / —·—· ·— —· —· ——— — / ·—· · ·— —·—· ···· / — ···· ·· ··· / —·· · ···— ·· —·—· ·',
 			'settings.station.spectrumTciNoIq' => '—· ——— / ·· ——·— / ·· ··· / —·—· ——— —— ·· —· ——· / ··—· ·—· ——— —— / — ···· · / — —·—· ·· / ··· · ·—· ···— · ·—· ·—·—·— / — ···· · — ·· ··· / ··· · —· —·· ··· / ·· — / ··—· ·—· ——— —— / ···— · ·—· ··· ·· ——— —· / ··——— ·—·—·— ·———— ————— ·—·—·— ···—— ·—·—·— ·———— ···—— / ——— —· ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumK4Unavailable' => '—·—· ·— —· —· ——— — / ·—· · —·—· · ·· ···— · / — ···· · / —·— ····— ’ ··· / ·—·· ·— —· / ··· ·——· · —·—· — ·—· ··— —— ·—·—·— / ·—· · — ·—· —·—— ·· —· ——· …',
 			'settings.station.spectrumK4RemoteUnavailable' => '—·—· ·— —· —· ——— — / ·—· · —·—· · ·· ···— · / — ···· · / —·— ····— ’ ··· / ·—· · —— ——— — · / ··· ·——· · —·—· — ·—· ··— ——',
 			'settings.station.spectrumScopeRefused' => '— ···· · / ·—· ·— —·· ·· ——— / ·—· · ··—· ··— ··· · —·· / ·· — ··· / ··· —·—· ——— ·——· · / —·—· ——— —— —— ·— —· —·· ···',
@@ -7972,6 +8000,8 @@ extension on TranslationsCw {
 			'settings.station.switchPortLabel' => ({required Object port}) => '·——· ——— ·—· — / ${port}',
 			'settings.station.switchPortAutoHint' => '··—· ——— ·—·· ·—·· ——— ·—— ··· / —··· ·— —· —·· / —·· ·— — ·—',
 			'settings.station.switchPortTransmittingHint' => '— ·—· ·— —· ··· —— ·· — — ·· —· ——· / — / —·—· ·— —· —· ——— — / —·—· ···· ·— —· ——· · / —· ——— ·——',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.switchCurrentStateHeader' => '—·—· ··— ·—· ·—· · —· — / ··· — ·— — ·',
 			'settings.station.switchCurrentStateDescription' => '·—— ···· ·· —·—· ···· / ·— —· — · —· —· ·— / · ·— —·—· ···· / ·—· ·— —·· ·· ——— / ·——· ——— ·—· — / ·· ··· / ——— —· / ·—· ·· ——· ···· — / —· ——— ·—— ·—·—·— / —·—· ···· ·— —· ——· · ··· / — ·— —·— · / · ··—· ··—· · —·—· — / ·· —— —— · —·· ·· ·— — · ·—·· —·—— ·—·—·—',
 			'settings.station.switchWiringHeader' => '·—— ·· ·—· ·· —· ——·',
@@ -7981,8 +8011,6 @@ extension on TranslationsCw {
 			'settings.station.switchPortInhibitedHint' => '— ·—· ·— —· ··· —— ·· — / ·· —· ···· ·· —··· ·· — · —··',
 			'settings.station.rotatorAxes' => '·— —··— · ···',
 			'settings.station.rotatorAxesDescription' => '·—— ···· · — ···· · ·—· / — ···· · / ·—· ——— — ·— — ——— ·—· / — ··— ·—· —· ··· / ·· —· / ·— ——·· ·· —— ··— — ···· / ——— —· ·—·· —·—— ——··—— / ——— ·—· / ·· —· / · ·—·· · ···— ·— — ·· ——— —· / — ——— ——— / —·——· ·— / ——· —····— ····· ····· ————— ————— / ——— ·—· / ··· ·· —— ·· ·—·· ·— ·—· —·——·— ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorAxesAzimuth' => '·— ——·· ·· —— ··— — ···· / ——— —· ·—·· —·——',
 			'settings.station.rotatorAxesAzimuthElevation' => '·— ——·· ·· —— ··— — ···· / ·— —· —·· / · ·—·· · ···— ·— — ·· ——— —·',
 			'settings.station.rotatorAzimuthOffset' => '·— ——·· ·· —— ··— — ···· / ——— ··—· ··—· ··· · —',
@@ -8486,6 +8514,8 @@ extension on TranslationsCw {
 			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} / —·—· ·— —· ’ — / ·—· ··— —· / — ···· ·— — ———··· / ·· — ’ ··· / ——— —· · / ——— ··—· / — ···· · / ·— ·——· ·——· ’ ··· / ——— ·—— —· / —·· · ···— · ·—·· ——— ·——· · ·—· / —·—· ——— —— —— ·— —· —·· ···',
 			'extensionService.changedSetting' => ({required Object name, required Object setting, required Object value}) => '${name} / ··· · — / ${setting} / — ——— / ${value}',
 			'extensionService.switchedLayout' => ({required Object name, required Object layout}) => '${name} / ··· ·—— ·· — —·—· ···· · —·· / — ——— / — ···· · / ${layout} / ·—·· ·— —·—— ——— ··— —',
+			_ => null,
+		} ?? switch (path) {
 			'extensionService.addedLayout' => ({required Object name, required Object layout}) => '${name} / ·— —·· —·· · —·· / — ···· · / ${layout} / ·—·· ·— —·—— ——— ··— —',
 			'extensionService.changedLayout' => ({required Object name, required Object layout}) => '${name} / —·—· ···· ·— —· ——· · —·· / — ···· · / ${layout} / ·—·· ·— —·—— ——— ··— —',
 			'extensionService.removedLayout' => ({required Object name, required Object layout}) => '${name} / ·—· · —— ——— ···— · —·· / — ···· · / ${layout} / ·—·· ·— —·—— ——— ··— —',
@@ -8495,8 +8525,6 @@ extension on TranslationsCw {
 			'extensionService.reportUnavailable' => '·—· · ·——· ——— ·—· — ··· / —·—· ·— —· ·————· — / —··· · / ··· · —· — / ·—· ·· ——· ···· — / —· ——— ·——',
 			'extensionService.stashUnavailable' => '···· ·— —— ··——— —·— ’ ··· / ··—· ·· ·—·· · / ··· — ·— ··· ···· / —·—· ·— —· ’ — / —··· · / ·—· · ·— —·—· ···· · —·· / ·—· ·· ——· ···· — / —· ——— ·——',
 			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => '${names} / —·· ·· —·· —· ·————· — / ·— —· ··· ·—— · ·—· / — ···· · / ·— —·—· — ·· ···— ·· — —·—— / ··· · ·— ·—· —·—· ···· ——··—— / ··· ——— / ··· ——— —— · / ·—· · ··· ··— ·—·· — ··· / —— ·— —·—— / —··· · / —— ·· ··· ··· ·· —· ——· ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'extensionService.activitySearchSomeSourcesFailed' => '··· ——— —— · / ·— —·—· — ·· ···— ·· — —·—— / · —··— — · —· ··· ·· ——— —· ··· / —·· ·· —·· —· ·————· — / ·— —· ··· ·—— · ·—· / — ···· · / ··· · ·— ·—· —·—· ···· ——··—— / ··· ——— / ··· ——— —— · / ·—· · ··· ··— ·—·· — ··· / —— ·— —·—— / —··· · / —— ·· ··· ··· ·· —· ——· ·—·—·—',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} / ··· ·——· · —· — / — ——— ——— / —— ··— —·—· ···· / — ·· —— · / ·· —· / ·· — ··· / — ·· —— · ·—· ··· ·—·—·— / — ···· · —·—— ·————· ·—· · / ··· — ——— ·——· ·——· · —·· / ··— —· — ·· ·—·· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·—· · ··· — ·— ·—· — ·—·—·—',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name} ·————· ··· / — ·· —— · ·—· ··· / —·— · ·——· — / ··—· ·— ·· ·—·· ·· —· ——· ·—·—·— / — ···· · —·—— ·————· ·—· · / ··· — ——— ·——· ·——· · —·· / ··— —· — ·· ·—·· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·—· · ··· — ·— ·—· — ·—·—·—',

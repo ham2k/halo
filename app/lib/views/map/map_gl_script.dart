@@ -393,6 +393,9 @@ window.poloMapGl = {
     // on the first fit: a `fitTo` sent while the style loads runs before the
     // queued markers do.
     let lastFit = null;
+    // Set by panTo, as [lon, lat]: the camera follows a QSO, at the zoom it
+    // was at.
+    let panned = null;
 
     // The most recent data given to each setter, kept so a dark-mode style
     // swap (which throws the whole style away) can put the map back exactly
@@ -1085,8 +1088,15 @@ $mapGlSpreadScript
       if (!frame && sig !== lastBaseSig && !baseBounds.isEmpty()) {
         const first = lastBaseSig === null;
         lastBaseSig = sig;
-        if (!lastFit) map.fitBounds(baseBounds, { padding: 48, maxZoom: FIT_MAX_ZOOM, duration: 0 });
-        else if (first) map.fitBounds(boundsOf(lastFit), { padding: 48, maxZoom: FIT_MAX_ZOOM, duration: 0 });
+        if (lastFit) {
+          if (first) map.fitBounds(boundsOf(lastFit), { padding: 48, maxZoom: FIT_MAX_ZOOM, duration: 0 });
+        } else if (!panned) {
+          map.fitBounds(baseBounds, { padding: 48, maxZoom: FIT_MAX_ZOOM, duration: 0 });
+        } else if (first) {
+          // A pan before the first markers: their zoom, the pan's centre.
+          map.fitBounds(baseBounds, { padding: 48, maxZoom: FIT_MAX_ZOOM, duration: 0 });
+          map.jumpTo({ center: panned });
+        }
       }
     }
 
@@ -1196,6 +1206,7 @@ $mapGlSnapshotScript
     function fitTo(points) {
       if (!points.length) return;
       lastFit = points;
+      panned = null;
       map.fitBounds(boundsOf(points), { padding: 48, maxZoom: FIT_MAX_ZOOM, duration: 500 });
     }
 
@@ -1237,10 +1248,18 @@ $mapGlSnapshotScript
       // A camera move only — it changes nothing about the data, so it never
       // races the fit-to-markers in setMarkers.
       moveTo: function (lat, lon, zoom) { map.easeTo({ center: [lon, lat], zoom: zoom, duration: 500 }); },
+      // Following a QSO at the zoom the map is at: the markers' own fit
+      // stands aside until refit, as for fitTo.
+      panTo: function (lat, lon) {
+        panned = [lon, lat];
+        lastFit = null;
+        map.easeTo({ center: [lon, lat], duration: 500 });
+      },
       fitTo: fitTo,
       fitToJson: function (json) { fitTo(JSON.parse(json)); },
       refit: function () {
         lastFit = null;
+        panned = null;
         if (lastBaseBounds) map.fitBounds(lastBaseBounds, { padding: 48, maxZoom: FIT_MAX_ZOOM, duration: 500 });
       },
       zoomOut: function () { map.zoomOut(); },
