@@ -97,6 +97,10 @@ class MapPanel extends StatefulWidget {
   /// outside.
   final bool graylineAtContact;
 
+  /// Whose map this is, for the preferences each view's map pane keeps for
+  /// itself ([MapPreferences.mapCenterOnQso]).
+  final MapScope scope;
+
   const MapPanel({
     super.key,
     required this.operation,
@@ -109,6 +113,7 @@ class MapPanel extends StatefulWidget {
     this.offersPostcard = false,
     this.deviceGrid,
     this.graylineAtContact = false,
+    this.scope = MapScope.operation,
   });
 
   @override
@@ -223,6 +228,16 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
   List<MapMarkerData> _places = const [];
   List<MapMarkerData>? _placesAppendedTo;
   List<MapMarkerData> _withPlaces = const [];
+  bool _withPlacesHeld = false;
+
+  /// The fit key every marker carries while Center on Current QSO is off
+  /// ([MapPreferences.mapCenterOnQso]) and the log has a contact on the map.
+  /// A key that never changes is a fit the backend makes once and never
+  /// again — so a contact logged leaves the camera where the operator put
+  /// it. Not before the first contact: a fit of the operation's own places
+  /// alone is a close-up of its QTH, and held there every contact after
+  /// would land off-screen.
+  static const _heldFitKey = 'held';
 
   /// The rasterized halves of the places' glyph markers.
   late final _glyphCache = MarkerGlyphCache(
@@ -325,13 +340,18 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     // dependency this reads rebuilds it on reveal, and the identity check
     // then catches it up.
     final visible = DockPaneVisibility.of(context);
+    final follows = widget.settings.mapCenterOnQso(widget.scope);
     if (visible) {
       _ensureData(context, isDark: isDark);
       final places = _placeMarkers(theme, isDark: isDark);
-      if (!identical(_placesAppendedTo, _markers) || !listEquals(places, _places)) {
+      // The contacts lead [_markers] (_ensureData).
+      final held = !follows && _markers.firstOrNull?.kind == MapMarkerKind.qso;
+      if (!identical(_placesAppendedTo, _markers) || !listEquals(places, _places) || _withPlacesHeld != held) {
         _places = places;
         _placesAppendedTo = _markers;
-        _withPlaces = places.isEmpty ? _markers : [..._markers, ...places];
+        _withPlacesHeld = held;
+        final all = places.isEmpty ? _markers : [..._markers, ...places];
+        _withPlaces = held ? [for (final m in all) m.withFit(fitKey: _heldFitKey)] : all;
       }
     }
 
@@ -342,7 +362,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     final highlight = visible ? _buildHighlight(theme, isDark: isDark) : null;
     final markers = highlight == null || highlight.markers.isEmpty ? _withPlaces : [..._withPlaces, ...highlight.markers];
     final lines = highlight == null || highlight.lines.isEmpty ? _lines : [..._lines, ...highlight.lines];
-    if (highlight != null) {
+    if (highlight != null && follows) {
       final picked = widget.selectedQsoUuid == null ? null : _contacts[widget.selectedQsoUuid];
       _highlightCamera.follow(
         picked: widget.selectedQsoUuid,

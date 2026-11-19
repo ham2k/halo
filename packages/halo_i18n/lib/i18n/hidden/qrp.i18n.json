@@ -2099,6 +2099,11 @@
         "title": "show grayline",
         "description": "shades the night side of the earth, with twilight as a gradient"
       },
+      "centerOnQso": {
+        "title": "center on current qso",
+        "descriptionOn": "the map moves to the current qso",
+        "descriptionOff": "the map does not recenter"
+      },
       "styleOpts": {
         "automatic": "automatic",
         "liberty": "liberty",

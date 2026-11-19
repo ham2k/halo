@@ -2099,6 +2099,11 @@
         "title": "SHOW GRAYLINE",
         "description": "SHADES THE NIGHT SIDE OF THE EARTH, WITH TWILIGHT AS A GRADIENT"
       },
+      "centerOnQso": {
+        "title": "CENTER ON CURRENT QSO",
+        "descriptionOn": "THE MAP MOVES TO THE CURRENT QSO",
+        "descriptionOff": "THE MAP DOES NOT RECENTER"
+      },
       "styleOpts": {
         "automatic": "AUTOMATIC",
         "liberty": "LIBERTY",

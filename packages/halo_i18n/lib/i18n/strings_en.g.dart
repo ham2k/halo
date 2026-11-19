@@ -5906,6 +5906,7 @@ class Translations$settings$map$en {
 	late final Translations$settings$map$style$en style = Translations$settings$map$style$en.internal(_root);
 	late final Translations$settings$map$showCallsigns$en showCallsigns = Translations$settings$map$showCallsigns$en.internal(_root);
 	late final Translations$settings$map$showGrayline$en showGrayline = Translations$settings$map$showGrayline$en.internal(_root);
+	late final Translations$settings$map$centerOnQso$en centerOnQso = Translations$settings$map$centerOnQso$en.internal(_root);
 	late final Translations$settings$map$styleOpts$en styleOpts = Translations$settings$map$styleOpts$en.internal(_root);
 }
 
@@ -11113,6 +11114,24 @@ class Translations$settings$map$showGrayline$en {
 	String get description => 'Shades the night side of the Earth, with twilight as a gradient';
 }
 
+// Path: settings.map.centerOnQso
+class Translations$settings$map$centerOnQso$en {
+	Translations$settings$map$centerOnQso$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Center on Current QSO'
+	String get title => 'Center on Current QSO';
+
+	/// en: 'The map moves to the current QSO'
+	String get descriptionOn => 'The map moves to the current QSO';
+
+	/// en: 'The map does not recenter'
+	String get descriptionOff => 'The map does not recenter';
+}
+
 // Path: settings.map.styleOpts
 class Translations$settings$map$styleOpts$en {
 	Translations$settings$map$styleOpts$en.internal(this._root);
@@ -13713,6 +13732,9 @@ extension on Translations {
 			'settings.map.showCallsigns.description' => 'Each contact is a pill with its callsign, in its band\'s color',
 			'settings.map.showGrayline.title' => 'Show Grayline',
 			'settings.map.showGrayline.description' => 'Shades the night side of the Earth, with twilight as a gradient',
+			'settings.map.centerOnQso.title' => 'Center on Current QSO',
+			'settings.map.centerOnQso.descriptionOn' => 'The map moves to the current QSO',
+			'settings.map.centerOnQso.descriptionOff' => 'The map does not recenter',
 			'settings.map.styleOpts.automatic' => 'Automatic',
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
@@ -14039,11 +14061,11 @@ extension on Translations {
 			'settings.station.spectrumCroppedCap' => ({required Object max}) => '${max} narrower sweeps of this radio are already running',
 			'settings.station.spectrumNoSweepToSpare' => 'The radio has no other sweep to spare',
 			'settings.station.civScopeAdjust' => 'Automatically adjust bandscope',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.civScopeAdjustApp' => 'Let this app adjust the bandscope',
 			'settings.station.civScopeAdjustRadio' => 'Use the radio\'s bandscope settings as-is',
 			'settings.station.spectrumSdrNoRadio' => 'Waiting for the linked radio\'s frequency…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumSdrNotConnected' => 'The SDR is not connected',
 			'settings.station.spectrumSdrNoIf' => 'Set the radio\'s IF frequency in this SDR\'s settings',
 			'settings.station.spectrumSdrUnreachable' => 'The SDR cannot tune to where the radio is, or another program has it tuned elsewhere',
@@ -14553,11 +14575,11 @@ extension on Translations {
 			'settings.station.rotatorAzimuthMax' => 'Highest azimuth',
 			'settings.station.rotatorAzimuthMaxDescription' => 'In the controller\'s own degrees. Above 360 for a rotator with overlap, which then takes the shorter turn.',
 			'settings.station.rotatorElevationMin' => 'Lowest elevation',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorElevationMax' => 'Highest elevation',
 			'settings.station.rotatorElevationMaxDescription' => 'In the controller\'s own degrees. Above 90 for a rotator that flips over.',
 			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'Whole degrees, ${min} to ${max}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorLimitsInvalid' => 'The lowest limit has to be below the highest',
 			'settings.station.rotatorPollInterval' => 'Polling interval (ms)',
 			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'How often to ask the rotator where it points. Leave blank for ${fallback} ms.',
@@ -15067,11 +15089,11 @@ extension on Translations {
 			'operationLocationScreen.gridSquare' => 'Maidenhead Grid Square Locator',
 			'operationLocationScreen.gridInvalid' => 'Needs 4, 6, 8 or 10 characters, like FN31pr',
 			'operationLocationScreen.suggestedLocations' => 'Suggested Locations',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.deviceGps' => 'Device GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS from ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => 'GPS from ${receiver}',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.locating' => 'Locating…',
 			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',

@@ -21,7 +21,9 @@ import '../services/adif_import_plan.dart';
 import '../services/adif_import_service.dart';
 import '../services/error_reporting_service.dart';
 import '../services/panel_service.dart';
+import '../services/map_preferences.dart' show MapScope;
 import '../services/settings_service.dart';
+import '../settings/core_settings_groups.dart' show MapSettingsGroup;
 import '../services/status_bar_service.dart';
 import '../settings/settings_target_dialog.dart';
 import '../tools/log_find_query.dart';
@@ -142,7 +144,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   /// copy of this override.
   @override
   WidgetBuilder? nativePanelSettingsForm(BuildContext context, String id) => switch (id) {
-    LogsView.mapPanelId => (builderContext) => settingsFormForTarget(services: widget.services, target: 'map'),
+    LogsView.mapPanelId => (builderContext) => settingsFormForTarget(services: widget.services, target: 'map', groupOverrides: _mapSettings),
     _ => null,
   };
 
@@ -1166,12 +1168,16 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     );
   }
 
+  /// This view's map pane keeps its own Center on Current QSO.
+  late final _mapSettings = {'map': MapSettingsGroup(widget.services.settings, scope: MapScope.logs)};
+
   /// The Map panel's basemap picker, same target-scoped dialog the
   /// Operation view's own Map tab opens (see OperationView's own copy of
   /// this button) — Map is native and reached through a target rather than
   /// through `formFields`, so [LayoutControls.buildPanelSettingsButton] wouldn't
   /// find it either.
-  Widget _buildMapSettingsButton(BuildContext context) => buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle);
+  Widget _buildMapSettingsButton(BuildContext context) =>
+      buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle, groupOverrides: _mapSettings);
 
   /// The search field's own row, shown only below the two-pane boundary —
   /// the title row (see [_buildTitle]) drops it there rather than shrinking

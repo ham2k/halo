@@ -2735,6 +2735,7 @@ class _Translations$settings$map$qro extends Translations$settings$map$en {
 	@override late final _Translations$settings$map$style$qro style = _Translations$settings$map$style$qro._(_root);
 	@override late final _Translations$settings$map$showCallsigns$qro showCallsigns = _Translations$settings$map$showCallsigns$qro._(_root);
 	@override late final _Translations$settings$map$showGrayline$qro showGrayline = _Translations$settings$map$showGrayline$qro._(_root);
+	@override late final _Translations$settings$map$centerOnQso$qro centerOnQso = _Translations$settings$map$centerOnQso$qro._(_root);
 	@override late final _Translations$settings$map$styleOpts$qro styleOpts = _Translations$settings$map$styleOpts$qro._(_root);
 }
 
@@ -4990,6 +4991,18 @@ class _Translations$settings$map$showGrayline$qro extends Translations$settings$
 	@override String get description => 'SHADES THE NIGHT SIDE OF THE EARTH, WITH TWILIGHT AS A GRADIENT';
 }
 
+// Path: settings.map.centerOnQso
+class _Translations$settings$map$centerOnQso$qro extends Translations$settings$map$centerOnQso$en {
+	_Translations$settings$map$centerOnQso$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'CENTER ON CURRENT QSO';
+	@override String get descriptionOn => 'THE MAP MOVES TO THE CURRENT QSO';
+	@override String get descriptionOff => 'THE MAP DOES NOT RECENTER';
+}
+
 // Path: settings.map.styleOpts
 class _Translations$settings$map$styleOpts$qro extends Translations$settings$map$styleOpts$en {
 	_Translations$settings$map$styleOpts$qro._(TranslationsQro root) : this._root = root, super.internal(root);
@@ -7110,6 +7123,9 @@ extension on TranslationsQro {
 			'settings.map.showCallsigns.description' => 'EACH CONTACT IS A PILL WITH ITS CALLSIGN, IN ITS BAND\'S COLOR',
 			'settings.map.showGrayline.title' => 'SHOW GRAYLINE',
 			'settings.map.showGrayline.description' => 'SHADES THE NIGHT SIDE OF THE EARTH, WITH TWILIGHT AS A GRADIENT',
+			'settings.map.centerOnQso.title' => 'CENTER ON CURRENT QSO',
+			'settings.map.centerOnQso.descriptionOn' => 'THE MAP MOVES TO THE CURRENT QSO',
+			'settings.map.centerOnQso.descriptionOff' => 'THE MAP DOES NOT RECENTER',
 			'settings.map.styleOpts.automatic' => 'AUTOMATIC',
 			'settings.map.styleOpts.liberty' => 'LIBERTY',
 			'settings.map.styleOpts.bright' => 'BRIGHT',
@@ -7436,11 +7452,11 @@ extension on TranslationsQro {
 			'settings.station.spectrumCroppedCap' => ({required Object max}) => '${max} NARROWER SWEEPS OF THIS RADIO ARE ALREADY RUNNING',
 			'settings.station.spectrumNoSweepToSpare' => 'THE RADIO HAS NO OTHER SWEEP TO SPARE',
 			'settings.station.civScopeAdjust' => 'AUTOMATICALLY ADJUST BANDSCOPE',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.civScopeAdjustApp' => 'LET THIS APP ADJUST THE BANDSCOPE',
 			'settings.station.civScopeAdjustRadio' => 'USE THE RADIO\'S BANDSCOPE SETTINGS AS-IS',
 			'settings.station.spectrumSdrNoRadio' => 'WAITING FOR THE LINKED RADIO\'S FREQUENCY…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumSdrNotConnected' => 'THE SDR IS NOT CONNECTED',
 			'settings.station.spectrumSdrNoIf' => 'SET THE RADIO\'S IF FREQUENCY IN THIS SDR\'S SETTINGS',
 			'settings.station.spectrumSdrUnreachable' => 'THE SDR CANNOT TUNE TO WHERE THE RADIO IS, OR ANOTHER PROGRAM HAS IT TUNED ELSEWHERE',
@@ -7950,11 +7966,11 @@ extension on TranslationsQro {
 			'settings.station.rotatorAzimuthMax' => 'HIGHEST AZIMUTH',
 			'settings.station.rotatorAzimuthMaxDescription' => 'IN THE CONTROLLER\'S OWN DEGREES. ABOVE 360 FOR A ROTATOR WITH OVERLAP, WHICH THEN TAKES THE SHORTER TURN.',
 			'settings.station.rotatorElevationMin' => 'LOWEST ELEVATION',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorElevationMax' => 'HIGHEST ELEVATION',
 			'settings.station.rotatorElevationMaxDescription' => 'IN THE CONTROLLER\'S OWN DEGREES. ABOVE 90 FOR A ROTATOR THAT FLIPS OVER.',
 			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'WHOLE DEGREES, ${min} TO ${max}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorLimitsInvalid' => 'THE LOWEST LIMIT HAS TO BE BELOW THE HIGHEST',
 			'settings.station.rotatorPollInterval' => 'POLLING INTERVAL (MS)',
 			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'HOW OFTEN TO ASK THE ROTATOR WHERE IT POINTS. LEAVE BLANK FOR ${fallback} MS.',
@@ -8464,11 +8480,11 @@ extension on TranslationsQro {
 			'operationLocationScreen.gridSquare' => 'MAIDENHEAD GRID SQUARE LOCATOR',
 			'operationLocationScreen.gridInvalid' => 'NEEDS 4, 6, 8 OR 10 CHARACTERS, LIKE FN31PR',
 			'operationLocationScreen.suggestedLocations' => 'SUGGESTED LOCATIONS',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.deviceGps' => 'DEVICE GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS FROM ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => 'GPS FROM ${receiver}',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.locating' => 'LOCATING…',
 			'operationLocationScreen.gpsUnavailable' => 'LOCATION UNAVAILABLE',
 			'operationLocationScreen.permissionDenied' => 'LOCATION PERMISSION DENIED',

@@ -510,6 +510,24 @@ void main() {
       return SettingsService(await SharedPreferences.getInstance());
     }
 
+    // Each view's map pane keeps its own: a Chasing view group that wrote,
+    // or showed, the operation's value would turn the operation's map off
+    // from the Chasing view's settings.
+    test('Center on Current QSO is per pane: a scoped group shows and commits its own pane alone', () async {
+      final settings = await settingsWith();
+      final chase = MapSettingsGroup(settings, scope: MapScope.chase);
+      final field = (await chase.buildElements()).firstWhere((e) => e['key'] == 'mapCenterOnQso');
+      expect(field['value'], isTrue);
+      expect(elementMatchesTarget(field, 'map'), isTrue);
+
+      await chase.commit('mapCenterOnQso', false);
+      expect(settings.mapCenterOnQso(MapScope.chase), isFalse);
+      expect(settings.mapCenterOnQso(MapScope.operation), isTrue);
+      expect(settings.mapCenterOnQso(MapScope.logs), isTrue);
+      expect((await chase.buildElements()).firstWhere((e) => e['key'] == 'mapCenterOnQso')['value'], isFalse);
+      expect((await MapSettingsGroup(settings).buildElements()).firstWhere((e) => e['key'] == 'mapCenterOnQso')['value'], isTrue);
+    });
+
     test('offers every MapStyle value, target "map", defaulting to automatic', () async {
       final elements = await MapSettingsGroup(await settingsWith()).buildElements();
       final field = elements.firstWhere((e) => e['key'] == 'mapStyle');

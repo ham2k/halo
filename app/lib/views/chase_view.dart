@@ -23,9 +23,10 @@ import '../services/command_actions.dart';
 import '../services/halo_services.dart';
 import '../services/panel_service.dart';
 import '../services/logging_scope.dart';
+import '../services/map_preferences.dart' show MapScope;
 import '../services/settings_service.dart';
 import '../services/spot_board_service.dart' show SpotBoardSubscription;
-import '../settings/core_settings_groups.dart' show GeneralSettingsGroup, LoggingSettingsGroup;
+import '../settings/core_settings_groups.dart' show GeneralSettingsGroup, LoggingSettingsGroup, MapSettingsGroup;
 import '../settings/settings_scan.dart' show frontSettingsOverrides;
 import '../settings/settings_target_dialog.dart';
 import 'dock_host.dart';
@@ -218,6 +219,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
   late final _loggingSettings = {
     'logging': LoggingSettingsGroup(widget.services.settings, scope: LoggingScope.chase),
     'general': GeneralSettingsGroup(widget.services.settings, widget.services.extensions, scope: LoggingScope.chase),
+    'map': MapSettingsGroup(widget.services.settings, scope: MapScope.chase),
   };
 
   bool _loggingDisplay(String key) => widget.services.settings.loggingDisplay(key, LoggingScope.chase);
@@ -225,7 +227,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
   @override
   WidgetBuilder? nativePanelSettingsForm(BuildContext context, String id) => switch (id) {
     ChaseView.loggingPanelId => (builderContext) => settingsFormForTarget(services: widget.services, target: 'logging', groupOverrides: _loggingSettings),
-    ChaseView.mapPanelId => (builderContext) => settingsFormForTarget(services: widget.services, target: 'map'),
+    ChaseView.mapPanelId => (builderContext) => settingsFormForTarget(services: widget.services, target: 'map', groupOverrides: _loggingSettings),
     ChaseView.infoPanelId => (builderContext) => InformationPanelSettings(
       panelId: id,
       panels: widget.services.panels,
@@ -746,6 +748,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
       geoshapes: widget.services.geoshapes,
       activityControls: _runtime.mapControls,
       deviceGrid: widget.services.location.grid,
+      scope: MapScope.chase,
     );
 
     return Scaffold(
@@ -819,7 +822,8 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
                       ),
                     ],
                   ),
-                  ChaseView.mapPanelId: (context) => buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle),
+                  ChaseView.mapPanelId: (context) =>
+                      buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle, groupOverrides: _loggingSettings),
                   ChaseView.spotsPanelId: (context) =>
                       buildTuneButton(context, label: context.t.operation.spots.filters.title, onPressed: _spotsController.openFilters),
                 },

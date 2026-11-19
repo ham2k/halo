@@ -166,7 +166,8 @@ class MapMarkerData {
   /// fitted markers do. A map whose markers come and go under the operator's
   /// hand — a reference added, a dot hidden when zoomed out — keys its fit to
   /// what should move the camera (a new search) and leaves it alone otherwise.
-  /// Null: refit whenever the fitted markers change, as the QSO map does.
+  /// Null: refit whenever the fitted markers change, as the QSO map does
+  /// unless Center on Current QSO is off (map_panel.dart).
   final String? fitKey;
 
   /// Where the camera's fit counts this marker, when not at [longitude]: a

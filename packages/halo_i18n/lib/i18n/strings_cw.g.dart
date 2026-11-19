@@ -2735,6 +2735,7 @@ class _Translations$settings$map$cw extends Translations$settings$map$en {
 	@override late final _Translations$settings$map$style$cw style = _Translations$settings$map$style$cw._(_root);
 	@override late final _Translations$settings$map$showCallsigns$cw showCallsigns = _Translations$settings$map$showCallsigns$cw._(_root);
 	@override late final _Translations$settings$map$showGrayline$cw showGrayline = _Translations$settings$map$showGrayline$cw._(_root);
+	@override late final _Translations$settings$map$centerOnQso$cw centerOnQso = _Translations$settings$map$centerOnQso$cw._(_root);
 	@override late final _Translations$settings$map$styleOpts$cw styleOpts = _Translations$settings$map$styleOpts$cw._(_root);
 }
 
@@ -4990,6 +4991,18 @@ class _Translations$settings$map$showGrayline$cw extends Translations$settings$m
 	@override String get description => '··· ···· ·— —·· · ··· / — ···· · / —· ·· ——· ···· — / ··· ·· —·· · / ——— ··—· / — ···· · / · ·— ·—· — ···· ——··—— / ·—— ·· — ···· / — ·—— ·· ·—·· ·· ——· ···· — / ·— ··· / ·— / ——· ·—· ·— —·· ·· · —· —';
 }
 
+// Path: settings.map.centerOnQso
+class _Translations$settings$map$centerOnQso$cw extends Translations$settings$map$centerOnQso$en {
+	_Translations$settings$map$centerOnQso$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '—·—· · —· — · ·—· / ——— —· / —·—· ··— ·—· ·—· · —· — / ——·— ··· ———';
+	@override String get descriptionOn => '— ···· · / —— ·— ·——· / —— ——— ···— · ··· / — ——— / — ···· · / —·—· ··— ·—· ·—· · —· — / ——·— ··· ———';
+	@override String get descriptionOff => '— ···· · / —— ·— ·——· / —·· ——— · ··· / —· ——— — / ·—· · —·—· · —· — · ·—·';
+}
+
 // Path: settings.map.styleOpts
 class _Translations$settings$map$styleOpts$cw extends Translations$settings$map$styleOpts$en {
 	_Translations$settings$map$styleOpts$cw._(TranslationsCw root) : this._root = root, super.internal(root);
@@ -7110,6 +7123,9 @@ extension on TranslationsCw {
 			'settings.map.showCallsigns.description' => '· ·— —·—· ···· / —·—· ——— —· — ·— —·—· — / ·· ··· / ·— / ·——· ·· ·—·· ·—·· / ·—— ·· — ···· / ·· — ··· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ——··—— / ·· —· / ·· — ··· / —··· ·— —· —·· ·————· ··· / —·—· ——— ·—·· ——— ·—·',
 			'settings.map.showGrayline.title' => '··· ···· ——— ·—— / ——· ·—· ·— —·—— ·—·· ·· —· ·',
 			'settings.map.showGrayline.description' => '··· ···· ·— —·· · ··· / — ···· · / —· ·· ——· ···· — / ··· ·· —·· · / ——— ··—· / — ···· · / · ·— ·—· — ···· ——··—— / ·—— ·· — ···· / — ·—— ·· ·—·· ·· ——· ···· — / ·— ··· / ·— / ——· ·—· ·— —·· ·· · —· —',
+			'settings.map.centerOnQso.title' => '—·—· · —· — · ·—· / ——— —· / —·—· ··— ·—· ·—· · —· — / ——·— ··· ———',
+			'settings.map.centerOnQso.descriptionOn' => '— ···· · / —— ·— ·——· / —— ——— ···— · ··· / — ——— / — ···· · / —·—· ··— ·—· ·—· · —· — / ——·— ··· ———',
+			'settings.map.centerOnQso.descriptionOff' => '— ···· · / —— ·— ·——· / —·· ——— · ··· / —· ——— — / ·—· · —·—· · —· — · ·—·',
 			'settings.map.styleOpts.automatic' => '·— ··— — ——— —— ·— — ·· —·—·',
 			'settings.map.styleOpts.liberty' => '·—·· ·· —··· · ·—· — —·——',
 			'settings.map.styleOpts.bright' => '—··· ·—· ·· ——· ···· —',
@@ -7436,11 +7452,11 @@ extension on TranslationsCw {
 			'settings.station.spectrumCroppedCap' => ({required Object max}) => '${max} / —· ·— ·—· ·—· ——— ·—— · ·—· / ··· ·—— · · ·——· ··· / ——— ··—· / — ···· ·· ··· / ·—· ·— —·· ·· ——— / ·— ·—· · / ·— ·—·· ·—· · ·— —·· —·—— / ·—· ··— —· —· ·· —· ——·',
 			'settings.station.spectrumNoSweepToSpare' => '— ···· · / ·—· ·— —·· ·· ——— / ···· ·— ··· / —· ——— / ——— — ···· · ·—· / ··· ·—— · · ·——· / — ——— / ··· ·——· ·— ·—· ·',
 			'settings.station.civScopeAdjust' => '·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·—— / ·— —·· ·——— ··— ··· — / —··· ·— —· —·· ··· —·—· ——— ·——· ·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.civScopeAdjustApp' => '·—·· · — / — ···· ·· ··· / ·— ·——· ·——· / ·— —·· ·——— ··— ··· — / — ···· · / —··· ·— —· —·· ··· —·—· ——— ·——· ·',
 			'settings.station.civScopeAdjustRadio' => '··— ··· · / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / —··· ·— —· —·· ··· —·—· ——— ·——· · / ··· · — — ·· —· ——· ··· / ·— ··· —····— ·· ···',
 			'settings.station.spectrumSdrNoRadio' => '·—— ·— ·· — ·· —· ——· / ··—· ——— ·—· / — ···· · / ·—·· ·· —· —·— · —·· / ·—· ·— —·· ·· ——— ·————· ··· / ··—· ·—· · ——·— ··— · —· —·—· —·—— …',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumSdrNotConnected' => '— ···· · / ··· —·· ·—· / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —··',
 			'settings.station.spectrumSdrNoIf' => '··· · — / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·· ··—· / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·· —· / — ···· ·· ··· / ··· —·· ·—· ·————· ··· / ··· · — — ·· —· ——· ···',
 			'settings.station.spectrumSdrUnreachable' => '— ···· · / ··· —·· ·—· / —·—· ·— —· —· ——— — / — ··— —· · / — ——— / ·—— ···· · ·—· · / — ···· · / ·—· ·— —·· ·· ——— / ·· ··· ——··—— / ——— ·—· / ·— —· ——— — ···· · ·—· / ·——· ·—· ——— ——· ·—· ·— —— / ···· ·— ··· / ·· — / — ··— —· · —·· / · ·—·· ··· · ·—— ···· · ·—· ·',
@@ -7950,11 +7966,11 @@ extension on TranslationsCw {
 			'settings.station.rotatorAzimuthMax' => '···· ·· ——· ···· · ··· — / ·— ——·· ·· —— ··— — ····',
 			'settings.station.rotatorAzimuthMaxDescription' => '·· —· / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· ·————· ··· / ——— ·—— —· / —·· · ——· ·—· · · ··· ·—·—·— / ·— —··· ——— ···— · / ···—— —···· ————— / ··—· ——— ·—· / ·— / ·—· ——— — ·— — ——— ·—· / ·—— ·· — ···· / ——— ···— · ·—· ·—·· ·— ·——· ——··—— / ·—— ···· ·· —·—· ···· / — ···· · —· / — ·— —·— · ··· / — ···· · / ··· ···· ——— ·—· — · ·—· / — ··— ·—· —· ·—·—·—',
 			'settings.station.rotatorElevationMin' => '·—·· ——— ·—— · ··· — / · ·—·· · ···— ·— — ·· ——— —·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rotatorElevationMax' => '···· ·· ——· ···· · ··· — / · ·—·· · ···— ·— — ·· ——— —·',
 			'settings.station.rotatorElevationMaxDescription' => '·· —· / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· ·————· ··· / ——— ·—— —· / —·· · ——· ·—· · · ··· ·—·—·— / ·— —··· ——— ···— · / ————· ————— / ··—· ——— ·—· / ·— / ·—· ——— — ·— — ——— ·—· / — ···· ·— — / ··—· ·—·· ·· ·——· ··· / ——— ···— · ·—· ·—·—·—',
 			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => '·—— ···· ——— ·—·· · / —·· · ——· ·—· · · ··· ——··—— / ${min} / — ——— / ${max}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rotatorLimitsInvalid' => '— ···· · / ·—·· ——— ·—— · ··· — / ·—·· ·· —— ·· — / ···· ·— ··· / — ——— / —··· · / —··· · ·—·· ——— ·—— / — ···· · / ···· ·· ——· ···· · ··· —',
 			'settings.station.rotatorPollInterval' => '·——· ——— ·—·· ·—·· ·· —· ——· / ·· —· — · ·—· ···— ·— ·—·· / —·——· —— ··· —·——·—',
 			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => '···· ——— ·—— / ——— ··—· — · —· / — ——— / ·— ··· —·— / — ···· · / ·—· ——— — ·— — ——— ·—· / ·—— ···· · ·—· · / ·· — / ·——· ——— ·· —· — ··· ·—·—·— / ·—·· · ·— ···— · / —··· ·—·· ·— —· —·— / ··—· ——— ·—· / ${fallback} / —— ··· ·—·—·—',
@@ -8464,11 +8480,11 @@ extension on TranslationsCw {
 			'operationLocationScreen.gridSquare' => '—— ·— ·· —·· · —· ···· · ·— —·· / ——· ·—· ·· —·· / ··· ——·— ··— ·— ·—· · / ·—·· ——— —·—· ·— — ——— ·—·',
 			'operationLocationScreen.gridInvalid' => '—· · · —·· ··· / ····— ——··—— / —···· ——··—— / ———·· / ——— ·—· / ·———— ————— / —·—· ···· ·— ·—· ·— —·—· — · ·—· ··· ——··—— / ·—·· ·· —·— · / ··—· —· ···—— ·———— ·——· ·—·',
 			'operationLocationScreen.suggestedLocations' => '··· ··— ——· ——· · ··· — · —·· / ·—·· ——— —·—· ·— — ·· ——— —· ···',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.deviceGps' => '—·· · ···— ·· —·—· · / ——· ·——· ···',
 			'operationLocationScreen.peerGps' => ({required Object device}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${receiver}',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.locating' => '·—·· ——— —·—· ·— — ·· —· ——· …',
 			'operationLocationScreen.gpsUnavailable' => '·—·· ——— —·—· ·— — ·· ——— —· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'operationLocationScreen.permissionDenied' => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —·· · —· ·· · —··',

@@ -1137,10 +1137,15 @@ String _numText(double value) => value == value.roundToDouble() ? value.toInt().
 /// toggles, which every backend honors. `target: 'map'` is what the tab's own
 /// settings button (operation/operation_view_dock.dart) opens; the field is also reachable
 /// from Settings, same as every other target-scoped field.
+///
+/// Center on Current QSO is the pane's own: a view whose map is not the
+/// operation's overrides this group with its [scope] (as the Chasing view
+/// does its logging groups), and Settings shows the operation's.
 class MapSettingsGroup extends SettingsGroup {
   final SettingsService settings;
+  final MapScope scope;
 
-  MapSettingsGroup(this.settings);
+  MapSettingsGroup(this.settings, {this.scope = MapScope.operation});
 
   @override
   String get key => 'map';
@@ -1182,6 +1187,14 @@ class MapSettingsGroup extends SettingsGroup {
         value: settings.mapShowGrayline,
         target: 'map',
       ),
+      _toggle(
+        key: 'mapCenterOnQso',
+        label: s.centerOnQso.title,
+        description: settings.mapCenterOnQso(scope) ? s.centerOnQso.descriptionOn : s.centerOnQso.descriptionOff,
+        icon: 'crosshairs',
+        value: settings.mapCenterOnQso(scope),
+        target: 'map',
+      ),
     ];
   }
 
@@ -1195,6 +1208,8 @@ class MapSettingsGroup extends SettingsGroup {
         await settings.setMapShowCallsigns(value);
       case 'mapShowGrayline' when value is bool:
         await settings.setMapShowGrayline(value);
+      case 'mapCenterOnQso' when value is bool:
+        await settings.setMapCenterOnQso(scope, value);
     }
   }
 }
