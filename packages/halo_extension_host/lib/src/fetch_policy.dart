@@ -70,6 +70,8 @@ const fetchBodyTimeout = Duration(seconds: 30);
 /// whole in the host's memory and handed to the extension as one string, so
 /// a server, or a redirect's target, answering without end would take the
 /// runtime with it. Sixteen megabytes clears every API an extension reads.
+/// A request's body is held to the same, string or bytes: it too is held
+/// whole, and crosses the bridge as one JSON string first.
 const kMaxFetchBodyBytes = 16 * 1024 * 1024;
 
 /// How many redirects a fetch follows before refusing; each hop is held to

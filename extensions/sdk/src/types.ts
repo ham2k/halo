@@ -3307,7 +3307,25 @@ export interface FetchOptions {
    * `allowUserAgentOverride` in build.mjs (see docs/design/network.md).
    */
   headers?: Record<string, string>
-  body?: string
+  /**
+   * The request body, at most 16 MiB: text, sent in the charset your
+   * `Content-Type` names (UTF-8 when it names none), or bytes (extension
+   * API 29), sent exactly as they are, only the array's own slice of its
+   * buffer. For bytes, set the `Content-Type` yourself. A 307 or 308 repeats
+   * it; a redirect that turns the request into a GET drops it.
+   */
+  body?: string | Uint8Array
+  /**
+   * `"error"` refuses any redirect: the call rejects without following the
+   * Location or sending anything on. The server answering it may already
+   * have acted on the request, so treat the outcome as unknown. A host the
+   * app reaches through Ham2K's proxy (one that serves plain http, and on
+   * the web build the others it proxies) is refused outright, since the
+   * proxy follows redirects itself. `"follow"`, the default, follows up to
+   * five.
+   * Extension API 29.
+   */
+  redirect?: "follow" | "error"
   /**
    * Give up on this request after `timeout` milliseconds, instead of the
    * host's default allowance. Clamped DOWNWARD only — asking for longer than

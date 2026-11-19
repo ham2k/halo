@@ -562,7 +562,10 @@ class _HostCore {
       _admitHostCall(slot, method);
       admitted = true;
       switch (method) {
-        case 'fetch':
+        // `fetchStrict` carries what an older host would drop without a word
+        // (a byte body, `redirect`): sent under a name such a host does not
+        // know, it is refused there instead.
+        case 'fetch' || 'fetchStrict':
           result = await _hostFetch(params);
         case 'secret':
           // `extensionKey` is kernel-bound, so this really is "what the caller
@@ -772,7 +775,14 @@ class _HostCore {
     // except for whitelisted extensions that supplied their own (see
     // resolveFetchUserAgent and docs/design/network.md).
     final effectiveUA = resolveFetchUserAgent(canonical: userAgent, extensionKey: extensionKey, overrides: userAgentOverrides, callerHeaders: headers);
-    var body = params['body'] as String?;
+    Object? body = _requestBody(params);
+    final redirect = params['redirect'] ?? 'follow';
+    if (redirect != 'follow' && redirect != 'error') throw ExtensionHostException("fetch refused: redirect must be 'follow' or 'error'");
+    final refuseRedirects = redirect == 'error';
+    // Ham2K's proxy follows redirects itself, before any reach this host.
+    if (refuseRedirects && route.uri.host != target.host) {
+      throw ExtensionHostException("fetch refused: '${target.host}' is reached through Ham2K's proxy on this build, which follows redirects itself");
+    }
 
     // The caller's ask is ONE budget for the whole call — every hop, both
     // phases and the retry — so it is measured, not handed out per phase.
@@ -797,15 +807,35 @@ class _HostCore {
     // hop is held to both checks as the first was, and to a count. On web
     // the browser follows them itself and exposes no hop, so what it allows
     // there is CORS's, the allowlist holds the first host only, and a 3xx
-    // never reaches this loop.
+    // never reaches this loop; a request that refuses redirects has the
+    // browser refuse them.
     var hopHeaders = Map<String, String>.of(headers);
     for (var hop = 0; ; hop++) {
-      final streamed = await _sendOnce(route.client, method, route.uri, hopHeaders, effectiveUA, body, headerBudget);
+      final http.StreamedResponse streamed;
+      try {
+        streamed = await _sendOnce(route.client, method, route.uri, hopHeaders, effectiveUA, body, headerBudget, followOnWeb: !refuseRedirects);
+      } on http.ClientException {
+        if (!runningOnWeb || !refuseRedirects) rethrow;
+        // The browser refuses a redirect as it fails a lost connection, with
+        // nothing to tell them apart. Said as either, so a caller that would
+        // retry a network error does not send the upload twice; the URL,
+        // query and all, stays out of a message that reaches logs.
+        throw ExtensionHostException(
+          "fetch failed: '${target.host}' gave no answer the browser would pass on, as when it refuses a redirect; it may have acted on the request",
+        );
+      }
       final location = streamed.headers['location'];
       if (_redirectStatuses.contains(streamed.statusCode) && location != null) {
         // The body is dropped, and the socket with it; the next hop opens
         // its own.
         await streamed.stream.listen(null).cancel();
+        // Before the next hop is resolved or sent. The first may already
+        // have acted on the request, so the caller has to treat this as an
+        // outcome it cannot know; the Location stays out of the message,
+        // which reaches logs.
+        if (refuseRedirects) {
+          throw ExtensionHostException("fetch refused: '${target.host}' answered ${streamed.statusCode}, and the request does not follow redirects");
+        }
         if (hop >= kMaxFetchRedirects) {
           throw ExtensionHostException("fetch refused: '${params['url']}' redirected more than $kMaxFetchRedirects times");
         }
@@ -833,6 +863,33 @@ class _HostCore {
   /// The answers a client follows; a 300 or a 304 carrying a Location is an
   /// answer in its own right.
   static const _redirectStatuses = {301, 302, 303, 307, 308};
+
+  /// The request's body as the bridge carried it: `body`, a string, or
+  /// `bodyBase64`, bytes; null for none. Refused before anything is sent: both
+  /// at once, malformed Base64, or a body past [kMaxFetchBodyBytes], the
+  /// Base64 measured before it is decoded and a string by its UTF-8 bytes.
+  static Object? _requestBody(Map<String, dynamic> params) {
+    final text = params['body'];
+    final encoded = params['bodyBase64'];
+    const tooBig = 'fetch refused: the request body is more than $kMaxFetchBodyBytes bytes';
+    if (text != null && encoded != null) throw ExtensionHostException('fetch refused: a request has one body, not both body and bodyBase64');
+    if (encoded != null) {
+      if (encoded is! String) throw ExtensionHostException('fetch refused: bodyBase64 is not a string');
+      if (encoded.length > (kMaxFetchBodyBytes + 2) ~/ 3 * 4) throw ExtensionHostException(tooBig);
+      final Uint8List bytes;
+      try {
+        bytes = base64Decode(encoded);
+      } on FormatException {
+        throw ExtensionHostException('fetch refused: bodyBase64 is not Base64');
+      }
+      if (bytes.length > kMaxFetchBodyBytes) throw ExtensionHostException(tooBig);
+      return bytes;
+    }
+    if (text == null) return null;
+    if (text is! String) throw ExtensionHostException('fetch refused: body is not a string');
+    if (utf8.encode(text).length > kMaxFetchBodyBytes) throw ExtensionHostException(tooBig);
+    return text;
+  }
 
   static Map<String, String> _withoutCredentials(Map<String, String> headers) => {
     for (final MapEntry(:key, :value) in headers.entries)
@@ -900,25 +957,27 @@ class _HostCore {
   }
 
   /// One hop of a fetch: the request sent once, with a single retry when
-  /// the host's name failed to resolve.
+  /// the host's name failed to resolve. [body] is a String or bytes.
   Future<http.StreamedResponse> _sendOnce(
     http.Client client,
     String method,
     Uri uri,
     Map<String, String> headers,
     String? userAgent,
-    String? body,
-    Duration Function() headerBudget,
-  ) async {
+    Object? body,
+    Duration Function() headerBudget, {
+    required bool followOnWeb,
+  }) async {
     for (var attempt = 0; ; attempt++) {
       // Followed by hand natively (see the loop above). The browser's client
       // turns `false` into a fetch that fails on any redirect, so on web it
-      // follows them itself.
+      // follows them itself unless the request refuses them.
       final request = http.Request(method, uri)
-        ..followRedirects = runningOnWeb
+        ..followRedirects = runningOnWeb && followOnWeb
         ..headers.addAll(headers);
       if (userAgent != null) request.headers['User-Agent'] = userAgent;
-      if (body != null) request.body = body;
+      if (body is String) request.body = body;
+      if (body is Uint8List) request.bodyBytes = body;
       try {
         return await client.send(request).timeout(headerBudget());
       } on http.ClientException catch (e) {

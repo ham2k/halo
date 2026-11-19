@@ -526,6 +526,7 @@ function askedForEveryRef(category: HookCategoryName, record: HookRecord): boole
 const IDENTITY_HOST_METHODS: Record<string, true> = Object.create(null)
 for (const method of [
   "fetch",
+  "fetchStrict",
   "getLocation",
   "listRadios",
   "readRadio",

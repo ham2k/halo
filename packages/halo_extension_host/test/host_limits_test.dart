@@ -10,9 +10,11 @@
 // stubbed below the host's own checks (the fetch seam).
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart' show ham2kProxyHost;
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_extension_host/src/engine_runtime_io.dart';
 import 'package:halo_extension_host/src/fetch_policy.dart';
@@ -31,6 +33,9 @@ const probe = r'''
         key: 'probe',
         hook: {
           fetch: async (args) => await hostCall('fetch', args),
+          fetchStrict: async (args) => await hostCall('fetchStrict', args),
+          // The kernel's public surface, where a bundle names any identity it likes.
+          fetchStrictAs: async (args) => await globalThis.__halo.hostCall('fetchStrict', { ...args, extensionKey: 'victim' }),
           chatter: async ({ lines }) => {
             for (let i = 0; i < lines; i++) globalThis.__halo.log('line ' + i);
             return lines;
@@ -64,6 +69,12 @@ void main() {
 
   Future<dynamic> fetch(ExtensionHost host, Map<String, dynamic> args) =>
       host.invokeHook('bench', key: 'probe', method: 'fetch', args: args, timeout: const Duration(seconds: 20));
+
+  // What the SDK sends a byte body or `redirect` as, so that an app older
+  // than both refuses the call. Judged on the same allowlist, which only
+  // works if the kernel stamps the caller on it as it does on `fetch`.
+  Future<dynamic> fetchStrict(ExtensionHost host, Map<String, dynamic> args) =>
+      host.invokeHook('bench', key: 'probe', method: 'fetchStrict', args: args, timeout: const Duration(seconds: 20));
 
   Matcher refused(String fragment) => throwsA(isA<ExtensionHostException>().having((e) => e.toString(), 'message', contains(fragment)));
 
@@ -189,6 +200,121 @@ void main() {
 
       await expectLater(fetch(host, {'url': 'https://a.example/loop'}), refused('redirected more than $kMaxFetchRedirects times'));
       expect(r.sent, hasLength(kMaxFetchRedirects + 1));
+    });
+
+    // An upload refusing redirects: a 307 or 308 would send the same signed
+    // file to wherever it points, and the first server may already have
+    // queued it, so only the extension can decide what to do next.
+    test("with redirect 'error', a same-host 307 or an allowed cross-host 308 sends nothing past the first request", () async {
+      for (final (status, location) in [(307, '/elsewhere'), (308, 'https://b.example/landing')]) {
+        final r = routes({
+          'a.example/upload': (_) => redirect(status, location),
+          'a.example/elsewhere': (_) => ok('moved'),
+          'b.example/landing': (_) => ok('moved'),
+        });
+        final host = await hostWith(r.client);
+
+        await expectLater(
+          fetchStrict(host, {'url': 'https://a.example/upload', 'method': 'POST', 'body': 'signed', 'redirect': 'error'}),
+          throwsA(
+            isA<ExtensionHostException>()
+                .having((e) => e.toString(), 'message', contains('does not follow redirects'))
+                // The Location can carry a token; the message reaches logs.
+                .having((e) => e.toString(), 'message', isNot(anyOf(contains('elsewhere'), contains('b.example')))),
+          ),
+          reason: '$status',
+        );
+        expect(r.sent.map((s) => s.url.toString()), ['https://a.example/upload'], reason: '$status');
+      }
+    });
+
+    test('a redirect setting other than follow or error is refused before anything is sent', () async {
+      final r = routes({'a.example/upload': (_) => ok('sent')});
+      final host = await hostWith(r.client);
+
+      await expectLater(fetchStrict(host, {'url': 'https://a.example/upload', 'redirect': 'manual'}), refused("redirect must be 'follow' or 'error'"));
+      expect(r.sent, isEmpty);
+    });
+
+    test("fetchStrict is refused on the kernel's public surface, as fetch is", () async {
+      // Else a bundle could fetch under another extension's identity, and so
+      // with that extension's domains.
+      final r = routes({'a.example/upload': (_) => ok('sent')});
+      final host = await hostWith(r.client);
+
+      await expectLater(
+        host.invokeHook('bench', key: 'probe', method: 'fetchStrictAs', args: {'url': 'https://a.example/upload'}, timeout: const Duration(seconds: 20)),
+        refused("needs the calling extension's identity"),
+      );
+      expect(r.sent, isEmpty);
+    });
+
+    test("redirect 'error' to a host reached through Ham2K's proxy is refused before anything is sent", () async {
+      // The proxy follows redirects itself, so the request would go on to
+      // wherever one pointed and come back looking answered. An http-only
+      // host goes through it on every build.
+      final r = routes({'$ham2kProxyHost/qsopartyhub.com/upload': (_) => ok('sent')});
+      final host = await hostWith(r.client, domains: ['qsopartyhub.com']);
+
+      await expectLater(fetchStrict(host, {'url': 'http://qsopartyhub.com/upload', 'method': 'POST', 'redirect': 'error'}), refused("through Ham2K's proxy"));
+      expect(r.sent, isEmpty);
+      // Without it, the same request goes out through the proxy as before.
+      await fetchStrict(host, {'url': 'http://qsopartyhub.com/upload', 'method': 'POST'});
+      expect(r.sent.single.url.host, ham2kProxyHost);
+    });
+  });
+
+  group('request bodies', () {
+    // A multipart upload the way LoTW takes one: a gzip file (1f 8b 08 …),
+    // with the bytes a text body would mangle (00, 8b, ff) in it.
+    final file = Uint8List.fromList([0x1f, 0x8b, 0x08, 0x00, 0x8b, 0xff, 0x00, 0x7f]);
+    final multipart = Uint8List.fromList([
+      ...'--b\r\nContent-Disposition: form-data; name="upfile"; filename="log.tq8"\r\n\r\n'.codeUnits,
+      ...file,
+      ...'\r\n--b--\r\n'.codeUnits,
+    ]);
+
+    test('bytes reach the server exactly as the extension built them', () async {
+      final r = routes({'a.example/upload': (_) => ok('queued')});
+      final host = await hostWith(r.client);
+
+      await fetchStrict(host, {
+        'url': 'https://a.example/upload',
+        'method': 'POST',
+        'headers': {'Content-Type': 'multipart/form-data; boundary=b'},
+        'bodyBase64': base64Encode(multipart),
+      });
+
+      expect(r.sent.single.bodyBytes, multipart);
+      expect(r.sent.single.headers['content-type'], 'multipart/form-data; boundary=b');
+    });
+
+    test('a 307 or 308 repeats the bytes; a 303 drops them', () async {
+      for (final (status, expected) in [(307, multipart), (308, multipart), (303, Uint8List(0))]) {
+        final r = routes({'a.example/upload': (_) => redirect(status, '/again'), 'a.example/again': (_) => ok('queued')});
+        final host = await hostWith(r.client);
+
+        await fetchStrict(host, {'url': 'https://a.example/upload', 'method': 'POST', 'bodyBase64': base64Encode(multipart)});
+
+        expect(r.sent.last.bodyBytes, expected, reason: '$status');
+      }
+    });
+
+    test('a malformed, doubled or oversized body never reaches the client', () async {
+      final r = routes({'a.example/upload': (_) => ok('queued')});
+      final host = await hostWith(r.client);
+      Future<void> refusedWith(Map<String, dynamic> body, String fragment) =>
+          expectLater(fetchStrict(host, {'url': 'https://a.example/upload', 'method': 'POST', ...body}), refused(fragment));
+
+      await refusedWith({'bodyBase64': 'not*base64'}, 'bodyBase64 is not Base64');
+      await refusedWith({'bodyBase64': 'AAAA', 'body': 'text'}, 'not both body and bodyBase64');
+      // Measured before decoding: a decode first would call this not Base64.
+      await refusedWith({'bodyBase64': '*' * ((kMaxFetchBodyBytes + 2) ~/ 3 * 4 + 1)}, 'more than $kMaxFetchBodyBytes bytes');
+      // And after: 2^24 + 1 bytes encode no longer than 2^24 do.
+      await refusedWith({'bodyBase64': base64Encode(Uint8List(kMaxFetchBodyBytes + 1))}, 'more than $kMaxFetchBodyBytes bytes');
+      // A string by its UTF-8 bytes, not its characters: each é is two.
+      await refusedWith({'body': 'é' * (kMaxFetchBodyBytes ~/ 2 + 1)}, 'more than $kMaxFetchBodyBytes bytes');
+      expect(r.sent, isEmpty);
     });
   });
 

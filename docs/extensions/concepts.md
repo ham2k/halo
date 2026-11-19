@@ -148,6 +148,7 @@ runs and the error names the budget.
 | --- | --- |
 | Host calls awaiting an answer | 32 per bundle, 256 across every extension |
 | `host.fetch` in flight | 8 per bundle; a ninth is refused, not queued |
+| `host.fetch` bodies | 16 MiB each way |
 | Key-value storage | 10 keys per bundle, each key plus value at most 4,096 characters of JSON |
 | Status bar | 8 keys per extension; strings at most 1,024 characters; updates reach the footer at most every 100 ms |
 | FYI line | 4 messages per extension; `text` at most 256 characters, other strings 1,024; posts reach the line at most once a second |

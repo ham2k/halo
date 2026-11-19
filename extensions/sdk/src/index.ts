@@ -184,6 +184,11 @@ export function defineExtension(def: ExtensionDefinition): void {
 /// too so a bad length throws at the caller.
 const MAX_RANDOM_BYTES = 4096
 
+/// The host's bound on a `host.fetch` request body (`kMaxFetchBodyBytes` in
+/// packages/halo_extension_host/lib/src/fetch_policy.dart), checked here too
+/// so an oversized body throws before it is encoded for the bridge.
+const MAX_FETCH_BODY_BYTES = 16 * 1024 * 1024
+
 /// The host's frame limit (`maxWebSocketFrameSize` in
 /// packages/halo_extension_host/lib/src/extension_sockets.dart), checked here
 /// too so an oversized send throws at the caller instead of failing into a log.
@@ -521,7 +526,23 @@ export const host = {
   },
 
   async fetch(url: string, options?: FetchOptions): Promise<FetchResponse> {
-    return (await hostCallFn()("fetch", { url, ...options })) as FetchResponse
+    const { body, ...rest } = options ?? {}
+    if (rest.redirect !== undefined && rest.redirect !== "follow" && rest.redirect !== "error") {
+      throw new TypeError(`fetch redirect must be "follow" or "error"`)
+    }
+    // A byte body or `redirect` goes as `fetchStrict`: an app older than API
+    // 29 reads neither, and would send no body or follow the redirect without
+    // a word; it knows no `fetchStrict`, and refuses the call instead.
+    const call = rest.redirect === undefined ? "fetch" : "fetchStrict"
+    if (body === undefined || body === null || typeof body === "string") {
+      if (typeof body === "string" && utf8Length(body) > MAX_FETCH_BODY_BYTES) throw new RangeError(`fetch body is more than ${MAX_FETCH_BODY_BYTES} bytes`)
+      return (await hostCallFn()(call, { url, ...options })) as FetchResponse
+    }
+    if (!ArrayBuffer.isView(body)) throw new TypeError("fetch body must be a string or a Uint8Array")
+    // Only the view's own slice: a subarray shares its parent's whole buffer.
+    const bytes = new Uint8Array(body.buffer, body.byteOffset, body.byteLength)
+    if (bytes.length > MAX_FETCH_BODY_BYTES) throw new RangeError(`fetch body is more than ${MAX_FETCH_BODY_BYTES} bytes`)
+    return (await hostCallFn()("fetchStrict", { url, ...rest, bodyBase64: bytesToBase64(bytes) })) as FetchResponse
   },
 
   /// A WebSocket to a host the manifest's `webSockets` lists — see

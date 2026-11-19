@@ -22,8 +22,14 @@ const { status, body } = await host.fetch("https://api.pota.app/park/US-1234", {
 ```
 
 `options`: `method` (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`), `headers`,
-`body` (a string), and `timeout` in milliseconds. The answer is
+`body`, `redirect` and `timeout` in milliseconds. The answer is
 `{ status, body }`, the body as text.
+
+`body` is a string, sent in the charset your `Content-Type` names (UTF-8
+when it names none), or from extension API 29 a `Uint8Array`,
+sent exactly: only the array's own slice of its buffer, with the
+`Content-Type` you set. That is how a file goes up, in a multipart body you
+build yourself.
 
 - **Only hosts your manifest's `domains` lists**, over https. A plain
   `http://` host is refused unless it serves http only and Ham2K's proxy
@@ -43,6 +49,18 @@ const { status, body } = await host.fetch("https://api.pota.app/park/US-1234", {
   the category, so a request that stalls costs the others their answers.
   A timeout raced in JS settles your promise and leaves the request running;
   this one stops it.
+- **16 MiB each way.** A larger body is refused before anything is sent, a
+  string by its UTF-8 bytes; an answer past it is refused as it arrives.
+- **Up to five redirects are followed**, each hop held to the rules above.
+  A 307 or 308 sends the body again; a 303, or a 301 or 302 after anything
+  but a GET, goes on as a GET without it, and credentials never go to
+  another host. `redirect: "error"` (API 29) refuses any redirect instead:
+  the call rejects without sending anything on. The server that redirected
+  may already have acted on the request, so treat the outcome as unknown.
+  On the web build a refused redirect looks like a lost connection, and
+  the call says it may have been either. A host the app reaches through
+  Ham2K's proxy, which follows redirects itself, refuses `"error"` outright:
+  one that serves plain http, and on the web build the others it proxies.
 
 ### `host.webSocket(url, { protocols? })`
 
