@@ -241,8 +241,16 @@ positions:
 ```
 
 Only `rx` is required. **Every other slot defaults from the receiver's own device**: its
-transmitter, its scope, its keyer, its audio. Picking "IC-705" for `rx` is a whole position, and a
-one-radio station configures nothing more than it does now.
+transmitter, its scope, its keyer. Picking "IC-705" for `rx` is a whole position, and a one-radio
+station configures nothing more than it does now.
+
+Audio is the exception. Its slots are `rxAudio`, the `audio` the receiver is heard through in
+HaLo, and `txAudio`, the `audio` the operator's microphone goes out on; each defaults to None, the
+radio playing its own audio and keying its own microphone. Carrying a radio's audio through the
+computer changes what the operator hears and what goes on the air, so it is never a default. Each
+holds a capability address (`<flex>/audio:0`), as the other slots will once they move to them. A
+Flex slice that is an entry of its own (§ 4.2) is the device of its own audio until slices are
+capabilities of the radio: slice B's is `<flex>%2Frx:1/audio:1`.
 
 A slot keeps the three states the pick table has today
 ([cat.md § The picks belong to the radio](cat.md#the-picks-belong-to-the-radio)): **absent** takes
@@ -347,6 +355,10 @@ A mixer or a controller that another hand can move is followed (§ 4.5): told on
 on a timer, and given back as the operator had it when the switching stops, as
 [cat.md § The SO2R switcher](cat.md#the-so2r-switcher) has it for both today. The app's own mixer
 is owned.
+
+The operator's microphone and headphones are picked the same way, beside the positions: one sound
+card each, stored as its address with its name (§ 3), the system's default when none is picked.
+Each position's `txAudio` says whether its transmitter takes that microphone (§ 5.1).
 
 Only a controller's headphone switching is driven today. Its transmit side is new work (§ 11).
 
@@ -593,8 +605,12 @@ Each is a full task. Nothing is visible to the operator before phase 3.
    with the channels it carries each way (a Flex slice's DAX pair). The computer is a device
    (`computer`) offering its voice recordings, and, under the `audio` experiment, its mixer and
    a sound card per id the system lists (§ 3). A radio's `audio` is offered
-   only under the experiment too. Nothing picks them yet: audio slots on a position, and the
-   hearing rule carried out by the computer's mixer, are the stages after.*
+   only under the experiment too. The second stage is built: a position's `rxAudio` and `txAudio`
+   (§ 5.1) pick the radio's own audio or None, and the operator's microphone and headphones are
+   picks beside the positions (§ 6.1), each a sound card's address with its name. Both moved
+   there from where builds before kept them: each radio's own flags, and the station's settings.
+   Sound cards as a position's audio wait for the third, the hearing rule carried out by the
+   computer's mixer.*
 8. **An SO2R controller's transmit side**: routing the key, the PTT and the microphone (§ 6.1).
 9. **The antenna graph and its solver** (§ 7).
 10. **Extension surface** for capabilities, positions and sets, and logical addresses wherever an

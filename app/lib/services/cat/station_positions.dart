@@ -6,6 +6,7 @@
 // no I/O.
 
 import '../peer/peer_station_radios.dart';
+import 'capability.dart';
 import 'main_vfo.dart';
 
 /// The logging set every station has.
@@ -13,6 +14,19 @@ const kSetA = 'A';
 
 /// SO2R's second logging set.
 const kSetB = 'B';
+
+/// A position's receive audio: the `audio` its receiver is heard through in
+/// HaLo, as a capability address. None, the default, is heard on the radio.
+const kSlotReceiveAudio = 'rxAudio';
+
+/// Where the operator's microphone goes for a position: the `audio` its
+/// transmitter takes it on. None, the default, keys the radio's own mic.
+const kSlotTransmitAudio = 'txAudio';
+
+/// The operator's microphone and headphones (station-model.md § 6.1): one
+/// of each however many positions they work, so picked beside them.
+const kOperatorMicrophone = 'microphone';
+const kOperatorHeadphones = 'headphones';
 
 /// One operating position: a radio, and what the operator picked to go with
 /// it.
@@ -25,10 +39,11 @@ class StationPosition {
   final String id;
   MainVfo? radio;
 
-  /// Kind → a node id, or null. Three states, not two: an ABSENT kind is
-  /// never decided, and the service answers it with a default (a radio that
-  /// keys is its own key); a kind stored as null is the operator having
-  /// answered None, which a default never overrides.
+  /// Kind → a node id, or for an audio slot a capability address, or null.
+  /// Three states, not two: an ABSENT kind is never decided, and the service
+  /// answers it with a default (a radio that keys is its own key); a kind
+  /// stored as null is the operator having answered None, which a default
+  /// never overrides.
   final Map<String, String?> slots;
 
   StationPosition(this.id, this.radio, [Map<String, String?>? slots]) : slots = slots ?? {};
@@ -40,6 +55,17 @@ class StationPositions {
 
   /// Set name → position id. Set A with no position is the "no radio" one.
   final Map<String, String> _sets = {};
+
+  /// What the operator picked beside the positions ([kOperatorMicrophone],
+  /// [kOperatorHeadphones]): a capability address, null for the system's
+  /// default, and absent for never decided — which a stored setting from
+  /// before these picks then answers (`CatService._load`).
+  final Map<String, String?> operatorPicks = {};
+
+  /// A sound card's name, by the capability address a pick of it holds: a
+  /// card the system gives a new id after a reboot is found by it, as the
+  /// engine matches a device (`matchAudioDevice`).
+  final Map<String, String> names = {};
 
   final String Function() _newId;
 
@@ -102,9 +128,18 @@ class StationPositions {
       _sets.removeWhere((_, id) => id == own.id);
     }
     for (final position in _byId.values) {
-      position.slots.removeWhere((_, picked) => picked == uuid);
+      position.slots.removeWhere((_, picked) => picked != null && _deviceOf(picked) == uuid);
     }
   }
+
+  /// The device a pick names: the device of an audio slot's capability
+  /// address, and the node itself for every other pick. Told apart by kind,
+  /// never by shape: a Flex slice's node id is an address (`<flex>/rx:1`),
+  /// and names that node, not the radio.
+  static String _deviceOf(String picked) => switch (CapabilityAddress.parse(picked)) {
+    CapabilityAddress(:final device, kind: kCapabilityAudio) => device,
+    _ => picked,
+  };
 
   /// As stored. A position with nothing picked that no set logs from is
   /// left out: it says nothing a fresh one would not.
@@ -114,11 +149,14 @@ class StationPositions {
         if (position.slots.isNotEmpty || _sets.containsValue(position.id)) position.id: {'radio': _radioToJson(position.radio), 'slots': position.slots},
     },
     'sets': _sets,
+    if (operatorPicks.isNotEmpty) 'operator': operatorPicks,
+    if (names.isNotEmpty) 'names': names,
   };
 
   /// What [json] stored, keeping only what this station still has: a
   /// position whose radio did not load goes, with its picks, and a pick
-  /// naming a node that did not load is dropped (an explicit None is kept).
+  /// naming a node that did not load is dropped (an explicit None is kept);
+  /// a capability address is kept on a node that did, and on this computer.
   /// A set bound to a position that went is unbound, which for set A is "no
   /// radio": never some other radio, since a corrupt record is not the
   /// operator's choice.
@@ -139,7 +177,7 @@ class StationPositions {
         final slots = value['slots'];
         if (slots is Map) {
           for (final MapEntry(key: kind, value: picked) in slots.entries) {
-            if (picked == null || (picked is String && hasNode(picked))) position.slots['$kind'] = picked as String?;
+            if (picked == null || (picked is String && _onStation(picked, hasNode))) position.slots['$kind'] = picked as String?;
           }
         }
         loaded._byId[position.id] = position;
@@ -151,8 +189,29 @@ class StationPositions {
         if (value is String && loaded._byId.containsKey(value)) loaded._sets['$key'] = value;
       }
     }
+    if (json['operator'] case final Map<dynamic, dynamic> picks) {
+      for (final MapEntry(:key, :value) in picks.entries) {
+        if (value == null || (value is String && _onStation(value, hasNode) && _isAudio(value))) loaded.operatorPicks['$key'] = value as String?;
+      }
+    }
+    if (json['names'] case final Map<dynamic, dynamic> names) {
+      for (final MapEntry(:key, :value) in names.entries) {
+        if (value is String) loaded.names['$key'] = value;
+      }
+    }
     loaded._dropSetBUnlessItsOwnLocalRadio();
     return loaded;
+  }
+
+  /// Whether [picked] is an `audio` capability: an operator pick of anything
+  /// else would read as the system's default without saying so.
+  static bool _isAudio(String picked) => CapabilityAddress.parse(picked)?.kind == kCapabilityAudio;
+
+  /// Whether [picked] names something of this station: a node that loaded,
+  /// or this computer, which is always there.
+  static bool _onStation(String picked, bool Function(String uuid) hasNode) {
+    final device = _deviceOf(picked);
+    return device == kComputerDevice ? picked != device : hasNode(device);
   }
 
   /// What a blob written before positions existed (version 3 and older)

@@ -18,12 +18,11 @@ import '../settings_service.dart' show SettingsService;
 /// the audio engine here.
 bool radioAudioAvailable(SettingsService settings) => settings.experimentEnabled('audio') /* stored key, see experiments.yaml */ && HaloAudio.isSupported;
 
-/// Whether the operator hears this radio in HaLo, on its equipment node.
+/// Whether the operator hears this radio in HaLo, and talks through it, as
+/// flags on its equipment node: what builds before a position's audio slots
+/// read (`kSlotReceiveAudio`, `kSlotTransmitAudio`). Read once, to move them
+/// there (`CatService._moveAudioChoices`), and left for an older build.
 const receiveAudioConfigKey = 'receiveAudio';
-
-/// Whether the operator talks through HaLo on this radio, on its equipment
-/// node: their key on it sends the station's microphone
-/// ([RadioAudioSettings.stationMicrophone]) rather than the radio's own.
 const talkAudioConfigKey = 'talkAudio';
 
 /// How far behind the radio its receive audio may fall, in milliseconds, on
@@ -81,13 +80,13 @@ class RadioAudio {
   static ({List<AudioDevice> playback, List<AudioDevice> capture}) _countedCards() =>
       (playback: HaloAudio.playbackDevices(channels: true), capture: HaloAudio.captureDevices(channels: true));
 
-  /// The station's microphone, read at each over, so a change takes effect
+  /// The operator's microphone, read at each over, so a change takes effect
   /// at the next key; null for the system's default input.
   final ({String? id, String? name})? Function() _microphone;
 
-  /// The station's output, which every radio heard in HaLo is mixed into:
-  /// read as a radio's audio is routed, so a change takes effect as each
-  /// radio's audio is routed again ([CatService.setStationOutput]).
+  /// The operator's headphones, which every radio heard in HaLo is mixed
+  /// into: read as a radio's audio is routed, so a change takes effect as
+  /// each radio's audio is routed again ([CatService.setOperatorHeadphones]).
   final ({String? id, String? name})? Function() _output;
 
   /// The mix's overall volume, and what each radio is mixed at before it:

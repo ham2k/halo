@@ -183,11 +183,12 @@ stays with the driver's `ComputerAudioPttSession`, with its read-back and its
 owed restores, as it is for the voice keyer today.
 
 **The operator talks through HaLo per radio, into one microphone.** The
-station's microphone is one setting for the station (Station
-Configuration, under the experiment), because the operator speaks into one
-microphone whichever radio is keyed. Each radio's **Talk through HaLo**
-says whether the operator's key on it sends that microphone. The
-operator's key means the PTT key and anything else they key through HaLo.
+microphone is the operator's, picked beside the positions
+(station-model.md § 6.1), because they speak into one microphone whichever
+radio is keyed. Each position's transmit audio (`txAudio`, the set's
+**Microphone**) says whether the operator's key on its radio sends that
+microphone. The operator's key means the PTT key and anything else they key
+through HaLo.
 A CAT server client's key stays a plain key, since a digital-mode program
 sends its own DAX audio and HaLo's stream would take its place. On a Flex
 the session owns a `dax_tx` stream on the engine's socket once it is bound
@@ -239,16 +240,17 @@ headphone mix to the GUI client; the operator mutes that there.
 **The operator asks for it per receiver**, under the `audio` experiment:
 each set's details offer **Listen to Audio** and **Microphone**, each **On
 This Computer** (**On This Device** on a phone or tablet) or **On The
-Radio**, for a driver whose sessions carry that audio
-(`EquipmentDriver.carriesReceiveAudio`, `carriesTalkAudio`). Per receiver
-because a slice of a Flex is an entry of its own, which the radio's editor
-does not reach; the editor keeps only how far behind the radio's audio may
-fall, which every slice of it takes. Where HaLo plays what it hears is the
-app's, not a radio's: one output for the station, which every radio heard
-in HaLo is mixed into. **Audio Mixing**, in Current Configuration once any
-radio's audio goes through this computer, holds the mix's volume, each
-radio's level (a route's gain is the two together, applied as a slider
-moves and stored as its drag ends), the output and the station's
+Radio**, for a radio whose `audio` brings channels in or sends them out
+(station-model.md § 4). They are its position's `rxAudio` and `txAudio`
+slots, picking the radio's own audio or None (station-model.md § 5.1). Per
+receiver because a slice of a Flex is an entry of its own, which the radio's
+editor does not reach; the editor keeps only how far behind the radio's
+audio may fall, which every slice of it takes. Where HaLo plays what it
+hears is the operator's, not a radio's: their headphones, which every radio
+heard in HaLo is mixed into. **Audio Mixing**, in Current Configuration
+once any radio's audio goes through this computer, holds the mix's volume,
+each radio's level (a route's gain is the two together, applied as a slider
+moves and stored as its drag ends), and the operator's headphones and
 microphone. The session asks its sink for the engine
 (`ReceiveAudioSink`) as it opens its UDP socket, so the meters' socket is
 the engine's from the start — the slice's audio arrives on it — and a

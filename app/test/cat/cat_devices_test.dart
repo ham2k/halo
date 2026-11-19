@@ -16,7 +16,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/audio/radio_audio.dart' show receiveAudioConfigKey, receiveAudioDelayConfigKey;
+import 'package:ham2k_logger/services/audio/radio_audio.dart' show receiveAudioDelayConfigKey;
 import 'package:ham2k_logger/services/audio/radio_audio_settings.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/computer_voice_keyer.dart' show voiceOutputConfigKey;
@@ -530,8 +530,8 @@ void main() {
       await cat.disconnect('flex-a');
     });
 
-    test("a connected radio whose audio settings are edited reconnects to take them", () async {
-      // Its links to the audio engine are made as it connects: an edit left
+    test("a connected radio whose audio is picked or rebuffered reconnects to take it", () async {
+      // Its links to the audio engine are made as it connects: a choice left
       // for the next connect is one the operator does not hear.
       final radio = _FakeFlexRadio();
       final cat = await load({
@@ -541,13 +541,17 @@ void main() {
         },
       }, registry: radio.registry);
       await cat.connect('flex-a');
-      final node = cat.nodeFor('flex-a')!;
-      await cat.updateNode(node.copyWith(config: {...node.config, 'host': 'flex.local'}));
+      var node = cat.nodeFor('flex-a')!;
+      await cat.updateNode(node.copyWith(config: {...node.config, receiveAudioDelayConfigKey: 40}));
       await pumpEventQueue();
-      expect(radio.opened, 1, reason: 'nothing to do with its audio');
-      await cat.updateNode(node.copyWith(config: {...node.config, receiveAudioConfigKey: true}));
+      expect(radio.opened, 1, reason: 'buffering a radio nobody hears here');
+      await cat.setHearsInHalo('flex-a', true);
       await pumpEventQueue();
       expect(radio.opened, 2);
+      node = cat.nodeFor('flex-a')!;
+      await cat.updateNode(node.copyWith(config: {...node.config, receiveAudioDelayConfigKey: 100}));
+      await pumpEventQueue();
+      expect(radio.opened, 3);
       expect(cat.stateFor('flex-a').status, EquipmentStatus.connected);
       await cat.disconnect('flex-a');
     });

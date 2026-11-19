@@ -335,7 +335,7 @@ extension _Devices on CatService {
       final connectionChanged =
           entry.typeKey != device.typeKey ||
           _flexSharedKeys(device).any((key) => config[key] != entry.config[key]) ||
-          (_audioDiffers(entry.config, config) && (hearsInHalo(id) || talksThroughHalo(id)));
+          (_bufferingDiffers(entry.config, config) && hearsInHalo(id));
       final reconnect = connectionChanged && (status == EquipmentStatus.connected || status == EquipmentStatus.connecting);
       if (reconnect) await disconnect(id, byUser: false);
       _nodes[id] = EquipmentNode(uuid: id, typeKey: device.typeKey, name: entry.name, config: config);
@@ -494,13 +494,29 @@ extension _Devices on CatService {
   /// radio is named by that device's own ids, which this station's forwarding
   /// says nothing about.
   Object? _forwardIds(Object? json) => switch (json) {
-    final String id => _forwarded[id] ?? id,
+    final String id => _forwarded[id] ?? _forwardAddress(id),
     final Map<dynamic, dynamic> map => {
       for (final MapEntry(:key, :value) in map.entries) _forwardIds(key): _peerKeys.contains(key) ? value : _forwardIds(value),
     },
     final List<dynamic> list => [for (final value in list) _forwardIds(value)],
     _ => json,
   };
+
+  /// An audio slot's capability address on a node that is now another,
+  /// moved onto it. Only an `audio` one: a node id may be an address itself
+  /// (a Flex slice's `<flex>/rx:1`), and is forwarded whole or not at all.
+  String _forwardAddress(String id) {
+    final address = CapabilityAddress.parse(id);
+    if (address == null || address.kind != kCapabilityAudio) return id;
+    final to = _forwarded[address.device];
+    if (to == null) return id;
+    final key = address.key!;
+    return switch ((address.port, address.portIsInput)) {
+      (final port?, true) => '${CapabilityAddress.input(to, kCapabilityAudio, key, port)}',
+      (final port?, _) => '${CapabilityAddress.output(to, kCapabilityAudio, key, port)}',
+      _ => '${CapabilityAddress(to, kCapabilityAudio, key: key)}',
+    };
+  }
 }
 
 /// What Station Configuration lists of the devices with several entries.

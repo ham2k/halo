@@ -13,7 +13,6 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../services/audio/radio_audio.dart';
-import '../services/audio/radio_audio_settings.dart';
 import '../services/cat/driver.dart' show EquipmentDriver;
 import '../services/cat/cat_service.dart';
 import 'station_rows.dart' show CurrentRowFrame;
@@ -24,7 +23,7 @@ import '../services/halo_services.dart';
 /// in HaLo, and whether the operator talks through it, is each set's
 /// (`StationPanel`'s set details): a radio of several receivers has one
 /// editor and a choice per receiver. Where HaLo plays what it hears is the
-/// app's, not a radio's: the system's default output, for every radio.
+/// operator's, not a radio's: their headphones, for every radio.
 class RadioAudioEditorFields {
   RadioAudioEditorFields(HaLoServices services, EquipmentDriver driver, this._config) {
     hears = radioAudioAvailable(services.settings) && driver.carriesReceiveAudio;
@@ -173,9 +172,9 @@ class _StartEllipsis extends StatelessWidget {
   );
 }
 
-/// The station's microphone, or its output, picked from the devices this
-/// computer has: one each for the station, since the operator speaks into
-/// one microphone and hears every radio in one pair of headphones.
+/// The operator's microphone, or their headphones, picked from the devices
+/// this computer has: one each, since the operator speaks into one
+/// microphone and hears every radio in one pair of headphones.
 class StationAudioDevicePicker extends StatefulWidget {
   const StationAudioDevicePicker.microphone({super.key, required this.services}) : output = false;
   const StationAudioDevicePicker.output({super.key, required this.services}) : output = true;
@@ -210,8 +209,8 @@ class _StationAudioDevicePickerState extends State<StationAudioDevicePicker> {
   @override
   Widget build(BuildContext context) {
     final st = context.t.settings.station;
-    final settings = widget.services.settings;
-    final stored = widget.output ? settings.stationOutput : settings.stationMicrophone;
+    final cat = widget.services.cat;
+    final stored = widget.output ? cat.operatorHeadphones : cat.operatorMicrophone;
     final found = stored == null ? null : matchAudioDevice(_devices, id: stored.id, name: stored.name);
     final value = stored == null ? _default : (found?.id ?? _missing);
     return DropdownButtonFormField<String>(
@@ -245,7 +244,7 @@ class _StationAudioDevicePickerState extends State<StationAudioDevicePicker> {
       onChanged: (id) {
         if (id == null || id == _missing) return;
         final device = id == _default ? null : _devices.where((d) => d.id == id).firstOrNull;
-        final saved = widget.output ? widget.services.cat.setStationOutput(device) : settings.setStationMicrophone(device);
+        final saved = widget.output ? cat.setOperatorHeadphones(device) : cat.setOperatorMicrophone(device);
         unawaited(saved.then((_) => mounted ? setState(() {}) : null));
       },
     );

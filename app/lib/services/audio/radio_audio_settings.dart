@@ -4,34 +4,23 @@
 // The station's audio mixing, as settings — beside the audio engine rather
 // than in settings_service.dart, which is over its size budget.
 
-import 'package:halo_audio/halo_audio.dart' show AudioDevice;
-
-import '../cat/computer_voice_keyer.dart' show voiceDeviceFromConfig, voiceDeviceToConfig;
+import '../cat/computer_voice_keyer.dart' show voiceDeviceFromConfig;
 import '../settings_service.dart';
 
-/// The station's microphone and output, and what each radio heard in HaLo
-/// is mixed at (docs/design/audio.md): one for the station, since the
-/// operator speaks into one microphone and hears every radio in one pair of
-/// headphones. Devices are stored as the voice keyer stores its own,
-/// `{id, name}`, and matched the same way.
+/// What each radio heard in HaLo is mixed at (docs/design/audio.md), and
+/// the station's microphone and output in the older form, `{id, name}` as
+/// the voice keyer stores a device.
 extension RadioAudioSettings on SettingsService {
   static const _microphoneKey = 'microphone';
   static const _outputKey = 'output';
   static const _volumeKey = 'volume';
   static const _levelsKey = 'levels';
 
-  /// Null for the system's default input.
+  /// The microphone and output as builds before the operator's picks kept
+  /// them (CatService.operatorMicrophone, operatorHeadphones): read once, to
+  /// move them there, and left for an older build to read.
   ({String? id, String? name})? get stationMicrophone => voiceDeviceFromConfig(settingValue(SettingsService.radioGroup, _microphoneKey));
-
-  Future<void> setStationMicrophone(AudioDevice? device) =>
-      setSettingValue(SettingsService.radioGroup, _microphoneKey, device == null ? null : voiceDeviceToConfig(device));
-
-  /// Where every radio heard in HaLo plays: null for the system's default
-  /// output.
   ({String? id, String? name})? get stationOutput => voiceDeviceFromConfig(settingValue(SettingsService.radioGroup, _outputKey));
-
-  Future<void> setStationOutput(AudioDevice? device) =>
-      setSettingValue(SettingsService.radioGroup, _outputKey, device == null ? null : voiceDeviceToConfig(device));
 
   /// The mix's overall volume, 0 to 1.
   double get stationVolume => _unit(settingValue(SettingsService.radioGroup, _volumeKey));
