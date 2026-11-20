@@ -319,6 +319,15 @@ class _QsoListPanel extends StatelessWidget {
   /// would otherwise flash before there's anything to select.
   final bool loading;
 
+  /// A query behind the table failed. Outranks [loading]: a failed query
+  /// never delivers the snapshot that would end it. With [rows] from an
+  /// earlier read, they stay on screen under a banner that says so.
+  final bool failed;
+
+  /// Rows the read left out because their data is damaged — named in the
+  /// banner over the table, one for the whole log.
+  final List<UnreadableQso> unreadable;
+
   final _LogsColumnWidths columnWidths;
   final void Function(String column, double delta) onResizeColumn;
   final VoidCallback onResizeColumnEnd;
@@ -362,6 +371,8 @@ class _QsoListPanel extends StatelessWidget {
     required this.onEditorDone,
     required this.searching,
     required this.loading,
+    required this.failed,
+    required this.unreadable,
     required this.columnWidths,
     required this.onResizeColumn,
     required this.onResizeColumnEnd,
@@ -381,6 +392,19 @@ class _QsoListPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final stale = failed && rows != null;
+    // One Column whether or not the banner shows: the table moving in and
+    // out of it would remount it, scrolling to the top and dropping focus.
+    return Column(
+      children: [
+        if (unreadable.isNotEmpty || stale) _LogsReadProblemsBanner(services: services, unreadable: unreadable, stale: stale),
+        Expanded(child: _buildBody(context)),
+      ],
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    if (failed && rows == null) return Center(child: Text(context.t.home.logs.readFailed));
     if (loading) return const Center(child: CircularProgressIndicator());
     // `_LogsViewState` opens on a callsign (or All) the moment the list is
     // non-empty, so reaching here with nothing picked AND the list already

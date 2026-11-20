@@ -41,6 +41,7 @@ import 'operation/operation_export_panel.dart' show showOperationExportPanel;
 import 'operation_view.dart';
 import 'sheet_header_dots.dart';
 import 'tester_overlay.dart' show testerOverlayCovering;
+import 'version_label.dart' show versionDetailsText;
 
 part 'logs/logs_table.dart';
 part 'logs/logs_side_panes.dart';
@@ -48,6 +49,7 @@ part 'logs/logs_edit_panel.dart';
 part 'logs/logs_adif_drop.dart';
 part 'logs/logs_sheet.dart';
 part 'logs/logs_groups.dart';
+part 'logs/logs_read_problems.dart';
 
 /// The Logs destination's active filter (docs card HALO-273) — one station
 /// callsign, or all of them at once, with room to grow into other filter
@@ -94,7 +96,7 @@ class LogsView extends StatefulWidget {
   State<LogsView> createState() => _LogsViewState();
 }
 
-class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifDrop {
+class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifDrop, _LogsReadProblems {
   @override
   HaLoServices get dockServices => widget.services;
 
@@ -278,7 +280,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
 
   /// Empty until a filter is picked — the query needs one, so there is
   /// nothing to watch before then.
-  Stream<List<Qso>>? _qsosStream;
+  Stream<QsoLogRead>? _qsosStream;
 
   LogsGrouping _grouping = LogsGrouping.date;
 
@@ -529,38 +531,48 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   /// cached instance: Drift's `.watch()` streams are single-subscription, so
   /// a stream already cancelled once cannot be listened to again.
   void _subscribeCallsigns() {
-    _callsignsSubscription = widget.services.qsos.watchDistinctOurCalls().listen((calls) {
-      setState(() {
-        _callsignsLoaded = true;
-        _callsigns = calls;
-      });
-      _sheetRevision.value++;
-      if (calls.isEmpty) return;
-      if (calls.length == 1) {
-        // One station callsign is all there is to show, so the view is its
-        // — and says so in the title, with no picker (see [_buildTitle]).
-        // Kept selection: every QSO still in the log is still in this list,
-        // so an editor open on one stays open, edit and all.
-        _applyFilter(LogFilter(stationCall: calls.keys.single), remember: false, keepSelection: !_filter.isEmpty);
-        _pinnedAlone = true;
-      } else if (_pinnedAlone) {
-        // A second callsign under a filter the view chose, not the operator:
-        // All, so the new callsign's QSOs show — not the stored pick, which
-        // could hide the QSO an open editor is on, where All keeps it.
-        _pinnedAlone = false;
-        _applyFilter(const LogFilter.all(), remember: false, keepSelection: true);
-      } else if (_filter.isEmpty) {
-        // A fresh view opens on the last pick, or on All when there is none
-        // (or its callsign has nothing left behind it).
-        final stored = widget.services.settings.layoutData(LayoutKeys.logsFilter)?['call'];
-        _applyFilter(stored is String && calls.containsKey(stored) ? LogFilter(stationCall: stored) : const LogFilter.all(), remember: false);
-      } else if (!_filter.allCalls && !calls.containsKey(_filter.stationCall)) {
-        // The selected callsign's last QSO is gone: rather than sit on an
-        // empty list, fall back to everything. Not remembered — the pick
-        // stands if that callsign logs again.
-        _applyFilter(const LogFilter.all(), remember: false);
-      }
-    });
+    // A failure from before a pause is not this subscription's.
+    _callsignsFailed = false;
+    _callsignsSubscription = widget.services.qsos.watchDistinctOurCalls().listen(
+      (calls) {
+        setState(() {
+          _callsignsLoaded = true;
+          _callsignsFailed = false;
+          _callsigns = calls;
+        });
+        _sheetRevision.value++;
+        if (calls.isEmpty) return;
+        if (calls.length == 1) {
+          // One station callsign is all there is to show, so the view is its
+          // — and says so in the title, with no picker (see [_buildTitle]).
+          // Kept selection: every QSO still in the log is still in this list,
+          // so an editor open on one stays open, edit and all.
+          _applyFilter(LogFilter(stationCall: calls.keys.single), remember: false, keepSelection: !_filter.isEmpty);
+          _pinnedAlone = true;
+        } else if (_pinnedAlone) {
+          // A second callsign under a filter the view chose, not the operator:
+          // All, so the new callsign's QSOs show — not the stored pick, which
+          // could hide the QSO an open editor is on, where All keeps it.
+          _pinnedAlone = false;
+          _applyFilter(const LogFilter.all(), remember: false, keepSelection: true);
+        } else if (_filter.isEmpty) {
+          // A fresh view opens on the last pick, or on All when there is none
+          // (or its callsign has nothing left behind it).
+          final stored = widget.services.settings.layoutData(LayoutKeys.logsFilter)?['call'];
+          _applyFilter(stored is String && calls.containsKey(stored) ? LogFilter(stationCall: stored) : const LogFilter.all(), remember: false);
+        } else if (!_filter.allCalls && !calls.containsKey(_filter.stationCall)) {
+          // The selected callsign's last QSO is gone: rather than sit on an
+          // empty list, fall back to everything. Not remembered — the pick
+          // stands if that callsign logs again.
+          _applyFilter(const LogFilter.all(), remember: false);
+        }
+      },
+      onError: (Object error, StackTrace stack) {
+        // Said on screen only while there is no log to show.
+        _reportReadFailure(error, stack, 'logs:callsigns', told: _lastRead == null);
+        if (mounted) setState(() => _callsignsFailed = true);
+      },
+    );
   }
 
   @override
@@ -576,10 +588,9 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     setState(() => _qsosStream = _streamFor(filter));
   }
 
-  Stream<List<Qso>>? _streamFor(LogFilter filter) {
-    if (filter.allCalls) return widget.services.qsos.watchForAnyOurCall();
+  Stream<QsoLogRead>? _streamFor(LogFilter filter) {
     final call = filter.stationCall;
-    return call == null ? null : widget.services.qsos.watchForOurCalls([call]);
+    return _reporting(filter.allCalls ? widget.services.qsos.watchForAnyOurCall() : (call == null ? null : widget.services.qsos.watchForOurCalls([call])));
   }
 
   /// Switches the list to [filter] without asking — the operator's picks go
@@ -1052,7 +1063,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   @override
   Widget build(BuildContext context) {
     final stream = _qsosStream;
-    if (stream == null) return _buildScaffold(context, null);
+    if (stream == null) return _buildScaffold(context, null, failed: false);
     // One StreamBuilder for the whole view, not one per pane:
     // `watchForOurCalls` is a single-subscription Drift stream, and a second
     // `StreamBuilder` listening to the same instance throws "Stream has
@@ -1060,11 +1071,17 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     // header (count/date span) reads from the same snapshot as the dock, so
     // it has to sit inside this same builder rather than the plain `build`
     // above.
-    return StreamBuilder<List<Qso>>(stream: stream, builder: (context, snapshot) => _buildScaffold(context, snapshot.data));
+    return StreamBuilder<QsoLogRead>(
+      stream: stream,
+      builder: (context, snapshot) {
+        final (read, failed) = _readFrom(snapshot);
+        return _buildScaffold(context, read, failed: failed);
+      },
+    );
   }
 
-  Widget _buildScaffold(BuildContext context, List<Qso>? streamed) {
-    final qsos = streamed == null ? null : _inPeriod(streamed);
+  Widget _buildScaffold(BuildContext context, QsoLogRead? read, {required bool failed}) {
+    final qsos = read == null ? null : _inPeriod(read.qsos);
     final rows = qsos == null ? null : _tableRowsFor(qsos);
     final filtered = rows?.all;
     Qso? selected;
@@ -1095,6 +1112,10 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
         onEditorDone: _onEditorDone,
         searching: _searchQuery.trim().isNotEmpty,
         loading: !_callsignsLoaded,
+        // The callsigns query failing leaves a log with rows current, not
+        // stale; it counts only while it is why there are none.
+        failed: failed || (_callsignsFailed && read == null),
+        unreadable: read?.unreadable ?? const [],
         columnWidths: _columnWidths,
         onResizeColumn: _resizeColumn,
         onResizeColumnEnd: _persistColumnWidths,
@@ -1137,7 +1158,16 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
                 icon: MdiIcons.export,
                 label: context.t.activitiesView.exports,
                 labeled: isTwoPane,
-                onPressed: filtered == null || filtered.isEmpty ? null : () => unawaited(_export(context, filtered)),
+                onPressed: filtered == null || filtered.isEmpty
+                    ? null
+                    : () => unawaited(
+                        _export(
+                          context,
+                          filtered,
+                          stale: failed,
+                          unreadable: _unreadableIn(read!.unreadable, _period.bounds(nowUtc(), range: _customRange)),
+                        ),
+                      ),
               ),
               const SizedBox(width: Space.md),
             ],
@@ -1200,10 +1230,11 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   /// The table's contacts as it shows them (the callsign filter, the period
   /// and the search) as one Full ADIF, each contact written as its own
   /// operation writes it. The stash files them as the title reads them.
-  Future<void> _export(BuildContext context, List<Qso> shown) async {
+  Future<void> _export(BuildContext context, List<Qso> shown, {required int unreadable, required bool stale}) async {
     // The lookup below takes a moment, and a second tap in it would open a
     // second pane.
     if (_exporting) return;
+    if (_exportRefused(unreadable, stale: stale)) return;
     final t = context.t;
     final call = _filter.stationCall;
     final periodTitle = _period.titleLabel(context, nowUtc());

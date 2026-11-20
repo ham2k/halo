@@ -56,6 +56,7 @@ export 'src/repo/call_match.dart';
 export 'src/repo/history_filter.dart';
 export 'src/repo/qso_log.dart';
 export 'src/repo/qsos_repository.dart';
+export 'src/repo/unreadable_qsos.dart';
 export 'src/repo/lookup_repository.dart';
 export 'src/repo/inbound_capture_repository.dart';
 export 'src/repo/sequences.dart';

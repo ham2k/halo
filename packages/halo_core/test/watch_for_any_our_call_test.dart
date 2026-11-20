@@ -45,16 +45,16 @@ void main() {
     // No station callsign: not anyone's log, as it is in the picker.
     await log(k1abc, 'NOCALL', 2500, our: '');
 
-    final all = await qsos.watchForAnyOurCall().first;
+    final all = (await qsos.watchForAnyOurCall().first).qsos;
     expect([for (final qso in all) qso.theirCall], ['W1AW', 'VE3CC']);
-    final perCall = await qsos.watchForOurCalls(['K1ABC', 'W2XYZ', 'N3GON']).first;
+    final perCall = (await qsos.watchForOurCalls(['K1ABC', 'W2XYZ', 'N3GON']).first).qsos;
     expect([for (final qso in all) qso.uuid], [for (final qso in perCall) qso.uuid]);
   });
 
   test('a callsign logged for the first time is in the next emission', () async {
     final k1abc = await operations.create(stationCall: 'K1ABC');
     await log(k1abc, 'W1AW', 1000);
-    final emissions = qsos.watchForAnyOurCall().map((list) => [for (final qso in list) qso.ourCall]);
+    final emissions = qsos.watchForAnyOurCall().map((read) => [for (final qso in read.qsos) qso.ourCall]);
     final seen = expectLater(emissions, emitsThrough(['K1ABC', 'W9NEW']));
     final newcomer = await operations.create(stationCall: 'W9NEW');
     await log(newcomer, 'VE3CC', 2000);

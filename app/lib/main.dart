@@ -181,6 +181,14 @@ void _mainBody({
       threshold: 1,
     );
   };
+  // A QSO row the Logs view leaves out because its data does not decode.
+  // The view names it on screen; the upload is what says, across installs,
+  // that damaged rows exist at all. Once per row: a live list re-reads on
+  // every write and meets the same row each time.
+  final reportedUnreadable = <String>{};
+  onUnreadableQsoRow = (row) {
+    if (reportedUnreadable.add(row.uuid)) ErrorReportingService.report(row, null, context: 'qsos:unreadable ${row.uuid}');
+  };
   // Before bootstrap, so the offline flag is answered by the time anything
   // can fail (map errors are stamped with it — see MapError).
   ConnectivityService.start();

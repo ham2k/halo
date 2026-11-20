@@ -33,6 +33,7 @@ import 'package:halo_core/halo_core.dart'
         SyncPayloadUnreadable,
         SyncPullStuck,
         SyncRecordsRejected,
+        UnreadableQsoRowException,
         WriteRefused;
 import 'package:http/http.dart' show ClientException;
 
@@ -623,6 +624,15 @@ class ErrorPolicy {
           'would leave unknown',
       disposition: ErrorDisposition.report,
       matches: (error, details) => error is MalformedQsonDataException,
+    ),
+    ErrorRule(
+      id: 'unreadable-qso-row',
+      reason:
+          'a stored QSO row did not decode and the Logs view left it out (unreadable_qsos.dart) — the '
+          'view names it in a banner with its details, so the generic notice would only repeat it; '
+          'uploaded because the rate across installs is what says damaged rows exist at all',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is UnreadableQsoRowException,
     ),
     ErrorRule(
       id: 'scoring-hook-failed',

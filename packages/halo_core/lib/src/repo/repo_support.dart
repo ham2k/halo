@@ -22,6 +22,7 @@ import '../app_clock.dart';
 import '../db/database.dart';
 import '../models/models.dart';
 import '../models/qson_values.dart';
+import 'unreadable_qsos.dart';
 
 /// [onChange], called in the caller's zone minus any drift transaction bound
 /// to it. Every repository's `onChange` passes through here.
@@ -192,16 +193,44 @@ bool inboundRepairsTombstone({
 ///
 /// `jsonDecode(...) as Map` is deliberately still a cast: a blob that is not
 /// a JSON object is a corrupt row, not a wrong-typed field, and coercing it
-/// would swallow real database corruption.
+/// would swallow real database corruption. [readQsoLog] is the one read that
+/// leaves such a row out instead, and says so.
 @internal
-Qso qsoFromRow(QsoRow row, {List<QsonTypeViolation>? violations}) => Qso(
+Qso qsoFromRow(QsoRow row, {List<QsonTypeViolation>? violations}) => _qsoFrom(row, jsonDecode(row.data) as Map<String, dynamic>, violations);
+
+Qso _qsoFrom(QsoRow row, Map<String, dynamic> data, List<QsonTypeViolation>? violations) => Qso(
   uuid: row.uuid,
   operationUuid: row.operation,
-  data: normalizeQsoQson(jsonDecode(row.data) as Map<String, dynamic>, violations: violations),
+  data: normalizeQsoQson(data, violations: violations),
   deleted: row.deleted,
   purged: row.purged,
   scoreCache: row.scoreCache,
 );
+
+UnreadableQso _unreadable(QsoRow row, UnreadableQsoProblem problem, String detail) => UnreadableQso(
+  uuid: row.uuid,
+  operationUuid: row.operation,
+  problem: problem,
+  detail: detail,
+  data: row.data,
+  deleted: row.deleted,
+  synced: row.synced,
+  ourCall: row.ourCall,
+  theirCall: row.theirCall,
+  band: row.band,
+  mode: row.mode,
+  startAtMillis: row.startAtMillis,
+  updatedAtMillis: row.updatedAtMillis,
+);
+
+String _jsonKind(Object? value) => switch (value) {
+  null => 'null',
+  List() => 'array',
+  String() => 'string',
+  num() => 'number',
+  bool() => 'boolean',
+  _ => 'unknown',
+};
 
 /// How many violations one decode batch carries back. A log with thousands
 /// of bad rows would otherwise build a list the size of the damage and hand
@@ -210,22 +239,49 @@ Qso qsoFromRow(QsoRow row, {List<QsonTypeViolation>? violations}) => Qso(
 /// rather than at the reporter keeps the cost off the isolate hop too.
 const _readViolationSampleLimit = 16;
 
-/// The rows plus what healing them found, because a violation cannot report
-/// itself from inside an isolate: `onQsonTypeViolation` is a top-level
-/// global, so it is null in a spawned isolate and a report there would
-/// simply vanish. Carrying them back as DATA is what keeps coverage uniform
-/// — reporting in place would fire for small batches and silently not for
-/// large ones, which reads as sampling rather than as a hole.
+/// The rows plus what healing them found, and the rows left out, because
+/// neither can report itself from inside an isolate: `onQsonTypeViolation`
+/// and `onUnreadableQsoRow` are top-level globals, so they are null in a
+/// spawned isolate and a report there would simply vanish. Carrying them
+/// back as DATA is what keeps coverage uniform — reporting in place would
+/// fire for small batches and silently not for large ones, which reads as
+/// sampling rather than as a hole.
 class _DecodedQsos {
-  const _DecodedQsos(this.qsos, this.violations);
+  const _DecodedQsos(this.qsos, this.violations, this.unreadable);
   final List<Qso> qsos;
   final List<QsonTypeViolation> violations;
+  final List<UnreadableQso> unreadable;
 }
 
-_DecodedQsos _decodeQsos(List<QsoRow> rows) {
+/// With [skipUnreadable], a row whose `data` is not JSON, or not a JSON
+/// object, is left out and described rather than failing the whole read.
+/// Only those two: anything [normalizeQsoQson] throws is a bug of ours, and
+/// skipping it would empty every list it reached instead of failing loudly.
+_DecodedQsos _decodeQsos(List<QsoRow> rows, {bool skipUnreadable = false}) {
   final violations = <QsonTypeViolation>[];
-  final qsos = [for (final row in rows) qsoFromRow(row, violations: violations.length < _readViolationSampleLimit ? violations : null)];
-  return _DecodedQsos(qsos, violations);
+  final unreadable = <UnreadableQso>[];
+  final qsos = <Qso>[];
+  for (final row in rows) {
+    final sample = violations.length < _readViolationSampleLimit ? violations : null;
+    if (!skipUnreadable) {
+      qsos.add(qsoFromRow(row, violations: sample));
+      continue;
+    }
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(row.data);
+    } on FormatException catch (error) {
+      final at = error.offset == null ? '' : ' (at character ${error.offset! + 1})';
+      unreadable.add(_unreadable(row, UnreadableQsoProblem.notJson, '${error.message}$at'));
+      continue;
+    }
+    if (decoded is! Map<String, dynamic>) {
+      unreadable.add(_unreadable(row, UnreadableQsoProblem.notAnObject, _jsonKind(decoded)));
+      continue;
+    }
+    qsos.add(_qsoFrom(row, decoded, sample));
+  }
+  return _DecodedQsos(qsos, violations, unreadable);
 }
 
 /// Below this, decoding inline is cheaper than an isolate's spawn cost;
@@ -249,20 +305,34 @@ const qsoRowDecodeIsolateThreshold = 200;
 @internal
 const inClauseChunkSize = 900;
 
-/// Reports on THIS isolate whatever the decode healed, wherever it ran —
-/// see [_DecodedQsos] for why the violations travel as data.
+/// Reports on THIS isolate whatever the decode healed or skipped, wherever
+/// it ran — see [_DecodedQsos] for why they travel as data.
 List<Qso> _reportedQsos(_DecodedQsos decoded) {
   for (final violation in decoded.violations) {
     onQsonTypeViolation?.call('qsos:read', violation);
+  }
+  for (final row in decoded.unreadable) {
+    onUnreadableQsoRow?.call(UnreadableQsoRowException(row.uuid, row.problem));
   }
   return decoded.qsos;
 }
 
 @internal
-Future<List<Qso>> qsosFromRows(List<QsoRow> rows) async {
-  if (rows.length < qsoRowDecodeIsolateThreshold) return _reportedQsos(_decodeQsos(rows));
+Future<List<Qso>> qsosFromRows(List<QsoRow> rows) async => _reportedQsos(await _decodeOffUi(rows, skipUnreadable: false));
+
+/// [qsosFromRows] for a list an operator looks at, which leaves a row that
+/// does not decode out rather than showing nothing at all — and hands it
+/// back, so the screen can say which.
+@internal
+Future<QsoLogRead> readQsoLog(List<QsoRow> rows) async {
+  final decoded = await _decodeOffUi(rows, skipUnreadable: true);
+  return QsoLogRead(_reportedQsos(decoded), decoded.unreadable);
+}
+
+Future<_DecodedQsos> _decodeOffUi(List<QsoRow> rows, {required bool skipUnreadable}) async {
+  if (rows.length < qsoRowDecodeIsolateThreshold) return _decodeQsos(rows, skipUnreadable: skipUnreadable);
   try {
-    return _reportedQsos(await Isolate.run(() => _decodeQsos(rows)));
+    return await Isolate.run(() => _decodeQsos(rows, skipUnreadable: skipUnreadable));
   } catch (_) {
     // Isolate.spawn doesn't exist on web (dart2js/DDC) — halo_core is pure
     // Dart with no Flutter dependency, so there's no `kIsWeb` to branch on
@@ -271,9 +341,8 @@ Future<List<Qso>> qsosFromRows(List<QsoRow> rows) async {
     // `watchForOperation`'s callers `.listen()` this without an `onError`,
     // so an error here would otherwise silently kill live rescoring instead
     // of just costing a slower decode. A genuinely malformed row still
-    // throws the same way it did before this existed — inline decoding
-    // doesn't change what a bad row does, only where a healthy one runs.
-    return _reportedQsos(_decodeQsos(rows));
+    // throws here as it would inline, unless [skipUnreadable] leaves it out.
+    return _decodeQsos(rows, skipUnreadable: skipUnreadable);
   }
 }
 

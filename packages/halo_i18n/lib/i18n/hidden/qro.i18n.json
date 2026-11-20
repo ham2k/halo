@@ -249,6 +249,30 @@
       "mapNoSelection": "SELECT A QSO TO SEE IT ON THE MAP",
       "searchHint": "SEARCH CALLSIGN OR NAME",
       "noSearchMatches": "NO QSOS MATCH YOUR SEARCH",
+      "readFailed": "THIS LOG COULD NOT BE READ",
+      "refreshFailed": "THIS LOG COULD NOT BE REFRESHED, SO IT SHOWS AS IT WAS LAST READ",
+      "exportStale": "THIS LOG COULD NOT BE REFRESHED, AND AN EXPORT WOULD MISS WHAT CHANGED SINCE",
+      "unreadable": {
+        "banner": {
+          "one": "${n} QSO IN THIS LOG COULD NOT BE READ",
+          "other": "${n} QSOS IN THIS LOG COULD NOT BE READ"
+        },
+        "exportRefused": {
+          "one": "${n} QSO IN THIS LOG COULD NOT BE READ, AND AN EXPORT WOULD LEAVE IT OUT",
+          "other": "${n} QSOS IN THIS LOG COULD NOT BE READ, AND AN EXPORT WOULD LEAVE THEM OUT"
+        },
+        "details": "DETAILS…",
+        "title": "QSOS THAT COULD NOT BE READ",
+        "intro": "THESE QSOS ARE STORED ON THIS DEVICE, BUT THEIR DATA IS DAMAGED, SO THE LOG LEAVES THEM OUT. COPY THE DETAILS TO SEND THEM WITH A SUPPORT REQUEST.",
+        "notJson": "NOT VALID JSON: ${detail}",
+        "notAnObject": "NOT A QSO RECORD: THE DATA IS JSON ${detail}",
+        "operation": "OPERATION: ${title}",
+        "unknownOperation": "OPERATION NOT FOUND ON THIS DEVICE",
+        "operationLookupFailed": "OPERATION COULD NOT BE LOOKED UP",
+        "storedData": "STORED DATA (${count} CHARACTERS)",
+        "copied": "DETAILS COPIED TO THE CLIPBOARD",
+        "notCopied": "COULDN’T COPY THE DETAILS"
+      },
       "titleAll": "ALL LOGS",
       "allCallsigns": "ALL CALLSIGNS",
       "noOperation": "NOT PART OF AN OPERATION",

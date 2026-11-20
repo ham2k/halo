@@ -1641,6 +1641,10 @@ class _Translations$home$logs$qrp extends Translations$home$logs$en {
 	@override String get mapNoSelection => 'select a qso to see it on the map';
 	@override String get searchHint => 'search callsign or name';
 	@override String get noSearchMatches => 'no qsos match your search';
+	@override String get readFailed => 'this log could not be read';
+	@override String get refreshFailed => 'this log could not be refreshed, so it shows as it was last read';
+	@override String get exportStale => 'this log could not be refreshed, and an export would miss what changed since';
+	@override late final _Translations$home$logs$unreadable$qrp unreadable = _Translations$home$logs$unreadable$qrp._(_root);
 	@override String get titleAll => 'all logs';
 	@override String get allCallsigns => 'all callsigns';
 	@override String get noOperation => 'not part of an operation';
@@ -3961,6 +3965,34 @@ class _Translations$keyboardShortcuts$platform$qrp extends Translations$keyboard
 	@override String get android => 'android';
 }
 
+// Path: home.logs.unreadable
+class _Translations$home$logs$unreadable$qrp extends Translations$home$logs$unreadable$en {
+	_Translations$home$logs$unreadable$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String banner({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${n} qso in this log could not be read',
+		other: '${n} qsos in this log could not be read',
+	);
+	@override String exportRefused({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${n} qso in this log could not be read, and an export would leave it out',
+		other: '${n} qsos in this log could not be read, and an export would leave them out',
+	);
+	@override String get details => 'details…';
+	@override String get title => 'qsos that could not be read';
+	@override String get intro => 'these qsos are stored on this device, but their data is damaged, so the log leaves them out. copy the details to send them with a support request.';
+	@override String notJson({required Object detail}) => 'not valid json: ${detail}';
+	@override String notAnObject({required Object detail}) => 'not a qso record: the data is json ${detail}';
+	@override String operation({required Object title}) => 'operation: ${title}';
+	@override String get unknownOperation => 'operation not found on this device';
+	@override String get operationLookupFailed => 'operation could not be looked up';
+	@override String storedData({required Object count}) => 'stored data (${count} characters)';
+	@override String get copied => 'details copied to the clipboard';
+	@override String get notCopied => 'couldn’t copy the details';
+}
+
 // Path: home.logs.sheet
 class _Translations$home$logs$sheet$qrp extends Translations$home$logs$sheet$en {
 	_Translations$home$logs$sheet$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
@@ -5705,6 +5737,22 @@ extension on TranslationsQrp {
 			'home.logs.mapNoSelection' => 'select a qso to see it on the map',
 			'home.logs.searchHint' => 'search callsign or name',
 			'home.logs.noSearchMatches' => 'no qsos match your search',
+			'home.logs.readFailed' => 'this log could not be read',
+			'home.logs.refreshFailed' => 'this log could not be refreshed, so it shows as it was last read',
+			'home.logs.exportStale' => 'this log could not be refreshed, and an export would miss what changed since',
+			'home.logs.unreadable.banner' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${n} qso in this log could not be read', other: '${n} qsos in this log could not be read', ), 
+			'home.logs.unreadable.exportRefused' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${n} qso in this log could not be read, and an export would leave it out', other: '${n} qsos in this log could not be read, and an export would leave them out', ), 
+			'home.logs.unreadable.details' => 'details…',
+			'home.logs.unreadable.title' => 'qsos that could not be read',
+			'home.logs.unreadable.intro' => 'these qsos are stored on this device, but their data is damaged, so the log leaves them out. copy the details to send them with a support request.',
+			'home.logs.unreadable.notJson' => ({required Object detail}) => 'not valid json: ${detail}',
+			'home.logs.unreadable.notAnObject' => ({required Object detail}) => 'not a qso record: the data is json ${detail}',
+			'home.logs.unreadable.operation' => ({required Object title}) => 'operation: ${title}',
+			'home.logs.unreadable.unknownOperation' => 'operation not found on this device',
+			'home.logs.unreadable.operationLookupFailed' => 'operation could not be looked up',
+			'home.logs.unreadable.storedData' => ({required Object count}) => 'stored data (${count} characters)',
+			'home.logs.unreadable.copied' => 'details copied to the clipboard',
+			'home.logs.unreadable.notCopied' => 'couldn’t copy the details',
 			'home.logs.titleAll' => 'all logs',
 			'home.logs.allCallsigns' => 'all callsigns',
 			'home.logs.noOperation' => 'not part of an operation',
@@ -5970,6 +6018,8 @@ extension on TranslationsQrp {
 			'operation.layout.layouts.menuImport' => 'import…',
 			'operation.layout.layouts.menuTitle' => 'layouts',
 			'operation.layout.layouts.newTitle' => 'new layout',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.editTitle' => 'edit layout',
 			'operation.layout.layouts.edit' => 'edit',
 			'operation.layout.layouts.duplicateCurrent' => 'duplicate current layout',
@@ -5986,8 +6036,6 @@ extension on TranslationsQrp {
 			'operation.layout.layouts.exportPick' => 'panels to export',
 			'operation.layout.layouts.tabSet' => 'tab set',
 			'operation.layout.layouts.exportAction' => 'export',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.layouts.exported' => ({required Object location}) => 'layout saved to ${location}',
 			'operation.layout.layouts.exportFailed' => ({required Object error}) => 'couldn\'t export the layout: ${error}',
 			'operation.layout.layouts.importTitle' => 'import layout',
@@ -6484,6 +6532,8 @@ extension on TranslationsQrp {
 			'mapsView.currentLocation' => 'current location',
 			'mapsView.noMatches' => ({required Object text}) => 'nothing matches “${text}”',
 			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} reference at ${where}', other: '${count} references at ${where}', ), 
+			_ => null,
+		} ?? switch (path) {
 			'mapsView.startOperation' => 'start an operation with these references',
 			'activitiesView.title' => 'activities',
 			'activitiesView.activitiesCountZero' => 'no activities selected',
@@ -6500,8 +6550,6 @@ extension on TranslationsQrp {
 			'activitiesView.activitiesTitleMore' => ({required Object first, required Object second, required Object more}) => 'activity types: ${first}, ${second} and ${more} more',
 			'activitiesView.reference' => 'reference',
 			'activitiesView.invalidReference' => 'not valid',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.duplicateReference' => 'already added',
 			'activitiesView.searchHint' => 'search by name, reference or anything else…',
 			'activitiesView.noSuggestions' => 'no matches',
@@ -6998,6 +7046,8 @@ extension on TranslationsQrp {
 			'settings.radio.cwMessages.repeatWait' => 'repeating',
 			'settings.radio.cwMessages.keyboard' => 'type to send',
 			'settings.radio.cwMessages.keyboardField' => 'type to send',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.help' => 'help',
 			'settings.radio.cwMessages.helpTitle' => 'writing cw messages',
 			'settings.radio.cwMessages.helpIntro' => 'messages can use templates with the following values:',
@@ -7014,8 +7064,6 @@ extension on TranslationsQrp {
 			'settings.radio.cwMessages.helpQsoSerial' => 'your serial number, in a contest that sends one',
 			'settings.radio.cwMessages.helpPad' => 'pads with zeros to that many digits: 7 is sent as 007',
 			'settings.radio.cwMessages.helpCut' => 'cut numbers, t for 0 and n for 9: 599 is sent as 5nn',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpCutDigits' => 'chooses the digits to cut, in quotes — 0 is t, 1 is a, 5 is e, 9 is n',
 			'settings.radio.cwMessages.helpFullExample' => 'full example:',
 			'settings.radio.cwMessages.helpExample' => 'sends w1aw 5nn tt7',
@@ -7512,6 +7560,8 @@ extension on TranslationsQrp {
 			'settings.station.audioProblemStream' => 'not heard here: the radio refused its audio stream',
 			'settings.station.audioProblemMicrophone' => ({required Object name}) => 'can\'t talk here: the microphone ${name} is not connected',
 			'settings.station.audioProblemMicrophoneOpen' => 'can\'t talk here: the microphone would not open',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.audioProblemTalkStream' => 'can\'t talk here: the radio refused the microphone stream',
 			'settings.station.audioProblemTalkCard' => ({required Object name}) => 'can\'t talk here: the sound card ${name} is not connected',
 			'settings.station.audioProblemTalkCardOpen' => 'can\'t talk here: its sound card would not open',
@@ -7528,8 +7578,6 @@ extension on TranslationsQrp {
 			'settings.station.listenToAudio' => 'listen to audio',
 			'settings.station.audioMixing' => 'audio mixing',
 			'settings.station.audioVolume' => 'volume',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.audioOutput' => 'output',
 			'settings.station.audioOutputDefault' => 'the system\'s default output',
 			'settings.station.audioDevicesUnlisted' => ({required Object name}) => '${name} (devices could not be listed)',
@@ -8026,6 +8074,8 @@ extension on TranslationsQrp {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'a whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'idle polling interval (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'how often to ask the radio for its frequency and mode while neither is changing. leave blank for ${fallback} ms.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'a whole number of milliseconds, ${min} to ${max}',
 			'settings.station.ratedPower' => 'rated power (w)',
 			'settings.station.ratedPowerDescription' => 'what this radio puts out at full drive. its sdr program sets power as a share of it. leave blank for 100 w.',
@@ -8042,8 +8092,6 @@ extension on TranslationsQrp {
 			'settings.station.voiceDialect' => 'voice keyer dialect',
 			'settings.station.voiceDialectDescription' => 'how this radio plays its voice memories over cat. none means no voice memories over cat. with a dialect and no count, the dialect\'s default count applies.',
 			'settings.station.voiceDialectPb' => 'kenwood (pb, ts-590 style)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.voiceDialectK4' => 'elecraft k4 (pb and da)',
 			'settings.station.voiceDialectKx' => 'elecraft kx2/kx3 (switch taps)',
 			'settings.station.voiceDialectK3' => 'elecraft k3/k3s with kdvr3 (switch taps)',
@@ -8540,6 +8588,8 @@ extension on TranslationsQrp {
 			'spotting.spotLastTo' => ({required Object sources}) => 'spot the last logged qso to ${sources}?',
 			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => 'spot the last logged qso to ${sources} with "${comment}"?',
 			'spotting.spottingLastTo' => ({required Object sources}) => 'spotting last qso to ${sources}…',
+			_ => null,
+		} ?? switch (path) {
 			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => 'spotting last qso to ${sources}: ${comment}',
 			'spotting.incompleteCall' => 'can\'t spot an incomplete call — finish the callsign first.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
@@ -8556,8 +8606,6 @@ extension on TranslationsQrp {
 			'dataFiles.downloadTimedOut' => 'the server took too long to respond. try again later.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} answered with an error (http ${status}). try again later.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} couldn\'t provide this file (http ${status}). check that its address is still right.',
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.downloadRefused' => ({required Object host}) => '${host} isn\'t an address this extension may download from.',
 			'dataFiles.downloadNotADatabase' => ({required Object host}) => '${host} answered with something other than the file — often a wi-fi network\'s sign-in page. try again once you\'re online.',
 			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'n1mm has no call history file for ${stem}.',

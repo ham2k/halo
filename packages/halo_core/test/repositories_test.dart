@@ -857,6 +857,70 @@ void main() {
       expect(seen, contains('qsos:read mode'), reason: 'off-isolate decode reports too');
     });
 
+    test('the Logs view read leaves out a row that does not decode, describes it, and reports it, either side of the isolate threshold', () async {
+      // Without the skip, one row that fails to decode fails the whole read,
+      // and the Logs view waits forever for a list that never comes. Left out
+      // silently, the log comes up one short with nothing to say why — so the
+      // row comes back described, for the screen, and reported, from a large
+      // log too, where the decode runs in an isolate that cannot reach the
+      // hook.
+      final reported = <String>[];
+      onUnreadableQsoRow = (row) => reported.add('${row.uuid} ${row.problem.name}');
+      addTearDown(() => onUnreadableQsoRow = null);
+
+      final op = await operations.create(stationCall: 'KI2D');
+      Future<void> insert(String uuid, String data) => db
+          .into(db.qsos)
+          .insert(QsosCompanion.insert(uuid: uuid, operation: op.uuid, ourCall: const Value('KI2D'), theirCall: const Value('W1AW'), data: Value(data)));
+      final good = jsonEncode({
+        'our': {'call': 'KI2D'},
+        'their': {'call': 'W1AW'},
+      });
+
+      await insert('good-0', good);
+      await insert('corrupt', '{"their": {"call"');
+      await insert('not-a-map', '[]');
+      final small = await qsos.watchForAnyOurCall().first;
+      expect([for (final qso in small.qsos) qso.uuid], ['good-0']);
+      final described = {for (final row in small.unreadable) row.uuid: row};
+      expect(described.keys, unorderedEquals(['corrupt', 'not-a-map']));
+      expect(described['corrupt']!.problem, UnreadableQsoProblem.notJson);
+      expect(described['corrupt']!.data, '{"their": {"call"', reason: 'the stored text, whole, is what reconstructs the contact');
+      expect(described['corrupt']!.theirCall, 'W1AW', reason: 'the indexed columns outlive the data and say which contact it was');
+      expect(described['not-a-map']!.problem, UnreadableQsoProblem.notAnObject);
+      expect(reported, unorderedEquals(['corrupt notJson', 'not-a-map notAnObject']), reason: 'inline decode reports');
+
+      reported.clear();
+      // Comfortably past the decoder's private 200-row isolate threshold.
+      for (var i = 1; i <= 210; i++) {
+        await insert('good-$i', good);
+      }
+      final large = await qsos.watchForAnyOurCall().first;
+      expect(large.qsos, hasLength(211));
+      expect([for (final row in large.unreadable) row.uuid], unorderedEquals(['corrupt', 'not-a-map']));
+      expect(reported, unorderedEquals(['corrupt notJson', 'not-a-map notAnObject']), reason: 'off-isolate decode reports too');
+    });
+
+    test('the Logs view read does not count a damaged event marker as a QSO it could not read', () async {
+      // The view leaves event markers out of the log; a damaged one counted
+      // in the banner tells the operator a contact is missing when none is.
+      final op = await operations.create(stationCall: 'KI2D');
+      await db
+          .into(db.qsos)
+          .insert(QsosCompanion.insert(uuid: 'marker', operation: op.uuid, ourCall: const Value('KI2D'), band: const Value('event'), data: const Value('[]')));
+      final read = await qsos.watchForAnyOurCall().first;
+      expect(read.unreadable, isEmpty);
+    });
+
+    test('an export\'s read still fails on a row that does not decode', () async {
+      // The skip belongs to lists an operator looks at. An export, a
+      // transfer or an import's duplicate check reading the same row must
+      // fail rather than work on a log quietly missing a contact.
+      final op = await operations.create(stationCall: 'KI2D');
+      await db.into(db.qsos).insert(QsosCompanion.insert(uuid: 'corrupt', operation: op.uuid, data: const Value('not json')));
+      await expectLater(qsos.forOperation(op.uuid), throwsA(isA<FormatException>()));
+    });
+
     test('a batch of damage reports a sample, not one report per bad row', () async {
       // A log with thousands of bad rows must not build a violation list the
       // size of the damage, nor hand every entry to the reporter: the

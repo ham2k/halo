@@ -11,6 +11,7 @@ import '../models/models.dart';
 import 'call_match.dart';
 import 'history_filter.dart';
 import 'repo_support.dart';
+import 'unreadable_qsos.dart';
 
 /// The cross-operation reads of the qsos table — a callsign's history and
 /// the station calls on record — kept beside `QsosRepository`'s writers as a
@@ -266,9 +267,9 @@ mixin QsoHistoryQueries {
   /// Unlike [historyForCalls], [calls] is not chunked, since the one caller
   /// passes a single callsign — stay well under SQLite's bound-variable limit
   /// (~999) if that changes. Every callsign at once is [watchForAnyOurCall].
-  Stream<List<Qso>> watchForOurCalls(Iterable<String> calls) {
+  Stream<QsoLogRead> watchForOurCalls(Iterable<String> calls) {
     final normalized = calls.map((c) => c.trim().toUpperCase()).where((c) => c.isNotEmpty).toSet().toList();
-    if (normalized.isEmpty) return Stream.value(const []);
+    if (normalized.isEmpty) return Stream.value(const QsoLogRead([], []));
     return _watchOurContacts(db.qsos.ourCall.isIn(normalized));
   }
 
@@ -277,7 +278,7 @@ mixin QsoHistoryQueries {
   /// current as callsigns come and go, and would run into the bound-variable
   /// limit on a large enough log. A callsign logged for the first time is
   /// simply in the next emission.
-  Stream<List<Qso>> watchForAnyOurCall() => _watchOurContacts(db.qsos.ourCall.isNotNull() & db.qsos.ourCall.equals('').not());
+  Stream<QsoLogRead> watchForAnyOurCall() => _watchOurContacts(db.qsos.ourCall.isNotNull() & db.qsos.ourCall.equals('').not());
 
   /// Every QSO logged under [call] (own station callsign), or under any
   /// call when it is null, across every operation still on the account,
@@ -299,15 +300,21 @@ mixin QsoHistoryQueries {
     return decoded.where((qso) => !qso.isEvent).toList();
   }
 
-  Stream<List<Qso>> _watchOurContacts(Expression<bool> ourCall) {
+  /// A row whose `data` does not decode is left out and handed back in
+  /// [QsoLogRead.unreadable] (see [readQsoLog]): the Logs view shows the
+  /// rest of the log and says what it could not show, where failing the
+  /// read would leave it with nothing to show at all.
+  Stream<QsoLogRead> _watchOurContacts(Expression<bool> ourCall) {
     final query = db.select(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
       ..where(ourCall & db.qsos.deleted.equals(false) & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
       ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis)]);
     return query.watch().asyncMap((rows) async {
-      final decoded = await qsosFromRows([for (final row in rows) row.readTable(db.qsos)]);
+      final read = await readQsoLog([for (final row in rows) row.readTable(db.qsos)]);
       // Same exclusion `historyForCall` applies — an event marker is not a
-      // QSO, and this view has no concept of one to render or edit.
-      return decoded.where((qso) => !qso.isEvent).toList();
+      // QSO, and this view has no concept of one to render or edit. A
+      // damaged one is still one by its band column, and counting it would
+      // tell the operator a QSO is missing when none is.
+      return QsoLogRead(read.qsos.where((qso) => !qso.isEvent).toList(), read.unreadable.where((row) => row.band != 'event').toList());
     });
   }
 }

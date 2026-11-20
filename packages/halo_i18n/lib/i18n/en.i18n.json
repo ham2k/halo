@@ -249,6 +249,30 @@
       "mapNoSelection": "Select a QSO to see it on the map",
       "searchHint": "Search callsign or name",
       "noSearchMatches": "No QSOs match your search",
+      "readFailed": "This log could not be read",
+      "refreshFailed": "This log could not be refreshed, so it shows as it was last read",
+      "exportStale": "This log could not be refreshed, and an export would miss what changed since",
+      "unreadable": {
+        "banner": {
+          "one": "${n} QSO in this log could not be read",
+          "other": "${n} QSOs in this log could not be read"
+        },
+        "exportRefused": {
+          "one": "${n} QSO in this log could not be read, and an export would leave it out",
+          "other": "${n} QSOs in this log could not be read, and an export would leave them out"
+        },
+        "details": "Details…",
+        "title": "QSOs that could not be read",
+        "intro": "These QSOs are stored on this device, but their data is damaged, so the log leaves them out. Copy the details to send them with a support request.",
+        "notJson": "Not valid JSON: ${detail}",
+        "notAnObject": "Not a QSO record: the data is JSON ${detail}",
+        "operation": "Operation: ${title}",
+        "unknownOperation": "Operation not found on this device",
+        "operationLookupFailed": "Operation could not be looked up",
+        "storedData": "Stored data (${count} characters)",
+        "copied": "Details copied to the clipboard",
+        "notCopied": "Couldn’t copy the details"
+      },
       "titleAll": "All Logs",
       "allCallsigns": "All callsigns",
       "noOperation": "Not part of an operation",

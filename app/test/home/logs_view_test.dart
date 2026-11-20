@@ -10,6 +10,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show TableUpdate;
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1297,6 +1298,195 @@ void main() {
       expect(_editing(tester), isNull);
       expect((await _stored(tester, h.services, qsos['W1AW']!)).theirName, isNull);
       await _unmount(tester);
+    });
+  });
+
+  group('a log it cannot read', () {
+    testWidgets('a QSO whose data is damaged is left out, named in one banner for the log, and copyable whole', (tester) async {
+      // Without the skip, one damaged row fails the whole query and the
+      // table spins forever. Left out silently, the log comes up one short
+      // and nobody can say which contact went missing — so the banner names
+      // it, and the copy carries what it takes to rebuild it: the stored
+      // text, and the indexed columns that outlive it.
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.setData') copied = (call.arguments as Map)['text'] as String?;
+        return null;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+      final h = await _harness();
+      final (_, qsos) = await _seed(h.services);
+      final damaged = qsos['W1AW']!;
+      await tester.runAsync(() => h.db.customStatement('UPDATE qsos SET data = ? WHERE uuid = ?', ['{"their": {"call"', damaged.uuid]));
+      await tester.runAsync(() => h.db.customStatement('UPDATE qsos SET data = ? WHERE uuid = ?', ['[]', qsos['K2AA']!.uuid]));
+      await _pumpLogs(tester, h);
+
+      expect(_order(tester, ['K2AA', 'W1AW', 'N3BB']), ['N3BB']);
+      expect(find.text('2 QSOs in this log could not be read'), findsOneWidget, reason: 'one banner for the log, not one per row');
+
+      await tester.tap(find.text('Details…'));
+      await settleFrames(tester, frames: 4);
+      expect(find.text('{"their": {"call"'), findsOneWidget, reason: 'the stored text, on screen');
+      expect(find.textContaining('Not valid JSON'), findsOneWidget);
+      expect(find.text('Not a QSO record: the data is JSON array'), findsOneWidget);
+
+      await tester.tap(find.text('Copy details'));
+      await settleFrames(tester, frames: 4);
+      expect(copied, contains('uuid: ${damaged.uuid}'));
+      expect(copied, contains('their call: W1AW'));
+      expect(copied, contains('{"their": {"call"'));
+      expect(copied, contains('problem: notAnObject: array'));
+      await _unmount(tester);
+    });
+
+    testWidgets('a QSO query that fails says so in place of the table, and reports it once, instead of spinning forever', (tester) async {
+      // A StreamBuilder keeps a stream's error to itself, so without its own
+      // error state the table waits for a snapshot that never comes, and
+      // nothing is uploaded to say why. The callsign list still loads here:
+      // only the QSO query reads `score_cache`.
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(backend: backend, () async {
+        final h = await _harness();
+        await _seed(h.services);
+        await tester.runAsync(() => h.db.customStatement('ALTER TABLE qsos RENAME COLUMN score_cache TO score_cache_gone'));
+        await _pumpLogs(tester, h);
+
+        expect(find.text('This log could not be read'), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+        expect(backend.exceptions.map((e) => e.context), ['logs:qsos']);
+        // A failing query fails again on every write to its table, each time
+        // with a new error: one visit uploads once, not once per write.
+        h.db.notifyUpdates({TableUpdate.onTable(h.db.qsos)});
+        await settleFrames(tester, frames: 6);
+        h.db.notifyUpdates({TableUpdate.onTable(h.db.qsos)});
+        await settleFrames(tester, frames: 6);
+        expect(backend.exceptions, hasLength(1));
+        await _unmount(tester);
+      });
+    });
+
+    testWidgets('a QSO query that fails after the log is up keeps the log, and the edit in progress, on screen', (tester) async {
+      // An error snapshot carries no data. Shown as "nothing", the selected
+      // QSO is gone from the list and the editor closes with what the
+      // operator typed.
+      await withErrorHooks(backend: FakeErrorReportingBackend(), () async {
+        final h = await _harness();
+        await _seed(h.services);
+        await _pumpLogs(tester, h);
+        await _tapRow(tester, 'W1AW');
+        await tester.enterText(_field('Name'), 'Hiram');
+
+        await tester.runAsync(() => h.db.customStatement('ALTER TABLE qsos RENAME COLUMN score_cache TO score_cache_gone'));
+        h.db.notifyUpdates({TableUpdate.onTable(h.db.qsos)});
+        await settleFrames(tester, frames: 6);
+
+        expect(find.text('This log could not be refreshed, so it shows as it was last read'), findsOneWidget);
+        expect(_editing(tester), 'W1AW');
+        expect(tester.widget<TextField>(_field('Name')).controller!.text, 'Hiram');
+
+        // Exported, the last read would be a file short whatever changed since.
+        await tester.tap(find.byIcon(MdiIcons.export));
+        await settleFrames(tester, frames: 6);
+        expect(find.text('Log Exports'), findsNothing);
+        expect(
+          h.services.statusBar.activeNotices.map((notice) => notice.text),
+          contains('This log could not be refreshed, and an export would miss what changed since'),
+        );
+        await _unmount(tester);
+      });
+    });
+
+    testWidgets('another callsign\'s log that fails to read shows no rows, not the last callsign\'s', (tester) async {
+      // A StreamBuilder handed a new stream keeps the old one's data while
+      // it waits. Taken as the last read, it stands in for the new log's
+      // failure: K1ABC's QSOs under W2XYZ's name, there to be edited.
+      await withErrorHooks(backend: FakeErrorReportingBackend(), () async {
+        final h = await _harness();
+        await _seed(h.services);
+        final other = await h.services.operations.create(stationCall: 'W2XYZ');
+        await _log(h.services, other, 'VE3CC', _utc(22, 8));
+        await _pumpLogs(tester, h);
+        expect(_row('W1AW'), findsOneWidget);
+
+        await tester.runAsync(() => h.db.customStatement('ALTER TABLE qsos RENAME COLUMN score_cache TO score_cache_gone'));
+        await tester.tap(find.text('All Logs'));
+        await settleFrames(tester, frames: 6);
+        await tester.tap(find.widgetWithText(ListTile, 'W2XYZ'));
+        await settleFrames(tester, frames: 6);
+        await tester.tap(find.text('OK'));
+        await settleFrames(tester, frames: 6);
+
+        expect(find.text('This log could not be read'), findsOneWidget);
+        expect(_row('W1AW'), findsNothing);
+        await _unmount(tester);
+      });
+    });
+
+    testWidgets('Export refuses a log with a QSO it could not read, and says why', (tester) async {
+      // The table shows the log without its damaged QSOs. Exported as shown,
+      // the file — for an award, an upload — is short a contact, and the
+      // banner it would need to say so stays behind on the Logs screen.
+      final h = await _harness();
+      final (_, qsos) = await _seed(h.services);
+      await tester.runAsync(() => h.db.customStatement('UPDATE qsos SET data = ? WHERE uuid = ?', ['[]', qsos['K2AA']!.uuid]));
+      await _pumpLogs(tester, h);
+
+      await tester.tap(find.byIcon(MdiIcons.export));
+      await settleFrames(tester, frames: 6);
+      expect(find.text('Log Exports'), findsNothing);
+      expect(
+        h.services.statusBar.activeNotices.map((notice) => notice.text),
+        contains('1 QSO in this log could not be read, and an export would leave it out'),
+      );
+      await _unmount(tester);
+    });
+
+    testWidgets('the banner coming up leaves the table where it was', (tester) async {
+      // With the banner above it, the table sits one level deeper; built
+      // there only when the banner shows, it remounts as the banner comes
+      // and goes, back at the top of the log with keyboard focus gone.
+      final h = await _harness();
+      final (_, qsos) = await _seed(h.services);
+      await _pumpLogs(tester, h);
+      final scrollables = tester.stateList<ScrollableState>(find.descendant(of: _table, matching: find.byType(Scrollable))).toList();
+      expect(scrollables, isNotEmpty);
+
+      await tester.runAsync(() => h.db.customStatement('UPDATE qsos SET data = ? WHERE uuid = ?', ['[]', qsos['K2AA']!.uuid]));
+      h.db.notifyUpdates({TableUpdate.onTable(h.db.qsos)});
+      await settleFrames(tester, frames: 6);
+
+      expect(find.text('1 QSO in this log could not be read'), findsOneWidget);
+      expect(scrollables.every((state) => state.mounted), isTrue, reason: 'the same table, not a new one');
+      await _unmount(tester);
+    });
+
+    testWidgets('the details still copy when the operations cannot be looked up', (tester) async {
+      // Whatever damaged the QSO may have damaged its operation too. A
+      // lookup failing there must not take the copy with it: the copy is
+      // what the operator sends to get the QSO back.
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.setData') copied = (call.arguments as Map)['text'] as String?;
+        return null;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+      await withErrorHooks(backend: FakeErrorReportingBackend(), () async {
+        final h = await _harness();
+        final (operation, qsos) = await _seed(h.services);
+        await tester.runAsync(() => h.db.customStatement('UPDATE qsos SET data = ? WHERE uuid = ?', ['[]', qsos['K2AA']!.uuid]));
+        await tester.runAsync(() => h.db.customStatement('UPDATE operations SET data = ? WHERE uuid = ?', ['[]', operation.uuid]));
+        await _pumpLogs(tester, h);
+
+        await tester.tap(find.text('Details…'));
+        await settleFrames(tester, frames: 4);
+        expect(find.text('Operation not found on this device'), findsNothing, reason: 'a lookup that failed found nothing missing');
+        expect(find.text('Operation could not be looked up'), findsOneWidget);
+        await tester.tap(find.text('Copy details'));
+        await settleFrames(tester, frames: 4);
+        expect(copied, contains('uuid: ${qsos['K2AA']!.uuid}'));
+        expect(copied, contains('operation: ${operation.uuid} (lookup failed)'));
+        await _unmount(tester);
+      });
     });
   });
 
