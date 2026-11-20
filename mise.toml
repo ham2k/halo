@@ -44,6 +44,14 @@ bundle = {
   run = "cd extensions && npm run build",
   description = "Build the JS/TS extensions"
 }
+"api:open" = {
+  run = "node extensions/api-level.mjs open",
+  description = "Open the next extension API level before adding SDK surface, or name the one already open (extensions/api-level.mjs)"
+}
+"api:status" = {
+  run = "node extensions/api-level.mjs status",
+  description = "Which extension API level is open, and which is released"
+}
 test = {
   run = "./scripts/test.sh",
   description = "Full gate: typecheck + test extensions, rebuild bundles, analyze + test every Dart package. Subsets: `mise run test -- --list | --changed | <group>...`"

@@ -194,7 +194,10 @@ guard holds the first six:
   if the operator sees it;
 - a scene field, control or value → `scenes.md`;
 - an API level → a row in `packaging.md` saying what it adds, and the
-  "(extension API n)" marker on each feature it gates;
+  "(extension API n)" marker on each feature it gates. New surface goes in
+  the open level: `mise run api:open` opens one, or names the one already
+  open. A released level's row is frozen in `extensions/api-levels.json`,
+  and `extensions/api-level.test.ts` fails a change to it;
 - an option on a tools command → the synopsis in its usage text, and the
   page of its step: `getting-started.md` for `h2kext-init` and `h2kext-dev`,
   `packaging.md` for `h2kext-pack`, `publishing.md` for `h2kext-publish`;

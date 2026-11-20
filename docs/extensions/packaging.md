@@ -142,7 +142,9 @@ The extension API is numbered, and your manifest's `api` is the **lowest**
 level that has everything you use. An app speaking an older level refuses
 the bundle at install and says so; the catalog offers each app the newest
 release it can run. The SDK's minor version is the level it describes
-(SDK 1.22 is API 22) and `API_VERSION` exports it.
+(SDK 1.22 is API 22) and `API_VERSION` exports it. A level is final once an
+app that speaks it is released; until then the newest row can still grow, and
+its SDK is not yet on npm.
 
 | Level | Adds |
 | --- | --- |

@@ -27,7 +27,9 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
   in the same commit, following [extension-docs.md](../docs/design/extension-docs.md):
   who the pages are for, how they sound, where each fact lives.
   `extensions/docs.test.ts` fails the build when the surface and the pages
-  disagree, or when the prose slips back into notes.
+  disagree, or when the prose slips back into notes. New surface goes in the
+  open API level: run `mise run api:open` first, which opens one or names
+  the one already open — a level apps already run never grows.
 
 - User-facing strings live in `packages/halo_i18n` — edit **only** `en`, then regenerate with `mise run strings`; every other language comes from Crowdin (the package README says how). The gate fails on a stale output.
 

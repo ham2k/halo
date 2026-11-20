@@ -187,7 +187,9 @@ Dart layer and on screen (§2.3), never in a plist, manifest or `FILEVERSION`.
 
 The same cut also names the build's **tester notes**, renaming their `upcoming`
 key to the build number it just computed and committing that inside the tagged
-commit — see §2.7.
+commit — see §2.7. A Next cut closes the open extension API level in that same
+commit, and the SDK and tools that describe it are published to npm after it
+(§6.2).
 
 > Earlier lines used a date-encoded `YYMM·MMDD·S` id. That overflowed the 16-bit
 > Windows/Linux field (forcing a separate desktop part) and, being large, pinned
@@ -786,6 +788,11 @@ files (§2.7): a patch release always adds its release notes, and leaving them
 out only means a patched install shows no "what's new" for the patch until the
 next binary brings the notes.
 
+**Nor does an open extension API level** (§6.2). A Next or Regular code push
+from a tree whose level is still open is refused, with no override: the
+installs it reached would speak a level whose surface can still change. A Next
+cut closes the level, and is how it ships.
+
 ### 4.3 Tracks
 
 Shorebird supports unlimited arbitrarily-named tracks plus percentage-based
@@ -1079,6 +1086,14 @@ Extensions call into the app's Dart/native bridge. An OTA extension update canno
 assume a bridge method that only exists in a newer monthly binary. Tag each
 extension with a **minimum app/API version** and refuse to load incompatible ones —
 the same release-binding discipline Shorebird enforces for code pushes.
+
+New SDK surface accumulates in one **open** level until a build that speaks it
+ships. `mise run api:open` opens the level after the released one, or names the
+one already open; `extensions/api-levels.json` keeps every closed level's row
+from `docs/extensions/packaging.md` word for word, and the gate fails a branch
+that adds to one. Dev builds from `main` speak the open level; the Next cut
+closes it (§2.2), and nothing else may ship it (§4.2, and a Regular cut refuses
+one too).
 
 ### 6.3 Store policy
 
