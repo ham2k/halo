@@ -83,7 +83,7 @@ operation. Empty templates deliberately suppress text. A definition may
 supply `templateSample: { operation, log }` for the editor's preview.
 
 **A type's own settings.** `choices` (extension API 25) adds settings of
-the type's own to its page in Settings → Exports, each one pick among a few
+the type's own to its page in Settings → Exports & Imports, each one pick among a few
 options:
 
 ```ts

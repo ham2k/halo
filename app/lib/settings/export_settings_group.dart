@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:flutter/material.dart';
+import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+import '../config/experiments.dart';
 import '../services/export_preferences.dart';
 import '../services/error_reporting_service.dart';
 import '../services/extensions/extension_service.dart';
@@ -12,10 +14,29 @@ import '../services/settings_service.dart';
 import 'settings_registry.dart';
 import 'settings_section_folds.dart';
 
+/// Exports & Imports: the export file settings, and under `EXP PUSH` each
+/// service a `transfer` hook sends to with the account it signs in with
+/// (docs/design/transfer.md §3). A service's own options are its
+/// extension's panel, placed here by `section: "exports"`
+/// (docs/extensions/settings.md).
 class ExportsSettingsGroup extends SettingsGroup {
   final SettingsService settings;
   final ExtensionService? extensions;
-  ExportsSettingsGroup(this.settings, [this.extensions]);
+
+  /// Opens an account's pane by its key, finishing when it closes. Null
+  /// leaves the services out: tests of the file settings.
+  final Future<void> Function(String accountKey)? openAccount;
+
+  ExportsSettingsGroup(this.settings, [this.extensions, this.openAccount]);
+
+  /// Rung when an account pane closes: what it saved is the account's
+  /// identity, which nothing else this group listens to announces.
+  final _accountChanges = _Relay();
+
+  /// A service row's key: the service, then the account's key. A service
+  /// key never holds a colon, so the account's is everything after the
+  /// second.
+  static const _servicePrefix = 'transfer:';
 
   @override
   String get key => 'exports';
@@ -24,7 +45,7 @@ class ExportsSettingsGroup extends SettingsGroup {
   @override
   int get order => 25;
   @override
-  Listenable get listenable => Listenable.merge([settings, if (extensions != null) extensions!.runtimeGeneration]);
+  Listenable get listenable => Listenable.merge([settings, _accountChanges, if (extensions != null) extensions!.runtimeGeneration]);
 
   Future<List<Map<String, dynamic>>> _types() async => await extensions?.exportTypeSettings(settings.exportGlobalSettings, settings.exportTypeOverrides) ?? [];
 
@@ -39,6 +60,9 @@ class ExportsSettingsGroup extends SettingsGroup {
   Future<List<Map<String, dynamic>>> buildElements() async {
     final types = await _types();
     return [
+      // A folded section rather than a disclosure: the rows stay top-level,
+      // where the operation's Export Settings dialog and SET/SHOW find them.
+      {'type': 'header', 'style': 'section', 'key': 'fileExportOptions', 'title': t.settings.exports.fileOptions, 'collapsed': true},
       {
         'type': 'field',
         'fieldType': 'checkbox',
@@ -62,11 +86,87 @@ class ExportsSettingsGroup extends SettingsGroup {
         },
       for (final type in types)
         {'type': 'action', 'style': 'row', 'key': type['exportType'], 'label': _label(type), 'icon': 'file-cog-outline', 'target': 'exports'},
+      ...await _serviceRows(),
+    ];
+  }
+
+  /// A row per service and account its extension declares, saying who it
+  /// signs in as. Read from the keychain, never from the service: opening
+  /// Settings calls nobody.
+  Future<List<Map<String, dynamic>>> _serviceRows() async {
+    final extensions = this.extensions;
+    if (extensions == null || openAccount == null || !settings.experimentEnabled(kPushExperiment)) return const [];
+    final TransferServices services;
+    try {
+      services = await extensions.transferServices();
+    } on ExtensionHostException catch (error, stack) {
+      // Without a runtime yet, its generation rings when one starts and the
+      // rows come back with it. A timeout or a dead runtime rings nothing, so
+      // ErrorPolicy decides what it deserves.
+      if (extensions.host != null) ErrorReportingService.report(error, stack, context: 'settings:transfer-services');
+      return const [];
+    }
+    // Null is "the extensions could not be asked", not "no accounts": each
+    // service still gets its row, saying so, and a tap asks again.
+    final accounts = await extensions.getAccounts();
+    final identities = <String, String>{};
+    var storageUnavailable = false;
+    Future<String> identityOf(String kvKey) async {
+      if (storageUnavailable) return t.formChrome.storageUnavailable;
+      if (identities[kvKey] case final known?) return known;
+      // Null means secure storage could not be reached, and every read would
+      // fail and report the same way: stop asking.
+      final credentials = await extensions.getAccountCredentials(kvKey);
+      if (credentials == null) storageUnavailable = true;
+      return identities[kvKey] = switch (credentials) {
+        null => t.formChrome.storageUnavailable,
+        final c when c.isEmpty => t.settings.accounts.notConfigured,
+        final c => ExtensionService.identityFromCredentials(c) ?? t.settings.accounts.connected,
+      };
+    }
+
+    Map<String, dynamic> row(String key, String label, String description) => {
+      'type': 'action',
+      'style': 'row',
+      'key': '$_servicePrefix$key',
+      'label': label,
+      'icon': 'cloud-upload-outline',
+      'description': description,
+    };
+    final rows = <Map<String, dynamic>>[];
+    for (final service in services.byKey.values) {
+      if (accounts == null) {
+        rows.add(row('${service.key}:', service.label, t.settings.accounts.lookupFailed));
+        continue;
+      }
+      for (final account in accounts.where((account) => service.extensionKey != null && account['extensionKey'] == service.extensionKey)) {
+        final kvKey = account['kvKey'] as String;
+        final accountLabel = account['label'] as String? ?? kvKey;
+        rows.add(row('${service.key}:$kvKey', service.label, t.settings.exports.serviceAccount(account: accountLabel, identity: await identityOf(kvKey))));
+      }
+    }
+    // A hook that could not list its services keeps a row with its error,
+    // as in the push rows: left out, it would read as not installed.
+    for (final MapEntry(key: hookKey, value: error) in services.failed.entries) {
+      rows.add(row('$hookKey:', hookKey, error));
+    }
+    if (rows.isEmpty) return const [];
+    return [
+      {'type': 'header', 'style': 'section', 'key': 'transferServices', 'title': t.settings.exports.services},
+      ...rows,
     ];
   }
 
   @override
   Future<void> openAction(BuildContext context, String actionKey) async {
+    if (actionKey.startsWith(_servicePrefix)) {
+      final rest = actionKey.substring(_servicePrefix.length);
+      final kvKey = rest.substring(rest.indexOf(':') + 1);
+      // A row without an account is one that failed: ringing builds it again.
+      if (kvKey.isNotEmpty) await openAccount?.call(kvKey);
+      _accountChanges.notify();
+      return;
+    }
     final definition = (await _types()).where((type) => type['exportType'] == actionKey).firstOrNull;
     if (definition == null || !context.mounted) return;
     await showHaloDialog<void>(
@@ -312,4 +412,9 @@ class _ExportTypeDialogState extends State<_ExportTypeDialog> {
     ),
     cancel: TextButton(onPressed: () => Navigator.pop(context), child: Text(context.t.common.done)),
   );
+}
+
+/// A notifier anyone may ring: [ChangeNotifier.notifyListeners] is protected.
+class _Relay extends ChangeNotifier {
+  void notify() => notifyListeners();
 }

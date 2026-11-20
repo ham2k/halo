@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ham2k_logger/config/experiments.dart';
 import 'package:ham2k_logger/services/export_preferences.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -69,7 +70,146 @@ class _Extensions extends ExtensionService {
   }
 }
 
+/// Two transfer services, each from its own extension, and a third
+/// extension whose account serves no transfer at all. Wavelog's hook key is
+/// not its extension's key, as a hook's need not be.
+class _TransferExtensions extends ExtensionService {
+  bool accountsUnavailable = false;
+  bool storageUnavailable = false;
+  final credentialReads = <String>[];
+  Map<String, String> failed = {};
+
+  @override
+  Future<List<Map<String, dynamic>>> exportTypeSettings(Map<String, dynamic> global, Map<String, dynamic> Function(String) overrides) async => [];
+
+  @override
+  Future<TransferServices> transferServices() async => (
+    byKey: <String, TransferServiceInfo>{
+      'qrz': (hookKey: 'ham2k-qrz', extensionKey: 'ham2k-qrz', key: 'qrz', label: 'QRZ.com Logbook', description: null, pushes: true),
+      'wavelog': (hookKey: 'wavelog-transfer', extensionKey: 'wavelog', key: 'wavelog', label: 'Wavelog', description: null, pushes: true),
+    },
+    failed: failed,
+  );
+
+  @override
+  Future<List<Map<String, dynamic>>?> getAccounts() async => accountsUnavailable
+      ? null
+      : [
+          {'extensionKey': 'ham2k-qrz', 'key': 'ham2k-qrz', 'kvKey': 'ham2k-qrz', 'label': 'QRZ.com'},
+          {'extensionKey': 'wavelog', 'key': 'wavelog', 'kvKey': 'wavelog', 'label': 'Wavelog server'},
+          {'extensionKey': 'hamqth', 'key': 'hamqth', 'kvKey': 'hamqth', 'label': 'HamQTH'},
+        ];
+
+  @override
+  Future<Map<String, String>?> getAccountCredentials(String kvKey) async {
+    credentialReads.add(kvKey);
+    if (storageUnavailable) return null;
+    return kvKey == 'ham2k-qrz' ? {'username': 'KI2D', 'password': 'x'} : {};
+  }
+}
+
 void main() {
+  group('transfer services', () {
+    late SettingsService settings;
+    late _TransferExtensions extensions;
+    final opened = <String>[];
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      settings = SettingsService(await SharedPreferences.getInstance());
+      extensions = _TransferExtensions();
+      opened.clear();
+    });
+
+    ExportsSettingsGroup groupOf() => ExportsSettingsGroup(settings, extensions, (key) async => opened.add(key));
+    List<Map<String, dynamic>> serviceRows(List<Map<String, dynamic>> elements) => [
+      for (final el in elements)
+        if ((el['key'] as String?)?.startsWith('transfer:') ?? false) el,
+    ];
+
+    test('are not listed while EXP PUSH is off, since no transfer hook is asked anything then', () async {
+      final elements = await groupOf().buildElements();
+      expect(serviceRows(elements), isEmpty);
+      expect(elements.where((el) => el['key'] == 'transferServices'), isEmpty);
+    });
+
+    test("each lists the account of its own extension and who it signs in as, and no other extension's", () async {
+      await settings.setExperimentEnabled(kPushExperiment, true);
+      final rows = serviceRows(await groupOf().buildElements());
+      expect(
+        [for (final row in rows) (row['label'], row['description'])],
+        [('QRZ.com Logbook', 'QRZ.com: KI2D'), ('Wavelog', 'Wavelog server: ${t.settings.accounts.notConfigured}')],
+      );
+    });
+
+    test("a row opens its account's pane, and the category re-reads the account when it closes", () async {
+      await settings.setExperimentEnabled(kPushExperiment, true);
+      final group = groupOf();
+      final row = serviceRows(await group.buildElements()).first;
+      var rang = 0;
+      void ring() => rang++;
+      group.listenable.addListener(ring);
+      await group.openAction(_FakeContext(), row['key'] as String);
+      group.listenable.removeListener(ring);
+      expect(opened, ['ham2k-qrz']);
+      expect(rang, greaterThan(0));
+    });
+
+    test("are Settings' alone: an operation's Export Settings dialog, which keeps its target's rows, shows none", () async {
+      await settings.setExperimentEnabled(kPushExperiment, true);
+      final elements = await groupOf().buildElements();
+      expect(serviceRows(elements), isNotEmpty);
+      expect(serviceRows(elements).where((row) => row.containsKey('target')), isEmpty);
+    });
+
+    test('with no keychain, each account says its login is unavailable, and the keychain is asked once', () async {
+      await settings.setExperimentEnabled(kPushExperiment, true);
+      extensions.storageUnavailable = true;
+      final rows = serviceRows(await groupOf().buildElements());
+      expect(
+        [for (final row in rows) row['description']],
+        ['QRZ.com: ${t.formChrome.storageUnavailable}', 'Wavelog server: ${t.formChrome.storageUnavailable}'],
+      );
+      // Each failed read reports: one per row would report the same outage again and again.
+      expect(extensions.credentialReads, hasLength(1));
+    });
+
+    test('when the accounts cannot be asked, each service still has its row, saying so, and a tap asks again', () async {
+      await settings.setExperimentEnabled(kPushExperiment, true);
+      extensions.accountsUnavailable = true;
+      final group = groupOf();
+      final rows = serviceRows(await group.buildElements());
+      expect(
+        [for (final row in rows) (row['label'], row['description'])],
+        [('QRZ.com Logbook', t.settings.accounts.lookupFailed), ('Wavelog', t.settings.accounts.lookupFailed)],
+      );
+      var rang = 0;
+      void ring() => rang++;
+      group.listenable.addListener(ring);
+      await group.openAction(_FakeContext(), rows.first['key'] as String);
+      group.listenable.removeListener(ring);
+      expect(opened, isEmpty, reason: 'there is no account to open');
+      expect(rang, greaterThan(0));
+    });
+
+    test('file options sit under their own folded section, which ends where Services begins', () async {
+      await settings.setExperimentEnabled(kPushExperiment, true);
+      final elements = await groupOf().buildElements();
+      expect(elements.first, containsPair('key', 'fileExportOptions'));
+      expect(elements.first, containsPair('collapsed', true));
+      // Top-level, not inside a disclosure: the gear dialog and SET/SHOW only see a group's own elements.
+      expect(elements.where((el) => el['key'] == 'useCompactFileNames'), hasLength(1));
+      final services = elements.indexWhere((el) => el['key'] == 'transferServices');
+      expect(elements[services], containsPair('style', 'section'), reason: 'a band of its own, or the fold would hide the services too');
+    });
+
+    test('a hook that could not list its services keeps a row with its error, rather than reading as not installed', () async {
+      await settings.setExperimentEnabled(kPushExperiment, true);
+      extensions.failed = {'clublog': 'Server list unreadable'};
+      final rows = serviceRows(await groupOf().buildElements());
+      expect((rows.last['label'], rows.last['description']), ('clublog', 'Server list unreadable'));
+    });
+  });
+
   test("a type's own choices are pickers on its page, each pick saved beside the others", () async {
     SharedPreferences.setMockInitialValues({});
     final settings = SettingsService(await SharedPreferences.getInstance());
@@ -157,6 +297,9 @@ void main() {
         ),
       ),
     );
+    // The file options start folded.
+    await tester.tap(find.text(t.settings.exports.fileOptions));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('POTA ADIF'));
     await tester.pumpAndSettle();
     expect(find.text('Include lookup data'), findsOneWidget);
@@ -202,3 +345,5 @@ void main() {
     extensions.runtimeGeneration.dispose();
   });
 }
+
+class _FakeContext extends Fake implements BuildContext {}

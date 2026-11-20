@@ -135,6 +135,17 @@ void main() {
   Future<Map<String, dynamic>?> bench() async => asQsonMap(await services.extensions.host!.invokeHook('bench', key: 'echo', method: 'call'));
   Future<Map<String, dynamic>?> lastSent() async => asQsonMap((await bench())?['last']);
 
+  test('each service names the extension that registered its hook, whose accounts Settings shows it with', () async {
+    // A hook key is the hook's own, not the extension's: 'pull-only' is
+    // registered by 'echo', and matching accounts on the hook key would
+    // show it with none.
+    final listed = (await services.extensions.transferServices()).byKey;
+    expect(
+      {for (final MapEntry(:key, :value) in listed.entries) key: (value.hookKey, value.extensionKey)},
+      {'echo': ('echo', 'echo'), 'pulled': ('pull-only', 'echo')},
+    );
+  });
+
   test('a first push sends every contact once, records it, and leaves the operation processed', () async {
     final w1aw = await log('W1AW');
     await log('K1ABC');

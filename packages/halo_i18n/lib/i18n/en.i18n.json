@@ -2058,7 +2058,10 @@
       "contactDescription": "help@ham2k.com — but try the Forums or Chat first!"
     },
     "exports": {
-      "title": "Exports"
+      "title": "Exports & Imports",
+      "fileOptions": "File Export Options",
+      "services": "Services",
+      "serviceAccount": "${account}: ${identity}"
     },
     "assistants": {
       "title": "Assistants",

@@ -31,6 +31,7 @@ import '../tools/operation_title.dart';
 import '../tools/sync_account_identity.dart';
 import '../views/operation_dialogs.dart';
 import '../views/settings_view.dart';
+import '../views/settings/accounts_panel.dart' show showAccountDialogByKey;
 import '../views/cw_messages_dialog.dart';
 import '../views/voice_messages_dialog.dart';
 import '../views/settings/keyboard_shortcuts_panel.dart' show editKeyCommand, keyCommandTitle;
@@ -810,7 +811,7 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
     ..registerAll(ExtensionSectionGroup.all())
     ..register(AssistantsSettingsGroup(assistants, extensions))
     ..registerAll([IntegrationsSettingsGroup(settings, integrations, extensions), PrivacySettingsGroup(settings)])
-    ..register(ExportsSettingsGroup(settings, extensions))
+    ..register(ExportsSettingsGroup(settings, extensions, (key) => showAccountDialogByKey(this, key)))
     ..register(SyncSettingsGroup(settings, onToggle: setSyncEnabled));
 
   /// Tells peer sync what to share: the front-most open operation while the

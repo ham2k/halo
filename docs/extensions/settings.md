@@ -28,7 +28,7 @@ Preferences, not without a reviewer's approval on the catalog.
 | `logging` | Logging | something that changes how contacts are entered |
 | `radio` | CAT Control | radios, rigs and keyers |
 | `map` | Maps | the map views |
-| `exports` | Exports | export files and formats |
+| `exports` | Exports & Imports | export files and formats, and a transfer service's options |
 
 Prefer the first six; the last four suit an extension that tunes something
 the app already has a section for. A section holding no panel is not shown.

@@ -2673,7 +2673,10 @@ class _Translations$settings$exports$cw extends Translations$settings$exports$en
 	final TranslationsCw _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '· —··— ·——· ——— ·—· — ···';
+	@override String get title => '· —··— ·——· ——— ·—· — ··· / ·—··· / ·· —— ·——· ——— ·—· — ···';
+	@override String get fileOptions => '··—· ·· ·—·· · / · —··— ·——· ——— ·—· — / ——— ·——· — ·· ——— —· ···';
+	@override String get services => '··· · ·—· ···— ·· —·—· · ···';
+	@override String serviceAccount({required Object account, required Object identity}) => '${account} ———··· / ${identity}';
 }
 
 // Path: settings.assistants
@@ -7136,7 +7139,10 @@ extension on TranslationsCw {
 			'settings.help.blueskyDescription' => '··—· ——— ·—·· ·—·· ——— ·—— / ··— ··· / ··—· ——— ·—· / —· · ·—— ··· / ·— —· —·· / ··— ·——· —·· ·— — · ···',
 			'settings.help.contact' => '—·—· ——— —· — ·— —·—· — / ··— ···',
 			'settings.help.contactDescription' => '···· · ·—·· ·——· ·——·—· ···· ·— —— ··——— —·— ·—·—·— —·—· ——— —— / — / —··· ··— — / — ·—· —·—— / — ···· · / ··—· ——— ·—· ··— —— ··· / ——— ·—· / —·—· ···· ·— — / ··—· ·· ·—· ··· — —·—·——',
-			'settings.exports.title' => '· —··— ·——· ——— ·—· — ···',
+			'settings.exports.title' => '· —··— ·——· ——— ·—· — ··· / ·—··· / ·· —— ·——· ——— ·—· — ···',
+			'settings.exports.fileOptions' => '··—· ·· ·—·· · / · —··— ·——· ——— ·—· — / ——— ·——· — ·· ——— —· ···',
+			'settings.exports.services' => '··· · ·—· ···— ·· —·—· · ···',
+			'settings.exports.serviceAccount' => ({required Object account, required Object identity}) => '${account} ———··· / ${identity}',
 			'settings.assistants.title' => '·— ··· ··· ·· ··· — ·— —· — ···',
 			'settings.assistants.on' => '·—— ·— — —·—· ···· ·· —· ——· / ·—— ···· ·· ·—·· · / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / ·· ··· / ——— ·——· · —·',
 			'settings.assistants.off' => '——— ··—· ··—·',
@@ -7495,11 +7501,11 @@ extension on TranslationsCw {
 			'settings.station.microphone' => '—— ·· —·—· ·—· ——— ·——· ···· ——— —· ·',
 			'settings.station.microphoneDefault' => '— ···· · / ··· —·—— ··· — · —— ·————· ··· / —·· · ··—· ·— ··— ·—·· — / ·· —· ·——· ··— —',
 			'settings.station.channelNotInUse' => '—· ——— — / ·· —· / ··— ··· ·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.channelHeldByUnknown' => '·· —· / ··— ··· · / —··· —·—— / ·— —· ——— — ···· · ·—· / ·——· ·—· ——— ——· ·—· ·— ——',
 			'settings.station.flexNoSlices' => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ···· ·— ··· / —· ——— — / ·—· · ·——· ——— ·—· — · —·· / ·— —· —·—— / ··· ·—·· ·· —·—· · ··· / — / —·—· ···· · —·—· —·— / — ···· ·— — / ··· —— ·— ·—· — ··· —·· ·—· / ·· ··· / ·—· ··— —· —· ·· —· ——· / ·— —· —·· / — ···· ·— — / — ···· ·· ··· / —·—· ·—·· ·· · —· — / —— ·— —·—— / ··· ··— —··· ··· —·—· ·—· ·· —··· ·',
 			'settings.station.spectrumUnsupported' => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ··· · —· —·· ··· / —· ——— / ··· ·——· · —·—· — ·—· ··— —— / ——— ···— · ·—· / —·—· ·— —',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumRequiresBaud' => '·—· · ——·— ··— ·· ·—· · ··· / —·—· ·— — / ·— — / ·———— ·———— ····· ··——— ————— ————— / —··· ·——· ···',
 			'settings.station.spectrumNoRadio' => '—· ——— / ·—· ·— —·· ·· ——— / —·—· ——— —· —· · —·—· — · —··',
 			'settings.station.spectrumWaiting' => '·—— ·— ·· — ·· —· ——· / ··—· ——— ·—· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ··· ·——· · —·—· — ·—· ··— —— …',
@@ -8009,11 +8015,11 @@ extension on TranslationsCw {
 			'settings.station.dcnAddress' => '—·· · ···— ·· —·—· · / ·— —·· —·· ·—· · ··· ···',
 			'settings.station.dcnAddressDescription' => '— ···· · / ·— —·· —·· ·—· · ··· ··· / ··· · — / ——— —· / — ···· · / —— ——— —·· ··— ·—·· · ·————· ··· / —·· ·· ·——· / ··· ·—— ·· — —·—· ···· · ··· ·—·—·— / ·— / —·—· ——— ·— —··— / ·—· · ·—·· ·— —·—— / —— ——— —·· ··— ·—·· · / ·—·· · ·— ···— · ··· / — ···· · / ··—· ·— —·—· — ——— ·—· —·—— / ·— — / ··——— ·—·—·—',
 			'settings.station.dcnAddressRequired' => '—— ··— ··· — / —··· · / ·— / —·· · ···— ·· —·—· · / ·— —·· —·· ·—· · ··· ··· / ··—· ·—· ——— —— / ·———— / — ——— / ————· ————·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.switchPortLabel' => ({required Object port}) => '·——· ——— ·—· — / ${port}',
 			'settings.station.switchPortAutoHint' => '··—· ——— ·—·· ·—·· ——— ·—— ··· / —··· ·— —· —·· / —·· ·— — ·—',
 			'settings.station.switchPortTransmittingHint' => '— ·—· ·— —· ··· —— ·· — — ·· —· ——· / — / —·—· ·— —· —· ——— — / —·—· ···· ·— —· ——· · / —· ——— ·——',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.switchCurrentStateHeader' => '—·—· ··— ·—· ·—· · —· — / ··· — ·— — ·',
 			'settings.station.switchCurrentStateDescription' => '·—— ···· ·· —·—· ···· / ·— —· — · —· —· ·— / · ·— —·—· ···· / ·—· ·— —·· ·· ——— / ·——· ——— ·—· — / ·· ··· / ——— —· / ·—· ·· ——· ···· — / —· ——— ·—— ·—·—·— / —·—· ···· ·— —· ——· · ··· / — ·— —·— · / · ··—· ··—· · —·—· — / ·· —— —— · —·· ·· ·— — · ·—·· —·—— ·—·—·—',
 			'settings.station.switchWiringHeader' => '·—— ·· ·—· ·· —· ——·',
@@ -8523,11 +8529,11 @@ extension on TranslationsCw {
 			'updates.checkingForUpdates' => '—·—· ···· · —·—· —·— ·· —· ——· / ··—· ——— ·—· / ··— ·——· —·· ·— — · ··· …',
 			'updates.upToDate' => '··— ·——· / — ——— / —·· ·— — ·',
 			'updates.checkFailed' => '—·—· ——— ··— ·—·· —·· —· ’ — / —·—· ···· · —·—· —·— / ··—· ——— ·—· / ··— ·——· —·· ·— — · ···',
+			_ => null,
+		} ?? switch (path) {
 			'updates.automaticChecks' => '—·—· ···· · —·—· —·— / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·——',
 			'updates.automaticChecksDescription' => '·—·· ——— ——— —·— / ··—· ——— ·—· / —· · ·—— / ···— · ·—· ··· ·· ——— —· ··· / ·· —· / — ···· · / —··· ·— —·—· —·— ——· ·—· ——— ··— —· —·· ——··—— / ··—· ·—· ——— —— / — ···· · / —· · —··— — / — ·· —— · / —·—— ——— ··— / ··· — ·— ·—· — / — ···· · / ·— ·——· ·——·',
 			'extensionService.runtimeNotReady' => '· —··— — · —· ··· ·· ——— —· / ·—· ··— —· — ·· —— · / —· ——— — / ·—· · ·— —·· —·—— ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'extensionService.testFailed' => ({required Object error}) => '— · ··· — / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => '—·—· ——— —· —· · —·—· — · —·· / ·— ··· / ${identity}',
 			'extensionService.invalidFieldConfiguration' => '·· —· ···— ·— ·—·· ·· —·· / ··—· ·· · ·—·· —·· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —·',

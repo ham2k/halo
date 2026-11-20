@@ -337,7 +337,7 @@ void main() {
 
   // A program's own file is written the way the operator set its type up: the
   // pick has to reach the hook that writes the program's fields, or a choice
-  // in Settings → Exports changes nothing in the file.
+  // in Settings → Exports & Imports changes nothing in the file.
   test("a program's own file hands its hook the file's settings; the full export hands none", () async {
     final refs = [
       {'type': 'chooser', 'ref': 'C-1'},

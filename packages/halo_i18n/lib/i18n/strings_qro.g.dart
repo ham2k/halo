@@ -2673,7 +2673,10 @@ class _Translations$settings$exports$qro extends Translations$settings$exports$e
 	final TranslationsQro _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'EXPORTS';
+	@override String get title => 'EXPORTS & IMPORTS';
+	@override String get fileOptions => 'FILE EXPORT OPTIONS';
+	@override String get services => 'SERVICES';
+	@override String serviceAccount({required Object account, required Object identity}) => '${account}: ${identity}';
 }
 
 // Path: settings.assistants
@@ -7136,7 +7139,10 @@ extension on TranslationsQro {
 			'settings.help.blueskyDescription' => 'FOLLOW US FOR NEWS AND UPDATES',
 			'settings.help.contact' => 'CONTACT US',
 			'settings.help.contactDescription' => 'HELP@HAM2K.COM — BUT TRY THE FORUMS OR CHAT FIRST!',
-			'settings.exports.title' => 'EXPORTS',
+			'settings.exports.title' => 'EXPORTS & IMPORTS',
+			'settings.exports.fileOptions' => 'FILE EXPORT OPTIONS',
+			'settings.exports.services' => 'SERVICES',
+			'settings.exports.serviceAccount' => ({required Object account, required Object identity}) => '${account}: ${identity}',
 			'settings.assistants.title' => 'ASSISTANTS',
 			'settings.assistants.on' => 'WATCHING WHILE AN OPERATION IS OPEN',
 			'settings.assistants.off' => 'OFF',
@@ -7495,11 +7501,11 @@ extension on TranslationsQro {
 			'settings.station.microphone' => 'MICROPHONE',
 			'settings.station.microphoneDefault' => 'THE SYSTEM\'S DEFAULT INPUT',
 			'settings.station.channelNotInUse' => 'NOT IN USE',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.channelHeldByUnknown' => 'IN USE BY ANOTHER PROGRAM',
 			'settings.station.flexNoSlices' => 'THIS RADIO HAS NOT REPORTED ANY SLICES — CHECK THAT SMARTSDR IS RUNNING AND THAT THIS CLIENT MAY SUBSCRIBE',
 			'settings.station.spectrumUnsupported' => 'THIS RADIO SENDS NO SPECTRUM OVER CAT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumRequiresBaud' => 'REQUIRES CAT AT 115200 BPS',
 			'settings.station.spectrumNoRadio' => 'NO RADIO CONNECTED',
 			'settings.station.spectrumWaiting' => 'WAITING FOR THE RADIO\'S SPECTRUM…',
@@ -8009,11 +8015,11 @@ extension on TranslationsQro {
 			'settings.station.dcnAddress' => 'DEVICE ADDRESS',
 			'settings.station.dcnAddressDescription' => 'THE ADDRESS SET ON THE MODULE\'S DIP SWITCHES. A COAX RELAY MODULE LEAVES THE FACTORY AT 2.',
 			'settings.station.dcnAddressRequired' => 'MUST BE A DEVICE ADDRESS FROM 1 TO 99',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.switchPortLabel' => ({required Object port}) => 'PORT ${port}',
 			'settings.station.switchPortAutoHint' => 'FOLLOWS BAND DATA',
 			'settings.station.switchPortTransmittingHint' => 'TRANSMITTING — CANNOT CHANGE NOW',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.switchCurrentStateHeader' => 'CURRENT STATE',
 			'settings.station.switchCurrentStateDescription' => 'WHICH ANTENNA EACH RADIO PORT IS ON RIGHT NOW. CHANGES TAKE EFFECT IMMEDIATELY.',
 			'settings.station.switchWiringHeader' => 'WIRING',
@@ -8523,11 +8529,11 @@ extension on TranslationsQro {
 			'updates.checkingForUpdates' => 'CHECKING FOR UPDATES…',
 			'updates.upToDate' => 'UP TO DATE',
 			'updates.checkFailed' => 'COULDN’T CHECK FOR UPDATES',
+			_ => null,
+		} ?? switch (path) {
 			'updates.automaticChecks' => 'CHECK AUTOMATICALLY',
 			'updates.automaticChecksDescription' => 'LOOK FOR NEW VERSIONS IN THE BACKGROUND, FROM THE NEXT TIME YOU START THE APP',
 			'extensionService.runtimeNotReady' => 'EXTENSION RUNTIME NOT READY.',
-			_ => null,
-		} ?? switch (path) {
 			'extensionService.testFailed' => ({required Object error}) => 'TEST FAILED: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'CONNECTED AS ${identity}',
 			'extensionService.invalidFieldConfiguration' => 'INVALID FIELD CONFIGURATION',

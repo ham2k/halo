@@ -5786,8 +5786,17 @@ class Translations$settings$exports$en {
 
 	// Translations
 
-	/// en: 'Exports'
-	String get title => 'Exports';
+	/// en: 'Exports & Imports'
+	String get title => 'Exports & Imports';
+
+	/// en: 'File Export Options'
+	String get fileOptions => 'File Export Options';
+
+	/// en: 'Services'
+	String get services => 'Services';
+
+	/// en: '${account}: ${identity}'
+	String serviceAccount({required Object account, required Object identity}) => '${account}: ${identity}';
 }
 
 // Path: settings.assistants
@@ -13805,7 +13814,10 @@ extension on Translations {
 			'settings.help.blueskyDescription' => 'Follow us for news and updates',
 			'settings.help.contact' => 'Contact Us',
 			'settings.help.contactDescription' => 'help@ham2k.com — but try the Forums or Chat first!',
-			'settings.exports.title' => 'Exports',
+			'settings.exports.title' => 'Exports & Imports',
+			'settings.exports.fileOptions' => 'File Export Options',
+			'settings.exports.services' => 'Services',
+			'settings.exports.serviceAccount' => ({required Object account, required Object identity}) => '${account}: ${identity}',
 			'settings.assistants.title' => 'Assistants',
 			'settings.assistants.on' => 'Watching while an operation is open',
 			'settings.assistants.off' => 'Off',
@@ -14164,11 +14176,11 @@ extension on Translations {
 			'settings.station.microphone' => 'Microphone',
 			'settings.station.microphoneDefault' => 'The system\'s default input',
 			'settings.station.channelNotInUse' => 'not in use',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.channelHeldByUnknown' => 'in use by another program',
 			'settings.station.flexNoSlices' => 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe',
 			'settings.station.spectrumUnsupported' => 'This radio sends no spectrum over CAT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumRequiresBaud' => 'Requires CAT at 115200 bps',
 			'settings.station.spectrumNoRadio' => 'No radio connected',
 			'settings.station.spectrumWaiting' => 'Waiting for the radio\'s spectrum…',
@@ -14678,11 +14690,11 @@ extension on Translations {
 			'settings.station.dcnAddress' => 'Device address',
 			'settings.station.dcnAddressDescription' => 'The address set on the module\'s DIP switches. A coax relay module leaves the factory at 2.',
 			'settings.station.dcnAddressRequired' => 'Must be a device address from 1 to 99',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.switchPortLabel' => ({required Object port}) => 'Port ${port}',
 			'settings.station.switchPortAutoHint' => 'follows band data',
 			'settings.station.switchPortTransmittingHint' => 'transmitting — cannot change now',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.switchCurrentStateHeader' => 'Current State',
 			'settings.station.switchCurrentStateDescription' => 'Which antenna each radio port is on right now. Changes take effect immediately.',
 			'settings.station.switchWiringHeader' => 'Wiring',
@@ -15192,11 +15204,11 @@ extension on Translations {
 			'updates.checkingForUpdates' => 'Checking for updates…',
 			'updates.upToDate' => 'Up to date',
 			'updates.checkFailed' => 'Couldn’t check for updates',
+			_ => null,
+		} ?? switch (path) {
 			'updates.automaticChecks' => 'Check automatically',
 			'updates.automaticChecksDescription' => 'Look for new versions in the background, from the next time you start the app',
 			'extensionService.runtimeNotReady' => 'Extension runtime not ready.',
-			_ => null,
-		} ?? switch (path) {
 			'extensionService.testFailed' => ({required Object error}) => 'Test failed: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'Connected as ${identity}',
 			'extensionService.invalidFieldConfiguration' => 'Invalid field configuration',

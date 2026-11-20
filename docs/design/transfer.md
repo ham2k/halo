@@ -111,8 +111,10 @@ The hook's own key goes in each contact's record as `key`. A hook without
 service that gives none, and its `description` a suggestion that gives none. The extension's
 `account` hook holds whatever credentials push and pull use.
 
-Settings list transfers under their own category, **Data Transfer &
-Interchange**: each service and its account.
+Settings list each service under **Exports & Imports**, with the account
+its extension signs in with, read from the keychain; a row opens that
+account's pane. A service's own options are its extension's settings panel,
+placed there with `section: "exports"` ([settings.md](../extensions/settings.md)).
 
 ## 4. Suggestions and scopes
 

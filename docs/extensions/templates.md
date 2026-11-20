@@ -232,8 +232,8 @@ generous, so `{% if qso %}` counts as naming the QSO.
 | What | Editable by the operator |
 | --- | --- |
 | Panel documents | in the panel's configuration form |
-| Export filenames and titles | Settings → Exports, globally and per export type |
-| ADIF `NOTES`, `COMMENT` and `QSLMSG` | Settings → Exports; an empty template suppresses the field |
+| Export filenames and titles | Settings → Exports & Imports, globally and per export type |
+| ADIF `NOTES`, `COMMENT` and `QSLMSG` | Settings → Exports & Imports; an empty template suppresses the field |
 | CW messages | in the CW Keyer dialog |
 
 `NOTES` and `COMMENT` default to the contact's notes and are withheld when

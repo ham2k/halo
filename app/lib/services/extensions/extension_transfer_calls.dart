@@ -6,7 +6,9 @@ part of 'extension_service.dart';
 /// One service a `transfer` hook sends to (docs/design/transfer.md §2).
 /// [label] is the service's, else its hook's; [description] its hook's.
 /// [pushes] says whether the hook has a `push`: a hook may only pull.
-typedef TransferServiceInfo = ({String hookKey, String key, String label, String? description, bool pushes});
+/// [extensionKey] is the extension that registered the hook, whose accounts
+/// it signs in with; null when the runtime could not say.
+typedef TransferServiceInfo = ({String hookKey, String? extensionKey, String key, String label, String? description, bool pushes});
 
 /// Every declared service by key, and the `transfer` hooks that could not
 /// say which they declare, each with its error.
@@ -41,10 +43,17 @@ mixin _ExtensionTransferCalls {
     final hooks = await hooksFuture;
     String? valueOf(List<Map<String, dynamic>> entries, String hookKey) =>
         entries.where((e) => e['key'] == hookKey && e['ok'] == true).map((e) => asQsonString(e['value'])).firstOrNull;
-    final pushing = <String>{
+    final transferHooks = [
       for (final hook in asQsonList(hooks) ?? const [])
-        if (asQsonMap(hook) case final hook? when hook['category'] == Hooks.transferPush.category)
-          if (asQsonList(hook['methods'])?.contains(Hooks.transferPush.method) ?? false) ?asQsonString(hook['key']),
+        if (asQsonMap(hook) case final hook? when hook['category'] == Hooks.transferPush.category) hook,
+    ];
+    final pushing = <String>{
+      for (final hook in transferHooks)
+        if (asQsonList(hook['methods'])?.contains(Hooks.transferPush.method) ?? false) ?asQsonString(hook['key']),
+    };
+    final extensionOf = <String, String>{
+      for (final hook in transferHooks)
+        if ((asQsonString(hook['key']), asQsonString(hook['extensionKey'])) case (final key?, final extension?)) key: extension,
     };
     final result = <String, TransferServiceInfo>{};
     final failed = <String, String>{};
@@ -72,6 +81,7 @@ mixin _ExtensionTransferCalls {
         }
         result[key] = (
           hookKey: hookKey,
+          extensionKey: extensionOf[hookKey],
           key: key,
           label: asQsonString(service['label']) ?? valueOf(labels, hookKey) ?? key,
           description: valueOf(descriptions, hookKey),

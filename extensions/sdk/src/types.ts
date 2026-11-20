@@ -1525,7 +1525,7 @@ export interface ExportSettings {
   choices?: Record<string, string>
 }
 
-/// A setting an export type adds to its own page in Settings → Exports: one
+/// A setting an export type adds to its own page in Settings → Exports & Imports: one
 /// pick among a few options, such as which fields its file writes. The
 /// operator's pick reaches `generateExport` in `exportSettings.choices`, and
 /// the program's own `adifFields` hook in its `exportSettings`. Extension
@@ -1563,7 +1563,7 @@ export interface ExportTypeDefinition {
   defaults?: ExportSettings
   /// Illustrative operation/log values used by the template editor.
   templateSample?: Record<string, JSONValue>
-  /// Settings of the type's own, shown on its page in Settings → Exports.
+  /// Settings of the type's own, shown on its page in Settings → Exports & Imports.
   /// Extension API 25.
   choices?: ExportChoice[]
 }
