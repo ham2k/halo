@@ -6447,6 +6447,27 @@ class Translations$settings$accounts$en {
 	/// en: 'Test'
 	String get test => 'Test';
 
+	/// en: 'Choose File…'
+	String get chooseFile => 'Choose File…';
+
+	/// en: 'Remove'
+	String get removeFile => 'Remove';
+
+	/// en: 'No file chosen'
+	String get noFileChosen => 'No file chosen';
+
+	/// en: 'File chosen'
+	String get fileChosen => 'File chosen';
+
+	/// en: '${name} is too large: this account takes a file of up to ${size} KB'
+	String fileTooLarge({required Object name, required Object size}) => '${name} is too large: this account takes a file of up to ${size} KB';
+
+	/// en: 'Couldn't read that file: ${error}'
+	String fileUnreadable({required Object error}) => 'Couldn\'t read that file: ${error}';
+
+	/// en: '${name} is empty'
+	String fileEmpty({required Object name}) => '${name} is empty';
+
 	/// en: 'Save failed: ${error}'
 	String saveFailed({required Object error}) => 'Save failed: ${error}';
 
@@ -14059,6 +14080,13 @@ extension on Translations {
 			'settings.accounts.disconnect' => 'Disconnect',
 			'settings.accounts.connectedAs' => 'Connected as',
 			'settings.accounts.test' => 'Test',
+			'settings.accounts.chooseFile' => 'Choose File…',
+			'settings.accounts.removeFile' => 'Remove',
+			'settings.accounts.noFileChosen' => 'No file chosen',
+			'settings.accounts.fileChosen' => 'File chosen',
+			'settings.accounts.fileTooLarge' => ({required Object name, required Object size}) => '${name} is too large: this account takes a file of up to ${size} KB',
+			'settings.accounts.fileUnreadable' => ({required Object error}) => 'Couldn\'t read that file: ${error}',
+			'settings.accounts.fileEmpty' => ({required Object name}) => '${name} is empty',
 			'settings.accounts.saveFailed' => ({required Object error}) => 'Save failed: ${error}',
 			'settings.accounts.loginFailed' => ({required Object error}) => 'Login failed: ${error}',
 			'settings.accounts.lookupFailed' => 'Accounts are unavailable right now — try again in a moment',
@@ -14205,6 +14233,8 @@ extension on Translations {
 			'settings.station.audioOutputDefault' => 'The system\'s default output',
 			'settings.station.audioDevicesUnlisted' => ({required Object name}) => '${name} (devices could not be listed)',
 			'settings.station.audioOnThisComputer' => 'On This Computer',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.audioOnThisDevice' => 'On This Device',
 			'settings.station.audioOnTheRadio' => 'On The Radio',
 			'settings.station.audioThroughCard' => ({required Object name}) => 'Through ${name}',
@@ -14212,8 +14242,6 @@ extension on Translations {
 			'settings.station.audioMute' => ({required Object name}) => 'Mute ${name}',
 			'settings.station.audioUnmute' => ({required Object name}) => 'Unmute ${name}',
 			'settings.station.audioMixAllMuted' => 'Muted',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.audioMixMuted' => ({required Object names}) => 'Muted: ${names}',
 			'settings.station.receiveAudioOutputMissing' => ({required Object name}) => '${name} (not connected)',
 			'settings.station.receiveAudioDelay' => 'Receive audio max buffering',
@@ -14719,6 +14747,8 @@ extension on Translations {
 			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (switch taps)',
 			'settings.station.voiceDialectK3' => 'Elecraft K3/K3S with KDVR3 (switch taps)',
 			'settings.station.placeholderDiagnostic' => 'Simulated',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderWholeNumberInvalid' => 'Must be a whole number, 0 or more',
 			'settings.station.placeholderFreqInvalid' => 'Must be a frequency in kHz, greater than zero',
 			'settings.station.placeholderModeInvalid' => 'Must be a mode name, e.g. USB, CW, FT8',
@@ -14726,8 +14756,6 @@ extension on Translations {
 			'settings.station.simulatedSwitchRadios' => 'Radio ports',
 			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'A whole number, ${min} to ${max}',
 			'settings.station.switchLayout' => 'Layout',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.switchLayoutDescription' => 'Which side of the switch your radios are plugged into.',
 			'settings.station.switchLayoutRequired' => 'Choose how the switch is wired',
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'The switch refused "${command}" (error ${code})',
@@ -15233,6 +15261,8 @@ extension on Translations {
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'The download had only ${imported} of the ${existing} records on this device, so the ones it left out were kept. Refreshing it in Settings › Offline Data accepts it anyway.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} record for ${label}.', other: 'Imported ${count} records for ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Imported data for ${label}.',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.cleanedUpTitle' => 'Cleaned up extension data',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Removed data for ${count} data file from extensions no longer installed.', other: 'Removed data for ${count} data files from extensions no longer installed.', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',
@@ -15240,8 +15270,6 @@ extension on Translations {
 			'dataFiles.definitionUnavailable' => 'The file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.',
 			'updates.updateAvailable' => 'Update available',
 			'updates.newVersionAvailable' => ({required Object version}) => 'A new version (${version}) is available.',
-			_ => null,
-		} ?? switch (path) {
 			'updates.getIt' => 'Get it',
 			'updates.ok' => 'OK',
 			'updates.updateReady' => 'Update ready',

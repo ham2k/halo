@@ -9,9 +9,13 @@
 // Drive and other remote files, routinely — with null, exactly as it answers a
 // cancel, so the operator's pick silently does nothing.
 
+import 'dart:typed_data';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/services.dart';
+
+import 'file_pick_discard.dart';
 
 const _androidChannel = MethodChannel('ham2k/file_pick');
 
@@ -45,4 +49,36 @@ Future<XFile?> pickFile({List<XTypeGroup> acceptedTypeGroups = const []}) async 
     return path == null ? null : XFile(path);
   }
   return openFile(acceptedTypeGroups: acceptedTypeGroups);
+}
+
+/// A picked file past what its reader takes.
+class PickedFileTooLarge implements Exception {
+  const PickedFileTooLarge(this.maxBytes);
+
+  final int maxBytes;
+
+  @override
+  String toString() => 'The file is larger than $maxBytes bytes';
+}
+
+/// The bytes of [file], refused with [PickedFileTooLarge] as soon as they pass
+/// [maxBytes]: counted as they arrive, because a provider may report no size,
+/// or the wrong one.
+///
+/// On Android and iOS it then removes the copy the picker made, read or not.
+/// The copy otherwise waits for the channel's sweep or the system's, and the
+/// file may be a credential.
+Future<Uint8List> readPickedFile(XFile file, {required int maxBytes}) async {
+  try {
+    final bytes = BytesBuilder(copy: false);
+    await for (final chunk in file.openRead()) {
+      if (bytes.length + chunk.length > maxBytes) throw PickedFileTooLarge(maxBytes);
+      bytes.add(chunk);
+    }
+    return bytes.takeBytes();
+  } finally {
+    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
+      await discardPickedCopy(file.path);
+    }
+  }
 }

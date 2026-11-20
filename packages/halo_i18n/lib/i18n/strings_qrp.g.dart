@@ -2976,6 +2976,13 @@ class _Translations$settings$accounts$qrp extends Translations$settings$accounts
 	@override String get disconnect => 'disconnect';
 	@override String get connectedAs => 'connected as';
 	@override String get test => 'test';
+	@override String get chooseFile => 'choose file…';
+	@override String get removeFile => 'remove';
+	@override String get noFileChosen => 'no file chosen';
+	@override String get fileChosen => 'file chosen';
+	@override String fileTooLarge({required Object name, required Object size}) => '${name} is too large: this account takes a file of up to ${size} kb';
+	@override String fileUnreadable({required Object error}) => 'couldn\'t read that file: ${error}';
+	@override String fileEmpty({required Object name}) => '${name} is empty';
 	@override String saveFailed({required Object error}) => 'save failed: ${error}';
 	@override String loginFailed({required Object error}) => 'login failed: ${error}';
 	@override String get lookupFailed => 'accounts are unavailable right now — try again in a moment';
@@ -7360,6 +7367,13 @@ extension on TranslationsQrp {
 			'settings.accounts.disconnect' => 'disconnect',
 			'settings.accounts.connectedAs' => 'connected as',
 			'settings.accounts.test' => 'test',
+			'settings.accounts.chooseFile' => 'choose file…',
+			'settings.accounts.removeFile' => 'remove',
+			'settings.accounts.noFileChosen' => 'no file chosen',
+			'settings.accounts.fileChosen' => 'file chosen',
+			'settings.accounts.fileTooLarge' => ({required Object name, required Object size}) => '${name} is too large: this account takes a file of up to ${size} kb',
+			'settings.accounts.fileUnreadable' => ({required Object error}) => 'couldn\'t read that file: ${error}',
+			'settings.accounts.fileEmpty' => ({required Object name}) => '${name} is empty',
 			'settings.accounts.saveFailed' => ({required Object error}) => 'save failed: ${error}',
 			'settings.accounts.loginFailed' => ({required Object error}) => 'login failed: ${error}',
 			'settings.accounts.lookupFailed' => 'accounts are unavailable right now — try again in a moment',
@@ -7506,6 +7520,8 @@ extension on TranslationsQrp {
 			'settings.station.audioOutputDefault' => 'the system\'s default output',
 			'settings.station.audioDevicesUnlisted' => ({required Object name}) => '${name} (devices could not be listed)',
 			'settings.station.audioOnThisComputer' => 'on this computer',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.audioOnThisDevice' => 'on this device',
 			'settings.station.audioOnTheRadio' => 'on the radio',
 			'settings.station.audioThroughCard' => ({required Object name}) => 'through ${name}',
@@ -7513,8 +7529,6 @@ extension on TranslationsQrp {
 			'settings.station.audioMute' => ({required Object name}) => 'mute ${name}',
 			'settings.station.audioUnmute' => ({required Object name}) => 'unmute ${name}',
 			'settings.station.audioMixAllMuted' => 'muted',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.audioMixMuted' => ({required Object names}) => 'muted: ${names}',
 			'settings.station.receiveAudioOutputMissing' => ({required Object name}) => '${name} (not connected)',
 			'settings.station.receiveAudioDelay' => 'receive audio max buffering',
@@ -8020,6 +8034,8 @@ extension on TranslationsQrp {
 			'settings.station.voiceDialectKx' => 'elecraft kx2/kx3 (switch taps)',
 			'settings.station.voiceDialectK3' => 'elecraft k3/k3s with kdvr3 (switch taps)',
 			'settings.station.placeholderDiagnostic' => 'simulated',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderWholeNumberInvalid' => 'must be a whole number, 0 or more',
 			'settings.station.placeholderFreqInvalid' => 'must be a frequency in khz, greater than zero',
 			'settings.station.placeholderModeInvalid' => 'must be a mode name, e.g. usb, cw, ft8',
@@ -8027,8 +8043,6 @@ extension on TranslationsQrp {
 			'settings.station.simulatedSwitchRadios' => 'radio ports',
 			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'a whole number, ${min} to ${max}',
 			'settings.station.switchLayout' => 'layout',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.switchLayoutDescription' => 'which side of the switch your radios are plugged into.',
 			'settings.station.switchLayoutRequired' => 'choose how the switch is wired',
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'the switch refused "${command}" (error ${code})',
@@ -8534,6 +8548,8 @@ extension on TranslationsQrp {
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'the download had only ${imported} of the ${existing} records on this device, so the ones it left out were kept. refreshing it in settings › offline data accepts it anyway.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'imported ${count} record for ${label}.', other: 'imported ${count} records for ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'imported data for ${label}.',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.cleanedUpTitle' => 'cleaned up extension data',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'removed data for ${count} data file from extensions no longer installed.', other: 'removed data for ${count} data files from extensions no longer installed.', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',
@@ -8541,8 +8557,6 @@ extension on TranslationsQrp {
 			'dataFiles.definitionUnavailable' => 'the file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. try again in a moment.',
 			'updates.updateAvailable' => 'update available',
 			'updates.newVersionAvailable' => ({required Object version}) => 'a new version (${version}) is available.',
-			_ => null,
-		} ?? switch (path) {
 			'updates.getIt' => 'get it',
 			'updates.ok' => 'ok',
 			'updates.updateReady' => 'update ready',

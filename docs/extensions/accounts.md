@@ -21,7 +21,7 @@ interface AccountHook {
   label: Localizable<string>
   description?: Localizable<string>
   kvKey?: string                       // defaults to your key; else your key or <key>_suffix
-  fields?: Localizable<AccountField[]> // { key, label, type: 'text' | 'email' | 'secret', preface?, postface? }
+  fields?: Localizable<AccountField[]> // { key, label, type: 'text' | 'email' | 'secret' | 'file', preface?, postface?, accept?, maxBytes? }
   oauth2?: OAuth2Config | ((args, ctx) => OAuth2Config)
   synchronizable?: boolean
   testCredentials(credentials: Record<string, string>, ctx): Promise<string>
@@ -49,6 +49,18 @@ registerHook("account", {
 - **`label`, `description` and `fields`** take a plain value or a function
   `(args, ctx) => value`, called like any hook method, so they can be
   localized from `ctx.locale`.
+- **A `file` field** holds a file the operator picks, such as a signing
+  certificate. Your hooks find its bytes in Base64 at
+  `credentials[key]`, and its file name at `credentials["<key>:name"]`,
+  so give no other field that key.
+  Decode it with the SDK's `base64ToBytes`: desktop and mobile builds have
+  no `atob`.
+  `accept: { extensions, mimeTypes }` tells the picker what to offer first,
+  as a hint some platforms ignore, so check what you are handed; without
+  `extensions` it offers every file.
+  `maxBytes` refuses a larger file; no file field holds more than 64 KiB.
+  Parsing the file, and asking for any password it needs in a `secret`
+  field beside it, are yours.
 - **`testCredentials`** answers a sentence for the operator. Throw, or
   answer a sentence that says so, when the login fails; the app shows it.
 - **`host.setAccountSession(session)`** stores a session (a token, an

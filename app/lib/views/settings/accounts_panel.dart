@@ -8,13 +8,16 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:crypto/crypto.dart';
+import 'package:file_selector/file_selector.dart' show XFile, XTypeGroup;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart' show NumberFormat;
 
 import '../../config/user_agent.dart';
 import 'package:halo_i18n/halo_i18n.dart';
@@ -23,6 +26,7 @@ import '../../config/navigation.dart';
 import '../../services/halo_services.dart';
 import '../../services/deep_link_service.dart';
 import '../../services/error_reporting_service.dart';
+import '../../services/file_pick.dart';
 import '../../services/extensions/oauth_clients.dart';
 import '../../services/extensions/extension_service.dart';
 import '../../services/push_service.dart';
@@ -232,6 +236,51 @@ class _PendingOAuthLogin {
   _PendingOAuthLogin({required this.authUri, required this.issuer, this.expectedState, this.webhookEvents, this.fetchWebhookEvents});
 }
 
+/// The most a `file` account field holds, whatever its `maxBytes` asks: the
+/// file is kept in the keychain, synced through iCloud for a synchronizable
+/// account, and handed to every hook on `ctx.account`. A TrustedQSL
+/// certificate is a few kilobytes.
+const kMaxAccountFileBytes = 64 * 1024;
+
+/// Where a `file` field's display name is stored, beside its Base64 bytes
+/// under the field's own key (docs/extensions/accounts.md).
+String accountFileNameKey(String key) => '$key:name';
+
+/// The picker a `file` field opens; a test answers it with a file of its own.
+@visibleForTesting
+Future<XFile?> Function({List<XTypeGroup> acceptedTypeGroups}) accountFilePicker = pickFile;
+
+/// What a `file` field may hold: its `maxBytes` when that is less than
+/// [kMaxAccountFileBytes].
+int accountFileCap(Map<String, dynamic> field) {
+  final asked = field['maxBytes'];
+  return asked is num && asked >= 1 && asked < kMaxAccountFileBytes ? asked.toInt() : kMaxAccountFileBytes;
+}
+
+/// [maxBytes] in KB for the operator, rounded down to a tenth: rounded up, a
+/// cap of 1,500 bytes reads as "up to 2 KB" to someone holding a 1.8 KB file.
+String accountFileSizeLabel(int maxBytes) => NumberFormat('#,##0.#', ui.PlatformDispatcher.instance.locale.toString()).format((maxBytes * 10 ~/ 1024) / 10);
+
+/// A `file` field's `accept` as the picker's type groups. Hints only: Android
+/// offers every file whatever they say, and the extension reads what it is
+/// handed, so a malformed `accept` offers every file rather than failing the
+/// pick. `public.data` because iOS filters by UTI and throws for a group with
+/// none, and an extension names extensions, not UTIs.
+///
+/// No group without extensions: Windows filters by extension alone and throws
+/// for a group that names none, which would leave the field unfillable there.
+List<XTypeGroup> accountFileTypeGroups(Map<String, dynamic> field) {
+  final accept = field['accept'];
+  if (accept is! Map) return const [];
+  List<String> strings(Object? list) => list is List ? list.whereType<String>().toList() : const [];
+  final extensions = strings(accept['extensions']);
+  final mimeTypes = strings(accept['mimeTypes']);
+  if (extensions.isEmpty) return const [];
+  return [
+    XTypeGroup(label: field['label'] as String?, extensions: extensions, mimeTypes: mimeTypes, uniformTypeIdentifiers: const ['public.data']),
+  ];
+}
+
 /// One extension account's credentials, shown as a Modal Pane
 /// (docs/design/layouts.md): a dialog on wide layouts, a full screen on
 /// phones. The route provides the
@@ -250,6 +299,23 @@ class AccountPane extends StatefulWidget {
 
 class _AccountPaneState extends State<AccountPane> {
   final Map<String, TextEditingController> _controllers = {};
+
+  /// Each `file` field's file, null when none is chosen. Kept apart from the
+  /// stored credentials until Save, as the text fields are.
+  final Map<String, ({String name, String base64})?> _files = {};
+
+  /// Why the last pick for a `file` field was refused, by field key.
+  final Map<String, String> _fileErrors = {};
+
+  /// The `file` fields whose pick is still open or being read. Save and Test
+  /// wait for them: on Android a slow provider's file is still being copied
+  /// with the dialog back on screen, and a Save then would store the field
+  /// without it, saying nothing.
+  final Set<String> _reading = {};
+
+  /// Bumped by [_clear] so a pick that lands after a disconnect is dropped
+  /// rather than filling the field again.
+  int _fileGeneration = 0;
   bool _testing = false;
   String? _testResult;
   bool _loggedIn = false;
@@ -359,7 +425,12 @@ class _AccountPaneState extends State<AccountPane> {
     });
     for (final field in _fields) {
       final key = field['key'] as String;
-      _controllers[key] = TextEditingController(text: creds[key] ?? '');
+      if (field['type'] == 'file') {
+        final data = creds[key];
+        _files[key] = (data == null || data.isEmpty) ? null : (name: creds[accountFileNameKey(key)] ?? '', base64: data);
+      } else {
+        _controllers[key] = TextEditingController(text: creds[key] ?? '');
+      }
     }
     // Existing credentials get verified right away, so the "Connected as"
     // area reflects reality without a manual Test.
@@ -380,8 +451,7 @@ class _AccountPaneState extends State<AccountPane> {
   Future<void> _save() async {
     try {
       if (_oauth2 == null) {
-        final creds = _controllers.map((key, controller) => MapEntry(key, controller.text.trim()));
-        await widget.services.extensions.setAccountCredentials(_kvKey, creds);
+        await widget.services.extensions.setAccountCredentials(_kvKey, _enteredCredentials());
       } else if (_pendingCredentials != null) {
         await widget.services.extensions.setAccountCredentials(_kvKey, _pendingCredentials!);
       }
@@ -412,12 +482,109 @@ class _AccountPaneState extends State<AccountPane> {
       _testing = false;
       _testResult = null;
       _pendingCredentials = null;
+      _files.updateAll((_, _) => null);
+      _fileErrors.clear();
+      _fileGeneration++;
     });
     for (final c in _controllers.values) {
       c.clear();
     }
     await widget.services.extensions.clearAccount(_kvKey);
     widget.onSaved();
+  }
+
+  /// What the fields hold now: each text field trimmed, and each chosen file
+  /// as its Base64 bytes with its name beside them.
+  Map<String, String> _enteredCredentials() => {
+    for (final MapEntry(:key, value: controller) in _controllers.entries) key: controller.text.trim(),
+    for (final MapEntry(:key, value: file) in _files.entries)
+      if (file != null) ...{key: file.base64, accountFileNameKey(key): file.name},
+  };
+
+  /// Asks the operator for a file for [field], and holds it until Save. A
+  /// cancel changes nothing; a refused file leaves the one already chosen.
+  Future<void> _chooseFile(Map<String, dynamic> field) async {
+    final key = field['key'] as String;
+    final generation = _fileGeneration;
+    setState(() => _reading.add(key));
+    final (picked, error) = await _readFile(field);
+    if (!mounted) return;
+    setState(() {
+      _reading.remove(key);
+      if (generation != _fileGeneration) return;
+      if (picked != null) _files[key] = picked;
+      if (error != null) {
+        _fileErrors[key] = error;
+      } else if (picked != null) {
+        _fileErrors.remove(key);
+      }
+    });
+  }
+
+  /// The file the operator picks for [field], or why it was refused; neither
+  /// for a cancel.
+  Future<(({String name, String base64})?, String?)> _readFile(Map<String, dynamic> field) async {
+    final maxBytes = accountFileCap(field);
+    final XFile? file;
+    try {
+      file = await accountFilePicker(acceptedTypeGroups: accountFileTypeGroups(field));
+    } catch (e, stack) {
+      ErrorReportingService.report(e, stack, context: 'accounts:pick-file', told: mounted);
+      return (null, t.settings.accounts.fileUnreadable(error: ErrorReportingService.messageOf(e)));
+    }
+    if (file == null) return (null, null);
+    try {
+      final bytes = await readPickedFile(file, maxBytes: maxBytes);
+      // Stored, an empty file reads back as no file at all, while the
+      // operator saw it chosen.
+      if (bytes.isEmpty) return (null, t.settings.accounts.fileEmpty(name: file.name));
+      return ((name: file.name, base64: base64Encode(bytes)), null);
+    } on PickedFileTooLarge {
+      return (null, t.settings.accounts.fileTooLarge(name: file.name, size: accountFileSizeLabel(maxBytes)));
+    } catch (e, stack) {
+      ErrorReportingService.report(e, stack, context: 'accounts:read-file', told: mounted);
+      return (null, t.settings.accounts.fileUnreadable(error: ErrorReportingService.messageOf(e)));
+    }
+  }
+
+  Widget _fileField(BuildContext context, Map<String, dynamic> field) {
+    final theme = Theme.of(context);
+    final key = field['key'] as String;
+    final file = _files[key];
+    final reading = _reading.contains(key);
+    return InputDecorator(
+      decoration: poloFieldDecoration(context, field['label'] as String).copyWith(errorText: _fileErrors[key], errorMaxLines: 3),
+      // Wraps, so on a narrow phone the buttons drop under the name, and
+      // under each other, rather than overflow the row.
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            file == null ? context.t.settings.accounts.noFileChosen : (file.name.isEmpty ? context.t.settings.accounts.fileChosen : file.name),
+            style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (reading)
+                const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              else if (file != null)
+                TextButton(
+                  onPressed: () => setState(() {
+                    _files[key] = null;
+                    _fileErrors.remove(key);
+                  }),
+                  child: Text(context.t.settings.accounts.removeFile),
+                ),
+              TextButton(onPressed: reading ? null : () => _chooseFile(field), child: Text(context.t.settings.accounts.chooseFile)),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _test() async {
@@ -443,7 +610,7 @@ class _AccountPaneState extends State<AccountPane> {
       }
       creds = stored;
     } else {
-      creds = _controllers.map((key, controller) => MapEntry(key, controller.text.trim()));
+      creds = _enteredCredentials();
     }
 
     final res = await widget.services.extensions.testCredentials(widget.account['key'] as String, creds);
@@ -784,8 +951,9 @@ class _AccountPaneState extends State<AccountPane> {
             final preface = field['preface'] as String?;
             final postface = field['postface'] as String?;
             final controller = _controllers[key];
+            final isFile = field['type'] == 'file' && _files.containsKey(key);
 
-            if (controller == null) return const SizedBox.shrink();
+            if (controller == null && !isFile) return const SizedBox.shrink();
 
             return Padding(
               padding: const EdgeInsets.only(bottom: Space.lg),
@@ -793,9 +961,11 @@ class _AccountPaneState extends State<AccountPane> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (preface != null && preface.isNotEmpty) ...[_markdown(preface), const SizedBox(height: Space.md)],
-                  if (field['type'] == 'secret')
+                  if (isFile)
+                    _fileField(context, field)
+                  else if (field['type'] == 'secret')
                     SecretTextField(
-                      controller: controller,
+                      controller: controller!,
                       style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
                       decoration: poloFieldDecoration(context, field['label'] as String).copyWith(errorText: _fieldError(key, controller.text)),
                       onChanged: (_) => setState(() {}),
@@ -803,7 +973,7 @@ class _AccountPaneState extends State<AccountPane> {
                   else
                     TextField(
                       selectAllOnFocus: false,
-                      controller: controller,
+                      controller: controller!,
                       style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
                       keyboardType: field['type'] == 'email' ? TextInputType.emailAddress : TextInputType.text,
                       decoration: poloFieldDecoration(context, field['label'] as String).copyWith(errorText: _fieldError(key, controller.text)),
@@ -847,7 +1017,7 @@ class _AccountPaneState extends State<AccountPane> {
                 ),
               ),
               const SizedBox(width: Space.md),
-              TextButton(onPressed: _testing ? null : _test, child: Text(context.t.settings.accounts.test)),
+              TextButton(onPressed: _testing || _reading.isNotEmpty ? null : _test, child: Text(context.t.settings.accounts.test)),
             ],
           ),
         ],
@@ -859,7 +1029,7 @@ class _AccountPaneState extends State<AccountPane> {
           // The pane's header close button remains, so this is about telling
           // the two apart, not about trapping the operator in the wait.
           cancel: TextButton(onPressed: oauthLogin == null ? () => Navigator.of(context).pop() : null, child: Text(context.t.common.cancel)),
-          actions: [FilledButton(onPressed: oauthLogin == null ? _save : null, child: Text(context.t.common.save))],
+          actions: [FilledButton(onPressed: oauthLogin == null && _reading.isEmpty ? _save : null, child: Text(context.t.common.save))],
         ),
       ],
     );

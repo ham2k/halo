@@ -2976,6 +2976,13 @@ class _Translations$settings$accounts$qro extends Translations$settings$accounts
 	@override String get disconnect => 'DISCONNECT';
 	@override String get connectedAs => 'CONNECTED AS';
 	@override String get test => 'TEST';
+	@override String get chooseFile => 'CHOOSE FILE…';
+	@override String get removeFile => 'REMOVE';
+	@override String get noFileChosen => 'NO FILE CHOSEN';
+	@override String get fileChosen => 'FILE CHOSEN';
+	@override String fileTooLarge({required Object name, required Object size}) => '${name} IS TOO LARGE: THIS ACCOUNT TAKES A FILE OF UP TO ${size} KB';
+	@override String fileUnreadable({required Object error}) => 'COULDN\'T READ THAT FILE: ${error}';
+	@override String fileEmpty({required Object name}) => '${name} IS EMPTY';
 	@override String saveFailed({required Object error}) => 'SAVE FAILED: ${error}';
 	@override String loginFailed({required Object error}) => 'LOGIN FAILED: ${error}';
 	@override String get lookupFailed => 'ACCOUNTS ARE UNAVAILABLE RIGHT NOW — TRY AGAIN IN A MOMENT';
@@ -7360,6 +7367,13 @@ extension on TranslationsQro {
 			'settings.accounts.disconnect' => 'DISCONNECT',
 			'settings.accounts.connectedAs' => 'CONNECTED AS',
 			'settings.accounts.test' => 'TEST',
+			'settings.accounts.chooseFile' => 'CHOOSE FILE…',
+			'settings.accounts.removeFile' => 'REMOVE',
+			'settings.accounts.noFileChosen' => 'NO FILE CHOSEN',
+			'settings.accounts.fileChosen' => 'FILE CHOSEN',
+			'settings.accounts.fileTooLarge' => ({required Object name, required Object size}) => '${name} IS TOO LARGE: THIS ACCOUNT TAKES A FILE OF UP TO ${size} KB',
+			'settings.accounts.fileUnreadable' => ({required Object error}) => 'COULDN\'T READ THAT FILE: ${error}',
+			'settings.accounts.fileEmpty' => ({required Object name}) => '${name} IS EMPTY',
 			'settings.accounts.saveFailed' => ({required Object error}) => 'SAVE FAILED: ${error}',
 			'settings.accounts.loginFailed' => ({required Object error}) => 'LOGIN FAILED: ${error}',
 			'settings.accounts.lookupFailed' => 'ACCOUNTS ARE UNAVAILABLE RIGHT NOW — TRY AGAIN IN A MOMENT',
@@ -7506,6 +7520,8 @@ extension on TranslationsQro {
 			'settings.station.audioOutputDefault' => 'THE SYSTEM\'S DEFAULT OUTPUT',
 			'settings.station.audioDevicesUnlisted' => ({required Object name}) => '${name} (DEVICES COULD NOT BE LISTED)',
 			'settings.station.audioOnThisComputer' => 'ON THIS COMPUTER',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.audioOnThisDevice' => 'ON THIS DEVICE',
 			'settings.station.audioOnTheRadio' => 'ON THE RADIO',
 			'settings.station.audioThroughCard' => ({required Object name}) => 'THROUGH ${name}',
@@ -7513,8 +7529,6 @@ extension on TranslationsQro {
 			'settings.station.audioMute' => ({required Object name}) => 'MUTE ${name}',
 			'settings.station.audioUnmute' => ({required Object name}) => 'UNMUTE ${name}',
 			'settings.station.audioMixAllMuted' => 'MUTED',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.audioMixMuted' => ({required Object names}) => 'MUTED: ${names}',
 			'settings.station.receiveAudioOutputMissing' => ({required Object name}) => '${name} (NOT CONNECTED)',
 			'settings.station.receiveAudioDelay' => 'RECEIVE AUDIO MAX BUFFERING',
@@ -8020,6 +8034,8 @@ extension on TranslationsQro {
 			'settings.station.voiceDialectKx' => 'ELECRAFT KX2/KX3 (SWITCH TAPS)',
 			'settings.station.voiceDialectK3' => 'ELECRAFT K3/K3S WITH KDVR3 (SWITCH TAPS)',
 			'settings.station.placeholderDiagnostic' => 'SIMULATED',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderWholeNumberInvalid' => 'MUST BE A WHOLE NUMBER, 0 OR MORE',
 			'settings.station.placeholderFreqInvalid' => 'MUST BE A FREQUENCY IN KHZ, GREATER THAN ZERO',
 			'settings.station.placeholderModeInvalid' => 'MUST BE A MODE NAME, E.G. USB, CW, FT8',
@@ -8027,8 +8043,6 @@ extension on TranslationsQro {
 			'settings.station.simulatedSwitchRadios' => 'RADIO PORTS',
 			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'A WHOLE NUMBER, ${min} TO ${max}',
 			'settings.station.switchLayout' => 'LAYOUT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.switchLayoutDescription' => 'WHICH SIDE OF THE SWITCH YOUR RADIOS ARE PLUGGED INTO.',
 			'settings.station.switchLayoutRequired' => 'CHOOSE HOW THE SWITCH IS WIRED',
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'THE SWITCH REFUSED "${command}" (ERROR ${code})',
@@ -8534,6 +8548,8 @@ extension on TranslationsQro {
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'THE DOWNLOAD HAD ONLY ${imported} OF THE ${existing} RECORDS ON THIS DEVICE, SO THE ONES IT LEFT OUT WERE KEPT. REFRESHING IT IN SETTINGS › OFFLINE DATA ACCEPTS IT ANYWAY.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'IMPORTED ${count} RECORD FOR ${label}.', other: 'IMPORTED ${count} RECORDS FOR ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'IMPORTED DATA FOR ${label}.',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.cleanedUpTitle' => 'CLEANED UP EXTENSION DATA',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'REMOVED DATA FOR ${count} DATA FILE FROM EXTENSIONS NO LONGER INSTALLED.', other: 'REMOVED DATA FOR ${count} DATA FILES FROM EXTENSIONS NO LONGER INSTALLED.', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} RECORDS',
@@ -8541,8 +8557,6 @@ extension on TranslationsQro {
 			'dataFiles.definitionUnavailable' => 'THE FILE\'S SOURCE DIDN\'T PROVIDE A DEFINITION — ITS EXTENSION MAY BE MID-RESTART OR MISCONFIGURED. TRY AGAIN IN A MOMENT.',
 			'updates.updateAvailable' => 'UPDATE AVAILABLE',
 			'updates.newVersionAvailable' => ({required Object version}) => 'A NEW VERSION (${version}) IS AVAILABLE.',
-			_ => null,
-		} ?? switch (path) {
 			'updates.getIt' => 'GET IT',
 			'updates.ok' => 'OK',
 			'updates.updateReady' => 'UPDATE READY',

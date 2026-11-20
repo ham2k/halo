@@ -92,6 +92,7 @@ export * from "./refTransforms.ts"
 export * from "./templates.ts"
 export * from "./templateContext.ts"
 export * from "./testOperation.ts"
+export { base64ToBytes }
 
 interface KernelApi {
   defineExtension(def: ExtensionDefinition): void

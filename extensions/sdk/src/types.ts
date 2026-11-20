@@ -2819,9 +2819,16 @@ export interface SyncTransportHook {
 export interface AccountField {
   key: string
   label: string
-  type: "text" | "email" | "secret"
+  type: "text" | "email" | "secret" | "file"
   preface?: string
   postface?: string
+  /// `file` only: what the picker offers, as file extensions without the
+  /// dot and MIME types. A hint the platform may ignore; check the bytes.
+  /// Without `extensions` the picker offers every file.
+  accept?: { extensions?: string[]; mimeTypes?: string[] }
+  /// `file` only: the largest file the field takes, in bytes. The app holds
+  /// every file field to 65,536 whatever this asks.
+  maxBytes?: number
 }
 
 export interface OAuth2Config {

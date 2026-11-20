@@ -159,6 +159,7 @@ runs and the error names the budget.
 | Radio commands | 4 of yours queued at once; one that cannot go out within 2 s expires |
 | Candidates scored | 20 per `ctx.scoreCandidates` call |
 | Random bytes | 4,096 per `host.randomBytes` call |
+| Account files | 64 KiB per `file` account field |
 | Panel content | 262,144 characters of markdown, 1,048,576 of SVG, 4,194,304 of HTML |
 
 [The host API](host.md) has every call and the rule behind each budget.

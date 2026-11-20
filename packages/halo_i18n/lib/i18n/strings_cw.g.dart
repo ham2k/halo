@@ -2976,6 +2976,13 @@ class _Translations$settings$accounts$cw extends Translations$settings$accounts$
 	@override String get disconnect => '—·· ·· ··· —·—· ——— —· —· · —·—· —';
 	@override String get connectedAs => '—·—· ——— —· —· · —·—· — · —·· / ·— ···';
 	@override String get test => '— · ··· —';
+	@override String get chooseFile => '—·—· ···· ——— ——— ··· · / ··—· ·· ·—·· · …';
+	@override String get removeFile => '·—· · —— ——— ···— ·';
+	@override String get noFileChosen => '—· ——— / ··—· ·· ·—·· · / —·—· ···· ——— ··· · —·';
+	@override String get fileChosen => '··—· ·· ·—·· · / —·—· ···· ——— ··· · —·';
+	@override String fileTooLarge({required Object name, required Object size}) => '${name} / ·· ··· / — ——— ——— / ·—·· ·— ·—· ——· · ———··· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· — / — ·— —·— · ··· / ·— / ··—· ·· ·—·· · / ——— ··—· / ··— ·——· / — ——— / ${size} / —·— —···';
+	@override String fileUnreadable({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ·—· · ·— —·· / — ···· ·— — / ··—· ·· ·—·· · ———··· / ${error}';
+	@override String fileEmpty({required Object name}) => '${name} / ·· ··· / · —— ·——· — —·——';
 	@override String saveFailed({required Object error}) => '··· ·— ···— · / ··—· ·— ·· ·—·· · —·· ———··· / ${error}';
 	@override String loginFailed({required Object error}) => '·—·· ——— ——· ·· —· / ··—· ·— ·· ·—·· · —·· ———··· / ${error}';
 	@override String get lookupFailed => '·— —·—· —·—· ——— ··— —· — ··· / ·— ·—· · / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·—· ·· ——· ···· — / —· ——— ·—— / — / — ·—· —·—— / ·— ——· ·— ·· —· / ·· —· / ·— / —— ——— —— · —· —';
@@ -7360,6 +7367,13 @@ extension on TranslationsCw {
 			'settings.accounts.disconnect' => '—·· ·· ··· —·—· ——— —· —· · —·—· —',
 			'settings.accounts.connectedAs' => '—·—· ——— —· —· · —·—· — · —·· / ·— ···',
 			'settings.accounts.test' => '— · ··· —',
+			'settings.accounts.chooseFile' => '—·—· ···· ——— ——— ··· · / ··—· ·· ·—·· · …',
+			'settings.accounts.removeFile' => '·—· · —— ——— ···— ·',
+			'settings.accounts.noFileChosen' => '—· ——— / ··—· ·· ·—·· · / —·—· ···· ——— ··· · —·',
+			'settings.accounts.fileChosen' => '··—· ·· ·—·· · / —·—· ···· ——— ··· · —·',
+			'settings.accounts.fileTooLarge' => ({required Object name, required Object size}) => '${name} / ·· ··· / — ——— ——— / ·—·· ·— ·—· ——· · ———··· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· — / — ·— —·— · ··· / ·— / ··—· ·· ·—·· · / ——— ··—· / ··— ·——· / — ——— / ${size} / —·— —···',
+			'settings.accounts.fileUnreadable' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ·—· · ·— —·· / — ···· ·— — / ··—· ·· ·—·· · ———··· / ${error}',
+			'settings.accounts.fileEmpty' => ({required Object name}) => '${name} / ·· ··· / · —— ·——· — —·——',
 			'settings.accounts.saveFailed' => ({required Object error}) => '··· ·— ···— · / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
 			'settings.accounts.loginFailed' => ({required Object error}) => '·—·· ——— ——· ·· —· / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
 			'settings.accounts.lookupFailed' => '·— —·—· —·—· ——— ··— —· — ··· / ·— ·—· · / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·—· ·· ——· ···· — / —· ——— ·—— / — / — ·—· —·—— / ·— ——· ·— ·· —· / ·· —· / ·— / —— ——— —— · —· —',
@@ -7506,6 +7520,8 @@ extension on TranslationsCw {
 			'settings.station.audioOutputDefault' => '— ···· · / ··· —·—— ··· — · —— ·————· ··· / —·· · ··—· ·— ··— ·—·· — / ——— ··— — ·——· ··— —',
 			'settings.station.audioDevicesUnlisted' => ({required Object name}) => '${name} / —·——· —·· · ···— ·· —·—· · ··· / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—·· ·· ··· — · —·· —·——·—',
 			'settings.station.audioOnThisComputer' => '——— —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.audioOnThisDevice' => '——— —· / — ···· ·· ··· / —·· · ···— ·· —·—· ·',
 			'settings.station.audioOnTheRadio' => '——— —· / — ···· · / ·—· ·— —·· ·· ———',
 			'settings.station.audioThroughCard' => ({required Object name}) => '— ···· ·—· ——— ··— ——· ···· / ${name}',
@@ -7513,8 +7529,6 @@ extension on TranslationsCw {
 			'settings.station.audioMute' => ({required Object name}) => '—— ··— — · / ${name}',
 			'settings.station.audioUnmute' => ({required Object name}) => '··— —· —— ··— — · / ${name}',
 			'settings.station.audioMixAllMuted' => '—— ··— — · —··',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.audioMixMuted' => ({required Object names}) => '—— ··— — · —·· ———··· / ${names}',
 			'settings.station.receiveAudioOutputMissing' => ({required Object name}) => '${name} / —·——· —· ——— — / —·—· ——— —· —· · —·—· — · —·· —·——·—',
 			'settings.station.receiveAudioDelay' => '·—· · —·—· · ·· ···— · / ·— ··— —·· ·· ——— / —— ·— —··— / —··· ··— ··—· ··—· · ·—· ·· —· ——·',
@@ -8020,6 +8034,8 @@ extension on TranslationsCw {
 			'settings.station.voiceDialectKx' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ··——— —··—· —·— —··— ···—— / —·——· ··· ·—— ·· — —·—· ···· / — ·— ·——· ··· —·——·—',
 			'settings.station.voiceDialectK3' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ···—— —··—· —·— ···—— ··· / ·—— ·· — ···· / —·— —·· ···— ·—· ···—— / —·——· ··· ·—— ·· — —·—· ···· / — ·— ·——· ··· —·——·—',
 			'settings.station.placeholderDiagnostic' => '··· ·· —— ··— ·—·· ·— — · —··',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderWholeNumberInvalid' => '—— ··— ··· — / —··· · / ·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· ——··—— / ————— / ——— ·—· / —— ——— ·—· ·',
 			'settings.station.placeholderFreqInvalid' => '—— ··— ··· — / —··· · / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·· —· / —·— ···· ——·· ——··—— / ——· ·—· · ·— — · ·—· / — ···· ·— —· / ——·· · ·—· ———',
 			'settings.station.placeholderModeInvalid' => '—— ··— ··· — / —··· · / ·— / —— ——— —·· · / —· ·— —— · ——··—— / · ·—·—·— ——· ·—·—·— / ··— ··· —··· ——··—— / —·—· ·—— ——··—— / ··—· — ———··',
@@ -8027,8 +8043,6 @@ extension on TranslationsCw {
 			'settings.station.simulatedSwitchRadios' => '·—· ·— —·· ·· ——— / ·——· ——— ·—· — ···',
 			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => '·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· ——··—— / ${min} / — ——— / ${max}',
 			'settings.station.switchLayout' => '·—·· ·— —·—— ——— ··— —',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.switchLayoutDescription' => '·—— ···· ·· —·—· ···· / ··· ·· —·· · / ——— ··—· / — ···· · / ··· ·—— ·· — —·—· ···· / —·—— ——— ··— ·—· / ·—· ·— —·· ·· ——— ··· / ·— ·—· · / ·——· ·—·· ··— ——· ——· · —·· / ·· —· — ——— ·—·—·—',
 			'settings.station.switchLayoutRequired' => '—·—· ···· ——— ——— ··· · / ···· ——— ·—— / — ···· · / ··· ·—— ·· — —·—· ···· / ·· ··· / ·—— ·· ·—· · —··',
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => '— ···· · / ··· ·—— ·· — —·—· ···· / ·—· · ··—· ··— ··· · —·· / ·—··—· ${command} ·—··—· / —·——· · ·—· ·—· ——— ·—· / ${code} —·——·—',
@@ -8534,6 +8548,8 @@ extension on TranslationsCw {
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => '— ···· · / —·· ——— ·—— —· ·—·· ——— ·— —·· / ···· ·— —·· / ——— —· ·—·· —·—— / ${imported} / ——— ··—· / — ···· · / ${existing} / ·—· · —·—· ——— ·—· —·· ··· / ——— —· / — ···· ·· ··· / —·· · ···— ·· —·—· · ——··—— / ··· ——— / — ···· · / ——— —· · ··· / ·· — / ·—·· · ··—· — / ——— ··— — / ·—— · ·—· · / —·— · ·——· — ·—·—·— / ·—· · ··—· ·—· · ··· ···· ·· —· ——· / ·· — / ·· —· / ··· · — — ·· —· ——· ··· / › / ——— ··—· ··—· ·—·· ·· —· · / —·· ·— — ·— / ·— —·—· —·—· · ·——· — ··· / ·· — / ·— —· —·—— ·—— ·— —·—— ·—·—·—',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '·· —— ·——· ——— ·—· — · —·· / ${count} / ·—· · —·—· ——— ·—· —·· / ··—· ——— ·—· / ${label} ·—·—·—', other: '·· —— ·——· ——— ·—· — · —·· / ${count} / ·—· · —·—· ——— ·—· —·· ··· / ··—· ——— ·—· / ${label} ·—·—·—', ), 
 			'dataFiles.importedData' => ({required Object label}) => '·· —— ·——· ——— ·—· — · —·· / —·· ·— — ·— / ··—· ——— ·—· / ${label} ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.cleanedUpTitle' => '—·—· ·—·· · ·— —· · —·· / ··— ·——· / · —··— — · —· ··· ·· ——— —· / —·· ·— — ·—',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '·—· · —— ——— ···— · —·· / —·· ·— — ·— / ··—· ——— ·—· / ${count} / —·· ·— — ·— / ··—· ·· ·—·· · / ··—· ·—· ——— —— / · —··— — · —· ··· ·· ——— —· ··· / —· ——— / ·—·· ——— —· ——· · ·—· / ·· —· ··· — ·— ·—·· ·—·· · —·· ·—·—·—', other: '·—· · —— ——— ···— · —·· / —·· ·— — ·— / ··—· ——— ·—· / ${count} / —·· ·— — ·— / ··—· ·· ·—·· · ··· / ··—· ·—· ——— —— / · —··— — · —· ··· ·· ——— —· ··· / —· ——— / ·—·· ——— —· ——· · ·—· / ·· —· ··· — ·— ·—·· ·—·· · —·· ·—·—·—', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / —··—· / ${total} / ·—· · —·—· ——— ·—· —·· ···',
@@ -8541,8 +8557,6 @@ extension on TranslationsCw {
 			'dataFiles.definitionUnavailable' => '— ···· · / ··—· ·· ·—·· · ·————· ··· / ··· ——— ··— ·—· —·—· · / —·· ·· —·· —· ·————· — / ·——· ·—· ——— ···— ·· —·· · / ·— / —·· · ··—· ·· —· ·· — ·· ——— —· / — / ·· — ··· / · —··— — · —· ··· ·· ——— —· / —— ·— —·—— / —··· · / —— ·· —·· —····— ·—· · ··· — ·— ·—· — / ——— ·—· / —— ·· ··· —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ·· —· / ·— / —— ——— —— · —· — ·—·—·—',
 			'updates.updateAvailable' => '··— ·——· —·· ·— — · / ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'updates.newVersionAvailable' => ({required Object version}) => '·— / —· · ·—— / ···— · ·—· ··· ·· ——— —· / —·——· ${version} —·——·— / ·· ··· / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'updates.getIt' => '——· · — / ·· —',
 			'updates.ok' => '——— —·—',
 			'updates.updateReady' => '··— ·——· —·· ·— — · / ·—· · ·— —·· —·——',
