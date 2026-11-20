@@ -312,6 +312,27 @@ void main() {
     expect(sink.problems.last, t.settings.station.spectrumNoPanadapter);
   });
 
+  // The operator reads this as a crop's reason over the band scope: a code there is the radio's,
+  // not theirs.
+  test('a pan the radio turns down is said in words, its code left to the log', () {
+    final sink = _Sink();
+    final own = FlexPanSpectrum(
+      send: (command, {onReply}) {
+        if (onReply != null) replies[command] = onReply;
+      },
+      sink: sink,
+      pans: pans,
+      ownPanAt: () => 14074,
+    )..subscribe();
+    own
+      ..start()
+      ..socketReady();
+    replies['display pan create x=2048 y=400']!(0x50000016, '');
+    expect(sink.problems.last, t.settings.station.spectrumNoSweepToSpare, reason: 'the slice has its pan: this one is for a narrower display');
+    expect(own.turnedDown, isTrue);
+    own.close();
+  });
+
   // The socket coming back shapes the pan again; at the first centre a display asked, it would
   // jump away from where the display has since moved it.
   test("a pan of the scope's own is shaped again where a display last put it", () {

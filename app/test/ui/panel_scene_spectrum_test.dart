@@ -1273,6 +1273,97 @@ void main() {
     expect(find.text('Cropped from a wider sweep. No pan free'), findsNothing, reason: 'the problem is why nothing is drawn');
   });
 
+  // Up for good, the caption covers the picture's corner for as long as the radio has no sweep to
+  // spare; shown again on every zoom or retry, it repeats what the operator has already read.
+  testWidgets('a crop caption shows for ten seconds, and not again for the same reason', (tester) async {
+    const why = 'Cropped from a wider sweep. No pan free';
+    final source = _Source()..croppedText = why;
+    await _show(tester, source: source);
+    source.controller.add(_frame());
+    await tester.pump();
+    await tester.pump();
+    expect(find.text(why), findsOneWidget);
+    await tester.pump(const Duration(seconds: 9));
+    expect(find.text(why), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text(why), findsNothing);
+    source.notifyListeners();
+    source.controller.add(_frame(30));
+    await tester.pump();
+    expect(find.text(why), findsNothing, reason: 'the view changing gives no new reason');
+    source
+      ..croppedText = 'Cropped from a wider sweep. 3 narrower sweeps of this radio are already running'
+      ..notifyListeners();
+    await tester.pump();
+    expect(find.textContaining('3 narrower sweeps'), findsOneWidget, reason: 'a new reason is news');
+  });
+
+  // Back after the radio dropped, the crop is a new state of a new connection, worth saying again.
+  testWidgets('a crop caption shows again once the picture went and came back', (tester) async {
+    const why = 'Cropped from a wider sweep. No pan free';
+    final source = _Source()..croppedText = why;
+    await _show(tester, source: source);
+    source.controller.add(_frame());
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 10));
+    expect(find.text(why), findsNothing);
+    source
+      ..problemText = 'The radio is not connected'
+      ..notifyListeners();
+    await tester.pump();
+    source
+      ..problemText = null
+      ..notifyListeners();
+    source.controller.add(_frame());
+    await tester.pump();
+    await tester.pump();
+    expect(find.text(why), findsOneWidget);
+  });
+
+  // Counted down behind the "waiting" message, the caption's one showing would be spent unread.
+  testWidgets('a crop caption a pause in the sweeps covers shows in full once they return', (tester) async {
+    followFakeClock();
+    const why = 'Cropped from a wider sweep. No pan free';
+    final source = _Source()..croppedText = why;
+    await _show(tester, source: source);
+    source.controller.add(_frame());
+    await tester.pump();
+    await tester.pump();
+    expect(find.text(why), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.text('waiting'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 10));
+    source.controller.add(_frame());
+    await tester.pump();
+    await tester.pump();
+    expect(find.text(why), findsOneWidget);
+    for (var second = 0; second < 9; second++) {
+      await tester.pump(const Duration(seconds: 1));
+      source.controller.add(_frame());
+    }
+    await tester.pump();
+    expect(find.text(why), findsOneWidget, reason: 'its ten seconds start over');
+  });
+
+  // Hidden, the pane gives up its scope, which may restart refused the same way: unseen, the crop is news again.
+  testWidgets('a crop caption shows again once its pane was hidden and shown', (tester) async {
+    const why = 'Cropped from a wider sweep. No pan free';
+    final source = _Source()..croppedText = why;
+    await _show(tester, source: source);
+    source.controller.add(_frame());
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 10));
+    expect(find.text(why), findsNothing);
+    await _show(tester, source: source, visible: false);
+    await _show(tester, source: source);
+    source.controller.add(_frame());
+    await tester.pump();
+    await tester.pump();
+    expect(find.text(why), findsOneWidget);
+  });
+
   // A scene's window stands in for a sweep that stopped coming, the radio gone with it: a caption
   // over that picture would explain a crop of nothing.
   testWidgets('a display standing in for a sweep says nothing of a crop', (tester) async {

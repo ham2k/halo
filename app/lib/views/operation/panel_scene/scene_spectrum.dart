@@ -395,6 +395,17 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   /// — not a timer per sweep, which would be thirty made and cancelled a
   /// second.
   Timer? _staleTimer;
+
+  /// The crop captions this display has shown ([_cropCaption]), the one up
+  /// now, and when it goes.
+  final _cropsShown = <String>{};
+  String? _cropShowing;
+  Timer? _cropTimer;
+
+  void _cropShown() {
+    if (mounted) setState(() => _cropShowing = null);
+  }
+
   int _lastFrameMillis = 0;
   final _texts = SpectrumTextCache();
   final _vfoLabelBox = _VfoLabelBox();
@@ -553,6 +564,8 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     if (_recenters == false && !_sweepless) _recenters = null;
     _follow();
     if (!mounted) return;
+    if (_uuid case final uuid? when widget.source?.problem(uuid) != null) _forgetCrops();
+    _noteCrop();
     _labelDial();
     _keepInView(realNowMillis());
     _tellReadouts();
@@ -610,6 +623,8 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     _subscription = null;
     _staleTimer?.cancel();
     _staleTimer = null;
+    // Hidden, or on another radio: the scope may stop and start again meanwhile, unseen.
+    if (uuid != _uuid) _forgetCrops();
     _uuid = uuid;
     if (uuid == null) return;
     _subscription = widget.source!.frames(uuid, this).listen((frame) {
@@ -621,6 +636,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
         setState(() {
           _stale = true;
           _standIn();
+          _noteCrop();
         });
       }
     });
@@ -673,6 +689,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     _frame = _window(_sweep!);
     _tellReadouts();
     _stale = false;
+    final cropMoved = _noteCrop();
     // The real clock: a frame rate is about the screen in front of the
     // operator, and must not travel with the app clock.
     final now = realNowMillis();
@@ -686,7 +703,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     _labelDial();
     _keepInView(now);
     if (_spec.waterfall) _feedWaterfall(sweep, now);
-    if (wasStale) {
+    if (wasStale || cropMoved) {
       setState(() {});
     } else if (now - _lastPaintMillis >= 1000 / (_number(_spec.fps) ?? _defaultFps).clamp(1, 60)) {
       _lastPaintMillis = now;
@@ -885,6 +902,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     _subscription?.cancel();
     if (_shown case (final source, final uuid, _, _)) source.showWidth(uuid, this, null);
     _staleTimer?.cancel();
+    _cropTimer?.cancel();
     _settleTimer?.cancel();
     _tuneTimer?.cancel();
     _glide.dispose();

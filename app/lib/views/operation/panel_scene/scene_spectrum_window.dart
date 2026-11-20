@@ -7,7 +7,19 @@
 
 part of 'scene_spectrum.dart';
 
+/// How long a crop caption stays up ([_SpectrumWindow._cropCaption]).
+const _cropShowFor = Duration(seconds: 10);
+
 extension _SpectrumWindow on _SceneSpectrumViewState {
+  /// The crop captions shown so far, which the display hidden, another radio
+  /// shown, or the radio's picture gone makes worth showing again.
+  void _forgetCrops() {
+    _cropsShown.clear();
+    _cropShowing = null;
+    _cropTimer?.cancel();
+    _cropTimer = null;
+  }
+
   /// The scene's `window` over a live sweep: where the window shown stays.
   /// Null with none, and while it stands in for the sweep, which holds it.
   (double, double)? get _home => _sweepless ? null : _spec.window;
@@ -91,12 +103,40 @@ extension _SpectrumWindow on _SceneSpectrumViewState {
     );
   }
 
+  /// Puts a crop's reason up for [_cropShowFor] the first time this display
+  /// can show it ([_cropCaption]), and not again until the display is hidden,
+  /// shows another radio, or the radio's picture goes ([_forgetCrops]): a
+  /// zoom, a pan or a retry refused alike says nothing the operator has not
+  /// read. One a problem or a pause in the sweeps covers before its time is
+  /// up is taken back, to show in full once the picture returns. The crop
+  /// ending takes it down for good. True when what is up changed, which a
+  /// sweep that does not otherwise rebuild the display must then do.
+  bool _noteCrop() {
+    final (source, uuid, was) = (widget.source, _uuid, _cropShowing);
+    final why = source == null || uuid == null ? null : source.cropped(uuid, this);
+    if (why == null) {
+      _cropShowing = null;
+      _cropTimer?.cancel();
+    } else if (_sweepless || _stale || source!.problem(uuid!) != null) {
+      if (_cropShowing == why) {
+        _cropsShown.remove(why);
+        _cropShowing = null;
+        _cropTimer?.cancel();
+      }
+    } else if (_cropsShown.add(why)) {
+      _cropShowing = why;
+      _cropTimer?.cancel();
+      _cropTimer = Timer(_cropShowFor, _cropShown);
+    }
+    return _cropShowing != was;
+  }
+
   /// Why this display crops a coarser sweep than its own, in a corner of the
-  /// picture: small, as what it draws is still the receiver, and letting
-  /// clicks and drags through to the sweep beneath.
+  /// picture, while [_noteCrop] has it up: small, as what it draws is still
+  /// the receiver, and letting clicks and drags through to the sweep beneath.
   Widget? _cropCaption(BuildContext context, String? uuid) {
     final why = uuid == null ? null : widget.source?.cropped(uuid, this);
-    if (why == null) return null;
+    if (why == null || why != _cropShowing) return null;
     final theme = Theme.of(context);
     return Positioned(
       left: Space.xs,

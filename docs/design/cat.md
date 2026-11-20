@@ -4350,8 +4350,15 @@ has moved away from it. No more than three sweeps run beyond the widest
 (`spectrumExtraScopesMax`), each a pan of the radio's or a transform of
 every sample; a display past them crops the narrowest that covers it. A
 display cropping a coarser sweep than its own says why in a small caption
-over its picture (`CatService.spectrumCroppedWhy`): the radio's reason, or
-the cap. Otherwise it would look like a radio that resolves nothing finer. An
+over its picture (`CatService.spectrumCroppedWhy`): the radio's reason, in
+words with no code of the radio's (that goes to the console log), or the cap.
+Otherwise it would look like a radio that resolves nothing finer. The caption
+is up for ten seconds the first time the display can show that reason, and
+not again for it until the display is hidden, shows another radio, or the
+picture goes (the radio dropping, its scope stopping) and comes back: a zoom,
+a pan or a retry refused alike would only repeat what the operator has read.
+One a problem or a pause in the sweeps covers before its ten seconds are up
+shows in full once the picture returns. An
 SDR's IQ, at up to 2.4 MS/s and not sized by the app, gets none yet, and a
 radio with one scope (Icom, K4) crops as before.
 

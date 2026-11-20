@@ -158,9 +158,11 @@ class FlexPanSpectrum implements FlexSliceSpectrum, SpectrumScope {
         // `0x40000003,0x42000003`: the pan, then its waterfall.
         final pan = body.split(',').first.trim().toLowerCase();
         if (code != 0 || !pan.startsWith('0x')) {
-          if (code == 0) debugPrint('[flex] a pan made with no id HaLo can read: "$body"');
           turnedDown = code != 0;
-          if (_wanted) sink?.reportSpectrumProblem('${t.settings.station.spectrumNoPanadapter} (0x${code.toRadixString(16)})');
+          // The radio's code is for the log: the operator reads only why, as a crop's reason over
+          // a display this extra pan was for.
+          debugPrint(turnedDown ? '[flex] a pan was turned down: 0x${code.toRadixString(16)}' : '[flex] a pan made with no id HaLo can read: "$body"');
+          if (_wanted) sink?.reportSpectrumProblem(t.settings.station.spectrumNoSweepToSpare);
           return;
         }
         _made = pan;
