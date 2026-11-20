@@ -186,7 +186,9 @@ spots board. `dist/index.d.ts` has the rest.
   something came from. Sub-keys (a second settings panel, a chasing program)
   are `<key>_suffix`.
 - **Declare the lowest `api` that has what you use**, and raise it when you
-  reach for something newer: `docs/packaging.md` lists what each level added.
+  reach for something newer, with a new minor version (1.2.x → 1.3.0): the
+  catalog refuses a patch that changes it. `docs/packaging.md` lists what
+  each level added.
   The packer enforces a few of these (`webSockets` 2, `chasing` 9, the
   cluster 10, `requiresRadioRaw` 11, `assistant` 21, `requiresDraftWrite`
   22, `requiresLayoutControl` 23, `integration` 29); the rest install on an older app and fail there. The scaffold's

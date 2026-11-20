@@ -132,20 +132,12 @@ grant for your callsign prefix, which the same page is where you ask for.
 A directory is packaged first, exactly as `h2kext-pack` would; a `.h2kext`
 you already made is sent as it is. A bundle must be 16 MiB or smaller: the
 app never downloads more than that, the catalog refuses more than that, and
-the command refuses it before sending a byte. A version's bytes are frozen
-the first time a reviewer approves them: from then on the same version with
-different bytes is refused, so a fix is a new version.
+the command refuses it before sending a byte.
 
-Release notes go up in a second request, once the upload is accepted. If
-that request is refused, the version is still published — the command says
-so and exits 1, and you can write the notes on the site, where they can be
-edited at any time.
-
-The result line reads `published w7abc-notes 1.2.3 → prod (pending review)`.
-"Pending review" means a Ham2K reviewer has not looked yet — the version is
-stored, but nobody can install it until they approve it, and your dashboard on
-the site shows the outcome and any note. Every refusal prints the catalog's
-reason and exits 1; nothing is retried.
+The result line reads `published w7abc-notes 1.2.3 → stable (pending review)`.
+Every refusal prints the catalog's reason and exits 1; nothing is retried.
+What the catalog checks and refuses, review, release notes and versioning
+are on the [Publishing](https://catalog.ham2k.net/docs/publishing) page.
 
 A channel says how finished a release is — `stable`, `unstable`, `bleeding` —
 not which app edition is asking. They cascade upward, so `stable` reaches

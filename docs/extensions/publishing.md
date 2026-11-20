@@ -179,7 +179,12 @@ before uninstalling the old one.
   for a change that breaks what an operator had set up.
 - `api` is the lowest level that has what you use ([Packaging](packaging.md#api-levels)).
   Raising it narrows who can install the release; the catalog keeps offering
-  an older app the newest release it can run.
+  an older app the newest release it can run. So raise it with a new minor
+  version (1.2.x → 1.3.0), and the 1.2 line can still take fixes for the
+  apps that speak only its level. The catalog refuses a release whose `api`
+  differs from the newest version in its minor line, is lower than an
+  earlier version's, or is higher than a later one's, counting every
+  version but those it rejected or you withdrew.
 - Raise a chasing program's `program.version` whenever the same contacts
   would claim something different.
 - Keep the key. Everything the operator has stored hangs off it.

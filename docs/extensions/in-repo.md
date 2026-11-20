@@ -399,6 +399,15 @@ that fail the check. How the app manages installed extensions, pre-loads,
 the retired built-ins, revocations and a lost store is in
 [docs/design/extension-install.md](../design/extension-install.md).
 
+## The open API level
+
+New SDK surface goes in the open level, the one after the newest released
+level: `mise run api:status` names it, and `mise run api:open` opens it when
+none is. Dev builds speak it, and the extensions here can build for it with
+this repository's tools, which npm's do not yet describe. The catalog takes
+a release built for it on `unstable` or `bleeding` only, until the catalog
+takes that level as released, after the Next build that ships it.
+
 ## The host and the app
 
 - `packages/halo_extension_host` runs the JS engine on a background isolate:
