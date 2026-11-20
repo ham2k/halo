@@ -1497,7 +1497,8 @@
     "actionError": "Error: ${error}",
     "removeItem": "Delete",
     "deleteItemTitle": "Delete ${name}?",
-    "storageUnavailable": "Logins unavailable"
+    "storageUnavailable": "Logins unavailable",
+    "notSaved": "Not saved: this change could not be stored"
   },
   "qsoEditForm": {
     "title": "Edit QSO",

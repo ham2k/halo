@@ -150,6 +150,7 @@ runs and the error names the budget.
 | `host.fetch` in flight | 8 per bundle; a ninth is refused, not queued |
 | `host.fetch` bodies | 16 MiB each way |
 | Key-value storage | 10 keys per bundle, each key plus value at most 4,096 characters of JSON |
+| Keychain values | 10 keys per bundle, each key plus value at most 4,096 characters of JSON |
 | Status bar | 8 keys per extension; strings at most 1,024 characters; updates reach the footer at most every 100 ms |
 | FYI line | 4 messages per extension; `text` at most 256 characters, other strings 1,024; posts reach the line at most once a second |
 | Notices | 10 a minute; text at most 16,384 characters |
@@ -177,13 +178,14 @@ the app leans on it everywhere:
 - an account's `kvKey`, a settings panel's key and a chasing program's key
   are your key or your key plus `_suffix`.
 
-There are four places to keep things, and they are not interchangeable:
+There are five places to keep things, and they are not interchangeable:
 
 | Where | Call | Lives | For |
 | --- | --- | --- | --- |
 | Key-value store | `host.kvGet` / `host.kvSet` | in memory, for the session; a runtime restart clears it | session state: a token, a cursor, a cache of one answer |
 | Settings | `host.getSettings` / `host.setSettings`, a `settingsPanel` | persisted by the app, shown to the operator | preferences, anything the operator should be able to see and change |
 | Account credentials | the `account` hook | the platform keychain | logins, API keys the operator owns |
+| Keychain values | `host.keychainSet`, read on `ctx.keychain` | the platform keychain | other secrets the operator enters, such as a list of API keys |
 | Panel configuration | a panel's `form` | persisted per placed panel | what one pane shows |
 
 `host.secret()` reads a value built into the app, and answers `null` for an

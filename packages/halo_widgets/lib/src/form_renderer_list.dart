@@ -150,13 +150,14 @@ mixin _ListFields on State<FormRenderer> {
           )
         else
           for (var i = 0; i < items.length; i++) rowFor(i),
-        Padding(
-          padding: _rowContentPadding,
-          child: TextButton.icon(
-            onPressed: _isSubmitting ? null : () => actions.editItem(null),
-            icon: const Icon(MdiIcons.plus, size: 18),
-            label: Text(t.formChrome.addItem(label: itemLabel)),
-          ),
+        // A row like the items above it, not a button: in a settings list
+        // every other thing to tap is a row.
+        ListTile(
+          contentPadding: _rowContentPadding,
+          leading: const Icon(MdiIcons.plus),
+          title: Text(t.formChrome.addItem(label: itemLabel)),
+          onTap: _isSubmitting ? null : () => actions.editItem(null),
+          mouseCursor: SystemMouseCursors.click,
         ),
       ],
     );

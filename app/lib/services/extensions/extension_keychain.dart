@@ -18,7 +18,13 @@ import '../error_reporting_service.dart';
 import 'extension_store_settings.dart' show isExtensionPanelIdOf, renamedExtensionPanelId;
 
 /// Every shape a key `<extension>` may own, as a prefix that ends in `_`.
-List<String> _prefixesFor(String key) => ['settingsPanel_secret_${key}_', 'account_creds_${key}_', 'account_session_${key}_'];
+List<String> _prefixesFor(String key) => ['settingsPanel_secret_${key}_', 'account_creds_${key}_', 'account_session_${key}_', extensionKeychainPrefix(key)];
+
+/// Where `host.keychainSet` keeps [extensionKey]'s values: an extension key
+/// has no `_`, so the first one after it ends it.
+String extensionKeychainPrefix(String extensionKey) => 'extensionKeychain_${extensionKey}_';
+
+String extensionKeychainItemName(String extensionKey, String key) => '${extensionKeychainPrefix(extensionKey)}$key';
 
 /// The two that are the bare key rather than a prefix of one.
 List<String> _exactFor(String key) => ['account_creds_$key', 'account_session_$key'];

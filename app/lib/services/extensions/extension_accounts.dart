@@ -19,6 +19,7 @@ mixin _ExtensionAccounts {
   ExtensionHost? get host;
   ExtensionHost? get _host;
   Future<void>? get _starting;
+  ExtensionKeychainValues get keychainValues;
 
   final FlutterSecureStorage _secureStorage = EditionSecureStorage();
 
@@ -268,9 +269,12 @@ mixin _ExtensionAccounts {
 
   /// Copies every keychain item [from] owned onto [to] — the keychain half
   /// of what `SettingsService.copyExtensionRecords` does for prefs, and what
-  /// keeps an operator logged in when an extension changes its key.
-  Future<void> copyExtensionSecrets({required String from, required String to}) =>
-      copyExtensionKeychainItems(_secureStorage, from: from, to: to, copyOne: _copyAccountItem);
+  /// keeps an operator logged in when an extension changes its key. The
+  /// values it kept itself go by their recorded names ([ExtensionKeychainValues.copy]).
+  Future<void> copyExtensionSecrets({required String from, required String to}) async {
+    await copyExtensionKeychainItems(_secureStorage, from: from, to: to, copyOne: _copyAccountItem);
+    await keychainValues.copy(from: from, to: to);
+  }
 
   /// Reads one account item and writes it under another name, each with the
   /// options its own key resolves to. The fallback the keychain copy uses

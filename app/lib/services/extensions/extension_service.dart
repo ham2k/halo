@@ -30,6 +30,7 @@ import 'export_type_registry.dart';
 import 'extension_account_cache.dart';
 import 'extension_info.dart';
 import 'extension_keychain.dart';
+import 'extension_keychain_values.dart';
 import 'extension_force_disable.dart';
 import 'extension_refusals.dart';
 import 'extension_messages.dart';
@@ -282,6 +283,15 @@ class ExtensionService
   /// HaLoServices wires it, which simply means nothing is adopted.
   @override
   CatalogService? catalog;
+
+  /// What each extension keeps in the keychain with `host.keychainSet`.
+  @override
+  late final keychainValues = ExtensionKeychainValues(
+    _secureStorage,
+    names: () => settings?.extensionSecretNames ?? const {},
+    recordName: (name) async => settings?.recordExtensionSecretName(name),
+    forgetName: (name) async => settings?.forgetExtensionSecretNames((recorded) => recorded == name),
+  );
 
   /// Who may call `getLocation` (manifest.json `requiresLocation`), resolved
   /// once at load time in [_start].

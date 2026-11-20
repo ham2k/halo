@@ -165,6 +165,20 @@ plus its JSON value at most **4,096 characters**; a `kvSet` past either
 throws, and setting `null` frees the key. For a session token, a cursor, the
 last answer. Not a cache, not a database.
 
+### `host.keychainSet(key, value)`
+
+Extension API 31. Keeps `value`, any JSON, in the platform's secure storage
+under `key`, for your extension alone; `null` removes it. For what the
+operator enters that must not sit in plain settings, such as an API key the
+operator pastes. Your hooks read it back on `ctx.keychain`, an object of
+every key you keep (`{}` with none), from their next call. `ctx.keychain` is
+absent, not empty, when secure storage could not be read: say so rather
+than treating it as nothing entered. The limits are those of `kvSet`, 10
+keys of at most 4,096 characters each; a `keychainSet` past either rejects,
+as it does where secure storage cannot be written. Removing your extension
+removes them. A settings panel that saves its own values keeps its secrets
+here ([Settings panels](settings.md#the-secret-field-type)).
+
 ### `host.getSettings()` / `host.setSettings(values)`
 
 `getSettings` is the whole read view: the app's resolved core values (theme,

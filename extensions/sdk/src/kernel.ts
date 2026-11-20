@@ -555,6 +555,7 @@ for (const method of [
   "kvSet",
   "getAccount",
   "setAccountSession",
+  "keychainSet",
   "setSettings",
   "showForm",
   "showMessage",
@@ -718,6 +719,12 @@ function boundHostCallFor(extensionKey: string) {
       })
     }
     if (method === "updateScene") return pushScene(extensionKey, params)
+    if (method === "keychainSet") {
+      // Dropped again once the write lands: a hook call fetching in between
+      // would otherwise hold the old values for the cache's whole life.
+      cachedKeychains.delete(extensionKey)
+      return dispatchHostCall(method, params, extensionKey, extensionKey).finally(() => cachedKeychains.delete(extensionKey))
+    }
     return dispatchHostCall(method, params, extensionKey, extensionKey, kvKey, duringPanelEvent)
   }
 }
@@ -969,10 +976,12 @@ const CONTEXT_CACHE_TTL_MILLIS = 3000
 // let every one of them miss before the first fetch resolves.
 let cachedSettings: { value: Promise<unknown>; at: number } | null = null
 const cachedAccounts = new Map<string, { value: Promise<unknown>; at: number }>()
+const cachedKeychains = new Map<string, { value: Promise<unknown>; at: number }>()
 
 function invalidateContext() {
   cachedSettings = null
   cachedAccounts.clear()
+  cachedKeychains.clear()
 }
 
 function getSettingsContext(): Promise<unknown> {
@@ -1007,6 +1016,23 @@ function getAccountContext(extensionKey: string): Promise<unknown> {
   return value
 }
 
+/// What [extensionKey] keeps with `host.keychainSet`, for `ctx.keychain`.
+/// Cached as the account is, and on the same trusted path: the host answers
+/// the kernel's own record of who this is.
+function getKeychainContext(extensionKey: string): Promise<unknown> {
+  const cached = cachedKeychains.get(extensionKey)
+  if (cached && realNow() - cached.at < CONTEXT_CACHE_TTL_MILLIS) return cached.value
+  const value = (async () => {
+    try {
+      return (await dispatchHostCall("getKeychain", {}, extensionKey, extensionKey)) as unknown
+    } catch (e) {
+      return undefined
+    }
+  })()
+  cachedKeychains.set(extensionKey, { value, at: realNow() })
+  return value
+}
+
 /// The uuid of the `operation` a hook was handed, if it was handed one — the
 /// operation a `getSpots` call judges its spots against unless told another.
 function operationUuidOf(args: unknown): string | undefined {
@@ -1026,9 +1052,12 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
   if (typeof member !== "function") return member
   // An unattributed record's key is a claim (HookRecord.unattributed), and
   // the one thing the claim could buy is that extension's account.
-  const account = record.unattributed
-    ? undefined
-    : ((await getAccountContext(record.extensionKey)) as { credentials?: Record<string, string>; session?: Record<string, string> } | undefined)
+  const [account, keychain] = record.unattributed
+    ? [undefined, undefined]
+    : await Promise.all([
+        getAccountContext(record.extensionKey) as Promise<{ credentials?: Record<string, string>; session?: Record<string, string> } | undefined>,
+        getKeychainContext(record.extensionKey) as Promise<Record<string, unknown> | undefined>,
+      ])
   let developerMode = false
   let locale = "en"
   const settings = (await getSettingsContext()) as
@@ -1053,6 +1082,7 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
   const ctx = {
     online,
     account,
+    keychain,
     developerMode,
     locale,
     appName: settings?.appName,

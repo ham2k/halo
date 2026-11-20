@@ -45,6 +45,7 @@ import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'extensions/catalog_service.dart' show CatalogRefused, CatalogUnreachable;
 import 'data_file_manager.dart' show DataFileNotADatabase, DataFileRemoveHookFailed, DataFileUnavailable;
 import 'edition_keychain.dart' show KeychainMoveIncomplete;
+import 'extensions/extension_keychain_values.dart' show ExtensionKeychainUnreadable;
 import 'export_service.dart' show ExportException;
 import 'sets/set_category.dart' show SetFileException;
 import 'extensions/extension_catalog_migration.dart' show BundleWouldNotEvaluate, CatalogNotWired, UpgradeLeftNoRuntime;
@@ -429,6 +430,19 @@ class ErrorPolicy {
           'the move is not this rule\'s, and is reported as usual',
       disposition: ErrorDisposition.logOnly,
       matches: _isKeychainMoveRefused,
+    ),
+    ErrorRule(
+      id: 'extension-keychain-unreadable',
+      reason:
+          'an extension\'s host.keychainSet values could not be read, or one of them would not '
+          'decode. Its hooks are handed no ctx.keychain, or the value is left out, and the extension '
+          'says so to the operator itself (QRZ.com\'s panel and push rows do). It recurs on every '
+          'hook call that reads the values, once per few seconds per extension, for as long as the '
+          'keychain refuses, so the console gets it once per session and nothing more: an upload or '
+          'a notice per read would be the same report hundreds of times',
+      disposition: ErrorDisposition.ignore,
+      logOncePerSession: true,
+      matches: (error, _) => error is ExtensionKeychainUnreadable,
     ),
     ErrorRule(
       id: 'keychain-locked',

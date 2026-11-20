@@ -69,7 +69,7 @@ import { adoptExtensionTimers, clearInterval, clearTimeout, setInterval, setTime
  * `^1.<api>.0` range names the oldest API an extension needs and admits every
  * later one.
  */
-export const API_VERSION = 30
+export const API_VERSION = 31
 
 export * from "./types.ts"
 export * from "./hookCategories.ts"
@@ -616,6 +616,16 @@ export const host = {
 
   async kvSet(key: string, value: JSONValue): Promise<void> {
     await hostCallFn()("kvSet", { ns: currentExtensionKey, key, value })
+  },
+
+  /// Keeps [value] in the platform's secure storage under [key], for this
+  /// extension alone, and `null` removes it: for what the operator enters
+  /// that must not sit in plain settings, such as an API key. Hooks read it
+  /// back on `ctx.keychain` from their next call. At most 10 keys, each key
+  /// and its JSON at most 4,096 characters; rejects past either, and where
+  /// secure storage cannot be written. Extension API 31.
+  async keychainSet(key: string, value: JSONValue): Promise<void> {
+    await hostCallFn()("keychainSet", { key, value })
   },
 
   async setAccountSession(session: Record<string, string>): Promise<void> {

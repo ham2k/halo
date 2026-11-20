@@ -135,6 +135,10 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
   dynamic _lastValidatedValue;
   String? _lastValidationError;
 
+  /// A change [_autosave] could not store, said on its field by the validator
+  /// FormRenderer calls next — once, so the same value can be tried again.
+  ({String fieldKey, Object? value})? _unsaved;
+
   String get _hookKey => widget.descriptor['hookKey'] as String;
   String get _panelKey => widget.descriptor['panelKey'] as String;
   String get _kind => widget.descriptor['kind'] as String;
@@ -225,6 +229,10 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
   }
 
   Future<String?> _validate(String fieldKey, dynamic value, Map<String, dynamic> state) async {
+    if (_unsaved case (fieldKey: final unsavedKey, value: final unsavedValue) when unsavedKey == fieldKey && identical(unsavedValue, value)) {
+      _unsaved = null;
+      return t.formChrome.notSaved;
+    }
     if (_lastValidatedFieldKey == fieldKey && _lastValidatedValue == value) {
       return _lastValidationError;
     }
@@ -249,7 +257,7 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
     final committedValue = _kind == 'dynamic'
         ? await widget.services.extensions.transformSettingsField(hookKey: _hookKey, panelKey: _panelKey, fieldKey: fieldKey, value: value, state: state)
         : value;
-    await widget.services.extensions.commitSettingsFieldValue(
+    final stored = await widget.services.extensions.commitSettingsFieldValue(
       kind: _kind,
       hookKey: _hookKey,
       panelKey: _panelKey,
@@ -259,6 +267,12 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
       isSecret: field['fieldType'] == 'secret',
       restartOnChange: field['restartOnChange'] == true,
     );
+    if (!stored) {
+      // What the operator entered stays in the form, unsaved, rather than
+      // seeming kept or silently dropped.
+      _unsaved = (fieldKey: fieldKey, value: value);
+      return null;
+    }
     // Re-fetch so the panel reflects whatever the commit actually changed —
     // not just this field's own value, but anything getDefinition derives
     // from it (a hook keying labels off ctx.locale, fields that appear/
@@ -267,6 +281,28 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
     // by now it's already false, so this swaps _definition in place with
     // no flash.
     if (mounted) await _load();
+    if (field['fieldType'] == 'list') return _listAsSaved(fieldKey, value, state);
+    return null;
+  }
+
+  /// A list the operator just changed is theirs in the form, which keeps it
+  /// over the reloaded one: its rows would stay as typed, without what the
+  /// panel made of them — a title named for a fetched value, an empty row
+  /// dropped — until the panel is opened again. So it is handed back, from a
+  /// definition fetched here: [_load] may have joined a reload already in
+  /// flight, whose answer can predate the save. Not once the list has
+  /// changed again.
+  Future<Map<String, dynamic>?> _listAsSaved(String fieldKey, Object? value, Map<String, dynamic> state) async {
+    final definition = await widget.services.extensions.getSettingsPanelDefinition(
+      hookKey: _hookKey,
+      panelKey: _panelKey,
+      kind: _kind,
+      extensionKey: widget.descriptor['extensionKey'] as String,
+    );
+    if (!identical(state[fieldKey], value)) return null;
+    for (final el in (definition?['elements'] as List? ?? const []).cast<Map<dynamic, dynamic>>()) {
+      if (el['type'] == 'field' && el['key'] == fieldKey && el.containsKey('value')) return {fieldKey: el['value']};
+    }
     return null;
   }
 

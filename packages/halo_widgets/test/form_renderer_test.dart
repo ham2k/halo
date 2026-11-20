@@ -1167,7 +1167,7 @@ void main() {
       // form — no summary row / "tap to open a dialog" step.
       expect(find.text('Club Roster'), findsOneWidget);
       expect(find.byIcon(MdiIcons.dragHorizontalVariant), findsOneWidget);
-      expect(find.widgetWithText(TextButton, 'Add custom note file'), findsOneWidget);
+      expect(find.widgetWithText(ListTile, 'Add custom note file'), findsOneWidget);
       expect(find.byType(HaloDialog), findsNothing, reason: 'no list-editor dialog should have opened yet');
 
       // Tapping the item opens the itemFields editor dialog directly (the
@@ -1184,7 +1184,7 @@ void main() {
 
       // Add opens the same dialog, titled from itemLabel as well — scoped to
       // the dialog since the Add button behind it shares the same text.
-      await tester.tap(find.widgetWithText(TextButton, 'Add custom note file'));
+      await tester.tap(find.widgetWithText(ListTile, 'Add custom note file'));
       await tester.pumpAndSettle();
       expect(find.descendant(of: find.byType(HaloDialog), matching: find.text('Add custom note file')), findsOneWidget);
       await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Second File');

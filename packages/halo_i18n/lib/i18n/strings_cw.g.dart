@@ -706,6 +706,7 @@ class _Translations$formChrome$cw extends Translations$formChrome$en {
 	@override String get removeItem => '—·· · ·—·· · — ·';
 	@override String deleteItemTitle({required Object name}) => '—·· · ·—·· · — · / ${name} ··——··';
 	@override String get storageUnavailable => '·—·· ——— ——· ·· —· ··· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·';
+	@override String get notSaved => '—· ——— — / ··· ·— ···— · —·· ———··· / — ···· ·· ··· / —·—· ···· ·— —· ——· · / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ··· — ——— ·—· · —··';
 }
 
 // Path: qsoEditForm
@@ -6744,6 +6745,7 @@ extension on TranslationsCw {
 			'formChrome.removeItem' => '—·· · ·—·· · — ·',
 			'formChrome.deleteItemTitle' => ({required Object name}) => '—·· · ·—·· · — · / ${name} ··——··',
 			'formChrome.storageUnavailable' => '·—·· ——— ——· ·· —· ··· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
+			'formChrome.notSaved' => '—· ——— — / ··· ·— ···— · —·· ———··· / — ···· ·· ··· / —·—· ···· ·— —· ——· · / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ··· — ——— ·—· · —··',
 			'qsoEditForm.title' => '· —·· ·· — / ——·— ··· ———',
 			'qsoEditForm.operatorCall' => '——— ·——· · ·—· ·— — ——— ·—·',
 			'qsoEditForm.position' => '·——· ——— ··· ·· — ·· ——— —·',
@@ -7045,9 +7047,9 @@ extension on TranslationsCw {
 			'settings.radio.cwMessages.cooldownSeconds' => ({required Object n}) => '${n} / ··· · —·—· ——— —· —·· ···',
 			'settings.radio.cwMessages.repeatWait' => '·—· · ·——· · ·— — ·· —· ——·',
 			'settings.radio.cwMessages.keyboard' => '— —·—— ·——· · / — ——— / ··· · —· —··',
-			'settings.radio.cwMessages.keyboardField' => '— —·—— ·——· · / — ——— / ··· · —· —··',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.cwMessages.keyboardField' => '— —·—— ·——· · / — ——— / ··· · —· —··',
 			'settings.radio.cwMessages.help' => '···· · ·—·· ·——·',
 			'settings.radio.cwMessages.helpTitle' => '·—— ·—· ·· — ·· —· ——· / —·—· ·—— / —— · ··· ··· ·— ——· · ···',
 			'settings.radio.cwMessages.helpIntro' => '—— · ··· ··· ·— ——· · ··· / —·—· ·— —· / ··— ··· · / — · —— ·——· ·—·· ·— — · ··· / ·—— ·· — ···· / — ···· · / ··—· ——— ·—·· ·—·· ——— ·—— ·· —· ——· / ···— ·— ·—·· ··— · ··· ———···',
@@ -7559,9 +7561,9 @@ extension on TranslationsCw {
 			'settings.station.audioProblemDaxChannels' => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / · ···— · ·—· —·—— / —·· ·— —··— / —·—· ···· ·— —· —· · ·—·· / ——— —· / — ···· · / ·—· ·— —·· ·· ——— / ·· ··· / — ·— —·— · —·',
 			'settings.station.audioProblemStream' => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—· · ··—· ··— ··· · —·· / ·· — ··· / ·— ··— —·· ·· ——— / ··· — ·—· · ·— ——',
 			'settings.station.audioProblemMicrophone' => ({required Object name}) => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · / ${name} / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —··',
-			'settings.station.audioProblemMicrophoneOpen' => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —·',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.audioProblemMicrophoneOpen' => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —·',
 			'settings.station.audioProblemTalkStream' => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—· · ··—· ··— ··· · —·· / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · / ··· — ·—· · ·— ——',
 			'settings.station.audioProblemTalkCard' => ({required Object name}) => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / — ···· · / ··· ——— ··— —· —·· / —·—· ·— ·—· —·· / ${name} / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —··',
 			'settings.station.audioProblemTalkCardOpen' => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / ·· — ··· / ··· ——— ··— —· —·· / —·—· ·— ·—· —·· / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —·',
@@ -8073,9 +8075,9 @@ extension on TranslationsCw {
 			'settings.station.telemetryIntervalDescription' => '···· ——— ·—— / ——— ··—· — · —· / — ——— / ·—· · ·— —·· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / —— · — · ·—· ··· / ·—— ···· ·· ·—·· · / ·· — / ·· ··· / — ·—· ·— —· ··· —— ·· — — ·· —· ——· ·—·—·— / ·—·· · ·— ···— · / —··· ·—·· ·— —· —·— / ··—· ——— ·—· / — ···· · / ··—· ·— ··· — · ··· — / — ···· ·· ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / —·—· ·— —· / ···· ·— —· —·· ·—·· · ——··—— / ··— ·——· / — ——— / ··——— ————— ————— / —— ··· ·—·—·—',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· / ——— ··—· / —— ·· ·—·· ·—·· ·· ··· · —·—· ——— —· —·· ··· ——··—— / ${min} / — ——— / ${max}',
 			'settings.station.pollInterval' => '·· —·· ·—·· · / ·——· ——— ·—·· ·—·· ·· —· ——· / ·· —· — · ·—· ···— ·— ·—·· / —·——· —— ··· —·——·—',
-			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '···· ——— ·—— / ——— ··—· — · —· / — ——— / ·— ··· —·— / — ···· · / ·—· ·— —·· ·· ——— / ··—· ——— ·—· / ·· — ··· / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·— —· —·· / —— ——— —·· · / ·—— ···· ·· ·—·· · / —· · ·· — ···· · ·—· / ·· ··· / —·—· ···· ·— —· ——· ·· —· ——· ·—·—·— / ·—·· · ·— ···— · / —··· ·—·· ·— —· —·— / ··—· ——— ·—· / ${fallback} / —— ··· ·—·—·—',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '···· ——— ·—— / ——— ··—· — · —· / — ——— / ·— ··· —·— / — ···· · / ·—· ·— —·· ·· ——— / ··—· ——— ·—· / ·· — ··· / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·— —· —·· / —— ——— —·· · / ·—— ···· ·· ·—·· · / —· · ·· — ···· · ·—· / ·· ··· / —·—· ···· ·— —· ——· ·· —· ——· ·—·—·— / ·—·· · ·— ···— · / —··· ·—·· ·— —· —·— / ··—· ——— ·—· / ${fallback} / —— ··· ·—·—·—',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· / ——— ··—· / —— ·· ·—·· ·—·· ·· ··· · —·—· ——— —· —·· ··· ——··—— / ${min} / — ——— / ${max}',
 			'settings.station.ratedPower' => '·—· ·— — · —·· / ·——· ——— ·—— · ·—· / —·——· ·—— —·——·—',
 			'settings.station.ratedPowerDescription' => '·—— ···· ·— — / — ···· ·· ··· / ·—· ·— —·· ·· ——— / ·——· ··— — ··· / ——— ··— — / ·— — / ··—· ··— ·—·· ·—·· / —·· ·—· ·· ···— · ·—·—·— / ·· — ··· / ··· —·· ·—· / ·——· ·—· ——— ——· ·—· ·— —— / ··· · — ··· / ·——· ——— ·—— · ·—· / ·— ··· / ·— / ··· ···· ·— ·—· · / ——— ··—· / ·· — ·—·—·— / ·—·· · ·— ···— · / —··· ·—·· ·— —· —·— / ··—· ——— ·—· / ·———— ————— ————— / ·—— ·—·—·—',
@@ -8587,9 +8589,9 @@ extension on TranslationsCw {
 			'spotting.selfSpottingToComment' => ({required Object sources, required Object comment}) => '··· · ·—·· ··—· —····— ··· ·——· ——— — — ·· —· ——· / — ——— / ${sources} ———··· / ${comment}',
 			'spotting.spotLastTo' => ({required Object sources}) => '··· ·——· ——— — / — ···· · / ·—·· ·— ··· — / ·—·· ——— ——· ——· · —·· / ——·— ··· ——— / — ——— / ${sources} ··——··',
 			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => '··· ·——· ——— — / — ···· · / ·—·· ·— ··· — / ·—·· ——— ——· ——· · —·· / ——·— ··· ——— / — ——— / ${sources} / ·—— ·· — ···· / ·—··—· ${comment} ·—··—· ··——··',
-			'spotting.spottingLastTo' => ({required Object sources}) => '··· ·——· ——— — — ·· —· ——· / ·—·· ·— ··· — / ——·— ··· ——— / — ——— / ${sources} …',
 			_ => null,
 		} ?? switch (path) {
+			'spotting.spottingLastTo' => ({required Object sources}) => '··· ·——· ——— — — ·· —· ——· / ·—·· ·— ··· — / ——·— ··· ——— / — ——— / ${sources} …',
 			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => '··· ·——· ——— — — ·· —· ——· / ·—·· ·— ··· — / ——·— ··· ——— / — ——— / ${sources} ———··· / ${comment}',
 			'spotting.incompleteCall' => '—·—· ·— —· ·————· — / ··· ·——· ——— — / ·— —· / ·· —· —·—· ——— —— ·——· ·—·· · — · / —·—· ·— ·—·· ·—·· / — / ··—· ·· —· ·· ··· ···· / — ···· · / —·—· ·— ·—·· ·—·· ··· ·· ——· —· / ··—· ·· ·—· ··· — ·—·—·—',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} / ··—· ·— ·· ·—·· · —·· ———··· / ${message}',

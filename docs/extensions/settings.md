@@ -192,7 +192,9 @@ a confirmation. Saving merges what was edited into the item, so keys it has
 no field for are kept. `itemSwitch` names an on/off key in each item shown
 as a switch on its row (leave it out of `itemFields`; absent reads as on);
 `orderable` allows drag-to-reorder; `inline: true` renders the rows directly
-in the form. In a Tier 1 panel, `itemFields` are declarative too.
+in the form. Once a change to the list is saved, a dynamic panel shows it as
+its `getDefinition` then returns it, so a row titled by something
+`transformField` fetched is titled at once. In a Tier 1 panel, `itemFields` are declarative too.
 
 ### The `multiselect` field type
 
@@ -235,10 +237,12 @@ renders disabled rather than failing the panel.
 
 ### The `secret` field type
 
-An obscured text field, persisted through secure storage in a Tier 1 panel;
-a Tier 2 panel stores it itself in `onChangeField` and owes it the same
-care. For a bare API key with no login behind it. Not for account
-credentials, which belong on the `account` hook.
+An obscured text field, persisted through secure storage in a Tier 1 panel.
+A Tier 2 panel stores it itself in `onChangeField` with
+[`host.keychainSet`](host.md#hostkeychainsetkey-value), and reads it back
+from `ctx.keychain` in `getDefinition`; a `list` whose items hold a secret
+is kept the same way, whole. For a bare API key with no login behind it.
+Not for account credentials, which belong on the `account` hook.
 
 ### The `account` field type
 

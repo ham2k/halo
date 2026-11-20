@@ -706,6 +706,7 @@ class _Translations$formChrome$qro extends Translations$formChrome$en {
 	@override String get removeItem => 'DELETE';
 	@override String deleteItemTitle({required Object name}) => 'DELETE ${name}?';
 	@override String get storageUnavailable => 'LOGINS UNAVAILABLE';
+	@override String get notSaved => 'NOT SAVED: THIS CHANGE COULD NOT BE STORED';
 }
 
 // Path: qsoEditForm
@@ -6744,6 +6745,7 @@ extension on TranslationsQro {
 			'formChrome.removeItem' => 'DELETE',
 			'formChrome.deleteItemTitle' => ({required Object name}) => 'DELETE ${name}?',
 			'formChrome.storageUnavailable' => 'LOGINS UNAVAILABLE',
+			'formChrome.notSaved' => 'NOT SAVED: THIS CHANGE COULD NOT BE STORED',
 			'qsoEditForm.title' => 'EDIT QSO',
 			'qsoEditForm.operatorCall' => 'OPERATOR',
 			'qsoEditForm.position' => 'POSITION',
@@ -7045,9 +7047,9 @@ extension on TranslationsQro {
 			'settings.radio.cwMessages.cooldownSeconds' => ({required Object n}) => '${n} SECONDS',
 			'settings.radio.cwMessages.repeatWait' => 'REPEATING',
 			'settings.radio.cwMessages.keyboard' => 'TYPE TO SEND',
-			'settings.radio.cwMessages.keyboardField' => 'TYPE TO SEND',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.cwMessages.keyboardField' => 'TYPE TO SEND',
 			'settings.radio.cwMessages.help' => 'HELP',
 			'settings.radio.cwMessages.helpTitle' => 'WRITING CW MESSAGES',
 			'settings.radio.cwMessages.helpIntro' => 'MESSAGES CAN USE TEMPLATES WITH THE FOLLOWING VALUES:',
@@ -7559,9 +7561,9 @@ extension on TranslationsQro {
 			'settings.station.audioProblemDaxChannels' => 'NOT HEARD HERE: EVERY DAX CHANNEL ON THE RADIO IS TAKEN',
 			'settings.station.audioProblemStream' => 'NOT HEARD HERE: THE RADIO REFUSED ITS AUDIO STREAM',
 			'settings.station.audioProblemMicrophone' => ({required Object name}) => 'CAN\'T TALK HERE: THE MICROPHONE ${name} IS NOT CONNECTED',
-			'settings.station.audioProblemMicrophoneOpen' => 'CAN\'T TALK HERE: THE MICROPHONE WOULD NOT OPEN',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.audioProblemMicrophoneOpen' => 'CAN\'T TALK HERE: THE MICROPHONE WOULD NOT OPEN',
 			'settings.station.audioProblemTalkStream' => 'CAN\'T TALK HERE: THE RADIO REFUSED THE MICROPHONE STREAM',
 			'settings.station.audioProblemTalkCard' => ({required Object name}) => 'CAN\'T TALK HERE: THE SOUND CARD ${name} IS NOT CONNECTED',
 			'settings.station.audioProblemTalkCardOpen' => 'CAN\'T TALK HERE: ITS SOUND CARD WOULD NOT OPEN',
@@ -8073,9 +8075,9 @@ extension on TranslationsQro {
 			'settings.station.telemetryIntervalDescription' => 'HOW OFTEN TO READ THE RADIO\'S METERS WHILE IT IS TRANSMITTING. LEAVE BLANK FOR THE FASTEST THIS CONNECTION CAN HANDLE, UP TO 200 MS.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A WHOLE NUMBER OF MILLISECONDS, ${min} TO ${max}',
 			'settings.station.pollInterval' => 'IDLE POLLING INTERVAL (MS)',
-			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'HOW OFTEN TO ASK THE RADIO FOR ITS FREQUENCY AND MODE WHILE NEITHER IS CHANGING. LEAVE BLANK FOR ${fallback} MS.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'HOW OFTEN TO ASK THE RADIO FOR ITS FREQUENCY AND MODE WHILE NEITHER IS CHANGING. LEAVE BLANK FOR ${fallback} MS.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A WHOLE NUMBER OF MILLISECONDS, ${min} TO ${max}',
 			'settings.station.ratedPower' => 'RATED POWER (W)',
 			'settings.station.ratedPowerDescription' => 'WHAT THIS RADIO PUTS OUT AT FULL DRIVE. ITS SDR PROGRAM SETS POWER AS A SHARE OF IT. LEAVE BLANK FOR 100 W.',
@@ -8587,9 +8589,9 @@ extension on TranslationsQro {
 			'spotting.selfSpottingToComment' => ({required Object sources, required Object comment}) => 'SELF-SPOTTING TO ${sources}: ${comment}',
 			'spotting.spotLastTo' => ({required Object sources}) => 'SPOT THE LAST LOGGED QSO TO ${sources}?',
 			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => 'SPOT THE LAST LOGGED QSO TO ${sources} WITH "${comment}"?',
-			'spotting.spottingLastTo' => ({required Object sources}) => 'SPOTTING LAST QSO TO ${sources}…',
 			_ => null,
 		} ?? switch (path) {
+			'spotting.spottingLastTo' => ({required Object sources}) => 'SPOTTING LAST QSO TO ${sources}…',
 			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => 'SPOTTING LAST QSO TO ${sources}: ${comment}',
 			'spotting.incompleteCall' => 'CAN\'T SPOT AN INCOMPLETE CALL — FINISH THE CALLSIGN FIRST.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} FAILED: ${message}',

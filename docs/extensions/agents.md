@@ -136,6 +136,7 @@ host.webSocket(url)                  // wss, only hosts your manifest's `webSock
 host.setTimeout(fn, ms)              // timers; a bare setTimeout reaches these too
 await host.kvGet("key")              // session storage, namespaced to your extension
 await host.kvSet("key", value)
+await host.keychainSet("key", value) // secure storage, persisted; read back on ctx.keychain
 await host.getSettings()             // the app's settings and your own group
 await host.setSettings({ … })        // persisted; your group only
 await host.showForm(form)            // ask the operator something

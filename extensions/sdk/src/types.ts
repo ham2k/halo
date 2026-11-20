@@ -11,6 +11,11 @@ export interface HookContext {
     credentials?: Record<string, string>
     session?: Record<string, string>
   }
+  /// What this extension stored with `host.keychainSet`, by key: `{}` when
+  /// nothing. Its own alone, read from the platform's secure storage; absent
+  /// when that could not be read, which is not the same as nothing stored.
+  /// Extension API 31.
+  keychain?: Record<string, JSONValue>
   developerMode?: boolean
   locale?: string
   // Platform-appropriate app name — "Ham2K Logger" on desktop, "Ham2K

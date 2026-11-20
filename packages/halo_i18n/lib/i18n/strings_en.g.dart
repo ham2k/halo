@@ -1627,6 +1627,9 @@ class Translations$formChrome$en {
 
 	/// en: 'Logins unavailable'
 	String get storageUnavailable => 'Logins unavailable';
+
+	/// en: 'Not saved: this change could not be stored'
+	String get notSaved => 'Not saved: this change could not be stored';
 }
 
 // Path: qsoEditForm
@@ -13506,6 +13509,7 @@ extension on Translations {
 			'formChrome.removeItem' => 'Delete',
 			'formChrome.deleteItemTitle' => ({required Object name}) => 'Delete ${name}?',
 			'formChrome.storageUnavailable' => 'Logins unavailable',
+			'formChrome.notSaved' => 'Not saved: this change could not be stored',
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.operatorCall' => 'Operator',
 			'qsoEditForm.position' => 'Position',
@@ -13807,9 +13811,9 @@ extension on Translations {
 			'settings.radio.cwMessages.cooldownSeconds' => ({required Object n}) => '${n} seconds',
 			'settings.radio.cwMessages.repeatWait' => 'Repeating',
 			'settings.radio.cwMessages.keyboard' => 'Type to send',
-			'settings.radio.cwMessages.keyboardField' => 'Type to send',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.cwMessages.keyboardField' => 'Type to send',
 			'settings.radio.cwMessages.help' => 'Help',
 			'settings.radio.cwMessages.helpTitle' => 'Writing CW Messages',
 			'settings.radio.cwMessages.helpIntro' => 'Messages can use templates with the following values:',
@@ -14321,9 +14325,9 @@ extension on Translations {
 			'settings.station.audioProblemDaxChannels' => 'Not heard here: every DAX channel on the radio is taken',
 			'settings.station.audioProblemStream' => 'Not heard here: the radio refused its audio stream',
 			'settings.station.audioProblemMicrophone' => ({required Object name}) => 'Can\'t talk here: the microphone ${name} is not connected',
-			'settings.station.audioProblemMicrophoneOpen' => 'Can\'t talk here: the microphone would not open',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.audioProblemMicrophoneOpen' => 'Can\'t talk here: the microphone would not open',
 			'settings.station.audioProblemTalkStream' => 'Can\'t talk here: the radio refused the microphone stream',
 			'settings.station.audioProblemTalkCard' => ({required Object name}) => 'Can\'t talk here: the sound card ${name} is not connected',
 			'settings.station.audioProblemTalkCardOpen' => 'Can\'t talk here: its sound card would not open',
@@ -14835,9 +14839,9 @@ extension on Translations {
 			'settings.station.telemetryIntervalDescription' => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can handle, up to 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'Idle polling interval (ms)',
-			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'How often to ask the radio for its frequency and mode while neither is changing. Leave blank for ${fallback} ms.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'How often to ask the radio for its frequency and mode while neither is changing. Leave blank for ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.ratedPower' => 'Rated power (W)',
 			'settings.station.ratedPowerDescription' => 'What this radio puts out at full drive. Its SDR program sets power as a share of it. Leave blank for 100 W.',
@@ -15349,9 +15353,9 @@ extension on Translations {
 			'spotting.selfSpottingToComment' => ({required Object sources, required Object comment}) => 'Self-spotting to ${sources}: ${comment}',
 			'spotting.spotLastTo' => ({required Object sources}) => 'Spot the last logged QSO to ${sources}?',
 			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => 'Spot the last logged QSO to ${sources} with "${comment}"?',
-			'spotting.spottingLastTo' => ({required Object sources}) => 'Spotting last QSO to ${sources}…',
 			_ => null,
 		} ?? switch (path) {
+			'spotting.spottingLastTo' => ({required Object sources}) => 'Spotting last QSO to ${sources}…',
 			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => 'Spotting last QSO to ${sources}: ${comment}',
 			'spotting.incompleteCall' => 'Can\'t spot an incomplete call — finish the callsign first.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',

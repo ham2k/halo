@@ -25,6 +25,8 @@ class _ExtensionHostCalls {
     return switch (method) {
       'getAccount' => _getAccount(params),
       'setAccountSession' => _setAccountSession(params),
+      'getKeychain' => _getKeychain(params),
+      'keychainSet' => _keychainSet(params),
       'getSettings' => _getSettings(),
       'setSettings' => _setSettings(params),
       'searchSettings' => _searchSettings(params),
@@ -83,6 +85,29 @@ class _ExtensionHostCalls {
       throw ExtensionHostException("$method blocked: extension '${ns ?? 'unknown'}' asked for account '${kvKey ?? 'none'}', outside its own namespace");
     }
     return kvKey;
+  }
+
+  /// The calling extension, as the kernel stamped it: never a key the
+  /// extension named itself.
+  String _ownNamespace(String method, Map<String, dynamic> params) => switch (params['ns']) {
+    final String ns when ns.isNotEmpty => ns,
+    _ => throw ExtensionHostException('$method blocked: it names no calling extension'),
+  };
+
+  Future<dynamic> _getKeychain(Map<String, dynamic> params) async {
+    final ns = _ownNamespace('getKeychain', params);
+    try {
+      return await _service.keychainValues.read(ns);
+    } catch (e, st) {
+      // The kernel turns this into no `ctx.keychain` without a word.
+      ErrorReportingService.report(ExtensionKeychainUnreadable(ns, e), st, context: 'extensions:keychain-read');
+      rethrow;
+    }
+  }
+
+  Future<dynamic> _keychainSet(Map<String, dynamic> params) async {
+    await _service.keychainValues.write(_ownNamespace('keychainSet', params), params['key'], params['value']);
+    return null;
   }
 
   Future<dynamic> _getAccount(Map<String, dynamic> params) async {
