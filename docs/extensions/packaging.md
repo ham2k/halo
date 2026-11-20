@@ -178,7 +178,7 @@ its SDK is not yet on npm.
 | 28 | a scene `map`'s `dwell`: a pointer resting on the map sends the place under it; the system list `$core.radioChoices`, and system lists in a panel's own `form`; the band scope's `secondary`; `ctx.getScores`, the operation's score as the app holds it; the `transfer` hook category: pushing contacts to a service, with suggestions per scope, a destination per station callsign, and what the service said written back on each contact |
 | 29 | the `integration` hook category, and an integration's `describe`; `host.randomBytes`, bytes from the platform's secure random source; `host.fetch` with a `Uint8Array` body and `redirect: "error"`; the `file` account field; the `chasing` and `log` push scopes, asked from the Chasing and Logs views |
 | 30 | a spot candidate's `value` in a `scoreCandidates` answer and in `ctx.scoreCandidates`: what logging it would score, so the spot keys can pass over a station worth nothing |
-| 31 | `host.keychainSet` and `ctx.keychain`: values an extension keeps in the platform's secure storage |
+| 31 | `host.keychainSet` and `ctx.keychain`: values an extension keeps in the platform's secure storage; a scene event answer's `openUrl`, a page opened in the browser, and a scene event's `modifiers`, the keys held |
 
 The packer enforces the levels it can tell from the manifest alone:
 `webSockets` needs 2, `chasing` needs 9, a cluster grant or a `cluster` hook

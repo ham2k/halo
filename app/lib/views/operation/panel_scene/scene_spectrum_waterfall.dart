@@ -18,11 +18,40 @@ part of 'scene_spectrum.dart';
   return ((rowLowHz - lowHz) / span * width, (rowHighHz - lowHz) / span * width);
 }
 
+/// [levels] as a row of [palette]'s colors, [floor] black and [range] over it the palette's top.
+Uint32List _rowPixels(Float32List levels, double floor, double range, List<int> palette) {
+  final pixels = Uint32List(levels.length);
+  for (var i = 0; i < levels.length; i++) {
+    final t = (levels[i] - floor) / range;
+    // NaN passes clamp; its round() throws.
+    pixels[i] = palette[t.isFinite ? (t.clamp(0.0, 1.0) * 255).round() : 0];
+  }
+  return pixels;
+}
+
+/// The color a row carries on in past the sweep it was taken over: its quieter quarter's, the band's
+/// own noise as the palette draws it, so a sweep that covers only part of the window leaves no
+/// edge where the picture stops. At most 256 of [levels] are looked at. A `rgba8888` pixel of
+/// [pixels], packed as [_paletteFor] packs it.
+@visibleForTesting
+int waterfallRowBackground(Float32List levels, Uint32List pixels) {
+  if (levels.isEmpty) return 0;
+  final stride = math.max(1, (levels.length + 255) ~/ 256);
+  final sampled = [
+    for (var i = 0; i < levels.length; i += stride)
+      if (levels[i].isFinite) i,
+  ]..sort((a, b) => levels[a].compareTo(levels[b]));
+  return sampled.isEmpty ? pixels.first : pixels[sampled[sampled.length ~/ 4]];
+}
+
 /// One waterfall row: its picture, the levels and the sweep's floor and ceiling it was drawn from —
 /// kept so the whole history can be drawn again in other colors — and the frequencies it was
 /// taken over.
 class _Row {
   ui.Image image;
+
+  /// [waterfallRowBackground] of [image], drawn either side of it where the sweep stops short.
+  int background;
   final Float32List levels;
   final double floorDb, ceilingDb;
   final int lowHz, highHz, atMillis;
@@ -30,7 +59,7 @@ class _Row {
   /// The window and palette [image] was drawn on (a [_SceneSpectrumViewState._rowsKey]).
   Object? drawnOn;
 
-  _Row(this.image, this.levels, this.floorDb, this.ceilingDb, this.lowHz, this.highHz, this.atMillis, {this.drawnOn});
+  _Row(this.image, this.background, this.levels, this.floorDb, this.ceilingDb, this.lowHz, this.highHz, this.atMillis, {this.drawnOn});
 }
 
 /// Where a row taken at [atMillis] lies down a waterfall moving
@@ -74,6 +103,7 @@ class _WaterfallPainter extends CustomPainter {
     if (size.height <= 0) return;
     final rowHeight = math.max(1.0, size.height / _waterfallRows);
     final paint = Paint()..filterQuality = FilterQuality.low;
+    final fill = Paint();
     final current = frame();
     // Each row where its frequencies are NOW: a retune slides the history
     // sideways and a width change stretches it, rather than redrawing old
@@ -88,6 +118,13 @@ class _WaterfallPainter extends CustomPainter {
           : waterfallRowSpan(rows.first.atMillis, row.atMillis, i + 1 < rows.length ? rows[i + 1].atMillis : null, perSecond * rowHeight, rowHeight);
       if (top >= size.height) break;
       final (left, right) = current == null ? (0.0, size.width) : waterfallRowExtent(row.lowHz, row.highHz, current.lowHz, current.highHz, size.width);
+      // Past the sweep, the row's own quiet color rather than the background showing through.
+      if (left > 0 || right < size.width) {
+        final p = row.background;
+        fill.color = Color.fromARGB(p >> 24 & 0xFF, p & 0xFF, p >> 8 & 0xFF, p >> 16 & 0xFF);
+        if (left > 0) canvas.drawRect(Rect.fromLTRB(0, top, math.min(left, size.width), bottom + .5), fill);
+        if (right < size.width) canvas.drawRect(Rect.fromLTRB(math.max(right, 0), top, size.width, bottom + .5), fill);
+      }
       if (right <= 0 || left >= size.width) continue;
       canvas.drawImageRect(row.image, Rect.fromLTWH(0, 0, row.image.width.toDouble(), 1), Rect.fromLTRB(left, top, right, bottom + .5), paint);
     }

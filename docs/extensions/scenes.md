@@ -38,6 +38,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 25 | the map control (`map`), an event's `lat` and `lon`, and the `reset` gesture; an event answer's `patch` and `host.updateScene`, changing a scene in place; `image` layers and a map's `images` |
 | 26 | the map's `globe` projection, its `depth` and `atmosphere` |
 | 28 | the map's `dwell`, and its `dwell` and `dwellEnd` gestures; the band scope's `secondary` |
+| 31 | an event answer's `openUrl`, a page opened in the browser, and an event's `modifiers` |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -354,13 +355,24 @@ event: {
     ageSeconds?: number, atMillis?: number  // on the waterfall: the row's age, and when it was taken
     bearing?: number, km?: number   // on a rotator map: the bearing and distance from the station clicked; API 23
   }
+  modifiers?: ("alt" | "shift" | "control" | "meta")[]  // the keys held as it was sent; API 31
 }
 ```
+
+`modifiers` names the keys held on a keyboard as the event was sent, and is
+left out when none was, so an Alt-click on a band scope can do something
+other than a click. `meta` is Command on a Mac and the Windows key elsewhere.
 
 It answers `{ values, strings? }`, a patch of names already in the scene, and
 may carry the placement's own `config` (API 23, [Panels](panels.md#answering-with-config)) and a
 `patch` to the scene (API 25, [Changing a scene in place](#changing-a-scene-in-place)), shown
-at once, ahead of the render that follows. An
+at once, ahead of the render that follows. An answer may also name a page
+for the browser, `openUrl` (API 31), still with its `values`. It must be
+an `http` or `https` address: any other fails the answer, changing nothing,
+and so does a page nothing on the device opens. Only the answer to a click
+opens one, since the operator's action is what asks for it: an answer to an
+event with a `gesture` (a zoom, a pan, a pointer resting on a map) or to a
+drag's `change` that names a page fails too. An
 answer with neither is a failure, and so is one that throws or runs out of
 time: the pane says the action failed and the control goes back to what the
 scene last reported. The app sends one event at a time, keeps only the
@@ -635,7 +647,8 @@ a scope, the control says why instead. Placed like a native control, it takes:
   sweep the scope can be made to send with its points 10 pixels apart, and
   what it can be made to show. A window wider
   than the scope can be made draws the spectrum and waterfall over the part
-  it sweeps; past it the waterfall is blank and the spectrum shows a dashed
+  it sweeps; past it each waterfall row carries on in its own quieter
+  quarter's color, the band's noise as the palette draws it, and the spectrum shows a dashed
   line level with the trace's middle over its fill darkened, the two fading into each other
   over the sweep's last pixels, and the axis, layers and annotations run across the whole. There a pan moves only the window, stopping where the
   sweep reaches its edge, and with `follow` the scope follows the dial

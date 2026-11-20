@@ -43,10 +43,15 @@ bool canOpenExternalUrl(String url) {
 /// link the app hands off belongs in the operator's own browser, where their
 /// sessions, extensions and history are, and not in an in-app browser (a
 /// Custom Tab / SFSafariViewController) that merely looks like one.
-void openExternalUrl(String url) {
+void openExternalUrl(String url) => unawaited(launchExternalUrl(url));
+
+/// [openExternalUrl] for a caller that says when nothing opened: false for a
+/// URL refused here, or one nothing on the device handles. A platform's own
+/// refusal throws.
+Future<bool> launchExternalUrl(String url) async {
   if (!canOpenExternalUrl(url)) {
     debugPrint('[links] refusing to open "$url"');
-    return;
+    return false;
   }
-  unawaited(launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication));
+  return launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 }

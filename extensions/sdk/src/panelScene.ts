@@ -1400,6 +1400,11 @@ export interface PanelSceneEvent {
    * API 23), was clicked; on a map (extension API 25), the place clicked, or the marker's.
    */
   at?: PanelSceneSpectrumClick
+  /**
+   * The modifier keys held as the event was sent, on a keyboard; omitted with none. `meta` is
+   * Command on a Mac and the Windows key elsewhere. Extension API 31.
+   */
+  modifiers?: ("alt" | "shift" | "control" | "meta")[]
 }
 
 /** Where a click on a band scope, a rotator map or a map landed. */
@@ -1448,6 +1453,8 @@ export interface PanelSceneEventResult {
   config?: Record<string, JSONValue>
   /** The scene changed in place, at once, ahead of the render the event is followed by. Extension API 25. */
   patch?: PanelScenePatch
+  /** An `http` or `https` page to open in the browser, as the operator's click asked. Extension API 31. */
+  openUrl?: string
 }
 
 /**

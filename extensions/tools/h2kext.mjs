@@ -89,7 +89,8 @@ import yazl from "yazl"
 /// projection, with its `depth` and `atmosphere`; 27 adds a panel's
 /// `expandable`; 28 the map's `dwell`, and `ctx.getScores`; 29 the
 /// `integration` hook category, and `host.randomBytes`; 30 a spot
-/// candidate's `value`; 31 `host.keychainSet`, with `ctx.keychain`.
+/// candidate's `value`; 31 `host.keychainSet`, with `ctx.keychain`, and a
+/// scene answer's `openUrl` and a scene event's `modifiers`.
 export const H2KEXT_API_VERSION = 31
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`

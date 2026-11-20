@@ -779,17 +779,6 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     );
   }
 
-  /// [levels] as a row of the palette's colors, [floor] black and [range] over it the palette's top.
-  Uint32List _rowPixels(Float32List levels, double floor, double range) {
-    final pixels = Uint32List(levels.length);
-    for (var i = 0; i < levels.length; i++) {
-      final t = (levels[i] - floor) / range;
-      // NaN passes clamp; its round() throws.
-      pixels[i] = _palette[t.isFinite ? (t.clamp(0.0, 1.0) * 255).round() : 0];
-    }
-    return pixels;
-  }
-
   /// What the waterfall's colors are drawn on: its window as the level strip and the scene leave
   /// it, and the palette. Each row keeps its own sweep's floor and ceiling, so a radio's noise
   /// floor moving on stays where it was down the history.
@@ -822,10 +811,13 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     var left = stale.length;
     for (final row in stale) {
       final (floor, range) = _waterfallScaleOn(row.floorDb, row.ceilingDb);
-      ui.decodeImageFromPixels(_rowPixels(row.levels, floor, range).buffer.asUint8List(), row.levels.length, 1, ui.PixelFormat.rgba8888, (image) {
+      final pixels = _rowPixels(row.levels, floor, range, _palette);
+      final background = waterfallRowBackground(row.levels, pixels);
+      ui.decodeImageFromPixels(pixels.buffer.asUint8List(), row.levels.length, 1, ui.PixelFormat.rgba8888, (image) {
         if (mounted && epoch == _rowEpoch && _rows.contains(row)) {
           row.image.dispose();
           row.image = image;
+          row.background = background;
           row.drawnOn = key;
         } else {
           image.dispose();
@@ -842,7 +834,8 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   void _addRow(Float32List levels, SpectrumFrame frame) {
     _recolorRows();
     final (floor, range) = _waterfallScale(frame);
-    final (pixels, key) = (_rowPixels(levels, floor, range), _rowsKey());
+    final (pixels, key) = (_rowPixels(levels, floor, range, _palette), _rowsKey());
+    final background = waterfallRowBackground(levels, pixels);
     // When it was taken, which places it down the waterfall: a change of speed re-spaces the history at once.
     final (lowHz, highHz, at, floorDb, ceilingDb) = (frame.lowHz, frame.highHz, realNowMillis(), frame.floorDb, frame.ceilingDb);
     final epoch = _rowEpoch;
@@ -851,7 +844,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
         image.dispose();
         return;
       }
-      _rows.insert(0, _Row(image, levels, floorDb, ceilingDb, lowHz, highHz, at, drawnOn: key));
+      _rows.insert(0, _Row(image, background, levels, floorDb, ceilingDb, lowHz, highHz, at, drawnOn: key));
       while (_rows.length > _waterfallRows) {
         _rows.removeLast().image.dispose();
       }

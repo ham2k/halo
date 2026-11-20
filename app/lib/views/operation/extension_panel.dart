@@ -32,6 +32,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/error_reporting_service.dart';
+import '../../services/link_opener.dart';
 import '../../services/panel_content_budgets.dart';
 import '../../services/panel_service.dart';
 import 'panel_content_view.dart';
@@ -786,16 +787,32 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       if (result == null || (result['values'] == null && result['strings'] == null)) {
         throw const FormatException('A panel event result needs values or strings');
       }
-      // Kept before the patch is applied, so a control the answer moves is not drawn as kept when
-      // what it stands for was not.
-      final answered = result['config'];
-      if (answered != null) {
-        if (answered is! Map) throw const FormatException('A panel event result\'s config is a map');
-        await widget.panels.writeConfig(panel, answered.cast<String, dynamic>());
+      // A page the operator's click asked for. Only an event's answer opens one, and only the answer
+      // to a click: a render, an update, a drag still moving, a zoom or a pointer resting on a map
+      // opening the browser would be a navigation nobody started.
+      final openUrl = result['openUrl'];
+      if (openUrl != null) {
+        final uri = openUrl is String ? Uri.tryParse(openUrl) : null;
+        if (uri == null || !const {'http', 'https'}.contains(uri.scheme) || uri.host.isEmpty) {
+          throw const FormatException('A panel event result\'s openUrl is an http or https address');
+        }
+        if (event['gesture'] != null || event['phase'] == 'change') {
+          throw const FormatException('A panel event result opens a page only for a click');
+        }
       }
+      final answered = result['config'];
+      if (answered != null && answered is! Map) throw const FormatException('A panel event result\'s config is a map');
+      if (answered is Map) widget.panels.checkConfigKeys(panel, answered.cast<String, dynamic>());
       final values = parseValues(result['values'] ?? const {});
       final strings = parseStrings(result['strings'] ?? const {});
       if (strings.keys.any(values.containsKey)) throw const FormatException('A panel event result names a value as both a number and a string');
+      // Awaited before anything of the answer is kept: a click that opens nothing would otherwise
+      // look taken. Nothing on the device to open it fails the answer, as a platform's refusal does,
+      // and a failed answer changes nothing.
+      if (openUrl is String && !await launchExternalUrl(openUrl)) throw StateError('Nothing opened the page a panel event answer named');
+      // Kept before the patch is applied, so a control the answer moves is not drawn as kept when
+      // what it stands for was not.
+      if (answered is Map) await widget.panels.writeConfig(panel, answered.cast<String, dynamic>());
       // An answer's `patch` changes the scene at once — once the rest of the
       // answer has been found sound: applied first, a refused answer would
       // leave the scene changed and the control back where it was. Out of

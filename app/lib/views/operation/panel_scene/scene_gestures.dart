@@ -8,6 +8,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart' show HardwareKeyboard;
 
 import 'scene_model.dart';
 
@@ -19,6 +20,14 @@ double? browserPinchScale(PointerSignalEvent event) => switch (event) {
   PointerScaleEvent(:final scale) when scale > 0 && scale != 1 => scale,
   _ => null,
 };
+
+/// The modifier keys held as a scene event is sent, or null with none: an Alt-click can then mean
+/// something other than a click.
+List<String>? sceneEventModifiers() {
+  final keys = HardwareKeyboard.instance;
+  final held = [if (keys.isAltPressed) 'alt', if (keys.isShiftPressed) 'shift', if (keys.isControlPressed) 'control', if (keys.isMetaPressed) 'meta'];
+  return held.isEmpty ? null : held;
+}
 
 /// A drag along one axis, claimed only where [allowedAt] says it may begin: a scrolling scene's
 /// `zoom` strip, or the part of a spectrum that pans or zooms. Deeper than the scroll view, it wins

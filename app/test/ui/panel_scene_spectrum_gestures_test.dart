@@ -502,6 +502,17 @@ void main() {
     expect(events.single['phase'], 'commit');
     expect(events.single['value'], 14025000);
     expect(events.single.containsKey('gesture'), isFalse, reason: 'a tune keeps the shape it had before API 17');
+    expect(events.single.containsKey('modifiers'), isFalse);
+  });
+
+  testWidgets('an Alt-click is still the click, and says Alt was held, so the extension can do something else with it', (tester) async {
+    final radio = _Radio(commands: false);
+    final events = await _show(tester, radio);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await _tap(tester, _onPan(tester, .2535));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    expect(events.single['value'], 14025000);
+    expect(events.single['modifiers'], ['alt']);
   });
 
   testWidgets('a bundle from before API 17 hears its click where it landed, and gets no axis it did not draw', (tester) async {

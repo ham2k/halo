@@ -1165,6 +1165,16 @@ void main() {
     expect(waterfallRowExtent(14000000, 14100000, 13950000, 14150000, 400), (100, 300));
   });
 
+  test('a row carries on past its sweep in its noise\'s color, not its loudest signal\'s', () {
+    // Mostly noise at 1, a few signals at 9: the color beside the sweep is the noise's, so a sweep
+    // short of the window shows no edge; a signal's would smear across the gap.
+    final levels = Float32List.fromList([for (var i = 0; i < 1000; i++) i % 10 == 0 ? 9 : 1]);
+    final pixels = Uint32List.fromList([for (final l in levels) l == 9 ? 0xFF0000FF : 0xFF808080]);
+    expect(waterfallRowBackground(levels, pixels), 0xFF808080);
+    // A reading the radio sent as NaN is never the one picked.
+    expect(waterfallRowBackground(Float32List.fromList([double.nan, 1, 1, 1]), Uint32List.fromList([0, 7, 7, 7])), 7);
+  });
+
   testWidgets('follow scrolls the window just far enough to put the dial on its margin', (tester) async {
     // Centring instead would jump the picture on every step of the dial; not
     // moving at all leaves the tuned frequency off the display.

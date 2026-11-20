@@ -1009,13 +1009,18 @@ class PanelService extends ChangeNotifier {
   Future<void> writeConfig(PanelDefinition panel, Map<String, dynamic> values, {bool notify = true}) async {
     final sink = extensions;
     if (sink is! PanelConfigSink) throw StateError('Panel config cannot be written here');
-    final fields = panel.configFields;
-    final declared = {for (final field in fields) field['key']};
+    checkConfigKeys(panel, values);
+    await (sink as PanelConfigSink).writePanelConfig(panelKey: panel.id, fields: panel.configFields, values: values);
+    if (notify) markConfigChanged(panel.id);
+  }
+
+  /// Throws for a key of [values] that [panel] does not declare, as [writeConfig] does: for a caller
+  /// that must know the write would be refused before it does anything else.
+  void checkConfigKeys(PanelDefinition panel, Map<String, dynamic> values) {
+    final declared = {for (final field in panel.configFields) field['key']};
     for (final key in values.keys) {
       if (!declared.contains(key)) throw FormatException('"${panel.id}" has no config key "$key"; declare it in the descriptor\'s form or `config`');
     }
-    await (sink as PanelConfigSink).writePanelConfig(panelKey: panel.id, fields: fields, values: values);
-    if (notify) markConfigChanged(panel.id);
   }
 
   /// Each placement's own menu, from its last render ([PanelPlacementMenu]).

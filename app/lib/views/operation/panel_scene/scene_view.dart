@@ -280,6 +280,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
       'layer': ?layer,
       'gesture': ?gesture,
       'at': ?at,
+      'modifiers': ?sceneEventModifiers(),
       if (value != null)
         'value': value
       // A `tapAt` button's value is where it was clicked: activated by a key, it has none.
