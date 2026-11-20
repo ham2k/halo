@@ -10,7 +10,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show ValueListenable, listEquals;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HardwareKeyboard, KeyDownEvent, KeyEvent, KeyRepeatEvent, LogicalKeyboardKey;
+import 'package:flutter/services.dart' show HardwareKeyboard, KeyDownEvent, KeyEvent, KeyRepeatEvent;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -18,13 +18,8 @@ import '../config/dev_bridge.dart';
 import '../services/command_actions.dart';
 import '../services/halo_services.dart';
 import '../services/error_reporting_service.dart';
-import '../services/cat/cat_service.dart' show RadioKeyer;
-import '../services/cat/computer_voice_keyer.dart' show ComputerVoiceProblem, VoicedMessageRefused;
-import '../services/cat/voiced_words.dart' show VoiceTemplateRender;
-import '../services/cat/drivers/cw_send_queue.dart' show sanitizeCwText;
 import '../services/cat/vfo_keys.dart';
 import '../services/cat/zero_beat.dart';
-import '../services/extensions/extension_service.dart' show TemplateError;
 import '../services/spot_board_service.dart' show SpotBoardSubscription;
 import '../services/watcher_service.dart' show WatcherFeed;
 import '../services/panel_equipment_service.dart' show equipmentSignature;
@@ -38,6 +33,7 @@ import 'dock_host.dart';
 import 'header_action_button.dart';
 import 'operation/everyware_steering.dart';
 import 'keyer_area.dart' show cwKeyerOrSay, keyerOrSay;
+import 'logging_view_keying.dart';
 import 'dock_layouts/layout_menu.dart' show showLayoutsSheet;
 import 'operation_dialogs.dart';
 import 'panel_use_tracker.dart';
@@ -60,8 +56,6 @@ import 'operation/operation_runtime_state.dart';
 import 'operation/spots_panel.dart';
 import 'operation/summaries/operation_summaries_panel.dart';
 import 'tester_overlay.dart' show testerOverlayCovering;
-import 'app_shell/system_back.dart';
-import 'voice_messages_dialog.dart' show computerVoiceProblemText;
 import 'operation/positions_panel.dart';
 import 'operation/read_only_while_deleted.dart';
 import 'peers_panel.dart';
@@ -106,7 +100,8 @@ class OperationView extends StatefulWidget {
   State<OperationView> createState() => _OperationViewState();
 }
 
-class _OperationViewState extends State<OperationView> with DockHost<OperationView>, _OperationDock, _OperationHeader, _OperationSheetHost, _OperationKeying {
+class _OperationViewState extends State<OperationView>
+    with DockHost<OperationView>, _OperationDock, _OperationHeader, _OperationSheetHost, LoggingViewKeying<OperationView>, _OperationKeying {
   @override
   PanelRenderContext get panelRenderContext => PanelRenderContext(
     operation: _draftOperation ?? _operationForPanels,
@@ -490,15 +485,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // the dock instead (see [_revealLoggingOnMount]). No zero-beat offset
     // here for the same reason `measured` skips it above.
     _suggestedQso = widget.initialSuggestedQso;
-    // F1-F8 key CW messages while this operation is in front — see
-    // [_onCwKeyEvent]. A HardwareKeyboard handler rather than a Shortcuts
-    // widget, because the keys must work whichever field has focus, and the
-    // main key handler (main.dart) only looks at modified chords.
-    HardwareKeyboard.instance.addHandler(_onCwKeyEvent);
-    systemBack.addHandler(_onSystemBack);
-    widget.services.cat.messageKeyRequests.addListener(_onMessageKeyRequest);
+    startKeyingInput();
     widget.services.cat.pttKeys.addTarget(_pttTarget);
-    widget.services.cat.keyer('A').voicedWords?.attach(_voiceRender, operatorCall: _voiceOperatorCall, refused: _voiceRefused);
     // Opening the view is the first activity on it; every key, pointer
     // press, scroll, call edit and logged QSO after that refreshes the hold
     // (see [_onWakeKeyEvent], the Listener around the Scaffold and
@@ -636,7 +624,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // Kept as it arrives, ahead of the debounce below: a CW message keyed
     // in the pause the debounce is waiting out must carry the call as typed,
     // not the last draft that settled.
-    _latestDraftQso = qso;
+    latestKeyingDraft = qso;
     _draftQsoDebounce?.cancel();
     // The FIRST draft, carrying a call that resolved before anyone asked for
     // it — a `lookup` panel added to the layout while a callsign is already
@@ -781,11 +769,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
 
   @override
   void dispose() {
-    HardwareKeyboard.instance.removeHandler(_onCwKeyEvent);
-    systemBack.removeHandler(_onSystemBack);
-    widget.services.cat.messageKeyRequests.removeListener(_onMessageKeyRequest);
+    stopKeyingInput();
     widget.services.cat.pttKeys.removeTarget(_pttTarget);
-    widget.services.cat.keyer('A').voicedWords?.detach(_voiceRender);
     HardwareKeyboard.instance.removeHandler(_onWakeKeyEvent);
     HardwareKeyboard.instance.removeHandler(_onFindKeyEvent);
     HardwareKeyboard.instance.removeHandler(_onVfoKeyEvent);
@@ -1025,10 +1010,10 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
               child: LoggingPanel(
                 operation: operation,
                 services: widget.services,
-                onSendCwMessage: _sendCwMessageFromArea,
+                onSendCwMessage: sendCwMessageFromArea,
                 onEnterSends: _sendEsmMessages,
                 cwTemplateContext: panelRenderContext,
-                keyingSuperMode: _keyingSuperMode,
+                keyingSuperMode: keyingSuperMode,
                 qsos: qsos,
                 loggingControls: _runtime.loggingControls,
                 onCommandAction: _handleCommandAction,
@@ -1112,12 +1097,12 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 // renders, not this.
                 //
                 // A CW message counts too: `{{ qso.call }}` in one is rendered
-                // against this draft (`_sendCwMessage`), and with nothing else
+                // against this draft (`sendCwMessages`), and with nothing else
                 // asking for it F1 would key the message with the call blank.
-                // And the voice keyer: its MODE is the draft's (`_keyingPhone`),
+                // And the voice keyer: its MODE is the draft's (`keyingPhone`),
                 // so with nothing tracking the draft F1 in SSB would fall
                 // through to a CW keyer that keys nothing, silently.
-                onQsoChanged: _anyPanelWants('qso') || _anyPanelWants('lookup') || _cwMessagesConfigured || _phoneKeyingPossible ? _onQsoDraftChanged : null,
+                onQsoChanged: _anyPanelWants('qso') || _anyPanelWants('lookup') || cwMessagesConfigured || _phoneKeyingPossible ? _onQsoDraftChanged : null,
                 // Peer sharing is its own reason to publish, independent of the
                 // layout: the panel that reads this lives on ANOTHER device, so
                 // gating it on what a panel here declares would leave a position

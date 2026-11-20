@@ -107,27 +107,24 @@ class VoicedWords extends ChangeNotifier {
   /// Which reading each take of a message comes from.
   final math.Random _random;
 
-  VoiceTemplateRender? _render;
-  String Function()? _operatorCall;
-  void Function(int n, VoicedMessageRefused refusal)? _refused;
+  final _views = <({VoiceTemplateRender render, String Function() operatorCall, void Function(int, VoicedMessageRefused)? refused})>[];
 
-  /// Lets the operation view render templates against its draft, say whose
-  /// words are in use, and hear a message refused — a key that keys nothing
-  /// must not look like one that worked — until [detach] with the same
-  /// [render].
+  VoiceTemplateRender? get _render => _views.lastOrNull?.render;
+  String Function()? get _operatorCall => _views.lastOrNull?.operatorCall;
+  void Function(int, VoicedMessageRefused)? get _refused => _views.lastOrNull?.refused;
+
+  /// The latest logging view renders against its own draft and says whose
+  /// words to use. Closing a view reveals any logging view behind it.
   void attach(VoiceTemplateRender render, {required String Function() operatorCall, void Function(int n, VoicedMessageRefused refusal)? refused}) {
-    _render = render;
-    _operatorCall = operatorCall;
-    _refused = refused;
+    _views.removeWhere((view) => identical(view.render, render));
+    _views.add((render: render, operatorCall: operatorCall, refused: refused));
     notifyListeners();
   }
 
   void detach(VoiceTemplateRender render) {
-    if (!identical(_render, render)) return;
-    _render = null;
-    _operatorCall = null;
-    _refused = null;
-    notifyListeners();
+    final wasFront = identical(_render, render);
+    _views.removeWhere((view) => identical(view.render, render));
+    if (wasFront) notifyListeners();
   }
 
   /// Whose words a message says: the open operation's operator, else the

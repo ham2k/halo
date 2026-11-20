@@ -580,6 +580,8 @@ class RadioKeyer {
   /// Whether a repeat is armed or counting down.
   bool get keyerRepeating => _k.chain.running;
 
+  bool keyerRepeatingWith(void Function() send) => _k.chain.isArmedWith(send);
+
   /// Arms message 1 to go again [delay] after the one now keying finishes —
   /// see [KeyerRepeat.arm], which is where the five-minute limit lives.
   void armKeyerRepeat({required Duration delay, required String text, required void Function() send, int? memory}) =>

@@ -95,6 +95,8 @@ class KeyerRepeat {
   /// Whether a repeat is armed or counting down.
   bool get running => _send != null;
 
+  bool isArmedWith(void Function() send) => identical(_send, send);
+
   /// When this chain stops whatever else happens, or null while none is
   /// running. Read only to be asserted on: the deadline comes off the real
   /// clock (docs/design/time.md §7), so nothing can elapse fake timers past
