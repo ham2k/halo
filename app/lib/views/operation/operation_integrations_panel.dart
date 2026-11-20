@@ -13,6 +13,7 @@
 
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:halo_core/halo_core.dart';
@@ -21,6 +22,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/halo_services.dart';
 import '../../services/integration_service.dart';
+import '../../services/panel_service.dart' show operationHookArgs;
 import '../../services/watcher_service.dart';
 import '../../settings/settings_target_dialog.dart' show showSettingsForKeys;
 import '../../settings/watcher_settings_rows.dart';
@@ -72,9 +74,22 @@ class _OperationIntegrationsPanelState extends State<OperationIntegrationsPanel>
   void initState() {
     super.initState();
     _operationSub = widget.services.operations.watchOperation(widget.operation.uuid).listen((operation) {
-      if (operation != null && mounted) setState(() => _operation = operation);
+      if (operation == null || !mounted) return;
+      final previous = _operation;
+      setState(() => _operation = operation);
+      // Every write to the operation lands here, its local data moving with
+      // each contact scored: an integration is asked again only when what it
+      // describes moved, or its switch did.
+      final moved = !const DeepCollectionEquality().equals(_describedOf(operation), _describedOf(previous));
+      final catalog = widget.services.integrations.catalog;
+      _describe(
+        moved
+            ? catalog
+            : [...catalog.where((integration) => IntegrationService.isOnIn(integration, operation) != IntegrationService.isOnIn(integration, previous))],
+      );
     });
-    widget.services.integrations.addListener(_onChanged);
+    widget.services.integrations.addListener(_onIntegrationsChanged);
+    _describe();
     // Web has no UDP sockets, so the listen feature is hidden there
     // entirely — nothing to react to.
     if (!isWebPlatform) {
@@ -86,7 +101,7 @@ class _OperationIntegrationsPanelState extends State<OperationIntegrationsPanel>
   @override
   void dispose() {
     unawaited(_operationSub?.cancel());
-    widget.services.integrations.removeListener(_onChanged);
+    widget.services.integrations.removeListener(_onIntegrationsChanged);
     if (!isWebPlatform) {
       widget.services.settings.removeListener(_onChanged);
       widget.services.inboundQsos.removeListener(_onChanged);
@@ -105,6 +120,48 @@ class _OperationIntegrationsPanelState extends State<OperationIntegrationsPanel>
   void _onChanged() {
     _addsOnItsOwn.clear();
     if (mounted) setState(() {});
+  }
+
+  void _onIntegrationsChanged() {
+    _describe();
+    _onChanged();
+  }
+
+  /// What each integration on in this operation says of itself here, its
+  /// hook's `describe`, by id; its own `description` until it answers, when
+  /// it answers nothing, and while it is off.
+  final _described = <String, String?>{};
+
+  /// Per integration, bumped by each ask, so an answer about the operation or
+  /// the settings as they were never lands over one about them as they are.
+  /// One count for all would let each ask throw away the others' answers
+  /// still on their way.
+  final _asked = <String, int>{};
+
+  /// What `describe` is handed of [operation], less its time range: that
+  /// moves with every contact logged.
+  static Map<String, dynamic> _describedOf(Operation operation) => operationHookArgs(operation)
+    ..remove('startAtMillisMin')
+    ..remove('startAtMillisMax');
+
+  /// Asks each of [integrations] that is on in this operation what it would
+  /// do here, and forgets what those off said: switching one on is what
+  /// hands it the operation.
+  void _describe([List<WatcherDefinition>? integrations]) {
+    final operation = _operation;
+    for (final integration in integrations ?? widget.services.integrations.catalog) {
+      final id = integration.id;
+      final ask = _asked[id] = (_asked[id] ?? 0) + 1;
+      if (!IntegrationService.isOnIn(integration, operation)) {
+        _described.remove(id);
+        continue;
+      }
+      unawaited(
+        widget.services.integrations.describe(integration, operation).then((line) {
+          if (mounted && ask == _asked[id]) setState(() => _described[id] = line);
+        }),
+      );
+    }
   }
 
   bool get _receiving => widget.services.inboundQsos.receivingOperationUuid == widget.operation.uuid;
@@ -237,16 +294,20 @@ class _OperationIntegrationsPanelState extends State<OperationIntegrationsPanel>
   );
 
   /// [integration]'s own settings, the rows Settings › Integrations holds
-  /// for it: app-wide, though reached from one operation.
-  Future<void> _showIntegrationSettings(WatcherDefinition integration) => showSettingsForKeys(
-    context,
-    services: widget.services,
-    keys: [
-      for (final field in integration.formFields)
-        if (field['key'] case final String key) watcherFieldRowKey(integration, key),
-    ],
-    title: integration.title,
-  );
+  /// for it: app-wide, though reached from one operation. What they changed
+  /// may change what it says of itself.
+  Future<void> _showIntegrationSettings(WatcherDefinition integration) async {
+    await showSettingsForKeys(
+      context,
+      services: widget.services,
+      keys: [
+        for (final field in integration.formFields)
+          if (field['key'] case final String key) watcherFieldRowKey(integration, key),
+      ],
+      title: integration.title,
+    );
+    if (mounted) _describe([integration]);
+  }
 
   List<Widget> _rows(BuildContext context) {
     final t = context.t.operation.import;
@@ -262,6 +323,7 @@ class _OperationIntegrationsPanelState extends State<OperationIntegrationsPanel>
         for (final integration in offered)
           _IntegrationTile(
             integration: integration,
+            described: _described[integration.id],
             on: IntegrationService.isOnIn(integration, _operation),
             onChanged: (on) => unawaited(widget.services.integrations.setOn(integration, _operation.uuid, on)),
             onSettings: integration.formFields.isEmpty ? null : () => unawaited(_showIntegrationSettings(integration)),
@@ -374,19 +436,30 @@ class _OperationIntegrationsPanelState extends State<OperationIntegrationsPanel>
 /// settings when it has any.
 class _IntegrationTile extends StatelessWidget {
   final WatcherDefinition integration;
+
+  /// What it said of itself in this operation; null shows its `description`.
+  final String? described;
   final bool on;
   final ValueChanged<bool> onChanged;
   final VoidCallback? onSettings;
 
-  const _IntegrationTile({required this.integration, required this.on, required this.onChanged, required this.onSettings});
+  const _IntegrationTile({required this.integration, required this.described, required this.on, required this.onChanged, required this.onSettings});
 
   @override
   Widget build(BuildContext context) {
+    final described = this.described;
     final description = integration.description;
     return ListTile(
       leading: Icon(resolveIconName(integration.icon, fallback: MdiIcons.connection)),
       title: Text(integration.title),
-      subtitle: description == null ? null : Text(description),
+      // The answer is the extension's to word, asked as the operation moves:
+      // held to two lines, a long one cannot push the switches down the
+      // dialog.
+      subtitle: described != null
+          ? Text(described, maxLines: 2, overflow: TextOverflow.ellipsis)
+          : description == null
+          ? null
+          : Text(description),
       onTap: () => onChanged(!on),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,

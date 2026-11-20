@@ -17,6 +17,7 @@ import 'package:halo_core/halo_core.dart';
 
 import '../views/operation/panel_scene/cat_spectrum_source.dart';
 import 'cat/cat_service.dart';
+import 'error_reporting_service.dart';
 import 'panel_service.dart';
 import 'settings_service.dart';
 import 'watcher_service.dart';
@@ -33,6 +34,10 @@ abstract interface class IntegrationExtensionSource {
 
   /// Throws when the hook does; false when there was no runtime to call.
   Future<bool> observeIntegration({required String hookKey, required String integrationKey, required Map<String, dynamic> args});
+
+  /// The hook's `describe` answer as its `line`, null without one; `called`
+  /// false when there was no runtime to ask. Throws when the hook does.
+  Future<({bool called, String? line})> describeIntegration({required String hookKey, required String integrationKey, required Map<String, dynamic> args});
 
   Future<Map<String, dynamic>> readPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields});
 
@@ -124,6 +129,29 @@ class IntegrationService extends WatcherService {
 
   @override
   Future<List<Map<String, dynamic>>?> fetchCatalog() => extensions.getExtensionIntegrations();
+
+  /// What [integration] says of itself in [operation]'s Integrations dialog
+  /// (its hook's `describe`), or null for its own `description`. A failure
+  /// is that too: the line is the extension's to word, and its absence costs
+  /// the operator nothing the descriptor does not say.
+  Future<String?> describe(WatcherDefinition integration, Operation operation) async {
+    final failureKey = '$kind:${integration.id}:describe';
+    try {
+      final config = await readConfig(integration);
+      final described = await extensions.describeIntegration(
+        hookKey: integration.hookKey,
+        integrationKey: integration.key,
+        args: {'operation': operationHookArgs(operation), 'config': config},
+      );
+      // No runtime is no call: it says nothing about whether the hook works.
+      if (described.called) ErrorReportingService.recordSuccess(failureKey);
+      return described.line;
+    } catch (error, stack) {
+      debugPrint('[${kind}s] ${integration.id} could not describe itself: $error');
+      ErrorReportingService.reportIfRepeated(failureKey, error, stack, context: failureKey);
+      return null;
+    }
+  }
 
   @override
   bool canReadRadio(String hookKey) => extensions.canReadRadio(hookKey);

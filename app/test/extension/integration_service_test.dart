@@ -13,6 +13,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/integration_service.dart';
 import 'package:ham2k_logger/services/panel_service.dart';
 
@@ -53,6 +54,21 @@ class _FakeIntegrationExtensions implements IntegrationExtensionSource {
     calls.add(_Call(hookKey, integrationKey, args));
     if (failWith != null) throw failWith!;
     return true;
+  }
+
+  /// What `describe` answers, from the args it was handed.
+  String? Function(Map<String, dynamic> args)? describing;
+  final described = <Map<String, dynamic>>[];
+
+  @override
+  Future<({bool called, String? line})> describeIntegration({
+    required String hookKey,
+    required String integrationKey,
+    required Map<String, dynamic> args,
+  }) async {
+    if (!answering) return (called: false, line: null);
+    described.add({'hookKey': hookKey, 'integrationKey': integrationKey, ...args});
+    return (called: true, line: describing?.call(args));
   }
 
   @override
@@ -378,6 +394,63 @@ void main() {
       second.update(PanelRenderContext(operation: op, qsoCount: 3, log: [_qso('a'), _qso('b'), _qso('c')]));
       async.elapse(_pastGap);
       expect(extensions.calls.last.uuids('logged'), ['c']);
+      service.dispose();
+    });
+  });
+
+  // The dialog's line under an integration is the extension's to word for
+  // this operation; a hook that cannot say keeps the descriptor's line, so
+  // a broken `describe` never empties the dialog.
+  test("describe hands the hook the operation and the integration's settings, and a failure answers null", () {
+    fakeAsync((async) {
+      final service = start(async, [_integration('stream', const [])]);
+      final stream = service.catalog.single;
+      extensions.describing = (args) => 'Streams ${(args['operation'] as Map)['stationCall']} with ${(args['config'] as Map)['from']}';
+      String? line;
+      unawaited(service.describe(stream, _op('op-1')).then((answer) => line = answer));
+      async.flushMicrotasks();
+      expect(line, 'Streams K1ABC with $_id');
+      expect(extensions.described.single['hookKey'], 'k1abc-club');
+      expect(extensions.described.single['integrationKey'], 'stream');
+
+      extensions.describing = (_) => throw StateError('no contest');
+      line = 'unchanged';
+      unawaited(service.describe(stream, _op('op-1')).then((answer) => line = answer));
+      async.flushMicrotasks();
+      expect(line, isNull);
+      service.dispose();
+    });
+  });
+
+  // A dialog opened before the runtime is up asks no hook at all: counting
+  // that as an answer would clear a run of failures the hook is still on,
+  // and the third one would never be reported.
+  test('describe with no runtime to ask leaves a run of failures standing', () {
+    fakeAsync((async) {
+      ErrorReportingService.resetFailureStreaks();
+      addTearDown(ErrorReportingService.resetFailureStreaks);
+      const failureKey = 'integration:$_id:describe';
+      final service = start(async, [_integration('stream', const [])]);
+      final stream = service.catalog.single;
+      void ask() {
+        unawaited(service.describe(stream, _op('op-1')));
+        async.flushMicrotasks();
+      }
+
+      extensions.describing = (_) => throw StateError('no contest');
+      ask();
+      ask();
+      expect(ErrorReportingService.failureStreak(failureKey), 2);
+
+      extensions.answering = false;
+      ask();
+      expect(ErrorReportingService.failureStreak(failureKey), 2);
+
+      extensions
+        ..answering = true
+        ..describing = (_) => 'Streams';
+      ask();
+      expect(ErrorReportingService.failureStreak(failureKey), 0);
       service.dispose();
     });
   });

@@ -21,16 +21,19 @@ it on in.
 **Called:** `getIntegrations` on every runtime start; `observe` once per
 open operation it is on in, each time one of its triggers fires, and with
 `open` as such an operation opens, as the operator switches it on, and
-after every runtime restart. Extension API 29.
+after every runtime restart; `describe`, when you have it, as the
+Integrations dialog of an operation it is on in shows it. Extension API 29.
 
 ```ts
 interface IntegrationHook {
   getIntegrations(args: {}, ctx): Promise<IntegrationDescriptor[]>
   observe(args: IntegrationObserveArgs, ctx): Promise<void>
+  describe?(args: IntegrationDescribeArgs, ctx): Promise<string | null>
 }
-// IntegrationDescriptor:  { key, title, description?, icon?, on?, form? }
-// IntegrationObserveArgs: { integrationKey, operation, qsoCount, config, reasons, clock, changes }
-// IntegrationChanges:     { logged: QSO[], updated: QSO[], deleted: string[] }
+// IntegrationDescriptor:   { key, title, description?, icon?, on?, form? }
+// IntegrationObserveArgs:  { integrationKey, operation, qsoCount, config, reasons, clock, changes }
+// IntegrationChanges:      { logged: QSO[], updated: QSO[], deleted: string[] }
+// IntegrationDescribeArgs: { integrationKey, operation, config }
 ```
 
 **`getIntegrations`** lists what you offer. The operator finds each one in
@@ -55,6 +58,18 @@ your extension.
   Extensions panel. Installing one asks for nothing beyond its grants:
   switching it on in an operation is the operator's consent to what it does
   there.
+
+**`describe`** says, in one line under the integration's name, what it does
+in the operation the dialog is open on: `"Report CQ WW SSB score every 3
+minutes"`, or why it has nothing to do there. It is asked only where the
+integration is on, since switching it on is what hands it the operation;
+where it is off, the dialog shows its `description`. It is handed the
+`operation` and the integration's `config`, and asked again as either
+changes; a longer answer is cut at two lines. Return null, or leave the
+method out, to keep the descriptor's `description`, which is also what
+Settings shows, with no operation to speak of. Answer from what you are
+handed: the dialog shows the `description` until you answer, and keeps it
+when an answer takes longer than two seconds.
 
 **`observe`** is called about one operation at a time. With two open where
 it is on, a change in one is a call about that one; a tick is a call about

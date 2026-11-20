@@ -4736,7 +4736,9 @@ export interface IntegrationDescriptor {
   key: string
   /// Its name in the Integrations dialog and in Settings.
   title: string
-  /// One line under the name: what it sends, or what it listens for.
+  /// One line under the name: what it sends, or what it listens for. In the
+  /// Integrations dialog of an operation it is on in,
+  /// `IntegrationHook.describe` can say it of that operation instead.
   description?: string
   /// MDI icon name.
   icon?: string
@@ -4780,12 +4782,29 @@ export interface IntegrationObserveArgs {
   changes: IntegrationChanges
 }
 
+/// What `IntegrationHook.describe` is asked about: one integration, in one
+/// operation, with its settings. Extension API 29.
+export interface IntegrationDescribeArgs {
+  integrationKey: string
+  /// The operation the Integrations dialog is open on, with its `uuid`.
+  operation: Record<string, JSONValue>
+  /// The integration's own settings, keyed by field.
+  config: Record<string, JSONValue>
+}
+
 /// Registered under category 'integration'. Connects one operation, where
 /// the operator switched it on, to a service or program outside the app:
 /// it reads what is logged and sends it on, and answers through the host.
 export interface IntegrationHook {
   getIntegrations(args: Record<string, never>, ctx: HookContext): Promise<IntegrationDescriptor[]>
   observe(args: IntegrationObserveArgs, ctx: HookContext): Promise<void>
+  /// The line under the integration's name in the Integrations dialog of an
+  /// operation it is switched on in: what it does with this operation, or
+  /// why it has nothing to do. Never asked where it is off, which shows the
+  /// descriptor's `description`, as null or no method does. Asked as the
+  /// dialog opens and as the operation or the settings change, so keep it to
+  /// what the arguments say; the dialog cuts it at two lines. Extension API 29.
+  describe?(args: IntegrationDescribeArgs, ctx: HookContext): Promise<string | null>
 }
 
 /// Who an agent link's message came from, and what the operator let it do.

@@ -7,15 +7,87 @@
 // row instead, the band trips SectionHeader's debug assertion and the panel
 // shows an error box where the captures belong.
 
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:ham2k_logger/services/extensions/extension_info.dart';
 import 'package:ham2k_logger/services/inbound_qso_listener_service.dart';
+import 'package:ham2k_logger/services/integration_service.dart';
 import 'package:ham2k_logger/views/operation/operation_integrations_panel.dart';
 
 import '../support/halo_test_support.dart';
+
+/// One extension offering two integrations, whose `describe` answers come
+/// from [describe].
+class _ClubIntegrations extends ExtensionServiceWithFakeHost {
+  _ClubIntegrations(Object? Function(Map<dynamic, dynamic> args) describe)
+    : super(
+        FakeExtensionHost({
+          'integration:*:getIntegrations': [
+            {
+              'key': 'k1abc',
+              'extensionKey': 'k1abc',
+              'ok': true,
+              'value': [
+                {'key': 'stream', 'title': 'Club Stream', 'description': 'Streams contacts to the club'},
+                {'key': 'score', 'title': 'Club Score', 'description': 'Posts the score to the club'},
+              ],
+            },
+          ],
+          'integration:k1abc:describe': (Object? args) => describe(args! as Map),
+        }),
+      );
+
+  @override
+  List<ExtensionInfo> get availableExtensions => [
+    ExtensionInfo(key: 'k1abc', file: 'k1abc.js', source: ExtensionSource.dev, core: false, name: 'Club', hooks: const ['integration']),
+  ];
+}
+
+const _stream = 'integration:k1abc:stream';
+const _score = 'integration:k1abc:score';
+
+Future<void> _switchOn(HaLoHarness h, String operationUuid, List<String> ids) =>
+    h.services.operations.updateLocalData(operationUuid, {IntegrationService.localDataKey: ids});
+
+/// The catalog, the operation's writes and the answers all come over the
+/// real event loop.
+Future<void> _settle(WidgetTester tester) async {
+  for (var i = 0; i < 3; i++) {
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+  }
+}
+
+/// In the body: drift's stream close arms a timer that must fire before the
+/// binding's pending-timer check.
+Future<void> _unmount(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  for (var i = 0; i < 5; i++) {
+    await tester.pump(const Duration(milliseconds: 10));
+  }
+}
+
+Future<Operation> _openWith(WidgetTester tester, HaLoHarness h, List<String> on) async {
+  final created = (await tester.runAsync(() => h.services.operations.create(stationCall: 'KI2D')))!;
+  if (on.isNotEmpty) await tester.runAsync(() => _switchOn(h, created.uuid, on));
+  final operation = (await tester.runAsync(() => h.services.operations.get(created.uuid)))!;
+  await pumpHaLo(
+    tester,
+    (services) => Scaffold(
+      body: OperationIntegrationsPanel(services: services, operation: operation),
+    ),
+    harness: h,
+  );
+  await _settle(tester);
+  return operation;
+}
 
 void main() {
   testWidgets('the Captured QSOs band pins over its own rows', (tester) async {
@@ -151,5 +223,90 @@ void main() {
     for (var i = 0; i < 5; i++) {
       await tester.pump(const Duration(milliseconds: 10));
     }
+  });
+
+  // Switching an integration on in an operation is the operator's consent to
+  // what it does there: one that is off is never handed the operation, not
+  // even to say what it would do with it.
+  testWidgets('an integration off in the operation is never asked about it, and says what it does there once on', (tester) async {
+    final asked = <String>[];
+    final h = await makeHaLoServices(
+      extensions: _ClubIntegrations((args) {
+        asked.add(args['integrationKey'] as String);
+        return '${args['integrationKey']} answers';
+      }),
+    );
+    final operation = await _openWith(tester, h, const []);
+    expect(find.text('Streams contacts to the club'), findsOneWidget);
+    expect(asked, isEmpty);
+
+    await tester.runAsync(() => _switchOn(h, operation.uuid, [_stream]));
+    await _settle(tester);
+    expect(asked, ['stream']);
+    expect(find.text('stream answers'), findsOneWidget);
+    expect(find.text('Posts the score to the club'), findsOneWidget);
+
+    await tester.runAsync(() => _switchOn(h, operation.uuid, const []));
+    await _settle(tester);
+    expect(asked, ['stream']);
+    expect(find.text('Streams contacts to the club'), findsOneWidget, reason: 'what it said is about an operation it is no longer on in');
+    await _unmount(tester);
+  });
+
+  // Every contact logged writes the operation (its count, its time range):
+  // asking again for each would throw away answers still on their way. And
+  // an answer about the operation as it was must never land over one about
+  // it as it is.
+  testWidgets('a contact logged asks no integration again; an edit to the operation does, and only its answer shows', (tester) async {
+    final answers = <Completer<String>>[];
+    final h = await makeHaLoServices(extensions: _ClubIntegrations((_) => (answers..add(Completer<String>())).last.future));
+    final operation = await _openWith(tester, h, [_stream]);
+    expect(answers, hasLength(1));
+
+    // What logging a contact writes to the operation row: its count and time
+    // range (`QsosRepository`'s counters). Logged through the repository, its
+    // lifecycle follow-up waits on this test's fake clock.
+    await tester.runAsync(
+      () => (h.db.update(h.db.operations)..where((row) => row.uuid.equals(operation.uuid))).write(
+        const OperationsCompanion(qsoCount: Value(1), startAtMillisMin: Value(1700000000000), startAtMillisMax: Value(1700000000000)),
+      ),
+    );
+    await _settle(tester);
+    expect(answers, hasLength(1));
+
+    // An edit to the operation, as one synced in writes it. Saved through the
+    // repository, its segment restamp waits on this test's fake clock too.
+    await tester.runAsync(
+      () => (h.db.update(
+        h.db.operations,
+      )..where((row) => row.uuid.equals(operation.uuid))).write(OperationsCompanion(data: Value(jsonEncode({...operation.data, 'userTitle': 'Field Day'})))),
+    );
+    await _settle(tester);
+    expect(answers, hasLength(2));
+
+    answers[1].complete('Streams Field Day');
+    await tester.pump();
+    answers[0].complete('Streams the operation as it was');
+    await tester.pump();
+    expect(find.text('Streams Field Day'), findsOneWidget);
+    expect(find.text('Streams the operation as it was'), findsNothing);
+    await _unmount(tester);
+  });
+
+  // Each integration is asked on its own: one asked again, or switched off,
+  // must not throw away another's answer still on its way.
+  testWidgets("switching one integration off keeps another's answer coming", (tester) async {
+    final score = Completer<String>();
+    final h = await makeHaLoServices(extensions: _ClubIntegrations((args) => args['integrationKey'] == 'score' ? score.future : 'Streams'));
+    final operation = await _openWith(tester, h, [_stream, _score]);
+    expect(find.text('Streams'), findsOneWidget);
+
+    await tester.runAsync(() => _switchOn(h, operation.uuid, [_score]));
+    await _settle(tester);
+    score.complete('Posts the score');
+    await tester.pump();
+    expect(find.text('Posts the score'), findsOneWidget);
+    expect(find.text('Streams contacts to the club'), findsOneWidget);
+    await _unmount(tester);
   });
 }

@@ -88,6 +88,7 @@ abstract final class Hooks {
 
   static const integrationGetIntegrations = HookRef(HookCategories.integration, 'getIntegrations');
   static const integrationObserve = HookRef(HookCategories.integration, 'observe');
+  static const integrationDescribe = HookRef(HookCategories.integration, 'describe');
 
   static const chasingProgram = HookRef(HookCategories.chasing, 'program');
   static const chasingClaimsForQsos = HookRef(HookCategories.chasing, 'claimsForQsos');
