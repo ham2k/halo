@@ -45,18 +45,7 @@ class ExtensionSpotsReader {
 
     final List<Map<String, dynamic>> spots;
     if (query.base == SpotsBase.user) {
-      final settings = _services.settings;
-      final filters = SpotBoardFilters.fromSettings(settings);
-      final vfo = _services.radio.vfoA;
-      final callInfo = board.callInfo;
-      spots = filterSpotBoard(
-        mergedSpotBoard(bySource, filters.disabledSources, entityOf: (call) => callInfo[call]?.entityPrefix),
-        filters,
-        vfoBand: vfo.band,
-        vfoMode: vfo.mode,
-        enabledBands: settings.enabledBands.toSet(),
-        continentOf: (call) => callInfo[call]?.continent,
-      ).filtered;
+      spots = board.filteredByOperator(bySource: bySource);
     } else {
       final off = query.base == SpotsBase.sources ? _services.settings.disabledSpotSources : const <String>{};
       spots = sortSpots([

@@ -7,6 +7,7 @@
 // members it needs (`host`, `getScoringScopes`) are the service's own.
 
 import 'dart:collection';
+import 'dart:math' show max;
 
 import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
 import 'package:halo_core/halo_core.dart' show HookRef, Hooks;
@@ -349,10 +350,11 @@ mixin ExtensionScoring {
 
   /// The same live judgement as [scoreQso], for many not-yet-logged candidates
   /// at once — the Spots Panel annotating every spot on screen against the
-  /// operation's log. Returns `{candidateKey: {notices, alerts, icons?}}`
+  /// operation's log. Returns `{candidateKey: {notices, alerts, icons?, value?}}`
   /// merged across every scorer relevant to [operation] — `icons` the
   /// `{icon, color?}` each scorer that named one gave the candidate, in the
-  /// scorers' order, each name once — or null when NO pass happened — the
+  /// scorers' order, each name once; `value` the most points any scorer
+  /// other than a fallback gave it — or null when NO pass happened — the
   /// runtime isn't up, or no scorer applies. A scorer that ran and failed is
   /// not that case: see the return below.
   ///
@@ -429,6 +431,11 @@ mixin ExtensionScoring {
     // board would otherwise lose its dupe striking outright.
     final fallbackMerged = <String, ({SplayTreeSet<String> notices, SplayTreeSet<String> alerts})>{};
     final judgedByOther = <String>{};
+    // The best a scorer the operation names gives each candidate. Not a
+    // fallback's: core gives every unworked station a point, and a scorer that
+    // only marks spots gives every one 0 — either would decide what a 0 from
+    // the contest means.
+    final values = <String, num>{};
     var any = false;
     // Tracked apart from [any] because the two mean opposite things to the
     // caller. No scorer answering can be a pass that had nothing to say, or a
@@ -516,6 +523,9 @@ mixin ExtensionScoring {
             final value = entry.value;
             if (key is! String || value is! Map) continue;
             if (!scorer.fallback && judgesWorkedBefore(value)) judgedByOther.add(key);
+            if (!scorer.fallback) {
+              if (value['value'] case final num points) values[key] = max(values[key] ?? points, points);
+            }
             final target = scorer.fallback ? fallbackMerged : merged;
             final into = target.putIfAbsent(key, () => (notices: SplayTreeSet<String>(), alerts: SplayTreeSet<String>()));
             final ownNotices = ((value['notices'] as List?) ?? const []).whereType<String>();
@@ -570,10 +580,15 @@ mixin ExtensionScoring {
     }
 
     return {
-      for (final key in {...merged.keys, for (final icons in iconsByCall) ...icons.keys})
+      for (final key in {...merged.keys, for (final icons in iconsByCall) ...icons.keys, ...values.keys})
         if ((notices: merged[key]?.notices ?? const <String>{}, alerts: merged[key]?.alerts ?? const <String>{}, icons: iconsOf(key)) case final verdict
-            when verdict.notices.isNotEmpty || verdict.alerts.isNotEmpty || verdict.icons.isNotEmpty)
-          key: {'notices': verdict.notices.toList(), 'alerts': verdict.alerts.toList(), if (verdict.icons.isNotEmpty) 'icons': verdict.icons},
+            when verdict.notices.isNotEmpty || verdict.alerts.isNotEmpty || verdict.icons.isNotEmpty || values.containsKey(key))
+          key: {
+            'notices': verdict.notices.toList(),
+            'alerts': verdict.alerts.toList(),
+            if (verdict.icons.isNotEmpty) 'icons': verdict.icons,
+            'value': ?values[key],
+          },
     };
   }
 }

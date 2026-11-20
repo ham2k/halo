@@ -37,6 +37,7 @@ import 'chase_import_flow.dart';
 import 'file_open/file_router.dart';
 import 'operation/information_panel.dart';
 import 'operation/information_panel_settings.dart';
+import 'operation/spot_keys.dart';
 import 'operation/log_find_bar.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
@@ -504,6 +505,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     frontSettingsOverrides.set(this, _loggingSettings);
     HardwareKeyboard.instance.addHandler(_onFindKeyEvent);
     HardwareKeyboard.instance.addHandler(_onVfoKeyEvent);
+    HardwareKeyboard.instance.addHandler(_onSpotKeyEvent);
   }
 
   void _hidden() {
@@ -513,6 +515,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     frontSettingsOverrides.clear(this);
     HardwareKeyboard.instance.removeHandler(_onFindKeyEvent);
     HardwareKeyboard.instance.removeHandler(_onVfoKeyEvent);
+    HardwareKeyboard.instance.removeHandler(_onSpotKeyEvent);
   }
 
   /// Bumped to open the logging panel's Find bar — [LoggingPanel.findRequest].
@@ -545,6 +548,16 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
     if (testerOverlayCovering.value || !mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
     return onVfoKey(event, radio: widget.services.radio, statusBar: widget.services.statusBar, vfo: 'vfoA', qsoLoaded: _selectedQsoUuid != null);
+  }
+
+  final _spotKeys = SpotKeys();
+
+  /// The spot keys, on screen and front-most as the VFO keys are — on
+  /// radio1 ([SpotKeys.onKey]).
+  bool _onSpotKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
+    if (testerOverlayCovering.value || !mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
+    return _spotKeys.onKey(event, services: widget.services, vfo: 'vfoA', qsoLoaded: _selectedQsoUuid != null, operation: _operation, suggest: _suggestQso);
   }
 
   /// The period ends at a UTC midnight that no write announces: "today"

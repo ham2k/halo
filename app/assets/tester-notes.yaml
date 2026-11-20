@@ -15,6 +15,7 @@ upcoming:
     - "Links in Web Site panels open inside the panel, with a Back button"
     - "New Info and Summaries panel settings: themes, section order, checklist style"
     - "New Integrations dialog replaces Imports, with per-operation switches for extension integrations"
+    - "New spot keys: ⌘↑/⌘↓ (Ctrl elsewhere) step through spots, ⇧ for multipliers"
 
 "195":
   changes:

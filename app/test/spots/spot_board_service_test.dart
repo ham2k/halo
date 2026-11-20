@@ -67,6 +67,9 @@ class _FakeExtensions extends ExtensionService {
   @override
   ExtensionHost? get host => _host;
 
+  /// The points the scorers give each call, where a test sets them.
+  Map<String, num> values = {};
+
   /// The spots every refresh reports; two stations unless a test sets more.
   List<Map<String, dynamic>> spotItems = [_spot('K1ABC', hookKey: 'pota'), _spot('W1AW', hookKey: 'sota')];
 
@@ -96,6 +99,7 @@ class _FakeExtensions extends ExtensionService {
         key: {
           'notices': const <String>[],
           'alerts': [if (duplicates?.contains((value['their'] as Map)['call']) ?? true) 'duplicate'],
+          'value': ?values[(value['their'] as Map)['call']],
         },
     };
   }
@@ -337,6 +341,20 @@ void main() {
       expect(services.spotBoard.scoresFor(first.uuid), isNotEmpty);
       await show();
       expect(services.spotBoard.scoresFor(first.uuid), isNull);
+    }),
+  );
+
+  // The spot keys pass over a spot worth 0 points. Kept from the same pass as
+  // the strikes, so a value never outlives the operation it was given for.
+  test(
+    'each spot\'s points come with its verdict, for the operation they were given for',
+    () => runOnFakeClock((_) async {
+      await openBoard();
+      extensions.values = {'K1ABC': 0, 'W1AW': 2};
+      final first = await show();
+      expect(services.spotBoard.scoreValuesFor(first.uuid)?.values.toSet(), {0, 2});
+      await show();
+      expect(services.spotBoard.scoreValuesFor(first.uuid), isNull);
     }),
   );
 

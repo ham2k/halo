@@ -407,12 +407,23 @@ final List<KeyCommandSpec> keyCommandSpecs = [
   const KeyCommandSpec(vfoFineDownCommandId, KeyCommandContext.station, ['alt+Up']),
   const KeyCommandSpec(vfoCoarseUpCommandId, KeyCommandContext.station, ['shift+alt+Down']),
   const KeyCommandSpec(vfoCoarseDownCommandId, KeyCommandContext.station, ['shift+alt+Up']),
+  // Down goes up the band, as the VFO keys do.
+  const KeyCommandSpec(spotsNextCommandId, KeyCommandContext.station, ['mod+Down']),
+  const KeyCommandSpec(spotsPreviousCommandId, KeyCommandContext.station, ['mod+Up']),
+  const KeyCommandSpec(spotsNextMultCommandId, KeyCommandContext.station, ['mod+shift+Down']),
+  const KeyCommandSpec(spotsPreviousMultCommandId, KeyCommandContext.station, ['mod+shift+Up']),
 ];
 
 /// The operator's VFO one fine or coarse step up or down.
 const vfoFineUpCommandId = 'vfo.fineUp', vfoFineDownCommandId = 'vfo.fineDown';
 const vfoCoarseUpCommandId = 'vfo.coarseUp', vfoCoarseDownCommandId = 'vfo.coarseDown';
 const _vfoCommandIds = {vfoFineUpCommandId, vfoFineDownCommandId, vfoCoarseUpCommandId, vfoCoarseDownCommandId};
+
+/// The spot keys: the operator's VFO onto the nearest spot up or down the
+/// band from it, or the nearest new multiplier's.
+const spotsNextCommandId = 'spots.next', spotsPreviousCommandId = 'spots.previous';
+const spotsNextMultCommandId = 'spots.nextMult', spotsPreviousMultCommandId = 'spots.previousMult';
+const _spotCommandIds = {spotsNextCommandId, spotsPreviousCommandId, spotsNextMultCommandId, spotsPreviousMultCommandId};
 
 /// How many keyer messages have a command of their own.
 const keyerMessageKeyCount = 8;
@@ -796,6 +807,10 @@ class LegacyKeyBindings extends KeyBindings {
         return alt && !command && shift == (id == vfoCoarseUpCommandId) && key == LogicalKeyboardKey.arrowDown;
       case vfoFineDownCommandId || vfoCoarseDownCommandId:
         return alt && !command && shift == (id == vfoCoarseDownCommandId) && key == LogicalKeyboardKey.arrowUp;
+      case spotsNextCommandId || spotsNextMultCommandId:
+        return command && !alt && shift == (id == spotsNextMultCommandId) && key == LogicalKeyboardKey.arrowDown;
+      case spotsPreviousCommandId || spotsPreviousMultCommandId:
+        return command && !alt && shift == (id == spotsPreviousMultCommandId) && key == LogicalKeyboardKey.arrowUp;
     }
     if (id.startsWith('keyer.message')) {
       final n = int.tryParse(id.substring('keyer.message'.length));
@@ -952,11 +967,13 @@ KeyChordRefusal? keyChordRefusal(KeyChord chord, String id, {TargetPlatform? pla
   if (chord.key == LogicalKeyboardKey.escape) return KeyChordRefusal.fixed;
   if (!chord.hasCommandModifier && !chord.modifiers.contains(KeyModifier.alt) && _fieldKeys.contains(chord.key)) return KeyChordRefusal.fixed;
   // The QSO list's walk (qso_list_walk.dart): ⌥ and ⌘ on Up and Down. Only
-  // the VFO's commands may take its ⌥ page: they alone stand aside while a
-  // logged contact is loaded, where a field walks the list on it.
+  // the VFO's commands may take its ⌥ page, and only the spot keys its ⌘
+  // ends: they alone stand aside while a logged contact is loaded, where a
+  // field walks the list on them.
   final vertical = chord.key == LogicalKeyboardKey.arrowUp || chord.key == LogicalKeyboardKey.arrowDown;
   if (vertical && chord.modifiers.length == 1) {
-    if (chord._hasMeta || (chord.modifiers.contains(KeyModifier.alt) && !_vfoCommandIds.contains(id))) return KeyChordRefusal.fixed;
+    if (chord._hasMeta && !_spotCommandIds.contains(id)) return KeyChordRefusal.fixed;
+    if (chord.modifiers.contains(KeyModifier.alt) && !_vfoCommandIds.contains(id)) return KeyChordRefusal.fixed;
   }
   // Undo of a wipe or a staged delete, and every text field's own undo.
   if (chord.key == LogicalKeyboardKey.keyZ) {

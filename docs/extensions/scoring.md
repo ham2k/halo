@@ -96,6 +96,15 @@ registerHook("scoring", {
   scorer's icon goes with a verdict that said only worked-before things
   where another scorer ruled on that axis; one that answers an icon and
   nothing else keeps it.
+- **A candidate's `value`** is what logging it would score.
+  `contestScorer()` passes on a `scoreQso` verdict's `value`, except a 0
+  that comes with `incomplete`: an exchange still to come says nothing about
+  the station, and a spot carries none. Give 0 only to a station worth
+  nothing to you — out of your category, band, mode or hours — since the
+  spot keys (⌘↑ and ⌘↓) pass over a spot that every scorer the operation
+  names values at 0. An `'always'` scorer's value is not counted: it runs on
+  every operation, so its 0 would pass over every spot there. Extension
+  API 30.
 
 **Worked-before is shared between scorers**, and the rule for who speaks is
 worth learning once. An `'always'` scorer is the lowest priority on that

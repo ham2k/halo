@@ -439,6 +439,10 @@ class _Translations$operation$qro extends Translations$operation$en {
 	@override String get deleteOperation => 'DELETE OPERATION';
 	@override String get loggingControlsStale => 'ACTIVITY FIELDS MAY BE OUT OF DATE — REOPEN THE OPERATION TO REFRESH THEM';
 	@override String get vfoKeysNoFrequency => 'NO FREQUENCY TO TUNE FROM — TYPE ONE, OR CONNECT A RADIO';
+	@override String get spotKeysNoneUp => 'NO MORE SPOTS UP THE BAND';
+	@override String get spotKeysNoneDown => 'NO MORE SPOTS DOWN THE BAND';
+	@override String get spotKeysNoMultUp => 'NO MORE NEW MULTIPLIERS UP THE BAND';
+	@override String get spotKeysNoMultDown => 'NO MORE NEW MULTIPLIERS DOWN THE BAND';
 	@override String get locationNone => 'NOT SET';
 	@override String get generalOperation => 'GENERAL OPERATION';
 	@override late final _Translations$operation$lifecycle$qro lifecycle = _Translations$operation$lifecycle$qro._(_root);
@@ -3855,6 +3859,10 @@ class _Translations$keyboardShortcuts$command$qro extends Translations$keyboardS
 	@override String get vfoFineDown => 'VFO DOWN ONE FINE STEP';
 	@override String get vfoCoarseUp => 'VFO UP ONE COARSE STEP';
 	@override String get vfoCoarseDown => 'VFO DOWN ONE COARSE STEP';
+	@override String get spotsNext => 'NEXT SPOT UP THE BAND';
+	@override String get spotsPrevious => 'NEXT SPOT DOWN THE BAND';
+	@override String get spotsNextMult => 'NEXT NEW MULTIPLIER UP THE BAND';
+	@override String get spotsPreviousMult => 'NEXT NEW MULTIPLIER DOWN THE BAND';
 }
 
 // Path: keyboardShortcuts.fixed
@@ -5871,6 +5879,10 @@ extension on TranslationsQro {
 			'operation.deleteOperation' => 'DELETE OPERATION',
 			'operation.loggingControlsStale' => 'ACTIVITY FIELDS MAY BE OUT OF DATE — REOPEN THE OPERATION TO REFRESH THEM',
 			'operation.vfoKeysNoFrequency' => 'NO FREQUENCY TO TUNE FROM — TYPE ONE, OR CONNECT A RADIO',
+			'operation.spotKeysNoneUp' => 'NO MORE SPOTS UP THE BAND',
+			'operation.spotKeysNoneDown' => 'NO MORE SPOTS DOWN THE BAND',
+			'operation.spotKeysNoMultUp' => 'NO MORE NEW MULTIPLIERS UP THE BAND',
+			'operation.spotKeysNoMultDown' => 'NO MORE NEW MULTIPLIERS DOWN THE BAND',
 			'operation.locationNone' => 'NOT SET',
 			'operation.generalOperation' => 'GENERAL OPERATION',
 			'operation.lifecycle.paused' => 'PAUSED',
@@ -5974,12 +5986,12 @@ extension on TranslationsQro {
 			'operation.layout.layouts.exportPick' => 'PANELS TO EXPORT',
 			'operation.layout.layouts.tabSet' => 'TAB SET',
 			'operation.layout.layouts.exportAction' => 'EXPORT',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.exported' => ({required Object location}) => 'LAYOUT SAVED TO ${location}',
 			'operation.layout.layouts.exportFailed' => ({required Object error}) => 'COULDN\'T EXPORT THE LAYOUT: ${error}',
 			'operation.layout.layouts.importTitle' => 'IMPORT LAYOUT',
 			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'MADE FOR THE ${view} VIEW: PANELS ONLY THAT VIEW HAS ARE LEFT OUT.',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.layouts.viewHome' => 'HOME',
 			'operation.layout.layouts.viewOperation' => 'OPERATION',
 			'operation.layout.layouts.viewLogs' => 'LOGS',
@@ -6488,12 +6500,12 @@ extension on TranslationsQro {
 			'activitiesView.activitiesTitleMore' => ({required Object first, required Object second, required Object more}) => 'ACTIVITY TYPES: ${first}, ${second} AND ${more} MORE',
 			'activitiesView.reference' => 'REFERENCE',
 			'activitiesView.invalidReference' => 'NOT VALID',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.duplicateReference' => 'ALREADY ADDED',
 			'activitiesView.searchHint' => 'SEARCH BY NAME, REFERENCE OR ANYTHING ELSE…',
 			'activitiesView.noSuggestions' => 'NO MATCHES',
 			'activitiesView.noSuggestionsHint' => 'SEARCH BY REFERENCE NAME OR NUMBER ABOVE',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.noSuggestionsExample' => '(FOR EXAMPLE \'TRAIL\' OR \'4556\')',
 			'activitiesView.allOptions' => 'ACTIVITY TYPES',
 			'activitiesView.determiningLocation' => 'DETERMINING CURRENT LOCATION…\nWAITING FOR GPS FIX TO FIND NEARBY REFERENCES',
@@ -7002,12 +7014,12 @@ extension on TranslationsQro {
 			'settings.radio.cwMessages.helpQsoSerial' => 'YOUR SERIAL NUMBER, IN A CONTEST THAT SENDS ONE',
 			'settings.radio.cwMessages.helpPad' => 'PADS WITH ZEROS TO THAT MANY DIGITS: 7 IS SENT AS 007',
 			'settings.radio.cwMessages.helpCut' => 'CUT NUMBERS, T FOR 0 AND N FOR 9: 599 IS SENT AS 5NN',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpCutDigits' => 'CHOOSES THE DIGITS TO CUT, IN QUOTES — 0 IS T, 1 IS A, 5 IS E, 9 IS N',
 			'settings.radio.cwMessages.helpFullExample' => 'FULL EXAMPLE:',
 			'settings.radio.cwMessages.helpExample' => 'SENDS W1AW 5NN TT7',
 			'settings.radio.cwMessages.helpEsmIntro' => 'WITH ENTER SENDS MESSAGES ON, ENTER KEYS MESSAGES BY THEIR FUNCTION KEY, AS N1MM DOES. THE ESM MESSAGES SET STARTS WITH THESE:',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmCq' => 'RUNNING, ENTER WITH THE CALL FIELD EMPTY CALLS CQ',
 			'settings.radio.cwMessages.helpEsmExchange' => 'YOUR EXCHANGE: AFTER THEIR CALL WHEN RUNNING, AFTER THEY ANSWER IN S&P',
 			'settings.radio.cwMessages.helpEsmThanks' => 'THANKS, ONCE THE CONTACT HAS LOGGED: QSO IS THE CONTACT AS LOGGED, NEXT THE ONE UP NEXT',
@@ -7516,12 +7528,12 @@ extension on TranslationsQro {
 			'settings.station.listenToAudio' => 'LISTEN TO AUDIO',
 			'settings.station.audioMixing' => 'AUDIO MIXING',
 			'settings.station.audioVolume' => 'VOLUME',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.audioOutput' => 'OUTPUT',
 			'settings.station.audioOutputDefault' => 'THE SYSTEM\'S DEFAULT OUTPUT',
 			'settings.station.audioDevicesUnlisted' => ({required Object name}) => '${name} (DEVICES COULD NOT BE LISTED)',
 			'settings.station.audioOnThisComputer' => 'ON THIS COMPUTER',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.audioOnThisDevice' => 'ON THIS DEVICE',
 			'settings.station.audioOnTheRadio' => 'ON THE RADIO',
 			'settings.station.audioThroughCard' => ({required Object name}) => 'THROUGH ${name}',
@@ -8030,12 +8042,12 @@ extension on TranslationsQro {
 			'settings.station.voiceDialect' => 'VOICE KEYER DIALECT',
 			'settings.station.voiceDialectDescription' => 'HOW THIS RADIO PLAYS ITS VOICE MEMORIES OVER CAT. NONE MEANS NO VOICE MEMORIES OVER CAT. WITH A DIALECT AND NO COUNT, THE DIALECT\'S DEFAULT COUNT APPLIES.',
 			'settings.station.voiceDialectPb' => 'KENWOOD (PB, TS-590 STYLE)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceDialectK4' => 'ELECRAFT K4 (PB AND DA)',
 			'settings.station.voiceDialectKx' => 'ELECRAFT KX2/KX3 (SWITCH TAPS)',
 			'settings.station.voiceDialectK3' => 'ELECRAFT K3/K3S WITH KDVR3 (SWITCH TAPS)',
 			'settings.station.placeholderDiagnostic' => 'SIMULATED',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderWholeNumberInvalid' => 'MUST BE A WHOLE NUMBER, 0 OR MORE',
 			'settings.station.placeholderFreqInvalid' => 'MUST BE A FREQUENCY IN KHZ, GREATER THAN ZERO',
 			'settings.station.placeholderModeInvalid' => 'MUST BE A MODE NAME, E.G. USB, CW, FT8',
@@ -8451,6 +8463,10 @@ extension on TranslationsQro {
 			'keyboardShortcuts.command.vfoFineDown' => 'VFO DOWN ONE FINE STEP',
 			'keyboardShortcuts.command.vfoCoarseUp' => 'VFO UP ONE COARSE STEP',
 			'keyboardShortcuts.command.vfoCoarseDown' => 'VFO DOWN ONE COARSE STEP',
+			'keyboardShortcuts.command.spotsNext' => 'NEXT SPOT UP THE BAND',
+			'keyboardShortcuts.command.spotsPrevious' => 'NEXT SPOT DOWN THE BAND',
+			'keyboardShortcuts.command.spotsNextMult' => 'NEXT NEW MULTIPLIER UP THE BAND',
+			'keyboardShortcuts.command.spotsPreviousMult' => 'NEXT NEW MULTIPLIER DOWN THE BAND',
 			'keyboardShortcuts.fixed.callsign' => 'TYPING CALLSIGNS',
 			'keyboardShortcuts.fixed.escape' => 'STOP SENDING, BACK OUT ONE STEP, OR CLOSE',
 			'keyboardShortcuts.fixed.enter' => 'LOG THE CONTACT',
@@ -8540,6 +8556,8 @@ extension on TranslationsQro {
 			'dataFiles.downloadTimedOut' => 'THE SERVER TOOK TOO LONG TO RESPOND. TRY AGAIN LATER.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} ANSWERED WITH AN ERROR (HTTP ${status}). TRY AGAIN LATER.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} COULDN\'T PROVIDE THIS FILE (HTTP ${status}). CHECK THAT ITS ADDRESS IS STILL RIGHT.',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.downloadRefused' => ({required Object host}) => '${host} ISN\'T AN ADDRESS THIS EXTENSION MAY DOWNLOAD FROM.',
 			'dataFiles.downloadNotADatabase' => ({required Object host}) => '${host} ANSWERED WITH SOMETHING OTHER THAN THE FILE — OFTEN A WI-FI NETWORK\'S SIGN-IN PAGE. TRY AGAIN ONCE YOU\'RE ONLINE.',
 			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'N1MM HAS NO CALL HISTORY FILE FOR ${stem}.',
@@ -8548,8 +8566,6 @@ extension on TranslationsQro {
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'THE DOWNLOAD HAD ONLY ${imported} OF THE ${existing} RECORDS ON THIS DEVICE, SO THE ONES IT LEFT OUT WERE KEPT. REFRESHING IT IN SETTINGS › OFFLINE DATA ACCEPTS IT ANYWAY.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'IMPORTED ${count} RECORD FOR ${label}.', other: 'IMPORTED ${count} RECORDS FOR ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'IMPORTED DATA FOR ${label}.',
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.cleanedUpTitle' => 'CLEANED UP EXTENSION DATA',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'REMOVED DATA FOR ${count} DATA FILE FROM EXTENSIONS NO LONGER INSTALLED.', other: 'REMOVED DATA FOR ${count} DATA FILES FROM EXTENSIONS NO LONGER INSTALLED.', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} RECORDS',

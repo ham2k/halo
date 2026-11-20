@@ -439,6 +439,10 @@ class _Translations$operation$cw extends Translations$operation$en {
 	@override String get deleteOperation => '—·· · ·—·· · — · / ——— ·——· · ·—· ·— — ·· ——— —·';
 	@override String get loggingControlsStale => '·— —·—· — ·· ···— ·· — —·—— / ··—· ·· · ·—·· —·· ··· / —— ·— —·—— / —··· · / ——— ··— — / ——— ··—· / —·· ·— — · / — / ·—· · ——— ·——· · —· / — ···· · / ——— ·——· · ·—· ·— — ·· ——— —· / — ——— / ·—· · ··—· ·—· · ··· ···· / — ···· · ——';
 	@override String get vfoKeysNoFrequency => '—· ——— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / — ——— / — ··— —· · / ··—· ·—· ——— —— / — / — —·—— ·——· · / ——— —· · ——··—— / ——— ·—· / —·—· ——— —· —· · —·—· — / ·— / ·—· ·— —·· ·· ———';
+	@override String get spotKeysNoneUp => '—· ——— / —— ——— ·—· · / ··· ·——· ——— — ··· / ··— ·——· / — ···· · / —··· ·— —· —··';
+	@override String get spotKeysNoneDown => '—· ——— / —— ——— ·—· · / ··· ·——· ——— — ··· / —·· ——— ·—— —· / — ···· · / —··· ·— —· —··';
+	@override String get spotKeysNoMultUp => '—· ——— / —— ——— ·—· · / —· · ·—— / —— ··— ·—·· — ·· ·——· ·—·· ·· · ·—· ··· / ··— ·——· / — ···· · / —··· ·— —· —··';
+	@override String get spotKeysNoMultDown => '—· ——— / —— ——— ·—· · / —· · ·—— / —— ··— ·—·· — ·· ·——· ·—·· ·· · ·—· ··· / —·· ——— ·—— —· / — ···· · / —··· ·— —· —··';
 	@override String get locationNone => '—· ——— — / ··· · —';
 	@override String get generalOperation => '——· · —· · ·—· ·— ·—·· / ——— ·——· · ·—· ·— — ·· ——— —·';
 	@override late final _Translations$operation$lifecycle$cw lifecycle = _Translations$operation$lifecycle$cw._(_root);
@@ -3855,6 +3859,10 @@ class _Translations$keyboardShortcuts$command$cw extends Translations$keyboardSh
 	@override String get vfoFineDown => '···— ··—· ——— / —·· ——— ·—— —· / ——— —· · / ··—· ·· —· · / ··· — · ·——·';
 	@override String get vfoCoarseUp => '···— ··—· ——— / ··— ·——· / ——— —· · / —·—· ——— ·— ·—· ··· · / ··· — · ·——·';
 	@override String get vfoCoarseDown => '···— ··—· ——— / —·· ——— ·—— —· / ——— —· · / —·—· ——— ·— ·—· ··· · / ··· — · ·——·';
+	@override String get spotsNext => '—· · —··— — / ··· ·——· ——— — / ··— ·——· / — ···· · / —··· ·— —· —··';
+	@override String get spotsPrevious => '—· · —··— — / ··· ·——· ——— — / —·· ——— ·—— —· / — ···· · / —··· ·— —· —··';
+	@override String get spotsNextMult => '—· · —··— — / —· · ·—— / —— ··— ·—·· — ·· ·——· ·—·· ·· · ·—· / ··— ·——· / — ···· · / —··· ·— —· —··';
+	@override String get spotsPreviousMult => '—· · —··— — / —· · ·—— / —— ··— ·—·· — ·· ·——· ·—·· ·· · ·—· / —·· ——— ·—— —· / — ···· · / —··· ·— —· —··';
 }
 
 // Path: keyboardShortcuts.fixed
@@ -5871,6 +5879,10 @@ extension on TranslationsCw {
 			'operation.deleteOperation' => '—·· · ·—·· · — · / ——— ·——· · ·—· ·— — ·· ——— —·',
 			'operation.loggingControlsStale' => '·— —·—· — ·· ···— ·· — —·—— / ··—· ·· · ·—·· —·· ··· / —— ·— —·—— / —··· · / ——— ··— — / ——— ··—· / —·· ·— — · / — / ·—· · ——— ·——· · —· / — ···· · / ——— ·——· · ·—· ·— — ·· ——— —· / — ——— / ·—· · ··—· ·—· · ··· ···· / — ···· · ——',
 			'operation.vfoKeysNoFrequency' => '—· ——— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / — ——— / — ··— —· · / ··—· ·—· ——— —— / — / — —·—— ·——· · / ——— —· · ——··—— / ——— ·—· / —·—· ——— —· —· · —·—· — / ·— / ·—· ·— —·· ·· ———',
+			'operation.spotKeysNoneUp' => '—· ——— / —— ——— ·—· · / ··· ·——· ——— — ··· / ··— ·——· / — ···· · / —··· ·— —· —··',
+			'operation.spotKeysNoneDown' => '—· ——— / —— ——— ·—· · / ··· ·——· ——— — ··· / —·· ——— ·—— —· / — ···· · / —··· ·— —· —··',
+			'operation.spotKeysNoMultUp' => '—· ——— / —— ——— ·—· · / —· · ·—— / —— ··— ·—·· — ·· ·——· ·—·· ·· · ·—· ··· / ··— ·——· / — ···· · / —··· ·— —· —··',
+			'operation.spotKeysNoMultDown' => '—· ——— / —— ——— ·—· · / —· · ·—— / —— ··— ·—·· — ·· ·——· ·—·· ·· · ·—· ··· / —·· ——— ·—— —· / — ···· · / —··· ·— —· —··',
 			'operation.locationNone' => '—· ——— — / ··· · —',
 			'operation.generalOperation' => '——· · —· · ·—· ·— ·—·· / ——— ·——· · ·—· ·— — ·· ——— —·',
 			'operation.lifecycle.paused' => '·——· ·— ··— ··· · —··',
@@ -5974,12 +5986,12 @@ extension on TranslationsCw {
 			'operation.layout.layouts.exportPick' => '·——· ·— —· · ·—·· ··· / — ——— / · —··— ·——· ——— ·—· —',
 			'operation.layout.layouts.tabSet' => '— ·— —··· / ··· · —',
 			'operation.layout.layouts.exportAction' => '· —··— ·——· ——— ·—· —',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.exported' => ({required Object location}) => '·—·· ·— —·—— ——— ··— — / ··· ·— ···— · —·· / — ——— / ${location}',
 			'operation.layout.layouts.exportFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / · —··— ·——· ——— ·—· — / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}',
 			'operation.layout.layouts.importTitle' => '·· —— ·——· ——— ·—· — / ·—·· ·— —·—— ——— ··— —',
 			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => '—— ·— —·· · / ··—· ——— ·—· / — ···· · / ${view} / ···— ·· · ·—— ———··· / ·——· ·— —· · ·—·· ··· / ——— —· ·—·· —·—— / — ···· ·— — / ···— ·· · ·—— / ···· ·— ··· / ·— ·—· · / ·—·· · ··—· — / ——— ··— — ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.layouts.viewHome' => '···· ——— —— ·',
 			'operation.layout.layouts.viewOperation' => '——— ·——· · ·—· ·— — ·· ——— —·',
 			'operation.layout.layouts.viewLogs' => '·—·· ——— ——· ···',
@@ -6488,12 +6500,12 @@ extension on TranslationsCw {
 			'activitiesView.activitiesTitleMore' => ({required Object first, required Object second, required Object more}) => '·— —·—· — ·· ···— ·· — —·—— / — —·—— ·——· · ··· ———··· / ${first} ——··—— / ${second} / ·— —· —·· / ${more} / —— ——— ·—· ·',
 			'activitiesView.reference' => '·—· · ··—· · ·—· · —· —·—· ·',
 			'activitiesView.invalidReference' => '—· ——— — / ···— ·— ·—·· ·· —··',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.duplicateReference' => '·— ·—·· ·—· · ·— —·· —·—— / ·— —·· —·· · —··',
 			'activitiesView.searchHint' => '··· · ·— ·—· —·—· ···· / —··· —·—— / —· ·— —— · ——··—— / ·—· · ··—· · ·—· · —· —·—· · / ——— ·—· / ·— —· —·—— — ···· ·· —· ——· / · ·—·· ··· · …',
 			'activitiesView.noSuggestions' => '—· ——— / —— ·— — —·—· ···· · ···',
 			'activitiesView.noSuggestionsHint' => '··· · ·— ·—· —·—· ···· / —··· —·—— / ·—· · ··—· · ·—· · —· —·—· · / —· ·— —— · / ——— ·—· / —· ··— —— —··· · ·—· / ·— —··· ——— ···— ·',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.noSuggestionsExample' => '—·——· ··—· ——— ·—· / · —··— ·— —— ·——· ·—·· · / ·————· — ·—· ·— ·· ·—·· ·————· / ——— ·—· / ·————· ····— ····· ····· —···· ·————· —·——·—',
 			'activitiesView.allOptions' => '·— —·—· — ·· ···— ·· — —·—— / — —·—— ·——· · ···',
 			'activitiesView.determiningLocation' => '—·· · — · ·—· —— ·· —· ·· —· ——· / —·—· ··— ·—· ·—· · —· — / ·—·· ——— —·—· ·— — ·· ——— —· …\n·—— ·— ·· — ·· —· ——· / ··—· ——— ·—· / ——· ·——· ··· / ··—· ·· —··— / — ——— / ··—· ·· —· —·· / —· · ·— ·—· —··· —·—— / ·—· · ··—· · ·—· · —· —·—· · ···',
@@ -7002,12 +7014,12 @@ extension on TranslationsCw {
 			'settings.radio.cwMessages.helpQsoSerial' => '—·—— ——— ··— ·—· / ··· · ·—· ·· ·— ·—·· / —· ··— —— —··· · ·—· ——··—— / ·· —· / ·— / —·—· ——— —· — · ··· — / — ···· ·— — / ··· · —· —·· ··· / ——— —· ·',
 			'settings.radio.cwMessages.helpPad' => '·——· ·— —·· ··· / ·—— ·· — ···· / ——·· · ·—· ——— ··· / — ——— / — ···· ·— — / —— ·— —· —·—— / —·· ·· ——· ·· — ··· ———··· / ——··· / ·· ··· / ··· · —· — / ·— ··· / ————— ————— ——···',
 			'settings.radio.cwMessages.helpCut' => '—·—· ··— — / —· ··— —— —··· · ·—· ··· ——··—— / — / ··—· ——— ·—· / ————— / ·— —· —·· / —· / ··—· ——— ·—· / ————· ———··· / ····· ————· ————· / ·· ··· / ··· · —· — / ·— ··· / ····· —· —·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpCutDigits' => '—·—· ···· ——— ——— ··· · ··· / — ···· · / —·· ·· ——· ·· — ··· / — ——— / —·—· ··— — ——··—— / ·· —· / ——·— ··— ——— — · ··· / — / ————— / ·· ··· / — ——··—— / ·———— / ·· ··· / ·— ——··—— / ····· / ·· ··· / · ——··—— / ————· / ·· ··· / —·',
 			'settings.radio.cwMessages.helpFullExample' => '··—· ··— ·—·· ·—·· / · —··— ·— —— ·——· ·—·· · ———···',
 			'settings.radio.cwMessages.helpExample' => '··· · —· —·· ··· / ·—— ·———— ·— ·—— / ····· —· —· / — — ——···',
 			'settings.radio.cwMessages.helpEsmIntro' => '·—— ·· — ···· / · —· — · ·—· / ··· · —· —·· ··· / —— · ··· ··· ·— ——· · ··· / ——— —· ——··—— / · —· — · ·—· / —·— · —·—— ··· / —— · ··· ··· ·— ——· · ··· / —··· —·—— / — ···· · ·· ·—· / ··—· ··— —· —·—· — ·· ——— —· / —·— · —·—— ——··—— / ·— ··· / —· ·———— —— —— / —·· ——— · ··· ·—·—·— / — ···· · / · ··· —— / —— · ··· ··· ·— ——· · ··· / ··· · — / ··· — ·— ·—· — ··· / ·—— ·· — ···· / — ···· · ··· · ———···',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmCq' => '·—· ··— —· —· ·· —· ——· ——··—— / · —· — · ·—· / ·—— ·· — ···· / — ···· · / —·—· ·— ·—·· ·—·· / ··—· ·· · ·—·· —·· / · —— ·——· — —·—— / —·—· ·— ·—·· ·—·· ··· / —·—· ——·—',
 			'settings.radio.cwMessages.helpEsmExchange' => '—·—— ——— ··— ·—· / · —··— —·—· ···· ·— —· ——· · ———··· / ·— ··—· — · ·—· / — ···· · ·· ·—· / —·—· ·— ·—·· ·—·· / ·—— ···· · —· / ·—· ··— —· —· ·· —· ——· ——··—— / ·— ··—· — · ·—· / — ···· · —·—— / ·— —· ··· ·—— · ·—· / ·· —· / ··· ·—··· ·——·',
 			'settings.radio.cwMessages.helpEsmThanks' => '— ···· ·— —· —·— ··· ——··—— / ——— —· —·—· · / — ···· · / —·—· ——— —· — ·— —·—· — / ···· ·— ··· / ·—·· ——— ——· ——· · —·· ———··· / ——·— ··· ——— / ·· ··· / — ···· · / —·—· ——— —· — ·— —·—· — / ·— ··· / ·—·· ——— ——· ——· · —·· ——··—— / —· · —··— — / — ···· · / ——— —· · / ··— ·——· / —· · —··— —',
@@ -7516,12 +7528,12 @@ extension on TranslationsCw {
 			'settings.station.listenToAudio' => '·—·· ·· ··· — · —· / — ——— / ·— ··— —·· ·· ———',
 			'settings.station.audioMixing' => '·— ··— —·· ·· ——— / —— ·· —··— ·· —· ——·',
 			'settings.station.audioVolume' => '···— ——— ·—·· ··— —— ·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.audioOutput' => '——— ··— — ·——· ··— —',
 			'settings.station.audioOutputDefault' => '— ···· · / ··· —·—— ··· — · —— ·————· ··· / —·· · ··—· ·— ··— ·—·· — / ——— ··— — ·——· ··— —',
 			'settings.station.audioDevicesUnlisted' => ({required Object name}) => '${name} / —·——· —·· · ···— ·· —·—· · ··· / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—·· ·· ··· — · —·· —·——·—',
 			'settings.station.audioOnThisComputer' => '——— —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.audioOnThisDevice' => '——— —· / — ···· ·· ··· / —·· · ···— ·· —·—· ·',
 			'settings.station.audioOnTheRadio' => '——— —· / — ···· · / ·—· ·— —·· ·· ———',
 			'settings.station.audioThroughCard' => ({required Object name}) => '— ···· ·—· ——— ··— ——· ···· / ${name}',
@@ -8030,12 +8042,12 @@ extension on TranslationsCw {
 			'settings.station.voiceDialect' => '···— ——— ·· —·—· · / —·— · —·—— · ·—· / —·· ·· ·— ·—·· · —·—· —',
 			'settings.station.voiceDialectDescription' => '···· ——— ·—— / — ···· ·· ··· / ·—· ·— —·· ·· ——— / ·——· ·—·· ·— —·—— ··· / ·· — ··· / ···— ——— ·· —·—· · / —— · —— ——— ·—· ·· · ··· / ——— ···— · ·—· / —·—· ·— — ·—·—·— / —· ——— —· · / —— · ·— —· ··· / —· ——— / ···— ——— ·· —·—· · / —— · —— ——— ·—· ·· · ··· / ——— ···— · ·—· / —·—· ·— — ·—·—·— / ·—— ·· — ···· / ·— / —·· ·· ·— ·—·· · —·—· — / ·— —· —·· / —· ——— / —·—· ——— ··— —· — ——··—— / — ···· · / —·· ·· ·— ·—·· · —·—· — ·————· ··· / —·· · ··—· ·— ··— ·—·· — / —·—· ——— ··— —· — / ·— ·——· ·——· ·—·· ·· · ··· ·—·—·—',
 			'settings.station.voiceDialectPb' => '—·— · —· ·—— ——— ——— —·· / —·——· ·——· —··· ——··—— / — ··· —····— ····· ————· ————— / ··· — —·—— ·—·· · —·——·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceDialectK4' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ····— / —·——· ·——· —··· / ·— —· —·· / —·· ·— —·——·—',
 			'settings.station.voiceDialectKx' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— —··— ··——— —··—· —·— —··— ···—— / —·——· ··· ·—— ·· — —·—· ···· / — ·— ·——· ··· —·——·—',
 			'settings.station.voiceDialectK3' => '· ·—·· · —·—· ·—· ·— ··—· — / —·— ···—— —··—· —·— ···—— ··· / ·—— ·· — ···· / —·— —·· ···— ·—· ···—— / —·——· ··· ·—— ·· — —·—· ···· / — ·— ·——· ··· —·——·—',
 			'settings.station.placeholderDiagnostic' => '··· ·· —— ··— ·—·· ·— — · —··',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderWholeNumberInvalid' => '—— ··— ··· — / —··· · / ·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· ——··—— / ————— / ——— ·—· / —— ——— ·—· ·',
 			'settings.station.placeholderFreqInvalid' => '—— ··— ··· — / —··· · / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·· —· / —·— ···· ——·· ——··—— / ——· ·—· · ·— — · ·—· / — ···· ·— —· / ——·· · ·—· ———',
 			'settings.station.placeholderModeInvalid' => '—— ··— ··· — / —··· · / ·— / —— ——— —·· · / —· ·— —— · ——··—— / · ·—·—·— ——· ·—·—·— / ··— ··· —··· ——··—— / —·—· ·—— ——··—— / ··—· — ———··',
@@ -8451,6 +8463,10 @@ extension on TranslationsCw {
 			'keyboardShortcuts.command.vfoFineDown' => '···— ··—· ——— / —·· ——— ·—— —· / ——— —· · / ··—· ·· —· · / ··· — · ·——·',
 			'keyboardShortcuts.command.vfoCoarseUp' => '···— ··—· ——— / ··— ·——· / ——— —· · / —·—· ——— ·— ·—· ··· · / ··· — · ·——·',
 			'keyboardShortcuts.command.vfoCoarseDown' => '···— ··—· ——— / —·· ——— ·—— —· / ——— —· · / —·—· ——— ·— ·—· ··· · / ··· — · ·——·',
+			'keyboardShortcuts.command.spotsNext' => '—· · —··— — / ··· ·——· ——— — / ··— ·——· / — ···· · / —··· ·— —· —··',
+			'keyboardShortcuts.command.spotsPrevious' => '—· · —··— — / ··· ·——· ——— — / —·· ——— ·—— —· / — ···· · / —··· ·— —· —··',
+			'keyboardShortcuts.command.spotsNextMult' => '—· · —··— — / —· · ·—— / —— ··— ·—·· — ·· ·——· ·—·· ·· · ·—· / ··— ·——· / — ···· · / —··· ·— —· —··',
+			'keyboardShortcuts.command.spotsPreviousMult' => '—· · —··— — / —· · ·—— / —— ··— ·—·· — ·· ·——· ·—·· ·· · ·—· / —·· ——— ·—— —· / — ···· · / —··· ·— —· —··',
 			'keyboardShortcuts.fixed.callsign' => '— —·—— ·——· ·· —· ——· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ···',
 			'keyboardShortcuts.fixed.escape' => '··· — ——— ·——· / ··· · —· —·· ·· —· ——· ——··—— / —··· ·— —·—· —·— / ——— ··— — / ——— —· · / ··· — · ·——· ——··—— / ——— ·—· / —·—· ·—·· ——— ··· ·',
 			'keyboardShortcuts.fixed.enter' => '·—·· ——— ——· / — ···· · / —·—· ——— —· — ·— —·—· —',
@@ -8540,6 +8556,8 @@ extension on TranslationsCw {
 			'dataFiles.downloadTimedOut' => '— ···· · / ··· · ·—· ···— · ·—· / — ——— ——— —·— / — ——— ——— / ·—·· ——— —· ——· / — ——— / ·—· · ··· ·——· ——— —· —·· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ·—·· ·— — · ·—· ·—·—·—',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} / ·— —· ··· ·—— · ·—· · —·· / ·—— ·· — ···· / ·— —· / · ·—· ·—· ——— ·—· / —·——· ···· — — ·——· / ${status} —·——·— ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ·—·· ·— — · ·—· ·—·—·—',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} / —·—· ——— ··— ·—·· —·· —· ·————· — / ·——· ·—· ——— ···— ·· —·· · / — ···· ·· ··· / ··—· ·· ·—·· · / —·——· ···· — — ·——· / ${status} —·——·— ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / ·· — ··· / ·— —·· —·· ·—· · ··· ··· / ·· ··· / ··· — ·· ·—·· ·—·· / ·—· ·· ——· ···· — ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.downloadRefused' => ({required Object host}) => '${host} / ·· ··· —· ·————· — / ·— —· / ·— —·· —·· ·—· · ··· ··· / — ···· ·· ··· / · —··— — · —· ··· ·· ——— —· / —— ·— —·—— / —·· ——— ·—— —· ·—·· ——— ·— —·· / ··—· ·—· ——— —— ·—·—·—',
 			'dataFiles.downloadNotADatabase' => ({required Object host}) => '${host} / ·— —· ··· ·—— · ·—· · —·· / ·—— ·· — ···· / ··· ——— —— · — ···· ·· —· ——· / ——— — ···· · ·—· / — ···· ·— —· / — ···· · / ··—· ·· ·—·· · / — / ——— ··—· — · —· / ·— / ·—— ·· —····— ··—· ·· / —· · — ·—— ——— ·—· —·— ·————· ··· / ··· ·· ——· —· —····— ·· —· / ·——· ·— ——· · ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ——— —· —·—· · / —·—— ——— ··— ·————· ·—· · / ——— —· ·—·· ·· —· · ·—·—·—',
 			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => '—· ·———— —— —— / ···· ·— ··· / —· ——— / —·—· ·— ·—·· ·—·· / ···· ·· ··· — ——— ·—· —·—— / ··—· ·· ·—·· · / ··—· ——— ·—· / ${stem} ·—·—·—',
@@ -8548,8 +8566,6 @@ extension on TranslationsCw {
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => '— ···· · / —·· ——— ·—— —· ·—·· ——— ·— —·· / ···· ·— —·· / ——— —· ·—·· —·—— / ${imported} / ——— ··—· / — ···· · / ${existing} / ·—· · —·—· ——— ·—· —·· ··· / ——— —· / — ···· ·· ··· / —·· · ···— ·· —·—· · ——··—— / ··· ——— / — ···· · / ——— —· · ··· / ·· — / ·—·· · ··—· — / ——— ··— — / ·—— · ·—· · / —·— · ·——· — ·—·—·— / ·—· · ··—· ·—· · ··· ···· ·· —· ——· / ·· — / ·· —· / ··· · — — ·· —· ——· ··· / › / ——— ··—· ··—· ·—·· ·· —· · / —·· ·— — ·— / ·— —·—· —·—· · ·——· — ··· / ·· — / ·— —· —·—— ·—— ·— —·—— ·—·—·—',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '·· —— ·——· ——— ·—· — · —·· / ${count} / ·—· · —·—· ——— ·—· —·· / ··—· ——— ·—· / ${label} ·—·—·—', other: '·· —— ·——· ——— ·—· — · —·· / ${count} / ·—· · —·—· ——— ·—· —·· ··· / ··—· ——— ·—· / ${label} ·—·—·—', ), 
 			'dataFiles.importedData' => ({required Object label}) => '·· —— ·——· ——— ·—· — · —·· / —·· ·— — ·— / ··—· ——— ·—· / ${label} ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.cleanedUpTitle' => '—·—· ·—·· · ·— —· · —·· / ··— ·——· / · —··— — · —· ··· ·· ——— —· / —·· ·— — ·—',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '·—· · —— ——— ···— · —·· / —·· ·— — ·— / ··—· ——— ·—· / ${count} / —·· ·— — ·— / ··—· ·· ·—·· · / ··—· ·—· ——— —— / · —··— — · —· ··· ·· ——— —· ··· / —· ——— / ·—·· ——— —· ——· · ·—· / ·· —· ··· — ·— ·—·· ·—·· · —·· ·—·—·—', other: '·—· · —— ——— ···— · —·· / —·· ·— — ·— / ··—· ——— ·—· / ${count} / —·· ·— — ·— / ··—· ·· ·—·· · ··· / ··—· ·—· ——— —— / · —··— — · —· ··· ·· ——— —· ··· / —· ——— / ·—·· ——— —· ——· · ·—· / ·· —· ··· — ·— ·—·· ·—·· · —·· ·—·—·—', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / —··—· / ${total} / ·—· · —·—· ——— ·—· —·· ···',

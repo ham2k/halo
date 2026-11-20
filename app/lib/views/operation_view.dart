@@ -50,6 +50,7 @@ import 'operation/information_panel.dart';
 import 'operation/information_panel_settings.dart';
 import 'operation/log_find_bar.dart';
 import 'operation/logging_panel.dart';
+import 'operation/spot_keys.dart';
 import 'operation/watcher_feed_port.dart';
 import 'operation/map_panel.dart';
 import 'map/map_pane_config.dart';
@@ -507,6 +508,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     HardwareKeyboard.instance.addHandler(_onFindKeyEvent);
     // ⌥↑/⌥↓ and the rest of the VFO keys — see [onVfoKey].
     HardwareKeyboard.instance.addHandler(_onVfoKeyEvent);
+    // ⌘↑/⌘↓ and the rest of the spot keys — see [SpotKeys].
+    HardwareKeyboard.instance.addHandler(_onSpotKeyEvent);
     // Keeps spots flowing, judged against this operation and its log (shown
     // to the board below, mounted Spots Panel or not), while it is open: the
     // `spot-history` lookup reads that cache from the logging panel alone, and
@@ -693,6 +696,25 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     );
   }
 
+  final _spotKeys = SpotKeys();
+
+  /// ⌘↑/⌘↓ and the rest of the spot keys while this operation is the
+  /// front-most route ([SpotKeys.onKey]), on the operator's radio.
+  bool _onSpotKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
+    if (testerOverlayCovering.value || !mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
+    final operation = _operation;
+    if (operation == null) return false;
+    return _spotKeys.onKey(
+      event,
+      services: widget.services,
+      vfo: widget.services.cat.operatorRadio == 'B' ? 'vfoB' : 'vfoA',
+      qsoLoaded: _selectedQsoUuid != null,
+      operation: operation,
+      suggest: _suggestQso,
+    );
+  }
+
   /// ⌘F/Ctrl+F, while this operation is the front-most route — a dialog over
   /// it owns the keyboard — and its layout has a logging pane to find in.
   /// Without one the chord is left to the platform: on web, the browser's
@@ -759,6 +781,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     HardwareKeyboard.instance.removeHandler(_onWakeKeyEvent);
     HardwareKeyboard.instance.removeHandler(_onFindKeyEvent);
     HardwareKeyboard.instance.removeHandler(_onVfoKeyEvent);
+    HardwareKeyboard.instance.removeHandler(_onSpotKeyEvent);
     _wakeHold.release();
     widget.services.settings.removeListener(_onSettingsChanged);
     widget.services.extensions.runtimeGeneration.removeListener(_onRuntimeGenerationChanged);

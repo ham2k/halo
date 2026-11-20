@@ -414,9 +414,14 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
           },
           ctx,
         )
+        // A 0 waiting on an exchange not yet copied is no verdict on the
+        // station: every spot would read as worth nothing to a VHF test, whose
+        // spots carry no grid.
+        const pending = score.value === 0 && (score.incomplete?.length ?? 0) > 0
         result[candidate.key] = {
           notices: score.notices ?? [],
           alerts: score.alerts ?? [],
+          ...(!pending && { value: score.value }),
           ...(score.dupe !== undefined && { dupe: score.dupe }),
           ...(typeof score.icon === "string" && { icon: score.icon }),
           ...(typeof score.color === "string" && { color: score.color }),

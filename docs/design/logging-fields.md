@@ -1665,7 +1665,7 @@ suggestion menu opens below its field, best match nearest the field.
   ([keyboard-shortcuts.md](keyboard-shortcuts.md)) while a new contact is
   composed: there they page only with a logged contact loaded, and from the
   Find bar, whose arrows are its own; a main field drops a press the VFO
-  took. In a
+  took. Cmd+Up/Down are the spot keys' the same way, on the same terms. In a
   single-line field those chords only ever park the caret at an end of the
   text, which Left and Right reach too, so the walk takes them; **Home** and
   **End** stay the caret's. Unlike a single-row Down, no jump ever walks off

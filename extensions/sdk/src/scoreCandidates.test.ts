@@ -243,8 +243,8 @@ test("a verdict's icon and color reach the candidate's answer", async () => {
     { operation, candidates: [candidate("mult", "K1MUL"), candidate("plain", "W2BBB")] },
     { online: false, getQsos: async () => [] },
   )
-  assert.deepEqual(result.mult, { notices: ["newMult"], alerts: [], icon: "star", color: "#C62828" })
-  assert.deepEqual(result.plain, { notices: [], alerts: [] })
+  assert.deepEqual(result.mult, { notices: ["newMult"], alerts: [], value: 1, icon: "star", color: "#C62828" })
+  assert.deepEqual(result.plain, { notices: [], alerts: [], value: 1 })
 
   // Not into the log's cached verdicts, where no row shows them.
   const logged = await marking.scoreQsos({ operation, qsos: [qso("K1MUL")] }, { online: false, getQsos: async () => [] })
@@ -273,4 +273,28 @@ test("a verdict's incomplete fields reach the live answer and nowhere else", asy
 
   const logged = await exchange.scoreQsos({ operation, qsos: [qso("K1ABC")] }, ctx)
   assert.deepEqual(Object.values(logged.qsoScores), [{ value: 1 }])
+})
+
+// The spot keys pass over a station worth 0 points: a 0 has to mean the
+// station is out of the contest, never that its exchange is still to come,
+// which is every spot of a contest whose exchange a spot does not carry.
+test("a candidate carries its value, but not a 0 waiting on its exchange", async () => {
+  const ctx: HookContext = { online: false, getQsos: async () => [] }
+  const hook = contestScorer({
+    startScoresheet: () => ({}),
+    scoreQso: ({ scoresheet, qso }) => {
+      const call = String((qso.their as Record<string, JSONValue>).call)
+      if (call === "DL1ABC") return { scoresheet, score: { value: 0, alerts: ["invalidCategory"] } }
+      if (call === "W2BBB") return { scoresheet, score: { value: 0, incomplete: ["test/grid"] } }
+      return { scoresheet, score: { value: 2, incomplete: ["test/section"] } }
+    },
+    summarizeScore: () => ({}),
+  })
+  const result = await hook.scoreCandidates!(
+    { operation, candidates: [candidate("dx", "DL1ABC"), candidate("waiting", "W2BBB"), candidate("counts", "W1AAA")] },
+    ctx,
+  )
+  assert.equal(result.dx.value, 0)
+  assert.equal("value" in result.waiting, false)
+  assert.equal(result.counts.value, 2)
 })

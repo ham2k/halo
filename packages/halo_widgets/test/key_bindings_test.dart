@@ -310,6 +310,32 @@ void main() {
       expect(await ids(LogicalKeyboardKey.arrowUp, []), isEmpty);
     });
 
+    // ⌘↓ goes UP the band, as ⌥↓ tunes up it. A legacy matcher that
+    // disagreed with the defaults would change the keys with the experiment.
+    testWidgets('go up the band on ⌘↓ and down it on ⌘↑, to a new multiplier with ⇧, as the defaults do', (tester) async {
+      final legacy = LegacyKeyBindings();
+      final defaults = KeyBindings.resolve();
+      const spotIds = [spotsNextCommandId, spotsPreviousCommandId, spotsNextMultCommandId, spotsPreviousMultCommandId];
+      Future<List<String>> ids(LogicalKeyboardKey key, List<LogicalKeyboardKey> modifiers) async {
+        final matched = <String>[];
+        await pressing(tester, key, (e) {
+          for (final id in spotIds) {
+            expect(legacy.matches(id, e), defaults.matches(id, e), reason: id);
+            if (legacy.matches(id, e)) matched.add(id);
+          }
+          return true;
+        }, modifiers: modifiers);
+        return matched;
+      }
+
+      // The test platform is not Apple's, so the defaults' ⌘ is Ctrl.
+      expect(await ids(LogicalKeyboardKey.arrowDown, [LogicalKeyboardKey.controlLeft]), [spotsNextCommandId]);
+      expect(await ids(LogicalKeyboardKey.arrowUp, [LogicalKeyboardKey.controlLeft]), [spotsPreviousCommandId]);
+      expect(await ids(LogicalKeyboardKey.arrowDown, [LogicalKeyboardKey.controlLeft, LogicalKeyboardKey.shiftLeft]), [spotsNextMultCommandId]);
+      expect(await ids(LogicalKeyboardKey.arrowUp, [LogicalKeyboardKey.controlLeft, LogicalKeyboardKey.shiftLeft]), [spotsPreviousMultCommandId]);
+      expect(await ids(LogicalKeyboardKey.arrowUp, [LogicalKeyboardKey.controlLeft, LogicalKeyboardKey.altLeft]), isEmpty);
+    });
+
     testWidgets('run no bound command text', (tester) async {
       final legacy = LegacyKeyBindings();
       expect(await pressing(tester, LogicalKeyboardKey.keyJ, (e) => legacy.textCommandFor(e) != null, modifiers: [LogicalKeyboardKey.metaLeft]), isFalse);
@@ -340,6 +366,15 @@ void main() {
       expect(keyChordRefusal(chord('alt+Down'), 'logging.wipe'), KeyChordRefusal.fixed);
       expect(keyChordRefusal(chord('cmd+Up'), vfoFineDownCommandId), KeyChordRefusal.fixed);
       expect(keyChordRefusal(chord('shift+alt+Up'), 'app.toggleTheme'), isNull, reason: 'the walk leaves ⇧ to the field');
+    });
+
+    // ⌘↑/⌘↓ are the walk's ends; only the spot keys stand aside for it while
+    // a logged contact is loaded, as the VFO's do for ⌥.
+    test("leave the walk's ⌘ ends to the spot keys alone", () {
+      expect(keyChordRefusal(chord('cmd+Down'), spotsNextCommandId), isNull);
+      expect(keyChordRefusal(chord('meta+Up'), spotsPreviousCommandId), isNull);
+      expect(keyChordRefusal(chord('cmd+Up'), vfoFineDownCommandId), KeyChordRefusal.fixed);
+      expect(keyChordRefusal(chord('alt+Up'), spotsPreviousCommandId), KeyChordRefusal.fixed, reason: "⌥ is the VFO's");
     });
 
     // Every callsign is typed with these: taken by a command, a call could

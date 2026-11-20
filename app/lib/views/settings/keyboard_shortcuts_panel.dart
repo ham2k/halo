@@ -54,6 +54,10 @@ String keyCommandTitle(Translations t, String id) {
     vfoFineDownCommandId => c.vfoFineDown,
     vfoCoarseUpCommandId => c.vfoCoarseUp,
     vfoCoarseDownCommandId => c.vfoCoarseDown,
+    spotsNextCommandId => c.spotsNext,
+    spotsPreviousCommandId => c.spotsPrevious,
+    spotsNextMultCommandId => c.spotsNextMult,
+    spotsPreviousMultCommandId => c.spotsPreviousMult,
     _ => id,
   };
 }

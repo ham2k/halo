@@ -439,6 +439,10 @@ class _Translations$operation$qrp extends Translations$operation$en {
 	@override String get deleteOperation => 'delete operation';
 	@override String get loggingControlsStale => 'activity fields may be out of date — reopen the operation to refresh them';
 	@override String get vfoKeysNoFrequency => 'no frequency to tune from — type one, or connect a radio';
+	@override String get spotKeysNoneUp => 'no more spots up the band';
+	@override String get spotKeysNoneDown => 'no more spots down the band';
+	@override String get spotKeysNoMultUp => 'no more new multipliers up the band';
+	@override String get spotKeysNoMultDown => 'no more new multipliers down the band';
 	@override String get locationNone => 'not set';
 	@override String get generalOperation => 'general operation';
 	@override late final _Translations$operation$lifecycle$qrp lifecycle = _Translations$operation$lifecycle$qrp._(_root);
@@ -3855,6 +3859,10 @@ class _Translations$keyboardShortcuts$command$qrp extends Translations$keyboardS
 	@override String get vfoFineDown => 'vfo down one fine step';
 	@override String get vfoCoarseUp => 'vfo up one coarse step';
 	@override String get vfoCoarseDown => 'vfo down one coarse step';
+	@override String get spotsNext => 'next spot up the band';
+	@override String get spotsPrevious => 'next spot down the band';
+	@override String get spotsNextMult => 'next new multiplier up the band';
+	@override String get spotsPreviousMult => 'next new multiplier down the band';
 }
 
 // Path: keyboardShortcuts.fixed
@@ -5871,6 +5879,10 @@ extension on TranslationsQrp {
 			'operation.deleteOperation' => 'delete operation',
 			'operation.loggingControlsStale' => 'activity fields may be out of date — reopen the operation to refresh them',
 			'operation.vfoKeysNoFrequency' => 'no frequency to tune from — type one, or connect a radio',
+			'operation.spotKeysNoneUp' => 'no more spots up the band',
+			'operation.spotKeysNoneDown' => 'no more spots down the band',
+			'operation.spotKeysNoMultUp' => 'no more new multipliers up the band',
+			'operation.spotKeysNoMultDown' => 'no more new multipliers down the band',
 			'operation.locationNone' => 'not set',
 			'operation.generalOperation' => 'general operation',
 			'operation.lifecycle.paused' => 'paused',
@@ -5974,12 +5986,12 @@ extension on TranslationsQrp {
 			'operation.layout.layouts.exportPick' => 'panels to export',
 			'operation.layout.layouts.tabSet' => 'tab set',
 			'operation.layout.layouts.exportAction' => 'export',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.exported' => ({required Object location}) => 'layout saved to ${location}',
 			'operation.layout.layouts.exportFailed' => ({required Object error}) => 'couldn\'t export the layout: ${error}',
 			'operation.layout.layouts.importTitle' => 'import layout',
 			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'made for the ${view} view: panels only that view has are left out.',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.layouts.viewHome' => 'home',
 			'operation.layout.layouts.viewOperation' => 'operation',
 			'operation.layout.layouts.viewLogs' => 'logs',
@@ -6488,12 +6500,12 @@ extension on TranslationsQrp {
 			'activitiesView.activitiesTitleMore' => ({required Object first, required Object second, required Object more}) => 'activity types: ${first}, ${second} and ${more} more',
 			'activitiesView.reference' => 'reference',
 			'activitiesView.invalidReference' => 'not valid',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.duplicateReference' => 'already added',
 			'activitiesView.searchHint' => 'search by name, reference or anything else…',
 			'activitiesView.noSuggestions' => 'no matches',
 			'activitiesView.noSuggestionsHint' => 'search by reference name or number above',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.noSuggestionsExample' => '(for example \'trail\' or \'4556\')',
 			'activitiesView.allOptions' => 'activity types',
 			'activitiesView.determiningLocation' => 'determining current location…\nwaiting for gps fix to find nearby references',
@@ -7002,12 +7014,12 @@ extension on TranslationsQrp {
 			'settings.radio.cwMessages.helpQsoSerial' => 'your serial number, in a contest that sends one',
 			'settings.radio.cwMessages.helpPad' => 'pads with zeros to that many digits: 7 is sent as 007',
 			'settings.radio.cwMessages.helpCut' => 'cut numbers, t for 0 and n for 9: 599 is sent as 5nn',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpCutDigits' => 'chooses the digits to cut, in quotes — 0 is t, 1 is a, 5 is e, 9 is n',
 			'settings.radio.cwMessages.helpFullExample' => 'full example:',
 			'settings.radio.cwMessages.helpExample' => 'sends w1aw 5nn tt7',
 			'settings.radio.cwMessages.helpEsmIntro' => 'with enter sends messages on, enter keys messages by their function key, as n1mm does. the esm messages set starts with these:',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmCq' => 'running, enter with the call field empty calls cq',
 			'settings.radio.cwMessages.helpEsmExchange' => 'your exchange: after their call when running, after they answer in s&p',
 			'settings.radio.cwMessages.helpEsmThanks' => 'thanks, once the contact has logged: qso is the contact as logged, next the one up next',
@@ -7516,12 +7528,12 @@ extension on TranslationsQrp {
 			'settings.station.listenToAudio' => 'listen to audio',
 			'settings.station.audioMixing' => 'audio mixing',
 			'settings.station.audioVolume' => 'volume',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.audioOutput' => 'output',
 			'settings.station.audioOutputDefault' => 'the system\'s default output',
 			'settings.station.audioDevicesUnlisted' => ({required Object name}) => '${name} (devices could not be listed)',
 			'settings.station.audioOnThisComputer' => 'on this computer',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.audioOnThisDevice' => 'on this device',
 			'settings.station.audioOnTheRadio' => 'on the radio',
 			'settings.station.audioThroughCard' => ({required Object name}) => 'through ${name}',
@@ -8030,12 +8042,12 @@ extension on TranslationsQrp {
 			'settings.station.voiceDialect' => 'voice keyer dialect',
 			'settings.station.voiceDialectDescription' => 'how this radio plays its voice memories over cat. none means no voice memories over cat. with a dialect and no count, the dialect\'s default count applies.',
 			'settings.station.voiceDialectPb' => 'kenwood (pb, ts-590 style)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceDialectK4' => 'elecraft k4 (pb and da)',
 			'settings.station.voiceDialectKx' => 'elecraft kx2/kx3 (switch taps)',
 			'settings.station.voiceDialectK3' => 'elecraft k3/k3s with kdvr3 (switch taps)',
 			'settings.station.placeholderDiagnostic' => 'simulated',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderWholeNumberInvalid' => 'must be a whole number, 0 or more',
 			'settings.station.placeholderFreqInvalid' => 'must be a frequency in khz, greater than zero',
 			'settings.station.placeholderModeInvalid' => 'must be a mode name, e.g. usb, cw, ft8',
@@ -8451,6 +8463,10 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.command.vfoFineDown' => 'vfo down one fine step',
 			'keyboardShortcuts.command.vfoCoarseUp' => 'vfo up one coarse step',
 			'keyboardShortcuts.command.vfoCoarseDown' => 'vfo down one coarse step',
+			'keyboardShortcuts.command.spotsNext' => 'next spot up the band',
+			'keyboardShortcuts.command.spotsPrevious' => 'next spot down the band',
+			'keyboardShortcuts.command.spotsNextMult' => 'next new multiplier up the band',
+			'keyboardShortcuts.command.spotsPreviousMult' => 'next new multiplier down the band',
 			'keyboardShortcuts.fixed.callsign' => 'typing callsigns',
 			'keyboardShortcuts.fixed.escape' => 'stop sending, back out one step, or close',
 			'keyboardShortcuts.fixed.enter' => 'log the contact',
@@ -8540,6 +8556,8 @@ extension on TranslationsQrp {
 			'dataFiles.downloadTimedOut' => 'the server took too long to respond. try again later.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} answered with an error (http ${status}). try again later.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} couldn\'t provide this file (http ${status}). check that its address is still right.',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.downloadRefused' => ({required Object host}) => '${host} isn\'t an address this extension may download from.',
 			'dataFiles.downloadNotADatabase' => ({required Object host}) => '${host} answered with something other than the file — often a wi-fi network\'s sign-in page. try again once you\'re online.',
 			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'n1mm has no call history file for ${stem}.',
@@ -8548,8 +8566,6 @@ extension on TranslationsQrp {
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'the download had only ${imported} of the ${existing} records on this device, so the ones it left out were kept. refreshing it in settings › offline data accepts it anyway.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'imported ${count} record for ${label}.', other: 'imported ${count} records for ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'imported data for ${label}.',
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.cleanedUpTitle' => 'cleaned up extension data',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'removed data for ${count} data file from extensions no longer installed.', other: 'removed data for ${count} data files from extensions no longer installed.', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',

@@ -268,6 +268,10 @@ export interface CandidateVerdict {
   notices: string[]
   alerts: string[]
   icons?: { icon: string; color?: string }[]
+  /// The most points a scorer the operation names gives the candidate,
+  /// absent where none said: 0 is a station worth nothing to every one of
+  /// them. The scorers every operation runs (DXCC, states) are not counted.
+  value?: number
 }
 
 /// Filters for `HookContext.getHistoryForCall`. Every one is optional, and a
@@ -1937,6 +1941,12 @@ export interface QsoScoreNotices {
   dupe?: boolean
   /// From `scoreQso` only: as `QsoScoreVerdict.incomplete`.
   incomplete?: string[]
+  /// Read from `scoreCandidates` answers only: the points the candidate would
+  /// score, as `QsoScoreVerdict.value`. Leave it out where the scorer cannot
+  /// tell yet — `contestScorer` leaves out a 0 that comes with `incomplete`.
+  /// A 0 says the station is worth nothing to this scorer, and the spot keys
+  /// pass over a spot every scorer the operation names gives 0.
+  value?: number
   /// From `scoreQso` only: the checkpoint the request named is held, as
   /// `ScoreQsosResult.checkpointHeld`.
   checkpointHeld?: true

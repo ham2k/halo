@@ -481,6 +481,10 @@
     "deleteOperation": "Delete operation",
     "loggingControlsStale": "Activity fields may be out of date — reopen the operation to refresh them",
     "vfoKeysNoFrequency": "No frequency to tune from — type one, or connect a radio",
+    "spotKeysNoneUp": "No more spots up the band",
+    "spotKeysNoneDown": "No more spots down the band",
+    "spotKeysNoMultUp": "No more new multipliers up the band",
+    "spotKeysNoMultDown": "No more new multipliers down the band",
     "locationNone": "Not set",
     "generalOperation": "General Operation",
     "lifecycle": {
@@ -3487,7 +3491,11 @@
       "vfoFineUp": "VFO up one fine step",
       "vfoFineDown": "VFO down one fine step",
       "vfoCoarseUp": "VFO up one coarse step",
-      "vfoCoarseDown": "VFO down one coarse step"
+      "vfoCoarseDown": "VFO down one coarse step",
+      "spotsNext": "Next spot up the band",
+      "spotsPrevious": "Next spot down the band",
+      "spotsNextMult": "Next new multiplier up the band",
+      "spotsPreviousMult": "Next new multiplier down the band"
     },
     "fixed": {
       "callsign": "Typing callsigns",

@@ -123,6 +123,22 @@ class SpotBoardService extends ChangeNotifier {
   Map<String, SpotCallInfo> get callInfo => UnmodifiableMapView(_callInfo);
   final Map<String, SpotCallInfo> _callInfo = {};
 
+  /// The board through the operator's Spots Panel filters, as the panel
+  /// sorts it — from [bySource] when given, else everything held. The "auto"
+  /// band and mode follow [vfo], radio1's when not given, as the panel's do.
+  List<Map<String, dynamic>> filteredByOperator({Map<String, List<Map<String, dynamic>>>? bySource, Vfo? vfo}) {
+    final filters = SpotBoardFilters.fromSettings(settings);
+    final following = vfo ?? radio.vfoA;
+    return filterSpotBoard(
+      mergedSpotBoard(bySource ?? spots.spotsBySource, filters.disabledSources, entityOf: (call) => _callInfo[call]?.entityPrefix),
+      filters,
+      vfoBand: following.band,
+      vfoMode: following.mode,
+      enabledBands: settings.enabledBands.toSet(),
+      continentOf: (call) => _callInfo[call]?.continent,
+    ).filtered;
+  }
+
   /// Calls whose lookup is out, each to the completion of the pass asking.
   /// Not yet in [_callInfo], so without this a pass starting meanwhile asks
   /// for them again — and a lookup timing out leaves its database read
@@ -161,6 +177,12 @@ class SpotBoardService extends ChangeNotifier {
   /// beside them elsewhere.
   Map<String, SpotScore>? scoresFor(String operationUuid) => _scoredUuid != null && _scoredUuid == operationUuid ? _withChase : null;
   Map<String, SpotScore> _scores = {};
+
+  /// Each candidate's `value` from the same pass as [scoresFor]: the most
+  /// points a scorer the operation names gives it, by candidate key. A key
+  /// absent is a candidate no such scorer valued.
+  Map<String, num>? scoreValuesFor(String operationUuid) => _scoredUuid != null && _scoredUuid == operationUuid ? _scoreValues : null;
+  Map<String, num> _scoreValues = {};
 
   /// The icons the scorers gave each candidate ([SpotIcon]), by
   /// [spotCandidateKey], for [operationUuid] as [scoresFor] is. None in the
@@ -264,6 +286,7 @@ class SpotBoardService extends ChangeNotifier {
     _judgedUuid = null;
     _judgedRevision = null;
     _scores = {};
+    _scoreValues = {};
     _scoreIcons = {};
     _scoredUuid = null;
     _judgements = {};
@@ -292,6 +315,7 @@ class SpotBoardService extends ChangeNotifier {
     _judgedChasing = shown.chasing;
     if (switched) {
       _scores = {};
+      _scoreValues = {};
       _scoreIcons = {};
       _scoredUuid = null;
       // Judged from the station and view switched away from: merged into the
@@ -605,6 +629,7 @@ class SpotBoardService extends ChangeNotifier {
           // Already judged empty: nothing a reader shows has moved.
           if (_scores.isNotEmpty || _judgements.isNotEmpty || _scoredUuid != operation.uuid) {
             _scores = {};
+            _scoreValues = {};
             _scoreIcons = {};
             _judgements = {};
             _scoredUuid = operation.uuid;
@@ -655,6 +680,10 @@ class SpotBoardService extends ChangeNotifier {
         if (scored != null) {
           List<String> keys(dynamic list) => ((list as List?) ?? const []).whereType<String>().toList();
           _scores = {for (final entry in scored.entries) entry.key: (notices: keys(entry.value['notices']), alerts: keys(entry.value['alerts']))};
+          _scoreValues = {
+            for (final entry in scored.entries)
+              if (entry.value['value'] case final num value) entry.key: value,
+          };
           _scoreIcons = {
             for (final entry in scored.entries)
               if (((entry.value['icons'] as List?) ?? const []).map(spotIconFrom).nonNulls.toList() case final icons when icons.isNotEmpty) entry.key: icons,

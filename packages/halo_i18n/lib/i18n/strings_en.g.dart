@@ -949,6 +949,18 @@ class Translations$operation$en {
 	/// en: 'No frequency to tune from — type one, or connect a radio'
 	String get vfoKeysNoFrequency => 'No frequency to tune from — type one, or connect a radio';
 
+	/// en: 'No more spots up the band'
+	String get spotKeysNoneUp => 'No more spots up the band';
+
+	/// en: 'No more spots down the band'
+	String get spotKeysNoneDown => 'No more spots down the band';
+
+	/// en: 'No more new multipliers up the band'
+	String get spotKeysNoMultUp => 'No more new multipliers up the band';
+
+	/// en: 'No more new multipliers down the band'
+	String get spotKeysNoMultDown => 'No more new multipliers down the band';
+
 	/// en: 'Not set'
 	String get locationNone => 'Not set';
 
@@ -8810,6 +8822,18 @@ class Translations$keyboardShortcuts$command$en {
 
 	/// en: 'VFO down one coarse step'
 	String get vfoCoarseDown => 'VFO down one coarse step';
+
+	/// en: 'Next spot up the band'
+	String get spotsNext => 'Next spot up the band';
+
+	/// en: 'Next spot down the band'
+	String get spotsPrevious => 'Next spot down the band';
+
+	/// en: 'Next new multiplier up the band'
+	String get spotsNextMult => 'Next new multiplier up the band';
+
+	/// en: 'Next new multiplier down the band'
+	String get spotsPreviousMult => 'Next new multiplier down the band';
 }
 
 // Path: keyboardShortcuts.fixed
@@ -12584,6 +12608,10 @@ extension on Translations {
 			'operation.deleteOperation' => 'Delete operation',
 			'operation.loggingControlsStale' => 'Activity fields may be out of date — reopen the operation to refresh them',
 			'operation.vfoKeysNoFrequency' => 'No frequency to tune from — type one, or connect a radio',
+			'operation.spotKeysNoneUp' => 'No more spots up the band',
+			'operation.spotKeysNoneDown' => 'No more spots down the band',
+			'operation.spotKeysNoMultUp' => 'No more new multipliers up the band',
+			'operation.spotKeysNoMultDown' => 'No more new multipliers down the band',
 			'operation.locationNone' => 'Not set',
 			'operation.generalOperation' => 'General Operation',
 			'operation.lifecycle.paused' => 'Paused',
@@ -12687,12 +12715,12 @@ extension on Translations {
 			'operation.layout.layouts.exportPick' => 'Panels to export',
 			'operation.layout.layouts.tabSet' => 'Tab Set',
 			'operation.layout.layouts.exportAction' => 'Export',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.exported' => ({required Object location}) => 'Layout saved to ${location}',
 			'operation.layout.layouts.exportFailed' => ({required Object error}) => 'Couldn\'t export the layout: ${error}',
 			'operation.layout.layouts.importTitle' => 'Import Layout',
 			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'Made for the ${view} view: panels only that view has are left out.',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.layouts.viewHome' => 'Home',
 			'operation.layout.layouts.viewOperation' => 'Operation',
 			'operation.layout.layouts.viewLogs' => 'Logs',
@@ -13201,12 +13229,12 @@ extension on Translations {
 			'activitiesView.activitiesTitleMore' => ({required Object first, required Object second, required Object more}) => 'Activity Types: ${first}, ${second} and ${more} more',
 			'activitiesView.reference' => 'Reference',
 			'activitiesView.invalidReference' => 'Not valid',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.duplicateReference' => 'Already added',
 			'activitiesView.searchHint' => 'Search by name, reference or anything else…',
 			'activitiesView.noSuggestions' => 'No matches',
 			'activitiesView.noSuggestionsHint' => 'Search by reference name or number above',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.noSuggestionsExample' => '(for example \'trail\' or \'4556\')',
 			'activitiesView.allOptions' => 'Activity Types',
 			'activitiesView.determiningLocation' => 'Determining current location…\nWaiting for GPS fix to find nearby references',
@@ -13715,12 +13743,12 @@ extension on Translations {
 			'settings.radio.cwMessages.helpQsoSerial' => 'Your serial number, in a contest that sends one',
 			'settings.radio.cwMessages.helpPad' => 'Pads with zeros to that many digits: 7 is sent as 007',
 			'settings.radio.cwMessages.helpCut' => 'Cut numbers, T for 0 and N for 9: 599 is sent as 5NN',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpCutDigits' => 'Chooses the digits to cut, in quotes — 0 is T, 1 is A, 5 is E, 9 is N',
 			'settings.radio.cwMessages.helpFullExample' => 'Full example:',
 			'settings.radio.cwMessages.helpExample' => 'Sends W1AW 5NN TT7',
 			'settings.radio.cwMessages.helpEsmIntro' => 'With Enter Sends Messages on, Enter keys messages by their function key, as N1MM does. The ESM Messages set starts with these:',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmCq' => 'Running, Enter with the call field empty calls CQ',
 			'settings.radio.cwMessages.helpEsmExchange' => 'Your exchange: after their call when running, after they answer in S&P',
 			'settings.radio.cwMessages.helpEsmThanks' => 'Thanks, once the contact has logged: qso is the contact as logged, next the one up next',
@@ -14229,12 +14257,12 @@ extension on Translations {
 			'settings.station.listenToAudio' => 'Listen to Audio',
 			'settings.station.audioMixing' => 'Audio Mixing',
 			'settings.station.audioVolume' => 'Volume',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.audioOutput' => 'Output',
 			'settings.station.audioOutputDefault' => 'The system\'s default output',
 			'settings.station.audioDevicesUnlisted' => ({required Object name}) => '${name} (devices could not be listed)',
 			'settings.station.audioOnThisComputer' => 'On This Computer',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.audioOnThisDevice' => 'On This Device',
 			'settings.station.audioOnTheRadio' => 'On The Radio',
 			'settings.station.audioThroughCard' => ({required Object name}) => 'Through ${name}',
@@ -14743,12 +14771,12 @@ extension on Translations {
 			'settings.station.voiceDialect' => 'Voice keyer dialect',
 			'settings.station.voiceDialectDescription' => 'How this radio plays its voice memories over CAT. None means no voice memories over CAT. With a dialect and no count, the dialect\'s default count applies.',
 			'settings.station.voiceDialectPb' => 'Kenwood (PB, TS-590 style)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceDialectK4' => 'Elecraft K4 (PB and DA)',
 			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (switch taps)',
 			'settings.station.voiceDialectK3' => 'Elecraft K3/K3S with KDVR3 (switch taps)',
 			'settings.station.placeholderDiagnostic' => 'Simulated',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderWholeNumberInvalid' => 'Must be a whole number, 0 or more',
 			'settings.station.placeholderFreqInvalid' => 'Must be a frequency in kHz, greater than zero',
 			'settings.station.placeholderModeInvalid' => 'Must be a mode name, e.g. USB, CW, FT8',
@@ -15164,6 +15192,10 @@ extension on Translations {
 			'keyboardShortcuts.command.vfoFineDown' => 'VFO down one fine step',
 			'keyboardShortcuts.command.vfoCoarseUp' => 'VFO up one coarse step',
 			'keyboardShortcuts.command.vfoCoarseDown' => 'VFO down one coarse step',
+			'keyboardShortcuts.command.spotsNext' => 'Next spot up the band',
+			'keyboardShortcuts.command.spotsPrevious' => 'Next spot down the band',
+			'keyboardShortcuts.command.spotsNextMult' => 'Next new multiplier up the band',
+			'keyboardShortcuts.command.spotsPreviousMult' => 'Next new multiplier down the band',
 			'keyboardShortcuts.fixed.callsign' => 'Typing callsigns',
 			'keyboardShortcuts.fixed.escape' => 'Stop sending, back out one step, or close',
 			'keyboardShortcuts.fixed.enter' => 'Log the contact',
@@ -15253,6 +15285,8 @@ extension on Translations {
 			'dataFiles.downloadTimedOut' => 'The server took too long to respond. Try again later.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} answered with an error (HTTP ${status}). Try again later.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} couldn\'t provide this file (HTTP ${status}). Check that its address is still right.',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.downloadRefused' => ({required Object host}) => '${host} isn\'t an address this extension may download from.',
 			'dataFiles.downloadNotADatabase' => ({required Object host}) => '${host} answered with something other than the file — often a Wi-Fi network\'s sign-in page. Try again once you\'re online.',
 			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'N1MM has no call history file for ${stem}.',
@@ -15261,8 +15295,6 @@ extension on Translations {
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'The download had only ${imported} of the ${existing} records on this device, so the ones it left out were kept. Refreshing it in Settings › Offline Data accepts it anyway.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} record for ${label}.', other: 'Imported ${count} records for ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Imported data for ${label}.',
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.cleanedUpTitle' => 'Cleaned up extension data',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Removed data for ${count} data file from extensions no longer installed.', other: 'Removed data for ${count} data files from extensions no longer installed.', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',

@@ -915,6 +915,24 @@ void main() {
       expect(result?.containsKey('spot-2'), isFalse);
     });
 
+    // Core gives every unworked station a point, and a scorer that only marks
+    // spots gives every one 0. Counted, either would decide what a 0 from the
+    // operation's own program means: the spot keys would never pass over a
+    // station the contest cannot count, or would pass over every one.
+    test('a value is the best from a scorer the operation names, never a fallback', () async {
+      final result = await score({
+        'core:scoreCandidates': {
+          'spot-1': {'notices': <String>[], 'alerts': <String>[], 'value': 1},
+          'spot-2': {'notices': <String>[], 'alerts': <String>[], 'value': 1},
+        },
+        'pota:scoreCandidates': {
+          'spot-1': {'notices': <String>[], 'alerts': <String>[], 'value': 0},
+        },
+      });
+      expect(result?['spot-1']?['value'], 0);
+      expect(result?.containsKey('spot-2'), isFalse, reason: "core's point is no value");
+    });
+
     // A VHF test answers `missingExchange` for every candidate on the board,
     // since a spot carries no exchange. Reading that as a judgement would take
     // the striking off the whole board for the length of the contest.

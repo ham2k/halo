@@ -72,6 +72,8 @@ A chord is one key and the modifiers held for it, stored as text:
 | `logging.nextSuggestion` / `previousSuggestion` | ⌥Y / ⇧⌥Y | the logging panel, while a list of draft suggestions shows ([logging-fields.md](logging-fields.md#draft-suggestions)) |
 | `vfo.fineUp` / `fineDown` | ⌥↓ / ⌥↑ | Operation, Chasing; not with a logged contact loaded (below) |
 | `vfo.coarseUp` / `coarseDown` | ⇧⌥↓ / ⇧⌥↑ | Operation, Chasing; not with a logged contact loaded |
+| `spots.next` / `previous` | ⌘↓ / ⌘↑ | Operation, Chasing; not with a logged contact loaded (below) |
+| `spots.nextMult` / `previousMult` | ⇧⌘↓ / ⇧⌘↑ | Operation, Chasing; not with a logged contact loaded |
 | `text:<command>` | none | anywhere |
 
 ⌘ here is the platform's command key: `cmd` on Apple platforms, `ctrl`
@@ -110,6 +112,33 @@ fields, which hear the same press after the VFO's handler
 (`takeKeyEvent`) rather than move the caret or select too. No other command
 may take ⌥↑ or ⌥↓ alone: none stands aside while a logged contact is
 loaded, so the list would page under it.
+
+**The spot keys** (the Station group) suggest the nearest spot up or down
+the band from the operator's VFO — the same one the VFO keys tune — as a
+tap on it in the Spots Panel does: the call filled in, the radio tuned.
+Down goes up the band, as with the VFO keys. The spots are those the
+operator's Spots Panel filters show (as an extension's `getSpots` reads
+them, whether or not a panel is on screen) on the VFO's band, less what an
+assistant hid, the operator's own, those scoring calls worked (the rows
+the panel strikes through — not ones only slid aside there, which stay in
+that panel alone), and those worth no points to the operation: a station
+every scorer the operation names gives a `value` of 0, as Sweepstakes does
+DX, outside its bands or modes, or past its hours
+([scoring.md](../extensions/scoring.md)). With ⇧, only those a scorer marks `newMult` for the
+operation in front. A press steps on from the spot the
+last one landed on while the VFO is still within 80 Hz of it — past the
+widest zero-beat offset — so stations spotted on one frequency are each
+reached, in call order; otherwise it goes to the nearest spot more than
+80 Hz from the VFO. Past the last spot that way a press says so on the
+status bar. On a Mac ⌃↑ and ⌃↓ are Mission Control's and App Exposé's out
+of the box, which is why the defaults use the platform's ⌘ there.
+
+They stand aside exactly as the VFO keys do — with a logged contact
+loaded, in free text, on a control that owns the arrows — and the press
+they take is marked for the logging fields in the same way. With a contact
+loaded ⌘↑ and ⌘↓ go to the ends of the QSO list, as they always have; no
+other command may take ⌘↑ or ⌘↓ alone. Off a Mac, Ctrl+↑/↓ never walked
+the list.
 
 **Command text** (`text:20M`) runs exactly as the ⌘K dialog runs what is typed
 into it: against the operation in front, through the same dispatch, with the
@@ -150,8 +179,8 @@ wherever it is pressed.
 Never bindable, and listed in the panel so the operator can see what is
 taken: Escape, with any modifier; Enter, Space, Tab, the arrows, Page Up/Down,
 Home, End, Backspace and Delete on their own or with ⇧; ⌘ with Up or
-Down, and ⌥ with them for every command but the VFO keys (the QSO list's
-walk); ⌘Z (Ctrl+Z off a Mac); and **the callsign keys** —
+Down for every command but the spot keys, and ⌥ with them for every command
+but the VFO keys (the QSO list's walk); ⌘Z (Ctrl+Z off a Mac); and **the callsign keys** —
 A–Z, 0–9, `,` `.` `/`, the `?` that marks a partial call, and the keypad's
 digits, `.` and `/` — on their own or with ⇧, for every command, PTT
 included: a call could not be typed with one taken. The editor refuses by
@@ -170,7 +199,8 @@ the press typed, since ⇧= is `+` on one layout and not on another.
 
 ## The experiment
 
-**With `kb` off, no key changes.** `LegacyKeyBindings` answers each command
+**With `kb` off, no key changes** but the spot keys, which arrived after
+the experiment and work for everyone on ⌘ or Ctrl, whichever is held. `LegacyKeyBindings` answers each command
 — and whether it yields to a field: only the keyer's ⌥-digits and ⌥U in free text,
 and ['] and [\\] — with the test its handler made before bindings existed — ⌘ or Ctrl on every
 platform, F-keys whatever ⇧ says — so the refactor alone changes nothing an
