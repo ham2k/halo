@@ -3105,11 +3105,16 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String audioProblemOutput({required Object name}) => 'not heard here: the output ${name} is not connected';
 	@override String get audioProblemOutputOpen => 'not heard here: the audio output would not open';
 	@override String get audioProblemRoute => 'not heard here: halo could not route its audio';
+	@override String audioProblemReceiveCard({required Object name}) => 'not heard here: the sound card ${name} is not connected';
+	@override String get audioProblemReceiveCardOpen => 'not heard here: its sound card would not open';
 	@override String get audioProblemDaxChannels => 'not heard here: every dax channel on the radio is taken';
 	@override String get audioProblemStream => 'not heard here: the radio refused its audio stream';
 	@override String audioProblemMicrophone({required Object name}) => 'can\'t talk here: the microphone ${name} is not connected';
 	@override String get audioProblemMicrophoneOpen => 'can\'t talk here: the microphone would not open';
 	@override String get audioProblemTalkStream => 'can\'t talk here: the radio refused the microphone stream';
+	@override String audioProblemTalkCard({required Object name}) => 'can\'t talk here: the sound card ${name} is not connected';
+	@override String get audioProblemTalkCardOpen => 'can\'t talk here: its sound card would not open';
+	@override String get audioProblemTalkCardRefused => 'cannot transmit: the radio would not accept the computer\'s audio';
 	@override String get audioProblemTalkNotReady => 'can\'t talk here yet: the radio has not taken the microphone stream';
 	@override String get audioProblemIpv4 => 'audio can\'t go through this computer: reach the radio at an ipv4 address';
 	@override String get audioProblemEngine => 'audio can\'t go through this computer: halo\'s audio engine would not start';
@@ -3128,6 +3133,12 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get audioOnThisComputer => 'on this computer';
 	@override String get audioOnThisDevice => 'on this device';
 	@override String get audioOnTheRadio => 'on the radio';
+	@override String audioThroughCard({required Object name}) => 'through ${name}';
+	@override String audioMixRadioInSet({required Object set, required Object name}) => '${set}: ${name}';
+	@override String audioMute({required Object name}) => 'mute ${name}';
+	@override String audioUnmute({required Object name}) => 'unmute ${name}';
+	@override String get audioMixAllMuted => 'muted';
+	@override String audioMixMuted({required Object names}) => 'muted: ${names}';
 	@override String receiveAudioOutputMissing({required Object name}) => '${name} (not connected)';
 	@override String get receiveAudioDelay => 'receive audio max buffering';
 	@override String get receiveAudioDelayDescription => 'how far behind the radio its audio may fall to ride out a busy network. shorter is more immediate, but drops out more often, especially over wi-fi.';
@@ -3289,6 +3300,7 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get so2rQueueMessagesDescription => 'with two radios, a message for one waits while the other is sending, instead of stopping it.';
 	@override String get so2rSwitch => 'so2r switcher';
 	@override String so2rSwitchBuiltIn({required Object radio}) => 'built into ${radio}';
+	@override String get so2rSwitchComputer => 'this computer';
 	@override String get so2rSwitchSettings => 'so2r switcher settings';
 	@override String get so2rStereo => 'stereo: radio a left, radio b right';
 	@override String get so2rListenWhileTransmitting => 'listen to the other radio while transmitting';
@@ -7468,11 +7480,16 @@ extension on TranslationsQrp {
 			'settings.station.audioProblemOutput' => ({required Object name}) => 'not heard here: the output ${name} is not connected',
 			'settings.station.audioProblemOutputOpen' => 'not heard here: the audio output would not open',
 			'settings.station.audioProblemRoute' => 'not heard here: halo could not route its audio',
+			'settings.station.audioProblemReceiveCard' => ({required Object name}) => 'not heard here: the sound card ${name} is not connected',
+			'settings.station.audioProblemReceiveCardOpen' => 'not heard here: its sound card would not open',
 			'settings.station.audioProblemDaxChannels' => 'not heard here: every dax channel on the radio is taken',
 			'settings.station.audioProblemStream' => 'not heard here: the radio refused its audio stream',
 			'settings.station.audioProblemMicrophone' => ({required Object name}) => 'can\'t talk here: the microphone ${name} is not connected',
 			'settings.station.audioProblemMicrophoneOpen' => 'can\'t talk here: the microphone would not open',
 			'settings.station.audioProblemTalkStream' => 'can\'t talk here: the radio refused the microphone stream',
+			'settings.station.audioProblemTalkCard' => ({required Object name}) => 'can\'t talk here: the sound card ${name} is not connected',
+			'settings.station.audioProblemTalkCardOpen' => 'can\'t talk here: its sound card would not open',
+			'settings.station.audioProblemTalkCardRefused' => 'cannot transmit: the radio would not accept the computer\'s audio',
 			'settings.station.audioProblemTalkNotReady' => 'can\'t talk here yet: the radio has not taken the microphone stream',
 			'settings.station.audioProblemIpv4' => 'audio can\'t go through this computer: reach the radio at an ipv4 address',
 			'settings.station.audioProblemEngine' => 'audio can\'t go through this computer: halo\'s audio engine would not start',
@@ -7491,6 +7508,14 @@ extension on TranslationsQrp {
 			'settings.station.audioOnThisComputer' => 'on this computer',
 			'settings.station.audioOnThisDevice' => 'on this device',
 			'settings.station.audioOnTheRadio' => 'on the radio',
+			'settings.station.audioThroughCard' => ({required Object name}) => 'through ${name}',
+			'settings.station.audioMixRadioInSet' => ({required Object set, required Object name}) => '${set}: ${name}',
+			'settings.station.audioMute' => ({required Object name}) => 'mute ${name}',
+			'settings.station.audioUnmute' => ({required Object name}) => 'unmute ${name}',
+			'settings.station.audioMixAllMuted' => 'muted',
+			_ => null,
+		} ?? switch (path) {
+			'settings.station.audioMixMuted' => ({required Object names}) => 'muted: ${names}',
 			'settings.station.receiveAudioOutputMissing' => ({required Object name}) => '${name} (not connected)',
 			'settings.station.receiveAudioDelay' => 'receive audio max buffering',
 			'settings.station.receiveAudioDelayDescription' => 'how far behind the radio its audio may fall to ride out a busy network. shorter is more immediate, but drops out more often, especially over wi-fi.',
@@ -7501,8 +7526,6 @@ extension on TranslationsQrp {
 			'settings.station.microphone' => 'microphone',
 			'settings.station.microphoneDefault' => 'the system\'s default input',
 			'settings.station.channelNotInUse' => 'not in use',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.channelHeldByUnknown' => 'in use by another program',
 			'settings.station.flexNoSlices' => 'this radio has not reported any slices — check that smartsdr is running and that this client may subscribe',
 			'settings.station.spectrumUnsupported' => 'this radio sends no spectrum over cat',
@@ -7758,6 +7781,7 @@ extension on TranslationsQrp {
 			'settings.station.so2rQueueMessagesDescription' => 'with two radios, a message for one waits while the other is sending, instead of stopping it.',
 			'settings.station.so2rSwitch' => 'so2r switcher',
 			'settings.station.so2rSwitchBuiltIn' => ({required Object radio}) => 'built into ${radio}',
+			'settings.station.so2rSwitchComputer' => 'this computer',
 			'settings.station.so2rSwitchSettings' => 'so2r switcher settings',
 			'settings.station.so2rStereo' => 'stereo: radio a left, radio b right',
 			'settings.station.so2rListenWhileTransmitting' => 'listen to the other radio while transmitting',
@@ -8003,6 +8027,8 @@ extension on TranslationsQrp {
 			'settings.station.simulatedSwitchRadios' => 'radio ports',
 			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'a whole number, ${min} to ${max}',
 			'settings.station.switchLayout' => 'layout',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.switchLayoutDescription' => 'which side of the switch your radios are plugged into.',
 			'settings.station.switchLayoutRequired' => 'choose how the switch is wired',
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'the switch refused "${command}" (error ${code})',
@@ -8015,8 +8041,6 @@ extension on TranslationsQrp {
 			'settings.station.dcnAddress' => 'device address',
 			'settings.station.dcnAddressDescription' => 'the address set on the module\'s dip switches. a coax relay module leaves the factory at 2.',
 			'settings.station.dcnAddressRequired' => 'must be a device address from 1 to 99',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.switchPortLabel' => ({required Object port}) => 'port ${port}',
 			'settings.station.switchPortAutoHint' => 'follows band data',
 			'settings.station.switchPortTransmittingHint' => 'transmitting — cannot change now',
@@ -8517,6 +8541,8 @@ extension on TranslationsQrp {
 			'dataFiles.definitionUnavailable' => 'the file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. try again in a moment.',
 			'updates.updateAvailable' => 'update available',
 			'updates.newVersionAvailable' => ({required Object version}) => 'a new version (${version}) is available.',
+			_ => null,
+		} ?? switch (path) {
 			'updates.getIt' => 'get it',
 			'updates.ok' => 'ok',
 			'updates.updateReady' => 'update ready',
@@ -8529,8 +8555,6 @@ extension on TranslationsQrp {
 			'updates.checkingForUpdates' => 'checking for updates…',
 			'updates.upToDate' => 'up to date',
 			'updates.checkFailed' => 'couldn’t check for updates',
-			_ => null,
-		} ?? switch (path) {
 			'updates.automaticChecks' => 'check automatically',
 			'updates.automaticChecksDescription' => 'look for new versions in the background, from the next time you start the app',
 			'extensionService.runtimeNotReady' => 'extension runtime not ready.',

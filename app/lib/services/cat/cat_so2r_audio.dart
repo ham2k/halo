@@ -11,7 +11,15 @@ part of 'cat_service.dart';
 /// slices of one radio, which switches its own audio.
 const so2rSwitchRadios = 'radios';
 
+/// The switcher pick naming this computer's mixer: both SO2R radios are
+/// heard through HaLo, which pans and mutes each in the headphones.
+const so2rSwitchComputer = kComputerDevice;
+
 mixin _So2rAudio on _So2r {
+  /// Whether [uuid] is heard through this computer: what the computer's
+  /// mixer can switch.
+  bool _heardThroughComputer(String uuid);
+
   /// The stored pick: an SO2R switcher node's uuid, [so2rSwitchRadios], or
   /// null for None.
   String? _so2rSwitch;
@@ -26,9 +34,17 @@ mixin _So2rAudio on _So2r {
 
   /// The switcher node picked, when one is: what is kept connected.
   String? get _so2rSwitchNode => switch (so2rSwitch) {
-    final uuid? when uuid != so2rSwitchRadios && nodeFor(uuid) != null => uuid,
+    final uuid? when uuid != so2rSwitchRadios && uuid != so2rSwitchComputer && nodeFor(uuid) != null => uuid,
     _ => null,
   };
+
+  /// Whether this computer's mixer can switch SO2R's two radios: both are
+  /// heard through it. It pans and mutes only what it carries, and a radio
+  /// in its own speaker it cannot quiet.
+  bool get so2rComputerSwitches {
+    final a = _localRadio1, b = radio2;
+    return a != null && b != null && _heardThroughComputer(a) && _heardThroughComputer(b);
+  }
 
   Future<void> setSo2rSwitch(String? pick) async {
     if (pick == _so2rSwitch) return;
@@ -99,16 +115,34 @@ mixin _So2rAudio on _So2r {
   /// What each radio switching its own audio was last told.
   final _so2rEars = <So2rRadioAudioSession, So2rEar>{};
 
+  /// The ears this computer's mixer puts each radio in, by node, as the
+  /// engine reads them. Its own: nothing is owed back when the switching
+  /// stops but the ears it took.
+  final _so2rComputerEars = <String, So2rEar>{};
+
+  /// [uuid]'s ears in the computer's mixer: null for both.
+  So2rEar? so2rComputerEar(String uuid) => _so2rComputerEars[uuid];
+
   late final Listenable _so2rAudioChanges = Listenable.merge([this, _settings, _onAirChanges]);
 
   @override
-  void _startSo2rAudio() => _so2rAudioChanges.addListener(_so2rAudioSoon);
+  void _startSo2rAudio() => _so2rAudioChanges
+    ..addListener(_so2rAudioSoon)
+    ..addListener(_mixFollows);
 
   @override
   void _stopSo2rAudio() {
-    _so2rAudioChanges.removeListener(_so2rAudioSoon);
+    _so2rAudioChanges
+      ..removeListener(_so2rAudioSoon)
+      ..removeListener(_mixFollows);
     so2rAudio.dispose();
   }
+
+  /// Every route's gains set again as what is heard changes — a radio
+  /// leaving its set, a choice turned off, the experiment — so a stream that
+  /// is still open plays nothing the mixer does not list
+  /// ([CatRadioAudioChoices.earInMix]).
+  void _mixFollows() => _radioAudio?.applyGains();
 
   bool _so2rAudioScheduled = false;
 
@@ -117,7 +151,7 @@ mixin _So2rAudio on _So2r {
   void _so2rAudioSoon() {
     // Nothing switching and nothing to give back: every notify of a station
     // with no switcher would otherwise run the whole rule for nothing.
-    if (_so2rAudioScheduled || (_so2rSwitch == null && _so2rEars.isEmpty && so2rAudio.value == null)) return;
+    if (_so2rAudioScheduled || (_so2rSwitch == null && _so2rEars.isEmpty && _so2rComputerEars.isEmpty && so2rAudio.value == null)) return;
     _so2rAudioScheduled = true;
     scheduleMicrotask(() {
       _so2rAudioScheduled = false;
@@ -140,8 +174,14 @@ mixin _So2rAudio on _So2r {
     final pick = so2rSwitch;
     final wanted = _wantedSo2rAudio();
     final ears = <So2rRadioAudioSession, So2rEar>{};
+    final computerEars = <String, So2rEar>{};
     So2rAudio? heard;
-    if (pick == so2rSwitchRadios && so2rAudioRadio != null) {
+    if (pick == so2rSwitchComputer && so2rComputerSwitches) {
+      for (final (radio, uuid) in [('A', _localRadio1!), ('B', radio2!)]) {
+        computerEars[uuid] = so2rEarFor(wanted, radio);
+      }
+      heard = wanted;
+    } else if (pick == so2rSwitchRadios && so2rAudioRadio != null) {
       for (final (radio, uuid) in [('A', _localRadio1), ('B', radio2)]) {
         if (uuid == null) continue;
         if (connectedSession(uuid) case final So2rRadioAudioSession session) ears[session] = so2rEarFor(wanted, radio);
@@ -174,6 +214,12 @@ mixin _So2rAudio on _So2r {
       if (_so2rEars[session] == ear) continue;
       _so2rEars[session] = ear;
       session.setSo2rEar(ear);
+    }
+    if (!mapEquals(_so2rComputerEars, computerEars)) {
+      _so2rComputerEars
+        ..clear()
+        ..addAll(computerEars);
+      _radioAudio?.applyGains();
     }
     so2rAudio.value = heard;
   }

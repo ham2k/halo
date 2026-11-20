@@ -609,8 +609,9 @@ Each is a full task. Nothing is visible to the operator before phase 3.
    (§ 5.1) pick the radio's own audio or None, and the operator's microphone and headphones are
    picks beside the positions (§ 6.1), each a sound card's address with its name. Both moved
    there from where builds before kept them: each radio's own flags, and the station's settings.
-   Sound cards as a position's audio wait for the third, the hearing rule carried out by the
-   computer's mixer.*
+   The third is built: this computer is an SO2R switcher, panning and muting what it carries by the
+   hearing rule (cat.md, "The SO2R switcher"), and a position's audio slots may name one of its
+   sound cards, for a radio on a USB codec (audio.md § 7).*
 8. **An SO2R controller's transmit side**: routing the key, the PTT and the microphone (§ 6.1).
 9. **The antenna graph and its solver** (§ 7).
 10. **Extension surface** for capabilities, positions and sets, and logical addresses wherever an

@@ -6816,6 +6816,12 @@ class Translations$settings$station$en {
 	/// en: 'Not heard here: HaLo could not route its audio'
 	String get audioProblemRoute => 'Not heard here: HaLo could not route its audio';
 
+	/// en: 'Not heard here: the sound card ${name} is not connected'
+	String audioProblemReceiveCard({required Object name}) => 'Not heard here: the sound card ${name} is not connected';
+
+	/// en: 'Not heard here: its sound card would not open'
+	String get audioProblemReceiveCardOpen => 'Not heard here: its sound card would not open';
+
 	/// en: 'Not heard here: every DAX channel on the radio is taken'
 	String get audioProblemDaxChannels => 'Not heard here: every DAX channel on the radio is taken';
 
@@ -6830,6 +6836,15 @@ class Translations$settings$station$en {
 
 	/// en: 'Can't talk here: the radio refused the microphone stream'
 	String get audioProblemTalkStream => 'Can\'t talk here: the radio refused the microphone stream';
+
+	/// en: 'Can't talk here: the sound card ${name} is not connected'
+	String audioProblemTalkCard({required Object name}) => 'Can\'t talk here: the sound card ${name} is not connected';
+
+	/// en: 'Can't talk here: its sound card would not open'
+	String get audioProblemTalkCardOpen => 'Can\'t talk here: its sound card would not open';
+
+	/// en: 'Cannot transmit: the radio would not accept the computer's audio'
+	String get audioProblemTalkCardRefused => 'Cannot transmit: the radio would not accept the computer\'s audio';
 
 	/// en: 'Can't talk here yet: the radio has not taken the microphone stream'
 	String get audioProblemTalkNotReady => 'Can\'t talk here yet: the radio has not taken the microphone stream';
@@ -6884,6 +6899,24 @@ class Translations$settings$station$en {
 
 	/// en: 'On The Radio'
 	String get audioOnTheRadio => 'On The Radio';
+
+	/// en: 'Through ${name}'
+	String audioThroughCard({required Object name}) => 'Through ${name}';
+
+	/// en: '${set}: ${name}'
+	String audioMixRadioInSet({required Object set, required Object name}) => '${set}: ${name}';
+
+	/// en: 'Mute ${name}'
+	String audioMute({required Object name}) => 'Mute ${name}';
+
+	/// en: 'Unmute ${name}'
+	String audioUnmute({required Object name}) => 'Unmute ${name}';
+
+	/// en: 'Muted'
+	String get audioMixAllMuted => 'Muted';
+
+	/// en: 'Muted: ${names}'
+	String audioMixMuted({required Object names}) => 'Muted: ${names}';
 
 	/// en: '${name} (not connected)'
 	String receiveAudioOutputMissing({required Object name}) => '${name} (not connected)';
@@ -7364,6 +7397,9 @@ class Translations$settings$station$en {
 
 	/// en: 'Built into ${radio}'
 	String so2rSwitchBuiltIn({required Object radio}) => 'Built into ${radio}';
+
+	/// en: 'This Computer'
+	String get so2rSwitchComputer => 'This Computer';
 
 	/// en: 'SO2R Switcher settings'
 	String get so2rSwitchSettings => 'SO2R Switcher settings';
@@ -14143,11 +14179,16 @@ extension on Translations {
 			'settings.station.audioProblemOutput' => ({required Object name}) => 'Not heard here: the output ${name} is not connected',
 			'settings.station.audioProblemOutputOpen' => 'Not heard here: the audio output would not open',
 			'settings.station.audioProblemRoute' => 'Not heard here: HaLo could not route its audio',
+			'settings.station.audioProblemReceiveCard' => ({required Object name}) => 'Not heard here: the sound card ${name} is not connected',
+			'settings.station.audioProblemReceiveCardOpen' => 'Not heard here: its sound card would not open',
 			'settings.station.audioProblemDaxChannels' => 'Not heard here: every DAX channel on the radio is taken',
 			'settings.station.audioProblemStream' => 'Not heard here: the radio refused its audio stream',
 			'settings.station.audioProblemMicrophone' => ({required Object name}) => 'Can\'t talk here: the microphone ${name} is not connected',
 			'settings.station.audioProblemMicrophoneOpen' => 'Can\'t talk here: the microphone would not open',
 			'settings.station.audioProblemTalkStream' => 'Can\'t talk here: the radio refused the microphone stream',
+			'settings.station.audioProblemTalkCard' => ({required Object name}) => 'Can\'t talk here: the sound card ${name} is not connected',
+			'settings.station.audioProblemTalkCardOpen' => 'Can\'t talk here: its sound card would not open',
+			'settings.station.audioProblemTalkCardRefused' => 'Cannot transmit: the radio would not accept the computer\'s audio',
 			'settings.station.audioProblemTalkNotReady' => 'Can\'t talk here yet: the radio has not taken the microphone stream',
 			'settings.station.audioProblemIpv4' => 'Audio can\'t go through this computer: reach the radio at an IPv4 address',
 			'settings.station.audioProblemEngine' => 'Audio can\'t go through this computer: HaLo\'s audio engine would not start',
@@ -14166,6 +14207,14 @@ extension on Translations {
 			'settings.station.audioOnThisComputer' => 'On This Computer',
 			'settings.station.audioOnThisDevice' => 'On This Device',
 			'settings.station.audioOnTheRadio' => 'On The Radio',
+			'settings.station.audioThroughCard' => ({required Object name}) => 'Through ${name}',
+			'settings.station.audioMixRadioInSet' => ({required Object set, required Object name}) => '${set}: ${name}',
+			'settings.station.audioMute' => ({required Object name}) => 'Mute ${name}',
+			'settings.station.audioUnmute' => ({required Object name}) => 'Unmute ${name}',
+			'settings.station.audioMixAllMuted' => 'Muted',
+			_ => null,
+		} ?? switch (path) {
+			'settings.station.audioMixMuted' => ({required Object names}) => 'Muted: ${names}',
 			'settings.station.receiveAudioOutputMissing' => ({required Object name}) => '${name} (not connected)',
 			'settings.station.receiveAudioDelay' => 'Receive audio max buffering',
 			'settings.station.receiveAudioDelayDescription' => 'How far behind the radio its audio may fall to ride out a busy network. Shorter is more immediate, but drops out more often, especially over Wi-Fi.',
@@ -14176,8 +14225,6 @@ extension on Translations {
 			'settings.station.microphone' => 'Microphone',
 			'settings.station.microphoneDefault' => 'The system\'s default input',
 			'settings.station.channelNotInUse' => 'not in use',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.channelHeldByUnknown' => 'in use by another program',
 			'settings.station.flexNoSlices' => 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe',
 			'settings.station.spectrumUnsupported' => 'This radio sends no spectrum over CAT',
@@ -14433,6 +14480,7 @@ extension on Translations {
 			'settings.station.so2rQueueMessagesDescription' => 'With two radios, a message for one waits while the other is sending, instead of stopping it.',
 			'settings.station.so2rSwitch' => 'SO2R Switcher',
 			'settings.station.so2rSwitchBuiltIn' => ({required Object radio}) => 'Built into ${radio}',
+			'settings.station.so2rSwitchComputer' => 'This Computer',
 			'settings.station.so2rSwitchSettings' => 'SO2R Switcher settings',
 			'settings.station.so2rStereo' => 'Stereo: Radio A left, Radio B right',
 			'settings.station.so2rListenWhileTransmitting' => 'Listen to the other radio while transmitting',
@@ -14678,6 +14726,8 @@ extension on Translations {
 			'settings.station.simulatedSwitchRadios' => 'Radio ports',
 			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => 'A whole number, ${min} to ${max}',
 			'settings.station.switchLayout' => 'Layout',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.switchLayoutDescription' => 'Which side of the switch your radios are plugged into.',
 			'settings.station.switchLayoutRequired' => 'Choose how the switch is wired',
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'The switch refused "${command}" (error ${code})',
@@ -14690,8 +14740,6 @@ extension on Translations {
 			'settings.station.dcnAddress' => 'Device address',
 			'settings.station.dcnAddressDescription' => 'The address set on the module\'s DIP switches. A coax relay module leaves the factory at 2.',
 			'settings.station.dcnAddressRequired' => 'Must be a device address from 1 to 99',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.switchPortLabel' => ({required Object port}) => 'Port ${port}',
 			'settings.station.switchPortAutoHint' => 'follows band data',
 			'settings.station.switchPortTransmittingHint' => 'transmitting — cannot change now',
@@ -15192,6 +15240,8 @@ extension on Translations {
 			'dataFiles.definitionUnavailable' => 'The file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.',
 			'updates.updateAvailable' => 'Update available',
 			'updates.newVersionAvailable' => ({required Object version}) => 'A new version (${version}) is available.',
+			_ => null,
+		} ?? switch (path) {
 			'updates.getIt' => 'Get it',
 			'updates.ok' => 'OK',
 			'updates.updateReady' => 'Update ready',
@@ -15204,8 +15254,6 @@ extension on Translations {
 			'updates.checkingForUpdates' => 'Checking for updates…',
 			'updates.upToDate' => 'Up to date',
 			'updates.checkFailed' => 'Couldn’t check for updates',
-			_ => null,
-		} ?? switch (path) {
 			'updates.automaticChecks' => 'Check automatically',
 			'updates.automaticChecksDescription' => 'Look for new versions in the background, from the next time you start the app',
 			'extensionService.runtimeNotReady' => 'Extension runtime not ready.',

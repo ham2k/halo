@@ -24,6 +24,10 @@ mixin _So2r on _KeyingSurface {
   Future<void> setDesignated(String category, String? uuid, {String? radio});
   EquipmentNode? get so2rAudioRadio;
 
+  /// Runs [change] to which radios are a logging set's, and has each radio's
+  /// audio follow it (cat_radio_audio.dart).
+  void _followSets(void Function() change);
+
   void _startSo2rAudio();
   void _stopSo2rAudio();
 
@@ -83,7 +87,7 @@ mixin _So2r on _KeyingSurface {
     final on = _settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */;
     if (on == _so2rOn) return;
     if (!on) _stopRadioB();
-    _withKeyInUseTidied(() => _so2rOn = on);
+    _followSets(() => _withKeyInUseTidied(() => _so2rOn = on));
     // Radio B becomes a set of its own, or stops being one: its style is
     // now runningB's, or Radio A's, and what it ran before is no run of it.
     _lastStyles['B'] = isRunning('B');

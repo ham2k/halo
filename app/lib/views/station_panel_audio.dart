@@ -15,6 +15,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../services/audio/radio_audio.dart';
 import '../services/cat/driver.dart' show EquipmentDriver;
 import '../services/cat/cat_service.dart';
+import '../services/cat/equipment.dart' show EquipmentNode;
 import 'station_rows.dart' show CurrentRowFrame;
 import '../services/halo_services.dart';
 
@@ -70,13 +71,38 @@ class AudioMixingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final st = context.t.settings.station;
+    final cat = services.cat;
+    // Folded, the row still says what is muted: a mute is kept across
+    // launches, and a station that comes back silent says why on its face.
+    final mutedRadios = [
+      for (final radio in _bySet(cat))
+        if (cat.mixMuted(radio.uuid)) _mixName(context, cat, radio),
+    ];
+    final muted = cat.mixVolumeMuted
+        ? st.audioMixAllMuted
+        : mutedRadios.isEmpty
+        ? null
+        : st.audioMixMuted(names: mutedRadios.join(', '));
     return CurrentRowFrame(
       child: ListTile(
         leading: const Icon(MdiIcons.tuneVertical, size: 24),
         title: Text(st.audioMixing, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: muted == null ? null : Text(muted, style: TextStyle(color: Theme.of(context).colorScheme.error)),
       ),
     );
   }
+
+  /// A radio's name in the mix: by its set and the radio's own name, as the
+  /// operator tells the radios they work apart ("A: RadioRoom"), the
+  /// receiver on it left out. Only the sets' radios are in the mix.
+  static String _mixName(BuildContext context, CatService cat, EquipmentNode radio) =>
+      context.t.settings.station.audioMixRadioInSet(set: cat.setOfRadio(radio.uuid) ?? '', name: cat.displayNameFor(radio));
+
+  /// The radios in the mix, set A's first.
+  static List<EquipmentNode> _bySet(CatService cat) => [
+    for (final radio in cat.radiosThroughComputer)
+      if (cat.heardThroughComputer(radio.uuid)) radio,
+  ]..sort((a, b) => (cat.isRadio1(a.uuid) ? 0 : 1).compareTo(cat.isRadio1(b.uuid) ? 0 : 1));
 
   /// Folded under the row: the overall volume, each radio's level, then
   /// where the mix plays and the microphone it takes.
@@ -88,21 +114,24 @@ class AudioMixingRow extends StatelessWidget {
         _MixSlider(
           label: context.t.settings.station.audioVolume,
           strong: true,
+          muted: cat.mixVolumeMuted,
+          onMuted: (muted) => unawaited(cat.setMixVolumeMuted(muted)),
           value: cat.mixVolume,
           onChanged: (volume) => unawaited(cat.setMixVolume(volume)),
           onChangeEnd: (volume) => unawaited(cat.setMixVolume(volume, store: true)),
         ),
       ),
-      for (final radio in cat.radiosThroughComputer)
-        if (cat.hearsInHalo(radio.uuid))
-          padded(
-            _MixSlider(
-              label: cat.radioNameFor(radio),
-              value: cat.mixLevel(radio.uuid),
-              onChanged: (level) => unawaited(cat.setMixLevel(radio.uuid, level)),
-              onChangeEnd: (level) => unawaited(cat.setMixLevel(radio.uuid, level, store: true)),
-            ),
+      for (final radio in _bySet(cat))
+        padded(
+          _MixSlider(
+            label: _mixName(context, cat, radio),
+            muted: cat.mixMuted(radio.uuid),
+            onMuted: (muted) => unawaited(cat.setMixMuted(radio.uuid, muted)),
+            value: cat.mixLevel(radio.uuid),
+            onChanged: (level) => unawaited(cat.setMixLevel(radio.uuid, level)),
+            onChangeEnd: (level) => unawaited(cat.setMixLevel(radio.uuid, level, store: true)),
           ),
+        ),
       padded(
         Row(
           spacing: Space.md,
@@ -116,16 +145,27 @@ class AudioMixingRow extends StatelessWidget {
   }
 }
 
-/// A level in the mix, its name filling the row's first half against the
-/// slider: right-aligned, so every name ends where its slider starts, and
-/// cut from the front, since what tells two receivers of one radio apart
-/// ("· Slice A", "· Slice B") is the end of their names. [strong] is the
-/// overall volume, over the radios' own.
+/// A level in the mix: the slider filling the row's first half, so every
+/// slider starts and ends where the others do, then its mute, then its name.
+/// [strong] is the overall volume, over the radios' own.
 class _MixSlider extends StatelessWidget {
-  const _MixSlider({required this.label, required this.value, required this.onChanged, required this.onChangeEnd, this.strong = false});
+  const _MixSlider({
+    required this.label,
+    required this.muted,
+    required this.onMuted,
+    required this.value,
+    required this.onChanged,
+    required this.onChangeEnd,
+    this.strong = false,
+  });
 
   final String label;
   final bool strong;
+
+  /// Muted, the slider keeps its value: what it comes back at, once the
+  /// button or a move of the slider unmutes it.
+  final bool muted;
+  final ValueChanged<bool> onMuted;
   final double value;
   final ValueChanged<double> onChanged;
   final ValueChanged<double> onChangeEnd;
@@ -134,41 +174,38 @@ class _MixSlider extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     children: [
       Expanded(
-        child: _StartEllipsis(label, style: strong ? const TextStyle(fontWeight: FontWeight.bold) : const TextStyle()),
+        // Dimmed while muted, and moving it unmutes it: a level moved and
+        // not heard reads as a mixer that does nothing.
+        child: Opacity(
+          opacity: muted ? 0.4 : 1,
+          child: Slider(
+            value: value,
+            onChanged: (level) {
+              if (muted) onMuted(false);
+              onChanged(level);
+            },
+            onChangeEnd: onChangeEnd,
+            semanticFormatterCallback: (v) => '$label ${(v * 100).round()}%',
+          ),
+        ),
+      ),
+      IconButton(
+        icon: Icon(
+          muted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
+          semanticLabel: muted ? context.t.settings.station.audioUnmute(name: label) : context.t.settings.station.audioMute(name: label),
+        ),
+        color: muted ? Theme.of(context).colorScheme.error : null,
+        onPressed: () => onMuted(!muted),
       ),
       Expanded(
-        child: Slider(value: value, onChanged: onChanged, onChangeEnd: onChangeEnd, semanticFormatterCallback: (v) => '$label ${(v * 100).round()}%'),
+        child: Text(
+          label,
+          style: strong ? const TextStyle(fontWeight: FontWeight.bold) : null,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     ],
-  );
-}
-
-/// [text], right-aligned, its start cut to "…" where it does not fit.
-class _StartEllipsis extends StatelessWidget {
-  const _StartEllipsis(this.text, {required this.style});
-
-  final String text;
-  final TextStyle style;
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      var shown = text;
-      if (textWidth(context, text, style) > constraints.maxWidth) {
-        // The longest end of it that fits behind the ellipsis.
-        var low = 0, high = text.length;
-        while (low < high) {
-          final mid = (low + high) ~/ 2;
-          if (textWidth(context, '…${text.substring(mid)}', style) <= constraints.maxWidth) {
-            high = mid;
-          } else {
-            low = mid + 1;
-          }
-        }
-        shown = '…${text.substring(low)}';
-      }
-      return Text(shown, style: style, maxLines: 1, softWrap: false, overflow: TextOverflow.clip, textAlign: TextAlign.end, semanticsLabel: text);
-    },
   );
 }
 

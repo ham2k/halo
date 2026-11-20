@@ -436,6 +436,7 @@ class CatService extends ChangeNotifier
 
   /// The audio engine, made the first time a radio's audio is wanted
   /// (cat_radio_audio.dart).
+  @override
   RadioAudio? _radioAudio;
 
   @override
@@ -443,6 +444,15 @@ class CatService extends ChangeNotifier
 
   @override
   List<Capability> get _computerOffered => _computerOffers();
+
+  @override
+  bool _heardThroughComputer(String uuid) => heardThroughComputer(uuid);
+
+  @override
+  void _followSets(void Function() change) => _audioFollowsSets(change);
+
+  @override
+  bool? _talkThroughCard(PttSession target, bool on) => _keyThroughCard(target, on);
 
   /// The mix while its sliders move ([CatRadioAudioChoices.setMixVolume]).
   double? _mixVolume;
@@ -524,7 +534,7 @@ class CatService extends ChangeNotifier
   @override
   MainVfo? get _radio1 => _positions.radioOf(kSetA);
   @override
-  set _radio1(MainVfo? radio) => _positions.setRadio(kSetA, radio);
+  set _radio1(MainVfo? radio) => _followSets(() => _positions.setRadio(kSetA, radio));
 
   MainVfo? get radio1 => _radio1;
 
@@ -544,7 +554,7 @@ class CatService extends ChangeNotifier
     _ => null,
   };
   @override
-  set _radio2(String? uuid) => _positions.setRadio(kSetB, uuid == null ? null : LocalRadio(uuid));
+  set _radio2(String? uuid) => _followSets(() => _positions.setRadio(kSetB, uuid == null ? null : LocalRadio(uuid)));
 
   /// The LOCAL node filling the role, or null — which a peer pick also
   /// answers with null, since this app holds no session to a peer's rig.
@@ -1117,19 +1127,8 @@ class CatService extends ChangeNotifier
     if (_disposed) return;
     _runtimeFor(uuid).state = state;
     if (isRadio1(uuid)) _updateEquipmentTag();
+    _cardHeardFollows(uuid);
     if (notify) notifyListeners();
-  }
-
-  /// What every crash report says the operator was driving ([EquipmentTag]).
-  /// Fed from [_setState], the one funnel every status change passes
-  /// through — including the ones that are not a connect at all.
-  void _updateEquipmentTag() {
-    final uuid = _localRadio1;
-    final node = uuid == null ? null : _nodes[uuid];
-    final connected = node != null && stateFor(uuid!).status == EquipmentStatus.connected;
-    // The VARIANT key, which says the transport too: an IC-705 that fails
-    // over WiFi and one that fails over USB are different reports.
-    _equipmentTag.update(connected ? registry.typeFor(node.typeKey)?.key ?? node.typeKey : null);
   }
 
   final _equipmentTag = EquipmentTag();

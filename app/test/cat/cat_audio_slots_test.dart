@@ -111,6 +111,48 @@ void main() {
     expect(again.operatorHeadphones, (id: 'new-id', name: 'Headset'));
   });
 
+  test('a muted radio and a muted mix stay muted, at the level they come back at', () async {
+    final cat = await load({
+      'version': 4,
+      'nodes': {'flex-a': flex('0')},
+    });
+    await cat.setMixLevel('flex-a', 0.4, store: true);
+    await cat.setMixMuted('flex-a', true);
+    await cat.setMixVolumeMuted(true);
+    final again = CatService(settings, radio: RadioService(await SharedPreferences.getInstance(), writeDelay: Duration.zero));
+    addTearDown(again.dispose);
+    expect(again.mixMuted('flex-a'), isTrue);
+    expect(again.mixVolumeMuted, isTrue);
+    // Unmuted, it plays where the operator left its slider, not at zero.
+    await again.setMixMuted('flex-a', false);
+    expect(again.mixMuted('flex-a'), isFalse);
+    expect(again.mixLevel('flex-a'), 0.4);
+  });
+
+  test('a mute is heard: the radio, or the whole mix, at nothing, and back at its level', () async {
+    // Through the engine the service builds, whose levels a mute must reach:
+    // a mute stored and not applied is a button that does nothing.
+    final cat = await load({
+      'version': 4,
+      'nodes': {'flex-a': flex('0')},
+    });
+    await settings.setExperimentEnabled('audio', true);
+    await cat.setRadio1(const LocalRadio('flex-a'));
+    await cat.setHearsInHalo('flex-a', true);
+    await cat.setMixLevel('flex-a', 0.5, store: true);
+    expect(cat.mixGains('flex-a'), (0.5, 0.5));
+    await cat.setMixMuted('flex-a', true);
+    expect(cat.mixGains('flex-a'), (0.0, 0.0));
+    await cat.setMixMuted('flex-a', false);
+    expect(cat.mixGains('flex-a'), (0.5, 0.5));
+    await cat.setMixVolumeMuted(true);
+    expect(cat.mixGains('flex-a'), (0.0, 0.0));
+    await cat.setMixVolumeMuted(false);
+    // Out of every set, it is not in the mixer, and not heard.
+    await cat.setRadio1(null);
+    expect(cat.mixGains('flex-a'), (0.0, 0.0));
+  });
+
   test('a pick of a slice the radio merged follows the slice', () async {
     // Slice B's node becomes the radio's rx:1 when both load at one
     // address: a pick on its old id would otherwise name nothing.

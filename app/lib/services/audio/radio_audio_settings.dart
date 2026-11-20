@@ -15,6 +15,8 @@ extension RadioAudioSettings on SettingsService {
   static const _outputKey = 'output';
   static const _volumeKey = 'volume';
   static const _levelsKey = 'levels';
+  static const _mutedKey = 'muted';
+  static const _volumeMutedKey = 'volumeMuted';
 
   /// The microphone and output as builds before the operator's picks kept
   /// them (CatService.operatorMicrophone, operatorHeadphones): read once, to
@@ -39,6 +41,30 @@ extension RadioAudioSettings on SettingsService {
       _ => <String, dynamic>{},
     };
     return setSettingValue(SettingsService.radioGroup, _levelsKey, {...levels, radio: level.clamp(0.0, 1.0)});
+  }
+
+  /// Whether the whole mix is muted, its volume kept for when it is not.
+  bool get stationVolumeMuted => settingValue(SettingsService.radioGroup, _volumeMutedKey) == true;
+
+  Future<void> setStationVolumeMuted(bool muted) => setSettingValue(SettingsService.radioGroup, _volumeMutedKey, muted);
+
+  /// Whether [radio] is muted in the mix, its level kept for when it is not.
+  bool radioMuted(String radio) => switch (settingValue(SettingsService.radioGroup, _mutedKey)) {
+    final Map<dynamic, dynamic> muted => muted[radio] == true,
+    _ => false,
+  };
+
+  Future<void> setRadioMuted(String radio, bool muted) {
+    final stored = switch (settingValue(SettingsService.radioGroup, _mutedKey)) {
+      final Map<dynamic, dynamic> stored => {for (final MapEntry(:key, :value) in stored.entries) '$key': value},
+      _ => <String, dynamic>{},
+    };
+    if (muted) {
+      stored[radio] = true;
+    } else {
+      stored.remove(radio);
+    }
+    return setSettingValue(SettingsService.radioGroup, _mutedKey, stored);
   }
 
   static double _unit(Object? value) => value is num ? value.toDouble().clamp(0.0, 1.0) : 1.0;

@@ -86,6 +86,10 @@ class _SliceDriver extends EquipmentDriver {
   String get key => 'slice';
   @override
   String get name => 'Slice';
+
+  /// Its slice's audio, which the operator may hear through this computer.
+  @override
+  int get receiveAudioChannels => 2;
   @override
   ({String radio, int receiver})? so2rAudioReceiverWith(Map<String, dynamic> config) =>
       (radio: config['host'] as String, receiver: int.parse(config['slice'] as String));
@@ -341,6 +345,78 @@ void main() {
       await pumpEventQueue();
       expect((cat.connectedSession(a.uuid)! as _Slice).ears.last, isNull);
       expect((cat.connectedSession(b.uuid)! as _Slice).ears.last, isNull);
+    });
+  });
+
+  group('this computer', () {
+    Future<(EquipmentNode, EquipmentNode)> heardHere() async {
+      await settings.setExperimentEnabled('audio', true);
+      final (a, b) = await twoRadios(hostB: 'other.local');
+      await cat.setHearsInHalo(a.uuid, true);
+      await cat.setHearsInHalo(b.uuid, true);
+      await pumpEventQueue();
+      return (a, b);
+    }
+
+    test('is offered once both radios are heard through it, and not before', () async {
+      // It pans and mutes only what it carries: a radio in its own speaker
+      // would stay in the operator's ears whatever it did.
+      await settings.setExperimentEnabled('audio', true);
+      final (a, b) = await twoRadios(hostB: 'other.local');
+      expect(cat.so2rComputerSwitches, isFalse);
+      await cat.setHearsInHalo(a.uuid, true);
+      await pumpEventQueue();
+      expect(cat.so2rComputerSwitches, isFalse);
+      await cat.setHearsInHalo(b.uuid, true);
+      await pumpEventQueue();
+      expect(cat.so2rComputerSwitches, isTrue);
+      await settings.setExperimentEnabled('audio', false);
+      expect(cat.so2rComputerSwitches, isFalse, reason: 'no engine to switch with');
+    });
+
+    test('puts each radio in its ears by the rule, and gives them back when switching stops', () async {
+      final (a, b) = await heardHere();
+      List<So2rEar?> ears() => [cat.so2rComputerEar(a.uuid), cat.so2rComputerEar(b.uuid)];
+      await cat.setSo2rSwitch(so2rSwitchComputer);
+      await pumpEventQueue();
+      expect(ears(), [So2rEar.both, So2rEar.muted]);
+      expect(cat.so2rAudio.value, So2rAudio.a);
+      cat.noteOperatorRadio('B');
+      await pumpEventQueue();
+      expect(ears(), [So2rEar.muted, So2rEar.both]);
+      await settings.setSo2rStereo(true);
+      await pumpEventQueue();
+      expect(ears(), [So2rEar.left, So2rEar.right]);
+      await cat.setSo2rSwitch(null);
+      await pumpEventQueue();
+      expect(ears(), [null, null], reason: 'both radios in both ears again, as with no switcher');
+      expect(cat.so2rAudio.value, isNull);
+    });
+
+    test('stops switching once a radio is no longer heard through it', () async {
+      // Muting the radio still heard here, for one now in its own speaker,
+      // would leave the operator hearing only the radio out of focus.
+      final (a, b) = await heardHere();
+      await cat.setSo2rSwitch(so2rSwitchComputer);
+      cat.noteOperatorRadio('B');
+      await pumpEventQueue();
+      expect(cat.so2rComputerEar(a.uuid), So2rEar.muted);
+      await cat.setHearsInHalo(b.uuid, false);
+      await pumpEventQueue();
+      expect(cat.so2rComputerEar(a.uuid), isNull);
+      expect(cat.so2rAudio.value, isNull);
+    });
+
+    test('the pick is kept with the station', () async {
+      await heardHere();
+      await cat.setSo2rSwitch(so2rSwitchComputer);
+      final again = CatService(
+        settings,
+        radio: RadioService(await SharedPreferences.getInstance(), writeDelay: Duration.zero),
+        registry: cat.registry,
+      );
+      addTearDown(again.dispose);
+      expect(again.so2rSwitch, so2rSwitchComputer);
     });
   });
 }

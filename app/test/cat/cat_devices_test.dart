@@ -540,6 +540,8 @@ void main() {
           'flex-a': {...flex('0'), 'typeKey': _fakeFlexTypeKey},
         },
       }, registry: radio.registry);
+      // A set's radio: only those are heard, and rebuffered.
+      await cat.setRadio1(const LocalRadio('flex-a'));
       await cat.connect('flex-a');
       var node = cat.nodeFor('flex-a')!;
       await cat.updateNode(node.copyWith(config: {...node.config, receiveAudioDelayConfigKey: 40}));
@@ -553,6 +555,11 @@ void main() {
       await pumpEventQueue();
       expect(radio.opened, 3);
       expect(cat.stateFor('flex-a').status, EquipmentStatus.connected);
+      // Out of its set it is muted, not dropped: its CAT, scope and meters
+      // stay up.
+      await cat.setRadio1(null);
+      await pumpEventQueue();
+      expect(radio.opened, 3);
       await cat.disconnect('flex-a');
     });
 

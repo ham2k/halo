@@ -1397,8 +1397,9 @@ turned off — lets go of whatever radio A was holding for it.
 Behind `so2r`, with a Radio B: what puts the two radios in the operator's headphones
 (`cat_so2r_audio.dart`). Audio only, for now — the box's transmit focus, band, mode and
 auxiliary outputs are left alone. Picked in Station Configuration under Radio B's lines, like the
-key in use: None, a switcher node (category `so2rSwitch`), or **Built into** the radio when both
-SO2R radios are slices of one (`so2rSwitchRadios`), with its settings — stereo, and listening
+key in use: None, a switcher node (category `so2rSwitch`), **Built into** the radio when both
+SO2R radios are slices of one (`so2rSwitchRadios`), or **This Computer** when both are heard
+through HaLo (`so2rSwitchComputer`), with its settings — stereo, and listening
 while transmitting — in a dialog beside the pick (`so2r_switch_dialog.dart`). The pick is the station's, stored with the
 equipment as `so2rSwitch`, and gone with its node; a switcher node picked is kept connected, as
 the radios are — brought up when it is picked, when Radio B is, and when SO2R is turned on — and
@@ -1453,6 +1454,13 @@ the launch, with what it left the slice at: the next session on that slice puts 
 the slice still reads that way, so a link that dropped mid-mute is restored, and a restore that
 landed is not replayed over what the operator has set since. A relaunch in between does leave
 the slice switched.
+
+**This computer is a switcher** when both SO2R radios are heard through HaLo, by their own audio
+or a sound card (docs/design/audio.md § 7): the audio engine sets each radio's routes in the ears
+the rule gives it (`So2rEar`), at its mix level (`RadioAudio`, `CatService.so2rComputerEar`). Its
+mixer is the app's own, so nothing is owed back: when the switching stops each radio is in both
+ears at its level again. A radio no longer heard here stops it switching, since muting the other
+for one in its own speaker would leave the operator hearing only the radio out of focus.
 
 ### A paired device's panel, over the peer link
 

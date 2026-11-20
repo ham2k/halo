@@ -11,6 +11,18 @@
 part of 'cat_service.dart';
 
 extension _Connection on CatService {
+  /// What every crash report says the operator was driving ([EquipmentTag]).
+  /// Fed from [_setState], the one funnel every status change passes
+  /// through — including the ones that are not a connect at all.
+  void _updateEquipmentTag() {
+    final uuid = _localRadio1;
+    final node = uuid == null ? null : _nodes[uuid];
+    final connected = node != null && stateFor(uuid!).status == EquipmentStatus.connected;
+    // The VARIANT key, which says the transport too: an IC-705 that fails
+    // over WiFi and one that fails over USB are different reports.
+    _equipmentTag.update(connected ? registry.typeFor(node.typeKey)?.key ?? node.typeKey : null);
+  }
+
   /// Every connect the app decides on by itself goes through here — the boot
   /// reconnect, the burst after a drop, the idle ladder — so that the attempt
   /// is on disk before it is made and gone once it returns

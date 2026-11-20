@@ -41,6 +41,23 @@ import 'driver.dart';
 const pttTimeout = Duration(minutes: 1);
 
 class CatPtt {
+  CatPtt({this.talkThroughCard, this.cardTalkLost});
+
+  /// Sends the operator's microphone through a sound card into [target] and
+  /// keys it with the radio's computer audio, or unkeys and stops: true when
+  /// it did, false when it could not, and null for a radio whose microphone
+  /// does not go through a card, which keys as any other.
+  final bool? Function(PttSession target, bool on)? talkThroughCard;
+
+  /// The radio keyed through a sound card went away mid-over: what was
+  /// routed into the card is closed, with no unkey sent to a closed
+  /// connection.
+  final void Function()? cardTalkLost;
+
+  /// Whether the key went out with the operator's microphone through a
+  /// sound card ([talkThroughCard]), and so comes off the same way.
+  bool _talkingThroughCard = false;
+
   /// Whether the app holds a key, on any radio.
   final held = ValueNotifier<bool>(false);
 
@@ -108,7 +125,19 @@ class CatPtt {
     // own audio.
     _talking = owner == null && target is TalkPttSession && target.talksThroughHalo;
     try {
-      if (_talking) {
+      // The operator's key only, as for [TalkPttSession]: a client keys for
+      // a program that sends its own audio into the card.
+      final throughCard = owner == null && !_talking ? talkThroughCard?.call(target, true) : null;
+      if (throughCard != null) {
+        if (!throughCard) {
+          _clear();
+          return false;
+        }
+        // Refused from inside the key, which let go of it already: held as
+        // an over through the card, the next radio's unkey would go there.
+        if (!identical(_keyed, target)) return false;
+        _talkingThroughCard = true;
+      } else if (_talking) {
         if (!(target as TalkPttSession).setPttTalking(true)) {
           _clear();
           return false;
@@ -132,10 +161,12 @@ class CatPtt {
     final target = _keyed;
     if (target == null) return false;
     if (owner != null && !identical(_owner, owner)) return false;
-    final talking = _talking;
+    final talking = _talking, throughCard = _talkingThroughCard;
     _clear();
     try {
-      if (talking) {
+      if (throughCard) {
+        talkThroughCard?.call(target, false);
+      } else if (talking) {
         (target as TalkPttSession).setPttTalking(false);
       } else {
         target.setPtt(false);
@@ -150,7 +181,9 @@ class CatPtt {
   /// session's own teardown unkeys the radio, and an unkey sent after it
   /// would go to a closed connection.
   void forget(EquipmentSession closing) {
-    if (heldOn(closing)) _clear();
+    if (!heldOn(closing)) return;
+    if (_talkingThroughCard) cardTalkLost?.call();
+    _clear();
   }
 
   /// [session] reported a change in its TX state. A "not transmitting"
@@ -171,7 +204,7 @@ class CatPtt {
   void _clear() {
     _timeout?.cancel();
     _timeout = _keyed = _owner = null;
-    _talking = false;
+    _talking = _talkingThroughCard = false;
     held.value = false;
   }
 

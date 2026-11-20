@@ -21,9 +21,10 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import 'add_equipment_dialog.dart';
 import 'midi_controller_pane.dart';
+import 'package:halo_audio/halo_audio.dart' show AudioDevice;
+
 import '../services/cat/capability.dart';
 import '../services/cat/equipment.dart';
-import '../services/cat/station_positions.dart' show kSetA, kSetB;
 import '../services/cat/telemetry_poller.dart';
 import '../services/cat/transports/everyware_transport.dart' show EverywareDeviceTransport;
 import '../services/cat/transports/none_transport.dart' show NoneTransport;
@@ -886,7 +887,7 @@ class StationPanel extends StatelessWidget {
             connection: connectionTextFor(context, _cat.typeFor(node), node.config),
             transportType: _cat.typeFor(node),
             selected: _cat.isRadio1(node.uuid),
-            set: _setOf(node.uuid),
+            set: _cat.setOfRadio(node.uuid),
             connected: _cat.stateFor(node.uuid).status == EquipmentStatus.connected,
             onSelect: () => pick(node.uuid),
             onEdit: () => pick(node.uuid),
@@ -1019,7 +1020,8 @@ class StationPanel extends StatelessWidget {
         // The operator's and the station's, under both sets: what puts the
         // two radios in the headphones, and where the station is.
         final operatorLines = [
-          if (radio2 != null && (_cat.so2rSwitchNodes.isNotEmpty || _cat.so2rAudioRadio != null)) _so2rSwitchLine(context, inset: detailsInset),
+          if (radio2 != null && (_cat.so2rSwitchNodes.isNotEmpty || _cat.so2rAudioRadio != null || _cat.so2rComputerSwitches))
+            _so2rSwitchLine(context, inset: detailsInset),
           // On a Material of the ground's own colour, as Radio B's row is: the
           // block's ColoredBox would hide the tiles' ink.
           if (_cat.gpsReceiverNodes.isNotEmpty)
@@ -1208,7 +1210,7 @@ class StationPanel extends StatelessWidget {
               ),
               if (compact) ...[
                 // The SO2R switcher, when it is a device of its own.
-                if (_cat.so2rSwitch case final uuid? when uuid != so2rSwitchRadios)
+                if (_cat.so2rSwitch case final uuid? when uuid != so2rSwitchRadios && uuid != so2rSwitchComputer)
                   if (_cat.nodeFor(uuid) case final node?)
                     EquipmentTile(
                       node: node,

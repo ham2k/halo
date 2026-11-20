@@ -61,7 +61,7 @@ extension _SetRows on StationPanel {
                 connection: connectionTextFor(context, _cat.typeFor(node), node.config),
                 transportType: _cat.typeFor(node),
                 selected: _cat.isRadio2(node.uuid),
-                set: _setOf(node.uuid),
+                set: _cat.setOfRadio(node.uuid),
                 connected: _cat.stateFor(node.uuid).status == EquipmentStatus.connected,
                 onSelect: () => pick(node.uuid),
                 onEdit: () => pick(node.uuid),
@@ -119,21 +119,28 @@ extension _SetRows on StationPanel {
       padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
       child: _keyingLine(
         picker: DesignationDropdown(
-          key: ValueKey('so2rSwitch:${_cat.so2rSwitch}:${radio?.uuid}'),
+          key: ValueKey('so2rSwitch:${_cat.so2rSwitch}:${radio?.uuid}:${_cat.so2rComputerSwitches}'),
           label: st.so2rSwitch,
           nodes: _cat.so2rSwitchNodes,
           selected: _cat.so2rSwitch,
           displayName: _displayName,
           noneLabel: st.noneSelected,
-          extras: [if (radio != null) (value: so2rSwitchRadios, label: st.so2rSwitchBuiltIn(radio: _displayName(radio)))],
+          extras: [
+            if (radio != null) (value: so2rSwitchRadios, label: st.so2rSwitchBuiltIn(radio: _displayName(radio))),
+            if (_cat.so2rComputerSwitches) (value: so2rSwitchComputer, label: st.so2rSwitchComputer),
+          ],
           onChanged: (pick) => unawaited(_cat.setSo2rSwitch(pick)),
         ),
         controls: [
           IconButton(
             icon: Icon(MdiIcons.tune, semanticLabel: st.so2rSwitchSettings),
             // Not for a pick the dropdown cannot show: the radios no longer
-            // slices of one, which reads as None.
-            onPressed: _cat.so2rSwitch == null || (_cat.so2rSwitch == so2rSwitchRadios && radio == null)
+            // slices of one, or no longer both heard here, which reads as
+            // None.
+            onPressed:
+                _cat.so2rSwitch == null ||
+                    (_cat.so2rSwitch == so2rSwitchRadios && radio == null) ||
+                    (_cat.so2rSwitch == so2rSwitchComputer && !_cat.so2rComputerSwitches)
                 ? null
                 : () => showSo2rSwitchSettingsDialog(context, services.settings),
           ),
@@ -395,22 +402,89 @@ extension _SetRows on StationPanel {
     if (uuid == null) return null;
     final st = context.t.settings.station;
     final here = isMobilePlatform ? st.audioOnThisDevice : st.audioOnThisComputer;
-    Widget choice(String label, bool value, void Function(bool on) onChanged) => DropdownButtonFormField<bool>(
-      key: ValueKey('$label:$uuid:$value'),
-      isExpanded: true,
-      initialValue: value,
-      icon: dropdownTrailingIcon,
-      decoration: poloFieldDecoration(context, label),
-      menuMaxHeight: dropdownMenuMaxHeight(context),
-      items: [
-        DropdownMenuItem(value: true, child: Text(here, overflow: TextOverflow.ellipsis)),
-        DropdownMenuItem(value: false, child: Text(st.audioOnTheRadio, overflow: TextOverflow.ellipsis)),
-      ],
-      onChanged: (on) => on == null || on == value ? null : onChanged(on),
-    );
+    const onRadio = 'radio', onHere = 'here', cardPrefix = 'card:';
+    // On the radio, through the radio's own audio, or through one of this
+    // computer's sound cards (a radio on a USB codec): a card picked that is
+    // not listed now stays shown by its name, rather than reading as None.
+    Widget choice(
+      String label, {
+      required bool own,
+      required bool ownPicked,
+      required List<Capability> cards,
+      required ({String? id, String? name})? picked,
+      required Future<void> Function(bool on) setOwn,
+      required Future<void> Function(AudioDevice card) setCard,
+    }) {
+      final value = switch (picked) {
+        (:final id, name: _)? => '$cardPrefix$id',
+        null => ownPicked ? onHere : onRadio,
+      };
+      final listed = {for (final card in cards) card.key};
+      return DropdownButtonFormField<String>(
+        key: ValueKey('$label:$uuid:$value'),
+        isExpanded: true,
+        initialValue: value,
+        icon: dropdownTrailingIcon,
+        decoration: poloFieldDecoration(context, label),
+        menuMaxHeight: dropdownMenuMaxHeight(context),
+        items: [
+          if (own || ownPicked)
+            DropdownMenuItem(
+              value: onHere,
+              child: Text(here, overflow: TextOverflow.ellipsis),
+            ),
+          for (final card in cards)
+            DropdownMenuItem(
+              value: '$cardPrefix${card.key}',
+              child: Text(st.audioThroughCard(name: card.name ?? card.key), overflow: TextOverflow.ellipsis),
+            ),
+          if (picked case (:final id, :final name)? when !listed.contains(id))
+            DropdownMenuItem(
+              value: value,
+              child: Text(st.audioThroughCard(name: name ?? id ?? ''), overflow: TextOverflow.ellipsis),
+            ),
+          DropdownMenuItem(
+            value: onRadio,
+            child: Text(st.audioOnTheRadio, overflow: TextOverflow.ellipsis),
+          ),
+        ],
+        onChanged: (pick) {
+          if (pick == null || pick == value) return;
+          if (pick.startsWith(cardPrefix)) {
+            for (final card in cards) {
+              if ('$cardPrefix${card.key}' == pick) unawaited(setCard(AudioDevice(id: card.key, name: card.name ?? card.key)));
+            }
+          } else {
+            unawaited(setOwn(pick == onHere));
+          }
+        },
+      );
+    }
+
+    final heardCards = _cat.computerCards(input: true);
+    final talkCards = _cat.takesCardMicrophone(uuid) ? _cat.computerCards(input: false) : const <Capability>[];
+    final heard = _cat.heardCard(uuid), talked = _cat.talkCard(uuid);
     final choices = [
-      if (_cat.offersReceiveAudio(uuid)) choice(st.listenToAudio, _cat.hearsInHalo(uuid), (on) => unawaited(_cat.setHearsInHalo(uuid, on))),
-      if (_cat.offersTalkAudio(uuid)) choice(st.microphone, _cat.talksThroughHalo(uuid), (on) => unawaited(_cat.setTalksThroughHalo(uuid, on))),
+      if (_cat.offersReceiveAudio(uuid) || heardCards.isNotEmpty || heard != null)
+        choice(
+          st.listenToAudio,
+          own: _cat.offersReceiveAudio(uuid),
+          ownPicked: _cat.hearsInHalo(uuid),
+          cards: heardCards,
+          picked: heard,
+          setOwn: (on) => _cat.setHearsInHalo(uuid, on),
+          setCard: (card) => _cat.setHeardCard(uuid, card),
+        ),
+      if (_cat.offersTalkAudio(uuid) || talkCards.isNotEmpty || talked != null)
+        choice(
+          st.microphone,
+          own: _cat.offersTalkAudio(uuid),
+          ownPicked: _cat.talksThroughHalo(uuid),
+          cards: talkCards,
+          picked: talked,
+          setOwn: (on) => _cat.setTalksThroughHalo(uuid, on),
+          setCard: (card) => _cat.setTalkCard(uuid, card),
+        ),
     ];
     if (choices.isEmpty) return null;
     return Padding(
@@ -421,11 +495,4 @@ extension _SetRows on StationPanel {
       ),
     );
   }
-
-  /// The logging set [uuid] is the radio of, for a picker's row to say so.
-  String? _setOf(String uuid) => _cat.isRadio1(uuid)
-      ? kSetA
-      : _cat.isRadio2(uuid)
-      ? kSetB
-      : null;
 }

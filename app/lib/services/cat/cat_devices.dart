@@ -335,7 +335,7 @@ extension _Devices on CatService {
       final connectionChanged =
           entry.typeKey != device.typeKey ||
           _flexSharedKeys(device).any((key) => config[key] != entry.config[key]) ||
-          (_bufferingDiffers(entry.config, config) && hearsInHalo(id));
+          (_bufferingDiffers(entry.config, config) && hearsInHalo(id) && _inASet(id));
       final reconnect = connectionChanged && (status == EquipmentStatus.connected || status == EquipmentStatus.connecting);
       if (reconnect) await disconnect(id, byUser: false);
       _nodes[id] = EquipmentNode(uuid: id, typeKey: device.typeKey, name: entry.name, config: config);

@@ -45,7 +45,9 @@ extension _EquipmentStore on CatService {
     }
     _moveLoggedKeys();
     _moveAudioChoices();
-    if (stored['so2rSwitch'] case final String pick when pick == so2rSwitchRadios || _nodes.containsKey(pick)) _so2rSwitch = pick;
+    if (stored['so2rSwitch'] case final String pick when pick == so2rSwitchRadios || pick == so2rSwitchComputer || _nodes.containsKey(pick)) {
+      _so2rSwitch = pick;
+    }
     if (stored['gpsSource'] case final String pick when pick == gpsSourceSystem || _nodes.containsKey(pick)) _gpsSource = pick;
   }
 

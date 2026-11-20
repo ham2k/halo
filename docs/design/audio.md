@@ -247,11 +247,15 @@ receiver because a slice of a Flex is an entry of its own, which the radio's
 editor does not reach; the editor keeps only how far behind the radio's
 audio may fall, which every slice of it takes. Where HaLo plays what it
 hears is the operator's, not a radio's: their headphones, which every radio
-heard in HaLo is mixed into. **Audio Mixing**, in Current Configuration
-once any radio's audio goes through this computer, holds the mix's volume,
-each radio's level (a route's gain is the two together, applied as a slider
-moves and stored as its drag ends), and the operator's headphones and
-microphone. The session asks its sink for the engine
+heard in HaLo is mixed into. Only a radio in a logging set is heard, and
+takes the microphone: one that leaves its set is silenced at once and keeps
+its connection, and its stream closes at its next connect. **Audio Mixing**,
+in Current Configuration once any radio's audio goes through this computer,
+lists those radios by set (`A: RadioRoom`), and holds the mix's volume, each
+radio's level (a route's gain is the two together, applied as a slider
+moves and stored as its drag ends), a mute beside each slider that keeps
+the level to come back at (dragging a muted slider unmutes it), and the
+operator's headphones and microphone. The session asks its sink for the engine
 (`ReceiveAudioSink`) as it opens its UDP socket, so the meters' socket is
 the engine's from the start — the slice's audio arrives on it — and a
 change reconnects the receiver to take it. The stream is made only once the session is bound to the GUI
@@ -306,12 +310,31 @@ Every probe that keys a radio needs the operator's go-ahead each time, reads
 
 A sound device is an endpoint whose clock is its own: the operator's
 headphones and microphone, and a radio's USB codec. Each is opened at its
-native rate and channel count and bridged to the engine's format. Devices are
+native rate, in mono for the microphone and in stereo otherwise, and bridged
+to the engine's format. Devices are
 named as the voice keyer names them — miniaudio's id written as hex, with the
 name stored beside it — and matched the same way (by id, then by a name no
 two devices share). A device that goes away stops its routes and is looked
 for again; the system default never stands in for a device the operator
 picked.
+
+**A radio on a USB codec** has one of this computer's sound cards in its
+position's audio slots (station-model.md § 5.1). Its receive audio is the
+card's input, opened in stereo, as a codec carries a radio's two receivers
+left and right, and routed to the operator's headphones while the radio is
+connected (`RadioAudio.hearCard`): a radio switched off is not heard as its
+codec's hiss. A card that is not there, or will not open, is said on the
+radio's row, and looked for again at the radio's next connect. Its transmit
+audio is the card's output: the operator's key on the radio opens their
+microphone into the card for the over and keys the radio with its computer
+audio (`ComputerAudioPttSession`), as the voice keyer does, and a source the
+radio refuses lets go of the key and says so on the radio's row. Offered only
+on a radio whose session says it switches to computer audio, so known once it
+is connected; one that stops saying so keys as any other. The unkey ends the
+over whatever changed during it, since a latched key outlives a change of
+pick or set. The operator's
+key only: a CAT server client's stays plain, since a digital-mode program
+sends its own audio into the card.
 
 ## 8. Latency
 

@@ -227,7 +227,12 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   bool get escapeStoppedKeying => _keying.escapeStoppedKeying;
 
   /// ['] in a Phone mode (cat_ptt.dart) — this station's radios, never a peer's.
-  late final _ptt = CatPtt()..held.addListener(notifyListeners);
+  late final _ptt = CatPtt(talkThroughCard: _talkThroughCard, cardTalkLost: () => _radioAudio?.endCardOver())..held.addListener(notifyListeners);
+
+  RadioAudio? get _radioAudio;
+
+  /// See [CatPtt.talkThroughCard].
+  bool? _talkThroughCard(PttSession target, bool on);
   late final pttKeys = PttKeyboard(
     held: _ptt.held,
     release: () => _cancelPttWait() | (_ptt.owner == null && _ptt.release()),

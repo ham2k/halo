@@ -3105,11 +3105,16 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String audioProblemOutput({required Object name}) => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / — ···· · / ——— ··— — ·——· ··— — / ${name} / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —··';
 	@override String get audioProblemOutputOpen => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / — ···· · / ·— ··— —·· ·· ——— / ——— ··— — ·——· ··— — / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —·';
 	@override String get audioProblemRoute => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / ···· ·— ·—·· ——— / —·—· ——— ··— ·—·· —·· / —· ——— — / ·—· ——— ··— — · / ·· — ··· / ·— ··— —·· ·· ———';
+	@override String audioProblemReceiveCard({required Object name}) => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / — ···· · / ··· ——— ··— —· —·· / —·—· ·— ·—· —·· / ${name} / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —··';
+	@override String get audioProblemReceiveCardOpen => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / ·· — ··· / ··· ——— ··— —· —·· / —·—· ·— ·—· —·· / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —·';
 	@override String get audioProblemDaxChannels => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / · ···— · ·—· —·—— / —·· ·— —··— / —·—· ···· ·— —· —· · ·—·· / ——— —· / — ···· · / ·—· ·— —·· ·· ——— / ·· ··· / — ·— —·— · —·';
 	@override String get audioProblemStream => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—· · ··—· ··— ··· · —·· / ·· — ··· / ·— ··— —·· ·· ——— / ··· — ·—· · ·— ——';
 	@override String audioProblemMicrophone({required Object name}) => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · / ${name} / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —··';
 	@override String get audioProblemMicrophoneOpen => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —·';
 	@override String get audioProblemTalkStream => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—· · ··—· ··— ··· · —·· / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · / ··· — ·—· · ·— ——';
+	@override String audioProblemTalkCard({required Object name}) => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / — ···· · / ··· ——— ··— —· —·· / —·—· ·— ·—· —·· / ${name} / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —··';
+	@override String get audioProblemTalkCardOpen => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / ·· — ··· / ··· ——— ··— —· —·· / —·—· ·— ·—· —·· / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —·';
+	@override String get audioProblemTalkCardRefused => '—·—· ·— —· —· ——— — / — ·—· ·— —· ··· —— ·· — ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—— ——— ··— ·—·· —·· / —· ——— — / ·— —·—· —·—· · ·——· — / — ···· · / —·—· ——— —— ·——· ··— — · ·—· ·————· ··· / ·— ··— —·· ·· ———';
 	@override String get audioProblemTalkNotReady => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · / —·—— · — ———··· / — ···· · / ·—· ·— —·· ·· ——— / ···· ·— ··· / —· ——— — / — ·— —·— · —· / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · / ··· — ·—· · ·— ——';
 	@override String get audioProblemIpv4 => '·— ··— —·· ·· ——— / —·—· ·— —· ·————· — / ——· ——— / — ···· ·—· ——— ··— ——· ···· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· ———··· / ·—· · ·— —·—· ···· / — ···· · / ·—· ·— —·· ·· ——— / ·— — / ·— —· / ·· ·——· ···— ····— / ·— —·· —·· ·—· · ··· ···';
 	@override String get audioProblemEngine => '·— ··— —·· ·· ——— / —·—· ·— —· ·————· — / ——· ——— / — ···· ·—· ——— ··— ——· ···· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· ———··· / ···· ·— ·—·· ——— ·————· ··· / ·— ··— —·· ·· ——— / · —· ——· ·· —· · / ·—— ——— ··— ·—·· —·· / —· ——— — / ··· — ·— ·—· —';
@@ -3128,6 +3133,12 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get audioOnThisComputer => '——— —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·';
 	@override String get audioOnThisDevice => '——— —· / — ···· ·· ··· / —·· · ···— ·· —·—· ·';
 	@override String get audioOnTheRadio => '——— —· / — ···· · / ·—· ·— —·· ·· ———';
+	@override String audioThroughCard({required Object name}) => '— ···· ·—· ——— ··— ——· ···· / ${name}';
+	@override String audioMixRadioInSet({required Object set, required Object name}) => '${set} ———··· / ${name}';
+	@override String audioMute({required Object name}) => '—— ··— — · / ${name}';
+	@override String audioUnmute({required Object name}) => '··— —· —— ··— — · / ${name}';
+	@override String get audioMixAllMuted => '—— ··— — · —··';
+	@override String audioMixMuted({required Object names}) => '—— ··— — · —·· ———··· / ${names}';
 	@override String receiveAudioOutputMissing({required Object name}) => '${name} / —·——· —· ——— — / —·—· ——— —· —· · —·—· — · —·· —·——·—';
 	@override String get receiveAudioDelay => '·—· · —·—· · ·· ···— · / ·— ··— —·· ·· ——— / —— ·— —··— / —··· ··— ··—· ··—· · ·—· ·· —· ——·';
 	@override String get receiveAudioDelayDescription => '···· ——— ·—— / ··—· ·— ·—· / —··· · ···· ·· —· —·· / — ···· · / ·—· ·— —·· ·· ——— / ·· — ··· / ·— ··— —·· ·· ——— / —— ·— —·—— / ··—· ·— ·—·· ·—·· / — ——— / ·—· ·· —·· · / ——— ··— — / ·— / —··· ··— ··· —·—— / —· · — ·—— ——— ·—· —·— ·—·—·— / ··· ···· ——— ·—· — · ·—· / ·· ··· / —— ——— ·—· · / ·· —— —— · —·· ·· ·— — · ——··—— / —··· ··— — / —·· ·—· ——— ·——· ··· / ——— ··— — / —— ——— ·—· · / ——— ··—· — · —· ——··—— / · ··· ·——· · —·—· ·· ·— ·—·· ·—·· —·—— / ——— ···— · ·—· / ·—— ·· —····— ··—· ·· ·—·—·—';
@@ -3289,6 +3300,7 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get so2rQueueMessagesDescription => '·—— ·· — ···· / — ·—— ——— / ·—· ·— —·· ·· ——— ··· ——··—— / ·— / —— · ··· ··· ·— ——· · / ··—· ——— ·—· / ——— —· · / ·—— ·— ·· — ··· / ·—— ···· ·· ·—·· · / — ···· · / ——— — ···· · ·—· / ·· ··· / ··· · —· —·· ·· —· ——· ——··—— / ·· —· ··· — · ·— —·· / ——— ··—· / ··· — ——— ·——· ·——· ·· —· ——· / ·· — ·—·—·—';
 	@override String get so2rSwitch => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—·';
 	@override String so2rSwitchBuiltIn({required Object radio}) => '—··· ··— ·· ·—·· — / ·· —· — ——— / ${radio}';
+	@override String get so2rSwitchComputer => '— ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·';
 	@override String get so2rSwitchSettings => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—· / ··· · — — ·· —· ——· ···';
 	@override String get so2rStereo => '··· — · ·—· · ——— ———··· / ·—· ·— —·· ·· ——— / ·— / ·—·· · ··—· — ——··—— / ·—· ·— —·· ·· ——— / —··· / ·—· ·· ——· ···· —';
 	@override String get so2rListenWhileTransmitting => '·—·· ·· ··· — · —· / — ——— / — ···· · / ——— — ···· · ·—· / ·—· ·— —·· ·· ——— / ·—— ···· ·· ·—·· · / — ·—· ·— —· ··· —— ·· — — ·· —· ——·';
@@ -7468,11 +7480,16 @@ extension on TranslationsCw {
 			'settings.station.audioProblemOutput' => ({required Object name}) => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / — ···· · / ——— ··— — ·——· ··— — / ${name} / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —··',
 			'settings.station.audioProblemOutputOpen' => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / — ···· · / ·— ··— —·· ·· ——— / ——— ··— — ·——· ··— — / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —·',
 			'settings.station.audioProblemRoute' => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / ···· ·— ·—·· ——— / —·—· ——— ··— ·—·· —·· / —· ——— — / ·—· ——— ··— — · / ·· — ··· / ·— ··— —·· ·· ———',
+			'settings.station.audioProblemReceiveCard' => ({required Object name}) => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / — ···· · / ··· ——— ··— —· —·· / —·—· ·— ·—· —·· / ${name} / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —··',
+			'settings.station.audioProblemReceiveCardOpen' => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / ·· — ··· / ··· ——— ··— —· —·· / —·—· ·— ·—· —·· / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —·',
 			'settings.station.audioProblemDaxChannels' => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / · ···— · ·—· —·—— / —·· ·— —··— / —·—· ···· ·— —· —· · ·—·· / ——— —· / — ···· · / ·—· ·— —·· ·· ——— / ·· ··· / — ·— —·— · —·',
 			'settings.station.audioProblemStream' => '—· ——— — / ···· · ·— ·—· —·· / ···· · ·—· · ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—· · ··—· ··— ··· · —·· / ·· — ··· / ·— ··— —·· ·· ——— / ··· — ·—· · ·— ——',
 			'settings.station.audioProblemMicrophone' => ({required Object name}) => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · / ${name} / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —··',
 			'settings.station.audioProblemMicrophoneOpen' => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —·',
 			'settings.station.audioProblemTalkStream' => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—· · ··—· ··— ··· · —·· / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · / ··· — ·—· · ·— ——',
+			'settings.station.audioProblemTalkCard' => ({required Object name}) => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / — ···· · / ··· ——— ··— —· —·· / —·—· ·— ·—· —·· / ${name} / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —··',
+			'settings.station.audioProblemTalkCardOpen' => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · ———··· / ·· — ··· / ··· ——— ··— —· —·· / —·—· ·— ·—· —·· / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —·',
+			'settings.station.audioProblemTalkCardRefused' => '—·—· ·— —· —· ——— — / — ·—· ·— —· ··· —— ·· — ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—— ——— ··— ·—·· —·· / —· ——— — / ·— —·—· —·—· · ·——· — / — ···· · / —·—· ——— —— ·——· ··— — · ·—· ·————· ··· / ·— ··— —·· ·· ———',
 			'settings.station.audioProblemTalkNotReady' => '—·—· ·— —· ·————· — / — ·— ·—·· —·— / ···· · ·—· · / —·—— · — ———··· / — ···· · / ·—· ·— —·· ·· ——— / ···· ·— ··· / —· ——— — / — ·— —·— · —· / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · / ··· — ·—· · ·— ——',
 			'settings.station.audioProblemIpv4' => '·— ··— —·· ·· ——— / —·—· ·— —· ·————· — / ——· ——— / — ···· ·—· ——— ··— ——· ···· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· ———··· / ·—· · ·— —·—· ···· / — ···· · / ·—· ·— —·· ·· ——— / ·— — / ·— —· / ·· ·——· ···— ····— / ·— —·· —·· ·—· · ··· ···',
 			'settings.station.audioProblemEngine' => '·— ··— —·· ·· ——— / —·—· ·— —· ·————· — / ——· ——— / — ···· ·—· ——— ··— ——· ···· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· ———··· / ···· ·— ·—·· ——— ·————· ··· / ·— ··— —·· ·· ——— / · —· ——· ·· —· · / ·—— ——— ··— ·—·· —·· / —· ——— — / ··· — ·— ·—· —',
@@ -7491,6 +7508,14 @@ extension on TranslationsCw {
 			'settings.station.audioOnThisComputer' => '——— —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·',
 			'settings.station.audioOnThisDevice' => '——— —· / — ···· ·· ··· / —·· · ···— ·· —·—· ·',
 			'settings.station.audioOnTheRadio' => '——— —· / — ···· · / ·—· ·— —·· ·· ———',
+			'settings.station.audioThroughCard' => ({required Object name}) => '— ···· ·—· ——— ··— ——· ···· / ${name}',
+			'settings.station.audioMixRadioInSet' => ({required Object set, required Object name}) => '${set} ———··· / ${name}',
+			'settings.station.audioMute' => ({required Object name}) => '—— ··— — · / ${name}',
+			'settings.station.audioUnmute' => ({required Object name}) => '··— —· —— ··— — · / ${name}',
+			'settings.station.audioMixAllMuted' => '—— ··— — · —··',
+			_ => null,
+		} ?? switch (path) {
+			'settings.station.audioMixMuted' => ({required Object names}) => '—— ··— — · —·· ———··· / ${names}',
 			'settings.station.receiveAudioOutputMissing' => ({required Object name}) => '${name} / —·——· —· ——— — / —·—· ——— —· —· · —·—· — · —·· —·——·—',
 			'settings.station.receiveAudioDelay' => '·—· · —·—· · ·· ···— · / ·— ··— —·· ·· ——— / —— ·— —··— / —··· ··— ··—· ··—· · ·—· ·· —· ——·',
 			'settings.station.receiveAudioDelayDescription' => '···· ——— ·—— / ··—· ·— ·—· / —··· · ···· ·· —· —·· / — ···· · / ·—· ·— —·· ·· ——— / ·· — ··· / ·— ··— —·· ·· ——— / —— ·— —·—— / ··—· ·— ·—·· ·—·· / — ——— / ·—· ·· —·· · / ——— ··— — / ·— / —··· ··— ··· —·—— / —· · — ·—— ——— ·—· —·— ·—·—·— / ··· ···· ——— ·—· — · ·—· / ·· ··· / —— ——— ·—· · / ·· —— —— · —·· ·· ·— — · ——··—— / —··· ··— — / —·· ·—· ——— ·——· ··· / ——— ··— — / —— ——— ·—· · / ——— ··—· — · —· ——··—— / · ··· ·——· · —·—· ·· ·— ·—·· ·—·· —·—— / ——— ···— · ·—· / ·—— ·· —····— ··—· ·· ·—·—·—',
@@ -7501,8 +7526,6 @@ extension on TranslationsCw {
 			'settings.station.microphone' => '—— ·· —·—· ·—· ——— ·——· ···· ——— —· ·',
 			'settings.station.microphoneDefault' => '— ···· · / ··· —·—— ··· — · —— ·————· ··· / —·· · ··—· ·— ··— ·—·· — / ·· —· ·——· ··— —',
 			'settings.station.channelNotInUse' => '—· ——— — / ·· —· / ··— ··· ·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.channelHeldByUnknown' => '·· —· / ··— ··· · / —··· —·—— / ·— —· ——— — ···· · ·—· / ·——· ·—· ——— ——· ·—· ·— ——',
 			'settings.station.flexNoSlices' => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ···· ·— ··· / —· ——— — / ·—· · ·——· ——— ·—· — · —·· / ·— —· —·—— / ··· ·—·· ·· —·—· · ··· / — / —·—· ···· · —·—· —·— / — ···· ·— — / ··· —— ·— ·—· — ··· —·· ·—· / ·· ··· / ·—· ··— —· —· ·· —· ——· / ·— —· —·· / — ···· ·— — / — ···· ·· ··· / —·—· ·—·· ·· · —· — / —— ·— —·—— / ··· ··— —··· ··· —·—· ·—· ·· —··· ·',
 			'settings.station.spectrumUnsupported' => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ··· · —· —·· ··· / —· ——— / ··· ·——· · —·—· — ·—· ··— —— / ——— ···— · ·—· / —·—· ·— —',
@@ -7758,6 +7781,7 @@ extension on TranslationsCw {
 			'settings.station.so2rQueueMessagesDescription' => '·—— ·· — ···· / — ·—— ——— / ·—· ·— —·· ·· ——— ··· ——··—— / ·— / —— · ··· ··· ·— ——· · / ··—· ——— ·—· / ——— —· · / ·—— ·— ·· — ··· / ·—— ···· ·· ·—·· · / — ···· · / ——— — ···· · ·—· / ·· ··· / ··· · —· —·· ·· —· ——· ——··—— / ·· —· ··· — · ·— —·· / ——— ··—· / ··· — ——— ·——· ·——· ·· —· ——· / ·· — ·—·—·—',
 			'settings.station.so2rSwitch' => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—·',
 			'settings.station.so2rSwitchBuiltIn' => ({required Object radio}) => '—··· ··— ·· ·—·· — / ·· —· — ——— / ${radio}',
+			'settings.station.so2rSwitchComputer' => '— ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·',
 			'settings.station.so2rSwitchSettings' => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—· / ··· · — — ·· —· ——· ···',
 			'settings.station.so2rStereo' => '··· — · ·—· · ——— ———··· / ·—· ·— —·· ·· ——— / ·— / ·—·· · ··—· — ——··—— / ·—· ·— —·· ·· ——— / —··· / ·—· ·· ——· ···· —',
 			'settings.station.so2rListenWhileTransmitting' => '·—·· ·· ··· — · —· / — ——— / — ···· · / ——— — ···· · ·—· / ·—· ·— —·· ·· ——— / ·—— ···· ·· ·—·· · / — ·—· ·— —· ··· —— ·· — — ·· —· ——·',
@@ -8003,6 +8027,8 @@ extension on TranslationsCw {
 			'settings.station.simulatedSwitchRadios' => '·—· ·— —·· ·· ——— / ·——· ——— ·—· — ···',
 			'settings.station.simulatedSwitchCountInvalid' => ({required Object min, required Object max}) => '·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· ——··—— / ${min} / — ——— / ${max}',
 			'settings.station.switchLayout' => '·—·· ·— —·—— ——— ··— —',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.switchLayoutDescription' => '·—— ···· ·· —·—· ···· / ··· ·· —·· · / ——— ··—· / — ···· · / ··· ·—— ·· — —·—· ···· / —·—— ——— ··— ·—· / ·—· ·— —·· ·· ——— ··· / ·— ·—· · / ·——· ·—·· ··— ——· ——· · —·· / ·· —· — ——— ·—·—·—',
 			'settings.station.switchLayoutRequired' => '—·—· ···· ——— ——— ··· · / ···· ——— ·—— / — ···· · / ··· ·—— ·· — —·—· ···· / ·· ··· / ·—— ·· ·—· · —··',
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => '— ···· · / ··· ·—— ·· — —·—· ···· / ·—· · ··—· ··— ··· · —·· / ·—··—· ${command} ·—··—· / —·——· · ·—· ·—· ——— ·—· / ${code} —·——·—',
@@ -8015,8 +8041,6 @@ extension on TranslationsCw {
 			'settings.station.dcnAddress' => '—·· · ···— ·· —·—· · / ·— —·· —·· ·—· · ··· ···',
 			'settings.station.dcnAddressDescription' => '— ···· · / ·— —·· —·· ·—· · ··· ··· / ··· · — / ——— —· / — ···· · / —— ——— —·· ··— ·—·· · ·————· ··· / —·· ·· ·——· / ··· ·—— ·· — —·—· ···· · ··· ·—·—·— / ·— / —·—· ——— ·— —··— / ·—· · ·—·· ·— —·—— / —— ——— —·· ··— ·—·· · / ·—·· · ·— ···— · ··· / — ···· · / ··—· ·— —·—· — ——— ·—· —·—— / ·— — / ··——— ·—·—·—',
 			'settings.station.dcnAddressRequired' => '—— ··— ··· — / —··· · / ·— / —·· · ···— ·· —·—· · / ·— —·· —·· ·—· · ··· ··· / ··—· ·—· ——— —— / ·———— / — ——— / ————· ————·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.switchPortLabel' => ({required Object port}) => '·——· ——— ·—· — / ${port}',
 			'settings.station.switchPortAutoHint' => '··—· ——— ·—·· ·—·· ——— ·—— ··· / —··· ·— —· —·· / —·· ·— — ·—',
 			'settings.station.switchPortTransmittingHint' => '— ·—· ·— —· ··· —— ·· — — ·· —· ——· / — / —·—· ·— —· —· ——— — / —·—· ···· ·— —· ——· · / —· ——— ·——',
@@ -8517,6 +8541,8 @@ extension on TranslationsCw {
 			'dataFiles.definitionUnavailable' => '— ···· · / ··—· ·· ·—·· · ·————· ··· / ··· ——— ··— ·—· —·—· · / —·· ·· —·· —· ·————· — / ·——· ·—· ——— ···— ·· —·· · / ·— / —·· · ··—· ·· —· ·· — ·· ——— —· / — / ·· — ··· / · —··— — · —· ··· ·· ——— —· / —— ·— —·—— / —··· · / —— ·· —·· —····— ·—· · ··· — ·— ·—· — / ——— ·—· / —— ·· ··· —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ·· —· / ·— / —— ——— —— · —· — ·—·—·—',
 			'updates.updateAvailable' => '··— ·——· —·· ·— — · / ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'updates.newVersionAvailable' => ({required Object version}) => '·— / —· · ·—— / ···— · ·—· ··· ·· ——— —· / —·——· ${version} —·——·— / ·· ··· / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'updates.getIt' => '——· · — / ·· —',
 			'updates.ok' => '——— —·—',
 			'updates.updateReady' => '··— ·——· —·· ·— — · / ·—· · ·— —·· —·——',
@@ -8529,8 +8555,6 @@ extension on TranslationsCw {
 			'updates.checkingForUpdates' => '—·—· ···· · —·—· —·— ·· —· ——· / ··—· ——— ·—· / ··— ·——· —·· ·— — · ··· …',
 			'updates.upToDate' => '··— ·——· / — ——— / —·· ·— — ·',
 			'updates.checkFailed' => '—·—· ——— ··— ·—·· —·· —· ’ — / —·—· ···· · —·—· —·— / ··—· ——— ·—· / ··— ·——· —·· ·— — · ···',
-			_ => null,
-		} ?? switch (path) {
 			'updates.automaticChecks' => '—·—· ···· · —·—· —·— / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·——',
 			'updates.automaticChecksDescription' => '·—·· ——— ——— —·— / ··—· ——— ·—· / —· · ·—— / ···— · ·—· ··· ·· ——— —· ··· / ·· —· / — ···· · / —··· ·— —·—· —·— ——· ·—· ——— ··— —· —·· ——··—— / ··—· ·—· ——— —— / — ···· · / —· · —··— — / — ·· —— · / —·—— ——— ··— / ··· — ·— ·—· — / — ···· · / ·— ·——· ·——·',
 			'extensionService.runtimeNotReady' => '· —··— — · —· ··· ·· ——— —· / ·—· ··— —· — ·· —— · / —· ——— — / ·—· · ·— —·· —·—— ·—·—·—',
