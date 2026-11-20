@@ -21,6 +21,8 @@ import '../../services/app_storage.dart';
 import '../../services/windows_url_schemes.dart';
 import '../experiments_pane.dart';
 import '../qson_import_flow.dart';
+import '../../services/extensions/dev_link/extension_dev_link.dart';
+import '../../services/extensions/dev_link/extension_dev_link_wiring.dart';
 import '../../services/extensions/extension_dev_client.dart';
 import '../../services/extensions/installed_extensions.dart' show CatalogChannel;
 import '../../settings/settings_target_dialog.dart' show settingsSliverForTarget;
@@ -123,7 +125,11 @@ class DeveloperPanel extends StatelessWidget {
             // the developer-mode switch because it is meaningless without it,
             // and above the patch track because an author reaches for it far
             // more often.
-            if (settings.developerMode) ...[SectionHeader(context.t.settings.developer.extDevServer), _ExtensionDevServerRow(services: services)],
+            if (settings.developerMode) ...[
+              SectionHeader(context.t.settings.developer.extDevServer),
+              _ExtensionDevServerRow(services: services),
+              if (services.extensionDevLink case final link?) _ExtensionDevLinkRows(link: link),
+            ],
             // What the Extensions panel's listing asks the catalog for. Every
             // install keeps the track it arrived on whatever this says.
             if (settings.developerMode) ...[
@@ -401,6 +407,100 @@ class _ExtensionDevServerRow extends StatelessWidget {
   }
 }
 
+/// The dev link (docs/design/extension-dev-link.md): whether a dev tool on
+/// this computer can reach the app, and a row per tool the operator allowed,
+/// a tap on which offers to disconnect it.
+class _ExtensionDevLinkRows extends StatelessWidget {
+  final ExtensionDevLink link;
+
+  const _ExtensionDevLinkRows({required this.link});
+
+  @override
+  Widget build(BuildContext context) {
+    // The clients come and go with the tools, so the merge over them is
+    // rebuilt whenever the link notifies: one built once never hears from a
+    // tool connected after it, whose row then stays at "connecting".
+    return ListenableBuilder(
+      listenable: link,
+      builder: (context, _) => ListenableBuilder(
+        listenable: Listenable.merge([for (final connection in link.connections) connection.client]),
+        builder: (context, _) {
+          final t = context.t.settings.developer;
+          final port = link.port;
+          final connections = link.connections;
+          return _settingsRows(
+            [
+              {
+                'type': 'action',
+                'style': 'row',
+                'key': 'extensionDevLink',
+                'label': t.extDevLink,
+                'description': port != null
+                    ? t.extDevLinkListening(port: port)
+                    : link.failed
+                    ? _linkFailure(context, link)
+                    : t.extDevLinkStarting,
+                'icon': 'console',
+              },
+              for (final (index, connection) in connections.indexed)
+                {
+                  'type': 'action',
+                  'style': 'row',
+                  'key': 'extensionDevLink:$index',
+                  'label': t.extDevLinkConnection(tool: connection.ask.tool, keys: connection.ask.keys.join(', ')),
+                  'description': [connection.ask.dir, ..._devServerStatusLines(context, connection.client)].join('\n'),
+                  'icon': 'lan-connect',
+                },
+            ],
+            onAction: (key) async {
+              final index = int.tryParse(key.split(':').last);
+              if (!key.startsWith('extensionDevLink:') || index == null || index >= connections.length) return;
+              final connection = connections[index];
+              await showHaloDialog<void>(
+                context: context,
+                builder: (dialogContext) => ListenableBuilder(
+                  listenable: connection.client,
+                  builder: (dialogContext, _) => HaloDialog(
+                    title: Text(t.extDevLinkConnection(tool: connection.ask.tool, keys: connection.ask.keys.join(', '))),
+                    content: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(connection.ask.dir),
+                        const SizedBox(height: Space.md),
+                        _devServerStatus(dialogContext, connection.client),
+                      ],
+                    ),
+                    actions: [
+                      FilledButton(
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                          unawaited(link.disconnect(connection));
+                        },
+                        child: Text(t.extDevServerDisconnect),
+                      ),
+                    ],
+                    cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(dialogContext.t.common.done)),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Why [link] is not listening: its ports taken (Regular and Next have one
+/// port each, a Dev build a range), or another error.
+String _linkFailure(BuildContext context, ExtensionDevLink link) {
+  final t = context.t.settings.developer;
+  if (link.failure case final error?) return t.extDevLinkFailed(error: error);
+  final ports = extensionDevLinkPorts(kEdition.name);
+  return ports.length == 1 ? t.extDevLinkPortTaken(port: ports.single) : t.extDevLinkUnavailable(ports: ports.join(', '));
+}
+
 /// The dev server's address, the Connect or Disconnect that acts on it, and
 /// the loop's status as it changes — the dialog stays open through a connect,
 /// so the author sees it take or fail.
@@ -519,7 +619,7 @@ List<String> _devServerStatusLines(BuildContext context, ExtensionDevClient clie
         t.extDevServerConnected(count: client.servedKeys.length, keys: client.servedKeys.join(', ')),
         if (reload != null) t.extDevServerLastReload(key: reload.key, time: TimeOfDay.fromDateTime(reload.at).format(context)),
         if (failing > 0) t.extDevServerBuildErrors(count: failing),
-        if (client.refused.isNotEmpty) t.extDevServerRefused(keys: client.refused.keys.join(', ')),
+        if (client.refused.isNotEmpty) t.extDevServerRefused(reasons: client.refused.values.join('; ')),
       ];
   }
 }

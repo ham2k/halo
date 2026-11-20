@@ -42,9 +42,21 @@ String devServerAtLaunch({required String flag, required bool developerMode, req
 }
 
 class ExtensionDevClient extends ChangeNotifier {
-  ExtensionDevClient({required this.extensions, http.Client? httpClient}) : _http = httpClient ?? http.Client(), _ownsHttpClient = httpClient == null;
+  ExtensionDevClient({required this.extensions, this.server = '', this.only, http.Client? httpClient})
+    : _http = httpClient ?? http.Client(),
+      _ownsHttpClient = httpClient == null;
 
   final ExtensionService extensions;
+
+  /// Which dev server this is to [extensions], which keeps each one's
+  /// extensions apart from the others' ([ExtensionService.setDevBundles]).
+  /// '' for the one typed into Developer settings.
+  final String server;
+
+  /// The only keys this client takes from its server, or null for any. A
+  /// tool the operator allowed over the dev link was allowed for the keys it
+  /// named; anything else its server offers is refused.
+  final Set<String>? only;
   final http.Client _http;
   final bool _ownsHttpClient;
 
@@ -69,6 +81,12 @@ class ExtensionDevClient extends ChangeNotifier {
   Map<String, String> get buildErrors => Map.unmodifiable(_buildErrors);
   final Map<String, String> _buildErrors = {};
 
+  /// The extensions whose latest code built but would not load here, and
+  /// why: the part of [buildErrors] the server cannot know about, so the
+  /// dev link tells the tool ([ExtensionDevLink]).
+  Map<String, String> get loadErrors => Map.unmodifiable(_loadErrors);
+  final Map<String, String> _loadErrors = {};
+
   /// Extensions the server offers that this build will not take from it, and
   /// why ([ExtensionService.devServerRefusal]). The app keeps running its own
   /// for each, which the pane has to say: otherwise saving one changes
@@ -83,8 +101,11 @@ class ExtensionDevClient extends ChangeNotifier {
   final List<String> _pendingLogLines = [];
   bool _disposed = false;
 
-  /// Serializes reconnects: connect/disconnect both reboot the runtime, and
-  /// two of those interleaving would race over which extension set wins.
+  /// Serializes reconnects and reloads: connect/disconnect both reboot the
+  /// runtime, and two of those interleaving would race over which extension
+  /// set wins. A reload runs here too: one still fetching when the tool is
+  /// disconnected would otherwise land after the disconnect, and bring back
+  /// an extension nothing serves any more, holding its key for the session.
   Future<void>? _inFlight;
 
   Future<void> connect(String url) => _enqueue(() => _connect(url));
@@ -121,6 +142,7 @@ class ExtensionDevClient extends ChangeNotifier {
     _state = DevServerState.connecting;
     _lastError = null;
     _buildErrors.clear();
+    _loadErrors.clear();
     _refused.clear();
     notifyListeners();
 
@@ -146,7 +168,7 @@ class ExtensionDevClient extends ChangeNotifier {
       if (offered.isEmpty) throw const FormatException('the dev server is serving no extensions');
       final infos = <ExtensionInfo>[];
       for (final info in offered) {
-        final refusal = await extensions.devServerRefusal(info.key);
+        final refusal = _notAllowed(info.key) ?? await extensions.devServerRefusal(info.key, server: server);
         if (refusal == null) {
           infos.add(info);
         } else {
@@ -163,7 +185,7 @@ class ExtensionDevClient extends ChangeNotifier {
 
       // One reboot for the whole set: connecting changes WHICH extensions
       // exist, which a per-extension reload cannot express.
-      await extensions.setDevBundles(bundles);
+      await extensions.setDevBundles(bundles, server: server);
 
       _listenForEvents(base);
       _startLogForwarding();
@@ -184,7 +206,7 @@ class ExtensionDevClient extends ChangeNotifier {
       // the app must actually not be running it. Reverting to the built-in
       // extensions is what makes the two agree.
       try {
-        await extensions.setDevBundles(const {});
+        await extensions.setDevBundles(const {}, server: server);
       } catch (_) {
         // Already failing; a restart that also fails changes nothing here.
       }
@@ -198,11 +220,12 @@ class ExtensionDevClient extends ChangeNotifier {
     _lastError = null;
     _servedKeys = const [];
     _buildErrors.clear();
+    _loadErrors.clear();
     _refused.clear();
     notifyListeners();
     try {
       // Back to the extensions the app shipped with.
-      await extensions.setDevBundles(const {});
+      await extensions.setDevBundles(const {}, server: server);
     } catch (e) {
       // Reported rather than thrown: this runs on a queue shared with every
       // later connect, and a runtime restart that failed here must not be
@@ -277,7 +300,7 @@ class ExtensionDevClient extends ChangeNotifier {
         }
         if (errors.isNotEmpty) notifyListeners();
       case 'reload':
-        unawaited(_applyReload(event));
+        unawaited(_enqueue(() => _applyReload(event)));
       case 'buildError':
         final key = event['key'] as String?;
         if (key == null) return;
@@ -294,20 +317,22 @@ class ExtensionDevClient extends ChangeNotifier {
       // The event carries the extension's whole manifest entry, so a `domains`
       // edited between two saves applies with the code that expects it.
       final info = ExtensionInfo.fromJson({...event, 'source': 'dev'});
-      final refusal = await extensions.devServerRefusal(key);
+      final refusal = _notAllowed(key) ?? await extensions.devServerRefusal(key, server: server);
       if (refusal != null) {
         _refused[key] = refusal;
-        notifyListeners();
+        if (!_disposed) notifyListeners();
         return;
       }
       final source = await _getText(base.resolve(info.file));
-      await extensions.applyDevBundle(key, source: source, info: info);
+      await extensions.applyDevBundle(key, source: source, info: info, server: server);
       _buildErrors.remove(key);
+      _loadErrors.remove(key);
       _lastReload = (key: key, at: nowLocal());
     } catch (e) {
       _buildErrors[key] = 'could not load: ${_describe(e)}';
+      _loadErrors[key] = _describe(e);
     }
-    notifyListeners();
+    if (!_disposed) notifyListeners();
   }
 
   /// Forwards what the runtime logs back to the dev server's terminal — the
@@ -335,6 +360,8 @@ class ExtensionDevClient extends ChangeNotifier {
           .catchError((Object _) => http.Response('', 599)),
     );
   }
+
+  String? _notAllowed(String key) => only == null || only!.contains(key) ? null : '"$key" is not among the extensions you allowed';
 
   Future<Map<String, dynamic>> _getJson(Uri url) async {
     final body = await _getText(url);

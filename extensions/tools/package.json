@@ -24,12 +24,15 @@
     "./format": "./h2kext.mjs"
   },
   "bin": {
+    "extension-tools": "./extension-tools.mjs",
     "h2kext-init": "./h2kext-init.mjs",
     "h2kext-dev": "./h2kext-dev.mjs",
     "h2kext-pack": "./h2kext-pack.mjs",
     "h2kext-publish": "./h2kext-publish.mjs"
   },
   "files": [
+    "dev-link.mjs",
+    "extension-tools.mjs",
     "h2kext.mjs",
     "h2kext-build.mjs",
     "h2kext-dev.mjs",
@@ -43,17 +46,10 @@
   },
   "dependencies": {
     "@ham2k/lib-callsigns": "^1.0.2",
+    "esbuild": "^0.25.5",
     "yazl": "^3.3.1"
   },
   "optionalDependencies": {
     "sharp": "^0.34.0"
-  },
-  "peerDependencies": {
-    "esbuild": ">=0.20"
-  },
-  "peerDependenciesMeta": {
-    "esbuild": {
-      "optional": true
-    }
   }
 }

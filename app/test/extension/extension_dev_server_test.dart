@@ -10,6 +10,7 @@
 // request sequence itself is observable: it is the contract with dev-server.mjs,
 // and the two are only kept honest by being asserted somewhere.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -27,12 +28,12 @@ class _SpyExtensionService extends ExtensionService {
   final List<({String key, String source, ExtensionInfo info})> applied = [];
 
   @override
-  Future<void> setDevBundles(Map<String, ({String source, ExtensionInfo info})> bundles) async {
+  Future<void> setDevBundles(Map<String, ({String source, ExtensionInfo info})> bundles, {String server = ''}) async {
     devBundleSets.add({...bundles});
   }
 
   @override
-  Future<void> applyDevBundle(String key, {required String source, required ExtensionInfo info}) async {
+  Future<void> applyDevBundle(String key, {required String source, required ExtensionInfo info, String server = ''}) async {
     applied.add((key: key, source: source, info: info));
   }
 }
@@ -43,12 +44,34 @@ class _FailingOnceExtensionService extends _SpyExtensionService {
   bool _failed = false;
 
   @override
-  Future<void> setDevBundles(Map<String, ({String source, ExtensionInfo info})> bundles) async {
+  Future<void> setDevBundles(Map<String, ({String source, ExtensionInfo info})> bundles, {String server = ''}) async {
     if (!_failed) {
       _failed = true;
       throw StateError('runtime restart failed');
     }
-    await super.setDevBundles(bundles);
+    await super.setDevBundles(bundles, server: server);
+  }
+}
+
+/// The real dev-bundle bookkeeping with the runtime reboot stubbed out: what
+/// matters here is which dev server holds which key, and which reboots are
+/// asked for (each one's `fresh`).
+class _NoRuntimeExtensionService extends ExtensionService {
+  final restarts = <bool>[];
+
+  @override
+  Future<void> restartRuntime({bool fresh = false}) async => restarts.add(fresh);
+}
+
+/// Reads the installed extensions only once [gate] completes: the await a
+/// release build's key check makes.
+class _SlowIndexExtensionService extends _NoRuntimeExtensionService {
+  final gate = Completer<void>();
+
+  @override
+  Future<List<ExtensionInfo>> loadAvailableExtensions({Map<String, dynamic>? index, bool force = false}) async {
+    await gate.future;
+    return const [];
   }
 }
 
@@ -67,6 +90,7 @@ void main() {
       },
     ],
     String bundleSource = '/* pota bundle */',
+    Future<void> Function()? beforeBundle,
   }) {
     final requested = <Uri>[];
     return (
@@ -87,7 +111,10 @@ void main() {
         if (path.endsWith('/index.json')) {
           return http.Response(jsonEncode({'extensions': extensions}), 200);
         }
-        if (path.endsWith('.js')) return http.Response(bundleSource, 200);
+        if (path.endsWith('.js')) {
+          await beforeBundle?.call();
+          return http.Response(bundleSource, 200);
+        }
         if (path.endsWith('/events')) return http.Response('', 200); // no stream in these tests
         return http.Response('not found', 404);
       }),
@@ -485,6 +512,116 @@ void main() {
       expect(service.devServerMayReplace, isTrue, reason: 'tests run as a debug build');
       expect(await service.devServerRefusal('pota'), isNull);
       expect(await service.devServerRefusal('ham2k-lofi'), isNull);
+    });
+  });
+
+  group('several dev servers at once', () {
+    const notes = ExtensionInfo(key: 'w7abc-notes', file: 'w7abc-notes.js', core: false, name: 'notes', source: ExtensionSource.dev);
+    const keyer = ExtensionInfo(key: 'w7abc-keyer', file: 'w7abc-keyer.js', core: false, name: 'keyer', source: ExtensionSource.dev);
+
+    test('each server replaces only its own extensions, so one project connecting or leaving leaves the others running', () async {
+      final service = _NoRuntimeExtensionService();
+      await service.setDevBundles({'w7abc-notes': (source: 'notes', info: notes)}, server: 'link:0');
+      await service.setDevBundles({'w7abc-keyer': (source: 'keyer', info: keyer)}, server: 'link:1');
+      expect(service.isDevExtension('w7abc-notes'), isTrue);
+      expect(service.isDevExtension('w7abc-keyer'), isTrue);
+
+      await service.setDevBundles(const {}, server: 'link:0');
+      expect(service.isDevExtension('w7abc-notes'), isFalse);
+      expect(service.isDevExtension('w7abc-keyer'), isTrue, reason: 'the other project disconnecting must not take this one\'s code away');
+    });
+
+    test('a key another server holds is refused, so two projects can never take turns replacing each other\'s code', () async {
+      final service = _NoRuntimeExtensionService();
+      await service.setDevBundles({'w7abc-notes': (source: 'first', info: notes)}, server: 'link:0');
+
+      expect(await service.devServerRefusal('w7abc-notes', server: 'link:1'), contains('another dev server'));
+      expect(await service.devServerRefusal('w7abc-notes', server: 'link:0'), isNull, reason: 'its own server reloads it on every save');
+      await expectLater(service.setDevBundles({'w7abc-notes': (source: 'second', info: notes)}, server: 'link:1'), throwsFormatException);
+      await expectLater(service.applyDevBundle('w7abc-notes', source: 'second', info: notes, server: 'link:1'), throwsFormatException);
+
+      await service.setDevBundles(const {}, server: 'link:0');
+      expect(await service.devServerRefusal('w7abc-notes', server: 'link:1'), isNull, reason: 'free once its holder lets go');
+    });
+
+    test('a server\'s reboot is one begun after its bundles were added, and a server with nothing to change reboots nothing', () async {
+      final service = _NoRuntimeExtensionService();
+      await service.setDevBundles({'w7abc-notes': (source: 'notes', info: notes)}, server: 'link:0');
+      expect(
+        service.restarts,
+        [true],
+        reason: 'another server\'s reboot may be under way, begun before these bundles were added: joining it reports connected while the old code runs',
+      );
+
+      await service.setDevBundles(const {}, server: 'link:1');
+      expect(service.restarts, hasLength(1), reason: 'a client retrying a failed connect would restart every extension on each try');
+    });
+
+    test('two servers offering the same key at once: one takes it, the other is refused', () async {
+      final service = _SlowIndexExtensionService()..devServerMayReplace = false;
+      Future<String> outcome(String server) =>
+          service.setDevBundles({'w7abc-notes': (source: server, info: notes)}, server: server).then((_) => 'took it', onError: (Object _) => 'refused');
+      final first = outcome('link:0');
+      final second = outcome('link:1');
+      service.gate.complete();
+
+      // Both pass the check made before the await; without a second look right
+      // before the write, the later one takes the key and the first reports
+      // connected while its saves are refused.
+      expect([await first, await second], ['took it', 'refused']);
+    });
+
+    test('a save still fetching when its tool is disconnected never brings the extension back', () async {
+      var holdBundles = false;
+      final release = Completer<void>();
+      final stub = devServer(
+        extensions: [
+          {'key': 'w7abc-notes', 'file': 'w7abc-notes.js', 'core': false, 'name': 'notes'},
+        ],
+        beforeBundle: () => holdBundles ? release.future : Future.value(),
+      );
+      final service = _NoRuntimeExtensionService();
+      final client = ExtensionDevClient(extensions: service, server: 'link:0', httpClient: stub.client);
+      addTearDown(client.dispose);
+      await client.connect('http://127.0.0.1:8787');
+      expect(service.isDevExtension('w7abc-notes'), isTrue);
+
+      holdBundles = true;
+      client.debugHandleEventLine('data: ${jsonEncode({'type': 'reload', 'key': 'w7abc-notes', 'file': 'w7abc-notes.js', 'core': false, 'name': 'notes'})}');
+      await pumpEventQueue();
+      final disconnected = client.disconnect();
+      release.complete();
+      await disconnected;
+      await pumpEventQueue();
+
+      expect(service.isDevExtension('w7abc-notes'), isFalse, reason: 'the operator disconnected it; nothing serves it any more');
+      expect(
+        await service.devServerRefusal('w7abc-notes', server: 'link:1'),
+        isNull,
+        reason: 'held by a server nobody runs, the key would refuse every later tool for the session',
+      );
+    });
+
+    test('a client limited to the keys the operator allowed refuses the rest of what its server offers', () async {
+      final stub = devServer(
+        extensions: [
+          {'key': 'pota', 'file': 'pota.js', 'core': false, 'name': 'pota'},
+          {'key': 'w7abc-notes', 'file': 'w7abc-notes.js', 'core': false, 'name': 'notes'},
+        ],
+      );
+      final service = _SpyExtensionService();
+      final client = ExtensionDevClient(extensions: service, server: 'link:0', only: {'w7abc-notes'}, httpClient: stub.client);
+      addTearDown(client.dispose);
+
+      await client.connect('http://127.0.0.1:8787');
+
+      expect(client.servedKeys, ['w7abc-notes']);
+      expect(service.devBundleSets.single.keys, ['w7abc-notes']);
+      expect(client.refused.keys, ['pota'], reason: 'a tool allowed for one extension must not slip another in beside it');
+
+      client.debugHandleEventLine('data: ${jsonEncode({'type': 'reload', 'key': 'pota', 'file': 'pota.js', 'core': false, 'name': 'pota'})}');
+      await pumpEventQueue();
+      expect(service.applied, isEmpty, reason: 'nor through a reload');
     });
   });
 

@@ -92,9 +92,13 @@ npm run dev -- --host 127.0.0.1        # default 0.0.0.0, so a phone on the LAN 
 npm run dev -- --allow-origin http://10.0.0.5:8080   # a web page besides the app's own web build
 ```
 
-It prints the URLs. In the app: **Settings → Developer → Extension Dev
-Server**, enter the URL, connect. It is a server rather than a watched
-folder because the app is usually on a phone.
+It prints the URLs. A desktop build on the same computer with Developer
+Mode on is asked directly, the way `h2kext-dev` asks it
+([Getting started](getting-started.md#iterate)): the app shows the
+operator which extensions it would load, and loads them once allowed, for
+as long as the app runs. Anywhere else (a phone, a web build), **Settings →
+Developer → Extension Dev Server**, enter the URL, connect. It is a server
+rather than a watched folder because the app is often on a phone.
 
 A debug build can be connected without opening Settings, which is how a
 coding agent points the app at what it is serving. Nothing is saved, and

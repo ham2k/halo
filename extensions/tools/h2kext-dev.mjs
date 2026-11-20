@@ -7,13 +7,16 @@
 //   npx h2kext-dev                 # the extension in the current directory
 //   npx h2kext-dev --port 9000     # default 8787
 //   npx h2kext-dev --host 127.0.0.1
+//   npx h2kext-dev --app next      # ask the Next build rather than whichever runs
 //
 // Builds the extension in memory through the same preset `build.mjs` uses,
-// rebuilds as files are saved, and serves the result to the app's
-// Settings → Developer → Extension Dev Server, which swaps that one extension
-// in a running app without an install. What the extension logs comes back
-// here, so an author working against a phone reads their own lines in this
-// terminal.
+// rebuilds as files are saved, and serves the result to the app, which swaps
+// that one extension in a running app without an install. A desktop app on
+// this machine with Developer Mode on is asked over the dev link
+// (dev-link.mjs), and runs it once the operator allows; any other app is
+// pointed at the printed address under Settings → Developer → Extension Dev
+// Server. What the extension logs comes back here, so an author working
+// against a phone reads their own lines in this terminal.
 //
 // It speaks the one protocol the app's dev client knows, shared with the
 // repository's own dev server (extensions/dev-server.mjs), which imports the
@@ -35,11 +38,12 @@ import { realpathSync } from "node:fs"
 import { readFile, watch } from "node:fs/promises"
 import { createServer } from "node:http"
 import { createRequire } from "node:module"
-import { isIP } from "node:net"
+import { createConnection, isIP } from "node:net"
 import { hostname, networkInterfaces } from "node:os"
 import { join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
+import { loopbackServerUrl, parseAppChoice, startDevLink } from "./dev-link.mjs"
 import { ABOUT_FILE, buildOptionsFor, withAboutFiles } from "./h2kext-build.mjs"
 import { indexEntryFor, MANIFEST_ENTRY, validateManifest } from "./h2kext.mjs"
 
@@ -55,6 +59,13 @@ export const SERVER_NAME = "halo-ext-dev"
 
 export const DEFAULT_PORT = 8787
 
+/// How many ports past [DEFAULT_PORT] are tried when it is taken and no
+/// `--port` was given: another project's dev server usually holds it.
+export const PORT_FALLBACK = 20
+
+/// This package's version, which the dev link names the tool by.
+export const TOOLS_VERSION = JSON.parse(await readFile(new URL("./package.json", import.meta.url), "utf8")).version
+
 /// What `/<key>.js` serves while there is no good build yet: an extension the
 /// app can load that registers nothing. Serving it, rather than a 404, is what
 /// lets the app connect at all — its client fetches every listed bundle before
@@ -68,7 +79,17 @@ export class DevServerError extends Error {}
 /// What the command line asked for. Throws [DevServerError] for a flag it does
 /// not know or a port it cannot listen on.
 export function parseArgs(argv) {
-  const options = { dir: process.cwd(), host: "0.0.0.0", port: DEFAULT_PORT, entry: "src/index.ts", inline: [], allowOrigins: [] }
+  const options = {
+    dir: process.cwd(),
+    host: "0.0.0.0",
+    port: DEFAULT_PORT,
+    portGiven: false,
+    entry: "src/index.ts",
+    inline: [],
+    allowOrigins: [],
+    app: null,
+    link: true,
+  }
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
     const value = () => {
@@ -88,8 +109,18 @@ export function parseArgs(argv) {
           throw new DevServerError(`--port must be a number between 1 and 65535, not "${raw}"`)
         }
         options.port = port
+        options.portGiven = true
         break
       }
+      case "--app": {
+        const raw = value()
+        options.app = parseAppChoice(raw)
+        if (!options.app) throw new DevServerError(`--app takes regular, next, dev or a port, not "${raw}"`)
+        break
+      }
+      case "--no-app":
+        options.link = false
+        break
       case "--host":
         options.host = value()
         break
@@ -135,32 +166,91 @@ export function webOrigin(text) {
   return url.origin
 }
 
-export const USAGE = `usage: h2kext-dev [--port <n>] [--host <address>] [--entry <file>] [--inline <pkg,…>] [--dir <path>] [--force-name] [--allow-origin <origin>]
+export const USAGE = `usage: h2kext-dev [--port <n>] [--host <address>] [--entry <file>] [--inline <pkg,…>] [--dir <path>] [--force-name] [--allow-origin <origin>] [--app <edition|port>] [--no-app]
 
-Serves the extension in the current directory to the app's Extension Dev
-Server (Settings → Developer), rebuilding it as you save and printing what it
-logs. Point the app at one of the addresses it prints.
+Serves the extension in the current directory to the app, rebuilding it as you
+save and printing what it logs. A desktop app on this machine with Developer
+Mode on is asked to run it; point any other at one of the addresses it prints
+(Settings → Developer → Extension Dev Server).
 
-  --port    the port to listen on (default ${DEFAULT_PORT})
+  --port    the port to listen on (default ${DEFAULT_PORT}, or the next free one)
   --host    the address to bind (default 0.0.0.0, so a phone on the LAN can connect)
   --entry   the entry point (default src/index.ts); pass what build.mjs passes
   --inline  shared libraries to bundle rather than take from the app; pass what build.mjs passes
   --dir     the extension directory (default the current directory)
   --force-name  Ham2K's own extensions: waives the key convention, as h2kext-pack's does
-  --allow-origin  a web page that may use this server besides the app's own web build (repeatable), e.g. http://10.0.0.5:8080`
+  --allow-origin  a web page that may use this server besides the app's own web build (repeatable), e.g. http://10.0.0.5:8080
+  --app     which running app to ask: regular, next, dev, or the port it listens on
+  --no-app  ask no app; connect one through its settings instead`
 
-/// The author's own esbuild, resolved from their project rather than from
-/// wherever this file is installed: the preset is written to use the caller's
+/// The author's own esbuild when their project has one, resolved from it
+/// rather than from wherever this file is installed: `build.mjs` uses that
 /// copy, and a second one would be a second version with its own opinions.
-export async function loadEsbuild(dir) {
-  const require = createRequire(resolve(dir, "noop.js"))
-  let path
-  try {
-    path = require.resolve("esbuild")
-  } catch {
-    throw new DevServerError("esbuild is not installed in this project — `npm install --save-dev esbuild`")
+/// Otherwise this package's own, so `npx` runs with nothing installed first.
+export async function loadEsbuild(dir, { fallbackFrom = import.meta.url } = {}) {
+  for (const from of [resolve(dir, "noop.js"), fallbackFrom]) {
+    let path
+    try {
+      path = createRequire(from).resolve("esbuild")
+    } catch (e) {
+      // Not installed there: the next place, or the error below. Anything
+      // else (a damaged package.json, say) is installed but broken.
+      if (e?.code === "MODULE_NOT_FOUND") continue
+      throw new DevServerError(`could not load esbuild from ${from}: ${e?.message ?? e}`)
+    }
+    // Installed but broken is said, not covered for: building with another
+    // copy would make output that differs from what `build.mjs` makes.
+    try {
+      return await import(pathToFileURL(path).href)
+    } catch (e) {
+      throw new DevServerError(`could not load esbuild from ${path}: ${e?.message ?? e}`)
+    }
   }
-  return import(pathToFileURL(path).href)
+  throw new DevServerError("esbuild is not installed in this project — `npm install --save-dev esbuild`")
+}
+
+/// Whether something already accepts connections on [port] at a loopback
+/// address.
+function answersOnLoopback(port) {
+  const tryHost = (host) =>
+    new Promise((resolveTry) => {
+      const socket = createConnection({ host, port })
+      const done = (answered) => {
+        socket.destroy()
+        resolveTry(answered)
+      }
+      socket.setTimeout(500, () => done(false))
+      socket.on("connect", () => done(true))
+      socket.on("error", () => done(false))
+    })
+  return Promise.all([tryHost("127.0.0.1"), tryHost("::1")]).then((answers) => answers.includes(true))
+}
+
+/// Listens on [port], or when it is taken, on each of the next [fallback]
+/// ports in turn. Resolves to the port listened on.
+///
+/// A port something already answers on at a loopback address counts as
+/// taken even when the bind would succeed: macOS lets a wildcard bind share a
+/// port with another process's 127.0.0.1 one (and the reverse), and the app,
+/// connecting to 127.0.0.1, would then reach the other process's server.
+export async function listenWithFallback(server, { port, host, fallback = 0 }) {
+  for (let candidate = port; ; candidate += 1) {
+    try {
+      if (candidate !== 0 && (await answersOnLoopback(candidate))) {
+        throw Object.assign(new Error(`port ${candidate} is already in use on this machine`), { code: "EADDRINUSE" })
+      }
+      await new Promise((resolveListen, rejectListen) => {
+        server.once("error", rejectListen)
+        server.listen(candidate, host, () => {
+          server.off("error", rejectListen)
+          resolveListen()
+        })
+      })
+      return server.address().port
+    } catch (e) {
+      if (e.code !== "EADDRINUSE" || candidate >= port + fallback || candidate >= 65535) throw e
+    }
+  }
 }
 
 /// The two manifest fields the build itself depends on, beyond what the
@@ -177,13 +267,14 @@ function buildShape(manifest) {
 /// this would print, so a caller may route them.
 ///
 /// Resolves once the first build has settled, built or failed, with the
-/// listening `port`, a `url` on localhost, the LAN `addresses` to print, and
+/// listening `port` (the first free one of [portFallback] more past [port]), a `url` on localhost, the LAN `addresses` to print, and
 /// `close()`, which stops watching and listening.
 export async function createDevServer({
   dir,
   esbuild,
   host = "0.0.0.0",
   port = DEFAULT_PORT,
+  portFallback = 0,
   entry = "src/index.ts",
   inline = [],
   forceName = false,
@@ -424,18 +515,13 @@ export async function createDevServer({
     }, warn),
   )
 
-  await new Promise((resolveListen, rejectListen) => {
-    server.once("error", rejectListen)
-    server.listen(port, host, () => {
-      server.off("error", rejectListen)
-      resolveListen()
-    })
-  })
-  const listening = server.address().port
+  const listening = await listenWithFallback(server, { port, host, fallback: portFallback })
 
   return {
     key,
     port: listening,
+    /// Where the app on this machine reaches it, or null when nothing there can.
+    loopbackUrl: loopbackServerUrl(server.address()),
     url: `http://localhost:${listening}`,
     addresses: lanAddresses().map((address) => `http://${address}:${listening}`),
     get buildError() {
@@ -653,7 +739,7 @@ export async function main(argv) {
   let dev
   try {
     const esbuild = await loadEsbuild(options.dir)
-    dev = await createDevServer({ ...options, esbuild })
+    dev = await createDevServer({ ...options, esbuild, portFallback: options.portGiven ? 0 : PORT_FALLBACK })
   } catch (e) {
     console.error(`h2kext-dev: ${e.message}`)
     return e instanceof DevServerError ? 2 : 1
@@ -661,19 +747,37 @@ export async function main(argv) {
 
   if (dev.buildError !== null) console.error(`\n✗ ${dev.key}\n${dev.buildError}`)
   console.log(`\nh2kext-dev — ${dev.key} ${dev.buildError === null ? "ready" : "is not building yet; fix the error above and save, and the app picks it up"}`)
-  console.log("\nPoint the app at (Settings → Developer → Extension Dev Server):")
+  console.log("\nAny other app (a phone, a web build): Settings → Developer → Extension Dev Server, at")
   for (const address of dev.addresses) console.log(`  ${address}`)
   console.log("\nWatching for changes. Install from a file before you publish; the packer's checks run there.\n")
+
+  const link = startLink({ options, key: dev.key, server: dev.loopbackUrl })
 
   await new Promise((resolveExit) => {
     for (const signal of ["SIGINT", "SIGTERM"]) {
       process.on(signal, async () => {
+        link?.close()
         await dev.close()
         resolveExit()
       })
     }
   })
   return 0
+}
+
+/// Starts asking a running app to run [key], served at [server], unless
+/// `--no-app` said not to or the server is bound where the app's loopback
+/// connection cannot reach it ([server] null).
+function startLink({ options, key, server }) {
+  if (!options.link) return null
+  if (!server) {
+    console.log(`Not asking a running app: --host ${options.host} is not reachable from this machine's loopback.`)
+    return null
+  }
+  return startDevLink({
+    hello: { tool: { name: "h2kext-dev", version: TOOLS_VERSION }, dir: realpathSync(options.dir), keys: [key], server },
+    choice: options.app,
+  })
 }
 
 // Run only when invoked as the bin, never when imported by a test or by the

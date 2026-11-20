@@ -675,6 +675,12 @@ mixin _ExtensionInstalls {
   /// `pota` itself rather than only on something new.
   final Map<String, ({String source, ExtensionInfo info})> _devBundles = {};
 
+  /// Which dev server serves each key in [_devBundles]. Several run at once —
+  /// one per extension project an author has open — and each owns the keys it
+  /// brought: a second server offering a key the first holds is refused, so
+  /// one project's saves can never replace another's code.
+  final Map<String, String> _devServerOf = {};
+
   /// Whether [key] is currently being served by a dev server.
   bool isDevExtension(String key) => _devBundles.containsKey(key);
 
@@ -683,9 +689,11 @@ mixin _ExtensionInstalls {
   @visibleForTesting
   bool devServerMayReplace = kDebugMode;
 
-  /// Why a dev server may not serve [key] in this build, or null when it may
-  /// ([devKeyRefusal]).
-  Future<String?> devServerRefusal(String key) async {
+  /// Why dev server [server] may not serve [key] in this build, or null when
+  /// it may: another dev server holds it, or [devKeyRefusal] says no.
+  Future<String?> devServerRefusal(String key, {String server = ''}) async {
+    final held = _heldByAnother(key, server);
+    if (held != null) return held;
     if (devServerMayReplace) return null;
     final available = _availableExtensions ?? await loadAvailableExtensions();
     return devKeyRefusal(
@@ -700,23 +708,55 @@ mixin _ExtensionInstalls {
 
   /// Throws what [devServerRefusal] says about any of [keys]. Checked here as
   /// well as by the dev client, since this is where a dev bundle takes a key.
-  Future<void> _refuseDevKeys(Iterable<String> keys) async {
+  Future<void> _refuseDevKeys(Iterable<String> keys, String server) async {
     for (final key in keys) {
-      final refusal = await devServerRefusal(key);
+      final refusal = await devServerRefusal(key, server: server);
       if (refusal != null) throw FormatException(refusal);
     }
   }
 
-  /// Replaces the whole dev-served set and reboots the runtime. Used on
-  /// connect and disconnect — both change WHICH extensions exist, which a
-  /// per-extension reload cannot express.
-  Future<void> setDevBundles(Map<String, ({String source, ExtensionInfo info})> bundles) async {
-    await _refuseDevKeys(bundles.keys);
-    _devBundles
-      ..clear()
-      ..addAll(bundles);
+  /// Throws when another dev server holds any of [keys]. Synchronous, and
+  /// called right before the keys are written: [_refuseDevKeys] awaits, and
+  /// two servers offering the same key would both pass it in that gap, the
+  /// second then taking the key from the first.
+  void _claimDevKeys(Iterable<String> keys, String server) {
+    for (final key in keys) {
+      final held = _heldByAnother(key, server);
+      if (held != null) throw FormatException(held);
+    }
+  }
+
+  /// Why [server] may not serve [key] when another dev server holds it.
+  String? _heldByAnother(String key, String server) {
+    final holder = _devServerOf[key];
+    return holder != null && holder != server ? '"$key" is already served by another dev server' : null;
+  }
+
+  /// Replaces everything dev server [server] serves and reboots the runtime;
+  /// what other dev servers serve stays. Used on connect and disconnect —
+  /// both change WHICH extensions exist, which a per-extension reload cannot
+  /// express. A server that served nothing and still serves nothing changes
+  /// nothing, and reboots nothing: a dev client retrying a failed connect
+  /// would otherwise restart every extension each time it tries.
+  ///
+  /// The reboot is [restartRuntime]'s `fresh` one: with several dev servers,
+  /// another's reboot may already be under way, and it began before these
+  /// bundles were added.
+  Future<void> setDevBundles(Map<String, ({String source, ExtensionInfo info})> bundles, {String server = ''}) async {
+    await _refuseDevKeys(bundles.keys, server);
+    _claimDevKeys(bundles.keys, server);
+    final previous = [..._devServerOf.keys.where((key) => _devServerOf[key] == server)];
+    if (previous.isEmpty && bundles.isEmpty) return;
+    for (final key in previous) {
+      _devServerOf.remove(key);
+      _devBundles.remove(key);
+    }
+    _devBundles.addAll(bundles);
+    for (final key in bundles.keys) {
+      _devServerOf[key] = server;
+    }
     _availableExtensions = null; // the index it was memoized from just changed
-    await restartRuntime();
+    await restartRuntime(fresh: true);
   }
 
   /// Swaps ONE dev extension's code in the running runtime — the hot path, on
@@ -726,12 +766,14 @@ mixin _ExtensionInstalls {
   /// the runtime has never seen has no hooks to replace, and its very
   /// existence changes what the app offers (an activity in Operation Setup, a
   /// settings panel), which only a reboot re-reads.
-  Future<void> applyDevBundle(String key, {required String source, required ExtensionInfo info}) async {
-    await _refuseDevKeys([key]);
+  Future<void> applyDevBundle(String key, {required String source, required ExtensionInfo info, String server = ''}) async {
+    await _refuseDevKeys([key], server);
+    _claimDevKeys([key], server);
     // Read BEFORE the insert below: what matters is how this key was loaded
     // into the RUNNING runtime, not what it is about to become.
     final previous = _devBundles[key];
     _devBundles[key] = (source: source, info: info);
+    _devServerOf[key] = server;
     _availableExtensions = null;
     final host = _host;
     if (host == null ||
@@ -741,7 +783,7 @@ mixin _ExtensionInstalls {
           alreadyDevServed: previous != null,
           capabilitiesUnchanged: previous != null && previous.info.sameStartTimeCapabilities(info),
         )) {
-      await restartRuntime();
+      await restartRuntime(fresh: true);
       return;
     }
     // The previous code's transient UI is nobody's to clear once its hooks are

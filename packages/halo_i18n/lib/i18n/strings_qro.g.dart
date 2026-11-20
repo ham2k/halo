@@ -3692,7 +3692,19 @@ class _Translations$settings$developer$qro extends Translations$settings$develop
 		one: '${count} EXTENSION FAILING TO BUILD',
 		other: '${count} EXTENSIONS FAILING TO BUILD',
 	);
-	@override String extDevServerRefused({required Object keys}) => 'NOT LOADED FROM THE SERVER, SINCE THIS APP ALREADY HAS THEM: ${keys}';
+	@override String extDevServerRefused({required Object reasons}) => 'NOT LOADED FROM THE SERVER: ${reasons}';
+	@override String get extDevLink => 'DEV TOOLS ON THIS COMPUTER';
+	@override String extDevLinkListening({required Object port}) => 'H2KEXT-DEV, RUN IN AN EXTENSION\'S FOLDER, ASKS HERE TO LOAD IT (PORT ${port}).';
+	@override String get extDevLinkStarting => 'GETTING READY TO HEAR FROM DEV TOOLS…';
+	@override String extDevLinkUnavailable({required Object ports}) => 'DEV TOOLS CAN\'T REACH THIS APP: PORTS ${ports} ARE ALL TAKEN.';
+	@override String extDevLinkPortTaken({required Object port}) => 'DEV TOOLS CAN\'T REACH THIS APP: PORT ${port} IS TAKEN.';
+	@override String extDevLinkFailed({required Object error}) => 'DEV TOOLS CAN\'T REACH THIS APP: ${error}';
+	@override String extDevLinkConnection({required Object tool, required Object keys}) => '${tool}: ${keys}';
+	@override String extDevLinkTitle({required Object tool}) => 'RUN AN EXTENSION FROM ${tool}?';
+	@override String extDevLinkBody({required Object tool, required Object keys, required Object dir}) => '${tool} IS ASKING TO LOAD ${keys} FROM ${dir}, AND RELOAD IT AS YOU SAVE.';
+	@override String get extDevLinkWarning => 'IT RUNS UNTIL THE APP QUITS, WITH EVERYTHING AN INSTALLED EXTENSION MAY DO. ALLOW IT ONLY IF YOU STARTED IT YOURSELF.';
+	@override String get extDevLinkAllow => 'ALLOW';
+	@override String get extDevLinkDeny => 'DON\'T ALLOW';
 	@override String get catalog => 'EXTENSION CATALOG';
 	@override String get catalogSearchTracks => 'CATALOG SEARCH TRACKS';
 	@override String get catalogSearchStable => 'ONLY STABLE';
@@ -8167,7 +8179,19 @@ extension on TranslationsQro {
 			'settings.developer.extDevServerReconnect' => 'RECONNECT AT LAUNCH',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'LAST RELOAD: ${key} AT ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} EXTENSION FAILING TO BUILD', other: '${count} EXTENSIONS FAILING TO BUILD', ), 
-			'settings.developer.extDevServerRefused' => ({required Object keys}) => 'NOT LOADED FROM THE SERVER, SINCE THIS APP ALREADY HAS THEM: ${keys}',
+			'settings.developer.extDevServerRefused' => ({required Object reasons}) => 'NOT LOADED FROM THE SERVER: ${reasons}',
+			'settings.developer.extDevLink' => 'DEV TOOLS ON THIS COMPUTER',
+			'settings.developer.extDevLinkListening' => ({required Object port}) => 'H2KEXT-DEV, RUN IN AN EXTENSION\'S FOLDER, ASKS HERE TO LOAD IT (PORT ${port}).',
+			'settings.developer.extDevLinkStarting' => 'GETTING READY TO HEAR FROM DEV TOOLS…',
+			'settings.developer.extDevLinkUnavailable' => ({required Object ports}) => 'DEV TOOLS CAN\'T REACH THIS APP: PORTS ${ports} ARE ALL TAKEN.',
+			'settings.developer.extDevLinkPortTaken' => ({required Object port}) => 'DEV TOOLS CAN\'T REACH THIS APP: PORT ${port} IS TAKEN.',
+			'settings.developer.extDevLinkFailed' => ({required Object error}) => 'DEV TOOLS CAN\'T REACH THIS APP: ${error}',
+			'settings.developer.extDevLinkConnection' => ({required Object tool, required Object keys}) => '${tool}: ${keys}',
+			'settings.developer.extDevLinkTitle' => ({required Object tool}) => 'RUN AN EXTENSION FROM ${tool}?',
+			'settings.developer.extDevLinkBody' => ({required Object tool, required Object keys, required Object dir}) => '${tool} IS ASKING TO LOAD ${keys} FROM ${dir}, AND RELOAD IT AS YOU SAVE.',
+			'settings.developer.extDevLinkWarning' => 'IT RUNS UNTIL THE APP QUITS, WITH EVERYTHING AN INSTALLED EXTENSION MAY DO. ALLOW IT ONLY IF YOU STARTED IT YOURSELF.',
+			'settings.developer.extDevLinkAllow' => 'ALLOW',
+			'settings.developer.extDevLinkDeny' => 'DON\'T ALLOW',
 			'settings.developer.catalog' => 'EXTENSION CATALOG',
 			'settings.developer.catalogSearchTracks' => 'CATALOG SEARCH TRACKS',
 			'settings.developer.catalogSearchStable' => 'ONLY STABLE',
@@ -8502,6 +8526,8 @@ extension on TranslationsQro {
 			'updates.automaticChecks' => 'CHECK AUTOMATICALLY',
 			'updates.automaticChecksDescription' => 'LOOK FOR NEW VERSIONS IN THE BACKGROUND, FROM THE NEXT TIME YOU START THE APP',
 			'extensionService.runtimeNotReady' => 'EXTENSION RUNTIME NOT READY.',
+			_ => null,
+		} ?? switch (path) {
 			'extensionService.testFailed' => ({required Object error}) => 'TEST FAILED: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'CONNECTED AS ${identity}',
 			'extensionService.invalidFieldConfiguration' => 'INVALID FIELD CONFIGURATION',
@@ -8514,8 +8540,6 @@ extension on TranslationsQro {
 			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} CAN’T RUN THAT: IT’S ONE OF THE APP’S OWN DEVELOPER COMMANDS',
 			'extensionService.changedSetting' => ({required Object name, required Object setting, required Object value}) => '${name} SET ${setting} TO ${value}',
 			'extensionService.switchedLayout' => ({required Object name, required Object layout}) => '${name} SWITCHED TO THE ${layout} LAYOUT',
-			_ => null,
-		} ?? switch (path) {
 			'extensionService.addedLayout' => ({required Object name, required Object layout}) => '${name} ADDED THE ${layout} LAYOUT',
 			'extensionService.changedLayout' => ({required Object name, required Object layout}) => '${name} CHANGED THE ${layout} LAYOUT',
 			'extensionService.removedLayout' => ({required Object name, required Object layout}) => '${name} REMOVED THE ${layout} LAYOUT',

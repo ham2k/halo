@@ -370,6 +370,10 @@ name (§2).
   a watcher that rebundles and hot-reloads one extension into a running app.
   The runtime re-evaluates the bundle and re-registers hooks — the
   activate/deactivate lifecycle supports this.
+- The [extension dev link](docs/design/extension-dev-link.md): a desktop app
+  in Developer Mode listens on loopback, and a dev server on the same
+  computer asks it to load its extensions; the operator allows each tool
+  for the app session. Several run side by side, each owning its keys.
 - `halo-ext` ([halo-ext](docs/extensions/in-repo.md#halo-ext-the-extensions-on-the-command-line)) runs hooks
   outside the app, and the extensions' own unit tests run under `npm test`
   with no Flutter involved — including tests that call an extension's hooks

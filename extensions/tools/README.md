@@ -6,6 +6,10 @@ Build and package extensions for the [Ham2K Logger](https://ham2k.com).
 npm install --save-dev @ham2k/extension-tools esbuild
 ```
 
+Or run any of its commands with nothing installed first:
+`npx @ham2k/extension-tools <init|dev|pack|publish>`, the same as
+`h2kext-<command>` with the arguments after it (`--help` lists them).
+
 The minor version is the newest extension API the packer accepts — 1.12 packs
 bundles up to `"api": 12` — and matches `@ham2k/extension-sdk`'s.
 
@@ -74,15 +78,24 @@ prints a warning that this check did not run.
 npx h2kext-dev
 ```
 
-Builds the extension in memory, serves it to the app and rebuilds as you save.
-In the app, **Settings → Developer → Extension Dev Server**, enter one of the
-addresses it prints, connect: the app swaps that one extension in place on
-every rebuild, without an install, and what the extension logs comes back to
-this terminal. A save that does not build is reported here and the app keeps
-the last version that did. The scaffold writes it as `npm run dev`.
+Builds the extension in memory, serves it to the app and rebuilds as you save:
+the app swaps that one extension in place on every rebuild, without an
+install, and what the extension logs comes back to this terminal. A save that
+does not build is reported here and the app keeps the last version that did.
+The scaffold writes it as `npm run dev`.
+
+A desktop app on this machine with **Settings → Developer → Developer Mode**
+on is asked to run it, and asks you in turn; allowed, it runs the extension
+until it quits, and the next launch asks again. With more than one app running
+it asks which, or `--app regular|next|dev|<port>` names one; `--no-app` asks
+none. Run it in each project you are working on, and the app runs them side
+by side. A phone, a web build or an app on another machine is pointed at it
+instead: **Settings → Developer → Extension Dev Server**, one of the addresses
+it prints, connect.
 
 It binds `0.0.0.0` so a phone on the LAN can reach it; `--host 127.0.0.1`
-keeps it to this machine, `--port` moves it off 8787. `--entry` and `--inline`
+keeps it to this machine, `--port` names the port, which otherwise is 8787 or
+the next free one. `--entry` and `--inline`
 take the same values `buildExtension` does; pass whatever your `build.mjs`
 passes, or the dev build and the shipping build differ. The manifest is held to
 what the packer accepts, so a manifest that would fail `h2kext-pack` is a

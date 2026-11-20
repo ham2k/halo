@@ -8,11 +8,11 @@ reach, and a callsign: every extension key is `<yourcallsign>-<name>`.
 
 ```sh
 mkdir w7abc-notes && cd w7abc-notes
-npx -p @ham2k/extension-tools h2kext-init w7abc-notes
+npx @ham2k/extension-tools init w7abc-notes
 npm install
 ```
 
-`h2kext-init` takes the key rather than inventing one, and refuses to
+`init` takes the key rather than inventing one, and refuses to
 overwrite anything already there. It writes a whole small extension:
 
 ```
@@ -165,15 +165,34 @@ npm run dev -- --port 9000       # options go after the --
 
 The dev server builds your extension in memory, rebuilds it as you save, and
 hands each build to a running app, which swaps that one extension in place
-with no install. In the app, **Settings → Developer → Extension Dev Server**,
-enter one of the addresses the server prints, connect. The address carries
-the port: `10.0.0.5:8787`, not `10.0.0.5`. It is the app's to open: in a
-browser it answers "not found".
+with no install.
+
+A desktop app on the same computer is asked directly, once **Settings →
+Developer → Developer Mode** is on there. The app shows you the extension and
+the folder it comes from; allow it, and it runs until the app quits. The next
+launch asks again, and so does the app after you disconnect it in Developer
+settings. With more than one app running (a Regular and a Next, say), the dev
+server lists them and asks which; `--app` names one up front.
+
+Run the dev server in each project you are working on: each one asks on its
+own, and the app runs all of them side by side. Each takes the next free port
+after 8787. A key one project serves is refused to every other.
+
+Anywhere else (a phone, a web build, an app on another computer), point the
+app at the server: **Settings → Developer → Extension Dev Server**, enter one
+of the addresses the server prints, connect. The address carries the port:
+`10.0.0.5:8787`, not `10.0.0.5`. It is the app's to open: in a browser it
+answers "not found".
+
+With nothing installed, `npx @ham2k/extension-tools dev` runs the same
+server, and `npx @ham2k/extension-tools --help` lists the commands.
 
 | Flag | |
 | --- | --- |
-| `--port <n>` | The port to listen on; default `8787` |
+| `--port <n>` | The port to listen on; default `8787`, or the next free one when another dev server holds it |
 | `--host <address>` | The address to bind; default `0.0.0.0`, every interface, so a phone on the same network can reach it. `127.0.0.1` keeps it to this machine |
+| `--app <which>` | The app to ask: `regular`, `next`, `dev`, or the port it listens on |
+| `--no-app` | Ask no app; connect from Settings instead |
 | `--entry <file>` | The entry point; default `src/index.ts` |
 | `--inline <pkg,…>` | Shared libraries to bundle rather than take from the app, comma-separated |
 | `--dir <path>` | The extension directory; default the current one |
@@ -201,8 +220,9 @@ Pass the same values, or the build you watch is not the build you ship.
   extension it already has. An installed copy of your own extension blocks
   its key too, so uninstall it while you iterate; the dev server screen
   lists the keys it did not take.
-- The app connects when you tap Connect, for as long as it runs. The next
-  launch starts on its own extensions.
+- The app runs your extension from the time you allow it or tap Connect
+  until it quits, or until the dev server stops. The next launch starts on
+  its own extensions.
 - The server answers the app, and the app's own web build in a browser.
   A request from any other web page is refused, and a host name other than
   this machine's own, a `.local` name or `localhost` is refused too: point

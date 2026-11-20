@@ -6,8 +6,11 @@
 //
 //   npm run dev                  # every extension, on the LAN
 //   npm run dev -- --only pota   # just the ones you're working on
+//   npm run dev -- --app next    # ask the Next build rather than a Dev one
 //
-// Point the app at the printed URL under Settings → Developer → Extension Dev
+// A desktop app on this machine with Developer Mode on is asked over the dev
+// link (tools/dev-link.mjs) and runs them once the operator allows; any other
+// app is pointed at the printed URL under Settings → Developer → Extension Dev
 // Server. It is over the LAN rather than a local file path because that is the
 // only shape that reaches a phone, which is where most of this software runs.
 //
@@ -26,11 +29,12 @@
 // all of them, and each rebuild whose bytes actually changed reloads.
 
 import { context } from "esbuild"
-import { watch } from "node:fs"
+import { realpathSync, watch } from "node:fs"
 import { createServer } from "node:http"
 import { dirname, join } from "node:path"
 
 import { bundles, buildOptionsFor, indexEntryFor, loadHostSharedVersions, loadKnownExperiments, loadManifests, readManifest, root } from "./build-config.mjs"
+import { loopbackServerUrl, parseAppChoice, startDevLink } from "./tools/dev-link.mjs"
 import { ABOUT_FILE } from "./tools/h2kext-build.mjs"
 import {
   broadcast as broadcastTo,
@@ -38,13 +42,16 @@ import {
   guardRequest,
   json,
   lanAddresses,
+  listenWithFallback,
   logLinesFrom,
+  PORT_FALLBACK,
   PROTOCOL,
   readBody,
   requestPath,
   SERVER_NAME,
   serveSafely,
   stamp,
+  TOOLS_VERSION,
   webOrigin,
 } from "./tools/h2kext-dev.mjs"
 
@@ -78,6 +85,17 @@ for (let i = 0; i < args.length - 1; i += 1) {
     process.exit(1)
   }
 }
+// Which running app the dev link asks (`--app`), and whether it asks one at
+// all (`--no-app`). A Dev build unless told otherwise: these are the app's own
+// extensions, which only a debug build takes from a dev server, and an
+// installed app the operator is logging with is not to be asked about them.
+const appArg = argValue("--app", "dev")
+const appChoice = parseAppChoice(appArg)
+if (!appChoice) {
+  console.error(`--app takes regular, next, dev or a port, not "${appArg}"`)
+  process.exit(1)
+}
+const askApp = !args.includes("--no-app")
 const only = argValue("--only", null)
   ?.split(",")
   .map((s) => s.trim())
@@ -336,18 +354,40 @@ const server = createServer(
   }),
 )
 
-server.listen(port, bindHost, () => {
+// A port taken by another checkout's dev server moves this one up, unless
+// `--port` named it.
+const listening = await listenWithFallback(server, { port, host: bindHost, fallback: args.includes("--port") ? 0 : PORT_FALLBACK }).catch((e) => {
+  console.error(`could not listen on ${bindHost}:${port}: ${e.message}`)
+  process.exit(1)
+})
+{
   const failed = served.filter((b) => !sources.has(b.key))
   console.log(`\nHaLo extension dev server — ${sources.size} extension${sources.size === 1 ? "" : "s"} ready`)
   if (failed.length) console.log(`  ${failed.length} failed to build: ${failed.map((b) => b.key).join(", ")}`)
-  console.log("\nPoint the app at (Settings → Developer → Extension Dev Server):")
-  for (const address of lanAddresses()) console.log(`  http://${address}:${port}`)
+  console.log("\nAny other app (a phone, a web build): Settings → Developer → Extension Dev Server, at")
+  for (const address of lanAddresses()) console.log(`  http://${address}:${listening}`)
   console.log("\nWatching for changes. A kernel change is reported but not served —")
   console.log("it needs `npm run build` and an app restart.\n")
-})
+}
+
+const loopbackUrl = loopbackServerUrl(server.address())
+if (askApp && !loopbackUrl) console.log(`Not asking a running app: --host ${bindHost} is not reachable from this machine's loopback.`)
+const link =
+  askApp && loopbackUrl
+    ? startDevLink({
+        hello: {
+          tool: { name: "extensions dev server", version: TOOLS_VERSION },
+          dir: realpathSync(root),
+          keys: served.map((b) => b.key),
+          server: loopbackUrl,
+        },
+        choice: appChoice,
+      })
+    : null
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, async () => {
+    link?.close()
     for (const watcher of aboutWatchers) watcher.close()
     for (const ctx of contexts) await ctx.dispose()
     server.close()

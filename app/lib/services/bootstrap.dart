@@ -32,6 +32,7 @@ import 'edition_keychain.dart';
 import 'hang_watchdog.dart';
 
 import 'error_reporting_service.dart';
+import 'extensions/dev_link/extension_dev_link_wiring.dart';
 import 'extensions/extension_dev_client.dart' show DevServerState, devServerAtLaunch;
 import 'extensions/extension_force_disable.dart' show forceDisabledBeforeStart, keepForceDisabledFromBoot;
 import 'extensions/extension_gone_since.dart' show updateExtensionGoneSince;
@@ -270,6 +271,7 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   services.maybeStartPeerSync();
   listenForPeerPairingRequests(services);
   startAgentLinkWhenWanted(services);
+  startExtensionDevLink(services);
   // Reads the flag rather than this branch: a null device key means storage
   // threw, but saying so out loud keeps the notice tied to the fact it reports
   // instead of to one caller's control flow.

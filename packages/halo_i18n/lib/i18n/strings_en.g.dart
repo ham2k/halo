@@ -8448,8 +8448,44 @@ class Translations$settings$developer$en {
 		other: '${count} extensions failing to build',
 	);
 
-	/// en: 'Not loaded from the server, since this app already has them: ${keys}'
-	String extDevServerRefused({required Object keys}) => 'Not loaded from the server, since this app already has them: ${keys}';
+	/// en: 'Not loaded from the server: ${reasons}'
+	String extDevServerRefused({required Object reasons}) => 'Not loaded from the server: ${reasons}';
+
+	/// en: 'Dev tools on this computer'
+	String get extDevLink => 'Dev tools on this computer';
+
+	/// en: 'h2kext-dev, run in an extension's folder, asks here to load it (port ${port}).'
+	String extDevLinkListening({required Object port}) => 'h2kext-dev, run in an extension\'s folder, asks here to load it (port ${port}).';
+
+	/// en: 'Getting ready to hear from dev tools…'
+	String get extDevLinkStarting => 'Getting ready to hear from dev tools…';
+
+	/// en: 'Dev tools can't reach this app: ports ${ports} are all taken.'
+	String extDevLinkUnavailable({required Object ports}) => 'Dev tools can\'t reach this app: ports ${ports} are all taken.';
+
+	/// en: 'Dev tools can't reach this app: port ${port} is taken.'
+	String extDevLinkPortTaken({required Object port}) => 'Dev tools can\'t reach this app: port ${port} is taken.';
+
+	/// en: 'Dev tools can't reach this app: ${error}'
+	String extDevLinkFailed({required Object error}) => 'Dev tools can\'t reach this app: ${error}';
+
+	/// en: '${tool}: ${keys}'
+	String extDevLinkConnection({required Object tool, required Object keys}) => '${tool}: ${keys}';
+
+	/// en: 'Run an extension from ${tool}?'
+	String extDevLinkTitle({required Object tool}) => 'Run an extension from ${tool}?';
+
+	/// en: '${tool} is asking to load ${keys} from ${dir}, and reload it as you save.'
+	String extDevLinkBody({required Object tool, required Object keys, required Object dir}) => '${tool} is asking to load ${keys} from ${dir}, and reload it as you save.';
+
+	/// en: 'It runs until the app quits, with everything an installed extension may do. Allow it only if you started it yourself.'
+	String get extDevLinkWarning => 'It runs until the app quits, with everything an installed extension may do. Allow it only if you started it yourself.';
+
+	/// en: 'Allow'
+	String get extDevLinkAllow => 'Allow';
+
+	/// en: 'Don't Allow'
+	String get extDevLinkDeny => 'Don\'t Allow';
 
 	/// en: 'Extension Catalog'
 	String get catalog => 'Extension Catalog';
@@ -14812,7 +14848,19 @@ extension on Translations {
 			'settings.developer.extDevServerReconnect' => 'Reconnect at launch',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Last reload: ${key} at ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
-			'settings.developer.extDevServerRefused' => ({required Object keys}) => 'Not loaded from the server, since this app already has them: ${keys}',
+			'settings.developer.extDevServerRefused' => ({required Object reasons}) => 'Not loaded from the server: ${reasons}',
+			'settings.developer.extDevLink' => 'Dev tools on this computer',
+			'settings.developer.extDevLinkListening' => ({required Object port}) => 'h2kext-dev, run in an extension\'s folder, asks here to load it (port ${port}).',
+			'settings.developer.extDevLinkStarting' => 'Getting ready to hear from dev tools…',
+			'settings.developer.extDevLinkUnavailable' => ({required Object ports}) => 'Dev tools can\'t reach this app: ports ${ports} are all taken.',
+			'settings.developer.extDevLinkPortTaken' => ({required Object port}) => 'Dev tools can\'t reach this app: port ${port} is taken.',
+			'settings.developer.extDevLinkFailed' => ({required Object error}) => 'Dev tools can\'t reach this app: ${error}',
+			'settings.developer.extDevLinkConnection' => ({required Object tool, required Object keys}) => '${tool}: ${keys}',
+			'settings.developer.extDevLinkTitle' => ({required Object tool}) => 'Run an extension from ${tool}?',
+			'settings.developer.extDevLinkBody' => ({required Object tool, required Object keys, required Object dir}) => '${tool} is asking to load ${keys} from ${dir}, and reload it as you save.',
+			'settings.developer.extDevLinkWarning' => 'It runs until the app quits, with everything an installed extension may do. Allow it only if you started it yourself.',
+			'settings.developer.extDevLinkAllow' => 'Allow',
+			'settings.developer.extDevLinkDeny' => 'Don\'t Allow',
 			'settings.developer.catalog' => 'Extension Catalog',
 			'settings.developer.catalogSearchTracks' => 'Catalog Search Tracks',
 			'settings.developer.catalogSearchStable' => 'Only Stable',
@@ -15147,6 +15195,8 @@ extension on Translations {
 			'updates.automaticChecks' => 'Check automatically',
 			'updates.automaticChecksDescription' => 'Look for new versions in the background, from the next time you start the app',
 			'extensionService.runtimeNotReady' => 'Extension runtime not ready.',
+			_ => null,
+		} ?? switch (path) {
 			'extensionService.testFailed' => ({required Object error}) => 'Test failed: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'Connected as ${identity}',
 			'extensionService.invalidFieldConfiguration' => 'Invalid field configuration',
@@ -15159,8 +15209,6 @@ extension on Translations {
 			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} can’t run that: it’s one of the app’s own developer commands',
 			'extensionService.changedSetting' => ({required Object name, required Object setting, required Object value}) => '${name} set ${setting} to ${value}',
 			'extensionService.switchedLayout' => ({required Object name, required Object layout}) => '${name} switched to the ${layout} layout',
-			_ => null,
-		} ?? switch (path) {
 			'extensionService.addedLayout' => ({required Object name, required Object layout}) => '${name} added the ${layout} layout',
 			'extensionService.changedLayout' => ({required Object name, required Object layout}) => '${name} changed the ${layout} layout',
 			'extensionService.removedLayout' => ({required Object name, required Object layout}) => '${name} removed the ${layout} layout',

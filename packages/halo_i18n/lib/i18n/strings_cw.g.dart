@@ -3692,7 +3692,19 @@ class _Translations$settings$developer$cw extends Translations$settings$develope
 		one: '${count} / · —··— — · —· ··· ·· ——— —· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··',
 		other: '${count} / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··',
 	);
-	@override String extDevServerRefused({required Object keys}) => '—· ——— — / ·—·· ——— ·— —·· · —·· / ··—· ·—· ——— —— / — ···· · / ··· · ·—· ···— · ·—· ——··—— / ··· ·· —· —·—· · / — ···· ·· ··· / ·— ·——· ·——· / ·— ·—·· ·—· · ·— —·· —·—— / ···· ·— ··· / — ···· · —— ———··· / ${keys}';
+	@override String extDevServerRefused({required Object reasons}) => '—· ——— — / ·—·· ——— ·— —·· · —·· / ··—· ·—· ——— —— / — ···· · / ··· · ·—· ···— · ·—· ———··· / ${reasons}';
+	@override String get extDevLink => '—·· · ···— / — ——— ——— ·—·· ··· / ——— —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·';
+	@override String extDevLinkListening({required Object port}) => '···· ··——— —·— · —··— — —····— —·· · ···— ——··—— / ·—· ··— —· / ·· —· / ·— —· / · —··— — · —· ··· ·· ——— —· ·————· ··· / ··—· ——— ·—·· —·· · ·—· ——··—— / ·— ··· —·— ··· / ···· · ·—· · / — ——— / ·—·· ——— ·— —·· / ·· — / —·——· ·——· ——— ·—· — / ${port} —·——·— ·—·—·—';
+	@override String get extDevLinkStarting => '——· · — — ·· —· ——· / ·—· · ·— —·· —·—— / — ——— / ···· · ·— ·—· / ··—· ·—· ——— —— / —·· · ···— / — ——— ——— ·—·· ··· …';
+	@override String extDevLinkUnavailable({required Object ports}) => '—·· · ···— / — ——— ——— ·—·· ··· / —·—· ·— —· ·————· — / ·—· · ·— —·—· ···· / — ···· ·· ··· / ·— ·——· ·——· ———··· / ·——· ——— ·—· — ··· / ${ports} / ·— ·—· · / ·— ·—·· ·—·· / — ·— —·— · —· ·—·—·—';
+	@override String extDevLinkPortTaken({required Object port}) => '—·· · ···— / — ——— ——— ·—·· ··· / —·—· ·— —· ·————· — / ·—· · ·— —·—· ···· / — ···· ·· ··· / ·— ·——· ·——· ———··· / ·——· ——— ·—· — / ${port} / ·· ··· / — ·— —·— · —· ·—·—·—';
+	@override String extDevLinkFailed({required Object error}) => '—·· · ···— / — ——— ——— ·—·· ··· / —·—· ·— —· ·————· — / ·—· · ·— —·—· ···· / — ···· ·· ··· / ·— ·——· ·——· ———··· / ${error}';
+	@override String extDevLinkConnection({required Object tool, required Object keys}) => '${tool} ———··· / ${keys}';
+	@override String extDevLinkTitle({required Object tool}) => '·—· ··— —· / ·— —· / · —··— — · —· ··· ·· ——— —· / ··—· ·—· ——— —— / ${tool} ··——··';
+	@override String extDevLinkBody({required Object tool, required Object keys, required Object dir}) => '${tool} / ·· ··· / ·— ··· —·— ·· —· ——· / — ——— / ·—·· ——— ·— —·· / ${keys} / ··—· ·—· ——— —— / ${dir} ——··—— / ·— —· —·· / ·—· · ·—·· ——— ·— —·· / ·· — / ·— ··· / —·—— ——— ··— / ··· ·— ···— · ·—·—·—';
+	@override String get extDevLinkWarning => '·· — / ·—· ··— —· ··· / ··— —· — ·· ·—·· / — ···· · / ·— ·——· ·——· / ——·— ··— ·· — ··· ——··—— / ·—— ·· — ···· / · ···— · ·—· —·—— — ···· ·· —· ——· / ·— —· / ·· —· ··· — ·— ·—·· ·—·· · —·· / · —··— — · —· ··· ·· ——— —· / —— ·— —·—— / —·· ——— ·—·—·— / ·— ·—·· ·—·· ——— ·—— / ·· — / ——— —· ·—·· —·—— / ·· ··—· / —·—— ——— ··— / ··· — ·— ·—· — · —·· / ·· — / —·—— ——— ··— ·—· ··· · ·—·· ··—· ·—·—·—';
+	@override String get extDevLinkAllow => '·— ·—·· ·—·· ——— ·——';
+	@override String get extDevLinkDeny => '—·· ——— —· ·————· — / ·— ·—·· ·—·· ——— ·——';
 	@override String get catalog => '· —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——·';
 	@override String get catalogSearchTracks => '—·—· ·— — ·— ·—·· ——— ——· / ··· · ·— ·—· —·—· ···· / — ·—· ·— —·—· —·— ···';
 	@override String get catalogSearchStable => '——— —· ·—·· —·—— / ··· — ·— —··· ·—·· ·';
@@ -8167,7 +8179,19 @@ extension on TranslationsCw {
 			'settings.developer.extDevServerReconnect' => '·—· · —·—· ——— —· —· · —·—· — / ·— — / ·—·· ·— ··— —· —·—· ····',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => '·—·· ·— ··· — / ·—· · ·—·· ——— ·— —·· ———··· / ${key} / ·— — / ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / · —··— — · —· ··· ·· ——— —· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', other: '${count} / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', ), 
-			'settings.developer.extDevServerRefused' => ({required Object keys}) => '—· ——— — / ·—·· ——— ·— —·· · —·· / ··—· ·—· ——— —— / — ···· · / ··· · ·—· ···— · ·—· ——··—— / ··· ·· —· —·—· · / — ···· ·· ··· / ·— ·——· ·——· / ·— ·—·· ·—· · ·— —·· —·—— / ···· ·— ··· / — ···· · —— ———··· / ${keys}',
+			'settings.developer.extDevServerRefused' => ({required Object reasons}) => '—· ——— — / ·—·· ——— ·— —·· · —·· / ··—· ·—· ——— —— / — ···· · / ··· · ·—· ···— · ·—· ———··· / ${reasons}',
+			'settings.developer.extDevLink' => '—·· · ···— / — ——— ——— ·—·· ··· / ——— —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·',
+			'settings.developer.extDevLinkListening' => ({required Object port}) => '···· ··——— —·— · —··— — —····— —·· · ···— ——··—— / ·—· ··— —· / ·· —· / ·— —· / · —··— — · —· ··· ·· ——— —· ·————· ··· / ··—· ——— ·—·· —·· · ·—· ——··—— / ·— ··· —·— ··· / ···· · ·—· · / — ——— / ·—·· ——— ·— —·· / ·· — / —·——· ·——· ——— ·—· — / ${port} —·——·— ·—·—·—',
+			'settings.developer.extDevLinkStarting' => '——· · — — ·· —· ——· / ·—· · ·— —·· —·—— / — ——— / ···· · ·— ·—· / ··—· ·—· ——— —— / —·· · ···— / — ——— ——— ·—·· ··· …',
+			'settings.developer.extDevLinkUnavailable' => ({required Object ports}) => '—·· · ···— / — ——— ——— ·—·· ··· / —·—· ·— —· ·————· — / ·—· · ·— —·—· ···· / — ···· ·· ··· / ·— ·——· ·——· ———··· / ·——· ——— ·—· — ··· / ${ports} / ·— ·—· · / ·— ·—·· ·—·· / — ·— —·— · —· ·—·—·—',
+			'settings.developer.extDevLinkPortTaken' => ({required Object port}) => '—·· · ···— / — ——— ——— ·—·· ··· / —·—· ·— —· ·————· — / ·—· · ·— —·—· ···· / — ···· ·· ··· / ·— ·——· ·——· ———··· / ·——· ——— ·—· — / ${port} / ·· ··· / — ·— —·— · —· ·—·—·—',
+			'settings.developer.extDevLinkFailed' => ({required Object error}) => '—·· · ···— / — ——— ——— ·—·· ··· / —·—· ·— —· ·————· — / ·—· · ·— —·—· ···· / — ···· ·· ··· / ·— ·——· ·——· ———··· / ${error}',
+			'settings.developer.extDevLinkConnection' => ({required Object tool, required Object keys}) => '${tool} ———··· / ${keys}',
+			'settings.developer.extDevLinkTitle' => ({required Object tool}) => '·—· ··— —· / ·— —· / · —··— — · —· ··· ·· ——— —· / ··—· ·—· ——— —— / ${tool} ··——··',
+			'settings.developer.extDevLinkBody' => ({required Object tool, required Object keys, required Object dir}) => '${tool} / ·· ··· / ·— ··· —·— ·· —· ——· / — ——— / ·—·· ——— ·— —·· / ${keys} / ··—· ·—· ——— —— / ${dir} ——··—— / ·— —· —·· / ·—· · ·—·· ——— ·— —·· / ·· — / ·— ··· / —·—— ——— ··— / ··· ·— ···— · ·—·—·—',
+			'settings.developer.extDevLinkWarning' => '·· — / ·—· ··— —· ··· / ··— —· — ·· ·—·· / — ···· · / ·— ·——· ·——· / ——·— ··— ·· — ··· ——··—— / ·—— ·· — ···· / · ···— · ·—· —·—— — ···· ·· —· ——· / ·— —· / ·· —· ··· — ·— ·—·· ·—·· · —·· / · —··— — · —· ··· ·· ——— —· / —— ·— —·—— / —·· ——— ·—·—·— / ·— ·—·· ·—·· ——— ·—— / ·· — / ——— —· ·—·· —·—— / ·· ··—· / —·—— ——— ··— / ··· — ·— ·—· — · —·· / ·· — / —·—— ——— ··— ·—· ··· · ·—·· ··—· ·—·—·—',
+			'settings.developer.extDevLinkAllow' => '·— ·—·· ·—·· ——— ·——',
+			'settings.developer.extDevLinkDeny' => '—·· ——— —· ·————· — / ·— ·—·· ·—·· ——— ·——',
 			'settings.developer.catalog' => '· —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——·',
 			'settings.developer.catalogSearchTracks' => '—·—· ·— — ·— ·—·· ——— ——· / ··· · ·— ·—· —·—· ···· / — ·—· ·— —·—· —·— ···',
 			'settings.developer.catalogSearchStable' => '——— —· ·—·· —·—— / ··· — ·— —··· ·—·· ·',
@@ -8502,6 +8526,8 @@ extension on TranslationsCw {
 			'updates.automaticChecks' => '—·—· ···· · —·—· —·— / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·——',
 			'updates.automaticChecksDescription' => '·—·· ——— ——— —·— / ··—· ——— ·—· / —· · ·—— / ···— · ·—· ··· ·· ——— —· ··· / ·· —· / — ···· · / —··· ·— —·—· —·— ——· ·—· ——— ··— —· —·· ——··—— / ··—· ·—· ——— —— / — ···· · / —· · —··— — / — ·· —— · / —·—— ——— ··— / ··· — ·— ·—· — / — ···· · / ·— ·——· ·——·',
 			'extensionService.runtimeNotReady' => '· —··— — · —· ··· ·· ——— —· / ·—· ··— —· — ·· —— · / —· ——— — / ·—· · ·— —·· —·—— ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'extensionService.testFailed' => ({required Object error}) => '— · ··· — / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => '—·—· ——— —· —· · —·—· — · —·· / ·— ··· / ${identity}',
 			'extensionService.invalidFieldConfiguration' => '·· —· ···— ·— ·—·· ·· —·· / ··—· ·· · ·—·· —·· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —·',
@@ -8514,8 +8540,6 @@ extension on TranslationsCw {
 			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} / —·—· ·— —· ’ — / ·—· ··— —· / — ···· ·— — ———··· / ·· — ’ ··· / ——— —· · / ——— ··—· / — ···· · / ·— ·——· ·——· ’ ··· / ——— ·—— —· / —·· · ···— · ·—·· ——— ·——· · ·—· / —·—· ——— —— —— ·— —· —·· ···',
 			'extensionService.changedSetting' => ({required Object name, required Object setting, required Object value}) => '${name} / ··· · — / ${setting} / — ——— / ${value}',
 			'extensionService.switchedLayout' => ({required Object name, required Object layout}) => '${name} / ··· ·—— ·· — —·—· ···· · —·· / — ——— / — ···· · / ${layout} / ·—·· ·— —·—— ——— ··— —',
-			_ => null,
-		} ?? switch (path) {
 			'extensionService.addedLayout' => ({required Object name, required Object layout}) => '${name} / ·— —·· —·· · —·· / — ···· · / ${layout} / ·—·· ·— —·—— ——— ··— —',
 			'extensionService.changedLayout' => ({required Object name, required Object layout}) => '${name} / —·—· ···· ·— —· ——· · —·· / — ···· · / ${layout} / ·—·· ·— —·—— ——— ··— —',
 			'extensionService.removedLayout' => ({required Object name, required Object layout}) => '${name} / ·—· · —— ——— ···— · —·· / — ···· · / ${layout} / ·—·· ·— —·—— ——— ··— —',
