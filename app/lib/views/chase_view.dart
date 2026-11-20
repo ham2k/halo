@@ -557,6 +557,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
   bool _onSpotKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
     if (testerOverlayCovering.value || !mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
+    if (!(dockKey.currentState?.modules.contains(ChaseView.loggingPanelId) ?? true)) return false;
     return _spotKeys.onKey(event, services: widget.services, vfo: 'vfoA', qsoLoaded: _selectedQsoUuid != null, operation: _operation, suggest: _suggestQso);
   }
 
@@ -637,6 +638,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
   }
 
   void _suggestQso(Map<String, dynamic> qso, {bool reveal = true}) {
+    _spotKeys.suggested(qso, vfo: 'vfoA');
     setState(() {
       _suggestedQso = zeroBeatSuggestionFor(qso, services: widget.services, offsetter: _zeroBeat);
       _suggestedQsoIsTentative = !reveal;

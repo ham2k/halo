@@ -270,7 +270,8 @@ export interface CandidateVerdict {
   icons?: { icon: string; color?: string }[]
   /// The most points a scorer the operation names gives the candidate,
   /// absent where none said: 0 is a station worth nothing to every one of
-  /// them. The scorers every operation runs (DXCC, states) are not counted.
+  /// them. The scorers every operation runs (DXCC, states) are not counted,
+  /// nor one a reference the candidate hunts brought in.
   value?: number
 }
 

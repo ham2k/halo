@@ -243,6 +243,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// offset is a property of where the suggestion came from, never of whether
   /// the operation happened to be open when it arrived.
   void _suggestQso(Map<String, dynamic> qso, {bool reveal = true, bool measured = false}) {
+    _spotKeys.suggested(qso, vfo: _operatorVfo);
     setState(() {
       _suggestedQso = measured ? qso : zeroBeatSuggestionFor(qso, services: widget.services, offsetter: _zeroBeat);
       // A slide peek is the one suggestion the operator has not committed to.
@@ -698,6 +699,10 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
 
   final _spotKeys = SpotKeys();
 
+  /// The VFO of the radio the operator works: radio1's, or under SO2R the set
+  /// they are in.
+  String get _operatorVfo => widget.services.cat.operatorRadio == 'B' ? 'vfoB' : 'vfoA';
+
   /// ⌘↑/⌘↓ and the rest of the spot keys while this operation is the
   /// front-most route ([SpotKeys.onKey]), on the operator's radio.
   bool _onSpotKeyEvent(KeyEvent event) {
@@ -705,10 +710,13 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     if (testerOverlayCovering.value || !mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
     final operation = _operation;
     if (operation == null) return false;
+    // With no logging pane a suggestion lands nowhere, and the press is left
+    // to whatever else takes it.
+    if (!(dockKey.currentState?.modules.contains('logging') ?? true)) return false;
     return _spotKeys.onKey(
       event,
       services: widget.services,
-      vfo: widget.services.cat.operatorRadio == 'B' ? 'vfoB' : 'vfoA',
+      vfo: _operatorVfo,
       qsoLoaded: _selectedQsoUuid != null,
       operation: operation,
       suggest: _suggestQso,

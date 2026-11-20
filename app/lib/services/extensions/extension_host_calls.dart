@@ -909,8 +909,26 @@ class _ExtensionHostCalls {
     final score = _service.onScoreCandidates;
     if (score == null) return null;
     if (candidates.isEmpty) return const <String, dynamic>{};
-    return score({for (final MapEntry(:key, :value) in candidates.entries) '$key': (value as Map).cast<String, dynamic>()}, operationUuid as String?);
+    final verdicts = await score({
+      for (final MapEntry(:key, :value) in candidates.entries) '$key': (value as Map).cast<String, dynamic>(),
+    }, operationUuid as String?);
+    final caller = params['extensionKey'];
+    final api = _service.availableExtensions.where((info) => info.key == caller).firstOrNull?.runtimeApi ?? kExtensionApiVersion;
+    return api >= candidateValueApiVersion || verdicts == null ? verdicts : withoutCandidateValues(verdicts);
   }
+
+  /// The first extension API whose `ctx.scoreCandidates` answers carry `value`.
+  static const candidateValueApiVersion = 30;
+
+  /// [verdicts] as `ctx.scoreCandidates` answered before API 30: no `value`,
+  /// and no entry for a candidate a scorer only valued. An extension written
+  /// against that answer reads a key as "a scorer had something to say".
+  static Map<String, Map<String, dynamic>> withoutCandidateValues(Map<String, Map<String, dynamic>> verdicts) => {
+    for (final MapEntry(:key, :value) in verdicts.entries)
+      if (_saysSomething(value)) key: {...value}..remove('value'),
+  };
+
+  static bool _saysSomething(Map<String, dynamic> verdict) => ['notices', 'alerts', 'icons'].any((field) => (verdict[field] as List?)?.isNotEmpty ?? false);
 
   /// Backs `host.dbLookupFindCalls`: the rows of a dataset keyed by callsign
   /// whose key the typed text could be, each with how it matched.

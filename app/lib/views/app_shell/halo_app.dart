@@ -359,6 +359,7 @@ class _HaLoAppState extends State<HaLoApp> {
         darkTheme: buildHaLoTheme(Brightness.dark),
         themeMode: widget.services.settings.themeMode,
         debugShowCheckedModeBanner: false,
+        actions: haloAppActions,
         home: HomeView(services: widget.services),
         builder: (context, child) {
           if (child == null) return const SizedBox.shrink();
@@ -638,3 +639,7 @@ class _TopSafeAreaTrim extends StatelessWidget {
     );
   }
 }
+
+/// The app's actions: Flutter's own, with a scroll that stands down for a key
+/// a command took ([ScrollUnlessKeyTaken]).
+final Map<Type, Action<Intent>> haloAppActions = {...WidgetsApp.defaultActions, ScrollIntent: ScrollUnlessKeyTaken()};

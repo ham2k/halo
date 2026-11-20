@@ -933,6 +933,71 @@ void main() {
       expect(result?.containsKey('spot-2'), isFalse, reason: "core's point is no value");
     });
 
+    // POTA is brought in by the park on a spot, not named by the operation.
+    // Counted, its credit for hunting the park would keep a station the
+    // contest gives nothing — DX in Sweepstakes — under the spot keys.
+    test('a scorer brought in only by a hunted reference gives no value', () async {
+      final result =
+          await _LiveExtensions(
+            _StubHost({
+              'vhf:scoreCandidates': {
+                'spot-1': {'notices': <String>[], 'alerts': <String>[], 'value': 0},
+              },
+              'pota:scoreCandidates': {
+                'spot-1': {'notices': <String>[], 'alerts': <String>[], 'value': 1},
+              },
+            }),
+            _vhfPark,
+          ).scoreCandidates(
+            operation: _vhfParkOperationData,
+            operationUuid: 'op-live',
+            candidates: {
+              'spot-1': {
+                'their': {'call': 'DL1ABC'},
+                'band': '6m',
+                'mode': 'SSB',
+                'refs': [
+                  {'type': 'pota', 'ref': 'DE-0001'},
+                ],
+              },
+            },
+          );
+      expect(result?['spot-1']?['value'], 0);
+    });
+
+    // A contest beside an activation: the activation credits every station,
+    // the contest gives DX nothing. With the activation's answer missing, the
+    // contest's 0 alone would pass over every DX spot the activation counts.
+    test('a named scorer that failed leaves every candidate without a value', () async {
+      final result =
+          await _LiveExtensions(
+            _StubHost({
+              'vhf:scoreCandidates': {
+                'spot-1': {'notices': <String>[], 'alerts': <String>[], 'value': 0},
+              },
+              'pota:scoreCandidates': Exception('timed out'),
+            }),
+            _vhfPark,
+          ).scoreCandidates(
+            operation: {
+              ..._vhfParkOperationData,
+              'refs': [
+                {'type': 'arrl-vhf-tests'},
+                {'type': 'potaActivation', 'ref': 'US-0001'},
+              ],
+            },
+            operationUuid: 'op-live',
+            candidates: {
+              'spot-1': {
+                'their': {'call': 'DL1ABC'},
+                'band': '6m',
+                'mode': 'SSB',
+              },
+            },
+          );
+      expect(result?['spot-1']?.containsKey('value') ?? false, isFalse);
+    });
+
     // A VHF test answers `missingExchange` for every candidate on the board,
     // since a spot carries no exchange. Reading that as a judgement would take
     // the striking off the whole board for the length of the contest.

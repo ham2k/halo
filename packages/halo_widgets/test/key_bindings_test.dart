@@ -342,6 +342,39 @@ void main() {
     });
   });
 
+  // Flutter pages a list on Ctrl+↑/↓ (⌘↑/↓ on Apple's), the spot keys'
+  // defaults, and its Shortcuts hand the scroll an intent, never the event:
+  // the flag is all it has to stand down by. Left set past the press, every
+  // later scroll key would stop working.
+  testWidgets('a key a command took reads as taken while the focus tree hears it, and no longer', (tester) async {
+    final heard = <bool>[];
+    bool take(KeyEvent event) {
+      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowDown) takeKeyEvent(event);
+      return false;
+    }
+
+    HardwareKeyboard.instance.addHandler(take);
+    addTearDown(() => HardwareKeyboard.instance.removeHandler(take));
+    final focus = FocusNode();
+    addTearDown(focus.dispose);
+    await tester.pumpWidget(
+      Focus(
+        focusNode: focus,
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent) heard.add(keyEventInFlightTaken);
+          return KeyEventResult.ignored;
+        },
+        child: const SizedBox(),
+      ),
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(keyEventInFlightTaken, isFalse);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    expect(heard, [true, false]);
+  });
+
   group('which chords may be bound', () {
     test('never Escape, nor a field key on its own', () {
       for (final text in ['Escape', 'cmd+Escape', 'Enter', 'Space', 'Tab', 'shift+Tab', 'Up', 'PageDown', 'Backspace']) {

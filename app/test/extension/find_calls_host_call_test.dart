@@ -131,6 +131,42 @@ void main() {
       });
     });
 
+    // Before API 30 a key in the answer meant a scorer had something to say,
+    // and an extension may still read it that way. Handed every valued
+    // candidate, one built then would flag the whole board.
+    test('answers an extension older than API 30 as it was answered then: no value, nor a candidate only valued', () async {
+      extensions.debugSetAvailableExtensions([
+        const ExtensionInfo(key: 'w1aw-old', file: 'old.js', core: false, name: 'Old', api: 29),
+        const ExtensionInfo(key: 'w1aw-new', file: 'new.js', core: false, name: 'New', api: 30),
+      ]);
+      extensions.onScoreCandidates = (candidates, operationUuid) async => {
+        'dupe': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+          'value': 0,
+        },
+        'plain': {'notices': <String>[], 'alerts': <String>[], 'value': 2},
+      };
+      Future<dynamic> ask(String caller) => extensions.debugHandleHostCall('scoreCandidates', {
+        'extensionKey': caller,
+        'candidates': {
+          'dupe': {
+            'their': {'call': 'K1AB'},
+          },
+          'plain': {
+            'their': {'call': 'W1AW'},
+          },
+        },
+      });
+      expect(await ask('w1aw-old'), {
+        'dupe': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
+      });
+      expect((await ask('w1aw-new') as Map).keys, ['dupe', 'plain']);
+    });
+
     test('rejects an operationUuid that is no string, worded as its other refusals are', () async {
       await expectLater(
         extensions.debugHandleHostCall('scoreCandidates', {'operationUuid': 42, 'candidates': <String, dynamic>{}}),

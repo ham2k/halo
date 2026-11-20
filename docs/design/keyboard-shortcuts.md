@@ -124,18 +124,30 @@ the panel strikes through — not ones only slid aside there, which stay in
 that panel alone), and those worth no points to the operation: a station
 every scorer the operation names gives a `value` of 0, as Sweepstakes does
 DX, outside its bands or modes, or past its hours
-([scoring.md](../extensions/scoring.md)). With ⇧, only those a scorer marks `newMult` for the
-operation in front. A press steps on from the spot the
-last one landed on while the VFO is still within 80 Hz of it — past the
-widest zero-beat offset — so stations spotted on one frequency are each
-reached, in call order; otherwise it goes to the nearest spot more than
-80 Hz from the VFO. Past the last spot that way a press says so on the
-status bar. On a Mac ⌃↑ and ⌃↓ are Mission Control's and App Exposé's out
+([scoring.md](../extensions/scoring.md)) — unless it is a new multiplier,
+since CQ WW gives a station in the operator's own country no points and it
+can still be a new zone. Only the scorers the operation names count, not one
+a hunted reference on a spot brought in, and a pass in which one of them
+failed passes over nothing for points. With ⇧, only those a scorer marks
+`newMult` for the operation in front.
+
+A press steps on from the station last suggested — by a press or by a tap
+on its spot — while the VFO is within 80 Hz of it (past the widest
+zero-beat offset) or still where it stood for that press, which the
+suggestion tunes only a frame later: the next spot in frequency order, then
+call order on one frequency. So stations spotted on one frequency are each
+reached, the one just logged and struck through included; otherwise a press
+goes to the nearest spot more than 80 Hz from the VFO. Past the last spot
+that way a press says so on the status bar. On a Mac ⌃↑ and ⌃↓ are Mission Control's and App Exposé's out
 of the box, which is why the defaults use the platform's ⌘ there.
 
-They stand aside exactly as the VFO keys do — with a logged contact
-loaded, in free text, on a control that owns the arrows — and the press
-they take is marked for the logging fields in the same way. With a contact
+They stand aside as the VFO keys do — with a logged contact loaded, in free
+text, on a control that owns the arrows — and in a layout with no logging
+pane, where a suggestion would land nowhere. The press they take is marked
+for the logging fields in the same way, and for Flutter's own page scroll,
+which the app replaces with one that stands down for a taken press
+(`ScrollUnlessKeyTaken`): Ctrl+↑/↓, and ⌘↑/↓ on Apple's, are that scroll
+too, and with no field focused it would page a list under the spot. With a contact
 loaded ⌘↑ and ⌘↓ go to the ends of the QSO list, as they always have; no
 other command may take ⌘↑ or ⌘↓ alone. Off a Mac, Ctrl+↑/↓ never walked
 the list.

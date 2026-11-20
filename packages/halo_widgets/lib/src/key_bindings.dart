@@ -6,10 +6,24 @@
 // stays where it is and asks [keyBindings] whether an event is its command's,
 // instead of testing keys and modifiers itself.
 
+import 'dart:async' show scheduleMicrotask;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart'
-    show BuildContext, EditableText, FocusManager, FocusNode, IconData, KeyEventResult, StatelessWidget, TextEditingValue, TextSelection, Widget;
+    show
+        BuildContext,
+        EditableText,
+        FocusManager,
+        FocusNode,
+        IconData,
+        KeyEventResult,
+        ScrollAction,
+        ScrollIntent,
+        StatelessWidget,
+        TextEditingValue,
+        TextSelection,
+        Widget;
 
 import 'call_field_text.dart' show callsignCharacters;
 import 'logging_controls.dart' show LoggingControls;
@@ -834,9 +848,30 @@ final ValueNotifier<KeyBindings> keyBindings = ValueNotifier<KeyBindings>(Legacy
 /// field that would give the key a meaning of its own — the QSO list's walk
 /// taking ⌥↑ — asks [keyEventTaken] first.
 KeyEvent? _takenKeyEvent;
+bool _takenInFlight = false;
 
 /// Marks [event] as acted on by a command's handler ([keyEventTaken]).
-void takeKeyEvent(KeyEvent event) => _takenKeyEvent = event;
+void takeKeyEvent(KeyEvent event) {
+  _takenKeyEvent = event;
+  _takenInFlight = true;
+  // The handlers and the focus tree hear one event in a single synchronous
+  // pass, so it is over by the time a microtask runs.
+  scheduleMicrotask(() => _takenInFlight = false);
+}
+
+/// Whether a command's handler acted on the key event being dispatched right
+/// now — for a `Shortcuts`-bound action, which is handed an intent and never
+/// the event ([ScrollUnlessKeyTaken]).
+bool get keyEventInFlightTaken => _takenInFlight;
+
+/// Flutter's own scroll on the arrows with Ctrl (⌘ on Apple's), standing down
+/// for a press a command's handler took: the spot keys' defaults are those
+/// chords, and the focus tree, hearing the same press, would page a list
+/// under the spot as well. The app installs it in place of the default.
+class ScrollUnlessKeyTaken extends ScrollAction {
+  @override
+  bool isEnabled(ScrollIntent intent, [BuildContext? context]) => !keyEventInFlightTaken && super.isEnabled(intent, context);
+}
 
 /// Whether a command's handler acted on [event] ahead of the focus tree.
 bool keyEventTaken(KeyEvent event) => identical(_takenKeyEvent, event);

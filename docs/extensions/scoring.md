@@ -102,9 +102,10 @@ registerHook("scoring", {
   the station, and a spot carries none. Give 0 only to a station worth
   nothing to you — out of your category, band, mode or hours — since the
   spot keys (⌘↑ and ⌘↓) pass over a spot that every scorer the operation
-  names values at 0. An `'always'` scorer's value is not counted: it runs on
-  every operation, so its 0 would pass over every spot there. Extension
-  API 30.
+  names values at 0, unless it is a new multiplier. An `'always'` scorer's
+  value is not counted, since it runs on every operation and its 0 would
+  pass over every spot there; nor is one brought in only by a reference a
+  spot hunts. Extension API 30.
 
 **Worked-before is shared between scorers**, and the rule for who speaks is
 worth learning once. An `'always'` scorer is the lowest priority on that

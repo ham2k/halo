@@ -395,6 +395,10 @@ mixin ExtensionScoring {
     _ => candidate,
   };
 
+  /// A scorer the operation itself names: neither a fallback nor one a
+  /// hunted reference brought in, the two that carry no operation ref.
+  static bool _isNamed(Scorer scorer) => !scorer.fallback && scorer.ref != null;
+
   Future<Map<String, Map<String, dynamic>>?> scoreCandidates({
     required Map<String, dynamic> operation,
     required String operationUuid,
@@ -434,8 +438,13 @@ mixin ExtensionScoring {
     // The best a scorer the operation names gives each candidate. Not a
     // fallback's: core gives every unworked station a point, and a scorer that
     // only marks spots gives every one 0 — either would decide what a 0 from
-    // the contest means.
+    // the contest means. Nor a hunt-only one's: POTA, brought in by a park on
+    // a spot, credits a DX activator Sweepstakes counts for nothing.
     final values = <String, num>{};
+    // A named scorer that failed gave no value, and the best of the others is
+    // then no answer: a contest's 0 would pass over every DX spot an activation
+    // it ran beside still credits.
+    var namedFailed = false;
     var any = false;
     // Tracked apart from [any] because the two mean opposite things to the
     // caller. No scorer answering can be a pass that had nothing to say, or a
@@ -523,7 +532,7 @@ mixin ExtensionScoring {
             final value = entry.value;
             if (key is! String || value is! Map) continue;
             if (!scorer.fallback && judgesWorkedBefore(value)) judgedByOther.add(key);
-            if (!scorer.fallback) {
+            if (_isNamed(scorer)) {
               if (value['value'] case final num points) values[key] = max(values[key] ?? points, points);
             }
             final target = scorer.fallback ? fallbackMerged : merged;
@@ -546,6 +555,7 @@ mixin ExtensionScoring {
           // Per-scorer, like scoreQso: a contest scorer that throws must not cost
           // the spots their core dupe marking.
           failed = true;
+          if (_isNamed(scorer)) namedFailed = true;
           _reportScorerFailure(scorer.key, Hooks.scoringScoreCandidates.method, e, stackTrace);
         }
       }),
@@ -579,6 +589,7 @@ mixin ExtensionScoring {
       ];
     }
 
+    if (namedFailed) values.clear();
     return {
       for (final key in {...merged.keys, for (final icons in iconsByCall) ...icons.keys, ...values.keys})
         if ((notices: merged[key]?.notices ?? const <String>{}, alerts: merged[key]?.alerts ?? const <String>{}, icons: iconsOf(key)) case final verdict

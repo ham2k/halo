@@ -10,11 +10,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart' show nowMillis;
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:halo_widgets/halo_widgets.dart' show DockGroup;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/spot_board.dart' show spotCandidateKey;
 import 'package:ham2k_logger/views/operation/spot_keys.dart';
+import 'package:ham2k_logger/views/operation/spots_panel.dart' show suggestedQsoFromSpot;
 import 'package:ham2k_logger/views/operation_view.dart';
 
 import '../support/halo_test_support.dart';
@@ -32,8 +34,15 @@ void main() {
 
   group('one press', () {
     final band = [spot('K1A', 14010), spot('K2B', 14020), spot('K3C', 14030)];
-    String? step(double? freq, {required bool higher, String? landed, List<Map<String, dynamic>>? spots}) =>
-        (spotKeysStep(spots ?? band, freqKHz: freq, higher: higher, landedKey: landed)?['their'] as Map?)?['call'] as String?;
+    String? step(double? freq, {required bool higher, Map<String, dynamic>? landed, double? from, List<Map<String, dynamic>>? spots}) =>
+        (spotKeysStep(
+                  spots ?? band,
+                  freqKHz: freq,
+                  higher: higher,
+                  landed: landed == null ? null : (freq: (landed['freq'] as num).toDouble(), key: spotKeysKey(landed), from: from),
+                )?['their']
+                as Map?)?['call']
+            as String?;
 
     test('goes to the nearest spot up or down the band from the VFO, and nowhere past its end', () {
       expect(step(14015, higher: true), 'K2B');
@@ -61,15 +70,41 @@ void main() {
     test('reaches every station on one frequency, stepping on from the last one landed on', () {
       final crowded = [...band, spot('K2Z', 14020)];
       expect(step(14015, higher: true, spots: crowded), 'K2B');
-      expect(step(14020, higher: true, spots: crowded, landed: spotKeysKey(crowded[1])), 'K2Z');
-      expect(step(14020, higher: true, spots: crowded, landed: spotKeysKey(crowded[3])), 'K3C');
-      expect(step(14020, higher: false, spots: crowded, landed: spotKeysKey(crowded[3])), 'K2B');
+      expect(step(14020, higher: true, spots: crowded, landed: crowded[1]), 'K2Z');
+      expect(step(14020, higher: true, spots: crowded, landed: crowded[3]), 'K3C');
+      expect(step(14020, higher: false, spots: crowded, landed: crowded[3]), 'K2B');
+    });
+
+    // Logging the station landed on strikes its spot, which leaves the list.
+    // Measured from the VFO then, the next press would jump past every other
+    // station on that frequency.
+    test('steps on from a station landed on that has left the list, to the others on its frequency', () {
+      final crowded = [...band, spot('K2Z', 14020)];
+      final worked = crowded.where((s) => (s['their'] as Map)['call'] != 'K2B').toList();
+      expect(step(14020, higher: true, spots: worked, landed: crowded[1]), 'K2Z');
+      expect(step(14020, higher: false, spots: worked, landed: crowded[3]), 'K1A');
+    });
+
+    // The suggestion tunes the VFO a frame after the press: a held key's
+    // repeat can arrive first, and measured from the VFO alone it would find
+    // the same spot again rather than step on.
+    test('steps on from the station landed on while the VFO still stands where the press found it', () {
+      expect(step(14015, higher: true, landed: band[1], from: 14015), 'K3C');
+      expect(step(14016, higher: true, landed: band[1], from: 14015), 'K2B', reason: 'tuned since, by hand');
     });
 
     // The operator tuned away by hand since: the press is from where they
     // are now, not from a spot left behind.
+    // A source reports 14020 as an integer, while the suggestion made of it
+    // carries 14020.0: known by different keys, a tap's station would never
+    // be found among the spots to step on from.
+    test('knows a spot and the suggestion made of it as one station', () {
+      final reported = {...spot('K2B', 14020), 'freq': 14020};
+      expect(spotKeysKey(suggestedQsoFromSpot(reported)), spotKeysKey(reported));
+    });
+
     test('measures from the VFO once it has left the spot last landed on', () {
-      expect(step(14028, higher: false, landed: spotKeysKey(band[0])), 'K2B');
+      expect(step(14028, higher: false, landed: band[0]), 'K2B');
     });
   });
 
@@ -95,6 +130,13 @@ void main() {
     // and a press landing on it is one the operator has to press past.
     test('leaves out a station worth 0 points, and keeps one worth any', () {
       expect(pick(values: {spotCandidateKey('K2B', k2b): 0, spotCandidateKey('K3C', k3c): 2}), ['K3C']);
+    });
+
+    // CQ WW gives a station in our own country no points, and it can still be
+    // a new zone: ⇧ exists to find exactly that spot.
+    test('keeps a new multiplier worth 0 points, with ⇧ and without', () {
+      expect(pick(mult: true, values: {spotCandidateKey('K3C', k3c): 0}), ['K3C']);
+      expect(pick(values: {spotCandidateKey('K3C', k3c): 0}), ['K2B', 'K3C']);
     });
 
     // One operator of a multi-op spot still worth points keeps the station, as
@@ -163,7 +205,10 @@ void main() {
     }
     await tester.pumpWidget(
       TranslationProvider(
+        // The app's own actions: the spot keys' chords are Flutter's page
+        // scroll too, and the app's scroll stands down for a press they took.
         child: MaterialApp(
+          actions: haloAppActions,
           home: OperationView(services: services, operationUuid: operation.uuid),
         ),
       ),
@@ -197,6 +242,45 @@ void main() {
     expect(call(tester), 'K2B');
     await press(tester, LogicalKeyboardKey.arrowUp);
     expect(call(tester), 'K1A');
+    await unmount(tester);
+  });
+
+  // Two stations on one frequency, through the view: the second press steps
+  // on from the station the first suggested, rather than past them both.
+  testWidgets('reach each station spotted on one frequency, press after press', (tester) async {
+    await pumpOperation(tester);
+    services.radio.setVfo('vfoA', freq: 14015, band: '20m', mode: 'CW');
+    services.spots.replaceSpots('feed', [spot('K2B', 14020), spot('K2Z', 14020), spot('K3C', 14030)]);
+    await tester.pump();
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    expect(call(tester), 'K2B');
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    expect(call(tester), 'K2Z');
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    expect(call(tester), 'K3C');
+    await unmount(tester);
+  });
+
+  bool saidNoSpots() => services.statusBar.items.any((item) => item.key == 'spot-keys:none');
+
+  // A layout with no logging pane has nowhere to show a suggestion: a press
+  // taken there would land on a spot that never appears, and keep landing on
+  // it, since the VFO never moves. Measured against the same press in the
+  // default layout, which says there is nothing up the band.
+  testWidgets('leave the keys alone in a layout with no logging pane', (tester) async {
+    await pumpOperation(tester);
+    services.radio.setVfo('vfoA', freq: 14015, band: '20m', mode: 'CW');
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    expect(saidNoSpots(), isTrue, reason: 'the default layout takes the press');
+    await unmount(tester);
+  });
+
+  testWidgets('a layout of spots alone leaves the press untaken', (tester) async {
+    await services.settings.setLayoutData(LayoutKeys.operationDock, DockGroup(['spots']).toJson());
+    await pumpOperation(tester);
+    services.radio.setVfo('vfoA', freq: 14015, band: '20m', mode: 'CW');
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    expect(saidNoSpots(), isFalse);
     await unmount(tester);
   });
 
