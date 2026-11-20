@@ -292,6 +292,10 @@ abstract class GpsSink {
 abstract class So2rSwitchSession implements EquipmentSession {
   /// Puts [audio] in the operator's headphones.
   void setSo2rAudio(So2rAudio audio);
+
+  /// Routes the operator's key, PTT and microphone to [radio], `A` or `B`:
+  /// the box's transmit focus.
+  void setSo2rTransmit(String radio);
 }
 
 /// Where a [So2rSwitchSession] says what the box is set to — its own word,

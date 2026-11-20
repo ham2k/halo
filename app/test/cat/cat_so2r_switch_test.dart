@@ -59,9 +59,11 @@ abstract class _Session implements EquipmentSession {
 }
 
 /// A slice of a radio that switches its own audio.
-class _Slice extends _Session implements TransceiverSession, So2rRadioAudioSession {
+class _Slice extends _Session implements TransceiverSession, So2rRadioAudioSession, PttSession {
   _Slice(super.sink);
   final ears = <So2rEar?>[];
+  @override
+  void setPtt(bool on) {}
   @override
   void setSo2rEar(So2rEar? ear) => ears.add(ear);
   @override
@@ -75,8 +77,11 @@ class _Slice extends _Session implements TransceiverSession, So2rRadioAudioSessi
 class _Box extends _Session implements So2rSwitchSession {
   _Box(super.sink);
   final told = <So2rAudio>[];
+  final transmit = <String>[];
   @override
   void setSo2rAudio(So2rAudio audio) => told.add(audio);
+  @override
+  void setSo2rTransmit(String radio) => transmit.add(radio);
 }
 
 class _SliceDriver extends EquipmentDriver {
@@ -292,6 +297,55 @@ void main() {
       expect(settings.stationEquipment['so2rSwitch'], uuid);
       await cat.removeNode(uuid);
       expect(cat.so2rSwitch, isNull);
+    });
+
+    group('transmit focus', () {
+      test('goes to the radio about to be keyed, before every key', () async {
+        // The box sends one key and one microphone to one radio: keyed on B
+        // with the focus left on A, the operator's voice goes out on A. Told
+        // only when it moves, a box switched by hand, reset, or that lost the
+        // command would keep the other radio's focus.
+        final (a, b) = await twoRadios(hostB: 'k3.local');
+        final box = await aBox();
+        expect(box.transmit, isEmpty, reason: 'idle, the box keeps its own setting');
+        cat.togglePtt(b.uuid);
+        cat.togglePtt(b.uuid);
+        cat.togglePtt(b.uuid);
+        cat.togglePtt(b.uuid);
+        expect(box.transmit, ['B', 'B'], reason: 'once a key, and not again to unkey');
+        cat.togglePtt(a.uuid);
+        cat.togglePtt(a.uuid);
+        expect(box.transmit, ['B', 'B', 'A']);
+      });
+
+      test('a message moves it too, before it goes', () async {
+        final (_, b) = await twoRadios(hostB: 'k3.local');
+        final box = await aBox();
+        cat.yieldTransmitter(b.uuid);
+        expect(box.transmit, ['B']);
+      });
+
+      test('is told again to a box that reconnected', () async {
+        // A box that restarted is on its own default, whatever it was told.
+        final (_, b) = await twoRadios(hostB: 'k3.local');
+        await aBox();
+        cat.yieldTransmitter(b.uuid);
+        final uuid = cat.so2rSwitch!;
+        await cat.disconnect(uuid);
+        await cat.connect(uuid);
+        await pumpEventQueue();
+        cat.yieldTransmitter(b.uuid);
+        expect(boxes.last.transmit, ['B']);
+      });
+
+      test('is left alone for a radio in no set', () async {
+        final (a, _) = await twoRadios(hostB: 'k3.local');
+        final box = await aBox();
+        final spare = await cat.addNode(typeKey: 'slice-type', config: {'host': 'spare.local', 'slice': '0'});
+        await cat.setRadio1(LocalRadio(a.uuid));
+        cat.yieldTransmitter(spare.uuid);
+        expect(box.transmit, isEmpty);
+      });
     });
   });
 

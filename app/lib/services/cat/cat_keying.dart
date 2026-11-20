@@ -37,72 +37,8 @@ import 'peer_keying.dart';
 
 part 'cat_keying_computer_voice.dart';
 part 'cat_keying_peer_bridge.dart';
+part 'cat_keying_station.dart';
 part 'cat_keying_waiting_send.dart';
-
-/// What keying needs of the station it runs on — the equipment half of
-/// `CatService`, which is where sessions, nodes and the picks live.
-///
-/// A seam rather than the service itself, for the reason the file exists:
-/// keying is a self-contained thing that happens to need a session, and a
-/// class that could reach into the registry would grow back into it.
-abstract class KeyingStation {
-  /// The key in use, as a node uuid — [kCategoryKey]'s designation. Null for
-  /// None, and null for a peer's own keying, which is not a node here to
-  /// name ([peerKeyIsInUse]).
-  String? get keyInUse;
-
-  /// Whether what keys for the radio in use is the PEER's own key: its radio
-  /// fills radio1, and this operator either never chose a key for it or
-  /// chose that radio itself. An explicit None means None — a default does
-  /// not outrank an answer.
-  bool get peerKeyIsInUse;
-
-  /// Which radio a keying request is addressed to, or null when radio1 is
-  /// not a peer's radio.
-  String? get peerRadioId;
-
-  /// Whether [node] is a key or a radio whose CAT keys.
-  bool isKeyerNode(EquipmentNode node);
-
-  List<EquipmentNode> get nodes;
-  EquipmentNode? nodeFor(String uuid);
-  EquipmentType? typeFor(EquipmentNode node);
-  EquipmentState stateFor(String uuid);
-
-  /// Physical device identity for logical radios sharing one transmitter.
-  /// Null for independent radios, whose node UUID is their identity.
-  String? logicalDeviceIdFor(String uuid);
-
-  /// [uuid]'s session, but only while that node is connected — a keyer that
-  /// dropped answers null rather than throwing at whatever is keyed into it.
-  EquipmentSession? connectedSession(String uuid);
-
-  /// The local rig this keyer keys: radio1 when it is a rig of this
-  /// station's own — or, for SO2R's second keyer, Radio B — and null when
-  /// radio1 is a peer's or none: the memories are audio in the transceiver,
-  /// and there is nothing local to play when the transceiver is somewhere
-  /// else.
-  String? get localKeyingRadio;
-
-  /// SO2R's turn-taking (docs/design/cat.md § Radio B, for SO2R): whether
-  /// this keyer may go on the air now. False holds the send ([CatKeying.waiting])
-  /// until the other radio is quiet. [repeat] is a repeat chain's own send,
-  /// which always waits its turn; an operator's may instead stop the other
-  /// radio, which this does before answering true. Always true for a station
-  /// with one radio.
-  /// [queuedCw] can append to a shared CAT queue; voice never can.
-  bool clearToSend({required bool repeat, bool queuedCw = false});
-
-  /// SO2R's Radio B, or null — whose voice memories are named and timed
-  /// apart from radio1's.
-  String? get radio2;
-
-  Future<void> updateNode(EquipmentNode node);
-
-  /// Quiets every radio but [radio] before it transmits — one transmitter at
-  /// a time (CatService.yieldTransmitter, docs/design/cat.md § PTT).
-  void yieldTransmitter(String? radio);
-}
 
 class CatKeying {
   CatKeying({required this.station, required this.settings, required this.chain, required this.peer, this.radio = 'A', this.onMessageOne, this.onKeyed}) {
@@ -219,8 +155,9 @@ class CatKeying {
   /// Whether the key in use is a keyer of this station's own, connected and
   /// able to key. What a radio offered to a peer advertises: this device keys
   /// with what it has, and a relay of a request onto some third device's rig
-  /// is not something to offer.
-  bool get keysCwLocally => _cwKeyer != null && cannotTransmitFor(_cwKeyerUuid) == null;
+  /// is not something to offer. A key both sets share keys nothing while no
+  /// box routes it: its output would reach whichever radio the box last had.
+  bool get keysCwLocally => _cwKeyer != null && cannotTransmitFor(_cwKeyerUuid) == null && !station.keyInUseUnrouted;
 
   /// Whether the designated key is connected and can key CW — or, when
   /// `radio1` is a peer's radio that keys and nothing here was designated
@@ -279,7 +216,16 @@ class CatKeying {
   }
 
   /// Whether the key in use is still keying something [sendCw] gave it.
-  bool get cwSending => keysOverPeer ? cwProgress.value != null : (_cwKeyer?.cwSending ?? false);
+  bool get cwSending => keysOverPeer ? cwProgress.value != null : (_cwKeyer?.cwSending ?? false) && _keysOwnMessage;
+
+  /// Whether what the key in use keys is this keyer's
+  /// ([KeyingStation.ownsCwOn]). Read as this one's, the other set's message
+  /// would put both radios on the air, and stopping it here would stop the
+  /// other set's.
+  bool get _keysOwnMessage => switch (_cwKeyerUuid) {
+    null => true,
+    final uuid => station.ownsCwOn(this, uuid),
+  };
 
   /// What the key in use is sending for the app right now, or null — for
   /// the status bar's indicator. Its own notifier rather than a field on
@@ -351,11 +297,17 @@ class CatKeying {
   /// Whether the key in use took [text].
   bool sendCwLocally(String text) {
     final session = _cwKeyer;
-    if (session == null || cannotTransmitFor(_cwKeyerUuid) != null) return false;
+    // Here rather than only in [keysCwLocally]: a far station's request
+    // arrives here directly.
+    if (session == null || cannotTransmitFor(_cwKeyerUuid) != null || station.keyInUseUnrouted) return false;
     // The radio that transmits it: the key in use itself when that is a
     // radio's own keyer, radio1 when it is a keyer that keys radio1.
     station.yieldTransmitter(station.connectedSession(_cwKeyerUuid!) is TransceiverSession ? _cwKeyerUuid : station.localKeyingRadio);
     try {
+      // Before the send: its first progress report comes from inside it.
+      // Every send, shared or not: a key the other set picks mid-message
+      // leaves the message this set's.
+      station.noteCwSender(_cwKeyerUuid!, this);
       session.sendCw(text);
       return true;
     } catch (e, st) {
@@ -461,6 +413,12 @@ class CatKeying {
     _stopCw();
   }
 
+  /// Stops this set's message on a key the other set shares, the repeat
+  /// chain kept, before the box sends that key to the other radio.
+  void yieldSharedKey() {
+    if (cwSending) _stopCw();
+  }
+
   /// [stopCw] without ending the repeat chain — see [interrupt].
   void _stopCw() {
     cwStops.value++;
@@ -472,6 +430,8 @@ class CatKeying {
       requestPeerKey(PeerKeyOp.stopCw);
       return;
     }
+    // On a key the other set shares, what it keys now is the other set's.
+    if (!_keysOwnMessage) return;
     _stopCwSession();
   }
 
@@ -483,7 +443,8 @@ class CatKeying {
     // the one outcome worse than a message cut short. The voice half says the
     // same thing at [stopVoiceLocally].
     chain.cancel();
-    _stopCwSession();
+    // On a key the other set shares, what it keys now may be the other set's.
+    if (_keysOwnMessage) _stopCwSession();
   }
 
   void _stopCwSession() {
@@ -1288,7 +1249,8 @@ class CatKeying {
   /// A keyer reported its progress. Shown, and reported onward, only for the
   /// key in use: another node's queue is not what the app handed a message to.
   void noteCwProgress(String uuid, CwSendProgress? progress) {
-    if (uuid != _cwKeyerUuid) return;
+    if (uuid != _cwKeyerUuid || !_keysOwnMessage) return;
+    if (progress == null) _forgetSending(uuid);
     _cwFromPeer = false;
     cwProgress.value = progress;
     // Nothing left keying is where a CW repeat's wait begins.
@@ -1469,18 +1431,27 @@ class CatKeying {
   /// to stop it.
   void abandonKeying(String? previousUuid) {
     final previous = previousUuid == null ? null : station.connectedSession(previousUuid);
-    if (previous is CwKeyerSession && previous.cwSending) {
+    // A message the other set sent on a key both shared is the other set's,
+    // and goes on when this set's key moves off it.
+    if (previous is CwKeyerSession && previous.cwSending && station.ownsCwOn(this, previousUuid!)) {
       try {
         previous.stopCw();
       } catch (e, st) {
         ErrorReportingService.report(e, st, context: 'cat:stop-cw');
       }
     }
+    if (previousUuid != null) _forgetSending(previousUuid);
     // Cleared only when what keys has actually moved AWAY from the peer: an
     // operator re-picking `Key on ‹device›` would otherwise blank the message
     // that peer is keying until its next character report.
     if (!keysOverPeer) _writePeerProgress(null);
     refreshKeyerSpeed();
+  }
+
+  /// Ends this keyer's claim on what [uuid] keys: its message ended, or the
+  /// key in use moved off it, after which nothing arrives here to end it.
+  void _forgetSending(String uuid) {
+    if (identical(station.cwSenderOn(uuid), this)) station.noteCwSender(uuid, null);
   }
 
   void dispose() {

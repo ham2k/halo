@@ -776,6 +776,9 @@ extension _Connection on CatService {
       for (final keyer in _keyers.values) {
         keyer.forgetNode(entry.key);
       }
+      // Its message ended with the link, unreported: the claim would make
+      // what it keys after reconnecting the last sender's.
+      _cwSenders.remove(entry.key);
     }
     // A pending snap belongs to the session that reported the movement. It
     // has nowhere to be sent now, and the next session's first reading is a

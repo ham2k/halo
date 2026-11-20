@@ -1107,7 +1107,10 @@ class CatService extends ChangeNotifier
       // destructive action. The dropdown is right there.
       if (_localRadio1 == uuid) _radio1 = null;
       if (_radio2 == uuid) _forgetRadio2();
-      if (_so2rSwitch == uuid) _so2rSwitch = null;
+      if (_so2rSwitch == uuid) {
+        _so2rSwitch = null;
+        _dropUnservedSharedKey();
+      }
       // And from every radio's picks, its own position going with it.
       _positions.forgetNode(uuid);
     });

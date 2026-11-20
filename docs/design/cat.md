@@ -1327,9 +1327,11 @@ radio's (`RadioKeyer`). The two never share a key — a key keys one message at 
 keyers on it would stop each other's: Radio B's picker leaves radio A's key out and `setDesignated`
 refuses it, radio A taking Radio B's key leaves Radio B with None, and a pick that collides anyway
 (radio1 switched to a rig whose own pick is Radio B's key) reads as None for Radio B
-(`designatedFor`). The service's own keying API — what the function keys, the WPM command
-and the keyer control use — answers for the set the operator is in, which the logging panel
-reports (`noteOperatorRadio`); outside SO2R that is radio1's. Each set's keyer line is its radio's:
+(`designatedFor`). The exception is a keyer of its own while an OTRSP box is the switcher
+(`keyServesBothSets`): its output goes into the box, which sends it to the radio it has the
+transmit focus on, so both sets may pick it (§ The SO2R switcher). The service's own keying API —
+what the function keys, the WPM command and the keyer control use — answers for the set the
+operator is in, which the logging panel reports (`noteOperatorRadio`); outside SO2R that is radio1's. Each set's keyer line is its radio's:
 its message, countdown and what waits. The keyer control is one for both sets, in the shared strip,
 and is the operator's set's radio's: its buttons, Run or S&P, keyboard mode, and the CW and Phone
 Keyer dialogs it opens. The CW messages, their sets and labels, and the repeat are the radios'
@@ -1395,9 +1397,9 @@ turned off — lets go of whatever radio A was holding for it.
 ### The SO2R switcher
 
 Behind `so2r`, with a Radio B: what puts the two radios in the operator's headphones
-(`cat_so2r_audio.dart`). Audio only, for now — the box's transmit focus, band, mode and
-auxiliary outputs are left alone. Picked in Station Configuration under Radio B's lines, like the
-key in use: None, a switcher node (category `so2rSwitch`), **Built into** the radio when both
+(`cat_so2r_audio.dart`), and, for an OTRSP box, where the operator's key, PTT and microphone go.
+The box's band, mode and auxiliary outputs are left alone. Picked in Station Configuration under
+Radio B's lines, like the key in use: None, a switcher node (category `so2rSwitch`), **Built into** the radio when both
 SO2R radios are slices of one (`so2rSwitchRadios`), or **This Computer** when both are heard
 through HaLo (`so2rSwitchComputer`), with its settings — stereo, and listening
 while transmitting — in a dialog beside the pick (`so2r_switch_dialog.dart`). The pick is the station's, stored with the
@@ -1433,6 +1435,33 @@ CW on DTR, so a line ticked high is a transmitter keyed for as long as the port 
 catalogue has the generic entry and the boxes that say they speak it — DX Engineering's RigSelect
 Pro, the YCCC SO2R Box and SO2Rduino — each the generic serial pairing under its own name.
 Reverse stereo, set on a box by hand, reads as stereo.
+
+**An OTRSP box's transmit focus goes to the radio about to be keyed** (`_transmitFocusTo`): `TX1`
+or `TX2`, sent before a PTT key, a CW message or a voice memory goes out on a set's radio — where
+one transmitter at a time is already enforced (§ PTT) — so the key, the PTT and the microphone the
+box carries reach that radio. Told before every key, the radio it already has included: the app
+cannot read the box's focus back, and one switched by hand, reset, or that lost a command would
+otherwise send the key to the other radio; idle, the box keeps what it was last told or set to by
+hand. PTT stays each radio's own CAT PTT and CW the key in use: the box's RTS and DTR stay low
+(above).
+
+A keyer both sets share (`KeyingStation.keyInUseShared`) keys one set's message at a time, the set
+whose keyer last sent it one (`KeyingStation.cwSenderOn`, one record for both sets, cleared when
+that message ends, that set's key moves off the keyer, or the keyer's link drops). One rule,
+`KeyingStation.ownsCwOn`, says whose message it is for every progress report, stop and change of
+key, a far station's stop included: only the sender's keyer line shows it, only its radio is on
+the air, and a stop in the other set, or the other set's key moving off the keyer, leaves it
+going. A message keyed before the keyer was shared stays its sender's; one keyed from the
+keyer's own buttons is the set's whose key alone it is, and neither set's while both share it.
+The other set's message waits its turn rather than joining the keyer's buffer, since appended it
+would go out on whichever radio the focus was on when the buffer reached it, and a key that takes
+no turn — a CAT client's PTT, a far station's message — stops the other set's message on any
+keyer the box routes before the focus moves, shared or no longer. While the box is not connected
+the shared keyer keys for neither set (`KeyingStation.keyInUseUnrouted`), a far station's
+message included: its output would reach whichever radio the box last had. The focus and the
+key go out at once, on two links, with no wait for the box's relay; untried on a real box.
+Radio B's pick of radio1's keyer lasts only while a box is the switcher; picking another switcher,
+or deleting the box, clears it, and a message Radio B was keying through it stops.
 
 **A FlexRadio is its own switcher** when Radio A and Radio B are two different slices of it —
 the driver names the radio by its address and the slice as the session will read it

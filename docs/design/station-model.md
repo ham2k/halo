@@ -360,7 +360,9 @@ The operator's microphone and headphones are picked the same way, beside the pos
 card each, stored as its address with its name (§ 3), the system's default when none is picked.
 Each position's `txAudio` says whether its transmitter takes that microphone (§ 5.1).
 
-Only a controller's headphone switching is driven today. Its transmit side is new work (§ 11).
+An OTRSP box's transmit focus follows the radio about to be keyed, and a keyer of its own may then
+serve both sets ([cat.md § The SO2R switcher](cat.md#the-so2r-switcher)). Its own PTT and CW
+lines are not driven: each radio keys over its own CAT.
 
 ## 7. Wiring, and the antenna graph
 
@@ -613,6 +615,10 @@ Each is a full task. Nothing is visible to the operator before phase 3.
    hearing rule (cat.md, "The SO2R switcher"), and a position's audio slots may name one of its
    sound cards, for a radio on a USB codec (audio.md § 7).*
 8. **An SO2R controller's transmit side**: routing the key, the PTT and the microphone (§ 6.1).
+   *Status: built for an OTRSP box, which is given its transmit focus before each key, with a
+   keyer of its own shared by both sets through it. A Flex switching its own slices already moves
+   its transmit slice as it keys, and this computer sends the operator's microphone by each
+   position's `txAudio`.*
 9. **The antenna graph and its solver** (§ 7).
 10. **Extension surface** for capabilities, positions and sets, and logical addresses wherever an
     id is taken today (§ 8.4), with tags (§ 8.2).

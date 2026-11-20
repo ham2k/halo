@@ -452,6 +452,9 @@ mixin _So2r on _KeyingSurface {
     if (!keyer.cwSending || keyer.voiceStarting.value || keyer.voiceActivity.value != null || pttHeldOn(_radioUuid(other))) return false;
     final first = _keyerOf(radio).station.keyInUse, second = keyer.station.keyInUse;
     if (first == null || second == null || connectedSession(first) is! CwKeyerSession || connectedSession(second) is! CwKeyerSession) return false;
+    // Never one keyer both sets share, which no logical device names:
+    // appended, this radio's text would go out on the other's, the box's
+    // focus moved under it.
     final device = logicalDeviceIdFor(first);
     return device != null && device == logicalDeviceIdFor(second);
   }

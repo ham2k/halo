@@ -86,6 +86,14 @@ void main() {
       expect(sink.sent, ['RX1\r', 'RX2\r', 'RX1S\r', 'RX2S\r']);
     });
 
+    test('the transmit focus is TX1 or TX2', () {
+      final sink = _FakeSink();
+      final session = OtrspSession(sink);
+      session.setSo2rTransmit('B');
+      session.setSo2rTransmit('A');
+      expect(sink.sent, ['TX2\r', 'TX1\r']);
+    });
+
     test('what the box says it is set to is reported, events and query answers alike', () {
       final sink = _FakeSink();
       final session = OtrspSession(sink);

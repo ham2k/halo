@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // SO2R's switcher (docs/design/cat.md § The SO2R switcher): what puts the
-// two radios in the operator's headphones — an OTRSP box, or two slices of
-// one FlexRadio switching their own audio — and the rule it follows.
+// two radios in the operator's headphones — an OTRSP box, two slices of one
+// FlexRadio switching their own audio, or this computer's mixer — and the
+// rule it follows; and an OTRSP box's transmit focus, given to the radio
+// about to be keyed.
 
 part of 'cat_service.dart';
 
@@ -48,7 +50,12 @@ mixin _So2rAudio on _So2r {
 
   Future<void> setSo2rSwitch(String? pick) async {
     if (pick == _so2rSwitch) return;
-    _so2rSwitch = pick;
+    // Radio B's key in use can move with it: a key both sets shared is
+    // Radio B's only while a box sends it there.
+    _withKeyInUseTidied(() {
+      _so2rSwitch = pick;
+      _dropUnservedSharedKey();
+    });
     // Whatever the box said before is not what it says now: it was not being
     // listened to in between.
     _so2rReported = null;
@@ -111,6 +118,21 @@ mixin _So2rAudio on _So2r {
 
   /// The OTRSP session last told, and what.
   ({So2rSwitchSession session, So2rAudio audio})? _so2rSent;
+
+  /// Told before every key, the radio it already has included: what the box
+  /// has now cannot be read back — switched by hand, reset, or a command
+  /// lost on the way — and keyed on a stale focus, the key and microphone
+  /// reach the other radio. A radio in no set is no radio of the box's.
+  @override
+  void _transmitFocusTo(String? uuid) {
+    final session = _so2rSwitchSession;
+    final radio = uuid == null ? null : (uuid == _localRadio1 ? 'A' : (uuid == radio2 ? 'B' : null));
+    if (session == null || radio == null) return;
+    session.setSo2rTransmit(radio);
+  }
+
+  /// See [_Positions._dropUnservedSharedKey].
+  void _dropUnservedSharedKey();
 
   /// What each radio switching its own audio was last told.
   final _so2rEars = <So2rRadioAudioSession, So2rEar>{};

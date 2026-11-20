@@ -57,6 +57,20 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   /// any other.
   CatKeying _keyerForNode(String? uuid) => _keyerOf(uuid != null && uuid == radio2 ? 'B' : 'A');
 
+  final _cwSenders = <String, CatKeying>{};
+
+  @override
+  CatKeying? cwSenderOn(String uuid) => _cwSenders[uuid];
+
+  @override
+  void noteCwSender(String uuid, CatKeying? keyer) => keyer == null ? _cwSenders.remove(uuid) : _cwSenders[uuid] = keyer;
+
+  @override
+  bool ownsCwOn(CatKeying keyer, String uuid) => switch (_cwSenders[uuid]) {
+    null => !_keyers.values.any((other) => !identical(other, keyer) && other.station.keyInUse == uuid),
+    final sender => identical(sender, keyer),
+  };
+
   /// The computer's voice keyer, where this device can run one
   /// (docs/design/cat.md § The computer's voice keyer): each radio's keying
   /// plays the sets through its own rig's sound device, under its own pick.
@@ -277,6 +291,8 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   /// else ([TransmitGatedSession]) is not keyed, and nothing is ended for it.
   bool _keyPtt(String radio, PttSession session, {Duration timeout = pttTimeout, Object? owner}) {
     if (cannotTransmitOn(session) != null) return false;
+    _quietBoxedKeys(radio);
+    _transmitFocusTo(radio);
     if (!_ptt.heldOn(session)) {
       final keyer = _keyerForNode(radio);
       keyer.stopAll();
@@ -317,7 +333,30 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   void _yieldTransmitter(CatKeying keyer, String? radio) {
     _ptt.release();
     keyer.quietOthers(radio);
+    _quietBoxedKeys(radio);
+    _transmitFocusTo(radio);
   }
+
+  /// Stops the other set's message on a keyer the box routes
+  /// ([keyServesBothSets]) before [radio] takes the box's focus, whether or
+  /// not this set still keys through it too. [quietOthers] leaves a keyer of
+  /// its own alone, and a key a CAT client or a far station asks for takes
+  /// no turn: left going, the rest of that message would key [radio].
+  void _quietBoxedKeys(String? radio) {
+    if (radio == null || (radio != _localRadio1 && radio != radio2)) return;
+    final mine = _keyerForNode(radio);
+    for (final keyer in _keyers.values) {
+      final key = keyer.station.keyInUse;
+      if (!identical(keyer, mine) && key != null && keyServesBothSets(key)) keyer.yieldSharedKey();
+    }
+  }
+
+  /// See [_Positions.keyServesBothSets].
+  bool keyServesBothSets(String uuid);
+
+  /// Gives an SO2R controller's transmit focus to [radio], about to be keyed
+  /// — its key, PTT and microphone go where the box sends them.
+  void _transmitFocusTo(String? radio);
 }
 
 /// What Radio B's keyer asks of the station: the service's answers, but for
@@ -343,6 +382,21 @@ class _RadioBKeyingStation implements KeyingStation {
 
   @override
   bool isKeyerNode(EquipmentNode node) => _cat.isKeyerNode(node);
+
+  @override
+  bool get keyInUseShared => _cat.keyInUseShared;
+
+  @override
+  bool get keyInUseUnrouted => _cat.keyInUseUnrouted;
+
+  @override
+  CatKeying? cwSenderOn(String uuid) => _cat.cwSenderOn(uuid);
+
+  @override
+  void noteCwSender(String uuid, CatKeying? keyer) => _cat.noteCwSender(uuid, keyer);
+
+  @override
+  bool ownsCwOn(CatKeying keyer, String uuid) => _cat.ownsCwOn(keyer, uuid);
 
   @override
   List<EquipmentNode> get nodes => _cat.nodes;

@@ -7,7 +7,7 @@
 
 part of 'cat_service.dart';
 
-mixin _Positions on _So2r {
+mixin _Positions on _So2rAudio {
   StationPositions get _positions;
   MainVfo? get _radio1;
   Map<String, EquipmentNode> get _nodes;
@@ -25,16 +25,56 @@ mixin _Positions on _So2r {
   /// [category]'s pick for [radio] — a local transceiver's uuid, SO2R's
   /// Radio B being the one caller that names one — or for radio1.
   ///
-  /// Never one key for both SO2R radios: a key keys one message at a time,
-  /// and two keyers sharing it stop each other's. Nor one SDR as both
+  /// Never one key for both SO2R radios, but a keyer the box routes
+  /// ([keyServesBothSets]): a key keys one message at a time, and only the
+  /// box can send each set's to that set's radio. Nor one SDR as both
   /// radios' scope: it follows one dial, and the other radio would draw the
   /// wrong band under its own. Radio B's answers None while it is radio1's,
   /// which a change of radio1 can make it, restoring that radio's own picks.
   @override
   String? designatedFor(String category, {String? radio}) {
     final pick = _pickFor(category, radio);
-    if (_oneSetAtATime(category) && radio != null && radio == radio2 && pick != null && pick == _pickFor(category, null)) return null;
+    if (_oneSetAtATime(category) &&
+        radio != null &&
+        radio == radio2 &&
+        pick != null &&
+        pick == _pickFor(category, null) &&
+        !(category == kCategoryKey && keyServesBothSets(pick))) {
+      return null;
+    }
     return pick;
+  }
+
+  /// Whether both SO2R sets key through one key ([keyServesBothSets]).
+  @override
+  bool get keyInUseShared {
+    final b = radio2, key = designatedFor(kCategoryKey);
+    return b != null && key != null && designatedFor(kCategoryKey, radio: b) == key;
+  }
+
+  @override
+  bool get keyInUseUnrouted => keyInUseShared && _so2rSwitchSession == null;
+
+  /// Radio B's pick of radio1's key, once no box sends that key to either
+  /// radio. Left stored, it would surface as Radio B's key the moment radio1
+  /// picks another, keying through a keyer wired to radio1.
+  @override
+  void _dropUnservedSharedKey() {
+    final b = _radio2;
+    if (b == null) return;
+    final slots = _positions.slotsOf(LocalRadio(b));
+    final key = slots?[kCategoryKey];
+    if (key != null && key == _pickFor(kCategoryKey, null) && !keyServesBothSets(key)) _positions.slotsFor(LocalRadio(b))[kCategoryKey] = null;
+  }
+
+  /// Whether [uuid], a key in use, may key for both SO2R sets: a keyer of its
+  /// own while an OTRSP box is the switcher. Its output goes into the box,
+  /// which sends it to the radio whose transmit focus it has
+  /// ([_transmitFocusTo]). A radio's own keyer keys that radio and no other.
+  @override
+  bool keyServesBothSets(String uuid) {
+    final node = _so2rSwitchNode == null ? null : nodeFor(uuid);
+    return node != null && typeFor(node)?.category == kCategoryKeyer;
   }
 
   /// What one SO2R set at a time may have: see [designatedFor].
@@ -88,10 +128,11 @@ mixin _Positions on _So2r {
     // one whose operator said nothing keys through that peer.
     final answered = _positions.slotsOf(owner)?.containsKey(category) ?? false;
     if (answered && previousUuid == uuid) return;
-    // One key, and one SDR scope, per SO2R radio: Radio B is refused
-    // radio1's, and radio1 taking Radio B's leaves Radio B with None.
+    // One key, and one SDR scope, per SO2R radio, but a keyer the box
+    // routes: Radio B is refused radio1's, and radio1 taking Radio B's
+    // leaves Radio B with None.
     final b = radio2;
-    final exclusive = _oneSetAtATime(category) && uuid != null && b != null;
+    final exclusive = _oneSetAtATime(category) && uuid != null && b != null && !(category == kCategoryKey && keyServesBothSets(uuid));
     if (exclusive && radio == b && uuid == designatedFor(category)) return;
     final takesB = exclusive && radio == null && uuid == designatedFor(category, radio: b);
     // Only a real CHANGE of the key IN USE owes the outgoing one anything. A

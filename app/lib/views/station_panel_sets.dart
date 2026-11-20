@@ -256,10 +256,11 @@ extension _SetRows on StationPanel {
           _ => st.antennaInUse,
         },
         nodes: isKey
-            // Never set A's key: one key keys one radio's messages.
+            // Never set A's key, but one the SO2R box sends to either
+            // radio: otherwise one key keys one radio's messages.
             ? [
                 for (final node in nodes)
-                  if (node.uuid != _cat.designatedFor(kCategoryKey)) node,
+                  if (node.uuid != _cat.designatedFor(kCategoryKey) || _cat.keyServesBothSets(node.uuid)) node,
               ]
             : nodes,
         selected: _cat.designatedFor(category, radio: radio2),

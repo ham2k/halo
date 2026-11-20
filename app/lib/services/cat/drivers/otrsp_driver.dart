@@ -6,9 +6,10 @@
 // https://www.k1xm.org/OTRSP/OTRSP_Protocol.pdf
 //
 // Plain text, every command, response and event ended by a carriage return,
-// over a serial port (9600 8N1) or TCP. Only the receive focus is driven
-// here: `RX1`, `RX2`, and the stereo pair `RX1S`/`RX2S`. The box's
-// transmit focus, band, mode and auxiliary outputs are left alone.
+// over a serial port (9600 8N1) or TCP. The receive focus is driven here —
+// `RX1`, `RX2`, and the stereo pair `RX1S`/`RX2S` — and the transmit focus,
+// `TX1` and `TX2`. The box's band, mode and auxiliary outputs are left
+// alone, and so are its key lines (RTS, DTR), held low by the pairing.
 
 import 'dart:async';
 import 'dart:convert';
@@ -97,6 +98,9 @@ class OtrspSession implements So2rSwitchSession {
 
   @override
   void setSo2rAudio(So2rAudio audio) => _send(otrspRxCommand(audio));
+
+  @override
+  void setSo2rTransmit(String radio) => _send(radio == 'B' ? 'TX2' : 'TX1');
 
   @override
   void handleData(Uint8List chunk) {
