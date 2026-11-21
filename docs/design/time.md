@@ -82,6 +82,7 @@ clock is the entire point of the feature.
 | `extension_panel.dart` — render throttle | Its remainder becomes a `Timer` duration |
 | `sync_engine.dart` — debounce window | Same |
 | `bootstrap.dart` — panel-catalog boot budget; `halo_services.dart` — DEVHAMMER's run length | Real work, real seconds |
+| `k4_metering.dart` — K4 meter retries | Limits CAT requests while waiting for the first signed receive reading or a transmit power-range reply |
 | `dev_log.dart` — event timestamps | Read against the operator's own wall clock |
 | `peer_outbox.dart` — scan debounce window | Its remainder becomes a `Timer` duration |
 | `peer_service.dart` — beacon `lastSeenMillis` and the stale-peer cutoff | Both sides of one elapsed-time comparison |
