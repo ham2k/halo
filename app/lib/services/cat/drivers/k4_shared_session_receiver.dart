@@ -12,6 +12,7 @@ class _K4ReceiverSession
         PassbandSession,
         NetworkTransmitAudioSession,
         CwKeyerSession,
+        LiveCwSession,
         VoiceKeyerSession,
         RawCommandSession,
         AntennaTunerSession {
@@ -146,6 +147,7 @@ class _K4ReceiverSession
     if (!_usable) return;
     // A release from another receiver must not drop the owner's CAT key.
     if (!on && owner._pttOwner != null && owner._pttOwner != this) return;
+    if (on) owner._stopLiveCw();
     owner._pttOwner = on ? this : null;
     owner._radio.setPtt(on);
   }
@@ -171,13 +173,24 @@ class _K4ReceiverSession
   @override
   void sendCw(String text) {
     if (!_usable || sanitizeCwText(text).isEmpty) return;
+    owner._stopLiveCw();
     owner._cwOwner = this;
     owner._radio.sendCw(text);
   }
 
   @override
   void stopCw() {
-    if (_usable) owner._radio.stopCw();
+    if (!_usable) return;
+    stopLiveCw();
+    owner._radio.stopCw();
+  }
+
+  @override
+  bool sendLiveCwEdge({required bool down, required int atMicros}) => owner._sendLiveCwEdge(this, down: down, atMicros: atMicros);
+
+  @override
+  void stopLiveCw() {
+    if (owner._liveCwOwner == this) owner._stopLiveCw();
   }
 
   @override
@@ -208,6 +221,7 @@ class _K4ReceiverSession
   @override
   void playVoiceMemory(int n) {
     if (!_usable || n < 1 || n > voiceMemoryCount) return;
+    owner._stopLiveCw();
     owner._voiceOwner = this;
     owner._radio.playVoiceMemory(n);
   }
@@ -235,7 +249,9 @@ class _K4ReceiverSession
 
   @override
   void startTune() {
-    if (_usable) owner._radio.startTune();
+    if (!_usable) return;
+    owner._stopLiveCw();
+    owner._radio.startTune();
   }
 
   @override

@@ -8,6 +8,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 
 class MidiDeviceInfo {
@@ -29,6 +30,8 @@ class MidiUnavailable implements Exception {
   String toString() => 'MIDI unavailable: $cause';
 }
 
+typedef MidiInputPacket = ({String deviceId, Uint8List data, int? atMicros});
+
 abstract interface class MidiBackend {
   /// Throws [MidiUnavailable] where the platform has no MIDI; anything else
   /// it throws is a failure — access refused, a plugin fault.
@@ -36,8 +39,11 @@ abstract interface class MidiBackend {
   Future<void> connect(String id);
   void disconnect(String id);
 
-  /// Bytes from an open device, with its id.
-  Stream<({String deviceId, Uint8List data})> get packets;
+  /// Configure only the explicitly selected MIDI device.
+  void send(String id, List<int> bytes);
+
+  /// Bytes from an open device, with its id and a capture timestamp when supported.
+  Stream<MidiInputPacket> get packets;
 
   /// A device appeared, went or changed state.
   Stream<void> get changes;
@@ -84,8 +90,22 @@ class FlutterMidiBackend implements MidiBackend {
   }
 
   @override
-  Stream<({String deviceId, Uint8List data})> get packets =>
-      (_midi.onMidiPacketReceived ?? const Stream<MidiPacket>.empty()).map((p) => (deviceId: p.device.id, data: p.data));
+  void send(String id, List<int> bytes) {
+    final device = _known[id];
+    // The plugin labels the ports from the device's perspective.
+    if (device == null || device.inputPorts.isEmpty) throw StateError('no MIDI destination for $id');
+    _midi.sendData(Uint8List.fromList(bytes), deviceId: id);
+  }
+
+  @override
+  Stream<MidiInputPacket> get packets => (_midi.onMidiPacketReceived ?? const Stream<MidiPacket>.empty()).map(
+    (p) => (
+      deviceId: p.device.id,
+      data: p.data,
+      // The Darwin plugin converts CoreMIDI host ticks to nanoseconds.
+      atMicros: !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS && p.timestamp > 0 ? p.timestamp ~/ 1000 : null,
+    ),
+  );
 
   @override
   Stream<void> get changes => (_midi.onMidiSetupChanged ?? const Stream<MidiSetupChange>.empty()).map((_) {});

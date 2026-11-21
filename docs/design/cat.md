@@ -5012,6 +5012,23 @@ front (`CatKeying.messageKeyRequests`), which keys them exactly as its function 
 against its draft. Nothing asks the platform for MIDI until the experiment is on and a controller
 node exists: on the web that first ask is a permission prompt.
 
+### Live CW paddles
+
+With `EXP MIDI` and `EXP KEYER` on in macOS HaLo, add a MIDI Controller in Station Configuration.
+Choose its MIDI device and **Input Type** (Vail Adapter, HaliKey MIDI or TinyMIDI), then choose
+Iambic A or B. Use a single local Radio A connected through the K4's **Secure Network** option.
+The paddle can key the K4 in CW or CW-R. The radio's break-in setting controls RF output.
+TinyMIDI uses BLE for MIDI and USB-C for power. Pair it in **Audio MIDI Setup → MIDI Studio →
+Bluetooth**, then select the paired device in HaLo.
+
+The device feeds a dedicated timed key path before MIDI Learn and shortcuts. HaLo puts Vail
+into its onboard keyer mode and leaves sidetone on the adapter. HaliKey and TinyMIDI feed
+the software iambic keyer and local sidetone. WPM follows the connected radio and the local
+sidetone defaults to 600 Hz. The shared K4 session sends timed `KZD`/`KZU` frames and leaves
+the radio's `KZL` setting under operator control. The station holds transmit ownership through
+the playout tail. Escape, losing the MIDI binding, and changing the active radio or mode stop
+the burst. A radio link that vanishes cannot carry a final release.
+
 **The node's config is edited in its own pane** (`midi_controller_pane.dart`), not the equipment
 form. Learn writes the mapping the moment a control moves, and the form saves back the config it
 was opened with, which would undo it. The device is stored by NAME: an id is the platform's own and

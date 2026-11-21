@@ -101,6 +101,14 @@ HALO_AUDIO_API int halo_audio_normalize(const char* from, const char* to, float 
 /// failure, with the reason written to [err].
 HALO_AUDIO_API HaloAudioOutput* halo_audio_output_open(const char* device_id, HaloAudioPort on_lost, int64_t lost_token, char* err, int err_len);
 
+/// Opens a local output for a low-latency tone on the default sound device.
+/// Close it with halo_audio_output_close. NULL on failure, with the reason
+/// written to [err].
+HALO_AUDIO_API HaloAudioOutput* halo_audio_sidetone_open(char* err, int err_len);
+
+/// Sets a sidetone's pitch in Hz while the key is held, or 0 to release it.
+HALO_AUDIO_API void halo_audio_sidetone_set(HaloAudioOutput* out, int pitch_hz);
+
 /// Whether [out]'s device is still running — false once it has gone away.
 HALO_AUDIO_API int halo_audio_output_alive(HaloAudioOutput* out);
 

@@ -231,11 +231,48 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   void cancelVoiceSequence() => operatorKeyer.cancelVoiceSequence();
   void stopMessageOne() => operatorKeyer.stopMessageOne();
 
+  ({Object owner, VoidCallback stop})? _liveCw;
+
+  /// The pilot binds one paddle to Radio A's local transmitter.
+  LiveCwSession? liveCwSessionFor(String? uuid) {
+    if (uuid == null || uuid != _localRadio1 || radio2 != null) return null;
+    final state = stateFor(uuid);
+    if (state.stale || (state.vfo.mode != 'CW' && state.vfo.mode != 'CW-R')) return null;
+    final session = connectedSession(uuid);
+    if (session is LiveCwSession && cannotTransmitOn(session) == null) return session;
+    return null;
+  }
+
+  /// Takes the transmitter for one burst. A second paddle waits for the
+  /// operator to finish. A CAT client or a front-panel transmission stays on.
+  bool beginLiveCw({required String uuid, required LiveCwSession session, required Object owner, required VoidCallback stop}) {
+    if (!identical(session, liveCwSessionFor(uuid))) return false;
+    if (_liveCw case final claim?) return identical(claim.owner, owner);
+    if (_ptt.owner != null || (stateFor(uuid).telemetry.isTransmitting && !_keying.onAir && !pttHeldOn(uuid))) return false;
+    _keying.stopAll();
+    yieldTransmitter(uuid);
+    _liveCw = (owner: owner, stop: stop);
+    return true;
+  }
+
+  void finishLiveCw(Object owner) {
+    if (identical(_liveCw?.owner, owner)) _liveCw = null;
+  }
+
+  bool _stopLiveCw() {
+    final claim = _liveCw;
+    if (claim == null) return false;
+    _liveCw = null;
+    claim.stop();
+    return true;
+  }
+
   /// Escape: stops every message, chain and repeat — under SO2R, see
   /// `_So2r.stopKeying` for what it leaves.
   bool stopKeying() {
+    final liveStopped = _stopLiveCw();
     final released = _ptt.release(), tuneStopped = stopNodeTunes();
-    return _keying.stopKeying(alsoStopped: released || tuneStopped);
+    return _keying.stopKeying(alsoStopped: liveStopped || released || tuneStopped);
   }
 
   bool get escapeStoppedKeying => _keying.escapeStoppedKeying;
@@ -291,6 +328,7 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   /// else ([TransmitGatedSession]) is not keyed, and nothing is ended for it.
   bool _keyPtt(String radio, PttSession session, {Duration timeout = pttTimeout, Object? owner}) {
     if (cannotTransmitOn(session) != null) return false;
+    _stopLiveCw();
     _quietBoxedKeys(radio);
     _transmitFocusTo(radio);
     if (!_ptt.heldOn(session)) {
@@ -331,6 +369,7 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   void yieldTransmitter(String? radio) => _yieldTransmitter(_keying, radio);
 
   void _yieldTransmitter(CatKeying keyer, String? radio) {
+    _stopLiveCw();
     _ptt.release();
     keyer.quietOthers(radio);
     _quietBoxedKeys(radio);
