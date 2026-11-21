@@ -47,6 +47,29 @@ void main() {
     expect(services.cat.keyerOpenRequests.value, 1);
   });
 
+  test('showKeyer reaches Chasing through the command dialog but not through a covering page', () async {
+    final services = await buildServices();
+    final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    await services.settings.setExperimentEnabled('chase', true);
+    final previousDestination = homeRail.destination;
+    homeRail.destination = HomeDestination.chase;
+    addTearDown(() => homeRail.destination = previousDestination);
+
+    homeRail.coveringChanged(1, page: false);
+    addTearDown(() => homeRail.coveringChanged(-1, page: false));
+    // A configured but disconnected keyer still has a pill to open.
+    expect(services.cat.canKeyCw, isFalse);
+    expect(await services.handleCommandAction('showKeyer'), isNull);
+    expect(services.cat.keyerOpenRequests.value, 1);
+
+    await services.cat.connect(node.uuid);
+    addTearDown(() => services.cat.disconnect(node.uuid));
+    homeRail.coveringChanged(1, page: true);
+    addTearDown(() => homeRail.coveringChanged(-1, page: true));
+    expect((await services.handleCommandAction('showKeyer'))?.failed, isTrue);
+    expect(services.cat.keyerOpenRequests.value, 1);
+  });
+
   test('with a keyer-capable radio connected, the speed reaches it and the hook\'s confirm stands', () async {
     final services = await buildServices();
     final node = await services.cat.addNode(

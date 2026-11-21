@@ -62,9 +62,9 @@ A chord is one key and the modifiers held for it, stored as text:
 | `app.fontScaleUp` / `Down` / `Reset` | ⌘= ⌘+ / ⌘- / ⌘0 (and numpad) | anywhere |
 | `app.densityLooser` / `Denser` / `Auto` | the Font Scale keys with ⇧ | anywhere |
 | `logView.find` | ⌘F | Operation, Chasing, Logs |
-| `keyer.message1`…`8` | F1…F8, ⌥1…⌥8 | Operation, keying a CAT radio |
-| `keyer.keyboardMode` | ⌥K | Operation, keying a CAT radio |
-| `keyer.stop` | none | Operation, keying a CAT radio: Escape's stop, for a keyboard whose Escape never reaches the app (One UI can make it Home) |
+| `keyer.message1`…`8` | F1…F8, ⌥1…⌥8 | Operation and Chasing, with a keyer for the draft's mode |
+| `keyer.keyboardMode` | ⌥K | Operation and Chasing, with a CW keyer |
+| `keyer.stop` | none | Operation and Chasing. Bind this to stop sending on a keyboard whose Escape never reaches the app (One UI can make it Home) |
 | `radio.ptt` | ['] | Operation, PTT on |
 | `style.toggle` | ⌥U | Operation: Run or S&P for the operator's set |
 | `so2r.stereo` | [\\] | Operation, an SO2R switcher switching; listed only with `so2r` on |
@@ -264,7 +264,7 @@ A press is a key event on a key no keyboard has (`CommandKeyDownEvent`, sent by
 node — the two places a key reaches — and `KeyBindings` answers it as its command's whatever
 that command's chords are, and never as a character a field takes. So every handler keeps
 asking `match`/`claim` as it does for a key, and the command acts exactly where its key would:
-F1 only with an operation in front, Wipe only with the logging panel focused. The release
+F1 with the Operation or Chasing view in front, Wipe with the logging panel focused. The release
 follows the button's, so a held command (PTT on Hold) holds for as long as the button does,
 and a device unplugged lets go of what it held. With `kb` off nothing reads `midi`, as nothing
 reads a rebound key.

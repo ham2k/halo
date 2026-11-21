@@ -40,6 +40,7 @@ import 'operation/information_panel_settings.dart';
 import 'operation/spot_keys.dart';
 import 'operation/log_find_bar.dart';
 import 'operation/logging_panel.dart';
+import 'logging_view_keying.dart';
 import 'operation/map_panel.dart';
 import 'map/map_pane_config.dart';
 import 'operation/operation_location_pin.dart';
@@ -52,6 +53,8 @@ import 'tester_overlay.dart' show testerOverlayCovering;
 import 'operation_dialogs.dart' show editTwoFieldDialog;
 import 'operation_view.dart' show zeroBeatSuggestionFor;
 import 'sheet_header_dots.dart';
+
+part 'chase_view_keying.dart';
 
 /// The span of the log the Chasing view shows, and counts in its header.
 /// Calendar spans are UTC, like the log's own days.
@@ -174,7 +177,7 @@ class ChaseView extends StatefulWidget {
   State<ChaseView> createState() => _ChaseViewState();
 }
 
-class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
+class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView>, LoggingViewKeying<ChaseView>, _ChaseKeying {
   @override
   HaLoServices get dockServices => widget.services;
 
@@ -506,6 +509,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     HardwareKeyboard.instance.addHandler(_onFindKeyEvent);
     HardwareKeyboard.instance.addHandler(_onVfoKeyEvent);
     HardwareKeyboard.instance.addHandler(_onSpotKeyEvent);
+    startKeyingInput();
   }
 
   void _hidden() {
@@ -516,6 +520,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     HardwareKeyboard.instance.removeHandler(_onFindKeyEvent);
     HardwareKeyboard.instance.removeHandler(_onVfoKeyEvent);
     HardwareKeyboard.instance.removeHandler(_onSpotKeyEvent);
+    stopKeyingInput();
   }
 
   /// Bumped to open the logging panel's Find bar — [LoggingPanel.findRequest].
@@ -692,6 +697,10 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     final loggingPanel = LoggingPanel(
       operation: operation,
       services: widget.services,
+      onSendCwMessage: sendCwMessageFromArea,
+      cwTemplateContext: PanelRenderContext(operation: operation, qso: _keyerLabelDraft, qsoCount: _realQsoCount),
+      keyingSuperMode: keyingSuperMode,
+      onKeyingDraftChanged: _onKeyingDraftChanged,
       qsos: qsos,
       loggingControls: loggingControls,
       onCommandAction: _handleCommandAction,

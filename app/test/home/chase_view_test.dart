@@ -7,17 +7,33 @@
 // an operator's own chasing, and editing one of those contacts restamps it
 // with the operator's call.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/chase_view.dart';
+import 'package:ham2k_logger/views/keyer_area.dart';
 
 import '../support/halo_test_support.dart';
 
 void main() {
+  Future<void> connectKeyer(WidgetTester tester, HaLoHarness harness, {required String mode}) async {
+    final cat = harness.services.cat;
+    final node = await cat.addNode(
+      typeKey: 'placeholder-radio',
+      name: 'Bench Rig',
+      config: {...placeholderRadioModel.variants.single.defaultConfig, 'placeholderMode': mode},
+    );
+    await tester.runAsync(() => cat.connect(node.uuid));
+    addTearDown(() => cat.disconnect(node.uuid));
+  }
+
   testWidgets("the log holds the period's contacts for the chasing station, and nothing logged in an operation", (tester) async {
     final harness = await makeHaLoServices();
     final services = harness.services;
@@ -136,5 +152,127 @@ void main() {
     setVisible(() => visible = true);
     await settleFrames(tester, frames: 2);
     expect(sent().focusNode?.hasFocus, isTrue);
+  });
+
+  testWidgets('a Chase CW memory uses the chasing station and the latest call, from the button and the keyboard', (tester) async {
+    Completer<void>? pendingRender;
+    final harness = await makeHaLoServices(
+      stubs: {
+        'template:templates:render': (Object? args) async {
+          final input = args as Map;
+          final operation = input['operation'] as Map?;
+          final qso = input['qso'] as Map?;
+          await pendingRender?.future;
+          return {
+            'text': (input['template'] as String)
+                .replaceAll('{{ op.station }}', operation?['stationCall'] as String? ?? '')
+                .replaceAll('{{ qso.call }}', (qso?['their'] as Map?)?['call'] as String? ?? ''),
+          };
+        },
+      },
+    );
+    final services = harness.services;
+    await services.setOperatorCall('N0DEV');
+    await harness.settings.setLayoutData(LayoutKeys.chaseOptions, {
+      'stations': {
+        harness.settings.activeProfileId: {'stationCall': 'W1AW'},
+      },
+    });
+    await harness.settings.setCwMessage(2, '{{ op.station }} {{ qso.call }}');
+    await harness.settings.setCwMessageLabel(2, 'Exchange');
+    await connectKeyer(tester, harness, mode: 'CW');
+    final keyer = services.cat.keyer('A');
+    var visible = true;
+    late StateSetter setVisible;
+    await pumpHaLo(
+      tester,
+      (services) => StatefulBuilder(
+        builder: (context, setState) {
+          setVisible = setState;
+          return Offstage(
+            offstage: !visible,
+            child: ExcludeFocus(
+              excluding: !visible,
+              child: ChaseView(services: services, visible: visible),
+            ),
+          );
+        },
+      ),
+      harness: harness,
+      size: const Size(1400, 900),
+    );
+    await settleFrames(tester);
+
+    final call = find.widgetWithText(TextField, 'Their call');
+    await tester.enterText(call, 'K1ABC');
+    await tester.tap(find.textContaining(RegExp(r'^\d+ WPM$')));
+    await settleFrames(tester, frames: 4);
+    final memory = find.descendant(of: find.byType(KeyerControls), matching: find.widgetWithText(InkWell, 'Exchange'));
+    await tester.tap(memory);
+    await tester.pump();
+    expect(keyer.cwProgress.value?.text, 'W1AW K1ABC');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(keyer.cwProgress.value, isNull);
+    expect(tester.widget<TextField>(call).controller?.text, 'K1ABC', reason: 'Escape stops the keyer before it acts on the logging fields');
+
+    await tester.enterText(call, 'W2XYZ');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.f2);
+    await tester.pump();
+    expect(keyer.cwProgress.value?.text, 'W1AW W2XYZ', reason: 'the send uses the latest draft even before the labels settle');
+    keyer.stopCw();
+
+    final interrupted = pendingRender = Completer<void>();
+    await tester.sendKeyEvent(LogicalKeyboardKey.f2);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    interrupted.complete();
+    await tester.pump();
+    expect(keyer.cwProgress.value, isNull, reason: 'Escape must also stop a send that has yet to finish rendering');
+
+    final pending = pendingRender = Completer<void>();
+    await tester.sendKeyEvent(LogicalKeyboardKey.f2);
+    await tester.pump();
+    setVisible(() => visible = false);
+    await tester.pump();
+    pending.complete();
+    await tester.pump();
+    expect(keyer.cwProgress.value, isNull, reason: 'a render started before leaving Chase must never key on arrival');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.f2);
+    await tester.pump();
+    expect(keyer.cwProgress.value, isNull, reason: 'Chase stays mounted while another home destination owns the screen');
+    await tester.pump(const Duration(seconds: 62));
+  });
+
+  testWidgets('a Chase Phone memory plays on radio A from the button and the keyboard', (tester) async {
+    final harness = await makeHaLoServices();
+    await harness.services.setOperatorCall('N0DEV');
+    await harness.settings.setVoiceMessageLabel(2, 'My call');
+    await connectKeyer(tester, harness, mode: 'USB');
+    final keyer = harness.services.cat.keyer('A');
+    await pumpHaLo(
+      tester,
+      (services) => ChaseView(services: services),
+      harness: harness,
+      size: const Size(1400, 900),
+    );
+    await settleFrames(tester);
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Voice'));
+    await settleFrames(tester, frames: 4);
+    final memory = find.descendant(of: find.byType(KeyerControls), matching: find.widgetWithText(InkWell, 'My call'));
+    await tester.tap(memory);
+    await tester.pump();
+    expect(keyer.voiceActivity.value?.memory, 2);
+    keyer.stopVoice();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.f2);
+    await tester.pump();
+    expect(keyer.voiceActivity.value?.memory, 2);
+    keyer.stopVoice();
+    await tester.pump(const Duration(seconds: 62));
   });
 }

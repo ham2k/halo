@@ -3,6 +3,7 @@
 
 import 'package:halo_i18n/halo_i18n.dart';
 
+import '../../views/app_shell/home_rail_state.dart';
 import '../halo_services.dart';
 
 /// The keyer's command actions — WPM, KEYER, and ESM — for
@@ -21,14 +22,20 @@ CommandActionOutcome? keyerCommandAction(HaLoServices services, String action, M
       if (wpm is! num) return null;
       return services.cat.setKeyerSpeed(wpm.round()) ? null : (text: t.commands.noCwKeyer, failed: true);
     case 'showKeyer':
-      // KEYER / MACROS: the logging panel opens its keyer control. With
-      // nothing that can key there is nothing for it to do — say so rather
-      // than confirm.
-      if (!services.cat.canKeyCw && !services.cat.canPlayVoice) return (text: t.commands.noKeyer, failed: true);
-      // The control lives in an operation's logging panel; from Home there
-      // is nothing to open, and confirming would be a lie.
-      if (services.currentOperationContext == null) return (text: t.commands.keyerNeedsOperation, failed: true);
-      services.cat.openKeyerControl();
+      // The command dialog can sit over Chasing. A full page covering Home
+      // puts Chasing's logging panel out of reach. Its keyer pill follows
+      // what the station has configured while its sets can change separately.
+      final operationContext = services.currentOperationContext;
+      final chasing =
+          operationContext == null &&
+          homeRail.destination == HomeDestination.chase &&
+          homeRail.homeChromeShowing &&
+          services.settings.experimentEnabled('chase') /* stored key, see experiments.yaml */;
+      final cat = services.cat;
+      final canOpen = chasing ? cat.hasKeyer : cat.canKeyCw || cat.canPlayVoice;
+      if (!canOpen) return (text: t.commands.noKeyer, failed: true);
+      if (operationContext == null && !chasing) return (text: t.commands.keyerNeedsOperation, failed: true);
+      cat.openKeyerControl();
       return null;
     case 'setEnterSends':
       // ESM. Written whether or not anything can key right now —

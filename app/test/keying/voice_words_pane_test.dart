@@ -39,6 +39,19 @@ void main() {
     )).services;
   });
 
+  test('closing an operation over Chasing restores the chasing operator’s words', () {
+    final words = services.cat.keyer('A').voicedWords!;
+    Future<({String text, String operatorCall})> chase(String template, int _) async => (text: template, operatorCall: 'W1AW');
+    Future<({String text, String operatorCall})> operation(String template, int _) async => (text: template, operatorCall: 'N0DEV');
+
+    words.attach(chase, operatorCall: () => 'W1AW');
+    words.attach(operation, operatorCall: () => 'N0DEV');
+    expect(words.operatorCall, 'N0DEV');
+
+    words.detach(operation);
+    expect(words.operatorCall, 'W1AW');
+  });
+
   Future<void> open(WidgetTester tester) async {
     await tester.pumpWidget(
       TranslationProvider(

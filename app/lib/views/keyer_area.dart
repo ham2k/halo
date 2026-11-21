@@ -305,6 +305,7 @@ class KeyerLineItem extends StatelessWidget {
 HostControl keyerHostControl({
   required HaLoServices services,
   required String? superMode,
+  String? radio,
   void Function(int n, String radio)? onSendMessage,
   PanelRenderContext? templateContext,
   bool enterSends = false,
@@ -317,7 +318,7 @@ HostControl keyerHostControl({
     final k = t.settings.radio.keyerControl;
     if (digital) return k.label;
     if (phone) return k.voice;
-    final speed = cat.operatorKeyer.keyerSpeed;
+    final speed = cat.keyer(radio ?? cat.operatorRadio).keyerSpeed;
     return speed == null ? k.cw : k.cwSpeed(wpm: speed);
   }
 
@@ -328,7 +329,7 @@ HostControl keyerHostControl({
     // KEYER, or keyboard mode starting on either radio: its field is here.
     openRequests: Listenable.merge([
       cat.keyerOpenRequests,
-      for (final radio in ['A', 'B']) cat.keyer(radio).keyboardModeRequests,
+      for (final set in radio == null ? const ['A', 'B'] : [radio]) cat.keyer(set).keyboardModeRequests,
     ]),
     spec: () => SecondaryControlSpec(
       key: keyerControlKey,
@@ -339,6 +340,7 @@ HostControl keyerHostControl({
       expandedBuilder: (context) => KeyerControls(
         services: services,
         phone: phone,
+        radio: radio,
         onSendMessage: onSendMessage,
         templateContext: templateContext,
         enterSends: enterSends,
@@ -356,6 +358,7 @@ const keyerControlKey = 'keyer';
 class KeyerControls extends StatelessWidget {
   final HaLoServices services;
   final bool phone;
+  final String? radio;
   final void Function(int n, String radio)? onSendMessage;
   final PanelRenderContext? templateContext;
   final bool enterSends;
@@ -365,6 +368,7 @@ class KeyerControls extends StatelessWidget {
     super.key,
     required this.services,
     required this.phone,
+    this.radio,
     this.onSendMessage,
     this.templateContext,
     this.enterSends = false,
@@ -381,7 +385,7 @@ class KeyerControls extends StatelessWidget {
     return ListenableBuilder(
       listenable: cat,
       builder: (context, _) {
-        final keyer = cat.operatorKeyer;
+        final keyer = cat.keyer(this.radio ?? cat.operatorRadio);
         final radio = keyer.radio;
         final facts = enterSends ? (esmFacts?[radio]) : null;
         final send = onSendMessage;

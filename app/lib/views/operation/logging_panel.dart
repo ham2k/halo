@@ -125,6 +125,10 @@ class LoggingPanel extends StatefulWidget {
   /// while this is null.
   final QsoDraftChanged? onQsoChanged;
 
+  /// The active logging set and its draft, for a host that stays mounted
+  /// while another view can also change CAT's operator radio.
+  final void Function(String radio, Map<String, dynamic> qso)? onKeyingDraftChanged;
+
   /// Forwards the same draft plus which fields the operator actually filled,
   /// for the peers sharing this operation. Independent of [onQsoChanged]:
   /// what reads it is a panel on ANOTHER device, so the layout here has no
@@ -225,6 +229,7 @@ class LoggingPanel extends StatefulWidget {
     this.onCallInfoChanged,
     this.onSelectionChanged,
     this.onQsoChanged,
+    this.onKeyingDraftChanged,
     this.onPeerDraftChanged,
     this.onCallInfoTap,
     this.onSendCwMessage,
@@ -1090,7 +1095,12 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         },
         onNavigateToQsoList: _handleNavigateToQsoList,
         onWalkQsoList: _walkFromField,
-        onQsoChanged: active ? widget.onQsoChanged : null,
+        onQsoChanged: active
+            ? switch (widget.onKeyingDraftChanged) {
+                final publish? when _hasKeyer => (qso) => publish(radio, qso),
+                _ => widget.onQsoChanged,
+              }
+            : null,
         onPeerDraftChanged: active ? widget.onPeerDraftChanged : null,
         // Every set's: each works its own station.
         onDraftSpot: (key, qso) =>
@@ -1206,9 +1216,10 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
             keyerHostControl(
               services: widget.services,
               superMode: widget.keyingSuperMode,
+              radio: widget.onKeyingDraftChanged == null ? null : (_so2r ? _so2rLink.active : 'A'),
               onSendMessage: widget.onSendCwMessage,
               templateContext: widget.cwTemplateContext,
-              enterSends: _esmEnabled,
+              enterSends: _esmEnabled && widget.onEnterSends != null,
               esmFacts: _esmFacts,
             ),
         ],

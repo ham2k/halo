@@ -1807,10 +1807,11 @@ writing it:
 
 ## CW keying
 
-A radio whose CAT protocol can key CW from text keys the app's messages: F1-F8 in the operation
-view send the eight templates under Radio settings (`cwMessage1..8`), the Station dialog's CW Keying
-line picks the key and the speed and opens the editor, and `20WPM` typed into the call field sets the
-speed the way `5W` sets power. The editor is the **CW Keyer** dialog — the key, the message sets, message 1's repeat and Enter
+A radio whose CAT protocol can key CW from text keys the app's messages. F1-F8 in the Operation and
+Chasing views send the eight templates under Radio settings (`cwMessage1..8`) through the keyer of
+the active logging set. The Station dialog's CW Keying line picks the key and the speed and opens
+the editor, and `20WPM` typed into the call field sets the speed the way `5W` sets power. The editor
+is the **CW Keyer** dialog — the key, the message sets, message 1's repeat and Enter
 Sends Messages, all applied as they change —
 reached from that line, the keyer control and a row of its own in Settings → Radio; the settings it edits stay declared for SET/SHOW but are not Settings rows
 (`listed: false`).
@@ -1885,22 +1886,17 @@ only ever the operator's explicit ask, and neither radio announces a knob turn, 
 the app saw is not the value the radio is on.
 
 **Messages are templates.** Liquid (docs/extensions/templates.md), rendered on each keypress through
-the core `templates` extension's `template` hook against the operation and the DRAFT contact — the
-same `templateContext` a panel gets, so `{{ qso.call }}` means the same thing in a message as in a
-pane. The renderer lives in the extension runtime and nowhere else, which is why a hook exists for
-it. A template that does not parse is shown as a notice, not keyed with its braces in Morse. One
-message can include another, rendered (`{{ keyer.msg1 }}`); the render carries the chain of messages
+the core `templates` extension's `template` hook against the DRAFT contact and the station context.
+The Operation view uses its operation. Chasing uses the chasing station and location. A template
+that fails to parse produces a notice and sends nothing. One message can include another, rendered
+(`{{ keyer.msg1 }}`); the render carries the chain of messages
 being expanded, and one that reaches itself is an error naming the loop rather than a message
 silently missing the part that looped. A key's label is a template too, and a blank one stands for
-the message itself (`{{ keyer.msgN }}`), so a key reads what it sends. The
-handler is a `HardwareKeyboard` handler in `OperationView` (which owns the draft QSO), claimed only
-while that route is front-most — a dialog over it, the message editor included, keeps the keyboard —
-and only for a bare function key with a message behind it — or its stand-in ⌥1-⌥8 (Alt+1-8), by the
-physical key since Option turns the digits into other characters on a Mac, for a laptop or tablet
-keyboard with no function row, and not while the keyboard is in free text (any text field outside the
-entry row — notes, keyboard mode's own field), where on Spanish, Nordic and German Mac layouts
-⌥-digits type '@', '[' and '|'; Escape is claimed only while
-something — a message, a chain, a repeat — is running, and stops all of it.
+the message itself (`{{ keyer.msgN }}`), so a key reads what it sends. A `HardwareKeyboard` handler
+claims the keys while the logging view is in front. A dialog over it, including a message editor,
+keeps the keyboard. The defaults are F1-F8, with ⌥1-⌥8 (Alt+1-8) available on keyboards without a
+function row. The Option chords match the physical keys and yield to free text fields outside the entry row,
+where on Spanish, Nordic and German Mac layouts ⌥-digits type '@', '[' and '|'.
 
 **Neither protocol says when its keyer is free**, and both hold less than a CQ. CI-V's `0x17` takes
 30 characters and NAKs a second command while the first is still keying; a Yaesu memory takes 50.
@@ -1924,7 +1920,7 @@ stop — a tap on the message — drops every word typed, handed over or held, a
 empty for a fresh message: a stop abandons what was being sent, all of it. Either way the mode listens to `cwStops`, bumped
 ahead of every stop, because the quiet a stop leaves reads exactly like a message ending, and taken as
 "free" it would key what is held right after the operator asked for silence — Escape reaches the
-operation view's handler, and its stop, before the field. The
+logging view's handler, and its stop, before the field. The
 key going away ends it too, since `sendCw` would take the rest to nothing. Starting it ends a CQ repeat,
 as a message key does. The field binds Space
 itself, since the logging panel's Space moves to the next field.
@@ -2003,13 +1999,14 @@ FTDX10's memory path have keyed on hardware; Icom's `0x17` and the WinKeyer have
 **The keyer is one of the logging panel's secondary controls** (`keyerHostControl`, handed to the
 strip as a `ControlStripSettings.hostControls` entry and placed after Radio; the operator can hide
 it). Its chip reads the speed ("25 WPM", key icon) or "Voice" (microphone), or what is going out
-while something is. Its panel holds what starts a message: Enter Sends Messages, a button per
+while something is. Its panel holds what starts a message: a button per
 message up to the last one with anything in it — one with nothing to send disabled, "M1".."M8" for
 one with no label — then keyboard mode, the repeat switch and the way to the message dialog.
+The Operation view also offers Enter Sends Messages and keyboard PTT.
 A long press or a right click on a message's button opens that message's own dialog
 (`showCwMessageDialog`, `showVoiceMessageDialog`) and sends nothing, disabled button or not; a CW
 edit saves into the set in use on that dialog's Save.
-`KEYER` (or `MACROS`) in the call field opens it without sending anything.
+`KEYER` (or `MACROS`) in an Operation or Chasing call field opens it without sending anything.
 
 **What is going out is shown** in the logging panel's FYI area ([logging-fields.md](logging-fields.md)
 § The FYI area), at the bottom of the info area under the stats or the call info, as that radio's
@@ -2055,8 +2052,8 @@ the contact it is answering. A switch (`cwRepeat`, `voiceRepeat`) says whether i
 cooldown of one to ten seconds (`cwRepeatDelay`, `voiceRepeatDelay`) is the wait between the message
 ENDING and it going again — from the end, not from the keypress, or a chain
 would key over its own message. One engine serves both keyers (`CatService.armKeyerRepeat`): the
-send is supplied by whoever armed it, since rendering a template against the draft is the operation
-view's job while a voice memory needs nothing prepared. The keyer line shows the wait in the place
+send is supplied by whoever armed it. The logging view renders CW against its draft, and the
+voice keyer plays its memory. The keyer line shows the wait in the place
 and shape of the message going out, one item among the FYI area's others: a return arrow where a
 memory's play icon stands, what goes again as the line showed it going out — the message, a
 memory's words or its label — and under them a bar that EMPTIES, for the whole chain — including the render-long gap between a wait
@@ -2078,11 +2075,10 @@ out — and a repeat that was mid-render when its chain ended keys nothing.
 
 What stops is decided by what the operator did, the same for CW and voice:
 
-- **Escape** stops every message, Enter Sends Messages chain and repeat (`CatService.stopKeying`),
-  whoever started it — a peer's included — and is claimed only when there was something to stop.
-  The operation view's key handler does the stopping; the logging fields, which hear the same
-  keystroke after it, read its answer (`escapeStoppedKeying`) rather than asking again, since asked
-  again the stop just made reads as nothing running and the Escape also ends a QSO edit.
+- **Escape or system Back** stops every message, Enter Sends Messages chain and repeat
+  (`CatService.stopKeying`), whoever started it — a peer's included. The logging view claims the
+  key only when there was something to stop. The logging fields hear the same Escape after the
+  view's handler and read `escapeStoppedKeying` so stopping a message leaves any QSO edit open.
 - **A tap** on the keyer line's message stops that keyer's message and everything behind it; a
   tap on the countdown ends the repeat.
 - **A call entered** — any operator input into the callsign field: a key, the on-screen keyboard, a
@@ -2345,13 +2341,12 @@ and a refused tune is worse than a late one.
 
 ## Voice keying
 
-The same eight keys, in a Phone mode: while the DRAFT contact's mode is Phone (`superModeForMode`
-— SSB, FM, AM and the digital-voice modes), F1-F8 and the keyer control's buttons play the radio's own
-voice memories, Escape stops one, and the **Phone Keyer** dialog names each memory and — on a radio
-whose CAT can — records into it, beside memory 1's repeat and Enter Sends Messages, which apply as
-they change. The draft's mode and not the radio's, the same reasoning as the messages being templates
-against the draft: the message is for the contact being logged, and a rig left in USB while the
-operator logs CW keys CW.
+The same eight keys in the Operation and Chasing views play voice memories from the active logging
+set's keyer while the DRAFT contact's mode is Phone (`superModeForMode` — SSB, FM, AM and the
+digital-voice modes). The keyer control offers the same memories, Escape stops playback, and the
+**Phone Keyer** dialog names each memory and records into it on radios that support recording over
+CAT. Memory 1's repeat and the Operation view's Enter Sends Messages switch apply as they change.
+The draft's mode selects the keyer for the contact being logged.
 
 In a Digital mode (`superModeForMode` says neither CW nor Phone — FT8, RTTY, PSK) nothing keys:
 F1-F8, ⌥1-⌥8 and ⌥K (keyboard mode) are left unclaimed, keyboard mode already on ends, Enter Sends Messages is off whatever its switch says (Enter
@@ -2864,9 +2859,9 @@ view to listen to and redo. The words share one gain, from those inside the call
 (`saidTakes`), so its last keeps the drop it was said with. A recording
 that does not split says why (`VoiceWordSplitProblem`) and changes nothing.
 
-**Whose words.** A word set is an operator's: the open operation's operator, else its station call
-(`operatorCallFor`), else the profile's — a club station's operators each say messages in their own
-voice. A set holds A-Z as the ITU phonetics, 0-9, "stroke", the phrases every set has
+**Whose words.** The front logging view picks the word set by its operator call or station call
+(`operatorCallFor`). The profile's operator call is the fallback. A club station's operators each
+say messages in their own voice. A set holds A-Z as the ITU phonetics, 0-9, "stroke", the phrases every set has
 (`fixedPhraseWords`: "/P", "/M", "QSL", "QSL?", "QRZ", "TU", "QRP" — spelled while not recorded,
 since they are there whether or not the operator says them), plus phrases the operator adds
 ("CQ POTA", "de") — refused by name while not recorded — each with an id that names its files, so editing the text keeps the
@@ -2904,11 +2899,10 @@ than found later in a message; Space takes the reading and shows the next call, 
 its takes and records the same call again. Space also starts and stops a recording, bound on the
 dialog itself so a focused button never takes the key, and a session runs from the keyboard.
 
-**Saying a message.** The template is rendered by the core `templates` hook against the operation
-and the draft, as a CW message is, at play time — so a repeat says the call as it is now — through a
-renderer the operation view attaches (`VoicedWords.attach`), which is also what says whose words to
-use. `{{ phone.msgN }}` is message N's own recording, played as recorded: it is replaced with a
-private-use mark before rendering (`markVoicedMessages`), which the renderer passes through as text,
+**Saying a message.** The front logging view's renderer (`VoicedWords.attach`) passes the current
+draft and station context to the core `templates` hook each time a message plays, including on
+repeats. `{{ phone.msgN }}` plays message N's recording. A private-use mark stands in for the
+recording before rendering (`markVoicedMessages`), which the renderer passes through as text,
 so the extension knows nothing of phone messages. A message N that is itself said with words is
 its template instead, one level deep — what it says, not a recording it may not have — so a message
 naming itself, or two naming each other, end at a mark. The text is then planned (`planVoicedText`):
@@ -5007,10 +5001,10 @@ passband's two edges, F1–F8 and Stop.
 through `MidiStation`. That is the same path a panel takes (`PanelRadioService`): Radio A through
 `vfoA` and Radio B through `vfoB` — so the logging fields follow the knob and Smart VFO Snap
 settles it (`VfoOrigin.dial`) — and PTT through the app's own latch, so SO2R's one-radio-on-the-air
-rule and `CatPtt`'s timeout hold for a footswitch as for the PTT key. F1–F8 go to the operation in
-front (`CatKeying.messageKeyRequests`), which keys them exactly as its function keys do, rendered
-against its draft. Nothing asks the platform for MIDI until the experiment is on and a controller
-node exists: on the web that first ask is a permission prompt.
+rule and `CatPtt`'s timeout hold for a footswitch as for the PTT key. F1–F8 go to the Operation or
+Chasing view in front (`CatKeying.messageKeyRequests`), which keys them exactly as its function
+keys do. Nothing asks the platform for MIDI until the experiment is on and a controller node
+exists. The first request on the web is a permission prompt.
 
 **The node's config is edited in its own pane** (`midi_controller_pane.dart`), not the equipment
 form. Learn writes the mapping the moment a control moves, and the form saves back the config it
