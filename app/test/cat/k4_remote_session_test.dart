@@ -47,13 +47,13 @@ Uint8List _cat(String text) => _envelope([0, 0, 0, ...ascii.encode(text)]);
 List<String> _commandsWithoutHeartbeat(_SecureConnection connection) =>
     connection.sent.map((frame) => ascii.decode(frame.sublist(11, frame.length - 4))).where((command) => command != 'PING;').toList();
 
-Uint8List _pan({int receiver = 0, int centerHz = 14074000}) {
+Uint8List _pan({int receiver = 0, int centerHz = 14074000, int rateKhz = 48}) {
   final payload = Uint8List(27 + 1024);
   payload.setRange(0, 5, [2, 1, 42, 0, receiver]);
   final data = ByteData.sublistView(payload);
   data.setUint16(5, 1024, Endian.little);
   data.setInt64(11, centerHz, Endian.little);
-  data.setInt32(19, 48, Endian.little);
+  data.setInt32(19, rateKhz, Endian.little);
   data.setInt32(23, -1300, Endian.little);
   payload.fillRange(27, payload.length, 45);
   return _envelope(payload);
@@ -664,6 +664,21 @@ void main() {
     expect(_commandsWithoutHeartbeat(secure), beforePan, reason: 'spectrum demand must not configure the shared radio');
     expect(cat.setSpectrum(uuid, const SpectrumRequest(refLevelDb: 3)), isTrue);
     expect(_commandsWithoutHeartbeat(secure), beforePan);
+    expect(cat.setSpectrum(uuid, const SpectrumRequest(hardwareWidthHz: 50000)), isTrue);
+    expect(_commandsWithoutHeartbeat(secure), [...beforePan, '#SPN40000;']);
+    expect(secure.sent, contains(orderedEquals(_cat('#SPN40000;'))));
+    expect(cat.stateFor(uuid).spectrum!.spanHz, 12000, reason: 'the command does not announce any new sweep geometry');
+    secure.receive(_pan(centerHz: 14234000, rateKhz: 96));
+    await pumpEventQueue();
+    expect(cat.stateFor(uuid).spectrum!.spanHz, 48000);
+    expect((frames.last.lowHz, frames.last.highHz), (14186000, 14281906));
+    expect(cat.setSpectrum(uuid, const SpectrumRequest(hardwareWidthHz: 20000, allowHardwareNarrowing: true)), isTrue);
+    expect(_commandsWithoutHeartbeat(secure), [...beforePan, '#SPN40000;', '#SPN15000;']);
+    expect(cat.stateFor(uuid).spectrum!.spanHz, 48000);
+    secure.receive(_pan(centerHz: 14234000, rateKhz: 24));
+    await pumpEventQueue();
+    expect((frames.last.lowHz, frames.last.highHz), (14222000, 14245977));
+    expect(frames.last.levels, hasLength(1024));
     await first.cancel();
     expect(secure.closeCalls, 0);
     await second.cancel();
