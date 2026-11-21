@@ -52,6 +52,7 @@ import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
 
 part 'k4_spectrum_session.dart';
+part 'k4_tuner.dart';
 part 'kenwood_equipment.dart';
 part 'kenwood_k3.dart';
 part 'kenwood_lab599.dart';
@@ -350,6 +351,7 @@ class KenwoodSession
     if (isK4) {
       _send('IF;PCX;');
       _requestPassband();
+      if (!remote) _k4Tuner?.poll();
       return;
     }
     // Until it answers. The protocol is a menu setting and does not change
@@ -390,6 +392,8 @@ class KenwoodSession
       _reportTuner(null);
     },
   );
+
+  late final _K4Tuner? _k4Tuner = isK4 ? _K4Tuner(_sink, _send) : null;
 
   /// Every [kenwoodTunerReadEvery]th poll, first thing on a connection. The
   /// previous read is judged when the next falls due — by then its answer
@@ -623,38 +627,6 @@ class KenwoodSession
     if (_sink case final RadioAntennaSink sink) sink.reportAntennas(antennas);
   }
 
-  /// `AN`'s answer as ports, or null when it is not in [antennaDialect]'s
-  /// shape.
-  ///
-  /// The TS-590 transmits on ANT1 or ANT2 and receives there too unless its
-  /// RX ANT jack is switched in. So it is [RadioAntennas.separate], but its
-  /// receive choice is only ever the transmit port or RX ANT: offering the
-  /// other transmit port for receive would offer a pairing it cannot make.
-  RadioAntennas? _parseAntennas(String params) {
-    switch (antennaDialect) {
-      case KenwoodAntennaDialect.twoPort:
-        final port = parseKenwoodAntennaParams(params);
-        if (port == null) return null;
-        final name = kenwoodAntennaPorts[port - 1];
-        return RadioAntennas(rxPorts: kenwoodAntennaPorts, txPorts: kenwoodAntennaPorts, rx: name, tx: name);
-      case KenwoodAntennaDialect.ts590:
-        final answer = parseTs590AntennaParams(params);
-        if (answer == null) return null;
-        final tx = kenwoodAntennaPorts[answer.port - 1];
-        return RadioAntennas(
-          rxPorts: [tx, ts590RxAntennaPort],
-          txPorts: kenwoodAntennaPorts,
-          rx: answer.rxAntenna ? ts590RxAntennaPort : tx,
-          tx: tx,
-          separate: true,
-        );
-      case KenwoodAntennaDialect.k3:
-        return _parseK3Antennas(params);
-      case null:
-        return null;
-    }
-  }
-
   /// Reports upward, and tells the poller whether the radio is moving.
   void _report(VfoReading reading) {
     if (isK4 && reading.freqKHz != null) _k4Band = k4BandNumber(reading.freqKHz!);
@@ -828,6 +800,10 @@ class KenwoodSession
         final activity = _voice.activity;
         if (state == null || activity == null) return;
         _voicePollSays(going: activity.recording ? state.recording : state.playing);
+      case 'AT' when isK4:
+        _k4Tuner!.heardMode(command.params);
+      case 'TU' when isK4:
+        _k4Tuner!.heardTune(command.params);
       case 'AC':
         // Never asked of the K4, whose command set is its own.
         if (isK4) return;
@@ -1125,18 +1101,22 @@ class KenwoodSession
   @override
   void setTuner({required bool inline}) {
     if (k3) return _setK3Tuner(inline);
+    if (_k4Tuner case final tuner?) {
+      if (_started && !_transmitting && !_keyedByUs) tuner.setInline(inline);
+      return;
+    }
     final flags = _tunerFlags;
     if (flags == null) return;
     _send(buildKenwoodSetTunerCommand(rxInline: flags.rxInline, inline: inline));
     _readTuner();
   }
 
-  /// Like [setTuner], only once the radio has answered `AC` in Kenwood's shape.
   @override
-  bool get canStartTune => _tunerFlags != null;
+  bool get canStartTune => _k4Tuner?.canStart ?? (_tunerFlags != null);
 
   @override
   void startTune() {
+    if (isK4) return startK4Tune(this);
     final flags = _tunerFlags;
     if (flags == null || _transmitting || flags.tuning) return;
     _send(buildKenwoodStartTuneCommand(rxInline: flags.rxInline));
@@ -1150,8 +1130,21 @@ class KenwoodSession
   /// it does nothing.
   @override
   void stopTune() {
-    if (!k3) setTuner(inline: true);
+    if (isK4) {
+      stopK4Tune(this);
+    } else if (!k3) {
+      setTuner(inline: true);
+    }
   }
+
+  /// [owner] distinguishes the two secure receiver facades on a shared CAT link.
+  void startK4Tune(Object owner) {
+    final transmitting = remote ? _remoteTransmitting : _telemetry.known;
+    if (!_started || transmitting != false || _keyedByUs) return;
+    _k4Tuner?.start(owner);
+  }
+
+  void stopK4Tune(Object owner) => _k4Tuner?.stop(owner);
 
   /// Writes nothing until the radio has answered `AN` in [antennaDialect]'s
   /// shape, nothing while it is transmitting — no antenna relay moves under
@@ -1454,6 +1447,7 @@ class KenwoodSession
     // RDY enables AI4; the meta-mode above selects this client's K31 layout.
     _send(remote ? 'RDY;' : buildKenwoodAutoInformationCommand(true));
     _requestState();
+    if (remote) _k4Tuner?.poll();
     if (!remote) _telemetry.start();
     // Once, not per poll — the same reasoning as the Icom driver's: the
     // speed changes only when someone turns the knob, and the dialog that
@@ -1478,6 +1472,7 @@ class KenwoodSession
     if (!_started) return;
     _started = false;
     _restoreK3CommandMode();
+    _k4Tuner?.close();
     if (!remote) _send(buildKenwoodAutoInformationCommand(false));
   }
 
