@@ -756,6 +756,9 @@ class EquipmentState {
   /// Null for a radio that has none, or a driver that never asks.
   final TunerStatus? tuner;
 
+  /// The secure K4's confirmed device-wide diversity mode; null until read.
+  final bool? k4Diversity;
+
   /// The radio's receive passband, when its driver reads one — see
   /// [PassbandSink]. Null for a driver that cannot.
   final Passband? passband;
@@ -853,6 +856,7 @@ class EquipmentState {
     this.telemetry = const RadioTelemetry(),
     this.keyerSpeed,
     this.tuner,
+    this.k4Diversity,
     this.passband,
     this.antennas,
     this.stale = false,
@@ -880,6 +884,7 @@ class EquipmentState {
     int? keyerSpeed,
     TunerStatus? tuner,
     bool clearTuner = false,
+    bool? k4Diversity,
     Passband? passband,
     bool clearPassband = false,
     RadioAntennas? antennas,
@@ -915,6 +920,7 @@ class EquipmentState {
     telemetry: telemetry ?? this.telemetry,
     keyerSpeed: keyerSpeed ?? this.keyerSpeed,
     tuner: clearTuner ? null : (tuner ?? this.tuner),
+    k4Diversity: k4Diversity ?? this.k4Diversity,
     passband: clearPassband ? null : (passband ?? this.passband),
     antennas: clearAntennas ? null : (antennas ?? this.antennas),
     stale: stale ?? this.stale,

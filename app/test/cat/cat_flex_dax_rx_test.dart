@@ -26,6 +26,9 @@ class _Link implements RadioAudioLink {
 
   @override
   final AudioEngine engine;
+  @override
+  bool get selectedForListening => true;
+
   final AudioEndpoint ears;
   final heard = <AudioEndpoint>[];
   String? refuse;

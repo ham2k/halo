@@ -15,6 +15,7 @@ typedef K4SharedSessionFactory =
       required void Function(List<int>) send,
       required Stream<K4RemotePanPacket> pan,
       required Map<String, dynamic> config,
+      Stream<K4RemoteAudioPacket>? audio,
       void Function(Uint8List envelope)? sendAudio,
     });
 
@@ -33,6 +34,7 @@ class K4SharedConnectionPool extends SharedConnectionPool {
             _ => const Stream<K4RemotePanPacket>.empty(),
           },
           config: config,
+          audio: connection is K4RemoteConnection ? connection.audio : null,
           // Kept out of the traffic log, which records CAT. A closed
           // connection refuses it ([K4RemoteConnection.sendAudio]).
           sendAudio: connection is K4RemoteConnection ? connection.sendAudio : null,

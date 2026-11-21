@@ -9,6 +9,15 @@
 part of 'station_panel.dart';
 
 extension _SetRows on StationPanel {
+  Widget? _k4DiversityRow(BuildContext context, String? uuid, {required EdgeInsets inset, String? alreadyShownFor}) {
+    if (uuid == null || !services.settings.experimentEnabled('audio') /* stored key, see experiments.yaml */ || !_cat.canSetK4DiversityFor(uuid)) return null;
+    // Main and Sub share this setting, even when picked in separate sets.
+    if (alreadyShownFor != null && _cat.canSetK4DiversityFor(alreadyShownFor) && _cat.deviceEntryFor(alreadyShownFor) == _cat.deviceEntryFor(uuid)) {
+      return null;
+    }
+    return K4DiversityControl(enabled: _cat.stateFor(uuid).k4Diversity!, onChanged: (enabled) => _cat.setNodeK4Diversity(uuid, enabled), inset: inset);
+  }
+
   /// A set's details, folded under their heading on the rig's ground,
   /// indented under the rig. The gap under the heading is the column's, and
   /// every row brings only the gap below it.

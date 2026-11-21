@@ -353,6 +353,10 @@ abstract class ReceiveAudioSink {
 abstract interface class RadioAudioLink {
   AudioEngine get engine;
 
+  /// Whether this radio is still selected for listening. This can turn off
+  /// before the link closes, such as when its radio leaves a logging set.
+  bool get selectedForListening;
+
   /// Routes [source] to the operator's output. The route goes with
   /// [source] when it closes. Null, with the reason for the CAT recording
   /// given to [why], when the output will not open.
@@ -449,6 +453,16 @@ abstract class PassbandSink {
 /// its report says where it landed.
 abstract class PassbandSession implements EquipmentSession {
   void setPassband(Passband passband);
+}
+
+/// A secure K4 connection whose receivers share the radio's diversity mode.
+abstract interface class K4DiversitySession implements EquipmentSession {
+  void setDiversity(bool enabled);
+}
+
+/// The K4's confirmed diversity readback, shared by Main and Sub.
+abstract interface class K4DiversitySink {
+  void reportK4Diversity(bool enabled);
 }
 
 /// Which receive levels a [ReceiveLevelSession] takes.

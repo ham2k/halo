@@ -308,7 +308,7 @@ void main() {
       expect(envelope.sublist(15, 19), [0x02, 0x01, 0x02, 0x01]);
       expect(data.getInt16(19, Endian.little), -2);
       expect(envelope.sublist(envelope.length - 4), [0xfb, 0xfc, 0xfd, 0xfe]);
-      expect(K4RemoteDecoder().add(envelope), isEmpty, reason: 'the decoder reads it as audio, which it discards');
+      expect(K4RemoteDecoder().add(envelope), isEmpty, reason: 'audio is opt-in when decoding');
     });
   });
 

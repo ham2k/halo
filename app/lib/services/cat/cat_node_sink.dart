@@ -13,6 +13,7 @@ class _NodeSink
         SdrSink,
         TunerSink,
         TuneCarrierSink,
+        K4DiversitySink,
         PassbandSink,
         RadioAntennaSink,
         RotatorSink,
@@ -48,6 +49,7 @@ class _NodeSink
   final void Function(String?) onSpectrumProblem;
   final void Function(TunerStatus?) onTuner;
   final void Function(bool) onTuneCarrier;
+  final void Function(bool) onK4Diversity;
   final void Function(Passband?) onPassband;
   final void Function(RadioAntennas?) onAntennas;
   final void Function(RotatorPosition) onRotator;
@@ -82,6 +84,7 @@ class _NodeSink
     required this.onSpectrumProblem,
     required this.onTuner,
     required this.onTuneCarrier,
+    required this.onK4Diversity,
     required this.onPassband,
     required this.onAntennas,
     required this.onRotator,
@@ -184,6 +187,9 @@ class _NodeSink
 
   @override
   void reportTuneCarrier(bool on) => onTuneCarrier(on);
+
+  @override
+  void reportK4Diversity(bool enabled) => onK4Diversity(enabled);
 
   @override
   void reportPassband(Passband? passband) => onPassband(passband);

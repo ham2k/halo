@@ -11,6 +11,8 @@ class _K4ReceiverSession
         SpectrumSession,
         PassbandSession,
         NetworkTransmitAudioSession,
+        TalkPttSession,
+        K4DiversitySession,
         CwKeyerSession,
         VoiceKeyerSession,
         RawCommandSession,
@@ -20,6 +22,10 @@ class _K4ReceiverSession
   final K4Receiver receiver;
   bool _active = false, _disposed = false, _spectrumWanted = false;
   String? _spectrumProblem;
+  String? _receiveProblem, _talkProblem;
+  _K4ReceiveAudio? _receiveAudio;
+  K4RemoteTalk? _talk;
+  bool _wantsTalk = false;
 
   /// The output this receiver's keyer last opened.
   K4RemoteAudioOutput? _output;
@@ -68,6 +74,18 @@ class _K4ReceiverSession
   void readBack() {
     final target = _target;
     if (target != null) _refresh(target);
+  }
+
+  @override
+  void setDiversity(bool enabled) {
+    if (!_usable) return;
+    if (owner._diversity == null) {
+      owner._send('DV;SB;');
+      return;
+    }
+    // AI4 omits our changes. DV can also enable Sub, so read both settings
+    // without assuming the radio accepted the requested mode.
+    owner._send('DV${enabled ? 1 : 0};DV;SB;');
   }
 
   @override
@@ -146,8 +164,24 @@ class _K4ReceiverSession
     if (!_usable) return;
     // A release from another receiver must not drop the owner's CAT key.
     if (!on && owner._pttOwner != null && owner._pttOwner != this) return;
+    if (on) {
+      owner._preemptTalk();
+    } else if (owner._talkOwner != null) {
+      return;
+    }
     owner._pttOwner = on ? this : null;
     owner._radio.setPtt(on);
+    if (!on) owner._restoreAudioEncoding();
+  }
+
+  @override
+  bool get talksThroughHalo => _wantsTalk;
+
+  @override
+  bool setPttTalking(bool on) => _usable && owner._setTalkPtt(this, on);
+
+  void _reportAudioProblem() {
+    if (sink case final AudioProblemSink problems) problems.reportAudioProblem(_talkProblem ?? _receiveProblem);
   }
 
   @override
@@ -160,7 +194,7 @@ class _K4ReceiverSession
   /// owed, so the unkey after an output that died mid-message still puts it
   /// back.
   @override
-  bool get switchesToComputerAudio => (_output?.isAlive ?? false) || owner._encoding.owesRestore;
+  bool get switchesToComputerAudio => (_output?.isAlive ?? false) || (owner._pttOwner == this && owner._encoding.owesRestore);
 
   @override
   void setPttWithComputerAudio(bool on, {void Function()? refused}) {
@@ -171,6 +205,7 @@ class _K4ReceiverSession
   @override
   void sendCw(String text) {
     if (!_usable || sanitizeCwText(text).isEmpty) return;
+    owner._preemptTalk();
     owner._cwOwner = this;
     owner._radio.sendCw(text);
   }
@@ -208,6 +243,7 @@ class _K4ReceiverSession
   @override
   void playVoiceMemory(int n) {
     if (!_usable || n < 1 || n > voiceMemoryCount) return;
+    owner._preemptTalk();
     owner._voiceOwner = this;
     owner._radio.playVoiceMemory(n);
   }
@@ -215,6 +251,7 @@ class _K4ReceiverSession
   @override
   void recordVoiceMemory(int n) {
     if (!_usable || !canRecordVoice || n < 1 || n > voiceMemoryCount) return;
+    owner._preemptTalk();
     owner._voiceOwner = this;
     owner._radio.recordVoiceMemory(n);
   }
@@ -235,7 +272,9 @@ class _K4ReceiverSession
 
   @override
   void startTune() {
-    if (_usable) owner._radio.startTune();
+    if (!_usable) return;
+    owner._preemptTalk();
+    owner._radio.startTune();
   }
 
   @override

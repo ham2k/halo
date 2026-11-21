@@ -5,7 +5,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:halo_audio/halo_audio.dart' show AudioOutput;
+import 'package:halo_audio/halo_audio.dart' show AudioEndpoint, AudioEngine, AudioOutput, HaloAudioException;
 import 'package:halo_i18n/halo_i18n.dart';
 
 import '../../error_reporting_service.dart';
@@ -19,12 +19,14 @@ import 'k4_codec.dart';
 import 'k4_receiver_codec.dart';
 import 'k4_remote_audio.dart';
 import 'k4_remote_codec.dart';
+import 'k4_remote_talk.dart';
 import 'k4_setting_switch.dart';
 import 'k4_shared_session_config.dart';
 import 'k4_spectrum_presenter.dart';
 import 'kenwood_cat_codec.dart';
 import 'kenwood_driver.dart';
 
+part 'k4_shared_session_audio.dart';
 part 'k4_shared_session_receiver.dart';
 
 /// One CAT command owner for all logical receivers on a physical K4 link.
@@ -34,12 +36,13 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
   final void Function(List<int>) _sendBytes;
   final Stream<K4RemotePanPacket> _pan;
   final Map<String, dynamic> _config;
+  final Stream<K4RemoteAudioPacket>? _audio;
 
   /// Writes a transmit audio envelope; null where the connection carries
   /// none.
   final void Function(Uint8List envelope)? _sendAudio;
 
-  K4SharedSession({required void Function(List<int>) send, required this._pan, required Map<String, dynamic> config, this._sendAudio})
+  K4SharedSession({required void Function(List<int>) send, required this._pan, required Map<String, dynamic> config, this._audio, this._sendAudio})
     : _sendBytes = send,
       _config = Map.of(config);
 
@@ -65,6 +68,11 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
   String? _problem;
   _K4ReceiverSession? _pttOwner;
   _K4ReceiverSession? _cwOwner, _voiceOwner;
+  _K4ReceiverSession? _talkOwner;
+  bool _talkKeyed = false, _transmitting = false;
+  StreamSubscription<K4RemoteAudioPacket>? _audioSubscription;
+  bool _rawAudioReady = false, _checkingRawAudio = false;
+  int _audioEncodingEpoch = 0;
 
   /// The connection's audio encoding, raw 16-bit while a message plays.
   late final _encoding = K4SettingSwitch(
@@ -109,10 +117,12 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
     }
     _publish(facade);
     _publishChannels();
+    if (facade._usable) _startLiveAudio(facade);
   }
 
   void _detach(_K4ReceiverSession facade) {
     facade._active = false;
+    _detachLiveAudio(facade);
     if (_cwOwner == facade) {
       _cwOwner = null;
       _radio.stopCw();
@@ -126,7 +136,7 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
     if (_pttOwner == facade) {
       _pttOwner = null;
       _radio.setPtt(false);
-      _encoding.afterUnkey();
+      _restoreAudioEncoding();
     }
     facade.stopSpectrum();
   }
@@ -156,11 +166,16 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
   /// that.
   void _setPttWithComputerAudio(_K4ReceiverSession facade, bool on) {
     if (!on && _pttOwner != null && _pttOwner != facade) return;
+    if (on) {
+      _preemptTalk();
+    } else if (_talkOwner != null) {
+      return;
+    }
     _pttOwner = on ? facade : null;
     final output = facade._output;
     if (!on) {
       _radio.setPtt(false);
-      return _encoding.afterUnkey();
+      return _restoreAudioEncoding();
     }
     // One transmitter: the other receiver's message stops as this one keys,
     // rather than both streams going out on it at once.
@@ -168,12 +183,17 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
       if (other != facade && (other._output?.running ?? false)) other._output!.lost();
     }
     if (output == null || !output.isAlive) return _radio.setPtt(true);
-    final ahead = _encoding.beforeKey();
-    if (ahead.isNotEmpty) _send(ahead);
-    output.keyed();
-    _radio.setPtt(true);
-    final verify = _encoding.verify();
-    if (verify.isNotEmpty) _send(verify);
+    if (!_rawAudioReady && !_checkingRawAudio) {
+      final ahead = _encoding.beforeKey();
+      if (ahead.isNotEmpty) _send(ahead);
+      output.keyed();
+      _radio.setPtt(true);
+      final verify = _encoding.verify();
+      if (verify.isNotEmpty) _send(verify);
+    } else {
+      output.keyed();
+      _radio.setPtt(true);
+    }
   }
 
   /// The message stops with its output, and the keyer's unkey puts EM back.
@@ -183,6 +203,7 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
     // The Phone Keyer pane says the radio is not taking the audio.
     ErrorReportingService.report(K4SettingRefused('EM', read), StackTrace.current, context: 'k4:encoding-refused', told: true);
     _loseOutputs();
+    _liveEncodingFailed();
   }
 
   K4Receiver? _binding(K4Receiver receiver) => receiver == K4Receiver.main
@@ -239,9 +260,9 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
         if (!RegExp(r'^[0-3]$').hasMatch(params)) return;
         state.dataCode = params;
       case 'DV':
-        if (params != '0' && params != '1') return;
+        if (sub || (params != '0' && params != '1')) return;
         final changed = _diversity != null && _diversity != (params == '1');
-        _diversity = params == '1';
+        final enabled = _diversity = params == '1';
         if (changed) {
           // Diversity copies mode/filter settings into B. AI4 omits our own
           // coupled changes, so cached B settings cannot describe the result.
@@ -250,9 +271,14 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
           secondary.widthHz = secondary.centerHz = null;
           _readReceivers();
         }
+        _remember('diversity', (sink) {
+          if (sink case final K4DiversitySink diversity) diversity.reportK4Diversity(enabled);
+        });
       case 'SB':
-        if (params != '0' && params != '1') return;
-        _subOn = params == '1';
+        if (sub || (params != '0' && params != '1' && params != '3')) return;
+        // The radio reports SB3 while the enabled Sub's mini-pan runs.
+        // Diversity remains the independent DV setting.
+        _subOn = params != '0';
       case 'BW':
         final width = parseElecraftBandwidthParams(params);
         if (width == null) return;
@@ -393,6 +419,7 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
   void teardown() {
     if (_disposed || _closing) return;
     _closing = true;
+    _closeLiveAudio();
     _loseOutputs();
     _radio.teardown();
     _encoding.teardown(_send);
@@ -420,7 +447,12 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
   @override
   void reportPower(num watts) => _remember('power', (sink) => sink.reportPower(watts));
   @override
-  void reportTransmitting(bool transmitting) => _remember('tx', (sink) => sink.reportTransmitting(transmitting));
+  void reportTransmitting(bool transmitting) {
+    _transmitting = transmitting;
+    if (transmitting && !_talkKeyed && _talkOwner != null) _preemptTalk();
+    _remember('tx', (sink) => sink.reportTransmitting(transmitting));
+  }
+
   @override
   void reportMeter(RadioMeter meter, num value) => _broadcast((sink) => sink.reportMeter(meter, value));
   @override
