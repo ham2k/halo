@@ -5012,6 +5012,56 @@ front (`CatKeying.messageKeyRequests`), which keys them exactly as its function 
 against its draft. Nothing asks the platform for MIDI until the experiment is on and a controller
 node exists: on the web that first ask is a permission prompt.
 
+### Live CW paddles
+
+With `EXP MIDI` and `EXP KEYER` on in macOS HaLo, add a MIDI Controller in Station Configuration.
+Choose its MIDI device and **Input Type** (Vail Adapter, HaliKey MIDI or TinyMIDI), then choose
+Iambic A or B. Use a single local Radio A connected through the K4's **Secure Network** option.
+The paddle can key the K4 in CW or CW-R. The radio's break-in setting controls RF output.
+TinyMIDI uses BLE for MIDI and USB-C for power. Pair it in **Audio MIDI Setup → MIDI Studio →
+Bluetooth**, then select the paired device in HaLo.
+
+The device feeds a dedicated timed key path before MIDI Learn and shortcuts. HaLo puts Vail
+into its onboard keyer mode and leaves sidetone on the adapter. HaliKey and TinyMIDI feed
+the software iambic keyer and local sidetone. WPM follows the connected radio. Set **Sidetone
+Pitch** in the MIDI controller pane from 100 to 2000 Hz (default 600 Hz). Vail uses the nearest
+MIDI note. The shared K4 session sends timed `KZD`/`KZU` frames and leaves
+the radio's `KZL` setting under operator control. The station holds transmit ownership through
+the playout tail. Escape, losing the MIDI binding, and changing the active radio or mode stop
+the burst. A radio link that vanishes cannot carry a final release.
+
+#### Sidetone latency bench
+
+Evaluate the whole path from paddle closure to tone onset at the operator's output. The pilot
+targets a 95th percentile at or below 10 ms and a 99th percentile at or below 15 ms, with every
+press matched to one tone. These are engineering targets. The
+[skilled Morse operator study](https://doi.org/10.1037/h0021724) tested 30–300 ms and zero delay.
+In [a percussion experiment](https://doi.org/10.1525/mp.2018.36.1.109), a steady 10 ms rated
+similarly to the near-zero condition, with lower ratings for 20 ms and 10 ms with ±3 ms jitter.
+
+The software keyer emits its first mark synchronously on an accepted idle paddle press. The
+native sidetone stream stays open and asks for a 5 ms device period. Its short attack begins in
+the next audio callback. CoreMIDI delivery, main-thread scheduling, the actual device period,
+and output processing each contribute to the measured delay. CI tests the synchronous edge
+and the native render envelope. The release build on physical hardware supplies the latency result.
+
+1. Connect the adapter and set the K4 for sidetone-only bench keying with break-in off. Mute its
+   monitor so the capture hears only the local tone. Set HaLo's sidetone pitch to 600 Hz and
+   select the output being tested in macOS.
+2. Record an isolated, audio-safe paddle contact reference on the left channel and the wired
+   audio output on the right channel of one stereo recorder. For speakers, use a mic at the
+   listening position on the right. Calibrate channel skew with a shared signal and disable
+   automatic gain or noise processing. Record stereo integer PCM WAV at 48 or 96 kHz.
+3. Record at least 100 isolated taps short enough to send a single dit. Vary the gaps and leave
+   at least 1.5 seconds between taps so HaLo finishes the previous burst. Use more trials to
+   characterize the tail. Run each adapter and output separately, both with an idle UI and
+   while typical station activity is running. TinyMIDI's external paddle jack gives a contact
+   reference. Measure the built-in touch paddle separately if it is the input under test.
+4. Run `python3 scripts/measure_cw_sidetone.py capture.wav --pitch-hz 600`. Set the detection
+   thresholds to match calibrated levels. Save the setup, thresholds, p50/p95/p99, worst trial,
+   and unmatched counts. The tool scores first-tone onset. Check continuous sending at the
+   operator's WPM separately for element lengths, gaps, and audible dropouts.
+
 **The node's config is edited in its own pane** (`midi_controller_pane.dart`), not the equipment
 form. Learn writes the mapping the moment a control moves, and the form saves back the config it
 was opened with, which would undo it. The device is stored by NAME: an id is the platform's own and

@@ -378,4 +378,68 @@ void main() {
       expect(async.pendingTimers, isEmpty);
     });
   });
+
+  test('live CW sends captured gaps and marks through one physical owner', () {
+    fakeAsync((async) {
+      final f = _Fixture()
+        ..start()
+        ..ready();
+      final main = f.main as LiveCwSession;
+      final sub = f.sub as LiveCwSession;
+      f.sent.clear();
+      expect(sub.sendLiveCwEdge(down: true, atMicros: 1000000), isTrue);
+      expect(sub.sendLiveCwEdge(down: true, atMicros: 1000100), isFalse);
+      expect(main.sendLiveCwEdge(down: false, atMicros: 1060000), isFalse);
+      expect(sub.sendLiveCwEdge(down: false, atMicros: 999000), isFalse);
+      main.stopLiveCw();
+      expect(sub.sendLiveCwEdge(down: false, atMicros: 1060000), isTrue);
+      expect(sub.sendLiveCwEdge(down: true, atMicros: 1120000), isTrue);
+      expect(sub.sendLiveCwEdge(down: false, atMicros: 1300000), isTrue);
+      expect(f.sent, ['KZD0000;', 'KZU0060;', 'KZD0060;', 'KZU0180;'], reason: 'radio playout follows the captured dit and dah, even when delivered together');
+      sub.stopLiveCw();
+      expect(f.sent.last, 'RX;', reason: 'the completed dah may still be buffered on the radio');
+      f.close();
+      async.flushMicrotasks();
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
+  test('live CW releases a missing key-up and stays released through detach', () {
+    fakeAsync((async) {
+      final f = _Fixture()..start();
+      final live = f.sub as LiveCwSession;
+      f.sent.clear();
+      expect(live.sendLiveCwEdge(down: true, atMicros: 0), isTrue);
+      async.elapse(const Duration(milliseconds: 2399));
+      expect(f.sent, ['KZD0000;']);
+      async.elapse(const Duration(milliseconds: 1));
+      expect(f.sent, ['KZD0000;', 'KZU0000;RX;']);
+      expect(live.sendLiveCwEdge(down: false, atMicros: 2400000), isFalse, reason: 'a release after abort cannot go back into the radio buffer');
+      expect(live.sendLiveCwEdge(down: true, atMicros: 2500000), isTrue);
+      f.main.teardown();
+      expect(f.sent.last, 'KZD0000;', reason: 'the other receiver does not release a live mark');
+      f.sub.teardown();
+      expect(f.sent.last, 'KZU0000;RX;', reason: 'the paddle owner releases before its lease closes');
+      expect(live.sendLiveCwEdge(down: true, atMicros: 3000000), isFalse);
+      f.close();
+      async.flushMicrotasks();
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
+  test('keying a competing PTT ends live CW before starting transmit', () {
+    fakeAsync((async) {
+      final f = _Fixture()..start();
+      final live = f.sub as LiveCwSession;
+      f.sent.clear();
+      expect(live.sendLiveCwEdge(down: true, atMicros: 0), isTrue);
+      (f.main as PttSession).setPtt(true);
+      expect(f.sent.take(3), ['KZD0000;', 'KZU0000;RX;', 'TX;']);
+      expect(live.sendLiveCwEdge(down: false, atMicros: 60000), isFalse);
+      expect(live.sendLiveCwEdge(down: true, atMicros: 120000), isFalse, reason: 'live CW cannot key over HaLo’s active CAT PTT');
+      f.close();
+      async.flushMicrotasks();
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
 }

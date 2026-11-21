@@ -3,6 +3,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
@@ -24,10 +25,11 @@ import '../support/fake_secure_storage.dart';
 class _Backend implements MidiBackend {
   final listed = <MidiDeviceInfo>[];
   final connected = <String>[];
+  final sent = <({String id, List<int> bytes})>[];
 
   /// While set, a connect waits on it: a device slow to open.
   Completer<void>? opening;
-  final _packets = StreamController<({String deviceId, Uint8List data})>.broadcast();
+  final _packets = StreamController<MidiInputPacket>.broadcast();
   final _changes = StreamController<void>.broadcast();
 
   void plug(String id, String name) {
@@ -40,7 +42,10 @@ class _Backend implements MidiBackend {
     _changes.add(null);
   }
 
-  void send(String id, List<int> bytes) => _packets.add((deviceId: id, data: Uint8List.fromList(bytes)));
+  void receive(String id, List<int> bytes) => _packets.add((deviceId: id, data: Uint8List.fromList(bytes), atMicros: null));
+
+  @override
+  void send(String id, List<int> bytes) => sent.add((id: id, bytes: bytes));
 
   @override
   Future<List<MidiDeviceInfo>> devices() async => [for (final d in listed) MidiDeviceInfo(id: d.id, name: d.name, connected: connected.contains(d.id))];
@@ -53,7 +58,7 @@ class _Backend implements MidiBackend {
   @override
   void disconnect(String id) => connected.remove(id);
   @override
-  Stream<({String deviceId, Uint8List data})> get packets => _packets.stream;
+  Stream<MidiInputPacket> get packets => _packets.stream;
   @override
   Stream<void> get changes => _changes.stream;
 
@@ -154,10 +159,69 @@ void main() {
       await addController(device: 'Knobs', controls: {'vfoAFine': const MidiControl(MidiControlKind.cc, 1, 21).toJson()});
       await settle();
       expect(backend.connected, ['dev-1']);
-      backend.send('dev-1', [0xB0, 21, 65]);
+      backend.receive('dev-1', [0xB0, 21, 65]);
       await settle();
       await Future<void>.delayed(const Duration(milliseconds: 60));
       expect(station.tunes, [closeTo(14200.01, 1e-9)]);
+    });
+
+    test('Vail config follows the selected endpoint and its paddle never triggers MIDI Learn or shortcuts', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      await settings.setExperimentEnabled('keyer', true);
+      backend
+        ..plug('knobs', 'Knobs')
+        ..plug('vail', 'Vail');
+      final node = await addController(device: 'Knobs', controls: {'pttA': const MidiControl(MidiControlKind.note, 1, 1).toJson()});
+      await settle();
+      backend.opening = Completer();
+      await cat.updateNode(node.copyWith(config: {...node.config, midiDeviceConfigKey: 'Vail', midiCwProfileConfigKey: 'vail'}));
+      await settle();
+      expect(backend.sent, isEmpty, reason: 'Vail must not be configured on the old endpoint while the new one opens');
+      backend.receive('knobs', [0x90, 1, 127]);
+      await settle();
+      expect(station.held, isEmpty);
+
+      backend.opening!.complete();
+      backend.opening = null;
+      await settle();
+      expect(backend.sent.map((packet) => packet.id), everyElement('vail'));
+      expect(backend.sent.map((packet) => packet.bytes), [
+        [0xB0, 0, 0],
+        [0xC0, 8],
+        [0xB0, 1, 30],
+        [0xB0, 2, 74],
+      ]);
+
+      MidiControl? learned;
+      midi.learnShortcut((control) => learned = control);
+      backend.receive('vail', [0x90, 1, 127]);
+      await settle();
+      expect(learned, isNull);
+      expect(station.held, isEmpty);
+
+      await settings.setExperimentEnabled('keyer', false);
+      await settle();
+      expect(backend.sent.last.id, 'vail');
+      expect(backend.sent.last.bytes, [0xB0, 0, 127]);
+    });
+
+    test('changing sidetone pitch sends just the new pitch to a connected Vail', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      await settings.setExperimentEnabled('keyer', true);
+      backend.plug('vail', 'Vail');
+      final node = await cat.addNode(typeKey: 'midi-controller-none', name: 'Vail', config: {midiDeviceConfigKey: 'Vail', midiCwProfileConfigKey: 'vail'});
+      await settle();
+      expect(backend.sent.last.bytes, [0xB0, 2, 74], reason: 'existing configurations still default to 600 Hz');
+      backend.sent.clear();
+
+      await cat.updateNode(node.copyWith(config: {...node.config, midiCwPitchHzConfigKey: 880}));
+      await settle();
+      expect(backend.connected, ['vail']);
+      expect(backend.sent, hasLength(1));
+      expect(backend.sent.single.id, 'vail');
+      expect(backend.sent.single.bytes, [0xB0, 2, 81], reason: '880 Hz is MIDI note A5');
     });
 
     test('closed for the quit, it lets the ports go and a later change opens nothing', () async {
@@ -190,7 +254,7 @@ void main() {
       backend.plug('dev-1', 'Knobs');
       await addController(device: 'Knobs', controls: {'pttA': const MidiControl(MidiControlKind.note, 1, 60).toJson()});
       await settle();
-      backend.send('dev-1', [0x90, 60, 100]);
+      backend.receive('dev-1', [0x90, 60, 100]);
       await settle();
       expect(station.held, {'A'});
       backend.unplug('dev-1');
@@ -259,9 +323,9 @@ void main() {
       final node = await addController(device: 'Knobs');
       await settle();
       midi.toggleLearn(node.uuid, 'pttA');
-      backend.send('dev-1', [0xB0, 64, 127, 0xB0, 64, 0]);
+      backend.receive('dev-1', [0xB0, 64, 127, 0xB0, 64, 0]);
       await settle();
-      backend.send('dev-1', [0xB0, 64, 127]);
+      backend.receive('dev-1', [0xB0, 64, 127]);
       await settle();
       expect(station.held, {'A'});
     });
@@ -271,13 +335,13 @@ void main() {
       final node = await addController(device: 'Knobs');
       await settle();
       midi.toggleLearn(node.uuid, 'pttA');
-      backend.send('dev-1', [0x90, 60, 100]);
+      backend.receive('dev-1', [0x90, 60, 100]);
       await settle();
       expect(MidiMapping.fromConfig(cat.nodeFor(node.uuid)!.config).controls['pttA'], const MidiControl(MidiControlKind.note, 1, 60));
       expect(midi.learning.value, isNull);
       // The release of the very press that was learned: keying on it would
       // put the radio on the air the moment Learn finished.
-      backend.send('dev-1', [0x80, 60, 0]);
+      backend.receive('dev-1', [0x80, 60, 0]);
       await settle();
       expect(station.held, isEmpty);
     });
@@ -288,11 +352,11 @@ void main() {
       await settle();
       midi.toggleLearn(node.uuid, 'vfoAFine');
       // A pad offered to a tuning knob: a note says nothing about direction.
-      backend.send('dev-1', [0x90, 36, 100]);
+      backend.receive('dev-1', [0x90, 36, 100]);
       await settle();
       expect(midi.learning.value?.refused, isNotNull);
       expect(MidiMapping.fromConfig(cat.nodeFor(node.uuid)!.config).controls, isEmpty);
-      backend.send('dev-1', [0xB0, 21, 65]);
+      backend.receive('dev-1', [0xB0, 21, 65]);
       await settle();
       expect(MidiMapping.fromConfig(cat.nodeFor(node.uuid)!.config).controls['vfoAFine'], const MidiControl(MidiControlKind.cc, 1, 21));
     });
@@ -329,7 +393,7 @@ void main() {
       shortcuts = {'note:1:36': 'keyer.message1'};
       await addController(device: 'Knobs');
       await settle();
-      backend.send('dev-1', [0x90, 36, 100, 0x80, 36, 0]);
+      backend.receive('dev-1', [0x90, 36, 100, 0x80, 36, 0]);
       await settle();
       expect(pressed, ['down keyer.message1', 'up keyer.message1']);
     });
@@ -339,7 +403,7 @@ void main() {
       shortcuts = {'note:1:60': 'keyer.message1'};
       await addController(device: 'Knobs', controls: {'pttA': const MidiControl(MidiControlKind.note, 1, 60).toJson()});
       await settle();
-      backend.send('dev-1', [0x90, 60, 100]);
+      backend.receive('dev-1', [0x90, 60, 100]);
       await settle();
       expect(pressed, isEmpty);
       expect(station.held, {'A'});
@@ -351,7 +415,7 @@ void main() {
       shortcuts = {'note:1:36': 'radio.ptt'};
       await addController(device: 'Knobs');
       await settle();
-      backend.send('dev-1', [0x90, 36, 100]);
+      backend.receive('dev-1', [0x90, 36, 100]);
       await settle();
       backend.unplug('dev-1');
       await settle();
@@ -364,7 +428,7 @@ void main() {
       await settle();
       MidiControl? learned;
       midi.learnShortcut((control) => learned = control);
-      backend.send('dev-1', [0xB0, 21, 127, 0x90, 40, 90]);
+      backend.receive('dev-1', [0xB0, 21, 127, 0x90, 40, 90]);
       await settle();
       expect(pressed, isEmpty);
       expect(learned, const MidiControl(MidiControlKind.cc, 1, 21));

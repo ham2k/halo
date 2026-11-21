@@ -5332,6 +5332,17 @@ class _Translations$settings$station$midi$qro extends Translations$settings$stat
 	@override String get device => 'DEVICE';
 	@override String get deviceNone => 'CHOOSE A DEVICE';
 	@override String deviceMissing({required Object name}) => '${name} (NOT CONNECTED)';
+	@override String get inputType => 'INPUT TYPE';
+	@override String get controllerInput => 'MAPPED CONTROLS';
+	@override String get liveCw => 'LIVE CW';
+	@override String get liveCwK4 => 'USE ONE LOCAL RADIO A ON THE K4’S SECURE NETWORK CONNECTION IN CW MODE.';
+	@override String get liveCwUnavailable => 'LIVE CW REQUIRES HALO FOR MACOS WITH THE CW KEYER EXPERIMENT ENABLED.';
+	@override String get tinyMidiPairing => 'PAIR TINYMIDI IN MACOS AUDIO MIDI SETUP. ITS USB-C CONNECTOR SUPPLIES POWER.';
+	@override String get paddleMode => 'PADDLE MODE';
+	@override String get iambicA => 'IAMBIC A';
+	@override String get iambicB => 'IAMBIC B';
+	@override String get sidetonePitch => 'SIDETONE PITCH';
+	@override String sidetonePitchRange({required Object min, required Object max}) => 'ENTER A PITCH FROM ${min} TO ${max} HZ.';
 	@override String get statusConnected => 'CONNECTED';
 	@override String get statusWaiting => 'NOT CONNECTED — PLUG IT IN OR TURN IT ON';
 	@override String get statusNoDevice => 'CHOOSE THE DEVICE THIS CONTROLLER IS';
@@ -7967,6 +7978,17 @@ extension on TranslationsQro {
 			'settings.station.midi.device' => 'DEVICE',
 			'settings.station.midi.deviceNone' => 'CHOOSE A DEVICE',
 			'settings.station.midi.deviceMissing' => ({required Object name}) => '${name} (NOT CONNECTED)',
+			'settings.station.midi.inputType' => 'INPUT TYPE',
+			'settings.station.midi.controllerInput' => 'MAPPED CONTROLS',
+			'settings.station.midi.liveCw' => 'LIVE CW',
+			'settings.station.midi.liveCwK4' => 'USE ONE LOCAL RADIO A ON THE K4’S SECURE NETWORK CONNECTION IN CW MODE.',
+			'settings.station.midi.liveCwUnavailable' => 'LIVE CW REQUIRES HALO FOR MACOS WITH THE CW KEYER EXPERIMENT ENABLED.',
+			'settings.station.midi.tinyMidiPairing' => 'PAIR TINYMIDI IN MACOS AUDIO MIDI SETUP. ITS USB-C CONNECTOR SUPPLIES POWER.',
+			'settings.station.midi.paddleMode' => 'PADDLE MODE',
+			'settings.station.midi.iambicA' => 'IAMBIC A',
+			'settings.station.midi.iambicB' => 'IAMBIC B',
+			'settings.station.midi.sidetonePitch' => 'SIDETONE PITCH',
+			'settings.station.midi.sidetonePitchRange' => ({required Object min, required Object max}) => 'ENTER A PITCH FROM ${min} TO ${max} HZ.',
 			'settings.station.midi.statusConnected' => 'CONNECTED',
 			'settings.station.midi.statusWaiting' => 'NOT CONNECTED — PLUG IT IN OR TURN IT ON',
 			'settings.station.midi.statusNoDevice' => 'CHOOSE THE DEVICE THIS CONTROLLER IS',
@@ -8064,6 +8086,8 @@ extension on TranslationsQro {
 			'settings.station.providesSwitch' => 'ANTENNA SWITCH',
 			'settings.station.providesRotator' => 'ROTATOR',
 			'settings.station.providesAudioMixer' => 'AUDIO MIXER',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.providesSo2rController' => 'SO2R CONTROLLER',
 			'settings.station.providesAntenna' => 'ANTENNA',
 			'settings.station.providesKey' => 'CW KEY',
@@ -8075,8 +8099,6 @@ extension on TranslationsQro {
 			'settings.station.telemetryIntervalDescription' => 'HOW OFTEN TO READ THE RADIO\'S METERS WHILE IT IS TRANSMITTING. LEAVE BLANK FOR THE FASTEST THIS CONNECTION CAN HANDLE, UP TO 200 MS.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A WHOLE NUMBER OF MILLISECONDS, ${min} TO ${max}',
 			'settings.station.pollInterval' => 'IDLE POLLING INTERVAL (MS)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'HOW OFTEN TO ASK THE RADIO FOR ITS FREQUENCY AND MODE WHILE NEITHER IS CHANGING. LEAVE BLANK FOR ${fallback} MS.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A WHOLE NUMBER OF MILLISECONDS, ${min} TO ${max}',
 			'settings.station.ratedPower' => 'RATED POWER (W)',
@@ -8578,6 +8600,8 @@ extension on TranslationsQro {
 			'staleness.quitAndReopen' => 'QUIT THE APP AND OPEN IT AGAIN TO APPLY IT.',
 			'staleness.reopenToApply' => 'CLOSE THE APP AND OPEN IT AGAIN TO APPLY IT.',
 			'staleness.ignoreForNow' => 'IGNORE FOR NOW',
+			_ => null,
+		} ?? switch (path) {
 			'spotting.noQsoYet' => 'NO QSO LOGGED YET TO SPOT.',
 			'spotting.setFrequencyFirst' => 'SET A FREQUENCY FIRST.',
 			'spotting.nothingToSpot' => 'NOTHING TO SPOT — NO EXTENSION OFFERS SPOTTING HERE.',
@@ -8589,8 +8613,6 @@ extension on TranslationsQro {
 			'spotting.selfSpottingToComment' => ({required Object sources, required Object comment}) => 'SELF-SPOTTING TO ${sources}: ${comment}',
 			'spotting.spotLastTo' => ({required Object sources}) => 'SPOT THE LAST LOGGED QSO TO ${sources}?',
 			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => 'SPOT THE LAST LOGGED QSO TO ${sources} WITH "${comment}"?',
-			_ => null,
-		} ?? switch (path) {
 			'spotting.spottingLastTo' => ({required Object sources}) => 'SPOTTING LAST QSO TO ${sources}…',
 			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => 'SPOTTING LAST QSO TO ${sources}: ${comment}',
 			'spotting.incompleteCall' => 'CAN\'T SPOT AN INCOMPLETE CALL — FINISH THE CALLSIGN FIRST.',
