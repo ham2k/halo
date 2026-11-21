@@ -13,13 +13,26 @@
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'drivers/commander_driver.dart';
+import 'drivers/echocat_driver.dart';
 import 'drivers/flrig_driver.dart';
 import 'drivers/hrd_driver.dart';
 import 'drivers/n3fjp_driver.dart';
 import 'drivers/rigctld_driver.dart';
 import 'equipment.dart';
 import 'equipment_registry.dart';
+import 'transports/echocat_transport.dart';
 import 'transports/tcp_transport.dart';
+
+const potacatModel = EquipmentModel(
+  key: 'potacat',
+  category: kCategoryTransceiver,
+  name: _potacatName,
+  suggestedName: _potacatNodeName,
+  variants: [EquipmentVariant(key: 'potacat-echocat', driver: EchocatDriver(), transport: EchocatTransport())],
+);
+
+String _potacatName() => t.settings.station.models.potacat;
+String _potacatNodeName() => t.settings.station.models.potacatNodeName;
 
 const _flrigTcpKey = 'flrig-tcp';
 const _rigctldTcpKey = 'rigctld-tcp';

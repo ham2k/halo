@@ -46,6 +46,7 @@ import 'equipment_models_tentec.dart';
 import 'equipment_models_yaesu.dart';
 import 'transport.dart';
 import 'transports/ble_serial_transport.dart';
+import 'transports/echocat_transport.dart';
 import 'transports/bluetooth_serial_transport.dart';
 import 'transports/placeholder_transport.dart';
 import 'transports/icom_network_transport.dart';
@@ -551,7 +552,7 @@ String? transportLabelFor(String transportKey) {
     // Not a way of plugging in: the device is reached through its server.
     EverywareDeviceTransport.transportKey => labels.everywareServer,
     WebSocketTransport.transportKey => labels.tci,
-    K4RemoteTransport.transportKey => labels.secureNetwork,
+    K4RemoteTransport.transportKey || echocatTransportKey => labels.secureNetwork,
     SerialTransport.transportKey => labels.usbSerial,
     SdrUsbTransport.transportKey => labels.usb,
     BluetoothSerialTransport.transportKey => labels.bluetoothSerial,
@@ -584,6 +585,7 @@ String? transportIconNameFor(String transportKey) => switch (transportKey) {
   UdpListenTransport.transportKey ||
   IcomNetworkTransport.transportKey ||
   K4RemoteTransport.transportKey ||
+  echocatTransportKey ||
   WebSocketTransport.transportKey ||
   EverywareServerTransport.transportKey ||
   EverywareDeviceTransport.transportKey => 'wifi',
@@ -655,6 +657,7 @@ const _defaultModels = [
   tenTecOrionIIModel,
   rigctldModel,
   flrigModel,
+  potacatModel,
   hrdModel,
   n3fjpModel,
   commanderModel,
@@ -714,6 +717,7 @@ class EquipmentRegistry {
             PlaceholderTransport.transportKey: const PlaceholderTransport(),
             SdrUsbTransport.transportKey: const SdrUsbTransport(),
             WebSocketTransport.transportKey: const WebSocketTransport(),
+            echocatTransportKey: const EchocatTransport(),
             EverywareServerTransport.transportKey: const EverywareServerTransport(),
             EverywareDeviceTransport.transportKey: const EverywareDeviceTransport(),
           };

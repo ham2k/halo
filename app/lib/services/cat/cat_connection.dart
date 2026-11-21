@@ -521,13 +521,19 @@ extension _Connection on CatService {
         // drop — each one retaining its sink and this dead connection.
         // An Everyware server closes a connection whose login it refused: the
         // refusal is why it is gone, and stays on its row.
-        final refused = session is EverywareServerSession ? stateFor(uuid).problem : null;
+        final manualReason = switch (connection) {
+          RequiresManualReconnect(:final manualReconnectReason) => manualReconnectReason,
+          _ => null,
+        };
+        final refused = manualReason ?? (session is EverywareServerSession ? stateFor(uuid).problem : null);
+        if (manualReason != null) runtime.userDisconnected = true;
         unawaited(_closeSession(runtime));
         if (isSdr(uuid)) runtime.sdrDropReason = droppedBecause ?? t.settings.station.spectrumSdrServerClosed;
         _setState(
           uuid,
           refused == null ? const EquipmentState(status: EquipmentStatus.disconnected) : EquipmentState(status: EquipmentStatus.error, error: refused),
         );
+        if (manualReason != null) return;
         _autoReconnectAfterDrop(uuid);
         // An SDR comes back for the display still waiting on it.
         _retrySdr(runtime);
