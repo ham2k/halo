@@ -29,7 +29,17 @@ abstract final class HaloAudio {
 
   static AudioOutput openOutput({String? deviceId}) => throw UnsupportedError('halo_audio: no audio on this platform');
 
+  static AudioSidetone openSidetone() => throw UnsupportedError('halo_audio: no audio on this platform');
+
   static AudioRecording record(String path, {String? deviceId}) => throw UnsupportedError('halo_audio: no audio on this platform');
+}
+
+abstract interface class AudioSidetone {
+  bool get isAlive;
+
+  void setKeyDown(bool down, {required int pitchHz});
+
+  void close();
 }
 
 class AudioOutput {

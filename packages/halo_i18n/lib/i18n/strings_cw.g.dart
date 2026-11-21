@@ -5332,6 +5332,15 @@ class _Translations$settings$station$midi$cw extends Translations$settings$stati
 	@override String get device => '—·· · ···— ·· —·—· ·';
 	@override String get deviceNone => '—·—· ···· ——— ——— ··· · / ·— / —·· · ···— ·· —·—· ·';
 	@override String deviceMissing({required Object name}) => '${name} / —·——· —· ——— — / —·—· ——— —· —· · —·—· — · —·· —·——·—';
+	@override String get inputType => '·· —· ·——· ··— — / — —·—— ·——· ·';
+	@override String get controllerInput => '—— ·— ·——· ·——· · —·· / —·—· ——— —· — ·—· ——— ·—·· ···';
+	@override String get liveCw => '·—·· ·· ···— · / —·—· ·——';
+	@override String get liveCwK4 => '··— ··· · / ——— —· · / ·—·· ——— —·—· ·— ·—·· / ·—· ·— —·· ·· ——— / ·— / ——— —· / — ···· · / —·— ····— ’ ··· / ··· · —·—· ··— ·—· · / —· · — ·—— ——— ·—· —·— / —·—· ——— —· —· · —·—· — ·· ——— —· / ·· —· / —·—· ·—— / —— ——— —·· · ·—·—·—';
+	@override String get liveCwUnavailable => '·—·· ·· ···— · / —·—· ·—— / ·—· · ——·— ··— ·· ·—· · ··· / ···· ·— ·—·· ——— / ··—· ——— ·—· / —— ·— —·—· ——— ··· / ·—— ·· — ···· / — ···· · / —·—· ·—— / —·— · —·—— · ·—· / · —··— ·——· · ·—· ·· —— · —· — / · —· ·— —··· ·—·· · —·· ·—·—·—';
+	@override String get tinyMidiPairing => '·——· ·— ·· ·—· / — ·· —· —·—— —— ·· —·· ·· / ·· —· / —— ·— —·—· ——— ··· / ·— ··— —·· ·· ——— / —— ·· —·· ·· / ··· · — ··— ·——· ·—·—·— / ·· — ··· / ··— ··· —··· —····— —·—· / —·—· ——— —· —· · —·—· — ——— ·—· / ··· ··— ·——· ·——· ·—·· ·· · ··· / ·——· ——— ·—— · ·—· ·—·—·—';
+	@override String get paddleMode => '·——· ·— —·· —·· ·—·· · / —— ——— —·· ·';
+	@override String get iambicA => '·· ·— —— —··· ·· —·—· / ·—';
+	@override String get iambicB => '·· ·— —— —··· ·· —·—· / —···';
 	@override String get statusConnected => '—·—· ——— —· —· · —·—· — · —··';
 	@override String get statusWaiting => '—· ——— — / —·—· ——— —· —· · —·—· — · —·· / — / ·——· ·—·· ··— ——· / ·· — / ·· —· / ——— ·—· / — ··— ·—· —· / ·· — / ——— —·';
 	@override String get statusNoDevice => '—·—· ···· ——— ——— ··· · / — ···· · / —·· · ···— ·· —·—· · / — ···· ·· ··· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·· ···';
@@ -7967,6 +7976,15 @@ extension on TranslationsCw {
 			'settings.station.midi.device' => '—·· · ···— ·· —·—· ·',
 			'settings.station.midi.deviceNone' => '—·—· ···· ——— ——— ··· · / ·— / —·· · ···— ·· —·—· ·',
 			'settings.station.midi.deviceMissing' => ({required Object name}) => '${name} / —·——· —· ——— — / —·—· ——— —· —· · —·—· — · —·· —·——·—',
+			'settings.station.midi.inputType' => '·· —· ·——· ··— — / — —·—— ·——· ·',
+			'settings.station.midi.controllerInput' => '—— ·— ·——· ·——· · —·· / —·—· ——— —· — ·—· ——— ·—·· ···',
+			'settings.station.midi.liveCw' => '·—·· ·· ···— · / —·—· ·——',
+			'settings.station.midi.liveCwK4' => '··— ··· · / ——— —· · / ·—·· ——— —·—· ·— ·—·· / ·—· ·— —·· ·· ——— / ·— / ——— —· / — ···· · / —·— ····— ’ ··· / ··· · —·—· ··— ·—· · / —· · — ·—— ——— ·—· —·— / —·—· ——— —· —· · —·—· — ·· ——— —· / ·· —· / —·—· ·—— / —— ——— —·· · ·—·—·—',
+			'settings.station.midi.liveCwUnavailable' => '·—·· ·· ···— · / —·—· ·—— / ·—· · ——·— ··— ·· ·—· · ··· / ···· ·— ·—·· ——— / ··—· ——— ·—· / —— ·— —·—· ——— ··· / ·—— ·· — ···· / — ···· · / —·—· ·—— / —·— · —·—— · ·—· / · —··— ·——· · ·—· ·· —— · —· — / · —· ·— —··· ·—·· · —·· ·—·—·—',
+			'settings.station.midi.tinyMidiPairing' => '·——· ·— ·· ·—· / — ·· —· —·—— —— ·· —·· ·· / ·· —· / —— ·— —·—· ——— ··· / ·— ··— —·· ·· ——— / —— ·· —·· ·· / ··· · — ··— ·——· ·—·—·— / ·· — ··· / ··— ··· —··· —····— —·—· / —·—· ——— —· —· · —·—· — ——— ·—· / ··· ··— ·——· ·——· ·—·· ·· · ··· / ·——· ——— ·—— · ·—· ·—·—·—',
+			'settings.station.midi.paddleMode' => '·——· ·— —·· —·· ·—·· · / —— ——— —·· ·',
+			'settings.station.midi.iambicA' => '·· ·— —— —··· ·· —·—· / ·—',
+			'settings.station.midi.iambicB' => '·· ·— —— —··· ·· —·—· / —···',
 			'settings.station.midi.statusConnected' => '—·—· ——— —· —· · —·—· — · —··',
 			'settings.station.midi.statusWaiting' => '—· ——— — / —·—· ——— —· —· · —·—· — · —·· / — / ·——· ·—·· ··— ——· / ·· — / ·· —· / ——— ·—· / — ··— ·—· —· / ·· — / ——— —·',
 			'settings.station.midi.statusNoDevice' => '—·—· ···· ——— ——— ··· · / — ···· · / —·· · ···— ·· —·—· · / — ···· ·· ··· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·· ···',
@@ -8066,6 +8084,8 @@ extension on TranslationsCw {
 			'settings.station.providesAudioMixer' => '·— ··— —·· ·· ——— / —— ·· —··— · ·—·',
 			'settings.station.providesSo2rController' => '··· ——— ··——— ·—· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·',
 			'settings.station.providesAntenna' => '·— —· — · —· —· ·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.providesKey' => '—·—· ·—— / —·— · —·——',
 			'settings.station.yaesuMeterCapture' => '—·—· ·— ·——· — ··— ·—· · / —— · — · ·—· / ·—· · ·— —·· ·· —· ——· ···',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => '·—· · ·— —·· ··· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·——· ——— ·—— · ·—· —····— ——— ··— — ·——· ··— — / —— · — · ·—· / ·— —· —·· / ···· ·· ——· ···· —····— ··· ·—— ·—· / ··—· ·—·· ·— ——· / ·—— ···· ·· ·—·· · / — ·—· ·— —· ··· —— ·· — — ·· —· ——· / ·— —· —·· / ·——· ·—· ·· —· — ··· / — ···· · / ·—· ·— ·—— / ···— ·— ·—·· ··— · ··· / — ——— / — ···· · / ·—·· ——— ——· ·—·—·— / ··—· ——— ·—· / —··· ··— ·· ·—·· —·· ·· —· ——· / — ···· · / ··· —·—· ·— ·—·· · / —·—— ·— · ··· ··— / —·· ——— · ··· / —· ——— — / ·——· ··— —··· ·—·· ·· ··· ···· / — / — ···· · / ···— ·— ·—·· ··— · ··· / ·— ·—· · / —· ——— — / ··· ···· ——— ·—— —· / ·— ··· / —— · — · ·—· ··· ·—·—·—',
@@ -8075,8 +8095,6 @@ extension on TranslationsCw {
 			'settings.station.telemetryIntervalDescription' => '···· ——— ·—— / ——— ··—· — · —· / — ——— / ·—· · ·— —·· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / —— · — · ·—· ··· / ·—— ···· ·· ·—·· · / ·· — / ·· ··· / — ·—· ·— —· ··· —— ·· — — ·· —· ——· ·—·—·— / ·—·· · ·— ···— · / —··· ·—·· ·— —· —·— / ··—· ——— ·—· / — ···· · / ··—· ·— ··· — · ··· — / — ···· ·· ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / —·—· ·— —· / ···· ·— —· —·· ·—·· · ——··—— / ··— ·——· / — ——— / ··——— ————— ————— / —— ··· ·—·—·—',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· / ——— ··—· / —— ·· ·—·· ·—·· ·· ··· · —·—· ——— —· —·· ··· ——··—— / ${min} / — ——— / ${max}',
 			'settings.station.pollInterval' => '·· —·· ·—·· · / ·——· ——— ·—·· ·—·· ·· —· ——· / ·· —· — · ·—· ···— ·— ·—·· / —·——· —— ··· —·——·—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '···· ——— ·—— / ——— ··—· — · —· / — ——— / ·— ··· —·— / — ···· · / ·—· ·— —·· ·· ——— / ··—· ——— ·—· / ·· — ··· / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·— —· —·· / —— ——— —·· · / ·—— ···· ·· ·—·· · / —· · ·· — ···· · ·—· / ·· ··· / —·—· ···· ·— —· ——· ·· —· ——· ·—·—·— / ·—·· · ·— ···— · / —··· ·—·· ·— —· —·— / ··—· ——— ·—· / ${fallback} / —— ··· ·—·—·—',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· / ——— ··—· / —— ·· ·—·· ·—·· ·· ··· · —·—· ——— —· —·· ··· ——··—— / ${min} / — ——— / ${max}',
 			'settings.station.ratedPower' => '·—· ·— — · —·· / ·——· ——— ·—— · ·—· / —·——· ·—— —·——·—',
@@ -8580,6 +8598,8 @@ extension on TranslationsCw {
 			'staleness.ignoreForNow' => '·· ——· —· ——— ·—· · / ··—· ——— ·—· / —· ——— ·——',
 			'spotting.noQsoYet' => '—· ——— / ——·— ··· ——— / ·—·· ——— ——· ——· · —·· / —·—— · — / — ——— / ··· ·——· ——— — ·—·—·—',
 			'spotting.setFrequencyFirst' => '··· · — / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ··—· ·· ·—· ··· — ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'spotting.nothingToSpot' => '—· ——— — ···· ·· —· ——· / — ——— / ··· ·——· ——— — / — / —· ——— / · —··— — · —· ··· ·· ——— —· / ——— ··—· ··—· · ·—· ··· / ··· ·——· ——— — — ·· —· ——· / ···· · ·—· · ·—·—·—',
 			'spotting.noSuchSource' => ({required Object source, required Object sources}) => '—· ——— / ··· ·——· ——— — / ··· ——— ··— ·—· —·—· · / —— ·— — —·—· ···· · ··· / ·—··—· ${source} ·—··—· / — / ·· —· ··· — ·— ·—·· ·—·· · —·· ———··· / ${sources} ·—·—·—',
 			'spotting.sourceNotOffered' => ({required Object source, required Object sources}) => '·—··—· ${source} ·—··—· / ·· ··· —· ·————· — / ··· ·——· ——— — — ·· —· ——· / ···· · ·—· · / — / ——— —· / ——— ··—· ··—· · ·—· ———··· / ${sources} ·—·—·—',
@@ -8589,8 +8609,6 @@ extension on TranslationsCw {
 			'spotting.selfSpottingToComment' => ({required Object sources, required Object comment}) => '··· · ·—·· ··—· —····— ··· ·——· ——— — — ·· —· ——· / — ——— / ${sources} ———··· / ${comment}',
 			'spotting.spotLastTo' => ({required Object sources}) => '··· ·——· ——— — / — ···· · / ·—·· ·— ··· — / ·—·· ——— ——· ——· · —·· / ——·— ··· ——— / — ——— / ${sources} ··——··',
 			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => '··· ·——· ——— — / — ···· · / ·—·· ·— ··· — / ·—·· ——— ——· ——· · —·· / ——·— ··· ——— / — ——— / ${sources} / ·—— ·· — ···· / ·—··—· ${comment} ·—··—· ··——··',
-			_ => null,
-		} ?? switch (path) {
 			'spotting.spottingLastTo' => ({required Object sources}) => '··· ·——· ——— — — ·· —· ——· / ·—·· ·— ··· — / ——·— ··· ——— / — ——— / ${sources} …',
 			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => '··· ·——· ——— — — ·· —· ——· / ·—·· ·— ··· — / ——·— ··· ——— / — ——— / ${sources} ———··· / ${comment}',
 			'spotting.incompleteCall' => '—·—· ·— —· ·————· — / ··· ·——· ——— — / ·— —· / ·· —· —·—· ——— —— ·——· ·—·· · — · / —·—· ·— ·—·· ·—·· / — / ··—· ·· —· ·· ··· ···· / — ···· · / —·—· ·— ·—·· ·—·· ··· ·· ——· —· / ··—· ·· ·—· ··· — ·—·—·—',

@@ -111,6 +111,8 @@ final _outputOpen = _lib
       Pointer<Void> Function(Pointer<Utf8>, Int64, Int64, Pointer<Utf8>, Int32),
       Pointer<Void> Function(Pointer<Utf8>, int, int, Pointer<Utf8>, int)
     >('halo_audio_output_open');
+final _sidetoneOpen = _lib.lookupFunction<Pointer<Void> Function(Pointer<Utf8>, Int32), Pointer<Void> Function(Pointer<Utf8>, int)>('halo_audio_sidetone_open');
+final _sidetoneSet = _lib.lookupFunction<Void Function(Pointer<Void>, Int32), void Function(Pointer<Void>, int)>('halo_audio_sidetone_set');
 final _outputAlive = _lib.lookupFunction<Int32 Function(Pointer<Void>), int Function(Pointer<Void>)>('halo_audio_output_alive');
 final _outputPlay = _lib
     .lookupFunction<
@@ -257,6 +259,9 @@ abstract final class HaloAudio {
     return _open[token] = AudioOutput._(handle, token);
   }
 
+  /// Keeps the default audio output open for immediate sidetone.
+  static AudioSidetone openSidetone() => AudioSidetone._(_withError((err) => _sidetoneOpen(err, _errLen)));
+
   /// Starts recording [deviceId] — null for the system default — into a
   /// 16-bit mono 48 kHz WAV file at [path]. Throws [HaloAudioException] when
   /// the file or the device will not open.
@@ -284,6 +289,26 @@ T _withStrings<T>(String path, String? deviceId, T Function(Pointer<Utf8> path, 
   } finally {
     malloc.free(p);
     if (d != nullptr) malloc.free(d);
+  }
+}
+
+/// A held-open device for a continuous tone gated by CW key edges.
+class AudioSidetone {
+  AudioSidetone._(this._handle);
+
+  Pointer<Void> _handle;
+
+  bool get isAlive => _handle != nullptr && _outputAlive(_handle) != 0;
+
+  /// The release ramps the oscillator's current pitch down to silence.
+  void setKeyDown(bool down, {required int pitchHz}) {
+    if (_handle != nullptr) _sidetoneSet(_handle, down ? pitchHz.clamp(100, 2000) : 0);
+  }
+
+  void close() {
+    if (_handle == nullptr) return;
+    _outputClose(_handle);
+    _handle = nullptr;
   }
 }
 

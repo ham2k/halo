@@ -506,9 +506,8 @@ int halo_audio_normalize(const char* from, const char* to, float peak, float max
 
 struct HaloAudioOutput {
   ma_device device;
-  // Guards the four fields below, which the audio thread reads every
-  // period: a play or a stop swaps the decoder under it, and the callback
-  // reads frames under it.
+  // A play or stop swaps the decoder under this lock. The callbacks read
+  // file frames or copy the requested tone pitch under it.
   ma_spinlock lock;
   ma_decoder* decoder;
   ma_bool32 ended;
@@ -517,6 +516,11 @@ struct HaloAudioOutput {
   HaloAudioPort on_lost;
   int64_t lost_token;
   volatile ma_bool32 closing;
+  int tone_target_hz;
+  // The sidetone callback alone owns the oscillator and envelope.
+  int tone_pitch_hz;
+  float tone_phase;
+  float tone_gain;
 };
 
 static void output_callback(ma_device* device, void* output, const void* input, ma_uint32 frames) {
@@ -542,6 +546,29 @@ static void output_callback(ma_device* device, void* output, const void* input, 
   if (ended_port != 0) halo_audio_post(ended_port, ended_token * 2 + failed);
 }
 
+static void sidetone_callback(ma_device* device, void* output, const void* input, ma_uint32 frames) {
+  (void)input;
+  HaloAudioOutput* out = (HaloAudioOutput*)device->pUserData;
+  ma_spinlock_lock(&out->lock);
+  const int target_hz = out->tone_target_hz;
+  ma_spinlock_unlock(&out->lock);
+  if (target_hz > 0) out->tone_pitch_hz = target_hz;
+  if (target_hz == 0 && out->tone_gain == 0) return;
+
+  // A short attack and release avoid a click at every mark boundary.
+  const float tau = 6.28318530718f;
+  const float phase_step = tau * out->tone_pitch_hz / OUTPUT_RATE;
+  const float level = 0.1f;
+  const float gain_step = level / (OUTPUT_RATE * 0.003f);
+  float* samples = (float*)output;
+  for (ma_uint32 frame = 0; frame < frames; frame++) {
+    out->tone_gain = target_hz > 0 ? fminf(level, out->tone_gain + gain_step) : fmaxf(0, out->tone_gain - gain_step);
+    samples[frame] = out->tone_gain * sinf(out->tone_phase);
+    out->tone_phase += phase_step;
+    if (out->tone_phase >= tau) out->tone_phase -= tau;
+  }
+}
+
 static void output_notification(const ma_device_notification* notification) {
   HaloAudioOutput* out = (HaloAudioOutput*)notification->pDevice->pUserData;
   if (out == NULL || out->closing || out->on_lost == 0) return;
@@ -552,7 +579,7 @@ static void output_notification(const ma_device_notification* notification) {
   if (notification->type == ma_device_notification_type_stopped) halo_audio_post(out->on_lost, out->lost_token);
 }
 
-HaloAudioOutput* halo_audio_output_open(const char* device_id, HaloAudioPort on_lost, int64_t lost_token, char* err, int err_len) {
+static HaloAudioOutput* output_open(const char* device_id, HaloAudioPort on_lost, int64_t lost_token, int sidetone, char* err, int err_len) {
   ma_context* ctx = context();
   if (ctx == NULL) {
     set_error(err, err_len, "audio", MA_NO_BACKEND);
@@ -577,7 +604,8 @@ HaloAudioOutput* halo_audio_output_open(const char* device_id, HaloAudioPort on_
   config.playback.format = OUTPUT_FORMAT;
   config.playback.channels = OUTPUT_CHANNELS;
   config.sampleRate = OUTPUT_RATE;
-  config.dataCallback = output_callback;
+  config.dataCallback = sidetone ? sidetone_callback : output_callback;
+  if (sidetone) config.periodSizeInMilliseconds = 5;
   config.notificationCallback = output_notification;
   config.pUserData = out;
   ma_result r = ma_device_init(ctx, &config, &out->device);
@@ -595,6 +623,20 @@ HaloAudioOutput* halo_audio_output_open(const char* device_id, HaloAudioPort on_
     return NULL;
   }
   return out;
+}
+
+HaloAudioOutput* halo_audio_output_open(const char* device_id, HaloAudioPort on_lost, int64_t lost_token, char* err, int err_len) {
+  return output_open(device_id, on_lost, lost_token, 0, err, err_len);
+}
+
+HaloAudioOutput* halo_audio_sidetone_open(char* err, int err_len) {
+  return output_open(NULL, 0, 0, 1, err, err_len);
+}
+
+void halo_audio_sidetone_set(HaloAudioOutput* out, int pitch_hz) {
+  ma_spinlock_lock(&out->lock);
+  out->tone_target_hz = pitch_hz;
+  ma_spinlock_unlock(&out->lock);
 }
 
 int halo_audio_output_alive(HaloAudioOutput* out) {

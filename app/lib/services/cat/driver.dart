@@ -550,6 +550,16 @@ abstract class CwKeyerSession implements EquipmentSession {
   void refreshKeyerSpeed();
 }
 
+/// A radio that accepts timed CW elements from the operator's paddle.
+abstract interface class LiveCwSession implements EquipmentSession {
+  /// Sends one edge from a monotonic clock shared by the edges in this burst.
+  /// Returns false if the session did not accept the transition.
+  bool sendLiveCwEdge({required bool down, required int atMicros});
+
+  /// Cancels this session's live keying and releases its key.
+  void stopLiveCw();
+}
+
 /// One voice memory the radio is busy with on the app's behalf.
 class VoiceActivity {
   /// The memory, 1-based, as the radio numbers it.

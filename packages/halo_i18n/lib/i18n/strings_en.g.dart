@@ -11899,6 +11899,33 @@ class Translations$settings$station$midi$en {
 	/// en: '${name} (not connected)'
 	String deviceMissing({required Object name}) => '${name} (not connected)';
 
+	/// en: 'Input Type'
+	String get inputType => 'Input Type';
+
+	/// en: 'Mapped controls'
+	String get controllerInput => 'Mapped controls';
+
+	/// en: 'Live CW'
+	String get liveCw => 'Live CW';
+
+	/// en: 'Use one local Radio A on the K4’s Secure Network connection in CW mode.'
+	String get liveCwK4 => 'Use one local Radio A on the K4’s Secure Network connection in CW mode.';
+
+	/// en: 'Live CW requires HaLo for macOS with the CW keyer experiment enabled.'
+	String get liveCwUnavailable => 'Live CW requires HaLo for macOS with the CW keyer experiment enabled.';
+
+	/// en: 'Pair TinyMIDI in macOS Audio MIDI Setup. Its USB-C connector supplies power.'
+	String get tinyMidiPairing => 'Pair TinyMIDI in macOS Audio MIDI Setup. Its USB-C connector supplies power.';
+
+	/// en: 'Paddle Mode'
+	String get paddleMode => 'Paddle Mode';
+
+	/// en: 'Iambic A'
+	String get iambicA => 'Iambic A';
+
+	/// en: 'Iambic B'
+	String get iambicB => 'Iambic B';
+
 	/// en: 'Connected'
 	String get statusConnected => 'Connected';
 
@@ -14731,6 +14758,15 @@ extension on Translations {
 			'settings.station.midi.device' => 'Device',
 			'settings.station.midi.deviceNone' => 'Choose a device',
 			'settings.station.midi.deviceMissing' => ({required Object name}) => '${name} (not connected)',
+			'settings.station.midi.inputType' => 'Input Type',
+			'settings.station.midi.controllerInput' => 'Mapped controls',
+			'settings.station.midi.liveCw' => 'Live CW',
+			'settings.station.midi.liveCwK4' => 'Use one local Radio A on the K4’s Secure Network connection in CW mode.',
+			'settings.station.midi.liveCwUnavailable' => 'Live CW requires HaLo for macOS with the CW keyer experiment enabled.',
+			'settings.station.midi.tinyMidiPairing' => 'Pair TinyMIDI in macOS Audio MIDI Setup. Its USB-C connector supplies power.',
+			'settings.station.midi.paddleMode' => 'Paddle Mode',
+			'settings.station.midi.iambicA' => 'Iambic A',
+			'settings.station.midi.iambicB' => 'Iambic B',
 			'settings.station.midi.statusConnected' => 'Connected',
 			'settings.station.midi.statusWaiting' => 'Not connected — plug it in or turn it on',
 			'settings.station.midi.statusNoDevice' => 'Choose the device this controller is',
@@ -14830,6 +14866,8 @@ extension on Translations {
 			'settings.station.providesAudioMixer' => 'Audio Mixer',
 			'settings.station.providesSo2rController' => 'SO2R Controller',
 			'settings.station.providesAntenna' => 'Antenna',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.providesKey' => 'CW Key',
 			'settings.station.yaesuMeterCapture' => 'Capture meter readings',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Reads the radio\'s power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
@@ -14839,8 +14877,6 @@ extension on Translations {
 			'settings.station.telemetryIntervalDescription' => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can handle, up to 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'Idle polling interval (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'How often to ask the radio for its frequency and mode while neither is changing. Leave blank for ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.ratedPower' => 'Rated power (W)',
@@ -15344,6 +15380,8 @@ extension on Translations {
 			'staleness.ignoreForNow' => 'Ignore for now',
 			'spotting.noQsoYet' => 'No QSO logged yet to spot.',
 			'spotting.setFrequencyFirst' => 'Set a frequency first.',
+			_ => null,
+		} ?? switch (path) {
 			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',
 			'spotting.noSuchSource' => ({required Object source, required Object sources}) => 'No spot source matches "${source}" — installed: ${sources}.',
 			'spotting.sourceNotOffered' => ({required Object source, required Object sources}) => '"${source}" isn\'t spotting here — on offer: ${sources}.',
@@ -15353,8 +15391,6 @@ extension on Translations {
 			'spotting.selfSpottingToComment' => ({required Object sources, required Object comment}) => 'Self-spotting to ${sources}: ${comment}',
 			'spotting.spotLastTo' => ({required Object sources}) => 'Spot the last logged QSO to ${sources}?',
 			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => 'Spot the last logged QSO to ${sources} with "${comment}"?',
-			_ => null,
-		} ?? switch (path) {
 			'spotting.spottingLastTo' => ({required Object sources}) => 'Spotting last QSO to ${sources}…',
 			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => 'Spotting last QSO to ${sources}: ${comment}',
 			'spotting.incompleteCall' => 'Can\'t spot an incomplete call — finish the callsign first.',
