@@ -157,7 +157,8 @@ class RadioAudio {
   bool _cardsFailureReported = false;
 
   /// A link for [radio], whose audio may fall [delayMs] behind.
-  RadioAudioLink link({required String radio, int delayMs = receiveAudioDelayDefault}) => _Link(this, radio, delayMs);
+  RadioAudioLink link({required String radio, int delayMs = receiveAudioDelayDefault, bool Function()? selectedForListening}) =>
+      _Link(this, radio, delayMs, selectedForListening);
 
   /// Sets every route's gain to its radio's level and the overall volume,
   /// in the ears it is put in: as a slider moves, so it is heard as it is
@@ -441,14 +442,18 @@ class RadioAudio {
 }
 
 class _Link implements RadioAudioLink {
-  _Link(this._audio, this._radio, this._delayMs);
+  _Link(this._audio, this._radio, this._delayMs, this._selectedForListening);
 
   final RadioAudio _audio;
   final String _radio;
   final int _delayMs;
+  final bool Function()? _selectedForListening;
 
   @override
   AudioEngine get engine => _audio.engine;
+
+  @override
+  bool get selectedForListening => _selectedForListening?.call() ?? true;
 
   @override
   AudioRoute? hear(AudioEndpoint source, {required void Function(String reason) why}) => _audio._hear(_radio, _delayMs, source, why);

@@ -3294,6 +3294,9 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get k4RemoteNotes => 'ENABLE REMOTE ACCESS ON YOUR K4 AND ENTER ITS NETWORK PASSWORD. MAIN AND SUB SHARE ONE ENCRYPTED CONNECTION FOR RADIO CONTROL AND SPECTRUM. THE DEFAULT PORT IS 9204; ENTER YOUR FORWARDED PORT WHEN CONNECTING REMOTELY.\n\nAUDIO PLAYBACK AND MICROPHONE STREAMING ARE NOT SUPPORTED.';
 	@override String get k4ReceiverMain => 'MAIN';
 	@override String get k4ReceiverSub => 'SUB';
+	@override String get k4Diversity => 'DIVERSITY RECEPTION (DIV)';
+	@override String get k4DiversityFollowing => 'SUB FOLLOWS MAIN FREQUENCY, MODE AND BANDWIDTH.';
+	@override String get k4DiversityIndependent => 'MAIN AND SUB TUNE INDEPENDENTLY.';
 	@override String get k4SubReceiverOff => 'THE K4 SUB RECEIVER IS OFF';
 	@override String get k4RemotePasswordRequired => 'ENTER THE K4’S NETWORK PASSWORD TO CONNECT SECURELY.';
 	@override String get k4RemoteHandshakeFailed => 'THE K4 COULD NOT ESTABLISH A SECURE CONNECTION. CHECK ITS NETWORK PASSWORD AND REMOTE ACCESS SETTINGS.';
@@ -7835,6 +7838,9 @@ extension on TranslationsQro {
 			'settings.station.k4RemoteNotes' => 'ENABLE REMOTE ACCESS ON YOUR K4 AND ENTER ITS NETWORK PASSWORD. MAIN AND SUB SHARE ONE ENCRYPTED CONNECTION FOR RADIO CONTROL AND SPECTRUM. THE DEFAULT PORT IS 9204; ENTER YOUR FORWARDED PORT WHEN CONNECTING REMOTELY.\n\nAUDIO PLAYBACK AND MICROPHONE STREAMING ARE NOT SUPPORTED.',
 			'settings.station.k4ReceiverMain' => 'MAIN',
 			'settings.station.k4ReceiverSub' => 'SUB',
+			'settings.station.k4Diversity' => 'DIVERSITY RECEPTION (DIV)',
+			'settings.station.k4DiversityFollowing' => 'SUB FOLLOWS MAIN FREQUENCY, MODE AND BANDWIDTH.',
+			'settings.station.k4DiversityIndependent' => 'MAIN AND SUB TUNE INDEPENDENTLY.',
 			'settings.station.k4SubReceiverOff' => 'THE K4 SUB RECEIVER IS OFF',
 			'settings.station.k4RemotePasswordRequired' => 'ENTER THE K4’S NETWORK PASSWORD TO CONNECT SECURELY.',
 			'settings.station.k4RemoteHandshakeFailed' => 'THE K4 COULD NOT ESTABLISH A SECURE CONNECTION. CHECK ITS NETWORK PASSWORD AND REMOTE ACCESS SETTINGS.',
@@ -8072,11 +8078,11 @@ extension on TranslationsQro {
 			'settings.station.kenwoodMeterCaptureDescription' => 'READS THE RADIO\'S S-METER WHILE RECEIVING AND ITS POWER, SWR, COMP AND ALC METERS WHILE TRANSMITTING, AND PRINTS THE RAW VALUES TO THE LOG. FOR BUILDING THE SCALES KENWOOD DOES NOT PUBLISH.',
 			'settings.station.yaesuMeterCaptureDescription' => 'READS THE RADIO\'S PO, SWR AND ALC METERS WHILE TRANSMITTING AND PRINTS THE RAW VALUES TO THE LOG. FOR BUILDING THE SCALE YAESU DOES NOT PUBLISH — THE VALUES ARE NOT SHOWN AS METERS.',
 			'settings.station.telemetryInterval' => 'METER READING INTERVAL (MS)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalDescription' => 'HOW OFTEN TO READ THE RADIO\'S METERS WHILE IT IS TRANSMITTING. LEAVE BLANK FOR THE FASTEST THIS CONNECTION CAN HANDLE, UP TO 200 MS.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A WHOLE NUMBER OF MILLISECONDS, ${min} TO ${max}',
 			'settings.station.pollInterval' => 'IDLE POLLING INTERVAL (MS)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'HOW OFTEN TO ASK THE RADIO FOR ITS FREQUENCY AND MODE WHILE NEITHER IS CHANGING. LEAVE BLANK FOR ${fallback} MS.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A WHOLE NUMBER OF MILLISECONDS, ${min} TO ${max}',
 			'settings.station.ratedPower' => 'RATED POWER (W)',
@@ -8586,11 +8592,11 @@ extension on TranslationsQro {
 			'spotting.selfSpotTo' => ({required Object sources}) => 'SELF-SPOT TO ${sources}?',
 			'spotting.selfSpotToWithComment' => ({required Object sources, required Object comment}) => 'SELF-SPOT TO ${sources} WITH "${comment}"?',
 			'spotting.selfSpottingTo' => ({required Object sources}) => 'SELF-SPOTTING TO ${sources}…',
+			_ => null,
+		} ?? switch (path) {
 			'spotting.selfSpottingToComment' => ({required Object sources, required Object comment}) => 'SELF-SPOTTING TO ${sources}: ${comment}',
 			'spotting.spotLastTo' => ({required Object sources}) => 'SPOT THE LAST LOGGED QSO TO ${sources}?',
 			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => 'SPOT THE LAST LOGGED QSO TO ${sources} WITH "${comment}"?',
-			_ => null,
-		} ?? switch (path) {
 			'spotting.spottingLastTo' => ({required Object sources}) => 'SPOTTING LAST QSO TO ${sources}…',
 			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => 'SPOTTING LAST QSO TO ${sources}: ${comment}',
 			'spotting.incompleteCall' => 'CAN\'T SPOT AN INCOMPLETE CALL — FINISH THE CALLSIGN FIRST.',

@@ -1,7 +1,7 @@
 # K4 remote connection
 
-The **Elecraft K4 → Secure Network/WiFi** pairing carries CAT and both
-panadapters over one TLS connection, on port 9204 by default. It is one
+The **Elecraft K4 → Secure Network/WiFi** pairing carries CAT, both
+panadapters and audio over one TLS connection, on port 9204 by default. It is one
 device with two receivers ([station-model.md § 3](station-model.md#3-devices)):
 Main and Sub are picked as separate radios, and share the physical connection
 and the transmitter. The serial and local Ethernet 9200/9201 pairings remain separate.
@@ -54,8 +54,9 @@ panel, but not panel disposal or an app restart.
   [native TLS package](../../packages/halo_tls_psk/README.md) documents its
   ciphers, resource limits and platform packaging.
 - [`K4RemoteConnection`](../../app/lib/services/cat/transports/k4_remote_connection.dart)
-  decodes the multiplexed stream into CAT and PAN. It sends framed `PING;`
-  each second and closes after ten seconds without a valid CAT or PAN packet.
+  decodes the multiplexed stream into CAT, PAN and subscribed raw audio. It
+  sends framed `PING;` each second and closes after ten seconds without a
+  valid CAT, PAN or subscribed audio packet.
   `PONG` keeps an idle radio connected; closure feeds the CAT reconnect policy.
 - [`K4SharedConnectionPool`](../../app/lib/services/cat/transports/k4_shared_connection.dart)
   grants a lease to each logical receiver. Concurrent connects share one
@@ -78,8 +79,10 @@ Each logical receiver has an ordinary `SpectrumSession` and its own
 `K4SpectrumPresenter`; Main and Sub are selected by radio ID throughout the
 panel and extension APIs. A terminated PAN stream reports unavailable until
 the physical connection is replaced; it does not start a separate retry loop.
-Receive audio still consumes network bandwidth before being discarded. The
-only outbound audio is the voice keyer's (§ Transmit audio).
+Audio decoding is also demand-driven. The transport drops inbound audio
+while no receiver listens. The shared session routes each requested channel
+into the audio engine and owns the connection's encoding for listening,
+live microphone use and the computer's voice keyer.
 
 ## Receiver and CAT state
 
@@ -103,12 +106,19 @@ Power, PTT, keyer speed and voice memories belong to the shared transmitter;
 receiver selection does not change the radio's split transmit selection.
 
 Main normally uses VFO A and Sub uses VFO B. With diversity enabled, both
-receivers follow A; B remains available as a split transmit register. Sub
-controls follow that receiver binding and refuse writes while diversity state
-is unknown. A disabled Sub is reported as unavailable; HaLo does not enable it
-automatically. Each panadapter's frequency window always comes from its PAN
-header, independently of the receiver's tuned frequency and marker. This
-distinction matters for fixed displays, split and diversity.
+receivers follow A and B remains available as a split transmit register. Sub
+controls follow that receiver binding and wait for diversity state before
+writing. Each panadapter’s frequency window comes from its PAN header,
+independently of tuning.
+
+Under **EXP AUDIO**, the **Diversity reception (DIV)** control in the
+station's configuration details follows the radio's `DV` reply. It sends
+`DV1;` or `DV0;` and reads back `DV;` and `SB;`. The K4 turns Sub on
+when diversity is enabled.
+Connecting a Sub entry alone leaves the receiver's enable state to the radio.
+`SB0` means off, `SB1` means on, and
+[`SB3`](https://github.com/mikeg-dal/QK4/blob/8e9a705af6ed725cbb0d818b9043109276d671db/docs/k4-protocol-quirks.md#12-mini-pan-state-mp--mp-is-pushed-by-the-radio)
+also means on, with the Sub mini-pan running.
 
 ## Envelope and PAN payload
 
@@ -120,8 +130,12 @@ FE FD FC FB | payload length (u32 big-endian) | payload | FB FC FD FE
 
 The incremental decoder caps payloads at 64 KiB and resynchronizes corrupt
 envelopes. The first three payload bytes are type, version and sequence.
-Type 0/version 0 carries ASCII CAT; type 2 carries PAN. Audio (1), mini-pan
-(3), and unknown types are counted and discarded.
+Type 0/version 0 carries ASCII CAT; type 2 carries PAN. Type 1/version 1
+carries audio. With a listener, the decoder accepts EM0 signed 24-bit samples
+in little-endian 32-bit containers and EM1 signed little-endian 16-bit samples,
+both interleaved stereo at 12 kHz. It checks the declared frames against the
+sample payload. Unsupported audio encodings, mini-pan (3) and unknown types
+are counted and discarded.
 
 PAN offsets are relative to the outer payload:
 
@@ -148,12 +162,61 @@ A1 leaves the PAN version, nested type and declared inner length ambiguous.
 Those fields are preserved without imposing guessed validity rules. Bin
 levels use the documented conversion above and are not calibrated dBm.
 
+## Live audio
+
+Under **EXP AUDIO**, each secure receiver's existing **Listen to Audio** and
+**Microphone** choices can use **On This Computer**. Availability follows the
+existing audio engine and logging-set rules, including the selected receiver,
+operator devices, mix gains and transmit gate. The serial and local Ethernet
+pairings have no network-audio capability. Recording a voice-keyer message
+continues through its existing recording path.
+
+The inbound stereo stream carries physical Main on the left and Sub on the
+right. A listening logging set normally gets its chosen receiver in both
+ears. In diversity, when only one logging set listens to this K4 and
+Sub is confirmed on, that set gets Main left and Sub right. Two sets
+listening to the same K4 keep their own receiver feeds so the station
+mixer can route them. A disabled Sub is silent.
+
+The shared session applies the raw stream's source-derived gain of 32,
+clamps samples, and interpolates 12 kHz to the engine's 48 kHz rate. The
+engine route handles playback, jitter and clock drift. Interpolation
+history resets at sequence gaps and when the listening layout changes.
+
+One shared owner reads the connection's encoding, selects `EM1;` and verifies
+the setting before playing received audio or keying the live microphone.
+Main, Sub, microphone and voice-keyer messages share that ownership. The
+prior encoding is restored after the last user ends. A format refusal ends
+the affected audio route and reports an audio problem.
+
+Live microphone audio comes from the engine's mono 48 kHz route. A 63-tap
+low-pass FIR filters it before decimation to 12 kHz. The sender duplicates
+mono into the two EM1 channels, starts a fresh sequence at each key, and
+sends one 720-frame packet every 60 ms. The packets themselves key the K4
+from the streamed input. The microphone sends neither CAT `TX;` (which
+selects the radio's own input) nor `RX;`. On release it stops sending, so
+the radio can finish the last frame and return to receive. It sends no
+catch-up burst after a scheduler pause.
+
+This path differs from Flex's native UDP audio endpoint. K4 CAT, PAN and
+audio share the existing Dart-owned TLS stream, so audio decoding,
+interpolation, microphone filtering and packet pacing stay in Dart. The
+native engine still owns sound devices, routing and clock bridging. Dart
+scheduling can affect packet timing, and this path has no native sender's
+timing guarantee.
+
+The channel layout, raw encodings, gain and packet format are derived from
+[QK4's protocol observations](https://github.com/mikeg-dal/QK4/blob/8e9a705af6ed725cbb0d818b9043109276d671db/docs/k4-protocol-quirks.md#11-audio-encode-modes-em0em3-carry-the-same-audio-at-different-numeric-scales)
+and source, read for protocol facts only. Live receive and microphone use,
+including runtime EM changes, remain unverified on K4 hardware.
+
 ## Transmit audio
 
 The computer's voice keyer sends its recordings over this connection
 ([cat.md § The computer's voice keyer](cat.md#the-computers-voice-keyer)).
-Not yet met on hardware: the layout below is from QK4's source (GPL-3.0, read
-for the facts of the format; none of its code is copied).
+The live microphone uses the same packet layout. It is derived from QK4's
+source (GPL-3.0, read for the facts of the format, with no code copied) and
+remains unverified on hardware.
 
 | Offset | Field | Value |
 | --- | --- | --- |
@@ -167,11 +230,11 @@ for the facts of the format; none of its code is copied).
 
 720 frames is 60 ms, what the K4 bundles at its default streaming latency
 (SL3; SL0 is 240, SL1–2 480, SL6–7 1440). The connection's encoding is EM3,
-Opus, unless set; `EM1;` goes out ahead of each message's `TX;` and the
-connection's own EM after its `RX;`.
+Opus, unless set. A message acquires the shared EM1 setting before `TX;`
+and releases it after `RX;`. Listening keeps EM1 selected between messages.
 
-Every audio packet keys the K4: `TX;` goes before the first, and the stream
-ends before `RX;`, or the audio keys the radio again. Unconfirmed until a K4
+Every audio packet keys the K4. For the existing recorded-message path,
+`TX;` goes before the first packet and the stream ends before `RX;`. Unconfirmed until a K4
 tries it: whether EM changed mid-connection takes effect, whether a frame size
 other than the SL tier's is accepted, and whether the K4 needs stereo (QK4
 sends stereo for the raw modes and mono Opus).

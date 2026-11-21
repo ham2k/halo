@@ -98,6 +98,23 @@ mixin _RadioControls {
     }
   }
 
+  /// Whether this secure K4 has confirmed the diversity mode the UI changes.
+  bool canSetK4DiversityFor(String uuid) {
+    final state = stateFor(uuid);
+    return state.status == EquipmentStatus.connected && !state.stale && state.k4Diversity != null && connectedSession(uuid) is K4DiversitySession;
+  }
+
+  /// Changes the device's diversity mode; the radio's readback updates state.
+  void setNodeK4Diversity(String uuid, bool enabled) {
+    if (!canSetK4DiversityFor(uuid)) return;
+    final session = connectedSession(uuid) as K4DiversitySession;
+    try {
+      session.setDiversity(enabled);
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:k4-diversity');
+    }
+  }
+
   /// Which receive levels [uuid]'s radio takes — none for a radio whose
   /// driver sets none, or one not connected.
   ReceiveLevels receiveLevelsFor(String uuid) => switch (connectedSession(uuid)) {

@@ -10,10 +10,12 @@ no DAX driver, no BlackHole, no Loopback. The same machinery carries audio
 between two HaLo devices, and between HaLo and a program that is not HaLo —
 a Jitsi meeting among them, through a page in the operator's browser.
 
-Status: design. The file-only transmit path of the computer's voice keyer
-([cat.md § The computer's voice keyer](cat.md#the-computers-voice-keyer)) is
-what exists; everything below that it does not describe is to be built, in
-the phases of § 12.
+Status: implemented in part behind **EXP AUDIO**. Flex DAX and the K4 secure
+connection use the engine for live listening and microphone routes. K4 live
+audio remains source-derived and unverified on hardware. The computer's
+voice keyer keeps its existing recording and file-transmit paths
+([cat.md § The computer's voice keyer](cat.md#the-computers-voice-keyer)).
+The peer and external endpoint work below remains design, in the phases of § 12.
 
 ## 1. Scope
 
@@ -45,6 +47,14 @@ For live audio, whatever a sender holds ahead is added latency, so the
 longest stall of the thread that sends sets the floor under mouth-to-ear
 delay. A native sender needs one packet ahead; a Dart one, by estimate, three
 or four.
+
+The K4 secure connection is an exception to this native packet path. CAT,
+PAN and audio share one Dart-owned TLS connection. Its raw audio decoder,
+12-to-48 kHz receive interpolation, microphone FIR decimation and 60 ms
+packet pacing stay in Dart. The native engine owns its sound devices,
+routes and clock bridges as usual. This reuses the secure connection's
+ownership and framing, with the timing limits of a Dart sender. Flex's UDP
+receive and transmit endpoint stays native.
 
 **Threads.** Each sound device runs on miniaudio's real-time callback thread.
 Each network endpoint has a receive thread (a blocking receive with a short
@@ -219,7 +229,7 @@ into the operator's mix, and never waits for the radio's monitor to come back
 | --- | --- | --- | --- | --- |
 | FlexRadio, `dax_rx` / `dax_tx` | per slice, a DAX channel | `dax_tx` stream owned by HaLo | 24 kHz stereo float32 BE, 128 frames; RX VITA type 3, TX type 1 | TX on air, RX captured over Wi-Fi (FLEX-6600) |
 | FlexRadio, `remote_audio_rx` / `_tx` | the radio's own headphone mix | the mic through the radio's TX chain | Opus, or uncompressed | not captured |
-| Elecraft K4, remote (9204) | inside the TLS connection | inside the TLS connection | TX: EM1 16-bit 12 kHz, 720 frames; RX: the connection's EM (EM3, Opus, unless set) | TX from QK4's source, not met on hardware |
+| Elecraft K4, remote (9204) | Main = left, Sub = right, stereo for one listening set in diversity | mono microphone copied to both channels | EM1 S16LE stereo, 12 kHz; TX 720 frames | QK4 source and protocol observations, live audio unverified on hardware |
 | Icom, LAN audio (50003) | the audio session's stream | the same | 48 kHz 16-bit LE mono, 480 frames | from wfview's source, not met on hardware |
 | Any radio, USB codec | a sound device | a sound device | the device's | miniaudio |
 
@@ -293,9 +303,27 @@ delivers, and whether the radio's speech processor and transmit EQ apply to
 `remote_audio_tx` and not to `dax_tx`. For voice, that last answer may make
 `remote_audio_tx` the better transmit path.
 
-**A K4's receive audio** needs either Opus (libopus, BSD-licensed, which the
-peer protocol needs anyway) or `EM1` for the whole connection. Whether EM
-changes mid-connection is unconfirmed (k4-remote.md § Transmit audio).
+**K4 live audio uses the secure connection.** Under **EXP AUDIO**, Main and
+Sub use the same per-receiver choices, engine, operator devices and
+logging-set gate as Flex. Each set normally hears its selected receiver.
+With diversity enabled and Sub on, a single set listening to this K4 hears
+Main on the left and Sub on the right. The shared session selects and
+verifies `EM1` for listening or talking and holds it while any receiver,
+microphone or voice-keyer message uses it. It restores the connection's
+previous encoding after the last user ends.
+
+Receive samples get the source-derived gain of 32 and linear interpolation
+from 12 kHz to the engine's 48 kHz rate, with interpolation history reset at
+sequence gaps. The engine route supplies its ordinary jitter and drift
+handling. The microphone's mono 48 kHz route passes through a 63-tap
+low-pass FIR before 4:1 decimation, then becomes EM1 stereo with the same
+mono samples in each channel. A Dart timer sends a 720-frame packet every
+60 ms while keyed. The packets key the K4 with the microphone's audio.
+Release stops the stream, which lets the radio return to receive. Recording a message keeps
+the existing recording path. The channel layout and formats are derived
+from QK4's source and observations. Live receive, microphone use and runtime
+EM changes remain unverified on hardware
+([k4-remote.md § Live audio](k4-remote.md#live-audio)).
 
 **An Icom's receive audio** is already streaming once the audio session is
 open, and dropped unread; the endpoint reads it instead. The session opens
@@ -474,9 +502,11 @@ on behaves differently with two members than with three.
   sender; the Flex session's meter packets arrive from the engine's queue.
 - `icom_lan_audio.dart`'s session runs on the engine's socket, reading its
   receive stream instead of dropping it.
-- `k4_remote_audio.dart` feeds and drains engine rings from the TLS
-  connection, which stays in Dart; a K4's 60 ms packets make a Dart stall a
-  small part of its budget.
+- `k4_shared_session_audio.dart` routes each K4 receiver's channel into a
+  pushed engine source and owns the shared EM1 setting. `k4_remote_talk.dart`
+  reads the microphone route, filters and decimates it, and paces packets
+  through the Dart TLS connection. Its 60 ms packets allow a larger budget
+  than Flex's UDP packets, while remaining exposed to Dart scheduler stalls.
 - `cat_so2r_audio.dart` gains the engine as a switcher.
 
 ## 12. Phases
@@ -487,8 +517,10 @@ on behaves differently with two members than with three.
    the operator hears a slice in HaLo and talks on the air from HaLo with no
    DAX driver or virtual device on the machine, and the bridge's drift and
    the measured latency are written here.
-2. **K4 and Icom receive**, and Flex `remote_audio` captured (and built if
-   it wins for voice). libopus vendored.
+2. **K4 live audio and Icom receive**, and Flex `remote_audio` captured
+   (and built if it wins for voice). K4 receive and microphone routing are
+   implemented with raw EM1, pending hardware validation. Opus remains future
+   work for the peer path.
 3. **The peer protocol**: a station-side HaLo beside the radio, the
    operator's HaLo elsewhere on the LAN; mobile builds of the engine.
 4. **The external endpoint and the Jitsi adapter.**

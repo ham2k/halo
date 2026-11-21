@@ -7379,6 +7379,15 @@ class Translations$settings$station$en {
 	/// en: 'Sub'
 	String get k4ReceiverSub => 'Sub';
 
+	/// en: 'Diversity reception (DIV)'
+	String get k4Diversity => 'Diversity reception (DIV)';
+
+	/// en: 'Sub follows Main frequency, mode and bandwidth.'
+	String get k4DiversityFollowing => 'Sub follows Main frequency, mode and bandwidth.';
+
+	/// en: 'Main and Sub tune independently.'
+	String get k4DiversityIndependent => 'Main and Sub tune independently.';
+
 	/// en: 'The K4 sub receiver is off'
 	String get k4SubReceiverOff => 'The K4 sub receiver is off';
 
@@ -14599,6 +14608,9 @@ extension on Translations {
 			'settings.station.k4RemoteNotes' => 'Enable remote access on your K4 and enter its network password. Main and Sub share one encrypted connection for radio control and spectrum. The default port is 9204; enter your forwarded port when connecting remotely.\n\nAudio playback and microphone streaming are not supported.',
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
+			'settings.station.k4Diversity' => 'Diversity reception (DIV)',
+			'settings.station.k4DiversityFollowing' => 'Sub follows Main frequency, mode and bandwidth.',
+			'settings.station.k4DiversityIndependent' => 'Main and Sub tune independently.',
 			'settings.station.k4SubReceiverOff' => 'The K4 sub receiver is off',
 			'settings.station.k4RemotePasswordRequired' => 'Enter the K4’s network password to connect securely.',
 			'settings.station.k4RemoteHandshakeFailed' => 'The K4 could not establish a secure connection. Check its network password and remote access settings.',
@@ -14836,11 +14848,11 @@ extension on Translations {
 			'settings.station.kenwoodMeterCaptureDescription' => 'Reads the radio\'s S-meter while receiving and its power, SWR, COMP and ALC meters while transmitting, and prints the raw values to the log. For building the scales Kenwood does not publish.',
 			'settings.station.yaesuMeterCaptureDescription' => 'Reads the radio\'s PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.telemetryInterval' => 'Meter reading interval (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalDescription' => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can handle, up to 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'Idle polling interval (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'How often to ask the radio for its frequency and mode while neither is changing. Leave blank for ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.ratedPower' => 'Rated power (W)',
@@ -15350,11 +15362,11 @@ extension on Translations {
 			'spotting.selfSpotTo' => ({required Object sources}) => 'Self-spot to ${sources}?',
 			'spotting.selfSpotToWithComment' => ({required Object sources, required Object comment}) => 'Self-spot to ${sources} with "${comment}"?',
 			'spotting.selfSpottingTo' => ({required Object sources}) => 'Self-spotting to ${sources}…',
+			_ => null,
+		} ?? switch (path) {
 			'spotting.selfSpottingToComment' => ({required Object sources, required Object comment}) => 'Self-spotting to ${sources}: ${comment}',
 			'spotting.spotLastTo' => ({required Object sources}) => 'Spot the last logged QSO to ${sources}?',
 			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => 'Spot the last logged QSO to ${sources} with "${comment}"?',
-			_ => null,
-		} ?? switch (path) {
 			'spotting.spottingLastTo' => ({required Object sources}) => 'Spotting last QSO to ${sources}…',
 			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => 'Spotting last QSO to ${sources}: ${comment}',
 			'spotting.incompleteCall' => 'Can\'t spot an incomplete call — finish the callsign first.',

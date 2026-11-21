@@ -30,6 +30,14 @@ class KenwoodDriver extends EquipmentDriver {
   String? describeSuffix(Map<String, dynamic> config, {Map<String, dynamic> overrides = const {}}) =>
       remote ? describeK4Receiver(config, overrides, suffix: true) : null;
 
+  /// Two channels for diversity. An independently heard receiver plays
+  /// its own audio into both channels.
+  @override
+  int get receiveAudioChannels => remote ? 2 : 0;
+
+  @override
+  int get talkAudioChannels => remote ? 1 : 0;
+
   /// What most of the Kenwood line ships set to, and what its CAT menu calls
   /// 9600. Only a default — a mismatch answers with garbage and no error, so
   /// the operator has to be able to change it.

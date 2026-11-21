@@ -446,6 +446,10 @@ extension _Connection on CatService {
         runtime.tuneCarrier = on;
         if (on) _noteTuneOnAir(uuid, runtime);
       },
+      onK4Diversity: (enabled) {
+        if (runtime.connection != connection || stateFor(uuid).k4Diversity == enabled) return;
+        _setState(uuid, stateFor(uuid).copyWith(k4Diversity: enabled));
+      },
       onPassband: (passband) {
         if (runtime.connection != connection || stateFor(uuid).passband == passband) return;
         _setState(uuid, stateFor(uuid).copyWith(passband: passband, clearPassband: passband == null));

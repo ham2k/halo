@@ -11,10 +11,14 @@ extension _RadioAudioLinks on CatService {
   /// it in HaLo: the experiment on, an engine on this device, and the node
   /// asking. A change takes effect at the next connect.
   RadioAudioLink? _receiveAudioLink(EquipmentNode node) {
-    if (!hearsInHalo(node.uuid) || !_inASet(node.uuid)) return null;
-    if (!radioAudioAvailable(_settings)) return null;
+    bool selected() => _inASet(node.uuid) && hearsInHalo(node.uuid) && radioAudioAvailable(_settings);
+    if (!selected()) return null;
     final delay = node.config[receiveAudioDelayConfigKey];
-    return _engineAudio.link(radio: node.uuid, delayMs: delay is num && receiveAudioDelays.contains(delay.toInt()) ? delay.toInt() : receiveAudioDelayDefault);
+    return _engineAudio.link(
+      radio: node.uuid,
+      delayMs: delay is num && receiveAudioDelays.contains(delay.toInt()) ? delay.toInt() : receiveAudioDelayDefault,
+      selectedForListening: selected,
+    );
   }
 
   /// The engine's link for the operator's microphone to [node], while they

@@ -71,12 +71,12 @@ class K4SettingSwitch {
 
   /// What to put back after the message, once this switch has moved it.
   int? _owed;
-  bool _switched = false;
+  bool _switched = false, _restoreWhenKnown = false;
   bool _known = false;
   int? _current;
 
   /// What each read still unanswered asked for, oldest first.
-  final _reads = <_Read>[];
+  final _reads = <({_Read reason, void Function(bool)? result})>[];
 
   int _tries = 0;
   Timer? _retry;
@@ -95,8 +95,8 @@ class K4SettingSwitch {
   String get _query => '$command;';
   String _set(int to) => '$command$to;';
 
-  String _ask(_Read why) {
-    _reads.add(why);
+  String _ask(_Read reason, {void Function(bool)? result}) {
+    _reads.add((reason: reason, result: result));
     _awaitAnswers();
     return _query;
   }
@@ -109,9 +109,12 @@ class K4SettingSwitch {
   /// The radio went quiet with reads unanswered: none of them is coming. A
   /// restore whose check was among them is sent again.
   void _giveUp() {
-    final restoring = _reads.contains(_Read.restore);
+    final unanswered = _reads.toList();
     _reads.clear();
-    if (restoring && _switched) _restore();
+    if ((_restoreWhenKnown || unanswered.any((read) => read.reason == _Read.restore)) && _switched) _restore();
+    for (final read in unanswered) {
+      read.result?.call(false);
+    }
   }
 
   /// Asks for the setting, so the key needs no question first.
@@ -129,13 +132,14 @@ class K4SettingSwitch {
   /// when it already reads the message's value, the operator's own choice,
   /// left alone after.
   String beforeKey() {
+    _restoreWhenKnown = false;
     _retry?.cancel();
     _tries = 0;
     // A restore's check still on its way answers for the message before:
     // taken as this one's, it would say the setting is back while this
     // message has it at [value].
     for (var i = 0; i < _reads.length; i++) {
-      if (_reads[i] == _Read.restore) _reads[i] = _Read.plain;
+      if (_reads[i].reason == _Read.restore) _reads[i] = (reason: _Read.plain, result: null);
     }
     if (_earlier case final earlier?) {
       // Put back after this message instead.
@@ -153,7 +157,7 @@ class K4SettingSwitch {
 
   /// The read to follow the key, checking the set took; empty when nothing
   /// was set.
-  String verify() => _switched ? _ask(_Read.verify) : '';
+  String verify({void Function(bool)? result}) => _switched ? _ask(_Read.verify, result: result) : '';
 
   /// Puts the setting back after the unkey, and reads it to see it took.
   void afterUnkey() {
@@ -179,8 +183,15 @@ class K4SettingSwitch {
   }
 
   void _restore() {
+    _restoreWhenKnown = false;
     final owed = _owed;
     if (owed == null) {
+      if (_reads.any((read) => read.reason == _Read.plain)) {
+        // An over can end while its first read still has the old value
+        // on the wire. Put it back when that reply comes in.
+        _restoreWhenKnown = true;
+        return;
+      }
       // The setting was never read: there is nothing known to put back.
       _switched = false;
       diagnose('$command left at $value: its setting before the message was never read');
@@ -205,7 +216,7 @@ class K4SettingSwitch {
     if (read == null) return false;
     _known = true;
     _current = read;
-    final why = _reads.isEmpty ? _Read.plain : _reads.removeAt(0);
+    final pending = _reads.isEmpty ? null : _reads.removeAt(0);
     _awaitAnswers();
     if (_earlier case final earlier? when !_switched) {
       _earlier = null;
@@ -218,7 +229,7 @@ class K4SettingSwitch {
       }
       return true;
     }
-    switch (why) {
+    switch (pending?.reason ?? _Read.plain) {
       case _Read.plain:
         if (_switched && _owed == null) {
           if (read == value) {
@@ -227,10 +238,12 @@ class K4SettingSwitch {
           } else {
             _owed = read;
             _remember();
+            if (_restoreWhenKnown) _restore();
           }
         }
       case _Read.verify:
         if (read != value) refused(read);
+        pending?.result?.call(read == value);
       case _Read.restore:
         if (!_switched) return true;
         if (read == _owed) {

@@ -756,6 +756,34 @@ void main() {
     });
   }
 
+  test('DIV controls share confirmed readback across the logical receivers and clear on disconnect', () async {
+    final f = await _connectedRemote();
+    final sub = '${f.uuid}/rx:sub';
+    await f.cat.connect(sub);
+    final secure = f.transport.secureConnections.single;
+    expect(f.cat.canSetK4DiversityFor(f.uuid), isFalse);
+    expect(f.cat.canSetK4DiversityFor(sub), isFalse);
+    secure.receive(_cat('DV0;SB1;'));
+    expect(f.cat.stateFor(f.uuid).k4Diversity, isFalse);
+    expect(f.cat.stateFor(sub).k4Diversity, isFalse);
+    expect(f.cat.canSetK4DiversityFor(sub), isTrue);
+    secure.sent.clear();
+
+    f.cat.setNodeK4Diversity(sub, true);
+    expect(_commandsWithoutHeartbeat(secure), ['DV1;DV;SB;']);
+    expect(f.cat.stateFor(f.uuid).k4Diversity, isFalse, reason: 'a write is not the radio confirming diversity');
+    expect(f.cat.stateFor(sub).k4Diversity, isFalse);
+    secure.receive(_cat('DV1;SB3;'));
+    expect(f.cat.stateFor(f.uuid).k4Diversity, isTrue);
+    expect(f.cat.stateFor(sub).k4Diversity, isTrue);
+    expect(f.cat.stateFor(sub).problem, isNull, reason: 'SB3 is an active diversity receiver');
+
+    await f.cat.disconnect(sub);
+    expect(f.cat.stateFor(sub).k4Diversity, isNull);
+    expect(f.cat.canSetK4DiversityFor(sub), isFalse);
+    expect(f.cat.stateFor(f.uuid).k4Diversity, isTrue, reason: 'the sibling retains the physical session');
+  });
+
   test('logical Main and Sub share one concurrent open while retaining independent CAT and spectrum state', () async {
     final f = await _connectedRemote(connect: false);
     final sub = f.cat.nodeFor('${f.uuid}/rx:sub')!;

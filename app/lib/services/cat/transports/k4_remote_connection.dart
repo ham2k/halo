@@ -18,9 +18,9 @@ class K4AudioNotSent implements Exception {
   String toString() => 'K4AudioNotSent: $why';
 }
 
-/// Multiplexes CAT and spectrum over an already authenticated TLS stream,
-/// and carries the voice keyer's transmit audio the other way. Every audio
-/// packet keys the K4: [sendAudio] is for a message playing, nothing else.
+/// Multiplexes CAT, spectrum and audio over an authenticated TLS stream.
+/// Every transmitted audio packet keys the K4: [sendAudio] is for an
+/// active microphone over or recorded voice message.
 class K4RemoteConnection implements EquipmentConnection, ExplainsClose {
   final EquipmentConnection _secure;
   final _decoder = K4RemoteDecoder();
@@ -34,6 +34,11 @@ class K4RemoteConnection implements EquipmentConnection, ExplainsClose {
     onCancel: _updateBackpressure,
   );
   final _pan = StreamController<K4RemotePanPacket>.broadcast(sync: true);
+  late final _audio = StreamController<K4RemoteAudioPacket>.broadcast(
+    sync: true,
+    onListen: () => _decoder.decodeAudio = !_closed.isCompleted,
+    onCancel: () => _decoder.decodeAudio = false,
+  );
   final _closed = Completer<void>();
   final _closeDone = Completer<void>();
   StreamSubscription<Uint8List>? _subscription;
@@ -57,6 +62,9 @@ class K4RemoteConnection implements EquipmentConnection, ExplainsClose {
   }
 
   Stream<K4RemotePanPacket> get pan => _pan.stream;
+
+  /// Unwatched blocks are discarded while CAT and PAN continue.
+  Stream<K4RemoteAudioPacket> get audio => _audio.stream;
 
   @override
   Stream<Uint8List> get data => _data.stream;
@@ -89,6 +97,8 @@ class K4RemoteConnection implements EquipmentConnection, ExplainsClose {
           _data.add(packet.data);
         case K4RemotePanPacket():
           _pan.add(packet);
+        case K4RemoteAudioPacket():
+          _audio.add(packet);
       }
     }
   }
@@ -137,6 +147,7 @@ class K4RemoteConnection implements EquipmentConnection, ExplainsClose {
     scheduleMicrotask(() {
       unawaited(_data.close());
       unawaited(_pan.close());
+      unawaited(_audio.close());
     });
     try {
       await _secure.close();

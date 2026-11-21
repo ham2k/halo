@@ -48,6 +48,7 @@ import 'equipment_report.dart';
 import 'keying_pickers.dart';
 import 'so2r_switch_dialog.dart';
 import 'station_panel_audio.dart';
+import 'k4_diversity_control.dart';
 import 'station_rows.dart';
 import 'settings_view.dart' show settingsGroupRows;
 import '../settings/core_settings_groups.dart' show moreStationSettingsKey, stationConfigurationSectionKey;
@@ -988,6 +989,7 @@ class StationPanel extends StatelessWidget {
         // what HaLo does to it shows on the front panel too), where its
         // spectrum comes from, what keys CW, and what keys phone.
         final details = [
+          ?_k4DiversityRow(context, localRadio1, inset: detailsInset),
           ?_scopeAdjustRow(context, localRadio1, inset: detailsInset),
           ?_scopeRow(context, localRadio1, radio: null, inset: detailsInset),
           ?_radioAudioRow(context, localRadio1, inset: detailsInset),
@@ -1006,6 +1008,7 @@ class StationPanel extends StatelessWidget {
         // Set B's, the same rows for its radio.
         final detailsB = [
           if (radio2 != null) ...[
+            ?_k4DiversityRow(context, radio2, inset: detailsInset, alreadyShownFor: localRadio1),
             ?_scopeAdjustRow(context, radio2, inset: detailsInset),
             ?_scopeRow(context, radio2, radio: radio2, inset: detailsInset),
             ?_radioAudioRow(context, radio2, inset: detailsInset),

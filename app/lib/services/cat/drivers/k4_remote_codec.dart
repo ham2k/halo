@@ -19,7 +19,7 @@ sealed class K4RemotePacket {
   final int version;
   final int sequence;
 
-  /// A copied, read-only envelope for capture/replay. Audio is never retained.
+  /// A copied, read-only envelope for capture/replay, empty for audio.
   final Uint8List rawFrame;
 
   const K4RemotePacket._({required this.version, required this.sequence, required this.rawFrame});
@@ -30,6 +30,25 @@ class K4RemoteCatPacket extends K4RemotePacket {
   final Uint8List data;
 
   const K4RemoteCatPacket._({required super.version, required super.sequence, required super.rawFrame, required this.data}) : super._();
+}
+
+/// One received raw stereo block. Left is Main and right is Sub.
+class K4RemoteAudioPacket extends K4RemotePacket {
+  final int encoding;
+  final int frames;
+  final int sampleRateHz;
+
+  /// Interleaved stereo on the encoding's native full-scale range.
+  final Float32List samples;
+
+  K4RemoteAudioPacket._({
+    required super.version,
+    required super.sequence,
+    required this.encoding,
+    required this.frames,
+    required this.sampleRateHz,
+    required this.samples,
+  }) : super._(rawFrame: Uint8List(0).asUnmodifiableView());
 }
 
 class K4RemotePanPacket extends K4RemotePacket {
@@ -96,6 +115,9 @@ class K4RemoteDiagnostics {
 /// is resynchronized from its next byte, so a corrupt length cannot swallow a
 /// valid packet inside the bytes it claimed.
 class K4RemoteDecoder {
+  /// Raw receive audio is decoded only while a consumer is listening.
+  bool decodeAudio = false;
+
   final _buffer = Uint8List(k4RemoteMaxPayloadLength + _envelopeLength);
   int _pending = 0;
   int _framesDecoded = 0;
@@ -192,7 +214,7 @@ class K4RemoteDecoder {
         return K4RemoteCatPacket._(version: version, sequence: sequence, rawFrame: raw, data: Uint8List.sublistView(raw, 11, 8 + length).asUnmodifiableView());
       case 1:
         _audioPackets++;
-        return null;
+        return decodeAudio ? _audio(payload) : null;
       case 2:
         final count = length - _panHeaderLength;
         if (count < 2 || count > k4RemoteMaxPanBins || payload[4] > 1) {
@@ -234,6 +256,44 @@ class K4RemoteDecoder {
         _unknownPackets++;
         return null;
     }
+  }
+
+  K4RemoteAudioPacket? _audio(Uint8List payload) {
+    if (payload.length < _audioHeaderLength) {
+      _invalidPayloads++;
+      return null;
+    }
+    if (payload[1] != 1) {
+      _unsupportedVersions++;
+      return null;
+    }
+    // The connection chooses EM1 for listening. EM0 is signed 24-bit audio
+    // in a 32-bit container, as measured in QK4's protocol notes, section 11.
+    final bytesPerSample = switch (payload[3]) {
+      0 => 4,
+      1 => 2,
+      _ => null,
+    };
+    if (bytesPerSample == null) return null;
+    final data = ByteData.sublistView(payload);
+    final frames = data.getUint16(4, Endian.little);
+    if (frames == 0 || payload[6] != 0 || payload.length != _audioHeaderLength + frames * 2 * bytesPerSample) {
+      _invalidPayloads++;
+      return null;
+    }
+    final samples = Float32List(frames * 2);
+    for (var i = 0; i < samples.length; i++) {
+      final offset = _audioHeaderLength + i * bytesPerSample;
+      samples[i] = bytesPerSample == 2 ? data.getInt16(offset, Endian.little) / 32768 : data.getInt32(offset, Endian.little) / 8388608;
+    }
+    return K4RemoteAudioPacket._(
+      version: payload[1],
+      sequence: payload[2],
+      encoding: payload[3],
+      frames: frames,
+      sampleRateHz: k4RemoteAudioRate,
+      samples: samples.asUnmodifiableView(),
+    );
   }
 
   Uint8List _copyFrame(int length) => Uint8List.fromList(Uint8List.sublistView(_buffer, 0, length + _envelopeLength)).asUnmodifiableView();
