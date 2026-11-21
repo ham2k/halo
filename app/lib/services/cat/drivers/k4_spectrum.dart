@@ -15,9 +15,9 @@ import 'k4_spectrum_presenter.dart';
 
 /// The K4's Main panadapter over its dedicated LAN spectrum connection.
 ///
-/// The radio streams precomputed bins as soon as this socket opens. Every
-/// control here changes only their presentation; nothing is written to the
-/// spectrum connection or to CAT, and the front-panel span stays untouched.
+/// The radio streams precomputed bins as soon as this socket opens. The CAT
+/// session supplies the radio's reference level. Controls here adjust only
+/// the presentation of the bins.
 class K4Spectrum {
   final String host;
   final int port;
@@ -46,12 +46,12 @@ class K4Spectrum {
 
   SpectrumCapabilities get capabilities => _presenter.capabilities;
 
-  void start() {
+  void start({void Function()? readReference}) {
     if (_disposed || _wanted) return;
     _wanted = true;
     final epoch = _epoch;
     _retryDelay = _firstRetryDelay;
-    _presenter.start();
+    _presenter.start(readReference: readReference);
     if (!_current(epoch)) return;
     if (_retry == null) unawaited(_open());
   }
@@ -65,6 +65,8 @@ class K4Spectrum {
   }
 
   bool set(SpectrumRequest request) => _wanted && _presenter.set(request);
+
+  void heardReference(int dbm) => _presenter.heardReference(dbm);
 
   Future<void> _open() async {
     if (!_wanted || _disposed || _cancel != null) return;

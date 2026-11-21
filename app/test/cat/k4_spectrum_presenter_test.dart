@@ -145,6 +145,63 @@ void main() {
     });
   });
 
+  test('reads the radio reference while visible and falls back until a fresh report', () {
+    fakeAsync((async) {
+      var reads = 0;
+      final levels = Float32List.fromList(List.filled(1024, -120));
+      void sweep() => presenter.add(centerHz: 14045000, sampleRateHz: 96000, levels: levels);
+      void readReference() => reads++;
+
+      presenter.start(readReference: readReference);
+      sweep();
+      expect(reads, 1);
+      expect(sink.frames.last.floorDb, -130, reason: 'the estimated noise is used before the first CAT reply');
+      async.elapse(const Duration(seconds: 2));
+      presenter.heardReference(-118);
+      async.elapse(const Duration(seconds: 2));
+      sweep();
+      expect(reads, 1, reason: 'a recent push replaces the periodic read');
+      expect(sink.frames.last.floorDb, -118);
+      expect(sink.frames.last.noiseDb, -120, reason: 'the radio reference is a display baseline, independent of estimated noise');
+      async.elapse(const Duration(seconds: 1));
+      sweep();
+      expect(reads, 2, reason: 'active sweeps refresh the baseline when CAT stops pushing');
+
+      presenter.stop();
+      presenter.heardReference(-105);
+      async.elapse(const Duration(seconds: 4));
+      sweep();
+      expect(reads, 2);
+      presenter.start(readReference: readReference);
+      sweep();
+      expect(reads, 3);
+      expect(sink.frames.last.floorDb, -130, reason: 'a reopened scope waits for a fresh reference');
+    });
+  });
+
+  test('a new band or sweep width refreshes the reference promptly', () {
+    fakeAsync((async) {
+      var reads = 0;
+      final levels = Float32List.fromList(List.filled(1024, -120));
+      void sweep(int centerHz, int rate) => presenter.add(centerHz: centerHz, sampleRateHz: rate, levels: levels);
+      presenter.start(readReference: () => reads++);
+      presenter.heardReference(-122);
+      sweep(14045000, 96000);
+      async.elapse(const Duration(seconds: 1));
+      sweep(7045000, 96000);
+      expect(reads, 2);
+      expect(sink.frames.last.floorDb, -122, reason: 'keep the last reference while a new reading is in flight');
+      async.elapse(const Duration(seconds: 1));
+      presenter.heardReference(-113);
+      sweep(7045000, 48000);
+      expect(reads, 2, reason: 'the new reference preceded the sweep width change');
+      expect(sink.frames.last.floorDb, -113);
+      async.elapse(const Duration(seconds: 1));
+      sweep(7045000, 24000);
+      expect(reads, 3);
+    });
+  });
+
   test('a settings callback can stop or replace the source before its sweep is published', () {
     presenter.start();
     sink.onSettings = () {

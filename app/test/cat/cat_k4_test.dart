@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/cat_ascii_codec.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/k4_codec.dart';
 import 'package:ham2k_logger/services/cat/drivers/kenwood_driver.dart';
@@ -83,6 +84,16 @@ KenwoodSession _session(_Sink sink, [String key = 'k4-serial']) {
 }
 
 void main() {
+  test('K4 commands keep their display prefixes and ordinary CAT payloads', () {
+    final framer = K4CatFramer();
+    expect(framer.add('!X#RE'), isEmpty);
+    expect(framer.add(r'F$-115;MD$2;IDtext#REF-110;'), [
+      const AsciiCatCommand('#REF', r'$-115'),
+      const AsciiCatCommand('MD', r'$2'),
+      const AsciiCatCommand('ID', 'text#REF-110'),
+    ]);
+  });
+
   setUp(() => useSerialPortsForTest(const []));
 
   test('one K4 model exposes local and secure remote links with fixed keyer capabilities', () {
