@@ -5,6 +5,7 @@
 // target, and each target's options. Controls and options are kept apart so
 // that clearing or re-learning a control keeps the row's step and coding.
 
+import 'cw_paddle_input.dart';
 import 'midi_codec.dart';
 import 'midi_targets.dart';
 
@@ -13,6 +14,13 @@ import 'midi_targets.dart';
 const midiDeviceConfigKey = 'device';
 const midiControlsConfigKey = 'controls';
 const midiOptionsConfigKey = 'options';
+const midiCwProfileConfigKey = 'cwProfile';
+const midiCwIambicConfigKey = 'cwIambic';
+const midiCwPitchHzConfigKey = 'cwPitchHz';
+
+const defaultMidiCwPitchHz = 600;
+const minMidiCwPitchHz = 100;
+const maxMidiCwPitchHz = 2000;
 
 /// Per-row option keys.
 const midiOptStepPhone = 'stepPhone', midiOptStepCw = 'stepCw', midiOptCoding = 'coding', midiOptPtt = 'ptt';
@@ -22,11 +30,15 @@ const midiPttHold = 'hold', midiPttToggle = 'toggle';
 
 class MidiMapping {
   final String? device;
+  final CwPaddleProfile? cwProfile;
+  final bool cwIambicB;
+  final int cwPitchHz;
   final Map<String, MidiControl> controls;
   final Map<String, Map<String, dynamic>> options;
   final Map<MidiControl, String> _byControl;
 
-  MidiMapping({this.device, this.controls = const {}, this.options = const {}}) : _byControl = {for (final e in controls.entries) e.value: e.key};
+  MidiMapping({this.device, this.cwProfile, this.cwIambicB = true, this.cwPitchHz = defaultMidiCwPitchHz, this.controls = const {}, this.options = const {}})
+    : _byControl = {for (final e in controls.entries) e.value: e.key};
 
   factory MidiMapping.fromConfig(Map<String, dynamic> config) {
     final controls = <String, MidiControl>{};
@@ -46,7 +58,15 @@ class MidiMapping {
       }
     }
     final device = config[midiDeviceConfigKey];
-    return MidiMapping(device: device is String && device.isNotEmpty ? device : null, controls: controls, options: options);
+    final pitchHz = config[midiCwPitchHzConfigKey];
+    return MidiMapping(
+      device: device is String && device.isNotEmpty ? device : null,
+      cwProfile: CwPaddleProfile.values.where((profile) => profile.name == config[midiCwProfileConfigKey]).firstOrNull,
+      cwIambicB: config[midiCwIambicConfigKey] != 'A',
+      cwPitchHz: pitchHz is int ? pitchHz.clamp(minMidiCwPitchHz, maxMidiCwPitchHz) : defaultMidiCwPitchHz,
+      controls: controls,
+      options: options,
+    );
   }
 
   /// The target [control] drives here, if any.

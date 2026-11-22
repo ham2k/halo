@@ -16,6 +16,7 @@ import '../cat/cat_service.dart';
 import '../cat/equipment.dart';
 import '../error_reporting_service.dart';
 import '../settings_service.dart';
+import 'live_midi_cw.dart';
 import 'midi_backend.dart';
 import 'midi_codec.dart';
 import 'midi_controller.dart';
@@ -92,11 +93,13 @@ class MidiService extends ChangeNotifier {
   void Function(MidiControl control)? _shortcutLearn;
 
   MidiBackend? _backend;
-  StreamSubscription<({String deviceId, Uint8List data})>? _packets;
+  StreamSubscription<MidiInputPacket>? _packets;
   StreamSubscription<void>? _changes;
   bool _started = false;
 
   final _controllers = <String, MidiController>{};
+  final _paddles = <String, LiveMidiCw>{};
+  final _paddleClock = Stopwatch()..start();
   final _configs = <String, Map<String, dynamic>>{};
   final _status = <String, MidiDeviceStatus>{};
   final _failures = <String, String>{};
@@ -127,14 +130,18 @@ class MidiService extends ChangeNotifier {
 
   MidiDeviceStatus statusFor(String uuid) => _status[uuid] ?? MidiDeviceStatus.noDevice;
 
+  bool get liveCwAvailable =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS && settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
+
   /// Whether any controller's device is connected — what the Keyboard
   /// Shortcuts editor needs to learn a control from.
-  bool get anyConnected => _status.values.contains(MidiDeviceStatus.connected);
+  bool get anyConnected => _controllers.entries.any((entry) => entry.value.mapping.cwProfile == null && _status[entry.key] == MidiDeviceStatus.connected);
 
   /// The controller node and target that map [control], if any: those win
   /// over a shortcut bound to the same control.
   ({EquipmentNode node, String targetId})? controllerMapping(MidiControl control) {
     for (final MapEntry(key: uuid, value: controller) in _controllers.entries) {
+      if (controller.mapping.cwProfile != null) continue;
       final target = controller.mapping.targetFor(control);
       final node = cat.nodeFor(uuid);
       if (target != null && node != null) return (node: node, targetId: target);
@@ -193,6 +200,7 @@ class MidiService extends ChangeNotifier {
     for (final uuid in _controllers.keys.toList()) {
       if (present.contains(uuid)) continue;
       _releaseNode(uuid);
+      _closePaddle(uuid);
       _controllers.remove(uuid)!.dispose();
       _configs.remove(uuid);
       _status.remove(uuid);
@@ -218,10 +226,28 @@ class MidiService extends ChangeNotifier {
       if (controller == null) {
         _controllers[node.uuid] = MidiController(station: station, mapping: mapping);
       } else {
+        final previous = controller.mapping;
+        if (mapping.cwProfile != previous.cwProfile || mapping.device != previousDevice) {
+          changed = true;
+          _releaseNode(node.uuid);
+          _closePaddle(node.uuid);
+        }
+        if (mapping.device != previousDevice) {
+          // The async binder may be waiting on another device. Drop the old
+          // route now so no packets or configuration can cross that window.
+          final oldId = _boundDevice.entries.where((entry) => entry.value == node.uuid).firstOrNull?.key;
+          if (oldId != null) {
+            _boundDevice.remove(oldId);
+            _runningStatus.remove(oldId);
+            _backend?.disconnect(oldId);
+          }
+          _status[node.uuid] = mapping.device == null ? MidiDeviceStatus.noDevice : MidiDeviceStatus.waiting;
+        }
         controller.mapping = mapping;
       }
-      if (mapping.device != previousDevice) changed = true;
+      if (mapping.device != previousDevice || mapping.cwProfile != null) changed = true;
     }
+    _syncPaddles();
     if (_backend == null) unawaited(_open());
     if (changed) unawaited(_bind());
   }
@@ -237,6 +263,9 @@ class MidiService extends ChangeNotifier {
     _shortcutLearn = null;
     for (final uuid in _controllers.keys) {
       _releaseNode(uuid);
+    }
+    for (final uuid in _paddles.keys.toList()) {
+      _closePaddle(uuid);
     }
     for (final controller in _controllers.values) {
       controller.dispose();
@@ -276,6 +305,7 @@ class MidiService extends ChangeNotifier {
       ErrorReportingService.report(e, st, context: 'midi:devices');
       if (!identical(backend, _backend)) return;
       for (final uuid in _controllers.keys) {
+        _closePaddle(uuid);
         _status[uuid] = MidiDeviceStatus.unavailable;
       }
       notifyListeners();
@@ -291,6 +321,7 @@ class MidiService extends ChangeNotifier {
       if (listedIds.contains(id)) continue;
       final uuid = _boundDevice.remove(id)!;
       _releaseNode(uuid);
+      _closePaddle(uuid);
       _runningStatus.remove(id);
     }
     final claimed = <String>{};
@@ -299,11 +330,16 @@ class MidiService extends ChangeNotifier {
     for (final MapEntry(key: uuid, value: controller) in _controllers.entries.toList()) {
       if (!_controllers.containsKey(uuid)) continue;
       final name = controller.mapping.device;
-      final device = name == null ? null : byName[name];
+      final device = switch ((name, controller.mapping.cwProfile)) {
+        (null, _) => null,
+        (final name?, null) => byName[name],
+        (final name?, _) => listed.where((device) => device.name == name).singleOrNull,
+      };
       final boundId = _boundDevice.entries.where((e) => e.value == uuid).map((e) => e.key).firstOrNull;
       if (boundId != null && boundId != device?.id) {
         _boundDevice.remove(boundId);
         _releaseNode(uuid);
+        _closePaddle(uuid);
         backend.disconnect(boundId);
       }
       if (name == null) {
@@ -319,6 +355,9 @@ class MidiService extends ChangeNotifier {
         _status[uuid] = MidiDeviceStatus.connected;
         continue;
       }
+      _closePaddle(uuid);
+      _boundDevice.remove(device.id);
+      _runningStatus.remove(device.id);
       _status[uuid] = MidiDeviceStatus.connecting;
       _failures.remove(uuid);
       notifyListeners();
@@ -334,21 +373,74 @@ class MidiService extends ChangeNotifier {
         continue;
       }
       if (!identical(backend, _backend)) return;
-      if (!_controllers.containsKey(uuid)) {
-        // Removed while it opened: nothing reads it now.
+      if (_controllers[uuid]?.mapping.device != name) {
+        // Removed or reassigned while it opened: nothing reads it now.
         backend.disconnect(device.id);
         continue;
       }
       _boundDevice[device.id] = uuid;
       _status[uuid] = MidiDeviceStatus.connected;
     }
+    _syncPaddles();
     notifyListeners();
   }
 
-  void _onPacket(({String deviceId, Uint8List data}) packet) {
+  void _syncPaddles() {
+    final backend = _backend;
+    if (backend == null || !liveCwAvailable) {
+      for (final uuid in _paddles.keys.toList()) {
+        _closePaddle(uuid);
+      }
+      return;
+    }
+
+    for (final MapEntry(key: id, value: uuid) in _boundDevice.entries) {
+      final mapping = _controllers[uuid]?.mapping;
+      if (mapping == null || _status[uuid] != MidiDeviceStatus.connected) continue;
+      final profile = mapping.cwProfile;
+      if (profile == null) continue;
+      final paddle = _paddles.putIfAbsent(
+        uuid,
+        () => LiveMidiCw(
+          cat: cat,
+          profile: profile,
+          send: (data) => backend.send(id, data),
+          nowMicros: () => _paddleClock.elapsedMicroseconds,
+          onIdle: _syncPaddles,
+          iambicB: mapping.cwIambicB,
+          pitchHz: mapping.cwPitchHz,
+        ),
+      );
+      paddle
+        ..iambicB = mapping.cwIambicB
+        ..pitchHz = mapping.cwPitchHz;
+      try {
+        paddle.sync();
+      } catch (error, stack) {
+        _status[uuid] = MidiDeviceStatus.failed;
+        _failures[uuid] = '$error';
+        _closePaddle(uuid);
+        ErrorReportingService.report(error, stack, context: 'midi:paddle-config');
+      }
+    }
+  }
+
+  void _closePaddle(String uuid) {
+    try {
+      _paddles.remove(uuid)?.close();
+    } catch (error, stack) {
+      ErrorReportingService.report(error, stack, context: 'midi:paddle-close');
+    }
+  }
+
+  void _onPacket(MidiInputPacket packet) {
     final uuid = _boundDevice[packet.deviceId];
     final controller = uuid == null ? null : _controllers[uuid];
     if (controller == null) return;
+    if (controller.mapping.cwProfile != null) {
+      _paddles[uuid]?.accept(packet);
+      return;
+    }
     final (:messages, :runningStatus) = parseMidiPacket(packet.data, runningStatus: _runningStatus[packet.deviceId]);
     if (runningStatus == null) {
       _runningStatus.remove(packet.deviceId);

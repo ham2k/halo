@@ -65,6 +65,15 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
   String? _problem;
   _K4ReceiverSession? _pttOwner;
   _K4ReceiverSession? _cwOwner, _voiceOwner;
+  _K4ReceiverSession? _liveCwOwner;
+  int? _liveCwEdgeMicros;
+  bool _liveCwDown = false;
+  Timer? _liveCwDeadline;
+
+  // The K4 represents gaps and marks up to 2500 ms. Use a shorter deadline
+  // for a missing release so a held mark cannot exhaust the protocol range.
+  static const _liveCwMaxMillis = 2500;
+  static const _liveCwHoldLimit = Duration(milliseconds: 2400);
 
   /// The connection's audio encoding, raw 16-bit while a message plays.
   late final _encoding = K4SettingSwitch(
@@ -113,6 +122,7 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
 
   void _detach(_K4ReceiverSession facade) {
     facade._active = false;
+    if (_liveCwOwner == facade) _stopLiveCw();
     if (_cwOwner == facade) {
       _cwOwner = null;
       _radio.stopCw();
@@ -129,6 +139,55 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
       _encoding.afterUnkey();
     }
     facade.stopSpectrum();
+  }
+
+  bool _sendLiveCwEdge(_K4ReceiverSession facade, {required bool down, required int atMicros}) {
+    final owner = _liveCwOwner;
+    if (!facade._usable || atMicros < 0 || (owner != null && owner != facade) || down == _liveCwDown) return false;
+    if (down && (_pttOwner != null || _radio.cwSending || _voiceOwner != null)) return false;
+
+    final previous = _liveCwEdgeMicros;
+    final micros = previous == null ? 0 : atMicros - previous;
+    if (micros < 0) return false;
+    if (!down && micros >= _liveCwHoldLimit.inMicroseconds) {
+      _stopLiveCw();
+      return false;
+    }
+
+    _liveCwOwner = facade;
+    _liveCwEdgeMicros = atMicros;
+    _liveCwDown = down;
+    _liveCwDeadline?.cancel();
+    _liveCwDeadline = Timer(down ? _liveCwHoldLimit : const Duration(milliseconds: _liveCwMaxMillis), () {
+      if (_liveCwDown) {
+        _stopLiveCw();
+      } else {
+        _clearLiveCw();
+      }
+    });
+
+    // The radio plays the preceding gap on D and the mark length on U.
+    // Keep the operator's KZL playout delay. After a long idle start a burst
+    // immediately instead of replaying its idle time through the buffer.
+    final interval = micros > _liveCwMaxMillis * 1000 ? 0 : (micros + 500) ~/ 1000;
+    _send('KZ${down ? 'D' : 'U'}${interval.toString().padLeft(4, '0')};');
+    return !_disposed;
+  }
+
+  void _clearLiveCw() {
+    _liveCwDeadline?.cancel();
+    _liveCwDeadline = null;
+    _liveCwOwner = null;
+    _liveCwEdgeMicros = null;
+    _liveCwDown = false;
+  }
+
+  void _stopLiveCw() {
+    if (_liveCwOwner == null) return;
+    final down = _liveCwDown;
+    _clearLiveCw();
+    // The last complete element can still be in the radio's playout buffer.
+    _send(down ? 'KZU0000;RX;' : 'RX;');
   }
 
   bool get _sendsTransmitAudio => _sendAudio != null && !_audioRefused;
@@ -156,6 +215,7 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
   /// that.
   void _setPttWithComputerAudio(_K4ReceiverSession facade, bool on) {
     if (!on && _pttOwner != null && _pttOwner != facade) return;
+    if (on) _stopLiveCw();
     _pttOwner = on ? facade : null;
     final output = facade._output;
     if (!on) {
@@ -393,6 +453,7 @@ class K4SharedSession implements EquipmentSink, SharedConnectionOwner {
   void teardown() {
     if (_disposed || _closing) return;
     _closing = true;
+    _stopLiveCw();
     _loseOutputs();
     _radio.teardown();
     _encoding.teardown(_send);

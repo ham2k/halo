@@ -7,11 +7,13 @@
 // moves, and the form saves back the config it was opened with.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../services/cat/equipment.dart';
 import '../services/halo_services.dart';
+import '../services/midi/cw_paddle_input.dart';
 import '../services/midi/midi_codec.dart';
 import '../services/midi/midi_controller.dart';
 import '../services/midi/midi_mapping.dart';
@@ -143,6 +145,44 @@ class _MidiControllerPaneState extends State<_MidiControllerPane> {
     widget.services.cat.updateNode(node.copyWith(config: change(node.config)));
   }
 
+  Future<void> _editSidetonePitch(int currentHz) async {
+    final field = GlobalKey<FormFieldState<String>>();
+    final pitchHz = await showHaloDialog<int>(
+      context: context,
+      builder: (context) {
+        final t = context.t;
+        void save() {
+          final state = field.currentState;
+          if (state == null || !state.validate()) return;
+          Navigator.of(context).pop(int.parse(state.value!.trim()));
+        }
+
+        return HaloDialog(
+          title: Text(t.settings.station.midi.sidetonePitch),
+          content: TextFormField(
+            key: field,
+            initialValue: '$currentHz',
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: poloFieldDecoration(context, t.settings.station.midi.sidetonePitch).copyWith(suffixText: t.settings.radio.units.hz),
+            validator: (text) {
+              final hz = int.tryParse(text?.trim() ?? '');
+              return hz == null || hz < minMidiCwPitchHz || hz > maxMidiCwPitchHz
+                  ? t.settings.station.midi.sidetonePitchRange(min: minMidiCwPitchHz, max: maxMidiCwPitchHz)
+                  : null;
+            },
+            onFieldSubmitted: (_) => save(),
+          ),
+          cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(t.common.cancel)),
+          actions: [FilledButton(onPressed: save, child: Text(t.common.save))],
+        );
+      },
+    );
+    if (!mounted || pitchHz == null || pitchHz == currentHz) return;
+    _write((config) => {...config, midiCwPitchHzConfigKey: pitchHz});
+  }
+
   @override
   Widget build(BuildContext context) {
     final services = widget.services;
@@ -153,6 +193,7 @@ class _MidiControllerPaneState extends State<_MidiControllerPane> {
         if (node == null) return const SizedBox.shrink();
         final mapping = MidiMapping.fromConfig(node.config);
         final m = context.t.settings.station.midi;
+        final profile = mapping.cwProfile;
         final theme = Theme.of(context);
         final note = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.8));
         final so2r = services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */;
@@ -193,11 +234,30 @@ class _MidiControllerPaneState extends State<_MidiControllerPane> {
                   ),
                   const SizedBox(height: Space.md),
                   Text(_statusText(context, node.uuid), style: note),
-                  const SizedBox(height: Space.sm),
-                  ValueListenableBuilder(
-                    valueListenable: _midi.monitorFor(node.uuid),
-                    builder: (context, line, _) => Text('${m.lastMessage}: ${line == null ? m.lastNone : _monitorText(context, line)}', style: note),
-                  ),
+                  if (_midi.liveCwAvailable || profile != null) ...[
+                    const SizedBox(height: Space.md),
+                    RowSelectField(
+                      label: m.inputType,
+                      value: profile?.name ?? 'controller',
+                      rows: [
+                        SelectRow(value: 'controller', name: m.controllerInput),
+                        if (_midi.liveCwAvailable || profile == CwPaddleProfile.vail) SelectRow(value: CwPaddleProfile.vail.name, name: 'Vail Adapter'),
+                        if (_midi.liveCwAvailable || profile == CwPaddleProfile.haliKey) SelectRow(value: CwPaddleProfile.haliKey.name, name: 'HaliKey MIDI'),
+                        if (_midi.liveCwAvailable || profile == CwPaddleProfile.tinyMidi) SelectRow(value: CwPaddleProfile.tinyMidi.name, name: 'TinyMIDI'),
+                      ],
+                      onChanged: (value) {
+                        _midi.cancelLearn();
+                        _write((config) => {...config, midiCwProfileConfigKey: value});
+                      },
+                    ),
+                  ],
+                  if (profile == null) ...[
+                    const SizedBox(height: Space.sm),
+                    ValueListenableBuilder(
+                      valueListenable: _midi.monitorFor(node.uuid),
+                      builder: (context, line, _) => Text('${m.lastMessage}: ${line == null ? m.lastNone : _monitorText(context, line)}', style: note),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -208,12 +268,39 @@ class _MidiControllerPaneState extends State<_MidiControllerPane> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      SectionHeader(m.sectionRadioA),
-                      ...rows((t) => t.radio == 'A'),
-                      SectionHeader(m.sectionRadioB, subtitle: so2r ? null : Text(m.radioBNeedsSo2r)),
-                      ...rows((t) => t.radio == 'B'),
-                      SectionHeader(m.sectionKeying),
-                      ...rows((t) => t.radio == null),
+                      if (profile == null) ...[
+                        SectionHeader(m.sectionRadioA),
+                        ...rows((t) => t.radio == 'A'),
+                        SectionHeader(m.sectionRadioB, subtitle: so2r ? null : Text(m.radioBNeedsSo2r)),
+                        ...rows((t) => t.radio == 'B'),
+                        SectionHeader(m.sectionKeying),
+                        ...rows((t) => t.radio == null),
+                      ] else ...[
+                        SectionHeader(m.liveCw),
+                        ListTile(
+                          title: Text(_midi.liveCwAvailable ? m.liveCwK4 : m.liveCwUnavailable, style: note),
+                          subtitle: profile == CwPaddleProfile.tinyMidi ? Text(m.tinyMidiPairing, style: note) : null,
+                        ),
+                        if (_midi.liveCwAvailable) ...[
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: Space.xxl),
+                            child: RowSelectField(
+                              label: m.paddleMode,
+                              value: mapping.cwIambicB ? 'B' : 'A',
+                              rows: [
+                                SelectRow(value: 'A', name: m.iambicA),
+                                SelectRow(value: 'B', name: m.iambicB),
+                              ],
+                              onChanged: (value) => _write((config) => {...config, midiCwIambicConfigKey: value}),
+                            ),
+                          ),
+                          ListTile(
+                            title: Text(m.sidetonePitch),
+                            trailing: Text('${mapping.cwPitchHz} ${context.t.settings.radio.units.hz}'),
+                            onTap: () => _editSidetonePitch(mapping.cwPitchHz),
+                          ),
+                        ],
+                      ],
                       ListTile(
                         leading: Icon(MdiIcons.trashCanOutline, color: theme.colorScheme.error),
                         title: Text(context.t.settings.station.remove, style: TextStyle(color: theme.colorScheme.error)),

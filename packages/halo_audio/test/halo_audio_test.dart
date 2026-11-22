@@ -134,6 +134,17 @@ void main() {
     expect(HaloAudio.fileLength(text.path), isNull);
   });
 
+  test('sidetone keeps the same output open between key edges', () {
+    final tone = HaloAudio.openSidetone();
+    addTearDown(tone.close);
+    tone.setKeyDown(true, pitchHz: 600);
+    tone.setKeyDown(false, pitchHz: 600);
+    expect(tone.isAlive, isTrue);
+    tone.close();
+    tone.setKeyDown(true, pitchHz: 600);
+    expect(tone.isAlive, isFalse);
+  });
+
   group('an output', () {
     late AudioOutput output;
 
