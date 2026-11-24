@@ -1140,6 +1140,14 @@ class _Translations$dataFiles$qro extends Translations$dataFiles$en {
 	final TranslationsQro _root; // ignore: unused_field
 
 	// Translations
+	@override String get countryPacks => 'COUNTRY PACKS';
+	@override String get unitedStatesBoundaries => 'UNITED STATES';
+	@override String get unitedStatesBoundariesDescription => 'STATES AND COUNTIES FOR OFFLINE GPS LOOKUP';
+	@override String countryPackVersion({required Object version}) => 'INSTALLED VERSION ${version}';
+	@override String get downloadCountryPack => 'DOWNLOAD COUNTRY PACK';
+	@override String get updateCountryPack => 'CHECK FOR A COUNTRY PACK UPDATE';
+	@override String get removeCountryPack => 'REMOVE COUNTRY PACK';
+	@override String get countryPackChangeFailed => 'COULDN’T CHANGE THE COUNTRY PACK. TRY AGAIN.';
 	@override String get downloading => 'DOWNLOADING…';
 	@override String get upToDate => 'ALREADY UP TO DATE';
 	@override String downloadFailedTitle({required Object name}) => 'COULDN\'T DOWNLOAD ${name}';
@@ -1246,6 +1254,9 @@ class _Translations$operationLocationScreen$qro extends Translations$operationLo
 	@override String get deviceGps => 'DEVICE GPS';
 	@override String peerGps({required Object device}) => 'GPS FROM ${device}';
 	@override String receiverGps({required Object receiver}) => 'GPS FROM ${receiver}';
+	@override String get reviewGps => 'REVIEW GPS';
+	@override String get nearBoundary => 'NEAR A BOUNDARY';
+	@override String boundaryChoice({required Object county, required Object state}) => '${county}, ${state}';
 	@override String get locating => 'LOCATING…';
 	@override String get gpsUnavailable => 'LOCATION UNAVAILABLE';
 	@override String get permissionDenied => 'LOCATION PERMISSION DENIED';
@@ -8601,6 +8612,14 @@ extension on TranslationsQro {
 			'spotting.notRefreshedOffline' => 'NO CONNECTION — SPOTS WERE NOT REFRESHED',
 			'spotting.noDestination' => 'SPOT NOT SENT: NO DESTINATION TAKES IT — SEE DESTINATIONS IN THE SPOTTING SETTINGS.',
 			'spotting.noAutoDestination' => 'NO DESTINATION TAKES AUTO RE-SPOTS — SEE DESTINATIONS IN THE SPOTTING SETTINGS.',
+			'dataFiles.countryPacks' => 'COUNTRY PACKS',
+			'dataFiles.unitedStatesBoundaries' => 'UNITED STATES',
+			'dataFiles.unitedStatesBoundariesDescription' => 'STATES AND COUNTIES FOR OFFLINE GPS LOOKUP',
+			'dataFiles.countryPackVersion' => ({required Object version}) => 'INSTALLED VERSION ${version}',
+			'dataFiles.downloadCountryPack' => 'DOWNLOAD COUNTRY PACK',
+			'dataFiles.updateCountryPack' => 'CHECK FOR A COUNTRY PACK UPDATE',
+			'dataFiles.removeCountryPack' => 'REMOVE COUNTRY PACK',
+			'dataFiles.countryPackChangeFailed' => 'COULDN’T CHANGE THE COUNTRY PACK. TRY AGAIN.',
 			'dataFiles.downloading' => 'DOWNLOADING…',
 			'dataFiles.upToDate' => 'ALREADY UP TO DATE',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'COULDN\'T DOWNLOAD ${name}',
@@ -8671,6 +8690,9 @@ extension on TranslationsQro {
 			'operationLocationScreen.deviceGps' => 'DEVICE GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS FROM ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => 'GPS FROM ${receiver}',
+			'operationLocationScreen.reviewGps' => 'REVIEW GPS',
+			'operationLocationScreen.nearBoundary' => 'NEAR A BOUNDARY',
+			'operationLocationScreen.boundaryChoice' => ({required Object county, required Object state}) => '${county}, ${state}',
 			'operationLocationScreen.locating' => 'LOCATING…',
 			'operationLocationScreen.gpsUnavailable' => 'LOCATION UNAVAILABLE',
 			'operationLocationScreen.permissionDenied' => 'LOCATION PERMISSION DENIED',

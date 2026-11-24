@@ -19,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/country_boundary_packs.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/views/settings/extension_settings_panel.dart';
@@ -81,7 +82,7 @@ Future<HaLoServices> _pumpDataFiles(WidgetTester tester, {required List<Map<Stri
     ..debugSetAvailableExtensions([
       for (final key in const ['call-notes', 'radio-commands']) ExtensionInfo(key: key, file: '$key.js', core: true, name: key),
     ]);
-  final services = HaLoServices(db, settings, extensions: extensions);
+  final services = HaLoServices(db, settings, extensions: extensions, countryBoundaryPacks: _NoCountryPacks());
 
   await tester.pumpWidget(
     TranslationProvider(
@@ -92,6 +93,11 @@ Future<HaLoServices> _pumpDataFiles(WidgetTester tester, {required List<Map<Stri
   );
   await tester.pumpAndSettle();
   return services;
+}
+
+class _NoCountryPacks extends CountryBoundaryPacks {
+  @override
+  Future<String?> installedVersion(String country) async => null;
 }
 
 void main() {

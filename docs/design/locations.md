@@ -198,6 +198,37 @@ capturing stops for the session; clearing it is their answer, and a capture
 on the next position update would make it impossible to leave a new
 operation unlocated while GPS is allowed.
 
+With the United States country pack installed, the fix also fills State and
+County for a setup with no contacts, including when the operator picks
+Device GPS. State or county fills when its polygon contains the fix's entire
+reported accuracy area. When the area crosses a boundary, the Location
+editor offers the intersecting subdivisions. State can still be filled at
+a county line. Picking an option is an operator edit, and Save also works
+with the uncertain fields blank. County requires a matching TrustedQSL
+name. Census equivalents such as Connecticut's planning regions leave
+County blank. A fix without reported accuracy can still supply the grid.
+
+The United States pack covers the 50 states and D.C. and is optional under
+Settings → Accounts, Services & Data Sources → Country packs. The app uses
+the installed pack offline. Downloading or checking for an update fetches
+the version index and, when needed, a verified archive. The old pack stays
+available until a successful replacement. Requests name the pack and version
+and carry no coordinates. Without an installed pack or outside its coverage,
+GPS supplies the grid and the subdivision fields can be entered by hand.
+
+The published archives and index live in [`data/country-packs`](../../data/country-packs).
+[`scripts/generate-us-subdivisions.py`](../../scripts/generate-us-subdivisions.py)
+regenerates and verifies the U.S. pack from the pinned Census and TrustedQSL
+sources. `BOUNDARY_PACK_BASE_URL` can point a developer build at a test
+catalog, including a branch's GitHub raw URL before the catalog lands on main.
+
+`gpsState` and `gpsCounty` record the values supplied by GPS. A better fix or
+a different location replaces or clears a field whose value still matches
+that record. Existing operator values and explicit clears take precedence,
+including changes from a synced editor that carries the old GPS values
+forward. The setup sheet and editor finish a pending lookup before saving
+the fix so a result for an old location cannot land afterward.
+
 The Activities view runs the rule on its draft, on every refs edit, so the
 nearby search recentres on the park just added while the sheet is still open.
 Its save then passes `followRefs: false`: against the stored row, which

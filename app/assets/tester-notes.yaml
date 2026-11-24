@@ -6,6 +6,7 @@
 
 upcoming:
   changes:
+    - "New downloadable U.S. location data for GPS state and county"
     - "New for extension authors: h2kext-dev asks the desktop app to run your extension"
     - "Panel maps show the Great Lakes and other large lakes"
     - "New per-pane map settings, with Map Movements and Map Framing choices"

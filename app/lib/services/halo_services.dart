@@ -86,6 +86,8 @@ import 'inbound_qso_listener_service.dart';
 import 'cat_server/cat_server_rig.dart';
 import 'cat_server/cat_server_service.dart';
 import 'location_service.dart';
+import 'country_boundary_packs.dart';
+import 'us_subdivision_lookup.dart';
 import 'lookup_queue_service.dart';
 import 'operation_lifecycle_commands.dart';
 import 'metrics_service.dart';
@@ -148,6 +150,9 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
   final PurchaseService purchases;
   final UpdateService updates;
   final UpdateCheckService updateCheck;
+  final CountryBoundaryPacks countryBoundaryPacks;
+  final UsSubdivisionLookup? _usSubdivisionLookupOverride;
+  late final UsSubdivisionLookup usSubdivisionLookup = _usSubdivisionLookupOverride ?? UsSubdivisionLookup(packs: countryBoundaryPacks);
 
   /// Every local write fans out to BOTH consumers, and both repositories get
   /// the same lambda — a third repository wired to only one of them would
@@ -1054,6 +1059,8 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
     CatTrafficLog? catTrafficLog,
     PushService? push,
     LocationService? location,
+    CountryBoundaryPacks? countryBoundaryPacks,
+    UsSubdivisionLookup? usSubdivisionLookup,
     InboundQsoListenerService? inboundQsos,
     PeerService? peerService,
     DeepLinkService? deepLinks,
@@ -1069,6 +1076,8 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity, _Op
        _peerServiceOverride = peerService,
        _inboundQsosOverride = inboundQsos,
        _locationOverride = location,
+       countryBoundaryPacks = countryBoundaryPacks ?? CountryBoundaryPacks(),
+       _usSubdivisionLookupOverride = usSubdivisionLookup,
        _pushOverride = push,
        extensions = extensions ?? ExtensionService(),
        metrics = metrics ?? const NoopMetricsService(),

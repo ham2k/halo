@@ -1140,6 +1140,14 @@ class _Translations$dataFiles$qrp extends Translations$dataFiles$en {
 	final TranslationsQrp _root; // ignore: unused_field
 
 	// Translations
+	@override String get countryPacks => 'country packs';
+	@override String get unitedStatesBoundaries => 'united states';
+	@override String get unitedStatesBoundariesDescription => 'states and counties for offline gps lookup';
+	@override String countryPackVersion({required Object version}) => 'installed version ${version}';
+	@override String get downloadCountryPack => 'download country pack';
+	@override String get updateCountryPack => 'check for a country pack update';
+	@override String get removeCountryPack => 'remove country pack';
+	@override String get countryPackChangeFailed => 'couldn’t change the country pack. try again.';
 	@override String get downloading => 'downloading…';
 	@override String get upToDate => 'already up to date';
 	@override String downloadFailedTitle({required Object name}) => 'couldn\'t download ${name}';
@@ -1246,6 +1254,9 @@ class _Translations$operationLocationScreen$qrp extends Translations$operationLo
 	@override String get deviceGps => 'device gps';
 	@override String peerGps({required Object device}) => 'gps from ${device}';
 	@override String receiverGps({required Object receiver}) => 'gps from ${receiver}';
+	@override String get reviewGps => 'review gps';
+	@override String get nearBoundary => 'near a boundary';
+	@override String boundaryChoice({required Object county, required Object state}) => '${county}, ${state}';
 	@override String get locating => 'locating…';
 	@override String get gpsUnavailable => 'location unavailable';
 	@override String get permissionDenied => 'location permission denied';
@@ -8601,6 +8612,14 @@ extension on TranslationsQrp {
 			'spotting.notRefreshedOffline' => 'no connection — spots were not refreshed',
 			'spotting.noDestination' => 'spot not sent: no destination takes it — see destinations in the spotting settings.',
 			'spotting.noAutoDestination' => 'no destination takes auto re-spots — see destinations in the spotting settings.',
+			'dataFiles.countryPacks' => 'country packs',
+			'dataFiles.unitedStatesBoundaries' => 'united states',
+			'dataFiles.unitedStatesBoundariesDescription' => 'states and counties for offline gps lookup',
+			'dataFiles.countryPackVersion' => ({required Object version}) => 'installed version ${version}',
+			'dataFiles.downloadCountryPack' => 'download country pack',
+			'dataFiles.updateCountryPack' => 'check for a country pack update',
+			'dataFiles.removeCountryPack' => 'remove country pack',
+			'dataFiles.countryPackChangeFailed' => 'couldn’t change the country pack. try again.',
 			'dataFiles.downloading' => 'downloading…',
 			'dataFiles.upToDate' => 'already up to date',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'couldn\'t download ${name}',
@@ -8671,6 +8690,9 @@ extension on TranslationsQrp {
 			'operationLocationScreen.deviceGps' => 'device gps',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'gps from ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => 'gps from ${receiver}',
+			'operationLocationScreen.reviewGps' => 'review gps',
+			'operationLocationScreen.nearBoundary' => 'near a boundary',
+			'operationLocationScreen.boundaryChoice' => ({required Object county, required Object state}) => '${county}, ${state}',
 			'operationLocationScreen.locating' => 'locating…',
 			'operationLocationScreen.gpsUnavailable' => 'location unavailable',
 			'operationLocationScreen.permissionDenied' => 'location permission denied',

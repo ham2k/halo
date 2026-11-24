@@ -53,3 +53,6 @@ Scratch*
 # whole world here — prefs with a callsign and a device id, the log database,
 # downloaded data files — and this repo mirrors publicly.
 /.halo-preview-data*/
+
+# Public downloads for offline subdivision lookups.
+!/data/country-packs/*/*.zip

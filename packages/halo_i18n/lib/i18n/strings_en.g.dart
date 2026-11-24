@@ -2572,6 +2572,30 @@ class Translations$dataFiles$en {
 
 	// Translations
 
+	/// en: 'Country packs'
+	String get countryPacks => 'Country packs';
+
+	/// en: 'United States'
+	String get unitedStatesBoundaries => 'United States';
+
+	/// en: 'States and counties for offline GPS lookup'
+	String get unitedStatesBoundariesDescription => 'States and counties for offline GPS lookup';
+
+	/// en: 'Installed version ${version}'
+	String countryPackVersion({required Object version}) => 'Installed version ${version}';
+
+	/// en: 'Download country pack'
+	String get downloadCountryPack => 'Download country pack';
+
+	/// en: 'Check for a country pack update'
+	String get updateCountryPack => 'Check for a country pack update';
+
+	/// en: 'Remove country pack'
+	String get removeCountryPack => 'Remove country pack';
+
+	/// en: 'Couldn’t change the country pack. Try again.'
+	String get countryPackChangeFailed => 'Couldn’t change the country pack. Try again.';
+
 	/// en: 'Downloading…'
 	String get downloading => 'Downloading…';
 
@@ -2817,6 +2841,15 @@ class Translations$operationLocationScreen$en {
 
 	/// en: 'GPS from ${receiver}'
 	String receiverGps({required Object receiver}) => 'GPS from ${receiver}';
+
+	/// en: 'Review GPS'
+	String get reviewGps => 'Review GPS';
+
+	/// en: 'Near a boundary'
+	String get nearBoundary => 'Near a boundary';
+
+	/// en: '${county}, ${state}'
+	String boundaryChoice({required Object county, required Object state}) => '${county}, ${state}';
 
 	/// en: 'Locating…'
 	String get locating => 'Locating…';
@@ -15365,6 +15398,14 @@ extension on Translations {
 			'spotting.notRefreshedOffline' => 'No connection — spots were not refreshed',
 			'spotting.noDestination' => 'Spot not sent: no destination takes it — see Destinations in the Spotting settings.',
 			'spotting.noAutoDestination' => 'No destination takes auto re-spots — see Destinations in the Spotting settings.',
+			'dataFiles.countryPacks' => 'Country packs',
+			'dataFiles.unitedStatesBoundaries' => 'United States',
+			'dataFiles.unitedStatesBoundariesDescription' => 'States and counties for offline GPS lookup',
+			'dataFiles.countryPackVersion' => ({required Object version}) => 'Installed version ${version}',
+			'dataFiles.downloadCountryPack' => 'Download country pack',
+			'dataFiles.updateCountryPack' => 'Check for a country pack update',
+			'dataFiles.removeCountryPack' => 'Remove country pack',
+			'dataFiles.countryPackChangeFailed' => 'Couldn’t change the country pack. Try again.',
 			'dataFiles.downloading' => 'Downloading…',
 			'dataFiles.upToDate' => 'Already up to date',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Couldn\'t download ${name}',
@@ -15435,6 +15476,9 @@ extension on Translations {
 			'operationLocationScreen.deviceGps' => 'Device GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS from ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => 'GPS from ${receiver}',
+			'operationLocationScreen.reviewGps' => 'Review GPS',
+			'operationLocationScreen.nearBoundary' => 'Near a boundary',
+			'operationLocationScreen.boundaryChoice' => ({required Object county, required Object state}) => '${county}, ${state}',
 			'operationLocationScreen.locating' => 'Locating…',
 			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',

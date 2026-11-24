@@ -35,6 +35,7 @@ import '../../services/location_service.dart';
 import '../../services/extensions/extension_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
+import '../../services/us_subdivision_lookup.dart';
 import 'activities_catalog_tier.dart';
 import 'activities_enable_tier.dart';
 import 'operation_location_screen.dart';
@@ -42,6 +43,7 @@ import '../operation_dialogs.dart';
 import '../extensions_panel.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../tools/distance_format.dart';
+import '../../tools/operation_gps_subdivisions.dart';
 import '../../tools/operation_title.dart';
 import '../map/map_zoom_controller.dart';
 import 'activities_results_map.dart';
@@ -241,7 +243,7 @@ class OperationSheetState extends State<OperationSheet>
   /// location here, capturing stops: clearing it, or picking another, is
   /// their answer.
   void _maybeCaptureFix() {
-    if (!mounted || _locationEditedHere) return;
+    if (!mounted || _locationEditedHere || _editingLocation || _isClosing) return;
     final location = widget.services.location;
     final position = location.position;
     final fix = location.location;
@@ -261,7 +263,42 @@ class OperationSheetState extends State<OperationSheet>
       return;
     }
     _capturedAccuracy = accuracy ?? double.infinity;
-    _saveOperationData(gpsLocationData(fix));
+    final patch = gpsLocationData(fix);
+    final capture = ++_gpsCapture;
+    _gpsBoundary = null;
+    _saveOperationData({...patch, ...gpsSubdivisionPatch(_operation.data)});
+    _pendingGpsSubdivisions = accuracy == null ? null : _fillGpsSubdivisions(fix, accuracy, capture, patch);
+  }
+
+  int _gpsCapture = 0;
+  ({String uuid, GridLocation location, List<UsSubdivisionCandidate> candidates})? _gpsBoundary;
+  @override
+  Future<void>? _pendingGpsSubdivisions;
+
+  @override
+  List<UsSubdivisionCandidate> get _gpsBoundaryChoices {
+    final boundary = _gpsBoundary;
+    if (boundary == null ||
+        boundary.uuid != _operation.uuid ||
+        boundary.location != _operation.exactLocation ||
+        _operation.data['gridSource'] != gpsGridSource ||
+        _operation.qsoCount > 0) {
+      return const [];
+    }
+    return gpsBoundaryChoicesFor(_operation.data, boundary.candidates);
+  }
+
+  Future<void> _fillGpsSubdivisions(GridLocation fix, double accuracy, int capture, Map<String, dynamic> location) async {
+    final uuid = _operation.uuid;
+    final (:state, :county, :candidates) = await lookupGpsSubdivisions(widget.services.usSubdivisionLookup, fix, accuracy);
+    if (!mounted || capture != _gpsCapture) return;
+    _pendingGpsSubdivisions = null;
+    if (uuid != _operation.uuid || _operation.qsoCount > 0 || location.entries.any((entry) => _operation.data[entry.key] != entry.value)) return;
+    if (_operation.exactLocation case final location? when candidates.isNotEmpty) {
+      setState(() => _gpsBoundary = (uuid: uuid, location: location, candidates: candidates));
+    }
+    final patch = gpsSubdivisionPatch(_operation.data, state: state, county: county);
+    if (patch.isNotEmpty) _saveOperationData(patch);
   }
 
   /// The accuracy radius of the fix this session captured, or null when it
@@ -272,6 +309,7 @@ class OperationSheetState extends State<OperationSheet>
   /// Set once the operator changes the location in this sheet, which ends
   /// capturing for the session.
   bool _locationEditedHere = false;
+  bool _editingLocation = false;
 
   @override
   Future<void> _loadControls() async {
@@ -427,11 +465,24 @@ class OperationSheetState extends State<OperationSheet>
   /// empty state's hint, which point at the same thing.
   @override
   Future<void> _editLocation() async {
-    final patch = await showHaloDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (_) => OperationLocationScreen(services: widget.services, operation: _operation),
-    );
-    if (patch == null) return;
+    if (_editingLocation || _isClosing) return;
+    _editingLocation = true;
+    Map<String, dynamic>? patch;
+    try {
+      // Let the grid and its inferred fields reach the editor from one draft.
+      if (_pendingGpsSubdivisions case final pending?) await pending;
+      if (!mounted || _isClosing) return;
+      patch = await showHaloDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (_) => OperationLocationScreen(services: widget.services, operation: _operation, gpsBoundaryChoices: _gpsBoundaryChoices),
+      );
+    } finally {
+      _editingLocation = false;
+    }
+    if (patch == null) {
+      _maybeCaptureFix();
+      return;
+    }
     if (!mounted) {
       // Not the same as cancelling: the operator entered a location and it is
       // going nowhere. Takes a route popping out from under the open editor.

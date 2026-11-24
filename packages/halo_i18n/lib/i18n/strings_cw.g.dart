@@ -1140,6 +1140,14 @@ class _Translations$dataFiles$cw extends Translations$dataFiles$en {
 	final TranslationsCw _root; // ignore: unused_field
 
 	// Translations
+	@override String get countryPacks => '—·—· ——— ··— —· — ·—· —·—— / ·——· ·— —·—· —·— ···';
+	@override String get unitedStatesBoundaries => '··— —· ·· — · —·· / ··· — ·— — · ···';
+	@override String get unitedStatesBoundariesDescription => '··· — ·— — · ··· / ·— —· —·· / —·—· ——— ··— —· — ·· · ··· / ··—· ——— ·—· / ——— ··—· ··—· ·—·· ·· —· · / ——· ·——· ··· / ·—·· ——— ——— —·— ··— ·——·';
+	@override String countryPackVersion({required Object version}) => '·· —· ··· — ·— ·—·· ·—·· · —·· / ···— · ·—· ··· ·· ——— —· / ${version}';
+	@override String get downloadCountryPack => '—·· ——— ·—— —· ·—·· ——— ·— —·· / —·—· ——— ··— —· — ·—· —·—— / ·——· ·— —·—· —·—';
+	@override String get updateCountryPack => '—·—· ···· · —·—· —·— / ··—· ——— ·—· / ·— / —·—· ——— ··— —· — ·—· —·—— / ·——· ·— —·—· —·— / ··— ·——· —·· ·— — ·';
+	@override String get removeCountryPack => '·—· · —— ——— ···— · / —·—· ——— ··— —· — ·—· —·—— / ·——· ·— —·—· —·—';
+	@override String get countryPackChangeFailed => '—·—· ——— ··— ·—·· —·· —· ’ — / —·—· ···· ·— —· ——· · / — ···· · / —·—· ——— ··— —· — ·—· —·—— / ·——· ·— —·—· —·— ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—';
 	@override String get downloading => '—·· ——— ·—— —· ·—·· ——— ·— —·· ·· —· ——· …';
 	@override String get upToDate => '·— ·—·· ·—· · ·— —·· —·—— / ··— ·——· / — ——— / —·· ·— — ·';
 	@override String downloadFailedTitle({required Object name}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ${name}';
@@ -1246,6 +1254,9 @@ class _Translations$operationLocationScreen$cw extends Translations$operationLoc
 	@override String get deviceGps => '—·· · ···— ·· —·—· · / ——· ·——· ···';
 	@override String peerGps({required Object device}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${device}';
 	@override String receiverGps({required Object receiver}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${receiver}';
+	@override String get reviewGps => '·—· · ···— ·· · ·—— / ——· ·——· ···';
+	@override String get nearBoundary => '—· · ·— ·—· / ·— / —··· ——— ··— —· —·· ·— ·—· —·——';
+	@override String boundaryChoice({required Object county, required Object state}) => '${county} ——··—— / ${state}';
 	@override String get locating => '·—·· ——— —·—· ·— — ·· —· ——· …';
 	@override String get gpsUnavailable => '·—·· ——— —·—· ·— — ·· ——— —· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·';
 	@override String get permissionDenied => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —·· · —· ·· · —··';
@@ -8601,6 +8612,14 @@ extension on TranslationsCw {
 			'spotting.notRefreshedOffline' => '—· ——— / —·—· ——— —· —· · —·—· — ·· ——— —· / — / ··· ·——· ——— — ··· / ·—— · ·—· · / —· ——— — / ·—· · ··—· ·—· · ··· ···· · —··',
 			'spotting.noDestination' => '··· ·——· ——— — / —· ——— — / ··· · —· — ———··· / —· ——— / —·· · ··· — ·· —· ·— — ·· ——— —· / — ·— —·— · ··· / ·· — / — / ··· · · / —·· · ··· — ·· —· ·— — ·· ——— —· ··· / ·· —· / — ···· · / ··· ·——· ——— — — ·· —· ——· / ··· · — — ·· —· ——· ··· ·—·—·—',
 			'spotting.noAutoDestination' => '—· ——— / —·· · ··· — ·· —· ·— — ·· ——— —· / — ·— —·— · ··· / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— — ··· / — / ··· · · / —·· · ··· — ·· —· ·— — ·· ——— —· ··· / ·· —· / — ···· · / ··· ·——· ——— — — ·· —· ——· / ··· · — — ·· —· ——· ··· ·—·—·—',
+			'dataFiles.countryPacks' => '—·—· ——— ··— —· — ·—· —·—— / ·——· ·— —·—· —·— ···',
+			'dataFiles.unitedStatesBoundaries' => '··— —· ·· — · —·· / ··· — ·— — · ···',
+			'dataFiles.unitedStatesBoundariesDescription' => '··· — ·— — · ··· / ·— —· —·· / —·—· ——— ··— —· — ·· · ··· / ··—· ——— ·—· / ——— ··—· ··—· ·—·· ·· —· · / ——· ·——· ··· / ·—·· ——— ——— —·— ··— ·——·',
+			'dataFiles.countryPackVersion' => ({required Object version}) => '·· —· ··· — ·— ·—·· ·—·· · —·· / ···— · ·—· ··· ·· ——— —· / ${version}',
+			'dataFiles.downloadCountryPack' => '—·· ——— ·—— —· ·—·· ——— ·— —·· / —·—· ——— ··— —· — ·—· —·—— / ·——· ·— —·—· —·—',
+			'dataFiles.updateCountryPack' => '—·—· ···· · —·—· —·— / ··—· ——— ·—· / ·— / —·—· ——— ··— —· — ·—· —·—— / ·——· ·— —·—· —·— / ··— ·——· —·· ·— — ·',
+			'dataFiles.removeCountryPack' => '·—· · —— ——— ···— · / —·—· ——— ··— —· — ·—· —·—— / ·——· ·— —·—· —·—',
+			'dataFiles.countryPackChangeFailed' => '—·—· ——— ··— ·—·· —·· —· ’ — / —·—· ···· ·— —· ——· · / — ···· · / —·—· ——— ··— —· — ·—· —·—— / ·——· ·— —·—· —·— ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—',
 			'dataFiles.downloading' => '—·· ——— ·—— —· ·—·· ——— ·— —·· ·· —· ——· …',
 			'dataFiles.upToDate' => '·— ·—·· ·—· · ·— —·· —·—— / ··— ·——· / — ——— / —·· ·— — ·',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ${name}',
@@ -8671,6 +8690,9 @@ extension on TranslationsCw {
 			'operationLocationScreen.deviceGps' => '—·· · ···— ·· —·—· · / ——· ·——· ···',
 			'operationLocationScreen.peerGps' => ({required Object device}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${receiver}',
+			'operationLocationScreen.reviewGps' => '·—· · ···— ·· · ·—— / ——· ·——· ···',
+			'operationLocationScreen.nearBoundary' => '—· · ·— ·—· / ·— / —··· ——— ··— —· —·· ·— ·—· —·——',
+			'operationLocationScreen.boundaryChoice' => ({required Object county, required Object state}) => '${county} ——··—— / ${state}',
 			'operationLocationScreen.locating' => '·—·· ——— —·—· ·— — ·· —· ——· …',
 			'operationLocationScreen.gpsUnavailable' => '·—·· ——— —·—· ·— — ·· ——— —· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'operationLocationScreen.permissionDenied' => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —·· · —· ·· · —··',

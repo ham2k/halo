@@ -11,6 +11,8 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import '../../services/country_boundary_packs.dart';
+import '../../services/error_reporting_service.dart';
 import '../../services/halo_services.dart';
 import '../../services/data_file_manager.dart';
 
@@ -143,6 +145,8 @@ class _DataFilesPanelState extends State<DataFilesPanel> {
         _buildUpdateAllRow(context),
         for (final file in files) _buildRow(context, file),
       ],
+      SectionHeader(context.t.dataFiles.countryPacks),
+      _UsBoundaryPackRow(packs: widget.services.countryBoundaryPacks),
       if (_dataFileScopedPanels.isNotEmpty) ...[
         SectionHeader(context.t.settings.offlineData.extensionsSection),
         for (final panel in _dataFileScopedPanels) _buildExtensionPanelRow(context, panel),
@@ -241,6 +245,96 @@ class _DataFilesPanelState extends State<DataFilesPanel> {
         onPressed: () => _refresh(file),
         mouseCursor: SystemMouseCursors.click,
       ),
+    );
+  }
+}
+
+class _UsBoundaryPackRow extends StatefulWidget {
+  final CountryBoundaryPacks packs;
+
+  const _UsBoundaryPackRow({required this.packs});
+
+  @override
+  State<_UsBoundaryPackRow> createState() => _UsBoundaryPackRowState();
+}
+
+class _UsBoundaryPackRowState extends State<_UsBoundaryPackRow> {
+  String? _version;
+  bool _busy = true;
+  bool _failed = false;
+  double? _progress;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    await _change(() => widget.packs.installedVersion(CountryBoundaryPacks.us));
+  }
+
+  Future<void> _change(Future<String?> Function() action) async {
+    setState(() {
+      _busy = true;
+      _failed = false;
+      _progress = null;
+    });
+    try {
+      final version = await action();
+      if (mounted) setState(() => _version = version);
+    } catch (error, stack) {
+      ErrorReportingService.report(error, stack, context: 'settings:countryPack', told: mounted);
+      if (mounted) setState(() => _failed = true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.t.dataFiles;
+    final version = _version;
+    final description = version == null ? t.unitedStatesBoundariesDescription : t.countryPackVersion(version: version);
+    return ListTile(
+      leading: const Icon(MdiIcons.mapOutline),
+      title: Text(t.unitedStatesBoundaries),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(description),
+          if (_failed) Text(t.countryPackChangeFailed, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        ],
+      ),
+      trailing: _busy
+          ? SizedBox.square(dimension: 24, child: CircularProgressIndicator(strokeWidth: 2, value: _progress))
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    version == null ? MdiIcons.download : MdiIcons.refresh,
+                    semanticLabel: version == null ? t.downloadCountryPack : t.updateCountryPack,
+                  ),
+                  onPressed: () => _change(
+                    () => widget.packs.install(
+                      CountryBoundaryPacks.us,
+                      onProgress: (fraction) {
+                        if (mounted) setState(() => _progress = fraction);
+                      },
+                    ),
+                  ),
+                ),
+                if (version != null)
+                  IconButton(
+                    icon: Icon(MdiIcons.deleteOutline, semanticLabel: t.removeCountryPack),
+                    onPressed: () => _change(() async {
+                      await widget.packs.remove(CountryBoundaryPacks.us);
+                      return null;
+                    }),
+                  ),
+              ],
+            ),
     );
   }
 }

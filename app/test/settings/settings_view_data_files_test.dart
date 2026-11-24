@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/country_boundary_packs.dart';
 import 'package:ham2k_logger/services/data_file_manager.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
@@ -47,7 +48,7 @@ void main() {
       ],
     });
     final extensions = ExtensionServiceWithFakeHost(host)..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final services = HaLoServices(db, settings, extensions: extensions, countryBoundaryPacks: _FakeBoundaryPacks());
     addTearDown(db.close);
 
     await tester.pumpWidget(
@@ -89,7 +90,7 @@ void main() {
 
     final fake = _FakeDataFiles(lookups: LookupRepository(db), extensions: extensions, prefs: await SharedPreferences.getInstance())
       ..files = [DataFileStatus(key: 'alpha', name: 'Alpha Data', refused: const DataFileImportShrank('alpha', imported: 12, existing: 95000))];
-    final services = HaLoServices(db, settings, extensions: extensions, dataFiles: fake);
+    final services = HaLoServices(db, settings, extensions: extensions, dataFiles: fake, countryBoundaryPacks: _FakeBoundaryPacks());
 
     await tester.pumpWidget(
       TranslationProvider(
@@ -126,7 +127,7 @@ void main() {
     final fake = _FakeDataFiles(lookups: LookupRepository(db), extensions: extensions, prefs: await SharedPreferences.getInstance())
       ..files = [DataFileStatus(key: 'alpha', name: 'Alpha Data')];
 
-    final services = HaLoServices(db, settings, extensions: extensions, dataFiles: fake);
+    final services = HaLoServices(db, settings, extensions: extensions, dataFiles: fake, countryBoundaryPacks: _FakeBoundaryPacks());
 
     await tester.pumpWidget(
       TranslationProvider(
@@ -170,7 +171,7 @@ void main() {
     final fake = _FakeDataFiles(lookups: LookupRepository(db), extensions: extensions, prefs: await SharedPreferences.getInstance())
       ..files = [DataFileStatus(key: 'alpha', name: 'Alpha Data'), DataFileStatus(key: 'zeta', name: 'Zeta Data')];
 
-    final services = HaLoServices(db, settings, extensions: extensions, dataFiles: fake);
+    final services = HaLoServices(db, settings, extensions: extensions, dataFiles: fake, countryBoundaryPacks: _FakeBoundaryPacks());
 
     await tester.pumpWidget(
       TranslationProvider(
@@ -202,6 +203,61 @@ void main() {
     expect(find.text('Updating all data files…'), findsNothing);
     expect(find.bySemanticsLabel('Refresh'), findsNWidgets(2), reason: 'rows return to their normal state');
   });
+
+  testWidgets('the optional country pack can be installed, updated and removed separately from extension data', (tester) async {
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    final packs = _FakeBoundaryPacks();
+    final services = HaLoServices(db, settings, extensions: extensions, countryBoundaryPacks: packs);
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(home: SettingsView(services: services)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Accounts, Services & Data Sources'));
+    await tester.pumpAndSettle();
+
+    final download = find.bySemanticsLabel(t.dataFiles.downloadCountryPack);
+    expect(packs.version, isNull, reason: 'opening this panel must not install a pack');
+    await tester.ensureVisible(download);
+    await tester.tap(download);
+    await tester.pumpAndSettle();
+    expect(find.text(t.dataFiles.countryPackVersion(version: 'test-1')), findsOneWidget);
+
+    await tester.tap(find.bySemanticsLabel(t.dataFiles.updateCountryPack));
+    await tester.pumpAndSettle();
+    expect(find.text(t.dataFiles.countryPackVersion(version: 'test-2')), findsOneWidget);
+
+    await tester.tap(find.bySemanticsLabel(t.dataFiles.removeCountryPack));
+    await tester.pumpAndSettle();
+    expect(packs.version, isNull);
+    expect(download, findsOneWidget);
+  });
+}
+
+class _FakeBoundaryPacks extends CountryBoundaryPacks {
+  String? version;
+
+  @override
+  Future<String?> installedVersion(String country) async => version;
+
+  @override
+  Future<String> install(String country, {void Function(double fraction)? onProgress}) async {
+    expect(country, CountryBoundaryPacks.us);
+    return version = version == null ? 'test-1' : 'test-2';
+  }
+
+  @override
+  Future<void> remove(String country) async => version = null;
 }
 
 /// A [DataFileManager] whose list/refresh are stubbed so the panel's
