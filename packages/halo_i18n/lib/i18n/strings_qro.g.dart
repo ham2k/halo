@@ -1246,6 +1246,9 @@ class _Translations$operationLocationScreen$qro extends Translations$operationLo
 	@override String get deviceGps => 'DEVICE GPS';
 	@override String peerGps({required Object device}) => 'GPS FROM ${device}';
 	@override String receiverGps({required Object receiver}) => 'GPS FROM ${receiver}';
+	@override String get reviewGps => 'REVIEW GPS';
+	@override String get nearBoundary => 'NEAR A BOUNDARY';
+	@override String boundaryChoice({required Object county, required Object state}) => '${county}, ${state}';
 	@override String get locating => 'LOCATING…';
 	@override String get gpsUnavailable => 'LOCATION UNAVAILABLE';
 	@override String get permissionDenied => 'LOCATION PERMISSION DENIED';
@@ -8671,6 +8674,9 @@ extension on TranslationsQro {
 			'operationLocationScreen.deviceGps' => 'DEVICE GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS FROM ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => 'GPS FROM ${receiver}',
+			'operationLocationScreen.reviewGps' => 'REVIEW GPS',
+			'operationLocationScreen.nearBoundary' => 'NEAR A BOUNDARY',
+			'operationLocationScreen.boundaryChoice' => ({required Object county, required Object state}) => '${county}, ${state}',
 			'operationLocationScreen.locating' => 'LOCATING…',
 			'operationLocationScreen.gpsUnavailable' => 'LOCATION UNAVAILABLE',
 			'operationLocationScreen.permissionDenied' => 'LOCATION PERMISSION DENIED',

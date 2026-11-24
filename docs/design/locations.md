@@ -198,6 +198,26 @@ capturing stops for the session; clearing it is their answer, and a capture
 on the next position update would make it impossible to leave a new
 operation unlocated while GPS is allowed.
 
+For a setup with no contacts, the same accepted GPS fix and its reported
+accuracy can also fill State and County. The host sends the fix to enabled
+`operationLocation` extensions with location access. Each extension supplies
+its own geography, determines which fields are certain, and returns boundary
+choices where applicable. The Location editor offers those choices and lets
+the operator save with uncertain fields blank. Choosing an option is an
+operator edit. GPS still supplies the grid when no provider matches, when a
+provider fails, or when the receiver reports no accuracy.
+
+An explicit Device GPS choice in Location can fill unset State and County
+fields at any point in the log, including after `BREAK` or `ROVERQTH`.
+Existing values and explicit clears stay as entered. The location save
+updates the latest segment through the normal restamp.
+
+`gpsState` and `gpsCounty` record the values supplied by GPS. Automatic
+capture can refresh values it inferred as the fix improves. When an operator
+chooses another point in the Location editor, the editor clears suggestions
+from its current draft. Both paths finish a pending lookup before saving so
+the suggestions describe the selected fix.
+
 The Activities view runs the rule on its draft, on every refs edit, so the
 nearby search recentres on the park just added while the sheet is still open.
 Its save then passes `followRefs: false`: against the stored row, which

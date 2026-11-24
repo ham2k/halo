@@ -109,6 +109,7 @@ in plain functions you can test with the project's own runner.
 | Callsign lookups and how answers merge | `docs/lookups.md` |
 | Spot feeds, posting spots, the DX cluster | `docs/spots.md` |
 | An award program: references, logging controls, suggestions, offline lists, the `referenceActivity` factory | `docs/activities.md` |
+| Resolving state and county from a GPS fix in operation setup: `operationLocation` with `requiresLocation` | `docs/activities.md#operationlocation` |
 | Exports, ADIF fields, ADIF import | `docs/import-export.md` |
 | A contest's score, an activity's activation rules, an award checklist | `docs/scoring.md` |
 | A command typed in the call field | `docs/commands.md` |

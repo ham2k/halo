@@ -90,7 +90,8 @@ import yazl from "yazl"
 /// `expandable`; 28 the map's `dwell`, and `ctx.getScores`; 29 the
 /// `integration` hook category, and `host.randomBytes`; 30 a spot
 /// candidate's `value`; 31 `host.keychainSet`, with `ctx.keychain`, and a
-/// scene answer's `openUrl` and a scene event's `modifiers`.
+/// scene answer's `openUrl`, a scene event's `modifiers` and the
+/// `operationLocation` hook.
 export const H2KEXT_API_VERSION = 31
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
@@ -111,6 +112,9 @@ export const ASSISTANT_API_VERSION = 21
 /// The first API that calls `integration` hooks, refused under an older one
 /// for the same reason.
 export const INTEGRATION_API_VERSION = 29
+
+/// The first API that calls `operationLocation` hooks.
+export const OPERATION_LOCATION_API_VERSION = 31
 
 /// The first API with `host.updateDraft`. Refused under an older one for the
 /// same reason as `requiresRadioRaw`: the app would install it and refuse
@@ -551,6 +555,13 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
 
   if (Array.isArray(manifest.hooks) && manifest.hooks.includes("integration") && Number.isInteger(manifest.api) && manifest.api < INTEGRATION_API_VERSION) {
     say(`'integration' needs 'api' ${INTEGRATION_API_VERSION} or later — an app older than that would install this and never call it`)
+  }
+
+  if (Array.isArray(manifest.hooks) && manifest.hooks.includes("operationLocation")) {
+    if (Number.isInteger(manifest.api) && manifest.api < OPERATION_LOCATION_API_VERSION) {
+      say(`'operationLocation' needs 'api' ${OPERATION_LOCATION_API_VERSION} or later`)
+    }
+    if (manifest.requiresLocation !== true) say("'operationLocation' needs 'requiresLocation: true'")
   }
 
   const clusterGrant = ["requiresClusterRead", "requiresClusterSpot", "requiresClusterCommand"].find((grant) => manifest[grant] === true)

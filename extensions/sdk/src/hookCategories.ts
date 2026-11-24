@@ -37,6 +37,7 @@ export const HOOK_CATEGORIES = [
   "keyerSets",
   "lookup",
   "lookupService",
+  "operationLocation",
   "panel",
   "recentContextLookup",
   "runtime",

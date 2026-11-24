@@ -262,6 +262,13 @@ test("a bundle registering an integration must declare the api that calls it", (
   assert.equal(validateManifest({ ...integration, api: 29 }).length, 0)
 })
 
+test("an operation location provider declares API 31 and permission to receive a fix", () => {
+  const provider = { ...validManifest, hooks: ["operationLocation"], requiresLocation: true }
+  assert.match(validateManifest({ ...provider, api: 30 }).join(), /'operationLocation' needs 'api' 31/)
+  assert.match(validateManifest({ ...provider, api: 31, requiresLocation: false }).join(), /requiresLocation: true/)
+  assert.deepEqual(validateManifest({ ...provider, api: 31 }), [])
+})
+
 test("a bundle declaring requiresRadioRaw must declare the api that answers it", () => {
   // An older app knows no such grant: its install screen would show the
   // bundle as asking for nothing it can name, and refuse every raw command.

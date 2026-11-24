@@ -108,6 +108,11 @@ part 'extension_command_gate.dart';
 part 'extension_resolve_calls.dart';
 part 'extension_transfer_calls.dart';
 
+typedef OperationLocationCandidate = ({String state, String? county});
+typedef OperationLocationResult = ({String? state, String? county, List<OperationLocationCandidate> candidates});
+
+const OperationLocationResult noOperationLocation = (state: null, county: null, candidates: []);
+
 /// An extension's timers, suspended for breaking their budget
 /// (extensions/sdk/src/timerQueue.ts). Its own type so the crash backend can
 /// say which extensions trip it in the field, and how often: the operator
@@ -293,8 +298,8 @@ class ExtensionService
     forgetName: (name) async => settings?.forgetExtensionSecretNames((recorded) => recorded == name),
   );
 
-  /// Who may call `getLocation` (manifest.json `requiresLocation`), resolved
-  /// once at load time in [_start].
+  /// Who may call `getLocation` or receive a fix in `operationLocation`
+  /// (manifest.json `requiresLocation`), resolved at load time in [_start].
   CapabilityGrant _location = const CapabilityGrant();
 
   bool get ready => _host != null;
@@ -339,6 +344,96 @@ class ExtensionService
       final answer = await ask();
       if (identical(asked, host)) return answer;
     }
+  }
+
+  /// Only the manifest's own granted hook receives the accepted GPS fix.
+  /// Discovery and routing use its exact bundle key, never a hook fan-out.
+  Future<OperationLocationResult> resolveOperationLocation(GridLocation fix, {required double accuracyMeters}) async {
+    if (!fix.latitude.isFinite ||
+        fix.latitude.abs() > 90 ||
+        !fix.longitude.isFinite ||
+        fix.longitude.abs() > 180 ||
+        isPlaceholderLocation(fix) ||
+        !accuracyMeters.isFinite ||
+        accuracyMeters <= 0) {
+      return noOperationLocation;
+    }
+
+    // A setup capture can run while the first extension boot is still
+    // registering hooks. No location hook is ever asked from activation.
+    await start();
+    return whenSettled(() async {
+      final runtime = host;
+      if (runtime == null) return noOperationLocation;
+      final args = {'latitude': fix.latitude, 'longitude': fix.longitude, 'accuracyMeters': accuracyMeters};
+      final calls = [
+        for (final info in availableExtensions)
+          if (info.hooks.contains(HookCategories.operationLocation) && (info.runtimeApi ?? 31) >= 31 && _location.allows(info.key))
+            Hooks.operationLocationResolve.withArgs(args, key: info.key),
+      ];
+      if (calls.isEmpty) return noOperationLocation;
+      try {
+        // A missing answer could disagree with one that finished, so a
+        // timeout does not yield a partial decision about the location.
+        final answers = await runtime.invokeHookBatch(calls, timeout: const Duration(seconds: 2));
+        return _mergeOperationLocationAnswers(answers);
+      } on ExtensionHostException catch (error) {
+        debugPrint('[extensions] operation location lookup failed: ${error.runtimeType}');
+        return noOperationLocation;
+      }
+    });
+  }
+
+  static OperationLocationResult _mergeOperationLocationAnswers(List<Map<String, dynamic>> answers) {
+    final confident = <OperationLocationCandidate, OperationLocationCandidate>{};
+    final candidates = <OperationLocationCandidate, OperationLocationCandidate>{};
+    for (final entry in answers) {
+      if (entry['ok'] != true) continue;
+      final answer = asQsonMap(entry['value']);
+      if (answer == null) continue;
+      if (_operationLocationCandidate(answer) case final candidate?) confident.putIfAbsent(_operationLocationKey(candidate), () => candidate);
+      if (answer['candidates'] case final List<dynamic> choices) {
+        for (final choice in choices) {
+          if (_operationLocationCandidate(choice) case final candidate?) candidates.putIfAbsent(_operationLocationKey(candidate), () => candidate);
+        }
+      }
+    }
+    final possibleStates = {
+      for (final key in {...confident.keys, ...candidates.keys}) key.state,
+    };
+    final state = possibleStates.length == 1 && confident.isNotEmpty ? confident.values.first.state : null;
+    final definiteCounties = confident.entries.where((entry) => entry.key.county != null);
+    final possibleCounties = {...definiteCounties.map((entry) => entry.key), ...candidates.keys};
+    final county = state != null && possibleCounties.length == 1 && definiteCounties.isNotEmpty ? definiteCounties.first.value.county : null;
+    return (
+      state: state,
+      county: county,
+      candidates: [
+        if (county == null)
+          ...{
+            ...candidates,
+            for (final entry in confident.entries)
+              if (state == null || entry.key.county != null) entry.key: entry.value,
+          }.values,
+      ],
+    );
+  }
+
+  // ADIF subdivision values are case insensitive. Keep the provider's
+  // spelling in the operation and in the choices the operator sees.
+  static OperationLocationCandidate _operationLocationKey(OperationLocationCandidate candidate) =>
+      (state: candidate.state.toUpperCase(), county: candidate.county?.toUpperCase());
+
+  static final _twoLetterOperationState = RegExp(r'^[A-Za-z]{2}$');
+
+  static OperationLocationCandidate? _operationLocationCandidate(Object? value) {
+    final fields = asQsonMap(value);
+    final state = asQsonString(fields?['state'])?.trim();
+    if (state == null || state.isEmpty) return null;
+    final rawCounty = fields?['county'];
+    if (rawCounty != null && rawCounty is! String) return null;
+    final county = (rawCounty as String?)?.trim();
+    return (state: _twoLetterOperationState.hasMatch(state) ? state.toUpperCase() : state, county: county == null || county.isEmpty ? null : county);
   }
 
   bool _clockListenerAttached = false;

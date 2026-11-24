@@ -54,6 +54,7 @@ const _accordionHeaderHeight = 48.0 + Space.sm * 2;
 
 mixin _ActivitiesSections on State<OperationSheet>, _ActivitiesRefs, _ActivitiesExtensions, _ActivitiesEmptyStates {
   abstract bool _allOptionsFullyOpened;
+  List<OperationLocationCandidate> get _gpsBoundaryChoices;
   Map<String, RefLink> get _refLinks;
   ValueNotifier<bool> get _searchIsEmpty;
   Future<RefLink?> _linkForRef(Map<String, dynamic> ref);
@@ -325,7 +326,7 @@ mixin _ActivitiesSections on State<OperationSheet>, _ActivitiesRefs, _Activities
       // A fix says where the device is, and its locator is
       // the least of what it holds — the source is what the
       // operator needs to read off the pill.
-      label = locationIsGps ? 'GPS' : operationGrid!;
+      label = locationIsGps ? (_gpsBoundaryChoices.isEmpty ? 'GPS' : context.t.operationLocationScreen.reviewGps) : operationGrid!;
       locationColor = pin.color;
     } else {
       if (locStatus == LocationStatus.unknown || locStatus == LocationStatus.determining) {

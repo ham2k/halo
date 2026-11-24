@@ -8,6 +8,8 @@
 // operation is placed only after the sheet closes — or never, since the save
 // opts out; drop the opt-out and a location the operator cleared comes back.
 
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/export_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/location_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -43,7 +46,9 @@ const _parkSuggestion = {
 };
 
 class _ParkExtensions extends ExtensionServiceWithFakeHost {
-  _ParkExtensions()
+  final Future<OperationLocationResult> Function(GridLocation, double)? resolveLocation;
+
+  _ParkExtensions(this.resolveLocation)
     : super(
         FakeExtensionHost({
           'activity:*:suggest': [
@@ -62,16 +67,30 @@ class _ParkExtensions extends ExtensionServiceWithFakeHost {
 
   @override
   Future<Map<String, dynamic>> decorateRef(Map<String, dynamic> ref) async => ref;
+
+  @override
+  Future<OperationLocationResult> resolveOperationLocation(GridLocation fix, {required double accuracyMeters}) async =>
+      await resolveLocation?.call(fix, accuracyMeters) ?? noOperationLocation;
 }
 
-Future<(HaLoServices, Operation)> _harness({LocationService? location, int qsoCount = 0}) async {
+Future<(HaLoServices, Operation)> _harness({
+  LocationService? location,
+  Future<OperationLocationResult> Function(GridLocation, double)? subdivisions,
+  int qsoCount = 0,
+  Map<String, dynamic> locationDetails = const {},
+}) async {
   SharedPreferences.setMockInitialValues({});
   final settings = SettingsService(await SharedPreferences.getInstance());
-  final services = HaLoServices(HaLoDatabase(NativeDatabase.memory()), settings, extensions: _ParkExtensions()..settings = settings, location: location);
+  final services = HaLoServices(
+    HaLoDatabase(NativeDatabase.memory()),
+    settings,
+    extensions: _ParkExtensions(subdivisions)..settings = settings,
+    location: location,
+  );
   // The row exists so the save has something to update; the sheet is handed
   // the bare shape the other activities tests use.
   final created = await services.operations.create(stationCall: 'N0DEV');
-  return (services, Operation(uuid: created.uuid, data: const {'refs': []}, qsoCount: qsoCount));
+  return (services, Operation(uuid: created.uuid, data: {'refs': const [], ...locationDetails}, qsoCount: qsoCount));
 }
 
 Future<OperationSheetState> _pumpSheet(WidgetTester tester, HaLoServices services, Operation operation, {void Function(Operation)? onChanged}) async {
@@ -136,6 +155,22 @@ void main() {
 
   group('a live GPS fix', () {
     const fix = GridLocation(41.713456789, -74.527812345);
+    const kent = GridLocation(41.700, -71.525);
+    const boundary = GridLocation(41.76083, -71.43);
+    const providence = GridLocation(41.78, -71.43);
+    Future<OperationLocationResult> rhodeIsland(GridLocation fix, double _) async {
+      return (
+        state: 'RI',
+        county: switch (fix) {
+          boundary => null,
+          providence => 'Providence',
+          _ => 'Kent',
+        },
+        candidates: fix == boundary
+            ? const <OperationLocationCandidate>[(state: 'RI', county: 'Kent'), (state: 'RI', county: 'Providence')]
+            : const <OperationLocationCandidate>[],
+      );
+    }
 
     testWidgets('places an operation being set up, rounded, and the pill says GPS', (tester) async {
       final gps = FakeGpsLocation()..fix = fix;
@@ -151,6 +186,154 @@ void main() {
       await tester.runAsync(sheet.saveAndClose);
       final stored = (await tester.runAsync(() => services.operations.get(operation.uuid)))!;
       expect(stored.data['gridSource'], gpsGridSource);
+    });
+
+    testWidgets('saves GPS subdivisions for a new operation and includes them in upload ADIF', (tester) async {
+      final gps = FakeGpsLocation()..fix = kent;
+      final (services, operation) = await tester.runAsync(() => _harness(location: gps, subdivisions: rhodeIsland)) as (HaLoServices, Operation);
+      Operation? draft;
+      final sheet = await _pumpSheet(tester, services, operation, onChanged: (op) => draft = op);
+
+      expect(draft!.data['grid'], gpsLocationData(kent)['grid']);
+      expect(draft!.data['state'], 'RI');
+      expect(draft!.data['county'], 'Kent');
+
+      await tester.runAsync(sheet.saveAndClose);
+      final stored = (await tester.runAsync(() => services.operations.get(operation.uuid)))!;
+      expect(stored.data['state'], 'RI');
+      expect(stored.data['county'], 'Kent');
+
+      final adif = await tester.runAsync(() async {
+        final extensions = ExtensionService();
+        prepareExtensionServiceForTest(extensions);
+        await extensions.start();
+        final contact = await services.qsos.add(stored.uuid, {
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'CW',
+          'startAtMillis': DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch,
+        });
+        final exports = ExportService(extensions: extensions, qsos: services.qsos, settings: services.settings);
+        final records = await exports.adifRecordsByQso(stored, [contact], stationCall: 'N0DEV');
+        return records[contact.uuid]!.join();
+      });
+      expect(adif, contains('<MY_STATE:2>RI'));
+      expect(adif, contains('<MY_CNTY:7>RI,Kent'));
+    });
+
+    testWidgets('a sharper fix clears an inferred county when its radius crosses a county line', (tester) async {
+      final gps = FakeGpsLocation()
+        ..fix = kent
+        ..accuracy = 400;
+      final (services, operation) = await tester.runAsync(() => _harness(location: gps, subdivisions: rhodeIsland)) as (HaLoServices, Operation);
+      Operation? draft;
+      await _pumpSheet(tester, services, operation, onChanged: (op) => draft = op);
+      expect(draft!.data['county'], 'Kent');
+
+      // The Pawtuxet River divides Warwick in Kent County from Cranston in
+      // Providence County. Both sides of this fix's radius are in Rhode Island.
+      gps.setFix(boundary, accuracy: 200);
+      await _pumpFrames(tester);
+
+      expect(draft!.location, boundary);
+      expect(draft!.data['state'], 'RI');
+      expect((draft!.data['county'] as String?) ?? '', isEmpty);
+      final reviewGps = find.text(AppLocale.en.buildSync().operationLocationScreen.reviewGps);
+      expect(reviewGps, findsOneWidget);
+
+      gps.setFix(providence, accuracy: 5);
+      await _pumpFrames(tester);
+
+      expect(draft!.data['state'], 'RI');
+      expect(draft!.data['county'], 'Providence');
+      expect(reviewGps, findsNothing, reason: 'a resolved fix supersedes the earlier boundary options');
+    });
+
+    testWidgets('the setup GPS pill opens the county choices and keeps the chosen county', (tester) async {
+      final gps = FakeGpsLocation()..fix = boundary;
+      final (services, operation) = await tester.runAsync(() => _harness(location: gps, subdivisions: rhodeIsland)) as (HaLoServices, Operation);
+      Operation? draft;
+      final sheet = await _pumpSheet(tester, services, operation, onChanged: (op) => draft = op);
+      expect(draft!.data['state'], 'RI');
+      expect(draft!.data['county'], isNull, reason: 'the operator can leave County blank');
+
+      final t = AppLocale.en.buildSync();
+      await tester.tap(find.text(t.operationLocationScreen.reviewGps));
+      await _pumpFrames(tester);
+      expect(find.text('Kent, RI'), findsOneWidget);
+      await tester.tap(find.text('Providence, RI'));
+      await _pumpFrames(tester);
+      await tester.tap(find.text(t.common.save));
+      await _pumpFrames(tester);
+
+      expect(draft!.location, boundary);
+      expect(draft!.data['state'], 'RI');
+      expect(draft!.data['county'], 'Providence');
+      expect(draft!.data['gpsCounty'], isNull, reason: 'a choice is the operator’s stated county');
+      await tester.runAsync(sheet.saveAndClose);
+      final stored = (await tester.runAsync(() => services.operations.get(operation.uuid)))!;
+      expect(stored.data['county'], 'Providence');
+    });
+
+    testWidgets('a GPS fix preserves state and county the operator already entered', (tester) async {
+      final gps = FakeGpsLocation()..fix = kent;
+      // An older client can edit the value without clearing its GPS metadata.
+      const edited = {'state': 'MA', 'county': 'Bristol', 'gpsState': 'RI', 'gpsCounty': 'Kent'};
+      final (services, operation) =
+          await tester.runAsync(() => _harness(location: gps, subdivisions: rhodeIsland, locationDetails: edited)) as (HaLoServices, Operation);
+      Operation? draft;
+      await _pumpSheet(tester, services, operation, onChanged: (op) => draft = op);
+
+      expect(draft!.data['grid'], gpsLocationData(kent)['grid']);
+      expect(draft!.data['state'], 'MA');
+      expect(draft!.data['county'], 'Bristol');
+    });
+
+    testWidgets('a county the operator clears stays blank when a sharper fix arrives', (tester) async {
+      final gps = FakeGpsLocation()
+        ..fix = kent
+        ..accuracy = 300;
+      final (services, operation) = await tester.runAsync(() => _harness(location: gps, subdivisions: rhodeIsland)) as (HaLoServices, Operation);
+      Operation? draft;
+      await _pumpSheet(tester, services, operation, onChanged: (op) => draft = op);
+      expect(draft!.data['county'], 'Kent');
+
+      await tester.tap(find.text('GPS'));
+      await _pumpFrames(tester);
+      final county = find.widgetWithText(TextField, 'Kent');
+      await tester.ensureVisible(county);
+      await tester.enterText(county, '');
+      await tester.tap(find.text(AppLocale.en.buildSync().common.save));
+      await _pumpFrames(tester);
+
+      gps.setFix(const GridLocation(41.701, -71.525), accuracy: 5);
+      await _pumpFrames(tester);
+      expect(draft!.data['state'], 'RI');
+      expect(draft!.data['county'], '');
+    });
+
+    testWidgets('a lookup for an earlier fix cannot put its county onto the improved fix', (tester) async {
+      final earlier = Completer<OperationLocationResult>();
+      final later = Completer<OperationLocationResult>();
+      Future<OperationLocationResult> subdivisions(GridLocation fix, double _) => fix == kent ? earlier.future : later.future;
+      final gps = FakeGpsLocation()
+        ..fix = kent
+        ..accuracy = 300;
+      final (services, operation) = await tester.runAsync(() => _harness(location: gps, subdivisions: subdivisions)) as (HaLoServices, Operation);
+      Operation? draft;
+      await _pumpSheet(tester, services, operation, onChanged: (op) => draft = op);
+
+      expect(draft!.location, kent, reason: 'the grid is available before the county lookup finishes');
+      gps.setFix(providence, accuracy: 5);
+      later.complete((state: 'RI', county: 'Providence', candidates: const <OperationLocationCandidate>[]));
+      await _pumpFrames(tester);
+      expect(draft!.data['county'], 'Providence');
+
+      earlier.complete((state: 'RI', county: null, candidates: [(state: 'RI', county: 'Kent'), (state: 'RI', county: 'Providence')]));
+      await _pumpFrames(tester);
+      expect(draft!.location, providence);
+      expect(draft!.data['county'], 'Providence');
+      expect(find.text(AppLocale.en.buildSync().operationLocationScreen.reviewGps), findsNothing);
     });
 
     // A log reopened somewhere else — at home, the day after — must not be

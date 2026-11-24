@@ -32,6 +32,7 @@ abstract final class HookCategories {
   static const keyerSets = 'keyerSets';
   static const lookup = 'lookup';
   static const lookupService = 'lookupService';
+  static const operationLocation = 'operationLocation';
   static const panel = 'panel';
   static const runtime = 'runtime';
   static const scoring = 'scoring';
@@ -123,6 +124,8 @@ abstract final class Hooks {
 
   static const lookupServiceLookupCallInfo = HookRef(HookCategories.lookupService, 'lookupCallInfo');
   static const lookupServiceResolveCallInfo = HookRef(HookCategories.lookupService, 'resolveCallInfo');
+
+  static const operationLocationResolve = HookRef(HookCategories.operationLocation, 'resolve');
 
   static const panelGetPanels = HookRef(HookCategories.panel, 'getPanels');
   static const panelRender = HookRef(HookCategories.panel, 'render');
