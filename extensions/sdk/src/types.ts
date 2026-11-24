@@ -3411,6 +3411,8 @@ export interface ExtensionWebSocket {
 export interface DeviceLocation {
   latitude: number
   longitude: number
+  /// The fix's horizontal accuracy in metres, if the receiver reports it. Extension API 31.
+  accuracyMeters?: number
 }
 
 /// Build identity, as returned by `host.getVersionInfo()` — for commands

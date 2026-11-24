@@ -1031,7 +1031,9 @@ class _ExtensionHostCalls {
       throw ExtensionHostException("getLocation blocked: extension '${extensionKey ?? 'unknown'}' does not declare requiresLocation");
     }
     final position = await _service.location?.getCurrentPosition();
-    return position == null ? null : {'latitude': position.latitude, 'longitude': position.longitude};
+    if (position == null) return null;
+    final accuracy = position.accuracy;
+    return {'latitude': position.latitude, 'longitude': position.longitude, if (accuracy.isFinite && accuracy > 0) 'accuracyMeters': accuracy};
   }
 
   Future<dynamic> _getVersionInfo() async {

@@ -443,7 +443,7 @@ extension.
 | Call | Answers |
 | --- | --- |
 | `host.getVersionInfo()` | `{ platform, edition, version, versionName, buildNumber, gitSha }`; `buildNumber` is `null` on a development build |
-| `host.getLocation()` | `{ latitude, longitude }`, or `null` when location is unavailable, denied or off. Needs `requiresLocation`; may prompt the operator the first time |
+| `host.getLocation()` | `{ latitude, longitude, accuracyMeters? }`, or `null` when location is unavailable, denied or off. `accuracyMeters` (API 31) is the fix's horizontal accuracy in metres and is present only when reported. Needs `requiresLocation`; may prompt the operator the first time |
 | `host.translate(key)` / `host.translateAll(keys)` | One of the app's own strings by dot-path key in the active locale, or `null`; many in one round trip |
 | `host.log(message)` | A line in the app's debug output, prefixed with your key |
 
