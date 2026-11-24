@@ -758,6 +758,35 @@ void main() {
     });
   });
 
+  testWidgets('the ADIF preview distinguishes new, changed, and unchanged contacts', (tester) async {
+    final h = await _harness();
+    final operation = await h.services.operations.create(stationCall: 'K1ABC');
+    const unchanged = '<CALL:4>K2AA <STATION_CALLSIGN:5>K1ABC <BAND:3>20m <MODE:2>CW <QSO_DATE:8>20260921 <TIME_ON:4>0900 <EOR>';
+    await h.services.qsos.add(operation.uuid, parseAdifLog('<EOH>\n$unchanged').qsos.single.qso);
+    await _log(h.services, operation, 'W1AW', _utc(20, 10));
+    await _pumpLogs(tester, h);
+
+    const adif =
+        '<EOH>\n$unchanged\n'
+        '<CALL:4>W1AW <STATION_CALLSIGN:5>K1ABC <BAND:3>20m <MODE:2>CW <QSO_DATE:8>20260920 <TIME_ON:4>1000 <NAME:5>Hiram <EOR>\n'
+        '<CALL:4>N3BB <STATION_CALLSIGN:5>K1ABC <BAND:3>20m <MODE:2>CW <QSO_DATE:8>20260921 <TIME_ON:4>1200 <EOR>';
+    final importing = _logsDrop(tester)(XFile.fromData(Uint8List.fromList(utf8.encode(adif)), name: 'log.adi', path: 'log.adi'));
+    for (var i = 0; i < 20 && find.text('Import').evaluate().isEmpty; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.text('1 new contact'), findsOneWidget);
+    expect(find.text('1 will merge with an existing contact'), findsOneWidget);
+    expect(find.text('1 already in your log'), findsOneWidget, reason: 'The merge is already accounted for in its own line');
+    expect(find.text('2 will be imported'), findsNothing, reason: 'A combined count makes updates look like new contacts');
+
+    await tester.tap(find.text('Cancel'));
+    await settleFrames(tester, frames: 4);
+    await importing;
+    await _unmount(tester);
+  });
+
   group('the editor', () {
     testWidgets('asks before another row takes it, and does what the answer says', (tester) async {
       final h = await _harness();

@@ -193,6 +193,9 @@ mixin _LogsAdifDrop on State<LogsView> {
       builder: (dialogContext) {
         final importT = context.t.home.logs.import;
         final totalInFile = t.totalInFile(count: log.qsos.length, formatted: formatNumber(log.qsos.length));
+        final added = plan.additions.length;
+        final merged = plan.merges.length;
+        final unchanged = plan.alreadyLoggedCount - merged;
         return HaloDialog(
           title: Text(t.title),
           content: Column(
@@ -201,14 +204,12 @@ mixin _LogsAdifDrop on State<LogsView> {
             children: [
               Text(importT.callsigns(calls: calls.join(', '))),
               const SizedBox(height: Space.sm),
-              // Three separate counts, not one combined figure — a re-import
-              // of a file already fully in the log matches every record and
-              // imports none of them, and "0 QSOs" on its own reads as
-              // nothing in the file was recognized rather than as "nothing
-              // has changed since last time."
               Text(dateRangeLabel == null ? totalInFile : '$totalInFile ($dateRangeLabel)'),
-              if (plan.alreadyLoggedCount > 0) Text(t.alreadyLogged(count: plan.alreadyLoggedCount, formatted: formatNumber(plan.alreadyLoggedCount))),
-              Text(t.willImport(count: plan.importCount, formatted: formatNumber(plan.importCount))),
+              if (added > 0) Text(t.newContacts(count: added, formatted: formatNumber(added))),
+              if (merged > 0) Text(t.merging(count: merged, formatted: formatNumber(merged))),
+              // Only count matches that need no write here. Counting merges
+              // twice makes the same contact look like two different outcomes.
+              if (unchanged > 0) Text(t.alreadyLogged(count: unchanged, formatted: formatNumber(unchanged))),
               if (plan.refusedCount > 0) ...[
                 const SizedBox(height: Space.sm),
                 Text(
