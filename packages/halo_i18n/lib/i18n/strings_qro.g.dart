@@ -69,6 +69,7 @@ class TranslationsQro extends Translations with BaseTranslations<AppLocale, Tran
 	@override late final _Translations$dataFiles$qro dataFiles = _Translations$dataFiles$qro._(_root);
 	@override late final _Translations$updates$qro updates = _Translations$updates$qro._(_root);
 	@override late final _Translations$extensionService$qro extensionService = _Translations$extensionService$qro._(_root);
+	@override late final _Translations$operationSetupAction$qro operationSetupAction = _Translations$operationSetupAction$qro._(_root);
 	@override late final _Translations$operationLocationScreen$qro operationLocationScreen = _Translations$operationLocationScreen$qro._(_root);
 	@override late final _Translations$versionLabel$qro versionLabel = _Translations$versionLabel$qro._(_root);
 	@override late final _Translations$notices$qro notices = _Translations$notices$qro._(_root);
@@ -1229,6 +1230,23 @@ class _Translations$extensionService$qro extends Translations$extensionService$e
 	@override String timersSuspendedBudget({required Object name}) => '${name} SPENT TOO MUCH TIME IN ITS TIMERS. THEY\'RE STOPPED UNTIL THE EXTENSIONS RESTART.';
 	@override String timersSuspendedFailures({required Object name}) => '${name}\'S TIMERS KEPT FAILING. THEY\'RE STOPPED UNTIL THE EXTENSIONS RESTART.';
 	@override String timersSuspendedInterrupted({required Object name}) => '${name} GOT STUCK IN A TIMER. ITS TIMERS ARE STOPPED UNTIL THE EXTENSIONS RESTART.';
+}
+
+// Path: operationSetupAction
+class _Translations$operationSetupAction$qro extends Translations$operationSetupAction$en {
+	_Translations$operationSetupAction$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String invalidField({required Object field}) => 'THE OPERATION UPDATE HAS AN INVALID VALUE FOR ${field}.';
+	@override String invalidRefEntry({required Object index}) => 'ACTIVATION REFERENCE ${index} NEEDS A PROGRAM KEY AND A REFERENCE CODE.';
+	@override String invalidReference({required Object reference}) => '${reference} IS NOT A VALID ACTIVATION REFERENCE.';
+	@override String unavailableReference({required Object reference}) => 'COULD NOT VALIDATE ${reference}. CHECK THAT ITS ACTIVITY IS AVAILABLE.';
+	@override String conflictingReference({required Object reference, required Object existing}) => 'COULD NOT ADD ${reference}. THIS ACTIVITY ALREADY HAS REFERENCE ${existing}.';
+	@override String get invalidLocation => 'AN OPERATION LOCATION NEEDS EITHER A GRID LOCATOR OR A LATITUDE AND LONGITUDE.';
+	@override String invalidGrid({required Object grid}) => '"${grid}" IS NOT A VALID GRID LOCATOR.';
+	@override String get invalidCoordinates => 'THE OPERATION UPDATE NEEDS A VALID LATITUDE AND LONGITUDE.';
 }
 
 // Path: operationLocationScreen
@@ -8663,6 +8681,14 @@ extension on TranslationsQro {
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} SPENT TOO MUCH TIME IN ITS TIMERS. THEY\'RE STOPPED UNTIL THE EXTENSIONS RESTART.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name}\'S TIMERS KEPT FAILING. THEY\'RE STOPPED UNTIL THE EXTENSIONS RESTART.',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} GOT STUCK IN A TIMER. ITS TIMERS ARE STOPPED UNTIL THE EXTENSIONS RESTART.',
+			'operationSetupAction.invalidField' => ({required Object field}) => 'THE OPERATION UPDATE HAS AN INVALID VALUE FOR ${field}.',
+			'operationSetupAction.invalidRefEntry' => ({required Object index}) => 'ACTIVATION REFERENCE ${index} NEEDS A PROGRAM KEY AND A REFERENCE CODE.',
+			'operationSetupAction.invalidReference' => ({required Object reference}) => '${reference} IS NOT A VALID ACTIVATION REFERENCE.',
+			'operationSetupAction.unavailableReference' => ({required Object reference}) => 'COULD NOT VALIDATE ${reference}. CHECK THAT ITS ACTIVITY IS AVAILABLE.',
+			'operationSetupAction.conflictingReference' => ({required Object reference, required Object existing}) => 'COULD NOT ADD ${reference}. THIS ACTIVITY ALREADY HAS REFERENCE ${existing}.',
+			'operationSetupAction.invalidLocation' => 'AN OPERATION LOCATION NEEDS EITHER A GRID LOCATOR OR A LATITUDE AND LONGITUDE.',
+			'operationSetupAction.invalidGrid' => ({required Object grid}) => '"${grid}" IS NOT A VALID GRID LOCATOR.',
+			'operationSetupAction.invalidCoordinates' => 'THE OPERATION UPDATE NEEDS A VALID LATITUDE AND LONGITUDE.',
 			'operationLocationScreen.title' => 'OPERATION LOCATION',
 			'operationLocationScreen.selectedLocation' => 'SELECTED LOCATION',
 			'operationLocationScreen.gridSquare' => 'MAIDENHEAD GRID SQUARE LOCATOR',

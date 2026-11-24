@@ -37,6 +37,7 @@ import '../../services/panel_content_budgets.dart';
 import '../../services/panel_service.dart';
 import 'panel_content_view.dart';
 import 'panel_environment.dart';
+import 'panel_scene/scene_events.dart';
 import 'panel_scene/scene_images.dart';
 import 'panel_scene/scene_model.dart';
 import 'panel_scene/scene_rotator.dart';
@@ -806,10 +807,25 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       final values = parseValues(result['values'] ?? const {});
       final strings = parseStrings(result['strings'] ?? const {});
       if (strings.keys.any(values.containsKey)) throw const FormatException('A panel event result names a value as both a number and a string');
-      // Awaited before anything of the answer is kept: a click that opens nothing would otherwise
-      // look taken. Nothing on the device to open it fails the answer, as a platform's refusal does,
-      // and a failed answer changes nothing.
+      final update = result['updateOperation'];
+      if (result.containsKey('updateOperation') && update is! Map) throw const FormatException('updateOperation must be an object');
+      // A failed launch must leave the operation, config and scene as they
+      // were. A click that opens nothing would otherwise look taken.
       if (openUrl is String && !await launchExternalUrl(openUrl)) throw StateError('Nothing opened the page a panel event answer named');
+      if (update is Map) {
+        if (!current()) throw StateError('Panel replaced');
+        final uuid = ctx.operation?.uuid;
+        if (uuid == null) throw SceneEventRefusal(t.commands.noOperationOpen);
+        if (uuid != widget.renderContext.operation?.uuid) throw StateError('Panel operation changed');
+        final apply = widget.panels.onUpdateOperation;
+        if (apply == null) throw StateError('Panel operation updates unavailable');
+        // A refused operation edit must leave this answer's config and
+        // scene untouched. The callback may wait for references to resolve.
+        final refusal = await apply(uuid, update.cast<String, dynamic>());
+        if (refusal != null) throw SceneEventRefusal(refusal);
+        if (!current()) throw StateError('Panel replaced');
+        if (uuid != widget.renderContext.operation?.uuid) throw StateError('Panel operation changed');
+      }
       // Kept before the patch is applied, so a control the answer moves is not drawn as kept when
       // what it stands for was not.
       if (answered is Map) await widget.panels.writeConfig(panel, answered.cast<String, dynamic>());
@@ -828,6 +844,8 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       final patch = <String, Object>{...values, ...strings};
       ErrorReportingService.recordSuccess('panel:event:${panel.id}');
       return patch;
+    } on SceneEventRefusal {
+      rethrow;
     } on PanelContentRefusal catch (e) {
       // A budget is the extension's to keep, as a render's is: the console, not a report.
       debugPrint('[panels] "${panel.id}" refused: ${e.message}');

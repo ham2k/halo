@@ -104,7 +104,7 @@ void main() {
 
     await commandEngine.dispatchActions([
       {
-        'updateOperation': {'multiIdentifier': '2'},
+        'updateOperation': {'multiIdentifier': '2', 'uuid': 'a-different-log'},
       },
     ]);
 
@@ -119,12 +119,12 @@ void main() {
 
     await commandEngine.dispatchActions([
       {
-        'updateOperation': {'operatorCall': 'KI2D'},
+        'updateOperation': {'operatorCall': 'KI2D', 'uuid': 'a-different-log'},
       },
     ]);
 
     expect(dispatched.single.key, 'updateOperation');
-    expect(dispatched.single.value, {'operatorCall': 'KI2D'});
+    expect(dispatched.single.value, {'operatorCall': 'KI2D', 'uuid': null});
   });
 
   test('a batch is dispatched whole, in order', () async {

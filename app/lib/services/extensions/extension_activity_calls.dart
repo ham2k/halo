@@ -96,17 +96,27 @@ mixin _ExtensionActivityCalls {
     Map<String, dynamic> operationData = const {},
   }) async {
     final results = await whenSettled(() => Future.wait([operationControls(operationData), loggingControls(operationData)]));
-    final activation = _refTypesByActivityKey(results[0].controls);
-    final hunting = _refTypesByActivityKey(results[1].controls);
+    final activation = _refControlsByActivityKey(results[0].controls);
+    final hunting = _refControlsByActivityKey(results[1].controls);
     return (
       byKey: {
-        for (final key in {...activation.keys, ...hunting.keys}) key: (activationType: activation[key], huntingType: hunting[key]),
+        for (final key in {...activation.keys, ...hunting.keys}) key: (activationType: activation[key]?.type, huntingType: hunting[key]?.type),
       },
       loadFailed: results[0].loadFailed || results[1].loadFailed,
     );
   }
 
-  /// The `refList` ref type each control descriptor carries, keyed by the
+  /// The operation's activation controls, keyed the same way as
+  /// [activityRefTypes]. A preset needs both the type and its control's
+  /// reference rules, so resolve both from the same answer.
+  Future<({Map<String, ({String type, Map<String, dynamic> control})> byKey, bool loadFailed})> activationRefControls(
+    Map<String, dynamic> operationData,
+  ) async {
+    final result = await operationControls(operationData);
+    return (byKey: _refControlsByActivityKey(result.controls), loadFailed: result.loadFailed);
+  }
+
+  /// Each control descriptor and its ref type, keyed by the
   /// extension that supplied it (`ham2k-pota`) and by the type's
   /// [activityScopeWord] (`pota`) — the word a deep link names an activity
   /// by, which is app-polo's activity key and not any extension's. Controls
@@ -117,18 +127,18 @@ mixin _ExtensionActivityCalls {
   /// ever stops being true, the tie needs a real rule rather than fan-out
   /// order. A word does tie when two extensions serve one type, and the first
   /// of them answers a deep link naming it.
-  static Map<String, String> _refTypesByActivityKey(List<Map<String, dynamic>> controls) {
-    final types = <String, String>{};
+  static Map<String, ({String type, Map<String, dynamic> control})> _refControlsByActivityKey(List<Map<String, dynamic>> controls) {
+    final byKey = <String, ({String type, Map<String, dynamic> control})>{};
     for (final control in controls) {
       final input = control['input'];
       if (input is! Map) continue;
       final refType = input['refType'];
       if (refType is! String || refType.isEmpty) continue;
       for (final key in [controlExtensionKey(control), activityScopeWord(refType)]) {
-        if (key.isNotEmpty) types.putIfAbsent(key, () => refType);
+        if (key.isNotEmpty) byKey.putIfAbsent(key, () => (type: refType, control: control));
       }
     }
-    return types;
+    return byKey;
   }
 
   /// Lets activities project data they own into generic QSON fields just
