@@ -846,16 +846,15 @@ const ExportHandler = {
       // a broken contact. Each event's own time says when it was.
       if (index === qsos.length - 1) writeEventsUpTo(Infinity)
       else if (typeof qso.startAtMillis === "number") writeEventsUpTo(qso.startAtMillis)
+      // Standard fields and program hooks both need the operation as it stood
+      // when the contact was made. Falling back to the current operation can
+      // fill an earlier segment's blank state or county from a later location.
+      const qsoOperation = operationForQso(operation, qso, segments)
       // The program fields (SIG, POTA_REF…) come from an `adifFields` hook via
       // in-runtime hook composition — no bridge crossing. Which hooks, see
       // [fieldSetsPerHook]: this export's own alone, or those of every program
       // the contact belongs to when the file claims no program.
-      //
-      // Against the operation as it stood when THIS contact was made: a
-      // rover's county or a contest's setup lives on a ref the segments
-      // restate, and a hook handed the base operation would write the last
-      // county onto every record of the log.
-      const perHook = await fieldSetsPerHook(qso, operationForQso(operation, qso, segments), mainHandler, includeFieldsFrom, exportSettings)
+      const perHook = await fieldSetsPerHook(qso, qsoOperation, mainHandler, includeFieldsFrom, exportSettings)
       // One record per QSO unless a program's own file expands it. In practice
       // at most one hook does — you are not activating an n-fer in two
       // programs at once — so the record count is simply the largest any hook
@@ -882,7 +881,7 @@ const ExportHandler = {
         fields.push(
           ...baseFieldsFor(
             qso,
-            operation,
+            qsoOperation,
             stationCall,
             n * 1000,
             includePrivateData === true,

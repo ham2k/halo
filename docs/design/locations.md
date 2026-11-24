@@ -438,11 +438,12 @@ The county is a deliberate divergence from app-polo, which withholds it as an
 address. In a QSO party it is the EXCHANGE — the other station said it on the
 air, and a file withholding it claims nothing the event scores on.
 
-An export reads our own location off the CONTACT before the operation, and a
-segmented log stamps each contact with its segment's answer on the way out
-(`ExportService._stampSegment`). A hook is handed one operation for the whole
-file, so that is the only way a rover's second county reaches the records it
-belongs to. The stamp never covers a location the contact recorded itself.
+An export reads our own location off the contact first. In a segmented log,
+the export service fills unset contact fields from populated segment values
+(`ExportService._stampSegment`). The built-in ADIF writer uses the segment in
+effect at the contact's timestamp for any remaining location defaults. When
+the contact and its segment both leave state or county blank, the record omits
+that field.
 
 Peer sync and backups carry everything unconditionally — that is the user's own
 data moving between the user's own devices.

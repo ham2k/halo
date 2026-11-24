@@ -113,11 +113,13 @@ void main() {
     operation = await services.operations.create(stationCall: 'N0DEV');
   });
 
-  Future<Qso> log(String call) => services.qsos.add(operation.uuid, {
+  const start = 1794000000000;
+  Future<Qso> log(String call, {int atMillis = start, Map<String, String>? our}) => services.qsos.add(operation.uuid, {
     'band': '20m',
     'mode': 'CW',
-    'startAtMillis': 1794000000000,
+    'startAtMillis': atMillis,
     'their': {'call': call},
+    'our': ?our,
   });
 
   Future<Operation> stored() async => (await services.operations.get(operation.uuid))!;
@@ -134,6 +136,18 @@ void main() {
   Future<PushOutcome> push(PushSuggestion suggestion) => pushTo(suggestion, n0dev);
   Future<Map<String, dynamic>?> bench() async => asQsonMap(await services.extensions.host!.invokeHook('bench', key: 'echo', method: 'call'));
   Future<Map<String, dynamic>?> lastSent() async => asQsonMap((await bench())?['last']);
+
+  Future<List<String>> pushAdifRecords() async {
+    await push((await suggestion('new'))!);
+    return ((await lastSent())!['records'] as List).map((record) => ((record as Map)['adif'] as List).single as String).toList();
+  }
+
+  Future<List<String>> fullAdifRecords() async {
+    final saved = await stored();
+    final option = (await services.exports.getExportOptions(saved)).singleWhere((option) => option['exportType'] == 'adif');
+    final files = await services.exports.generateExports(saved, [option]);
+    return adifRecordsOf(files.single['content'] as String);
+  }
 
   test('each service names the extension that registered its hook, whose accounts Settings shows it with', () async {
     // A hook key is the hook's own, not the extension's: 'pull-only' is
@@ -171,6 +185,61 @@ void main() {
     expect(adif, isNot(contains('<EOH>')));
     expect((await echo()).completed, isTrue, reason: 'everything is sent and nothing changed');
     expect(asQsonMap(asQsonMap((await stored()).data[qsoTransferKey])?['echo:n0dev'])?['sentCount'], 2);
+  }, timeout: const Timeout(Duration(seconds: 90)));
+
+  test('ADIF files and pushes use the rover location at the time of each contact', () async {
+    const moved = start + 2000;
+    const newLocation = {'state': 'CT', 'county': 'New London'};
+
+    // ROVERQTH preserves the earlier blanks in the start event even though
+    // saving the new location sets both fields on the operation itself.
+    await services.qsos.addEvent(operation.uuid, kind: 'start', atMillis: start, operation: {'state': null, 'county': null});
+    await log('W1AW', atMillis: start + 1000);
+    await services.qsos.addEvent(operation.uuid, kind: 'break', atMillis: moved, operation: newLocation);
+    await services.operations.saveData(Operation(uuid: operation.uuid, data: {...(await stored()).data, ...newLocation}));
+    await log('K1ABC', atMillis: moved);
+    await log('W2XYZ', atMillis: moved + 1000, our: {'state': 'RI', 'county': 'Kent'});
+
+    final expected = unorderedEquals([
+      allOf(contains('<CALL:4>W1AW'), isNot(contains('<MY_STATE:')), isNot(contains('<MY_CNTY:'))),
+      allOf(contains('<CALL:5>K1ABC'), contains('<MY_STATE:2>CT'), contains('<MY_CNTY:13>CT,New London')),
+      allOf(contains('<CALL:5>W2XYZ'), contains('<MY_STATE:2>RI'), contains('<MY_CNTY:7>RI,Kent')),
+    ]);
+    expect(await pushAdifRecords(), expected);
+    expect(await fullAdifRecords(), expected);
+  }, timeout: const Timeout(Duration(seconds: 90)));
+
+  test('ADIF preserves populated location fields for every contact at both rover stops', () async {
+    const moved = start + 3000;
+    Future<void> saveLocation(Map<String, dynamic> location) async =>
+        services.operations.saveData(Operation(uuid: operation.uuid, data: {...(await stored()).data, ...location}));
+
+    await services.qsos.addEvent(operation.uuid, kind: 'start', atMillis: start, operation: segmentOverrideOf(operation.data));
+    await saveLocation({'state': 'RI', 'county': 'Kent', 'grid': 'FN41er', 'gridSource': 'gps', 'lat': 41.71875, 'lon': -71.625});
+    await log('W1AW', atMillis: start + 1000);
+    await log('K1ABC', atMillis: start + 2000);
+
+    // The break starts with the current location. Saving the new location
+    // updates that stretch, and the start retains the earlier coordinates.
+    await services.qsos.addEvent(operation.uuid, kind: 'break', atMillis: moved, operation: segmentOverrideOf((await stored()).data));
+    await saveLocation({'state': 'CT', 'county': 'New London', 'grid': 'FN31wm', 'gridSource': 'gps', 'lat': 41.5, 'lon': -72.125});
+    await log('W2XYZ', atMillis: moved);
+    await log('K2DEF', atMillis: moved + 1000);
+
+    const kent = {'MY_STATE': 'RI', 'MY_CNTY': 'RI,Kent', 'MY_GRIDSQUARE': 'FN41er', 'MY_LAT': 'N041 43.125', 'MY_LON': 'W071 37.500'};
+    const newLondon = {'MY_STATE': 'CT', 'MY_CNTY': 'CT,New London', 'MY_GRIDSQUARE': 'FN31wm', 'MY_LAT': 'N041 30.000', 'MY_LON': 'W072 07.500'};
+    Matcher locations({required bool includeCoordinates}) => unorderedEquals([
+      for (final (call, fields) in [('W1AW', kent), ('K1ABC', kent), ('W2XYZ', newLondon), ('K2DEF', newLondon)])
+        allOf([
+          contains('<CALL:${call.length}>$call'),
+          for (final MapEntry(:key, :value) in fields.entries)
+            if (includeCoordinates || (key != 'MY_LAT' && key != 'MY_LON')) contains('<$key:${value.length}>$value'),
+        ]),
+    ]);
+
+    expect(await pushAdifRecords(), locations(includeCoordinates: false));
+    await services.settings.setIncludePrivateData(true);
+    expect(await fullAdifRecords(), locations(includeCoordinates: true));
   }, timeout: const Timeout(Duration(seconds: 90)));
 
   // The panel's one Push runs every suggestion due in turn, each counted
