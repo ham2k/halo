@@ -4,6 +4,7 @@
 part of 'activities_view.dart';
 
 mixin _ActivitiesRefs on State<OperationSheet> {
+  Future<void>? get _pendingGpsSubdivisions;
   abstract Operation _operation;
   List<Map<String, dynamic>> get _controls;
   abstract ControlsLoadState _controlsState;
@@ -393,6 +394,8 @@ mixin _ActivitiesRefs on State<OperationSheet> {
   }
 
   Future<void> _saveAndClose({required bool accept}) async {
+    // Finish the lookup for the captured fix before taking the save snapshot.
+    if (_pendingGpsSubdivisions case final pending?) await pending;
     // One snapshot for the title and the row: the sheet still takes keyboard
     // input during the wait, and an edit landing between the two reads would
     // store a title that does not describe the refs beside it.

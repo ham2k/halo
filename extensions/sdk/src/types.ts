@@ -1455,6 +1455,28 @@ export interface ActivityHook {
   ): Promise<Record<string, JSONValue> | null>
 }
 
+export interface OperationLocationCandidate {
+  state: string
+  county?: string
+}
+
+export interface OperationLocationResult {
+  /// A subdivision that contains the fix's whole reported accuracy area.
+  state?: string
+  /// Present with `state` when the whole area is also inside this county.
+  county?: string
+  /// Operator choices for an area that intersects subdivision boundaries.
+  candidates?: OperationLocationCandidate[]
+}
+
+/// Resolves a GPS fix accepted during setup or selected in the Location
+/// editor. The app applies suggestions, preserves operator edits and offers
+/// choices at ambiguous boundaries.
+/// Needs `requiresLocation`. Extension API 31.
+export interface OperationLocationHook {
+  resolve(args: { latitude: number; longitude: number; accuracyMeters: number }, ctx: HookContext): Promise<OperationLocationResult | null>
+}
+
 /// Contributes extra ADIF fields per QSO (registered under 'adifFields').
 ///
 /// A field NAME is written once per record: the first to carry a value wins and
@@ -3059,6 +3081,7 @@ export type Hook =
   | ChasingHook
   | RefHandlerHook
   | ActivityHook
+  | OperationLocationHook
   | AdifFieldsHook
   | AdifImportHook
   | CommandHook
@@ -3238,10 +3261,9 @@ export interface ExtensionManifest {
   /// to a local-network one.
   webSockets?: string[]
   allowUserAgentOverride?: boolean
-  /// Declares this extension's bundle may call `host.getLocation()` — the
-  /// device's raw GPS coordinates. Off by default, same allowlist shape as
-  /// `domains`: the host refuses the call for any extension that doesn't
-  /// set this.
+  /// Allows `host.getLocation()` and gives `operationLocation.resolve` the
+  /// GPS fix accepted during setup. Off by default, same grant scope as
+  /// `domains`: the host withholds location from any bundle without it.
   requiresLocation?: boolean
   /// Declares this extension's bundle may read the operator's radios —
   /// `host.listRadios()`, `host.readRadio()`, and a scene's `spectrum`

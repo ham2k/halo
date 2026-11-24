@@ -10,12 +10,15 @@
 // EARLIER contact to the new one. `SegmentedOperation` is the judge here,
 // not the row contents.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/operation_lifecycle_commands.dart';
 
 import '../support/halo_test_support.dart';
@@ -25,13 +28,17 @@ void main() {
 
   late HaLoServices services;
   late Operation operation;
+  late FakeGpsLocation gps;
+  late _GpsSubdivisions subdivisions;
 
   setUp(() async {
     // An empty host: the Location screen waits on a runtime for its
     // controls, and a service with none would keep it waiting forever. The one
     // stub is `ref:satellite`'s handler, which implements no
     // `suggestOperationTitle` — the runtime answers that with null.
-    final harness = await makeHaLoServices(stubs: {'ref:satellite:null:suggestOperationTitle': null});
+    gps = FakeGpsLocation();
+    subdivisions = _GpsSubdivisions();
+    final harness = await makeHaLoServices(extensions: subdivisions, location: gps);
     services = harness.services;
 
     final created = await services.operations.create(stationCall: 'N0DEV');
@@ -558,6 +565,115 @@ void main() {
     expect(segmented.current['grid'], 'FN20aa');
   });
 
+  group('ROVERQTH GPS subdivisions', () {
+    const fix = GridLocation(41.7, -71.525);
+
+    setUp(() {
+      gps
+        ..fix = fix
+        ..accuracy = 17;
+    });
+
+    Future<void> pumpNavigator(WidgetTester tester) => tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(navigatorKey: navigatorKey, home: const Scaffold()),
+      ),
+    );
+
+    Future<void> logContactAtBreak() async {
+      final boundary = segmentRows(await rows()).last;
+      // A QSO at the same timestamp belongs to the new segment.
+      await services.qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'startAtMillis': boundary.startAtMillis,
+      });
+    }
+
+    Future<void> saveLocation(WidgetTester tester) async {
+      await tester.tap(find.widgetWithText(FilledButton, t.common.save));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('Device GPS fills missing subdivisions in a segment with contacts and keeps prior contacts at their old location', (tester) async {
+      await pumpNavigator(tester);
+      final done = mark('break', setLocation: true);
+      await tester.pumpAndSettle();
+      final firstSegment = segmentRows(await rows()).first.event!['operation'];
+      expect(subdivisions.requests, isEmpty, reason: 'ROVERQTH waits for the operator to choose Device GPS');
+      await logContactAtBreak();
+
+      await tester.tap(find.text(t.operationLocationScreen.deviceGps));
+      await tester.pumpAndSettle();
+      expect(subdivisions.requests, [(fix: fix, accuracyMeters: 17.0)]);
+      await saveLocation(tester);
+      expect(await done, isNull);
+
+      final saved = (await services.operations.get(operation.uuid))!;
+      expect(saved.data['state'], 'RI');
+      expect(saved.data['county'], 'Kent');
+      final all = await rows();
+      expect(segmentRows(all).first.event!['operation'], firstSegment);
+      final segmented = SegmentedOperation.from(operation: saved.data, qsos: all);
+      final earlier = segmented.effectiveAt(20000);
+      expect(earlier['grid'], 'FN31pr');
+      expect(earlier['state'], isNull);
+      expect(earlier['county'], isNull);
+      expect(segmented.current['state'], 'RI');
+      expect(segmented.current['county'], 'Kent');
+      expect(segmented.current['grid'], gpsLocationData(fix)['grid']);
+    });
+
+    for (final (label, details) in const [
+      ('saved GPS values', {'state': 'CT', 'county': 'Hartford', 'gpsState': 'CT', 'gpsCounty': 'Hartford'}),
+      ('an explicitly cleared county', {'state': 'RI', 'county': ''}),
+    ]) {
+      testWidgets('Device GPS keeps $label', (tester) async {
+        await services.operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, ...details}));
+        await pumpNavigator(tester);
+        final done = mark('break', setLocation: true);
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text(t.operationLocationScreen.deviceGps));
+        await tester.pumpAndSettle();
+        await saveLocation(tester);
+        expect(await done, isNull);
+
+        final saved = (await services.operations.get(operation.uuid))!;
+        expect(saved.grid, gpsLocationData(fix)['grid']);
+        expect(saved.data['state'], details['state']);
+        expect(saved.data['county'], details['county']);
+        expect(subdivisions.requests, isEmpty, reason: 'both fields already have a value or an explicit clear');
+      });
+    }
+
+    for (final duringLookup in [true, false]) {
+      final timing = duringLookup ? 'during lookup' : 'before Save';
+      testWidgets('Device GPS keeps the suggestion if a contact is logged $timing', (tester) async {
+        final answer = Completer<OperationLocationResult>();
+        subdivisions.answer = answer.future;
+        await pumpNavigator(tester);
+        final done = mark('break', setLocation: true);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(t.operationLocationScreen.deviceGps));
+        await tester.pumpAndSettle();
+        expect(subdivisions.requests, hasLength(1));
+
+        if (duringLookup) await logContactAtBreak();
+        answer.complete(_GpsSubdivisions.match);
+        await tester.pumpAndSettle();
+        expect(find.text('Kent'), findsOneWidget);
+        if (!duringLookup) await logContactAtBreak();
+        await saveLocation(tester);
+        expect(await done, isNull);
+
+        final saved = (await services.operations.get(operation.uuid))!;
+        expect(saved.data['state'], 'RI');
+        expect(saved.data['county'], 'Kent');
+      });
+    }
+  });
+
   testWidgets('ROVERQTH: cancelling the location screen leaves a break at the old square, which scores as before', (tester) async {
     await tester.pumpWidget(
       TranslationProvider(
@@ -575,6 +691,20 @@ void main() {
     final segmented = SegmentedOperation.from(operation: operation.data, qsos: await rows());
     expect(segmented.current['grid'], 'FN31pr');
   });
+}
+
+class _GpsSubdivisions extends ExtensionServiceWithFakeHost {
+  _GpsSubdivisions() : super(FakeExtensionHost({'ref:satellite:null:suggestOperationTitle': null}));
+
+  static const OperationLocationResult match = (state: 'RI', county: 'Kent', candidates: []);
+  final requests = <({GridLocation fix, double accuracyMeters})>[];
+  Future<OperationLocationResult>? answer;
+
+  @override
+  Future<OperationLocationResult> resolveOperationLocation(GridLocation fix, {required double accuracyMeters}) async {
+    requests.add((fix: fix, accuracyMeters: accuracyMeters));
+    return await answer ?? match;
+  }
 }
 
 /// A host whose `suggestOperationTitle` throws — the failure the

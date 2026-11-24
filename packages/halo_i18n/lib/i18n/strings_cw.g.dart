@@ -1246,6 +1246,9 @@ class _Translations$operationLocationScreen$cw extends Translations$operationLoc
 	@override String get deviceGps => '—·· · ···— ·· —·—· · / ——· ·——· ···';
 	@override String peerGps({required Object device}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${device}';
 	@override String receiverGps({required Object receiver}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${receiver}';
+	@override String get reviewGps => '·—· · ···— ·· · ·—— / ——· ·——· ···';
+	@override String get nearBoundary => '—· · ·— ·—· / ·— / —··· ——— ··— —· —·· ·— ·—· —·——';
+	@override String boundaryChoice({required Object county, required Object state}) => '${county} ——··—— / ${state}';
 	@override String get locating => '·—·· ——— —·—· ·— — ·· —· ——· …';
 	@override String get gpsUnavailable => '·—·· ——— —·—· ·— — ·· ——— —· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·';
 	@override String get permissionDenied => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —·· · —· ·· · —··';
@@ -8671,6 +8674,9 @@ extension on TranslationsCw {
 			'operationLocationScreen.deviceGps' => '—·· · ···— ·· —·—· · / ——· ·——· ···',
 			'operationLocationScreen.peerGps' => ({required Object device}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${receiver}',
+			'operationLocationScreen.reviewGps' => '·—· · ···— ·· · ·—— / ——· ·——· ···',
+			'operationLocationScreen.nearBoundary' => '—· · ·— ·—· / ·— / —··· ——— ··— —· —·· ·— ·—· —·——',
+			'operationLocationScreen.boundaryChoice' => ({required Object county, required Object state}) => '${county} ——··—— / ${state}',
 			'operationLocationScreen.locating' => '·—·· ——— —·—· ·— — ·· —· ——· …',
 			'operationLocationScreen.gpsUnavailable' => '·—·· ——— —·—· ·— — ·· ——— —· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'operationLocationScreen.permissionDenied' => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —·· · —· ·· · —··',

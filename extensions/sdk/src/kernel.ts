@@ -1323,6 +1323,12 @@ async function activateExtension(def: ExtensionDefinition): Promise<string | nul
           log(`ERROR registerHook(syncTransport) in extension ${def.key}: only ham2k-lofi provides the sync transport — hook not registered`)
           return
         }
+        // The host sends GPS data by manifest bundle key, after checking its
+        // grant. A foreign hook key could intercept that call by priority.
+        if (category === "operationLocation" && (resolvedKey !== def.key || definingBundle[def.key] !== def.key || apiOf(def.key) < 31)) {
+          log(`ERROR registerHook(operationLocation) in extension ${def.key}: register under the bundle's own key with API 31 or later`)
+          return
+        }
         // Key namespacing (docs/extensions/settings.md; rule itself lives
         // in settingsPanels.ts so it has its own unit tests). Logged and
         // skipped rather than thrown: one bad key shouldn't take down the

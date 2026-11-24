@@ -228,7 +228,7 @@ refused at the call where it is missing. Declare the least you need.
 
 | Field | Allows | Implies | API |
 | --- | --- | --- | --- |
-| `requiresLocation` | `host.getLocation()`, the device's own position | | |
+| `requiresLocation` | `host.getLocation()`, the device's position, and the GPS fix accepted in operation setup through `operationLocation.resolve` (API 31) | | |
 | `requiresRadioRead` | `host.listRadios()`, `host.readRadio()`, a scene's `spectrum` control and `radio` values, a panel's `radio` trigger; `host.listEquipment()` and the `equipment` trigger, and a scene's `rotatorMap` control (API 23) | | |
 | `requiresRadioWrite` | `host.setRadio()`, `host.setRadioConnection()`, `host.setRadioSpectrum()`, and transmitting: `host.sendRadioCw()`, `host.playRadioVoice()`, `host.setRadioPtt()`, `host.stopRadioTransmit()`; `host.suggestQso()` (API 12); a `command` hook's `setPower` and `swapRadios` actions; `host.setAntenna()`, `host.setRotator()`, `host.stopRotator()`, `host.setEquipmentConnection()` and a rotator map turning the rotator (API 23) | read | 7 |
 | `requiresRadioRaw` | `host.sendRadioRaw()`: any command in the radio's own protocol, unchecked; the install screen says so in those words | write | 11 |
@@ -344,7 +344,8 @@ hook under 9, a cluster grant or a `cluster` hook under 10,
 `sharedDependencies` naming a package the app does not carry or giving no
 range; an `about`, or a translation's, that is not a string, is blank or is
 over 10,000 characters; `experiments`, `enabledByDefault` or `geo`; `adifFields` with neither
-a `ref:` type nor `adifFieldsScope`; and every malformed `relevance` or
+a `ref:` type nor `adifFieldsScope`; an `operationLocation` hook under `api` 31
+or without `requiresLocation`; and every malformed `relevance` or
 `settings` listed above. It reports all of them at once.
 
 **The app**, at install, checks what the packer cannot know: that the key is

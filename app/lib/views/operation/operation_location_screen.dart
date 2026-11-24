@@ -19,17 +19,37 @@ import '../../services/halo_services.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/extensions/extension_service.dart';
 import '../../services/location_service.dart';
+import '../../tools/operation_gps_subdivisions.dart';
 import 'operation_location_pin.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
 class OperationLocationScreen extends StatefulWidget {
   final HaLoServices services;
   final Operation operation;
+  final List<OperationLocationCandidate> gpsBoundaryChoices;
 
-  const OperationLocationScreen({super.key, required this.services, required this.operation});
+  const OperationLocationScreen({super.key, required this.services, required this.operation, this.gpsBoundaryChoices = const []});
 
   @override
   State<OperationLocationScreen> createState() => _OperationLocationScreenState();
+}
+
+/// A boundary choice only offers to fill missing or GPS-supplied details.
+/// An empty string is an operator's explicit clear, just like it is for prefill.
+List<OperationLocationCandidate> gpsBoundaryChoicesFor(Map<String, dynamic> data, List<OperationLocationCandidate> candidates) {
+  final statedState = asQsonString(data['state']);
+  final state = subdivisionComparisonKey(statedState);
+  final county = subdivisionComparisonKey(asQsonString(data['county']));
+  final manualState = statedState != null && statedState != data['gpsState'];
+  final manualCounty = county != null && !gpsSuppliedCounty(data);
+  return candidates.where((candidate) {
+    final candidateCounty = subdivisionComparisonKey(candidate.county);
+    final matchesState = state == subdivisionComparisonKey(candidate.state);
+    final matchesCounty = county == candidateCounty;
+    return (!manualState || matchesState) &&
+        (!manualCounty || matchesCounty || (candidateCounty == null && county == '')) &&
+        (!matchesState || (candidateCounty != null && !matchesCounty));
+  }).toList();
 }
 
 class _OperationLocationScreenState extends State<OperationLocationScreen> {
@@ -39,6 +59,20 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
   final _gridFocus = FocusNode();
   final _stateFocus = FocusNode();
   final _countyFocus = FocusNode();
+
+  late final _subdivisions = <String, dynamic>{
+    for (final key in const ['state', 'gpsState', 'county', 'gpsCounty'])
+      if (widget.operation.data.containsKey(key)) key: widget.operation.data[key],
+  };
+  Map<String, dynamic> get _subdivisionValues => {'state': _subdivisions['state'], 'county': _subdivisions['county']};
+  late List<OperationLocationCandidate> _gpsBoundaryChoices = gpsBoundaryChoicesFor(_subdivisionValues, widget.gpsBoundaryChoices);
+  int _gpsRequest = 0;
+  Future<void>? _pendingGpsSubdivisions;
+
+  // Only the editor's own suggestions may be cleared when the point changes.
+  // Values supplied when the editor opened already belong to the operation.
+  bool _suggestedState = false;
+  bool _suggestedCounty = false;
 
   static final _twoLetterState = RegExp(r'^[A-Za-z]{2}$');
 
@@ -124,16 +158,15 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
   }
 
   void _onGridTextChanged() {
-    // Editing IS the response to being told the locator is wrong, so the
-    // complaint goes away as soon as they act on it rather than surviving
-    // until the next Save.
-    if (_gridRejected) setState(() => _gridRejected = false);
-    if (_gridSource != 'manual' || _adoptedLocation != null) {
-      setState(() {
-        _gridSource = 'manual';
-        _adoptedLocation = null;
-      });
-    }
+    // A replacement can keep the same locator text. The controller still
+    // sees it, and the field now states the square instead of the old point.
+    if (!_gridRejected && _gridSource == 'manual' && _adoptedLocation == null) return;
+    setState(() {
+      _gridRejected = false;
+      _gridSource = 'manual';
+      _adoptedLocation = null;
+      _clearGpsSuggestions();
+    });
   }
 
   /// A 2-letter entry reads as an abbreviation ("CA"), not a proper noun
@@ -155,23 +188,83 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
 
   /// The device's fix, stored the way the setup sheet captures one
   /// ([gpsLocationData]): rounded, with the locator for the rounded point.
-  void _adoptFix(GridLocation fix) {
+  void _adoptFix(GridLocation fix, double accuracy) {
     final data = gpsLocationData(fix);
     _adoptGrid(data['grid'] as String, gpsGridSource, location: GridLocation(data['lat'] as double, data['lon'] as double));
+    if (accuracy > 0 && accuracy.isFinite && (_subdivisions['state'] == null || _subdivisions['county'] == null)) {
+      _pendingGpsSubdivisions = _fillGpsSubdivisions(fix, accuracy, _gpsRequest);
+    }
+  }
+
+  Future<void> _fillGpsSubdivisions(GridLocation fix, double accuracy, int request) async {
+    final (:state, :county, :candidates) = await lookupGpsSubdivisions(widget.services.extensions, fix, accuracy);
+    if (!mounted || request != _gpsRequest) return;
+    _pendingGpsSubdivisions = null;
+    final patch = gpsSubdivisionPatch(_subdivisionValues, state: state, county: county);
+    _suggestedState = patch.containsKey('state');
+    _suggestedCounty = patch.containsKey('county');
+    _applySubdivisionPatch(patch);
+    if (candidates.isNotEmpty) setState(() => _gpsBoundaryChoices = gpsBoundaryChoicesFor(_subdivisionValues, candidates));
+  }
+
+  void _applySubdivisionPatch(Map<String, dynamic> patch) {
+    _subdivisions.addAll(patch);
+    if (patch.containsKey('state')) _stateController.text = asQsonString(patch['state']) ?? '';
+    if (patch.containsKey('county')) _countyController.text = asQsonString(patch['county']) ?? '';
+  }
+
+  void _clearGpsSuggestions() {
+    _gpsRequest++;
+    _pendingGpsSubdivisions = null;
+    _gpsBoundaryChoices = const [];
+    _applySubdivisionPatch({
+      if (_suggestedState) ...{'state': null, 'gpsState': null},
+      if (_suggestedCounty) ...{'county': null, 'gpsCounty': null},
+    });
+    _suggestedState = false;
+    _suggestedCounty = false;
+  }
+
+  void _chooseGpsBoundary(OperationLocationCandidate choice) {
+    final fillState = _subdivisions['state'] == null;
+    final fillCounty = choice.county != null && _subdivisions['county'] == null;
+    setState(() {
+      _applySubdivisionPatch({
+        if (fillState) 'state': choice.state,
+        if (fillState || _suggestedState) 'gpsState': null,
+        if (fillCounty) ...{'county': choice.county, 'gpsCounty': null},
+      });
+      _suggestedState = false;
+    });
+  }
+
+  void _editState(String text) {
+    if (_suggestedCounty && subdivisionComparisonKey(text) != subdivisionComparisonKey(asQsonString(_subdivisions['state']))) {
+      _applySubdivisionPatch({'county': null, 'gpsCounty': null});
+      _suggestedCounty = false;
+    }
+    _subdivisions['state'] = text;
+    _subdivisions['gpsState'] = null;
+    _suggestedState = false;
+    if (_gpsBoundaryChoices.isNotEmpty) setState(() => _gpsBoundaryChoices = gpsBoundaryChoicesFor(_subdivisionValues, _gpsBoundaryChoices));
+  }
+
+  void _editCounty(String text) {
+    _subdivisions['county'] = text;
+    _subdivisions['gpsCounty'] = null;
+    _suggestedCounty = false;
+    if (_gpsBoundaryChoices.isNotEmpty) setState(() => _gpsBoundaryChoices = gpsBoundaryChoicesFor(_subdivisionValues, _gpsBoundaryChoices));
   }
 
   void _adoptGrid(String grid, String source, {GridLocation? location}) {
     setState(() {
       _gridSource = source;
       _adoptedLocation = location;
-      // Detached so the assignment doesn't read as manual typing — which also
-      // means the listener's own clearing of [_gridRejected] doesn't run, and
-      // a refused locator replaced by a suggested one would keep the
-      // complaint underneath a field that no longer earns it.
       _gridRejected = false;
       _gridController.removeListener(_onGridTextChanged);
       _gridController.text = grid;
       _gridController.addListener(_onGridTextChanged);
+      _clearGpsSuggestions();
     });
   }
 
@@ -180,7 +273,13 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
   /// one, and a field that goes red at the second keystroke is nagging.
   bool _gridRejected = false;
 
-  void _save() {
+  Future<void> _save() async {
+    var pending = _pendingGpsSubdivisions;
+    while (pending != null) {
+      await pending;
+      if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
+      pending = _pendingGpsSubdivisions;
+    }
     // GridCaseTextFormatter already keeps the field in the conventional
     // mixed case (FN31pr) live; normalizeGrid here is a safety net for
     // anything that reached the controller some other way (pasted text
@@ -220,8 +319,9 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
       'gridSource': grid.isEmpty ? null : _gridSource,
       'lat': location?.latitude,
       'lon': location?.longitude,
-      'state': state,
-      'county': county,
+      ..._subdivisions,
+      if (_subdivisions['state'] != null) 'state': state,
+      if (_subdivisions['county'] != null) 'county': county,
     });
   }
 
@@ -264,6 +364,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
       _ => null,
     };
     final fixData = fix == null ? null : gpsLocationData(fix);
+    final accuracy = location.position?.accuracy ?? 0.0;
     final fixText = fixData == null
         ? ''
         : '${fixData['grid']} (${(fixData['lat'] as double).toStringAsFixed(capturedFixDecimals)}, ${(fixData['lon'] as double).toStringAsFixed(capturedFixDecimals)})';
@@ -306,6 +407,20 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
               const SizedBox(height: Space.md),
             ],
           ),
+          if (_gpsBoundaryChoices.isNotEmpty)
+            SectionHeader.section(
+              context,
+              t.nearBoundary,
+              children: [
+                for (final choice in _gpsBoundaryChoices)
+                  ListTile(
+                    title: Text(choice.county == null ? choice.state : t.boundaryChoice(county: choice.county!, state: choice.state)),
+                    selected: _subdivisions['state'] == choice.state && (choice.county == null || _subdivisions['county'] == choice.county),
+                    onTap: () => _chooseGpsBoundary(choice),
+                  ),
+                const SizedBox(height: Space.md),
+              ],
+            ),
           SectionHeader.section(
             context,
             t.suggestedLocations,
@@ -330,7 +445,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
                 // Live fixes only: the service keeps its last position while it
                 // says "Locating…" or that it was denied, and that one can be
                 // hours old.
-                onTap: location.status != LocationStatus.available || fix == null ? null : () => _adoptFix(fix),
+                onTap: location.status != LocationStatus.available || fix == null ? null : () => _adoptFix(fix, accuracy),
               ),
               for (final (index, suggestion) in refsWithGrid.indexed)
                 ListTile(
@@ -384,6 +499,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
                       // see _onStateFocusChange.
                       inputFormatters: const [CapitalizeFirstLetterTextFormatter()],
                       decoration: poloFieldDecoration(context, t.stateOrProvince),
+                      onChanged: _editState,
                       onSubmitted: (_) => _save(),
                     ),
                     const SizedBox(height: Space.md),
@@ -393,6 +509,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
                       focusNode: _countyFocus,
                       inputFormatters: const [CapitalizeFirstLetterTextFormatter()],
                       decoration: poloFieldDecoration(context, t.county),
+                      onChanged: _editCounty,
                       onSubmitted: (_) => _save(),
                     ),
                   ],

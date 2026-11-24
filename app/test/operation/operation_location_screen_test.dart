@@ -1,6 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -33,6 +35,19 @@ class _NyqpControls extends ExtensionServiceWithFakeHost {
     ],
     loadFailed: false,
   );
+}
+
+class _PendingSubdivisions extends ExtensionServiceWithFakeHost {
+  _PendingSubdivisions() : super(FakeExtensionHost({}));
+
+  final answer = Completer<OperationLocationResult>();
+  ({GridLocation fix, double accuracyMeters})? input;
+
+  @override
+  Future<OperationLocationResult> resolveOperationLocation(GridLocation fix, {required double accuracyMeters}) {
+    input = (fix: fix, accuracyMeters: accuracyMeters);
+    return answer.future;
+  }
 }
 
 void main() {
@@ -227,10 +242,18 @@ void main() {
   // onto an operation, and the one place an operator can overwrite it by hand.
   group('coordinates', () {
     Map<String, dynamic>? popped;
+    const stateLine = [(state: 'CT', county: 'New London'), (state: 'RI', county: 'Washington')];
 
-    Future<void> open(WidgetTester tester, Operation operation, {GridPrecision? gridPrecision, LocationService? location}) async {
+    Future<void> open(
+      WidgetTester tester,
+      Operation operation, {
+      GridPrecision? gridPrecision,
+      LocationService? location,
+      ExtensionService? subdivisions,
+      HaLoHarness? harness,
+    }) async {
       popped = null;
-      final HaLoHarness(:services) = await makeHaLoServices(location: location);
+      final HaLoHarness(:services) = harness ?? await makeHaLoServices(location: location, extensions: subdivisions);
       // The operator's setting, not the global it resolves into: every
       // settings write re-applies the stored one over a global set by hand.
       if (gridPrecision != null) await services.settings.setGridPrecision(gridPrecision);
@@ -378,17 +401,151 @@ void main() {
 
     // The same fix the setup sheet would capture, stored the same way: a
     // receiver's fifteen digits claim nanometres, and they reach MY_LAT.
-    testWidgets('Device GPS stores the fix rounded to five decimals, as a GPS location', (tester) async {
-      final gps = FakeGpsLocation()..fix = const GridLocation(41.713456789, -72.727812345);
-      await open(tester, withPark(), location: gps);
-      expect(find.textContaining('(41.71346, -72.72781)'), findsOneWidget, reason: 'the row says what it would store');
+    testWidgets('Device GPS stores a rounded fix with its state and county', (tester) async {
+      const fix = GridLocation(41.700012345, -71.525012345);
+      final gps = FakeGpsLocation()
+        ..fix = fix
+        ..accuracy = 17;
+      final subdivisions = _PendingSubdivisions();
+      await open(tester, withPark(), location: gps, subdivisions: subdivisions);
+      expect(find.textContaining('(41.70001, -71.52501)'), findsOneWidget, reason: 'the row says what it would store');
       await tester.tap(find.text(AppLocale.en.buildSync().operationLocationScreen.deviceGps));
+
+      await tester.tap(find.text(AppLocale.en.buildSync().common.save));
+      await tester.pump();
+      expect(popped, isNull, reason: 'Save waits for the lookup for the selected fix');
+      expect(subdivisions.input, (fix: fix, accuracyMeters: 17.0));
+      subdivisions.answer.complete((state: 'RI', county: 'Kent', candidates: const <OperationLocationCandidate>[]));
+      await tester.pumpAndSettle();
+
+      expect(popped!['gridSource'], 'gps');
+      expect(popped!['lat'], 41.70001);
+      expect(popped!['lon'], -71.52501);
+      expect(popped!['state'], 'RI');
+      expect(popped!['county'], 'Kent');
+    });
+
+    for (final changeGrid in [false, true]) {
+      final ending = changeGrid ? 'until a different grid is chosen' : 'without changing the saved State';
+      testWidgets('Device GPS suggests County in an unsegmented log with contacts $ending', (tester) async {
+        const fix = GridLocation(41.7, -71.525);
+        final subdivisions = _PendingSubdivisions();
+        await open(
+          tester,
+          const Operation(uuid: 'op-1', qsoCount: 3, data: {'state': 'RI', 'gpsState': 'RI'}),
+          location: FakeGpsLocation()..fix = fix,
+          subdivisions: subdivisions,
+        );
+        final t = AppLocale.en.buildSync().operationLocationScreen;
+        await tester.tap(find.text(t.deviceGps));
+        expect(subdivisions.input?.fix, fix);
+        subdivisions.answer.complete((state: 'RI', county: 'Kent', candidates: const <OperationLocationCandidate>[]));
+        await tester.pumpAndSettle();
+        expect(find.widgetWithText(TextField, 'Kent'), findsOneWidget);
+        if (changeGrid) await tester.enterText(find.widgetWithText(TextField, t.gridSquare), 'FN31pr');
+
+        await save(tester);
+        expect(popped!['state'], 'RI');
+        expect(popped!['gpsState'], 'RI');
+        expect(popped!['county'], changeGrid ? null : 'Kent');
+      });
+    }
+
+    testWidgets('the regular Location editor can prefill after BREAK and respects a manual county clear', (tester) async {
+      const fix = GridLocation(41.7, -71.525);
+      final gps = FakeGpsLocation()..fix = fix;
+      final subdivisions = _PendingSubdivisions();
+      final harness = await makeHaLoServices(location: gps, extensions: subdivisions);
+      final services = harness.services;
+      final created = await services.operations.create(stationCall: 'N0DEV');
+      await services.qsos.add(created.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'startAtMillis': 1000,
+      });
+      expect(await services.handleCommandAction('markSegment', {'kind': 'break', 'uuid': created.uuid}), isNull);
+      final operation = (await services.operations.get(created.uuid))!;
+      expect(operation.qsoCount, 1);
+      await open(tester, operation, harness: harness);
+      final t = AppLocale.en.buildSync().operationLocationScreen;
+      await tester.tap(find.text(t.deviceGps));
+      await tester.pumpAndSettle();
+      expect(subdivisions.input?.fix, fix);
+
+      final county = find.widgetWithText(TextField, t.county);
+      await tester.ensureVisible(county);
+      await tester.enterText(county, 'Kent');
+      await tester.enterText(county, '');
+      subdivisions.answer.complete((state: 'RI', county: 'Kent', candidates: const <OperationLocationCandidate>[]));
       await tester.pumpAndSettle();
       await save(tester);
 
-      expect(popped!['gridSource'], 'gps');
-      expect(popped!['lat'], 41.71346);
-      expect(popped!['lon'], -72.72781);
+      expect(popped!['state'], 'RI');
+      expect(popped!['county'], '');
+      expect(popped!['gpsCounty'], isNull);
+    });
+
+    testWidgets('a state-line fix offers state and county together without choosing one', (tester) async {
+      final gps = FakeGpsLocation()..fix = const GridLocation(41.375, -71.835);
+      final subdivisions = _PendingSubdivisions();
+      await open(tester, withPark(), location: gps, subdivisions: subdivisions);
+
+      final t = AppLocale.en.buildSync().operationLocationScreen;
+      await tester.tap(find.text(t.deviceGps));
+      subdivisions.answer.complete((state: null, county: null, candidates: stateLine));
+      await tester.pumpAndSettle();
+
+      expect(find.text(t.nearBoundary), findsOneWidget);
+      expect(find.text('New London, CT'), findsOneWidget);
+      expect(find.text('Washington, RI'), findsOneWidget);
+      await save(tester);
+      expect(popped!['state'], isNull);
+      expect(popped!['county'], isNull);
+    });
+
+    testWidgets('a boundary choice preserves an entered province and its spelling', (tester) async {
+      final gps = FakeGpsLocation()..fix = const GridLocation(45.865, -64.251);
+      final subdivisions = _PendingSubdivisions();
+      await open(
+        tester,
+        const Operation(uuid: 'op-1', data: {'state': 'NEW BRUNSWICK'}),
+        location: gps,
+        subdivisions: subdivisions,
+      );
+
+      final t = AppLocale.en.buildSync().operationLocationScreen;
+      await tester.tap(find.text(t.deviceGps));
+      subdivisions.answer.complete((
+        state: null,
+        county: null,
+        candidates: const [(state: 'New Brunswick', county: 'Westmorland'), (state: 'Nova Scotia', county: 'Cumberland')],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cumberland, Nova Scotia'), findsNothing);
+      await tester.tap(find.text('Westmorland, New Brunswick'));
+      await save(tester);
+      expect(popped!['state'], 'NEW BRUNSWICK');
+      expect(popped!['county'], 'Westmorland');
+      expect(popped!['gpsCounty'], isNull);
+    });
+
+    testWidgets('editing the grid discards boundary options from a lookup still in flight', (tester) async {
+      final gps = FakeGpsLocation()..fix = const GridLocation(41.375, -71.835);
+      final subdivisions = _PendingSubdivisions();
+      await open(tester, withPark(), location: gps, subdivisions: subdivisions);
+
+      final t = AppLocale.en.buildSync().operationLocationScreen;
+      await tester.tap(find.text(t.deviceGps));
+      await tester.enterText(find.widgetWithText(TextField, t.gridSquare), 'DM33xk');
+      subdivisions.answer.complete((state: null, county: null, candidates: stateLine));
+      await tester.pumpAndSettle();
+
+      expect(find.text(t.nearBoundary), findsNothing);
+      await save(tester);
+      expect(popped!['grid'], 'DM33xk');
+      expect(popped!['state'], isNull);
+      expect(popped!['county'], isNull);
     });
 
     // The service keeps its last position while it says "Locating…"; offered

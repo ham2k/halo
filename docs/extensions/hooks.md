@@ -126,6 +126,7 @@ log, and a write throws. Copy what you mean to change.
 | `cluster` | [Spots](spots.md) | Lines from the app's DX cluster connection | the hook under your key |
 | `bandAnnotations` | [Spots](spots.md) | What is said about a band: its plan, its windows, anything worth marking | every hook, once per band and station |
 | `activity` | [Activities](activities.md) | Logging controls, operation setup, suggestions, a last look at a QSO before it saves | every hook |
+| `operationLocation` | [Activities](activities.md#operationlocation) | State and county from a GPS fix in operation setup | each location-enabled bundle, under its own key |
 | `ref:<type>` | [Activities](activities.md) | Validate, decorate, link and outline one kind of reference | one hook per type, batched |
 | `dataFile` | [Activities](activities.md) | An offline dataset the app downloads and indexes for you | your registration |
 | `export` | [Import & export](import-export.md) | A file the operator can save or share | every hook, then the chosen one |

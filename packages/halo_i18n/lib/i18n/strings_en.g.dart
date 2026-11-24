@@ -2818,6 +2818,15 @@ class Translations$operationLocationScreen$en {
 	/// en: 'GPS from ${receiver}'
 	String receiverGps({required Object receiver}) => 'GPS from ${receiver}';
 
+	/// en: 'Review GPS'
+	String get reviewGps => 'Review GPS';
+
+	/// en: 'Near a boundary'
+	String get nearBoundary => 'Near a boundary';
+
+	/// en: '${county}, ${state}'
+	String boundaryChoice({required Object county, required Object state}) => '${county}, ${state}';
+
 	/// en: 'Locating…'
 	String get locating => 'Locating…';
 
@@ -15435,6 +15444,9 @@ extension on Translations {
 			'operationLocationScreen.deviceGps' => 'Device GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS from ${device}',
 			'operationLocationScreen.receiverGps' => ({required Object receiver}) => 'GPS from ${receiver}',
+			'operationLocationScreen.reviewGps' => 'Review GPS',
+			'operationLocationScreen.nearBoundary' => 'Near a boundary',
+			'operationLocationScreen.boundaryChoice' => ({required Object county, required Object state}) => '${county}, ${state}',
 			'operationLocationScreen.locating' => 'Locating…',
 			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',

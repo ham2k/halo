@@ -446,6 +446,25 @@ a handler for a type you do **not** declare in the manifest is how a
 decorate-only handler is written: it answers for the type without offering
 itself for it.
 
+## `operationLocation`
+
+**For:** Resolving the station's state or province and county from a GPS fix during operation setup.
+
+**Called:** When setup accepts or refines a GPS fix, or when the operator picks a GPS fix in Location with State or County unset. Needs `requiresLocation` and extension API 31. Register under the bundle's manifest `key`.
+
+```ts
+interface OperationLocationHook {
+  resolve({ latitude, longitude, accuracyMeters }, ctx): Promise<OperationLocationResult | null>
+}
+// OperationLocationResult: { state?: string, county?: string, candidates?: { state: string, county?: string }[] }
+```
+
+The app sends the accepted fix and its reported accuracy in metres. Resolve it from local data so setup works offline. Return `state` when the entire accuracy area fits within a state or province, and `county` with it when the entire area also fits within that county. Use the codes and names that belong in an ADIF `MY_STATE` and `MY_CNTY`. Return `null` when your data has no answer.
+
+Where the area crosses a boundary, return the possible `candidates`. Each includes its `state` and a `county` where known. For a county boundary within a single state, return the confirmed `state` alongside its candidates. The app offers choices without selecting one automatically and preserves the operator's entries. Where providers disagree, the app offers those answers as choices too. Hooks only return location information. The app decides what to save.
+
+Providers share a two-second budget once the runtime is ready. If the lookup times out, setup can still save the GPS grid.
+
 ## `dataFile`
 
 **For:** a large offline dataset (a park list, a summit list) the app
