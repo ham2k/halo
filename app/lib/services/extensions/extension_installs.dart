@@ -643,6 +643,7 @@ mixin _ExtensionInstalls {
       extensionKey: extensionKey ?? 'unknown',
       domains: info?.domains ?? const [],
       anyDataFileHost: info?.requiresAnyDataFileUrl ?? false,
+      allowUserAgentOverride: info?.allowUserAgentOverride ?? false,
       developerMode: settings?.developerMode ?? false,
     );
   }

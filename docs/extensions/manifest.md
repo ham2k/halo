@@ -189,7 +189,7 @@ packer can check it without running the bundle: a manifest listing
 | --- | --- |
 | `domains` | The hosts `host.fetch` may call: exact names (`api.pota.app`), a wildcard (`*.example.com`), or `*`. |
 | `webSockets` | The hosts `host.webSocket` may connect to. Same shapes, plus `"local"`. A host listed only under `domains` gets no socket: consenting to requests is not consenting to a standing connection. |
-| `allowUserAgentOverride` | Lets your `host.fetch` headers set `User-Agent`. Otherwise the app stamps its own canonical one on every request and ignores yours. |
+| `allowUserAgentOverride` | Lets your `host.fetch` headers and `dataFile` definitions set `User-Agent`. Otherwise the app stamps its own canonical one on every request and ignores yours. A browser may still use its own value. |
 | `requiresAnyDataFileUrl` | Lets your `dataFile` hooks download from any https address, not only your `domains`: for a file the operator points you at, a club's list on a host you cannot name in advance. Never the local network. Shown to the operator at install. Extension API 24; an app before it downloads from any address. |
 
 The rules the host enforces:

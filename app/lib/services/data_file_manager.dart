@@ -465,23 +465,31 @@ class DataFileManager {
   ///
   /// An `n1mm-history:` [url] names an N1MM call history file by stem instead
   /// (see [_downloadN1mmCallHistory]).
-  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding, ExtensionNetworkGrant? grant}) async {
+  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding, ExtensionNetworkGrant? grant, String? userAgent}) async {
     final stem = n1mmCallHistoryStem(url);
-    if (stem != null) return _downloadN1mmCallHistory(key, stem, force: force, encoding: encoding);
+    if (stem != null) return _downloadN1mmCallHistory(key, stem, force: force, encoding: encoding, userAgent: userAgent);
     return _download(
       key,
       url,
       force: force,
       grant: grant,
+      userAgent: userAgent,
       read: (r) => decodeDataFileBody(r.bodyBytes, encoding: resolveDataFileEncoding(encoding, r.headers['content-type'])),
     );
   }
 
   /// [downloadFile]'s bytes, undecoded — a `sqlite` file's.
-  Future<Uint8List?> downloadBytes(String key, String url, {bool force = false, ExtensionNetworkGrant? grant}) =>
-      _download(key, url, force: force, grant: grant, read: (r) => r.bodyBytes);
+  Future<Uint8List?> downloadBytes(String key, String url, {bool force = false, ExtensionNetworkGrant? grant, String? userAgent}) =>
+      _download(key, url, force: force, grant: grant, userAgent: userAgent, read: (r) => r.bodyBytes);
 
-  Future<T?> _download<T>(String key, String url, {required bool force, ExtensionNetworkGrant? grant, required T Function(http.Response) read}) async {
+  Future<T?> _download<T>(
+    String key,
+    String url, {
+    required bool force,
+    ExtensionNetworkGrant? grant,
+    String? userAgent,
+    required T Function(http.Response) read,
+  }) async {
     final resolvedUrl = _resolveFetchUrl(resolveDownloadUrl(url));
     // An extension's URL is held to its grant, as it named it (ExtensionClient).
     http.Client client() => dataFileClient(grant, named: Uri.tryParse(url), clients: httpClientFactory, onWeb: isWeb);
@@ -494,7 +502,7 @@ class DataFileManager {
     final skipConditional = prefs.getBool(skipKey) ?? false;
     final cachedEtag = (force || skipConditional) ? null : prefs.getString('data_file_etag_$key');
     try {
-      return await _fetch(key, resolvedUrl, client, etag: cachedEtag, storeEtag: !skipConditional, read: read);
+      return await _fetch(key, resolvedUrl, client, etag: cachedEtag, storeEtag: !skipConditional, userAgent: userAgent, read: read);
     } on http.ClientException {
       // On web, a browser-level failure of a CONDITIONAL request is most
       // often a failed CORS preflight, not an outage: `If-None-Match` is not
@@ -507,7 +515,7 @@ class DataFileManager {
       // dropped. A genuine outage fails the retry too, leaving the ETag
       // intact to earn a 304 once the network returns.
       if (!isWeb || cachedEtag == null) rethrow;
-      final body = await _fetch(key, resolvedUrl, client, etag: null, storeEtag: false, read: read);
+      final body = await _fetch(key, resolvedUrl, client, etag: null, storeEtag: false, userAgent: userAgent, read: read);
       await prefs.remove('data_file_etag_$key');
       await prefs.setBool(skipKey, true);
       return body;
@@ -531,6 +539,7 @@ class DataFileManager {
     http.Client Function() client, {
     String? etag,
     bool storeEtag = true,
+    String? userAgent,
     required T Function(http.Response) read,
   }) async {
     final request = http.Request('GET', Uri.parse(url));
@@ -539,7 +548,7 @@ class DataFileManager {
     }
 
     debugPrint('[data-file] Fetching $key from ${redactUrlForLog(url)} (cached ETag: $etag)');
-    final response = await _send(key, request, client);
+    final response = await _send(key, request, clientFor: client, userAgent: userAgent);
 
     if (response.statusCode == 304) {
       debugPrint('[data-file] File $key unchanged (304)');
@@ -559,10 +568,10 @@ class DataFileManager {
 
   /// Sends [request] on [clientFor]'s client, or the app's own, under
   /// [headersTimeout] and [bodyTimeout]; reads the whole response.
-  Future<http.Response> _send(String key, http.Request request, [http.Client Function()? clientFor]) async {
+  Future<http.Response> _send(String key, http.Request request, {http.Client Function()? clientFor, String? userAgent}) async {
     final client = clientFor?.call() ?? httpClientFactory(guarded: false);
     try {
-      request.headers['User-Agent'] = await ham2kUserAgent();
+      request.headers['User-Agent'] = userAgent ?? await ham2kUserAgent();
       final http.StreamedResponse streamedResponse;
       try {
         streamedResponse = await client.send(request).timeout(headersTimeout);
@@ -583,10 +592,10 @@ class DataFileManager {
   /// file this key last downloaded. Its [N1mmCallHistoryFile.version] stands
   /// in for the ETag N1MM does not send, kept where an ETag is, so every path
   /// that drops a key's ETag to force the next download drops this too.
-  Future<String?> _downloadN1mmCallHistory(String key, String stem, {required bool force, String? encoding}) async {
+  Future<String?> _downloadN1mmCallHistory(String key, String stem, {required bool force, String? encoding, String? userAgent}) async {
     Future<http.Response> fetch(http.Request request) async {
       debugPrint('[data-file] Fetching $key: ${request.method} ${redactUrlForLog(request.url.toString())}');
-      final response = await _send(key, request);
+      final response = await _send(key, request, userAgent: userAgent);
       if (response.statusCode != 200) throw DataFileUnavailable.status(key, request.url.host, response.statusCode);
       return response;
     }
@@ -847,9 +856,10 @@ class DataFileManager {
       final url = def['url'] as String;
       fetchType = def['fetchType'] as String;
       final grant = extensions.networkGrantFor(def['extensionKey'] as String?);
+      final userAgent = grant.allowUserAgentOverride ? def['userAgent'] as String? : null;
       body = fetchType == 'sqlite'
-          ? await downloadSqliteFile(this, key, def, url, force: force, grant: grant)
-          : await downloadFile(key, url, force: force, encoding: def['encoding'] as String?, grant: grant);
+          ? await downloadSqliteFile(this, key, def, url, force: force, grant: grant, userAgent: userAgent)
+          : await downloadFile(key, url, force: force, encoding: def['encoding'] as String?, grant: grant, userAgent: userAgent);
     } catch (e, stack) {
       statusBar?.clear(statusKey);
       debugPrint('[data-file] Failed to download $key: $e');

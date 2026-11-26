@@ -32,9 +32,10 @@ Future<Uint8List?> downloadSqliteFile(
   String url, {
   required bool force,
   ExtensionNetworkGrant? grant,
+  String? userAgent,
 }) async {
   sqliteDefinition(key, def);
-  final bytes = await manager.downloadBytes(key, url, force: force, grant: grant);
+  final bytes = await manager.downloadBytes(key, url, force: force, grant: grant, userAgent: userAgent);
   if (bytes == null || isSqliteFile(bytes)) return bytes;
   await manager.prefs.remove('data_file_etag_$key');
   throw DataFileNotADatabase(key, Uri.tryParse(url)?.host ?? url);

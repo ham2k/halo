@@ -1439,7 +1439,7 @@ REF-002,Summit Two,45.56,-122.78
     // Downloaded with no grant, an extension's URL would reach whatever host
     // it names, past the domains the install screen showed.
     extensions.debugSetAvailableExtensions([
-      const ExtensionInfo(key: 'k2hrc-llota', file: 'k2hrc-llota.js', core: false, name: 'LLOTA', domains: ['llota.app']),
+      const ExtensionInfo(key: 'k2hrc-llota', file: 'k2hrc-llota.js', core: false, name: 'LLOTA', domains: ['llota.app'], allowUserAgentOverride: true),
     ]);
     final m = TestDataFileManager(lookups: lookups, extensions: extensions, prefs: prefs)..mockDownloadBody = 'id,title\n';
     // Only the download is under test: the import after it has no runtime
@@ -1451,10 +1451,12 @@ REF-002,Summit Two,45.56,-122.78
           'fetchType': 'csv',
           'csvOptions': {'hasHeaders': true},
           'url': 'https://llota.app/lakes.csv',
+          'userAgent': 'LLOTA-test/1.0',
         }, notifyOnFailure: false)
         .catchError((Object _) => false);
     expect(m.grants.single?.extensionKey, 'k2hrc-llota');
     expect(m.grants.single?.domains, ['llota.app']);
+    expect(m.userAgents.single, 'LLOTA-test/1.0');
   });
 
   group("downloadFile for an extension's data file", () {
@@ -1465,8 +1467,10 @@ REF-002,Summit Two,45.56,-122.78
     });
 
     late List<Uri> sent;
+    late List<String?> userAgents;
     DataFileManager buildManager() {
       sent = [];
+      userAgents = [];
       return DataFileManager(
         lookups: lookups,
         extensions: extensions,
@@ -1474,6 +1478,7 @@ REF-002,Summit Two,45.56,-122.78
         isWeb: false,
         httpClientFactory: ({required guarded}) => http.MockClient((request) async {
           sent.add(request.url);
+          userAgents.add(request.headers['user-agent']);
           return http.Response('CONTENT', 200);
         }),
       );
@@ -1486,6 +1491,17 @@ REF-002,Summit Two,45.56,-122.78
       expect(await m.downloadFile('lakes', 'https://llota.app/lakes.csv', grant: llota), 'CONTENT');
       await expectLater(m.downloadFile('lakes', 'https://collector.example/lakes.csv', grant: llota), throwsA(isA<ExtensionUrlRefused>()));
       expect(sent.map((u) => u.host), ['llota.app']);
+    });
+
+    test('uses the data file User-Agent when the extension grant permits it', () async {
+      final m = buildManager();
+      await m.downloadFile(
+        'lakes',
+        'https://llota.app/lakes.csv',
+        grant: const ExtensionNetworkGrant(extensionKey: 'k2hrc-llota', domains: ['llota.app'], allowUserAgentOverride: true),
+        userAgent: 'LLOTA-test/1.0',
+      );
+      expect(userAgents.single, 'LLOTA-test/1.0');
     });
 
     test('is judged by the address the extension named, not the download form the app turns a share link into', () async {
@@ -1982,7 +1998,7 @@ class _BlockingDownloadManager extends DataFileManager {
   _BlockingDownloadManager({required super.lookups, required super.extensions, required super.prefs, super.offlineChanges});
 
   @override
-  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding, ExtensionNetworkGrant? grant}) async {
+  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding, ExtensionNetworkGrant? grant, String? userAgent}) async {
     downloadCalls++;
     final block = blockDownload;
     if (block != null) await block.future;
@@ -2058,13 +2074,15 @@ class TestDataFileManager extends DataFileManager {
 
   /// The grant each download was held to, in order.
   final grants = <ExtensionNetworkGrant?>[];
+  final userAgents = <String?>[];
 
   TestDataFileManager({required super.lookups, required super.extensions, required super.prefs, super.statusBar});
 
   @override
-  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding, ExtensionNetworkGrant? grant}) async {
+  Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding, ExtensionNetworkGrant? grant, String? userAgent}) async {
     downloads.add((key: key, force: force));
     grants.add(grant);
+    userAgents.add(userAgent);
     final error = mockDownloadError;
     if (error != null) throw error;
     return mockDownloadBody;

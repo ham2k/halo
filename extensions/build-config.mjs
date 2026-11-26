@@ -85,9 +85,9 @@ export const builtInSharedDependencies = Object.fromEntries(sharedPackages.map((
 // The entry "local" admits every local-network address, for gear whose
 // address only the operator knows.
 // `allowUserAgentOverride: true` is another network capability: the host
-// stamps HaLo's canonical User-Agent on every host.fetch and normally
-// overrides any the extension set, but a whitelisted extension keeps its own
-// (see docs/design/network.md). Omit it (the default) unless a third-party
+// stamps HaLo's canonical User-Agent on every host.fetch and data-file
+// download, but a whitelisted extension may override it (see
+// docs/design/network.md). Omit it (the default) unless a third-party
 // service demands a specific UA — consistency is the goal.
 // `requiresLocation: true` is a third capability, unrelated to networking:
 // it allows the bundle to call host.getLocation() (the device's raw GPS

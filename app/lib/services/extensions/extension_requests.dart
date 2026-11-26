@@ -14,14 +14,22 @@ import 'package:http/http.dart' as http;
 
 /// What an extension may have the app reach for it: the hosts its manifest
 /// declares, whether its data files may go to any public host
-/// (`requiresAnyDataFileUrl`), and whether developer mode opens the local
-/// network.
+/// (`requiresAnyDataFileUrl`), whether its requests may use a custom
+/// `User-Agent` (`allowUserAgentOverride`), and whether developer mode opens
+/// the local network.
 class ExtensionNetworkGrant {
-  const ExtensionNetworkGrant({required this.extensionKey, this.domains = const [], this.anyDataFileHost = false, this.developerMode = false});
+  const ExtensionNetworkGrant({
+    required this.extensionKey,
+    this.domains = const [],
+    this.anyDataFileHost = false,
+    this.allowUserAgentOverride = false,
+    this.developerMode = false,
+  });
 
   final String extensionKey;
   final List<String> domains;
   final bool anyDataFileHost;
+  final bool allowUserAgentOverride;
   final bool developerMode;
 
   /// Why [url] may not be the address the extension named, or null when it

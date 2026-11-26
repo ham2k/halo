@@ -473,6 +473,7 @@ const lakeList: DataFileDefinition = {
 | --- | --- |
 | `key`, `name`, `description` | Identity; `name` and `description` are `Localizable`. The key is the one you register under: your extension's key, or it followed by `-` or `_` and more, in lowercase letters, digits, `-` and `_`. A data file under any other key is never registered |
 | `url` | Where to fetch; `Localizable` too. `n1mm-history:<stem>` is a special form, below |
+| `userAgent` | The `User-Agent` to send for this download (extension API 31). The app honors it only when your manifest declares `allowUserAgentOverride`; a browser may still use its own value. |
 | `maxAgeInDays` | How often to refresh |
 | `fetchType` | `csv`, `json`, `raw`, `ham2k` or `sqlite` |
 | `category` | The lookup category the rows land in |

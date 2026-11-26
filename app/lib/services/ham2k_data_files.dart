@@ -85,6 +85,8 @@ class Ham2kDataFiles {
       final url = def['url'];
       final fields = Ham2kFields.fromDefinition(def['fields']);
       if (url is! String || fields == null) throw FormatException('$key: a ham2k data file needs a url and fields.key');
+      final grant = grantFor(def['extensionKey'] as String?);
+      final userAgent = grant.allowUserAgentOverride ? def['userAgent'] as String? : null;
       final held = prefs.getString(versionKey);
       result = await syncHam2kDataFile(
         key: key,
@@ -95,7 +97,7 @@ class Ham2kDataFiles {
         heldVersion: held != null && held.startsWith('ham2k:') ? held.substring('ham2k:'.length) : null,
         snapshot: force,
         force: force,
-        fetch: (url, {required goneIsAnswer}) => _fetch(key, url, grantFor(def['extensionKey'] as String?), goneIsAnswer: goneIsAnswer),
+        fetch: (url, {required goneIsAnswer}) => _fetch(key, url, grant, goneIsAnswer: goneIsAnswer, userAgent: userAgent),
         lookups: lookups,
         onSnapshotWrites: () => prefs.remove(versionKey),
         onRows: showProgress
@@ -162,12 +164,12 @@ class Ham2kDataFiles {
 
   /// One request: [headersTimeout] for the answer, [idleTimeout] between body
   /// chunks, and the client closed once the body is read, abandoned or failed.
-  Future<Ham2kResponse> _fetch(String key, Uri url, ExtensionNetworkGrant grant, {required bool goneIsAnswer}) async {
+  Future<Ham2kResponse> _fetch(String key, Uri url, ExtensionNetworkGrant grant, {required bool goneIsAnswer, String? userAgent}) async {
     debugPrint('[data-file] Fetching $key from ${redactUrlForLog(url.toString())}');
     final client = ExtensionClient(grant, dataFile: true, clients: httpClientFactory, onWeb: isWeb);
     final http.StreamedResponse response;
     try {
-      final request = http.Request('GET', url)..headers['User-Agent'] = await ham2kUserAgent();
+      final request = http.Request('GET', url)..headers['User-Agent'] = userAgent ?? await ham2kUserAgent();
       response = await client.send(request).timeout(headersTimeout);
     } on TimeoutException {
       client.close();

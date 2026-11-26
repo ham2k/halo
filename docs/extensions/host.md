@@ -41,8 +41,10 @@ build yourself.
 - **At most 8 in flight per bundle.** A ninth is refused rather than queued,
   so a `Promise.all` over a long list fails past the eighth; run them in
   batches.
-- **The app stamps its own `User-Agent`** on every request and ignores yours,
-  unless the manifest sets `allowUserAgentOverride`.
+- **For `host.fetch`, the app stamps its own `User-Agent`** unless the manifest
+  sets `allowUserAgentOverride` and your request supplies one. A `dataFile` can
+  set `userAgent` under the same permission. A browser may still use its own
+  value.
 - **`timeout` clamps downward only.** You may declare a request not worth the
   app's default wait, never award yourself a longer one. Set it on anything
   optional: a hook fan-out shares one time budget across every extension in

@@ -340,9 +340,9 @@ class ExtensionInfo with ExtensionSearchable {
   @override
   final ExtensionRelevance? relevance;
 
-  /// Whether this extension may set its own `User-Agent` on host.fetch
-  /// (the manifest's `allowUserAgentOverride`). Off by default: the host stamps
-  /// HaLo's canonical UA — see docs/design/network.md.
+  /// Whether this extension may set its own `User-Agent` on host.fetch or a
+  /// data-file download (the manifest's `allowUserAgentOverride`). Off by
+  /// default: the host stamps HaLo's canonical UA — see docs/design/network.md.
   final bool allowUserAgentOverride;
 
   /// Whether this extension may call the `getLocation` host call (the manifest's

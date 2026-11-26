@@ -1720,6 +1720,7 @@ const kernelEntries = {
                     // a query parameter — supplies a function, and a plain string
                     // still comes back unchanged.
                     url: await callHookMethod(record, "url", {}),
+                    userAgent: record.hook.userAgent ?? null,
                     deltaUrl: (await callHookMethod(record, "deltaUrl", {})) ?? null,
                     fields: record.hook.fields ?? null,
                     sqliteQuery: record.hook.sqliteQuery ?? null,

@@ -54,6 +54,8 @@ User-Agent.** Concretely:
   `package:http` directly. Add `'User-Agent': await ham2kUserAgent()` to the
   request headers. Current call sites: the OIDC OAuth flow in
   `views/settings/accounts_panel.dart` and downloads in `data_file_manager.dart`.
+  An extension data file defaults to this UA; `allowUserAgentOverride` lets
+  its definition provide a different `userAgent`.
 - **Extensions** — you get this for free. Every `host.fetch` is stamped with the
   canonical UA by the extension host
   ([`packages/halo_extension_host/lib/src/host_core.dart`](../../packages/halo_extension_host/lib/src/host_core.dart),

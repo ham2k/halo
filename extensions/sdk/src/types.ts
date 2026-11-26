@@ -3501,6 +3501,10 @@ export interface DataFileDefinition {
   /// with `fetchType: 'raw'`; see docs/extensions/hooks.md's `dataFile`.
   /// Extension API 11.
   url: Localizable<string>
+  /// The `User-Agent` to send when downloading this file. The app honors this
+  /// only when your manifest declares `allowUserAgentOverride`; browsers may
+  /// still replace it with their own value. Extension API 31.
+  userAgent?: string
   maxAgeInDays: number
   fetchType: FetchType
 
